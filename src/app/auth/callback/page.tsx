@@ -29,51 +29,83 @@ export default function AuthCallback() {
       })
 
       try {
-        // Handle modern implicit flow with code
+        // 1) If a session already exists (e.g., handled by Supabase automatically), redirect
+        const { data: { session: existingSession } } = await supabase.auth.getSession()
+        if (existingSession) {
+          console.log('Existing session found, ensuring cookies are set, redirecting to:', next)
+          try {
+            await supabase.auth.setSession({
+              access_token: existingSession.access_token,
+              refresh_token: existingSession.refresh_token,
+            })
+          } catch (_) {}
+          // Use full reload to guarantee cookies are sent to the server
+          window.location.replace(next)
+          return
+        }
+
+        // 2) Handle PKCE code exchange (SafeLinks-friendly)
         if (code) {
-          console.log('Using implicit flow - exchanging code for session...')
+          console.log('Exchanging PKCE code for session...')
           const { data, error } = await supabase.auth.exchangeCodeForSession(code)
           
           if (error) {
-            console.error('Implicit auth exchange error:', error)
+            console.error('PKCE exchange error:', error)
             router.replace('/auth/auth-code-error?type=magiclink')
             return
           }
           
           if (data.session) {
-            console.log('Implicit session created successfully, redirecting to:', next)
-            router.replace(next)
+            console.log('Session created successfully, redirecting to:', next)
+            window.location.replace(next)
             return
           }
           
-          console.error('Implicit: No session created')
+          console.error('No session created after code exchange')
           router.replace('/auth/auth-code-error?type=no_session')
           return
         }
 
         // Handle legacy token format (still being generated)
         if (token && type === 'magiclink') {
-          console.log('Legacy token format detected - verifying OTP...')
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: 'magiclink'
-          })
+          console.log('Legacy token format detected - using session approach...')
+          
+          // For legacy magic links, the session should be established automatically
+          // Let's wait and check for it
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          
+          const { data: { session }, error } = await supabase.auth.getSession()
           
           if (error) {
-            console.error('Legacy token verification error:', error)
+            console.error('Session check error:', error)
             router.replace('/auth/auth-code-error?type=magiclink')
             return
           }
           
-          if (data.session) {
-            console.log('Legacy session created successfully, redirecting to:', next)
+          if (session) {
+            console.log('Legacy session found, redirecting to:', next)
             router.replace(next)
             return
           }
           
-          console.error('Legacy: Token verified but no session created')
+          console.error('Legacy: No session found after magic link')
           router.replace('/auth/auth-code-error?type=no_session')
           return
+        }
+
+        // 4) Final fallback: check URL hash for tokens (in case an email client rewrites URLs)
+        const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : ''
+        if (hash) {
+          const hashParams = new URLSearchParams(hash)
+          const access_token = hashParams.get('access_token')
+          const refresh_token = hashParams.get('refresh_token')
+          if (access_token && refresh_token) {
+            const { error } = await supabase.auth.setSession({ access_token, refresh_token })
+            if (!error) {
+              window.location.replace(next)
+              return
+            }
+          }
         }
 
         console.error('No valid auth parameters provided')

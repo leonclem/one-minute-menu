@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+export const dynamic = 'force-dynamic'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { userOperations, menuOperations } from '@/lib/database'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui'

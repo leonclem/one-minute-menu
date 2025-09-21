@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 
@@ -8,16 +8,17 @@ const inter = Inter({
   variable: '--font-inter',
 })
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: '#3B82F6',
+}
+
 export const metadata: Metadata = {
   title: 'QR Menu System',
   description: 'Create digital menus with QR codes for restaurants',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-  },
-  themeColor: '#3B82F6',
   manifest: '/manifest.json',
   icons: [
     { rel: 'icon', url: '/favicon.ico' },
