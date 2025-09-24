@@ -139,11 +139,20 @@ export default async function DashboardPage() {
                               : 'bg-yellow-100 text-yellow-800'
                           }`}>
                             {menu.status}
+                            {menu.status === 'published' && menu.published_at && (
+                              <span className="ml-1 text-xs opacity-75">
+                                ({new Date(menu.published_at).toLocaleDateString()})
+                              </span>
+                            )}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-secondary-600">Items:</span>
                           <span>{menu.menu_data?.items?.length || 0}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-secondary-600">Version:</span>
+                          <span>v{menu.current_version}</span>
                         </div>
                         <div className="pt-2">
                           <Link

@@ -1,6 +1,8 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { supabase } from '@/lib/supabase'
+import { generateImageFilename } from '@/lib/image-utils'
 import type { Menu, MenuItem, User, PlanLimits, MenuTheme, OCRJob } from '@/types'
+import { computeSha256FromUrl } from '@/lib/utils'
 
 // Database utility functions for menu management
 
@@ -101,6 +103,124 @@ export const userOperations = {
       current,
       limit
     }
+  }
+}
+
+// Menu Version Operations
+export const menuVersionOperations = {
+  async createVersion(menuId: string, versionData: { menu_data: any; version: number }): Promise<void> {
+    const supabase = createServerSupabaseClient()
+    
+    // Check if version already exists
+    const { data: existingVersion } = await supabase
+      .from('menu_versions')
+      .select('id')
+      .eq('menu_id', menuId)
+      .eq('version', versionData.version)
+      .single()
+    
+    if (existingVersion) {
+      // Version already exists, skip creation
+      return
+    }
+    
+    const { error } = await supabase
+      .from('menu_versions')
+      .insert({
+        menu_id: menuId,
+        version: versionData.version,
+        menu_data: versionData.menu_data,
+        published_at: new Date().toISOString(),
+      })
+    
+    if (error) {
+      throw new DatabaseError(`Failed to create menu version: ${error.message}`, error.code)
+    }
+  },
+
+  async getVersionHistory(menuId: string, userId: string): Promise<Array<{
+    id: string
+    version: number
+    created_at: Date
+    published_at: Date | null
+    menu_data: any
+  }>> {
+    const supabase = createServerSupabaseClient()
+    
+    const { data, error } = await supabase
+      .from('menu_versions')
+      .select('*')
+      .eq('menu_id', menuId)
+      .order('version', { ascending: false })
+    
+    if (error) {
+      throw new DatabaseError(`Failed to get version history: ${error.message}`, error.code)
+    }
+    
+    return data.map(version => ({
+      id: version.id,
+      version: version.version,
+      created_at: new Date(version.created_at),
+      published_at: version.published_at ? new Date(version.published_at) : null,
+      menu_data: version.menu_data,
+    }))
+  },
+
+  async revertToVersion(menuId: string, userId: string, versionId: string): Promise<Menu> {
+    const supabase = createServerSupabaseClient()
+    
+    // Get the version data
+    const { data: versionData, error: versionError } = await supabase
+      .from('menu_versions')
+      .select('*')
+      .eq('id', versionId)
+      .eq('menu_id', menuId)
+      .single()
+    
+    if (versionError) {
+      throw new DatabaseError(`Failed to get version data: ${versionError.message}`, versionError.code)
+    }
+    
+    // Get current menu to increment version
+    const currentMenu = await menuOperations.getMenu(menuId, userId)
+    if (!currentMenu) throw new DatabaseError('Menu not found')
+    
+    const newVersionNumber = currentMenu.version + 1
+    
+    // Create a new version with current data before reverting
+    await this.createVersion(menuId, {
+      menu_data: {
+        items: currentMenu.items,
+        theme: currentMenu.theme,
+        paymentInfo: currentMenu.paymentInfo,
+      },
+      version: currentMenu.version,
+    })
+    
+    // Update menu with version data
+    const { data: updatedMenu, error: updateError } = await supabase
+      .from('menus')
+      .update({
+        menu_data: versionData.menu_data,
+        current_version: newVersionNumber,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', menuId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+    
+    if (updateError) {
+      throw new DatabaseError(`Failed to revert menu: ${updateError.message}`, updateError.code)
+    }
+    
+    // Create version entry for the revert
+    await this.createVersion(menuId, {
+      menu_data: versionData.menu_data,
+      version: newVersionNumber,
+    })
+    
+    return transformMenuFromDB(updatedMenu)
   }
 }
 
@@ -272,6 +392,45 @@ export const menuOperations = {
     }
     
     return slug
+  },
+
+  async publishMenu(menuId: string, userId: string): Promise<Menu> {
+    const supabase = createServerSupabaseClient()
+    
+    // Get current menu
+    const currentMenu = await this.getMenu(menuId, userId)
+    if (!currentMenu) throw new DatabaseError('Menu not found')
+    
+    const newVersionNumber = currentMenu.version + 1
+    
+    // Update menu status and version first
+    const { data, error } = await supabase
+      .from('menus')
+      .update({
+        status: 'published',
+        current_version: newVersionNumber,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', menuId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+    
+    if (error) {
+      throw new DatabaseError(`Failed to publish menu: ${error.message}`, error.code)
+    }
+    
+    // Create version snapshot after successful menu update
+    await menuVersionOperations.createVersion(menuId, {
+      menu_data: {
+        items: currentMenu.items,
+        theme: currentMenu.theme,
+        paymentInfo: currentMenu.paymentInfo,
+      },
+      version: newVersionNumber,
+    })
+    
+    return transformMenuFromDB(data)
   }
 }
 
@@ -340,6 +499,7 @@ function transformMenuFromDB(dbMenu: any): Menu {
     version: dbMenu.current_version,
     status: dbMenu.status,
     publishedAt: dbMenu.published_at ? new Date(dbMenu.published_at) : undefined,
+    imageUrl: dbMenu.image_url || undefined,
     paymentInfo: dbMenu.menu_data?.paymentInfo || undefined,
     auditTrail: [], // Will be populated separately if needed
     createdAt: new Date(dbMenu.created_at),
@@ -380,4 +540,146 @@ function getDefaultTheme(): MenuTheme {
 
 function generateId(): string {
   return Math.random().toString(36).substr(2, 9)
+}
+
+// Image Storage Operations
+export const imageOperations = {
+  async uploadMenuImage(userId: string, file: File): Promise<string> {
+    const supabase = createServerSupabaseClient()
+    
+    // Generate unique filename
+    const filename = generateImageFilename(userId, file.name)
+    
+    // Upload to storage
+    const { data, error } = await supabase.storage
+      .from('menu-images')
+      .upload(filename, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
+    
+    if (error) {
+      throw new DatabaseError(`Failed to upload image: ${error.message}`, error.message)
+    }
+    
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('menu-images')
+      .getPublicUrl(filename)
+    
+    return urlData.publicUrl
+  },
+
+  async deleteMenuImage(imageUrl: string): Promise<void> {
+    const supabase = createServerSupabaseClient()
+    
+    // Extract filename from URL
+    const urlParts = imageUrl.split('/')
+    const filename = urlParts.slice(-2).join('/') // userId/filename.ext
+    
+    const { error } = await supabase.storage
+      .from('menu-images')
+      .remove([filename])
+    
+    if (error) {
+      console.error('Failed to delete image:', error)
+      // Don't throw error for deletion failures to avoid blocking other operations
+    }
+  },
+
+  async updateMenuImage(menuId: string, userId: string, imageUrl: string): Promise<Menu> {
+    const supabase = createServerSupabaseClient()
+    
+    // Get current menu to check for existing image
+    const currentMenu = await menuOperations.getMenu(menuId, userId)
+    if (!currentMenu) throw new DatabaseError('Menu not found')
+    
+    // Delete old image if exists
+    if (currentMenu.imageUrl) {
+      await this.deleteMenuImage(currentMenu.imageUrl)
+    }
+    
+    // Update menu with new image URL
+    const { data, error } = await supabase
+      .from('menus')
+      .update({
+        image_url: imageUrl,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', menuId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+    
+    if (error) {
+      throw new DatabaseError(`Failed to update menu image: ${error.message}`, error.code)
+    }
+    
+    return transformMenuFromDB(data)
+  }
+}
+
+// OCR Job Operations
+export const ocrOperations = {
+  async enqueueJob(userId: string, imageUrl: string, options?: { force?: boolean }): Promise<OCRJob> {
+    const supabase = createServerSupabaseClient()
+
+    // Compute idempotency key from image bytes
+    const imageHash = await computeSha256FromUrl(imageUrl)
+
+    // Check for existing job with same hash
+    const { data: existing } = await supabase
+      .from('ocr_jobs')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('image_hash', imageHash)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (existing && !options?.force) {
+      return this.transformJob(existing)
+    }
+
+    const { data, error } = await supabase
+      .from('ocr_jobs')
+      .insert({ user_id: userId, image_url: imageUrl, image_hash: imageHash, status: 'queued' })
+      .select('*')
+      .single()
+
+    if (error) {
+      throw new DatabaseError(`Failed to enqueue OCR job: ${error.message}`, error.code)
+    }
+    return this.transformJob(data)
+  },
+
+  async getJob(userId: string, jobId: string): Promise<OCRJob | null> {
+    const supabase = createServerSupabaseClient()
+    const { data, error } = await supabase
+      .from('ocr_jobs')
+      .select('*')
+      .eq('id', jobId)
+      .eq('user_id', userId)
+      .single()
+    if (error) {
+      if (error.code === 'PGRST116') return null
+      throw new DatabaseError(`Failed to get OCR job: ${error.message}`, error.code)
+    }
+    return this.transformJob(data)
+  },
+
+  transformJob(row: any): OCRJob {
+    return {
+      id: row.id,
+      userId: row.user_id,
+      imageHash: row.image_hash,
+      imageUrl: row.image_url,
+      status: row.status,
+      result: row.result ?? undefined,
+      error: row.error_message ?? undefined,
+      createdAt: new Date(row.created_at),
+      processingTime: row.processing_time ?? undefined,
+      retryCount: row.retry_count ?? 0,
+    }
+  },
 }

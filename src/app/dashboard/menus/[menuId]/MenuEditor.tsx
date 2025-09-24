@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
 import { validateMenuItem } from '@/lib/validation'
+import VersionHistory from '@/components/VersionHistory'
+import ImageUpload from '@/components/ImageUpload'
 import type { Menu, MenuItem, MenuItemFormData } from '@/types'
 
 interface MenuEditorProps {
@@ -30,6 +32,14 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [showVersionHistory, setShowVersionHistory] = useState(false)
+  const [showImageUpload, setShowImageUpload] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [ocrJobId, setOcrJobId] = useState<string | null>(null)
+  const [ocrStatus, setOcrStatus] = useState<'idle' | 'queued' | 'processing' | 'completed' | 'failed'>('idle')
+  const [ocrError, setOcrError] = useState<string | null>(null)
+  const [ocrText, setOcrText] = useState<string | null>(null)
   const router = useRouter()
 
   // Add new menu item
@@ -83,6 +93,46 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     } finally {
       setLoading(null)
     }
+  }
+
+  // Trigger OCR extraction
+  const handleExtractItems = async () => {
+    try {
+      setOcrError(null)
+      const response = await fetch(`/api/menus/${menu.id}/ocr?force=1`, { method: 'POST' })
+      const result = await response.json()
+      if (!response.ok) {
+        alert(result.error || 'Failed to start OCR job')
+        return
+      }
+      setOcrJobId(result.data.id)
+      setOcrStatus(result.data.status)
+      pollJob(result.data.id)
+    } catch (e) {
+      alert('Network error')
+    }
+  }
+
+  const pollJob = async (jobId: string) => {
+    const poll = async () => {
+      const res = await fetch(`/api/ocr/jobs/${jobId}`)
+      const data = await res.json()
+      if (!res.ok) {
+        setOcrError(data.error || 'Failed to fetch job')
+        setOcrStatus('failed')
+        return
+      }
+      setOcrStatus(data.data.status)
+      if (data.data.status === 'queued' || data.data.status === 'processing') {
+        setTimeout(poll, 1500)
+        return
+      }
+      if (data.data.status === 'completed') {
+        const text: string | undefined = data.data.result?.ocrText
+        if (text) setOcrText(text)
+      }
+    }
+    await poll()
   }
 
   // Update menu item
@@ -188,6 +238,126 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     }
   }
 
+  // Publish menu
+  const handlePublishMenu = async () => {
+    if (optimisticMenu.items.length === 0) {
+      alert('Please add at least one menu item before publishing.')
+      return
+    }
+
+    if (!confirm('Are you sure you want to publish this menu? This will create a new version and make it available to customers.')) {
+      return
+    }
+
+    setPublishing(true)
+
+    try {
+      const response = await fetch(`/api/menus/${menu.id}/publish`, {
+        method: 'POST',
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        console.error('Failed to publish menu:', result.error)
+        alert('Failed to publish menu. Please try again.')
+        return
+      }
+
+      setMenu(result.data)
+      addOptimisticUpdate(result.data)
+      alert('Menu published successfully!')
+    } catch (error) {
+      console.error('Network error:', error)
+      alert('Network error. Please try again.')
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  // Handle version revert
+  const handleRevertToVersion = async (versionId: string) => {
+    try {
+      const response = await fetch(`/api/menus/${menu.id}/versions/${versionId}/revert`, {
+        method: 'POST',
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to revert')
+      }
+
+      setMenu(result.data)
+      addOptimisticUpdate(result.data)
+      alert('Menu reverted successfully!')
+    } catch (error) {
+      console.error('Error reverting:', error)
+      throw error // Re-throw to let VersionHistory component handle it
+    }
+  }
+
+  // Handle image upload
+  const handleImageUpload = async (file: File, preview: string) => {
+    setUploadingImage(true)
+    setShowImageUpload(false)
+
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+
+      const response = await fetch(`/api/menus/${menu.id}/image`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        alert(result.error || 'Failed to upload image')
+        return
+      }
+
+      setMenu(result.data.menu)
+      addOptimisticUpdate(result.data.menu)
+      alert('Image uploaded successfully!')
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      alert('Network error. Please try again.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  // Handle image removal
+  const handleRemoveImage = async () => {
+    if (!confirm('Are you sure you want to remove the menu image?')) return
+
+    setUploadingImage(true)
+
+    try {
+      const response = await fetch(`/api/menus/${menu.id}/image`, {
+        method: 'DELETE',
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        alert(result.error || 'Failed to remove image')
+        return
+      }
+
+      setMenu(result.data)
+      addOptimisticUpdate(result.data)
+      alert('Image removed successfully!')
+    } catch (error) {
+      console.error('Error removing image:', error)
+      alert('Network error. Please try again.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-secondary-50">
       {/* Header */}
@@ -214,10 +384,27 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setShowVersionHistory(true)}
+                disabled={loading !== null || publishing}
+              >
+                History
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setShowAddForm(true)}
-                disabled={loading !== null}
+                disabled={loading !== null || publishing}
               >
                 Add Item
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handlePublishMenu}
+                loading={publishing}
+                disabled={loading !== null}
+              >
+                {optimisticMenu.status === 'published' ? 'Update' : 'Publish'}
               </Button>
             </div>
           </div>
@@ -227,6 +414,103 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       {/* Main Content */}
       <main className="container-mobile py-6">
         <div className="space-y-6">
+          {/* Menu Image Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Menu Photo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {optimisticMenu.imageUrl ? (
+                <div className="space-y-4">
+                  <div className="relative">
+                    <img
+                      src={optimisticMenu.imageUrl}
+                      alt="Menu"
+                      className="w-full max-w-md mx-auto rounded-lg shadow-lg"
+                    />
+                    {uploadingImage && (
+                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+                        <div className="text-white text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                          <p className="text-sm">Processing...</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-center space-x-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowImageUpload(true)}
+                      disabled={uploadingImage}
+                    >
+                      Replace Photo
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRemoveImage}
+                      disabled={uploadingImage}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Remove Photo
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleExtractItems}
+                      disabled={ocrStatus === 'queued' || ocrStatus === 'processing'}
+                    >
+                      {ocrStatus === 'queued' || ocrStatus === 'processing' ? 'Processing…' : 'Extract Items'}
+                    </Button>
+                  </div>
+                  {ocrError && (
+                    <p className="text-red-600 text-sm text-center">{ocrError}</p>
+                  )}
+                  {ocrText && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium text-secondary-700 mb-2">OCR Text (preview)</h4>
+                      <pre className="whitespace-pre-wrap text-sm bg-secondary-50 p-3 rounded-md max-h-56 overflow-auto">{ocrText}</pre>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="mx-auto h-12 w-12 text-secondary-400 mb-4">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-secondary-900 mb-2">
+                    No menu photo yet
+                  </h3>
+                  <p className="text-secondary-600 mb-4">
+                    Upload a photo of your menu to extract items automatically
+                  </p>
+                  <Button
+                    variant="primary"
+                    onClick={() => setShowImageUpload(true)}
+                    disabled={uploadingImage}
+                  >
+                    Upload Menu Photo
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Image Upload Modal */}
+          {showImageUpload && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="w-full max-w-2xl">
+                <ImageUpload
+                  onImageSelected={handleImageUpload}
+                  onCancel={() => setShowImageUpload(false)}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Add Item Form */}
           {showAddForm && (
             <Card>
@@ -444,16 +728,35 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => setShowAddForm(true)}
-                    disabled={loading !== null}
+                    disabled={loading !== null || publishing}
                   >
                     Add Item
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={true}
+                    onClick={() => setShowVersionHistory(true)}
+                    disabled={loading !== null || publishing}
                   >
-                    Preview Menu
+                    Version History
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handlePublishMenu}
+                    loading={publishing}
+                    disabled={loading !== null}
+                    className="col-span-2"
+                  >
+                    {publishing ? 'Publishing...' : optimisticMenu.status === 'published' ? 'Publish Update' : 'Publish Menu'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={true}
+                    className="col-span-2"
+                  >
+                    Preview Menu (Coming Soon)
                   </Button>
                 </div>
               </CardContent>
@@ -461,6 +764,16 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
           )}
         </div>
       </main>
+
+      {/* Version History Modal */}
+      {showVersionHistory && (
+        <VersionHistory
+          menuId={menu.id}
+          currentVersion={optimisticMenu.version}
+          onRevert={handleRevertToVersion}
+          onClose={() => setShowVersionHistory(false)}
+        />
+      )}
     </div>
   )
 }

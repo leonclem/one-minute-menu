@@ -246,3 +246,18 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     return false
   }
 }
+
+/**
+ * Compute SHA-256 of a remote resource (server-side only)
+ * Used to create idempotency keys for OCR jobs based on image bytes.
+ */
+export async function computeSha256FromUrl(url: string): Promise<string> {
+  const res = await fetch(url)
+  if (!res.ok) {
+    throw new Error(`Failed to fetch resource for hashing: ${res.status}`)
+  }
+  const arrayBuffer = await res.arrayBuffer()
+  // Use Node's crypto for hashing
+  const crypto = await import('crypto')
+  return crypto.createHash('sha256').update(Buffer.from(arrayBuffer)).digest('hex')
+}

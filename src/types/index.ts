@@ -49,6 +49,7 @@ export interface Menu {
   version: number
   status: 'draft' | 'published'
   publishedAt?: Date
+  imageUrl?: string
   qrCode?: QRCodeData
   paymentInfo?: PaymentInfo
   auditTrail: AuditEntry[]
