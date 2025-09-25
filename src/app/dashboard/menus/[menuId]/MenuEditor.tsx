@@ -41,6 +41,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [ocrStatus, setOcrStatus] = useState<'idle' | 'queued' | 'processing' | 'completed' | 'failed'>('idle')
   const [ocrError, setOcrError] = useState<string | null>(null)
   const [ocrText, setOcrText] = useState<string | null>(null)
+  const [ocrConfidence, setOcrConfidence] = useState<number | null>(null)
   const router = useRouter()
   const [confirmState, setConfirmState] = useState<{
     open: boolean
@@ -138,6 +139,8 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       if (data.data.status === 'completed') {
         const text: string | undefined = data.data.result?.ocrText
         if (text) setOcrText(text)
+        const conf: number | undefined = data.data.result?.confidence
+        if (typeof conf === 'number') setOcrConfidence(conf)
       }
     }
     await poll()
@@ -530,6 +533,17 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                     <div className="mt-4">
                       <h4 className="text-sm font-medium text-secondary-700 mb-2">OCR Text (preview)</h4>
                       <pre className="whitespace-pre-wrap text-sm bg-secondary-50 p-3 rounded-md max-h-56 overflow-auto">{ocrText}</pre>
+                      {ocrConfidence !== null && (
+                        <p className="text-xs text-secondary-600 mt-2">Confidence: {(ocrConfidence * 100).toFixed(0)}%</p>
+                      )}
+                    </div>
+                  )}
+                  {ocrStatus === 'failed' && (
+                    <div className="mt-3 text-center">
+                      <p className="text-sm text-secondary-600 mb-2">OCR failed. You can add items manually.</p>
+                      <Button variant="outline" size="sm" onClick={() => setShowAddForm(true)}>
+                        Enter Items Manually
+                      </Button>
                     </div>
                   )}
                 </div>
