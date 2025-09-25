@@ -12,6 +12,7 @@
     "setup-db": "node scripts/setup-database.js"
   },
   "dependencies": {
+    "@google-cloud/vision": "^4.3.2",
     "@supabase/auth-helpers-nextjs": "^0.8.7",
     "@supabase/auth-helpers-react": "^0.5.0",
     "@supabase/ssr": "^0.7.0",
@@ -20,8 +21,8 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.2",
+    "exifr": "^7.1.3",
     "next": "^14.2.32",
-    "@google-cloud/vision": "^4.3.2",
     "postcss": "^8.4.32",
     "react": "^18",
     "react-dom": "^18",

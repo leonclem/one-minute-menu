@@ -23,7 +23,7 @@ jest.mock('next/router', () => ({
   },
 }))
 
-// Mock Supabase
+// Mock Supabase (guard if module exists)
 jest.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {

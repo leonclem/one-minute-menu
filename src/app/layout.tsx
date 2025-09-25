@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { ToastProvider } from '@/components/ui'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -49,9 +50,11 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://uztyljbiqyrykzwtdbpa.supabase.co" />
       </head>
       <body className="min-h-screen bg-white font-sans antialiased">
-        <div id="root" className="relative flex min-h-screen flex-col">
-          {children}
-        </div>
+        <ToastProvider>
+          <div id="root" className="relative flex min-h-screen flex-col">
+            {children}
+          </div>
+        </ToastProvider>
       </body>
     </html>
   )

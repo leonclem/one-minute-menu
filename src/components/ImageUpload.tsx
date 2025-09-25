@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { Button, Card, CardContent } from '@/components/ui'
 import CameraCapture from './CameraCapture'
-import { validateImageFile, processImage, createThumbnail } from '@/lib/image-utils'
+import { validateImageFile, processImage, createThumbnail, rotateImageQuarterTurns } from '@/lib/image-utils'
 
 interface ImageUploadProps {
   onImageSelected: (file: File, preview: string) => void
@@ -51,7 +51,9 @@ export default function ImageUpload({
         maxHeight: 2048,
         quality: 0.8,
         stripExif: true,
-        autoRotate: true
+        autoRotate: true,
+        autoDeskew: true,
+        autoCrop: true
       })
 
       // Create preview
@@ -112,6 +114,24 @@ export default function ImageUpload({
     }
   }, [selectedFile, previewImage, onImageSelected])
 
+  // Manual rotate fallback (90° steps)
+  const handleRotate = useCallback(async (quarterTurns: number) => {
+    if (!selectedFile) return
+    setProcessing(true)
+    setError(null)
+    try {
+      const rotated = await rotateImageQuarterTurns(selectedFile, quarterTurns)
+      const preview = await createThumbnail(rotated.file, 400)
+      setSelectedFile(rotated.file)
+      setPreviewImage(preview)
+    } catch (e) {
+      console.error('Rotate image error:', e)
+      setError('Failed to rotate image. Please try again.')
+    } finally {
+      setProcessing(false)
+    }
+  }, [selectedFile])
+
   // Reset to selection mode
   const handleRetake = useCallback(() => {
     setSelectedFile(null)
@@ -163,6 +183,24 @@ export default function ImageUpload({
             <div className="text-sm text-gray-600 mb-6">
               <p>Size: {(selectedFile.size / 1024 / 1024).toFixed(1)} MB</p>
               <p>Type: {selectedFile.type}</p>
+            </div>
+
+            {/* Rotate controls */}
+            <div className="flex flex-row gap-3 justify-center mb-3">
+              <Button
+                variant="outline"
+                onClick={() => handleRotate(3)}
+                disabled={processing}
+              >
+                Rotate Left
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleRotate(1)}
+                disabled={processing}
+              >
+                Rotate Right
+              </Button>
             </div>
 
             {/* Actions */}

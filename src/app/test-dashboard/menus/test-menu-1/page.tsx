@@ -101,8 +101,7 @@ export default function TestMenuEditor() {
   }
 
   const handleDeleteItem = async (itemId: string) => {
-    if (!confirm('Are you sure you want to delete this item?')) return
-    
+    // Test page: proceed without native confirm to avoid blocking popups
     setLoading(itemId)
     
     // Simulate API delay

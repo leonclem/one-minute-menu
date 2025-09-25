@@ -3,7 +3,7 @@
 import { useState, useOptimistic, useId } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
+import { Button, Input, Card, CardHeader, CardTitle, CardContent, useToast, ConfirmDialog } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
 import { validateMenuItem } from '@/lib/validation'
 import VersionHistory from '@/components/VersionHistory'
@@ -16,6 +16,7 @@ interface MenuEditorProps {
 
 export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const availableCheckboxId = useId()
+  const { showToast } = useToast()
   const [menu, setMenu] = useState(initialMenu)
   const [optimisticMenu, addOptimisticUpdate] = useOptimistic(
     menu,
@@ -41,6 +42,13 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [ocrError, setOcrError] = useState<string | null>(null)
   const [ocrText, setOcrText] = useState<string | null>(null)
   const router = useRouter()
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean
+    action: null | (() => void)
+    title: string
+    description: string
+    confirmText?: string
+  }>({ open: false, action: null, title: '', description: '' })
 
   // Add new menu item
   const handleAddItem = async (e: React.FormEvent) => {
@@ -102,14 +110,14 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       const response = await fetch(`/api/menus/${menu.id}/ocr?force=1`, { method: 'POST' })
       const result = await response.json()
       if (!response.ok) {
-        alert(result.error || 'Failed to start OCR job')
+        showToast({ type: 'error', title: 'OCR failed to start', description: result.error || 'Please try again.' })
         return
       }
       setOcrJobId(result.data.id)
       setOcrStatus(result.data.status)
       pollJob(result.data.id)
     } catch (e) {
-      alert('Network error')
+      showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
     }
   }
 
@@ -167,29 +175,33 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
 
   // Delete menu item
   const handleDeleteItem = async (itemId: string) => {
-    if (!confirm('Are you sure you want to delete this item?')) return
+    setConfirmState({
+      open: true,
+      action: async () => {
+        setLoading(itemId)
+        try {
+          const response = await fetch(`/api/menus/${menu.id}/items/${itemId}`, {
+            method: 'DELETE',
+          })
+          const result = await response.json()
+          if (!response.ok) {
+            console.error('Failed to delete item:', result.error)
+            return
+          }
+          setMenu(result.data)
+          addOptimisticUpdate(result.data)
+        } catch (error) {
+          console.error('Network error:', error)
+        } finally {
+          setLoading(null)
+        }
+      },
+      title: 'Delete item?',
+      description: 'This action cannot be undone.',
+      confirmText: 'Delete',
+    })
+    return
 
-    setLoading(itemId)
-
-    try {
-      const response = await fetch(`/api/menus/${menu.id}/items/${itemId}`, {
-        method: 'DELETE',
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        console.error('Failed to delete item:', result.error)
-        return
-      }
-
-      setMenu(result.data)
-      addOptimisticUpdate(result.data)
-    } catch (error) {
-      console.error('Network error:', error)
-    } finally {
-      setLoading(null)
-    }
   }
 
   // Toggle item availability
@@ -241,13 +253,37 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   // Publish menu
   const handlePublishMenu = async () => {
     if (optimisticMenu.items.length === 0) {
-      alert('Please add at least one menu item before publishing.')
+      showToast({ type: 'info', title: 'Add at least one item', description: 'Please add an item before publishing.' })
       return
     }
 
-    if (!confirm('Are you sure you want to publish this menu? This will create a new version and make it available to customers.')) {
-      return
-    }
+    setConfirmState({
+      open: true,
+      action: async () => {
+        setPublishing(true)
+        try {
+          const response = await fetch(`/api/menus/${menu.id}/publish`, { method: 'POST' })
+          const result = await response.json()
+          if (!response.ok) {
+            console.error('Failed to publish menu:', result.error)
+            showToast({ type: 'error', title: 'Publish failed', description: 'Please try again.' })
+            return
+          }
+          setMenu(result.data)
+          addOptimisticUpdate(result.data)
+          showToast({ type: 'success', title: 'Menu published', description: 'Your menu is now live.' })
+        } catch (error) {
+          console.error('Network error:', error)
+          showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
+        } finally {
+          setPublishing(false)
+        }
+      },
+      title: 'Publish menu?',
+      description: 'This will create a new version and make it publicly available.',
+      confirmText: 'Publish',
+    })
+    return
 
     setPublishing(true)
 
@@ -260,16 +296,16 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
 
       if (!response.ok) {
         console.error('Failed to publish menu:', result.error)
-        alert('Failed to publish menu. Please try again.')
+        showToast({ type: 'error', title: 'Publish failed', description: 'Please try again.' })
         return
       }
 
       setMenu(result.data)
       addOptimisticUpdate(result.data)
-      alert('Menu published successfully!')
+      showToast({ type: 'success', title: 'Menu published', description: 'Your menu is now live.' })
     } catch (error) {
       console.error('Network error:', error)
-      alert('Network error. Please try again.')
+      showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
     } finally {
       setPublishing(false)
     }
@@ -290,7 +326,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
 
       setMenu(result.data)
       addOptimisticUpdate(result.data)
-      alert('Menu reverted successfully!')
+      showToast({ type: 'success', title: 'Reverted to version', description: 'The selected version is now active.' })
     } catch (error) {
       console.error('Error reverting:', error)
       throw error // Re-throw to let VersionHistory component handle it
@@ -314,16 +350,16 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       const result = await response.json()
 
       if (!response.ok) {
-        alert(result.error || 'Failed to upload image')
+        showToast({ type: 'error', title: 'Upload failed', description: result.error || 'Please try again.' })
         return
       }
 
       setMenu(result.data.menu)
       addOptimisticUpdate(result.data.menu)
-      alert('Image uploaded successfully!')
+      showToast({ type: 'success', title: 'Image uploaded', description: 'Ready for OCR extraction.' })
     } catch (error) {
       console.error('Error uploading image:', error)
-      alert('Network error. Please try again.')
+      showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
     } finally {
       setUploadingImage(false)
     }
@@ -331,9 +367,32 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
 
   // Handle image removal
   const handleRemoveImage = async () => {
-    if (!confirm('Are you sure you want to remove the menu image?')) return
-
-    setUploadingImage(true)
+    setConfirmState({
+      open: true,
+      action: async () => {
+        setUploadingImage(true)
+        try {
+          const response = await fetch(`/api/menus/${menu.id}/image`, { method: 'DELETE' })
+          const result = await response.json()
+          if (!response.ok) {
+            showToast({ type: 'error', title: 'Remove failed', description: result.error || 'Please try again.' })
+            return
+          }
+          setMenu(result.data)
+          addOptimisticUpdate(result.data)
+          showToast({ type: 'success', title: 'Image removed', description: 'You can upload a new photo anytime.' })
+        } catch (error) {
+          console.error('Error removing image:', error)
+          showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
+        } finally {
+          setUploadingImage(false)
+        }
+      },
+      title: 'Remove image?',
+      description: 'This will remove the current menu photo.',
+      confirmText: 'Remove',
+    })
+    return
 
     try {
       const response = await fetch(`/api/menus/${menu.id}/image`, {
@@ -343,16 +402,16 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       const result = await response.json()
 
       if (!response.ok) {
-        alert(result.error || 'Failed to remove image')
+        showToast({ type: 'error', title: 'Remove failed', description: result.error || 'Please try again.' })
         return
       }
 
       setMenu(result.data)
       addOptimisticUpdate(result.data)
-      alert('Image removed successfully!')
+      showToast({ type: 'success', title: 'Image removed', description: 'You can upload a new photo anytime.' })
     } catch (error) {
       console.error('Error removing image:', error)
-      alert('Network error. Please try again.')
+      showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
     } finally {
       setUploadingImage(false)
     }
@@ -774,6 +833,20 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
           onClose={() => setShowVersionHistory(false)}
         />
       )}
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        description={confirmState.description}
+        confirmText={confirmState.confirmText}
+        onCancel={() => setConfirmState(prev => ({ ...prev, open: false, action: null }))}
+        onConfirm={() => {
+          const action = confirmState.action
+          setConfirmState(prev => ({ ...prev, open: false, action: null }))
+          action?.()
+        }}
+      />
     </div>
   )
 }

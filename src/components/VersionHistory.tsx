@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Button, Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
+import { Button, Card, CardHeader, CardTitle, CardContent, ConfirmDialog } from '@/components/ui'
 import { formatDistanceToNow } from 'date-fns'
 
 interface Version {
@@ -29,6 +29,7 @@ export default function VersionHistory({
   const [loading, setLoading] = useState(true)
   const [reverting, setReverting] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState<{ open: boolean; versionId: string | null }>({ open: false, versionId: null })
 
   useEffect(() => {
     fetchVersions()
@@ -58,20 +59,7 @@ export default function VersionHistory({
   }
 
   const handleRevert = async (versionId: string) => {
-    if (!confirm('Are you sure you want to revert to this version? This will create a new version with the reverted content.')) {
-      return
-    }
-
-    try {
-      setReverting(versionId)
-      await onRevert(versionId)
-      onClose() // Close modal after successful revert
-    } catch (error) {
-      console.error('Error reverting:', error)
-      setError(error instanceof Error ? error.message : 'Failed to revert')
-    } finally {
-      setReverting(null)
-    }
+    setConfirm({ open: true, versionId })
   }
 
   const getItemCount = (menuData: any) => {
@@ -188,6 +176,28 @@ export default function VersionHistory({
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={confirm.open}
+        title="Revert to this version?"
+        description="This will create a new version with the reverted content."
+        confirmText="Revert"
+        onCancel={() => setConfirm({ open: false, versionId: null })}
+        onConfirm={async () => {
+          if (!confirm.versionId) return
+          try {
+            setReverting(confirm.versionId)
+            await onRevert(confirm.versionId)
+            onClose()
+          } catch (error) {
+            console.error('Error reverting:', error)
+            setError(error instanceof Error ? error.message : 'Failed to revert')
+          } finally {
+            setReverting(null)
+            setConfirm({ open: false, versionId: null })
+          }
+        }}
+      />
     </div>
   )
 }
