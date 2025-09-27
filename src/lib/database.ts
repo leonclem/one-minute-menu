@@ -710,4 +710,19 @@ export const ocrOperations = {
       retryCount: row.retry_count ?? 0,
     }
   },
+
+  async updateJobResult(userId: string, jobId: string, result: any): Promise<OCRJob> {
+    const supabase = createServerSupabaseClient()
+    const { data, error } = await supabase
+      .from('ocr_jobs')
+      .update({ result, status: 'completed', completed_at: new Date().toISOString() })
+      .eq('id', jobId)
+      .eq('user_id', userId)
+      .select('*')
+      .single()
+    if (error) {
+      throw new DatabaseError(`Failed to update OCR job result: ${error.message}`, error.code)
+    }
+    return this.transformJob(data)
+  }
 }

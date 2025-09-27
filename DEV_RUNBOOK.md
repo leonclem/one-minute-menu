@@ -6,6 +6,7 @@ This is a quick reference to start everything needed for local development and t
 - Next.js web app (App Router)
 - Supabase local stack (Postgres, Auth, Storage)
 - Python OCR worker (Google Vision)
+- AI parsing via OpenAI API (optional)
 
 ### One-time setup (per machine)
 1) Prerequisites
@@ -13,6 +14,7 @@ This is a quick reference to start everything needed for local development and t
    - Python 3.10+
    - Supabase CLI: `npm i -g supabase`
    - Google Cloud Vision service account JSON key
+   - OpenAI API key (optional; enables AI-powered parsing)
 
 2) Web app deps (from repo root)
 ```
@@ -54,6 +56,8 @@ npx supabase start
 npm run dev
 ```
 
+Note: After pulling changes that add new dependencies (e.g., `openai`), run `npm install` again.
+
 3) Start the OCR worker (Windows PowerShell)
 ```
 cd .\workers\ocr
@@ -74,6 +78,10 @@ python -m ocr_worker.main
 curl -X POST "http://localhost:3000/api/menus/<menuId>/ocr?force=1"
 ```
 
+After OCR completes (text appears in the UI), you can:
+- Click "Parse with AI" to extract items using OpenAI (requires `OPENAI_API_KEY`).
+- Click "Fallback Parse" to use a heuristic parser (no API key required).
+
 ### Config reference
 - Web app env: `.env.local` (Next.js)
 - Worker env: `workers/ocr/.env`
@@ -83,6 +91,21 @@ curl -X POST "http://localhost:3000/api/menus/<menuId>/ocr?force=1"
   - `WORKER_MAX_RETRIES` (default 3)
   - `WORKER_PROCESSING_TIMEOUT_MS` (default 90000)
   - `WORKER_USE_NOTIFY` (0/1) — enables Postgres LISTEN/NOTIFY wake-ups
+
+AI parsing (web app `.env.local`):
+```
+# Required to enable "Parse with AI"
+OPENAI_API_KEY=sk-...
+
+# Optional overrides
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_INPUT_TOKEN_RATE=0       # $ per token for prompt (for cost display)
+OPENAI_OUTPUT_TOKEN_RATE=0      # $ per token for completion (for cost display)
+```
+
+Notes
+- If `OPENAI_API_KEY` is missing or the OpenAI call fails, the system will fall back to the heuristic parser.
+- No additional local services are required for AI parsing beyond the web app; ensure internet access for OpenAI API calls.
 
 ### Troubleshooting
 - ModuleNotFoundError: `ocr_worker`

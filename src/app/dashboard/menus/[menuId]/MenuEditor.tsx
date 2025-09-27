@@ -42,6 +42,8 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [ocrError, setOcrError] = useState<string | null>(null)
   const [ocrText, setOcrText] = useState<string | null>(null)
   const [ocrConfidence, setOcrConfidence] = useState<number | null>(null)
+  const [parsedItems, setParsedItems] = useState<MenuItemFormData[] | null>(null)
+  const [parsing, setParsing] = useState<boolean>(false)
   const router = useRouter()
   const [confirmState, setConfirmState] = useState<{
     open: boolean
@@ -535,6 +537,160 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                       <pre className="whitespace-pre-wrap text-sm bg-secondary-50 p-3 rounded-md max-h-56 overflow-auto">{ocrText}</pre>
                       {ocrConfidence !== null && (
                         <p className="text-xs text-secondary-600 mt-2">Confidence: {(ocrConfidence * 100).toFixed(0)}%</p>
+                      )}
+                      <div className="mt-3 flex items-center gap-3">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={async () => {
+                            if (!ocrJobId) return
+                            setParsing(true)
+                            try {
+                              const res = await fetch(`/api/ocr/jobs/${ocrJobId}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ useAI: true }),
+                              })
+                              const data = await res.json()
+                              if (!res.ok) throw new Error(data.error || 'Failed to parse')
+                              const items = data?.data?.result?.extractedItems || []
+                              setParsedItems(items)
+                              showToast({ type: 'success', title: 'Items extracted', description: `${items.length} items found.` })
+                            } catch (e) {
+                              showToast({ type: 'error', title: 'Parse failed', description: 'Please try again.' })
+                            } finally {
+                              setParsing(false)
+                            }
+                          }}
+                          loading={parsing}
+                        >
+                          {parsing ? 'Parsing…' : 'Parse with AI'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            if (!ocrJobId) return
+                            setParsing(true)
+                            try {
+                              const res = await fetch(`/api/ocr/jobs/${ocrJobId}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ useAI: false }),
+                              })
+                              const data = await res.json()
+                              if (!res.ok) throw new Error(data.error || 'Failed to parse')
+                              const items = data?.data?.result?.extractedItems || []
+                              setParsedItems(items)
+                              showToast({ type: 'success', title: 'Heuristic items extracted', description: `${items.length} items found.` })
+                            } catch (e) {
+                              showToast({ type: 'error', title: 'Parse failed', description: 'Please try again.' })
+                            } finally {
+                              setParsing(false)
+                            }
+                          }}
+                          disabled={parsing}
+                        >
+                          Fallback Parse
+                        </Button>
+                      </div>
+                      {parsedItems && parsedItems.length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium text-secondary-700 mb-2">Extracted Items ({parsedItems.length})</h4>
+                          <div className="space-y-2 max-h-64 overflow-auto">
+                            {parsedItems.map((it, idx) => (
+                              <div key={idx} className="flex items-start justify-between p-2 border rounded-md">
+                                <div className="min-w-0 pr-3">
+                                  <div className="font-medium truncate">{it.name}</div>
+                                  <div className="text-xs text-secondary-600 truncate">{it.description || ''}</div>
+                                  <div className="text-xs text-secondary-500">{it.category || 'Uncategorized'}</div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    className="w-24 border rounded px-2 py-1 text-sm"
+                                    min="0"
+                                    step="0.01"
+                                    value={it.price}
+                                    onChange={(e) => {
+                                      const value = parseFloat(e.target.value) || 0
+                                      setParsedItems(prev => prev ? prev.map((p, i) => i === idx ? { ...p, price: value } : p) : prev)
+                                    }}
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={async () => {
+                                      const validation = validateMenuItem(it)
+                                      if (!validation.isValid) {
+                                        showToast({ type: 'error', title: 'Invalid item', description: 'Please edit before adding.' })
+                                        return
+                                      }
+                                      setLoading('add')
+                                      try {
+                                        const response = await fetch(`/api/menus/${menu.id}/items`, {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify(it),
+                                        })
+                                        const result = await response.json()
+                                        if (!response.ok) {
+                                          showToast({ type: 'error', title: 'Failed to add', description: result.error || 'Try again.' })
+                                          return
+                                        }
+                                        setMenu(result.data)
+                                        addOptimisticUpdate(result.data)
+                                      } catch (e) {
+                                        showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
+                                      } finally {
+                                        setLoading(null)
+                                      }
+                                    }}
+                                  >
+                                    Add
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3 flex gap-2">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={async () => {
+                                if (!parsedItems) return
+                                setLoading('bulk-add')
+                                try {
+                                  for (const it of parsedItems) {
+                                    const validation = validateMenuItem(it)
+                                    if (!validation.isValid) continue
+                                    await fetch(`/api/menus/${menu.id}/items`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify(it),
+                                    })
+                                  }
+                                  const refreshed = await fetch(`/api/menus/${menu.id}`)
+                                  const refreshedData = await refreshed.json().catch(() => null)
+                                  if (refreshed.ok && refreshedData?.data) {
+                                    setMenu(refreshedData.data)
+                                    addOptimisticUpdate(refreshedData.data)
+                                  }
+                                  showToast({ type: 'success', title: 'Items added', description: 'Parsed items have been added.' })
+                                } catch (e) {
+                                  // ignore errors per-item
+                                } finally {
+                                  setLoading(null)
+                                }
+                              }}
+                              disabled={!parsedItems || parsedItems.length === 0 || loading === 'bulk-add'}
+                              loading={loading === 'bulk-add'}
+                            >
+                              Add All
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => setParsedItems(null)}>Clear</Button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}
