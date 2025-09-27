@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuOperations, DatabaseError } from '@/lib/database'
 import { validateMenu } from '@/lib/validation'
-import type { MenuFormData } from '@/types'
+import type { MenuFormData, ColorPalette } from '@/types'
+import { applyTheme as applyThemeFromPalette, buildPaletteFromColors, validateAccessibility, getAvailableThemes } from '@/lib/themes'
+import { createServerSupabaseClient as supa } from '@/lib/supabase-server'
 
 // GET /api/menus/[menuId] - Get specific menu
 export async function GET(
@@ -90,6 +92,61 @@ export async function PUT(
       { error: 'Internal server error' },
       { status: 500 }
     )
+  }
+}
+
+// POST /api/menus/[menuId]?action=applyTheme
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { menuId: string } }
+) {
+  try {
+    const supabase = supa()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const action = searchParams.get('action')
+    if (action !== 'applyTheme') {
+      return NextResponse.json({ error: 'Unsupported action' }, { status: 400 })
+    }
+
+    const body = await request.json().catch(() => ({})) as {
+      templateId?: string
+      palette?: Partial<ColorPalette> & { colors?: string[] }
+    }
+
+    const templateId = body.templateId || 'modern'
+    // Fetch current menu to preserve colors if none are provided
+    const currentMenu = await menuOperations.getMenu(params.menuId, user.id)
+    if (!currentMenu) {
+      return NextResponse.json({ error: 'Menu not found' }, { status: 404 })
+    }
+
+    let palette: ColorPalette
+    if (body.palette?.colors && Array.isArray(body.palette.colors) && body.palette.colors.length > 0) {
+      palette = buildPaletteFromColors(body.palette.colors as string[])
+    } else {
+      // Preserve current menu colors when changing template only
+      palette = currentMenu.theme.colors
+    }
+
+    const theme = applyThemeFromPalette(templateId, palette)
+    const updated = await menuOperations.updateMenu(params.menuId, user.id, { theme })
+
+    const accessibility = validateAccessibility(updated.theme.colors)
+    return NextResponse.json({ success: true, data: { menu: updated, accessibility, templates: getAvailableThemes() } })
+  } catch (error) {
+    console.error('Error applying theme:', error)
+    if (error instanceof DatabaseError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: 400 }
+      )
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 

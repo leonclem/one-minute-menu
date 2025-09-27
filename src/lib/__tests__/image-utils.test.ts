@@ -1,4 +1,5 @@
 import { isOrientationRotated, applyExifOrientationTransform } from '@/lib/image-utils'
+import { contrastRatio, isWcagAA, ensureTextContrast, hexToRgb, rgbToHex } from '@/lib/color'
 
 describe('EXIF orientation helpers', () => {
   test('isOrientationRotated returns true for 5-8 and false otherwise', () => {
@@ -29,6 +30,30 @@ describe('EXIF orientation helpers', () => {
     // Orientation 6: 90° right
     applyExifOrientationTransform(ctx, 6, 100, 200)
     expect(ctx.rotate).toHaveBeenCalled()
+  })
+})
+
+describe('color utils', () => {
+  test('computes contrast ratio', () => {
+    const ratio = contrastRatio('#000000', '#FFFFFF')
+    expect(Math.round(ratio * 10) / 10).toBe(21)
+  })
+
+  test('ensures WCAG AA', () => {
+    expect(isWcagAA(4.5)).toBe(true)
+    expect(isWcagAA(3.9)).toBe(false)
+  })
+
+  test('hex <-> rgb roundtrip', () => {
+    const rgb = hexToRgb('#3B82F6')
+    const hex = rgbToHex(rgb)
+    expect(hex.toLowerCase()).toBe('#3b82f6')
+  })
+
+  test('chooses readable text color', () => {
+    const text = ensureTextContrast('#FFFFFF', '#111827')
+    const ratio = contrastRatio(text, '#FFFFFF')
+    expect(ratio).toBeGreaterThanOrEqual(4.5)
   })
 })
 

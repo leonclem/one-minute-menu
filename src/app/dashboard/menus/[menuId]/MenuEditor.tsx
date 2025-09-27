@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useOptimistic, useId } from 'react'
+import { useState, useOptimistic, useId, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button, Input, Card, CardHeader, CardTitle, CardContent, useToast, ConfirmDialog } from '@/components/ui'
+import { getAvailableThemes, applyTheme as applyThemeLib, generateThemePreview } from '@/lib/themes'
+import { pickDominantColorsFromImageData } from '@/lib/color'
 import { formatCurrency } from '@/lib/utils'
 import { validateMenuItem } from '@/lib/validation'
 import VersionHistory from '@/components/VersionHistory'
@@ -44,7 +46,78 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [ocrConfidence, setOcrConfidence] = useState<number | null>(null)
   const [parsedItems, setParsedItems] = useState<MenuItemFormData[] | null>(null)
   const [parsing, setParsing] = useState<boolean>(false)
+  const [brandingPreview, setBrandingPreview] = useState<string | null>(null)
+  const [themeTemplates, setThemeTemplates] = useState<Array<{ id: string; name: string }>>([])
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('modern')
+  const [applyingTheme, setApplyingTheme] = useState<boolean>(false)
+  const [extracting, setExtracting] = useState<boolean>(false)
+  const [extractedColors, setExtractedColors] = useState<string[] | null>(null)
+  const brandFileInputRef = useRef<HTMLInputElement | null>(null)
   const router = useRouter()
+  // Load available templates once
+  useEffect(() => {
+    setThemeTemplates(getAvailableThemes())
+  }, [])
+
+  // Update branding preview when template or theme changes
+  useEffect(() => {
+    try {
+      const tempTheme = applyThemeLib(selectedTemplate, menu.theme.colors)
+      const preview = generateThemePreview(tempTheme)
+      setBrandingPreview(preview)
+    } catch {
+      setBrandingPreview(null)
+    }
+  }, [selectedTemplate, menu.theme])
+
+  const handleApplyBranding = async (colors?: string[]) => {
+    setApplyingTheme(true)
+    try {
+      const res = await fetch(`/api/menus/${menu.id}?action=applyTheme`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateId: selectedTemplate, palette: { colors } })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to apply theme')
+      setMenu(data.data.menu)
+      addOptimisticUpdate(data.data.menu)
+      showToast({ type: 'success', title: 'Branding applied', description: `${data.data.menu.theme.name} theme updated.` })
+    } catch (e) {
+      showToast({ type: 'error', title: 'Apply failed', description: 'Please try again.' })
+    } finally {
+      setApplyingTheme(false)
+    }
+  }
+
+  const handleExtractFromBrandImage = async (file: File) => {
+    setExtracting(true)
+    try {
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve()
+        img.onerror = () => reject(new Error('Image load failed'))
+        img.src = url
+      })
+      const canvas = document.createElement('canvas')
+      const maxDim = 512
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height))
+      canvas.width = Math.round(img.width * scale)
+      canvas.height = Math.round(img.height * scale)
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const colors = pickDominantColorsFromImageData(imageData, 5)
+      setExtractedColors(colors)
+      await handleApplyBranding(colors)
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      showToast({ type: 'error', title: 'Extraction failed', description: 'Please try a different image.' })
+    } finally {
+      setExtracting(false)
+    }
+  }
   const [confirmState, setConfirmState] = useState<{
     open: boolean
     action: null | (() => void)
@@ -478,6 +551,72 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       {/* Main Content */}
       <main className="container-mobile py-6">
         <div className="space-y-6">
+          {/* Branding Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Brand Styling</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-sm font-medium text-secondary-700">Theme</label>
+                  <select
+                    value={selectedTemplate}
+                    onChange={(e) => setSelectedTemplate(e.target.value)}
+                    className="mt-1 block w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  >
+                    {themeTemplates.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-end gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleApplyBranding()}
+                    loading={applyingTheme}
+                  >
+                    Apply Theme
+                  </Button>
+                  <input
+                    ref={brandFileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (f) handleExtractFromBrandImage(f)
+                      // reset value so selecting the same file again re-triggers change
+                      if (e.target) (e.target as HTMLInputElement).value = ''
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    loading={extracting}
+                    disabled={extracting}
+                    onClick={() => brandFileInputRef.current?.click()}
+                  >
+                    {extracting ? 'Extracting…' : 'Use Brand Image'}
+                  </Button>
+                </div>
+              </div>
+              {brandingPreview && (
+                <div className="mt-4">
+                  <img src={brandingPreview} alt="Theme preview" className="border border-secondary-200 w-full max-w-sm" />
+                </div>
+              )}
+              {extractedColors && (
+                <div className="mt-2 flex items-center gap-2">
+                  {extractedColors.map((c, i) => (
+                    <div key={i} className="w-6 h-6 rounded" style={{ backgroundColor: c }} title={c} />
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-secondary-600 mt-2">Choose a theme or upload a brand image to auto-extract colors. We validate contrast to meet WCAG AA where possible.</p>
+            </CardContent>
+          </Card>
           {/* Menu Image Section */}
           <Card>
             <CardHeader>
