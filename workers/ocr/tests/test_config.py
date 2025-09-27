@@ -1,5 +1,5 @@
 import os
-from kiro_ocr_worker.config import load_config
+from ocr_worker.config import load_config
 
 
 def test_load_config_defaults(monkeypatch):

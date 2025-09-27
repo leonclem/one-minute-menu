@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { supabase } from '@/lib/supabase'
 import { generateImageFilename } from '@/lib/image-utils'
 import type { Menu, MenuItem, User, PlanLimits, MenuTheme, OCRJob } from '@/types'
+import { PLAN_CONFIGS } from '@/types'
 import { computeSha256FromUrl } from '@/lib/utils'
 
 // Database utility functions for menu management
@@ -29,11 +30,21 @@ export const userOperations = {
       throw new DatabaseError(`Failed to get user profile: ${error.message}`, error.code)
     }
     
+    // Map plan_limits (snake_case in DB) -> PlanLimits (camelCase in app)
+    const mapPlanLimitsFromDb = (dbLimits: any, plan: User['plan']): PlanLimits => {
+      const defaults = PLAN_CONFIGS[plan]
+      return {
+        menus: typeof dbLimits?.menus === 'number' ? dbLimits.menus : defaults.menus,
+        ocrJobs: typeof dbLimits?.ocr_jobs === 'number' ? dbLimits.ocr_jobs : defaults.ocrJobs,
+        monthlyUploads: typeof dbLimits?.monthly_uploads === 'number' ? dbLimits.monthly_uploads : defaults.monthlyUploads,
+      }
+    }
+
     return {
       id: data.id,
       email: data.email,
       plan: data.plan as 'free' | 'premium' | 'enterprise',
-      limits: data.plan_limits as PlanLimits,
+      limits: mapPlanLimitsFromDb(data.plan_limits, data.plan as 'free' | 'premium' | 'enterprise'),
       createdAt: new Date(data.created_at),
       location: data.location || undefined,
     }
@@ -44,7 +55,14 @@ export const userOperations = {
     
     const updateData: any = {}
     if (updates.plan) updateData.plan = updates.plan
-    if (updates.limits) updateData.plan_limits = updates.limits
+    if (updates.limits) {
+      // Map PlanLimits (camelCase) -> DB shape (snake_case)
+      updateData.plan_limits = {
+        menus: updates.limits.menus,
+        ocr_jobs: updates.limits.ocrJobs,
+        monthly_uploads: updates.limits.monthlyUploads,
+      }
+    }
     if (updates.location !== undefined) updateData.location = updates.location
     
     const { data, error } = await supabase
@@ -58,11 +76,21 @@ export const userOperations = {
       throw new DatabaseError(`Failed to update profile: ${error.message}`, error.code)
     }
     
+    // Reuse the same mapper for returned row
+    const mapPlanLimitsFromDb = (dbLimits: any, plan: User['plan']): PlanLimits => {
+      const defaults = PLAN_CONFIGS[plan]
+      return {
+        menus: typeof dbLimits?.menus === 'number' ? dbLimits.menus : defaults.menus,
+        ocrJobs: typeof dbLimits?.ocr_jobs === 'number' ? dbLimits.ocr_jobs : defaults.ocrJobs,
+        monthlyUploads: typeof dbLimits?.monthly_uploads === 'number' ? dbLimits.monthly_uploads : defaults.monthlyUploads,
+      }
+    }
+
     return {
       id: data.id,
       email: data.email,
       plan: data.plan,
-      limits: data.plan_limits,
+      limits: mapPlanLimitsFromDb(data.plan_limits, data.plan),
       createdAt: new Date(data.created_at),
       location: data.location || undefined,
     }

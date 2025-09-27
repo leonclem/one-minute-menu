@@ -14,7 +14,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["kiro_ocr_worker*"]
+include = ["ocr_worker*"]
 exclude = ["tests*"]
 
 

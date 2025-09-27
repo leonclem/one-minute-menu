@@ -35,3 +35,5 @@ def run_document_text_detection(image_bytes: bytes) -> Tuple[str, float]:
     return ocr_text, float(confidence)
 
 
+
+

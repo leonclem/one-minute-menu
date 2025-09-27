@@ -42,7 +42,7 @@ def run() -> int:
             while processed:
                 processed = process_once(conn, cfg)
             # Wait for notifications or timeout
-            dbops.listen_for_jobs(conn, cfg.poll_interval_ms)
+            dbops.listen_for_jobs(conn, cfg.poll_interval_ms, cfg.use_notify)
     except KeyboardInterrupt:
         return 0
     finally:
@@ -54,5 +54,7 @@ def run() -> int:
 
 if __name__ == "__main__":
     sys.exit(run())
+
+
 
 

@@ -1,5 +1,5 @@
 import pytest
-from kiro_ocr_worker.ocr import run_document_text_detection
+from ocr_worker.ocr import run_document_text_detection
 
 
 def test_dummy_import():

@@ -104,19 +104,23 @@ def requeue_job(conn: psycopg.Connection, job_id: str) -> None:
     )
 
 
-def listen_for_jobs(conn: psycopg.Connection, poll_interval_ms: int) -> None:
-    # Ensure we are listening on the channel; will receive payloads from trigger
-    conn.execute("LISTEN ocr_jobs;")
-    # Use wait/select via connection.notifies in psycopg3
-    timeout_sec = max(poll_interval_ms, 1000) / 1000.0
-    conn.poll()
-    try:
-        notify = conn.notifies.get(timeout=timeout_sec)
-        if notify is not None:
-            # Payload contains id,user_id,status,created_at; no need to parse here
+def listen_for_jobs(conn: psycopg.Connection, poll_interval_ms: int, use_notify: bool) -> None:
+    if use_notify:
+        # Try LISTEN/NOTIFY using PQ socket + WAIT on notifications.
+        # psycopg3 provides a simple notifications API via connection.notifies.
+        try:
+            conn.execute("LISTEN ocr_jobs;")
+            # Block up to poll_interval_ms waiting for a notify
+            timeout = max(poll_interval_ms, 250) / 1000.0
+            notify = conn.notifies.get(timeout=timeout)
+            # We don't need payload here; the presence of a notify is enough
+            return
+        except Exception:
+            # Fallback to sleep if LISTEN/NOTIFY not available in this env
             pass
-    except Exception:
-        # Timeout or empty queue, proceed to polling strategy
-        pass
+    # Sleep-based polling fallback
+    time.sleep(max(poll_interval_ms, 250) / 1000.0)
+
+
 
 

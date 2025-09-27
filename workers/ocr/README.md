@@ -10,14 +10,28 @@ Python worker that processes `ocr_jobs` from PostgreSQL using LISTEN/NOTIFY and 
 ### Setup
 ```bash
 python -m venv .venv
-. .venv/bin/activate  # or .venv\\Scripts\\activate on Windows
+# Windows PowerShell
+./.venv/Scripts/Activate.ps1
 pip install -r requirements.txt
-cp .env.example .env  # then edit values
+pip install -e .
+```
+
+### Create .env (Windows PowerShell)
+The worker reads its own `.env` in `workers/ocr` (it does not use Next.js `.env.local`).
+
+```powershell
+@"
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+GOOGLE_APPLICATION_CREDENTIALS=C:\absolute\path\to\your\vision-key.json
+WORKER_POLL_INTERVAL_MS=5000
+WORKER_MAX_RETRIES=3
+WORKER_PROCESSING_TIMEOUT_MS=90000
+"@ | Set-Content -Path .\.env -Encoding UTF8
 ```
 
 ### Run
 ```bash
-python -m kiro_ocr_worker.main
+python -m ocr_worker.main
 ```
 
 ### Configuration

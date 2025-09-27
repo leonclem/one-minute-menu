@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+src/kiro_ocr_worker.egg-info/PKG-INFO
+src/kiro_ocr_worker.egg-info/SOURCES.txt
+src/kiro_ocr_worker.egg-info/dependency_links.txt
+src/kiro_ocr_worker.egg-info/top_level.txt
+src/ocr_worker/__init__.py
+src/ocr_worker/config.py
+src/ocr_worker/db.py
+src/ocr_worker/main.py
+src/ocr_worker/ocr.py
+tests/test_config.py
+tests/test_pipeline.py
