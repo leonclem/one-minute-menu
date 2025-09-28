@@ -365,6 +365,13 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
           setMenu(result.data)
           addOptimisticUpdate(result.data)
           showToast({ type: 'success', title: 'Menu published', description: 'Your menu is now live.' })
+          try {
+            const origin = window.location.origin
+            const publicUrl = `${origin}/u/${result.data.userId}/${result.data.slug}`
+            window.open(publicUrl, '_blank', 'noopener,noreferrer')
+          } catch (_) {
+            // ignore failures to open new tab
+          }
         } catch (error) {
           console.error('Network error:', error)
           showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
@@ -543,6 +550,31 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              {/* Action pair: Preview (secondary) + Publish (primary) */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const origin = window.location.origin
+                  const previewUrl = `${origin}/u/${menu.userId}/${menu.slug}?preview=1`
+                  window.open(previewUrl, '_blank', 'noopener,noreferrer')
+                }}
+                disabled={loading !== null || publishing}
+                aria-label="Preview draft (opens in new tab)"
+              >
+                Preview
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handlePublishMenu}
+                loading={publishing}
+                disabled={loading !== null}
+                aria-label="Publish update"
+              >
+                {optimisticMenu.status === 'published' ? 'Update' : 'Publish'}
+              </Button>
+              {/* Secondary utilities */}
               <Button
                 variant="outline"
                 size="sm"
@@ -558,15 +590,6 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                 disabled={loading !== null || publishing}
               >
                 Add Item
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handlePublishMenu}
-                loading={publishing}
-                disabled={loading !== null}
-              >
-                {optimisticMenu.status === 'published' ? 'Update' : 'Publish'}
               </Button>
             </div>
           </div>
@@ -1017,91 +1040,97 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
               </Card>
             ) : (
               optimisticMenu.items.map((item, index) => (
-                <Card key={item.id} className={`${!item.available ? 'opacity-60' : ''}`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-medium text-secondary-900 truncate">
+                <Card key={item.id} className={`p-0 ${!item.available ? 'opacity-60' : ''}`}>
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium text-secondary-900 truncate text-sm">
                             {item.name}
                           </h3>
                           {!item.available && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-800">
                               Out of stock
                             </span>
                           )}
                         </div>
                         {item.description && (
-                          <p className="text-sm text-secondary-600 mt-1">
+                          <p className="mt-0.5 text-xs text-secondary-600 truncate">
                             {item.description}
                           </p>
                         )}
                         {item.category && (
-                          <p className="text-xs text-secondary-500 mt-1">
+                          <p className="mt-0.5 text-[11px] text-secondary-500 truncate">
                             {item.category}
                           </p>
                         )}
-                        <p className="text-lg font-semibold text-primary-600 mt-2">
-                          {formatCurrency(item.price)}
-                        </p>
+                      </div>
+                      <div className="shrink-0 text-sm font-semibold text-primary-600">
+                        {formatCurrency(item.price)}
                       </div>
 
-                      {/* Mobile-friendly action buttons */}
-                      <div className="flex flex-col space-y-1 ml-4">
-                        {/* Move buttons */}
-                        <div className="flex space-x-1">
-                          <button
-                            onClick={() => handleMoveItem(item.id, 'up')}
-                            disabled={index === 0 || loading !== null}
-                            className="p-2 text-secondary-400 hover:text-secondary-600 disabled:opacity-50 min-h-touch min-w-touch"
-                            title="Move up"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => handleMoveItem(item.id, 'down')}
-                            disabled={index === optimisticMenu.items.length - 1 || loading !== null}
-                            className="p-2 text-secondary-400 hover:text-secondary-600 disabled:opacity-50 min-h-touch min-w-touch"
-                            title="Move down"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                        </div>
-
-                        {/* Toggle availability */}
+                      {/* Condensed action bar */}
+                      <div className="ml-1 flex shrink-0 items-center gap-1">
                         <button
+                          type="button"
+                          onClick={() => handleMoveItem(item.id, 'up')}
+                          disabled={index === 0 || loading !== null}
+                          className="h-8 w-8 rounded hover:bg-secondary-100 text-secondary-500 hover:text-secondary-700 disabled:opacity-50"
+                          title="Move up"
+                          aria-label="Move up"
+                        >
+                          <svg className="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveItem(item.id, 'down')}
+                          disabled={index === optimisticMenu.items.length - 1 || loading !== null}
+                          className="h-8 w-8 rounded hover:bg-secondary-100 text-secondary-500 hover:text-secondary-700 disabled:opacity-50"
+                          title="Move down"
+                          aria-label="Move down"
+                        >
+                          <svg className="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={() => handleToggleAvailability(item)}
                           disabled={loading === item.id}
-                          className={`p-2 min-h-touch min-w-touch ${
-                            item.available 
-                              ? 'text-green-600 hover:text-green-700' 
-                              : 'text-red-600 hover:text-red-700'
+                          className={`h-8 w-8 rounded hover:bg-secondary-100 ${
+                            item.available
+                              ? 'text-red-600 hover:text-red-700'
+                              : 'text-green-600 hover:text-green-700'
                           }`}
                           title={item.available ? 'Mark as out of stock' : 'Mark as available'}
+                          aria-label={item.available ? 'Mark as out of stock' : 'Mark as available'}
                         >
                           {item.available ? (
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            // No entry sign
+                            <svg className="mx-auto h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <circle cx="12" cy="12" r="9" strokeWidth="2" />
+                              <line x1="7" y1="12" x2="17" y2="12" strokeWidth="2" />
                             </svg>
                           ) : (
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            // Checkmark to mark available again
+                            <svg className="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                           )}
                         </button>
 
-                        {/* Delete button */}
                         <button
+                          type="button"
                           onClick={() => handleDeleteItem(item.id)}
                           disabled={loading === item.id}
-                          className="p-2 text-red-400 hover:text-red-600 disabled:opacity-50 min-h-touch min-w-touch"
+                          className="h-8 w-8 rounded hover:bg-secondary-100 text-red-500 hover:text-red-700 disabled:opacity-50"
                           title="Delete item"
+                          aria-label="Delete item"
                         >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
                         </button>
@@ -1136,12 +1165,58 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                     Version History
                   </Button>
                   <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setConfirmState({
+                        open: true,
+                        action: async () => {
+                          setLoading('clear-all')
+                          try {
+                            const res = await fetch(`/api/menus/${menu.id}/items`, { method: 'DELETE' })
+                            const data = await res.json()
+                            if (!res.ok) throw new Error(data.error || 'Failed to clear items')
+                            setMenu(data.data)
+                            addOptimisticUpdate(data.data)
+                            showToast({ type: 'success', title: 'Cleared', description: 'All items removed from this menu.' })
+                          } catch (e) {
+                            showToast({ type: 'error', title: 'Clear failed', description: 'Please try again.' })
+                          } finally {
+                            setLoading(null)
+                          }
+                        },
+                        title: 'Clear all items?',
+                        description: 'This will remove all items from this menu. You can add new items afterwards.',
+                        confirmText: 'Clear All',
+                      })
+                    }}
+                    disabled={loading !== null || publishing}
+                  >
+                    Clear All Items
+                  </Button>
+                  {/* Action pair: Preview (secondary) + Publish (primary) */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      const origin = window.location.origin
+                      const previewUrl = `${origin}/u/${menu.userId}/${menu.slug}?preview=1`
+                      window.open(previewUrl, '_blank', 'noopener,noreferrer')
+                    }}
+                    disabled={loading !== null || publishing}
+                    aria-label="Preview draft (opens in new tab)"
+                  >
+                    Preview (not live)
+                  </Button>
+                  <Button
                     variant="primary"
                     size="sm"
+                    className="w-full"
                     onClick={handlePublishMenu}
                     loading={publishing}
                     disabled={loading !== null}
-                    className="col-span-2"
+                    aria-label="Publish update"
                   >
                     {publishing ? 'Publishing...' : optimisticMenu.status === 'published' ? 'Publish Update' : 'Publish Menu'}
                   </Button>

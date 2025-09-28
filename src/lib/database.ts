@@ -317,6 +317,72 @@ export const menuOperations = {
     return transformMenuFromDB(data)
   },
 
+  async getPublishedMenuByUserAndSlug(userId: string, slug: string): Promise<Menu | null> {
+    const supabase = createServerSupabaseClient()
+    const { data, error } = await supabase
+      .from('menus')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('slug', slug)
+      .eq('status', 'published')
+      .single()
+
+    if (error) {
+      if ((error as any).code === 'PGRST116') return null
+      throw new DatabaseError(`Failed to get published menu: ${error.message}`, (error as any).code)
+    }
+    return transformMenuFromDB(data)
+  },
+
+  async getLatestPublishedSnapshotByUserAndSlug(userId: string, slug: string): Promise<Menu | null> {
+    const supabase = createServerSupabaseClient()
+    // First find the menu id ensuring it's published
+    const { data: menuRow, error: menuErr } = await supabase
+      .from('menus')
+      .select('id, user_id, name, slug, current_version, status, created_at, updated_at')
+      .eq('user_id', userId)
+      .eq('slug', slug)
+      .eq('status', 'published')
+      .single()
+    if (menuErr) {
+      if ((menuErr as any).code === 'PGRST116') return null
+      throw new DatabaseError(`Failed to find published menu: ${menuErr.message}`, (menuErr as any).code)
+    }
+
+    // Fetch latest version snapshot (use current_version as authoritative)
+    const { data: versionRow, error: verErr } = await supabase
+      .from('menu_versions')
+      .select('menu_data, version, published_at, created_at')
+      .eq('menu_id', menuRow.id)
+      .eq('version', menuRow.current_version)
+      .single()
+    if (verErr) {
+      if ((verErr as any).code === 'PGRST116') return null
+      throw new DatabaseError(`Failed to load published snapshot: ${verErr.message}`, (verErr as any).code)
+    }
+
+    return transformMenuFromDB({
+      ...menuRow,
+      menu_data: versionRow.menu_data,
+      published_at: versionRow.published_at,
+    })
+  },
+
+  async getDraftByUserAndSlug(userId: string, slug: string): Promise<Menu | null> {
+    const supabase = createServerSupabaseClient()
+    const { data, error } = await supabase
+      .from('menus')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('slug', slug)
+      .single()
+    if (error) {
+      if ((error as any).code === 'PGRST116') return null
+      throw new DatabaseError(`Failed to get draft: ${error.message}`, (error as any).code)
+    }
+    return transformMenuFromDB(data)
+  },
+
   async getUserMenus(userId: string): Promise<Menu[]> {
     const supabase = createServerSupabaseClient()
     
@@ -499,6 +565,12 @@ export const menuItemOperations = {
       .map((item, index) => ({ ...item, order: index })) // Reorder
     
     return menuOperations.updateMenu(menuId, userId, { items: updatedItems })
+  },
+
+  async clearItems(menuId: string, userId: string): Promise<Menu> {
+    const menu = await menuOperations.getMenu(menuId, userId)
+    if (!menu) throw new DatabaseError('Menu not found')
+    return menuOperations.updateMenu(menuId, userId, { items: [] })
   },
 
   async reorderItems(menuId: string, userId: string, itemIds: string[]): Promise<Menu> {

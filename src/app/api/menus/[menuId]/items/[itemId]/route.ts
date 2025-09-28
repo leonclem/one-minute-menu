@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuItemOperations, DatabaseError } from '@/lib/database'
-import { validateMenuItem } from '@/lib/validation'
+import { VALIDATION_RULES } from '@/types'
 import type { MenuItemFormData } from '@/types'
 
 // PUT /api/menus/[menuId]/items/[itemId] - Update menu item
@@ -19,15 +19,31 @@ export async function PUT(
     
     const body = await request.json() as Partial<MenuItemFormData>
     
-    // Validate input if provided
-    if (Object.keys(body).length > 0) {
-      const validation = validateMenuItem(body)
-      if (!validation.isValid) {
-        return NextResponse.json(
-          { error: 'Validation failed', errors: validation.errors },
-          { status: 400 }
-        )
+    // Partial validation: only validate fields that are present in the request
+    const errors: Array<{ field: string; message: string }> = []
+    if (body.name !== undefined) {
+      if (body.name.length < VALIDATION_RULES.menuItem.name.minLength) {
+        errors.push({ field: 'name', message: 'Item name is too short' })
+      } else if (body.name.length > VALIDATION_RULES.menuItem.name.maxLength) {
+        errors.push({ field: 'name', message: 'Item name is too long' })
       }
+    }
+    if (body.description !== undefined) {
+      if (body.description.length > VALIDATION_RULES.menuItem.description.maxLength) {
+        errors.push({ field: 'description', message: 'Description is too long' })
+      }
+    }
+    if (body.price !== undefined) {
+      if (body.price < VALIDATION_RULES.menuItem.price.min) {
+        errors.push({ field: 'price', message: 'Price cannot be negative' })
+      } else if (body.price > VALIDATION_RULES.menuItem.price.max) {
+        errors.push({ field: 'price', message: 'Price is too high' })
+      }
+    }
+    // 'available' and 'category' require no validation here
+
+    if (errors.length > 0) {
+      return NextResponse.json({ error: 'Validation failed', errors }, { status: 400 })
     }
     
     const menu = await menuItemOperations.updateItem(

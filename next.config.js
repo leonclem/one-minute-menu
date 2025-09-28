@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['uztyljbiqyrykzwtdbpa.supabase.co'],
+    domains: ['uztyljbiqyrykzwtdbpa.supabase.co', 'localhost'],
     formats: ['image/webp', 'image/avif'],
   },
   // Performance optimizations
