@@ -53,6 +53,8 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [extracting, setExtracting] = useState<boolean>(false)
   const [extractedColors, setExtractedColors] = useState<string[] | null>(null)
   const brandFileInputRef = useRef<HTMLInputElement | null>(null)
+  const [qrPreviewUrl, setQrPreviewUrl] = useState<string | null>(null)
+  const addItemFormRef = useRef<HTMLDivElement | null>(null)
   const router = useRouter()
   // Load available templates once
   useEffect(() => {
@@ -117,6 +119,19 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     } finally {
       setExtracting(false)
     }
+  }
+  
+  // Smoothly open and scroll to the Add Item form
+  const openAddItemForm = () => {
+    setShowAddForm(true)
+    setTimeout(() => {
+      const container = addItemFormRef.current
+      if (container) {
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        const firstField = container.querySelector('input, textarea, select') as HTMLElement | null
+        firstField?.focus()
+      }
+    }, 0)
   }
   const [confirmState, setConfirmState] = useState<{
     open: boolean
@@ -389,6 +404,16 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     }
   }
 
+  useEffect(() => {
+    // Build QR preview data URL via the API when menu is published
+    if (menu.status === 'published') {
+      const url = `/api/menus/${menu.id}/qr?format=png&size=256`
+      setQrPreviewUrl(url)
+    } else {
+      setQrPreviewUrl(null)
+    }
+  }, [menu.id, menu.status])
+
   // Handle version revert
   const handleRevertToVersion = async (versionId: string) => {
     try {
@@ -529,7 +554,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowAddForm(true)}
+                onClick={openAddItemForm}
                 disabled={loading !== null || publishing}
               >
                 Add Item
@@ -836,7 +861,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                   {ocrStatus === 'failed' && (
                     <div className="mt-3 text-center">
                       <p className="text-sm text-secondary-600 mb-2">OCR failed. You can add items manually.</p>
-                      <Button variant="outline" size="sm" onClick={() => setShowAddForm(true)}>
+                      <Button variant="outline" size="sm" onClick={openAddItemForm}>
                         Enter Items Manually
                       </Button>
                     </div>
@@ -881,6 +906,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
 
           {/* Add Item Form */}
           {showAddForm && (
+            <div ref={addItemFormRef}>
             <Card>
               <CardHeader>
                 <CardTitle>Add New Item</CardTitle>
@@ -962,6 +988,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                 </form>
               </CardContent>
             </Card>
+            </div>
           )}
 
           {/* Menu Items */}
@@ -982,7 +1009,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                   </p>
                   <Button
                     variant="primary"
-                    onClick={() => setShowAddForm(true)}
+                    onClick={openAddItemForm}
                   >
                     Add First Item
                   </Button>
@@ -1095,7 +1122,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowAddForm(true)}
+                    onClick={openAddItemForm}
                     disabled={loading !== null || publishing}
                   >
                     Add Item
@@ -1118,14 +1145,58 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                   >
                     {publishing ? 'Publishing...' : optimisticMenu.status === 'published' ? 'Publish Update' : 'Publish Menu'}
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={true}
-                    className="col-span-2"
-                  >
-                    Preview Menu (Coming Soon)
-                  </Button>
+                  {menu.status === 'published' && (
+                    <div className="col-span-2 grid grid-cols-3 gap-3 items-start">
+                      <div className="col-span-1 flex items-center justify-center border rounded-md p-3 bg-white">
+                        {qrPreviewUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={qrPreviewUrl} alt="QR code" className="w-32 h-32" />
+                        ) : (
+                          <div className="text-sm text-secondary-500">QR preview</div>
+                        )}
+                      </div>
+                      <div className="col-span-2 flex flex-col gap-2">
+                        <div className="text-sm text-secondary-700">Share your menu</div>
+                        <div className="flex gap-2 flex-wrap">
+                          <a
+                            href={`/api/menus/${menu.id}/qr?format=png&size=1024`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <Button variant="outline" size="sm">Download PNG</Button>
+                          </a>
+                          <a
+                            href={`/api/menus/${menu.id}/qr?format=pdf&size=1024`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <Button variant="outline" size="sm">Download PDF</Button>
+                          </a>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const origin = window.location.origin
+                                const shareUrl = `${origin}/u/${menu.userId}/${menu.slug}`
+                                if (navigator.share) {
+                                  await navigator.share({ title: menu.name, url: shareUrl })
+                                } else {
+                                  await navigator.clipboard.writeText(shareUrl)
+                                  showToast({ type: 'success', title: 'Link copied', description: 'Menu URL copied to clipboard.' })
+                                }
+                              } catch {
+                                // ignore
+                              }
+                            }}
+                          >
+                            Share Link
+                          </Button>
+                        </div>
+                        <div className="text-xs text-secondary-500">QR codes link to a user-namespaced URL and remain valid after updates.</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
