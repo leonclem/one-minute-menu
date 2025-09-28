@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { userOperations, menuOperations } from '@/lib/database'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
+import EditableMenuTitle from './EditableMenuTitle'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
@@ -126,9 +127,11 @@ export default async function DashboardPage() {
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {menus.map((menu) => (
                   <Card key={menu.id}>
-                    <CardHeader>
-                      <CardTitle>{menu.name}</CardTitle>
-                    </CardHeader>
+                  <CardHeader>
+                    <CardTitle>
+                      <EditableMenuTitle id={menu.id} name={menu.name} />
+                    </CardTitle>
+                  </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
@@ -148,11 +151,11 @@ export default async function DashboardPage() {
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-secondary-600">Items:</span>
-                          <span>{menu.menu_data?.items?.length || 0}</span>
+                          <span>{menu.items?.length || 0}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-secondary-600">Version:</span>
-                          <span>v{menu.current_version}</span>
+                          <span>v{menu.version}</span>
                         </div>
                         <div className="pt-2">
                           <Link

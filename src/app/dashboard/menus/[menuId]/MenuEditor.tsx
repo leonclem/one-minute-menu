@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button, Input, Card, CardHeader, CardTitle, CardContent, useToast, ConfirmDialog } from '@/components/ui'
 import { getAvailableThemes, applyTheme as applyThemeLib, generateThemePreview } from '@/lib/themes'
-import { pickDominantColorsFromImageData } from '@/lib/color'
+import { pickDominantColorsFromImageData, hexToRgb } from '@/lib/color'
 import { formatCurrency } from '@/lib/utils'
 import { validateMenuItem } from '@/lib/validation'
 import VersionHistory from '@/components/VersionHistory'
@@ -17,6 +17,24 @@ interface MenuEditorProps {
 }
 
 export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
+  // Merge very similar hex colors (e.g., #FC6B02 vs #FD6E05) into a single entry
+  const dedupeSimilarColors = (colors: string[], threshold: number = 24): string[] => {
+    const unique: string[] = []
+    const isSimilar = (a: string, b: string): boolean => {
+      const ra = hexToRgb(a)
+      const rb = hexToRgb(b)
+      const dr = ra.r - rb.r
+      const dg = ra.g - rb.g
+      const db = ra.b - rb.b
+      const distance = Math.sqrt(dr * dr + dg * dg + db * db)
+      return distance <= threshold
+    }
+    for (const c of colors) {
+      const exists = unique.some(u => isSimilar(u, c))
+      if (!exists) unique.push(c)
+    }
+    return unique
+  }
   const availableCheckboxId = useId()
   const { showToast } = useToast()
   const [menu, setMenu] = useState(initialMenu)
@@ -52,12 +70,24 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [applyingTheme, setApplyingTheme] = useState<boolean>(false)
   const [extracting, setExtracting] = useState<boolean>(false)
   const [extractedColors, setExtractedColors] = useState<string[] | null>(null)
+  const [brandColors, setBrandColors] = useState<string[]>([])
   const brandFileInputRef = useRef<HTMLInputElement | null>(null)
   const [qrPreviewUrl, setQrPreviewUrl] = useState<string | null>(null)
   const paynowFileInputRef = useRef<HTMLInputElement | null>(null)
   const [updatingPayment, setUpdatingPayment] = useState<boolean>(false)
   const [paymentOpen, setPaymentOpen] = useState<boolean>(true)
+  const [brandingOpen, setBrandingOpen] = useState<boolean>(true)
+  const [photoOpen, setPhotoOpen] = useState<boolean>(true)
+  const [itemsOpen, setItemsOpen] = useState<boolean>(true)
   const addItemFormRef = useRef<HTMLDivElement | null>(null)
+  const [editingField, setEditingField] = useState<{
+    id: string
+    field: 'name' | 'description' | 'price'
+  } | null>(null)
+  const [editingValue, setEditingValue] = useState<string>('')
+  const [editingMenuName, setEditingMenuName] = useState<boolean>(false)
+  const [menuNameDraft, setMenuNameDraft] = useState<string>(initialMenu.name)
+  const migratedCategoriesRef = useRef<boolean>(false)
   const router = useRouter()
   // Load available templates once
   useEffect(() => {
@@ -75,13 +105,13 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     }
   }, [selectedTemplate, menu.theme])
 
-  const handleApplyBranding = async (colors?: string[]) => {
+  const handleApplyBranding = async (colors?: string[], templateIdOverride?: string) => {
     setApplyingTheme(true)
     try {
       const res = await fetch(`/api/menus/${menu.id}?action=applyTheme`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId: selectedTemplate, palette: { colors } })
+        body: JSON.stringify({ templateId: templateIdOverride || selectedTemplate, palette: { colors } })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to apply theme')
@@ -114,8 +144,11 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
       const colors = pickDominantColorsFromImageData(imageData, 5)
-      setExtractedColors(colors)
-      await handleApplyBranding(colors)
+      const deduped = dedupeSimilarColors(colors)
+      setExtractedColors(deduped)
+      setBrandColors(deduped)
+      // Auto-apply on extraction
+      await handleApplyBranding(deduped)
       URL.revokeObjectURL(url)
     } catch (e) {
       showToast({ type: 'error', title: 'Extraction failed', description: 'Please try a different image.' })
@@ -240,9 +273,8 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   }
 
   // Update menu item
-  const handleUpdateItem = async (itemId: string, updates: Partial<MenuItem>) => {
+  const handleUpdateItem = async (itemId: string, updates: Partial<MenuItem>): Promise<boolean> => {
     setLoading(itemId)
-
     try {
       const response = await fetch(`/api/menus/${menu.id}/items/${itemId}`, {
         method: 'PUT',
@@ -256,14 +288,16 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
 
       if (!response.ok) {
         console.error('Failed to update item:', result.error)
-        return
+        return false
       }
 
       setMenu(result.data)
       addOptimisticUpdate(result.data)
       setEditingItem(null)
+      return true
     } catch (error) {
       console.error('Network error:', error)
+      return false
     } finally {
       setLoading(null)
     }
@@ -346,6 +380,71 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     }
   }
 
+  // Inline editing helpers for item fields
+  const beginEdit = (item: MenuItem, field: 'name' | 'description' | 'price') => {
+    setEditingField({ id: item.id, field })
+    if (field === 'price') {
+      setEditingValue(String(item.price))
+    } else if (field === 'description') {
+      setEditingValue(item.description || item.category || '')
+    } else {
+      setEditingValue((item as any)[field] || '')
+    }
+  }
+
+  const commitEdit = async () => {
+    if (!editingField) return
+    const { id, field } = editingField
+    let updates: Partial<MenuItem> = {}
+
+    if (field === 'price') {
+      const parsed = parseFloat(editingValue.replace(/,/g, '.'))
+      if (!isNaN(parsed) && parsed >= 0) {
+        const rounded = Math.round(parsed * 100) / 100
+        updates.price = rounded
+      }
+    } else if (field === 'description') {
+      const v = editingValue.trim()
+      updates.description = v
+      updates.category = ''
+    } else {
+      const v = editingValue.trim()
+      ;(updates as any)[field] = v
+    }
+
+    if (Object.keys(updates).length > 0) {
+      const ok = await handleUpdateItem(id, updates)
+      if (ok) {
+        showToast({ type: 'success', title: 'Saved', description: undefined })
+      } else {
+        showToast({ type: 'error', title: 'Update failed', description: 'Please try again.' })
+      }
+    }
+    setEditingField(null)
+    setEditingValue('')
+  }
+
+  const cancelEdit = () => {
+    setEditingField(null)
+    setEditingValue('')
+  }
+
+  // One-time migration: move existing category text into description when description is empty
+  useEffect(() => {
+    if (migratedCategoriesRef.current) return
+    const toMigrate = optimisticMenu.items.filter(it => (!it.description || it.description.trim().length === 0) && !!(it.category && it.category.trim().length > 0))
+    if (toMigrate.length === 0) {
+      migratedCategoriesRef.current = true
+      return
+    }
+    ;(async () => {
+      for (const it of toMigrate) {
+        await handleUpdateItem(it.id, { description: it.category || '', category: '' })
+      }
+      migratedCategoriesRef.current = true
+    })()
+  }, [optimisticMenu.items])
+
   // Publish menu
   const handlePublishMenu = async () => {
     if (optimisticMenu.items.length === 0) {
@@ -412,6 +511,63 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     } finally {
       setPublishing(false)
     }
+  }
+
+  // Commit menu name change
+  const commitMenuName = async () => {
+    const newName = menuNameDraft.trim()
+    if (!newName || newName === optimisticMenu.name) {
+      setEditingMenuName(false)
+      return
+    }
+    setLoading('rename-menu')
+    try {
+      const response = await fetch(`/api/menus/${menu.id}` ,{
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName })
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        showToast({ type: 'error', title: 'Rename failed', description: result?.error || 'Please try again.' })
+        return
+      }
+      setMenu(result.data)
+      addOptimisticUpdate(result.data)
+      setEditingMenuName(false)
+      showToast({ type: 'success', title: 'Menu renamed', description: undefined })
+    } catch (error) {
+      showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  // Delete entire menu (destructive)
+  const handleDeleteMenu = () => {
+    setConfirmState({
+      open: true,
+      action: async () => {
+        setLoading('delete-menu')
+        try {
+          const response = await fetch(`/api/menus/${menu.id}`, { method: 'DELETE' })
+          const result = await response.json().catch(() => ({}))
+          if (!response.ok) {
+            showToast({ type: 'error', title: 'Delete failed', description: result?.error || 'Please try again.' })
+            return
+          }
+          showToast({ type: 'success', title: 'Menu deleted', description: 'Returning to dashboard…' })
+          router.push('/dashboard')
+        } catch (error) {
+          showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
+        } finally {
+          setLoading(null)
+        }
+      },
+      title: 'Delete menu? ',
+      description: 'This will permanently delete this menu and its items. This action cannot be undone.',
+      confirmText: 'Delete',
+    })
   }
 
   useEffect(() => {
@@ -544,9 +700,43 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                 ← Back
               </Link>
               <div>
-                <h1 className="text-2xl font-bold text-secondary-900">
-                  {optimisticMenu.name}
-                </h1>
+                {editingMenuName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="text-2xl font-bold text-secondary-900 border border-secondary-300 rounded px-2 py-1"
+                      value={menuNameDraft}
+                      autoFocus
+                      onChange={(e) => setMenuNameDraft(e.target.value)}
+                      onBlur={commitMenuName}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitMenuName()
+                        if (e.key === 'Escape') { setEditingMenuName(false); setMenuNameDraft(optimisticMenu.name) }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="group inline-flex items-center gap-2">
+                    <h1
+                      className="text-2xl font-bold text-secondary-900"
+                      onClick={() => { setEditingMenuName(true); setMenuNameDraft(optimisticMenu.name) }}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setEditingMenuName(true); setMenuNameDraft(optimisticMenu.name) } }}
+                      title="Edit menu name"
+                    >
+                      {optimisticMenu.name}
+                    </h1>
+                    <button
+                      type="button"
+                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-secondary-400 hover:text-secondary-600 p-0 h-5 min-h-0"
+                      onClick={() => { setEditingMenuName(true); setMenuNameDraft(optimisticMenu.name) }}
+                      aria-label="Edit menu name"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM12.172 4.414L4 12.586V16h3.414l8.172-8.172-3.414-3.414z" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
                 <p className="text-sm text-secondary-600">
                   {optimisticMenu.items.length} items • {optimisticMenu.status}
                 </p>
@@ -577,6 +767,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
               >
                 {optimisticMenu.status === 'published' ? 'Update' : 'Publish'}
               </Button>
+              <div className="mx-1 h-6 w-px bg-secondary-200" aria-hidden="true" />
               {/* Secondary utilities */}
               <Button
                 variant="outline"
@@ -594,6 +785,16 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
               >
                 Add Item
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-600 hover:text-red-700"
+                onClick={handleDeleteMenu}
+                disabled={loading !== null || publishing}
+                aria-label="Delete menu"
+              >
+                Delete
+              </Button>
             </div>
           </div>
         </div>
@@ -605,15 +806,24 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
           {/* Branding Section */}
           <Card>
             <CardHeader>
-              <CardTitle>Brand Styling</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Brand Styling</CardTitle>
+                <Button variant="outline" size="sm" onClick={() => setBrandingOpen(o => !o)} aria-expanded={brandingOpen} aria-controls="branding-panel">
+                  {brandingOpen ? 'Hide' : 'Show'}
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent id="branding-panel" className={brandingOpen ? '' : 'hidden'}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-sm font-medium text-secondary-700">Theme</label>
                   <select
                     value={selectedTemplate}
-                    onChange={(e) => setSelectedTemplate(e.target.value)}
+                    onChange={async (e) => {
+                      const next = e.target.value
+                      setSelectedTemplate(next)
+                      await handleApplyBranding(brandColors.length ? brandColors.slice(0, 5) : undefined, next)
+                    }}
                     className="mt-1 block w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                   >
                     {themeTemplates.map(t => (
@@ -622,14 +832,6 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                   </select>
                 </div>
                 <div className="flex items-end gap-2">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleApplyBranding()}
-                    loading={applyingTheme}
-                  >
-                    Apply Theme
-                  </Button>
                   <input
                     ref={brandFileInputRef}
                     type="file"
@@ -653,16 +855,123 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                   </Button>
                 </div>
               </div>
-              {brandingPreview && (
-                <div className="mt-4">
-                  <img src={brandingPreview} alt="Theme preview" className="border border-secondary-200 w-full max-w-sm" />
-                </div>
-              )}
-              {extractedColors && (
-                <div className="mt-2 flex items-center gap-2">
-                  {extractedColors.map((c, i) => (
-                    <div key={i} className="w-6 h-6 rounded" style={{ backgroundColor: c }} title={c} />
-                  ))}
+              {(brandingPreview || (brandColors && brandColors.length > 0)) && (
+                <div className="mt-4 grid md:grid-cols-2 gap-4 md:gap-6 items-start">
+                  <div>
+                    {brandingPreview && (
+                      <div className="border border-secondary-200 rounded bg-white p-2 flex items-center justify-center">
+                        <img src={brandingPreview} alt="Theme preview" className="max-w-full max-h-64" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    {brandColors && brandColors.length > 0 && (
+                      <div>
+                        <div className="text-xs text-secondary-600 mb-1">
+                          Drag or move to set roles (top to bottom): Primary, Secondary, Accent, Background, Text seed. Only first 5 are used.
+                        </div>
+                        <div className="flex flex-col gap-2 max-w-sm">
+                          {brandColors.map((c, i) => (
+                            <div key={`${c}-${i}`} className="flex items-center gap-2 p-1 border rounded w-full">
+                              <div
+                                className="h-6 w-6 rounded border border-secondary-200"
+                                style={{ backgroundColor: c }}
+                                aria-label={`Color swatch`}
+                              />
+                              <div className="text-xs text-secondary-700 flex-1">
+                                {i === 0 ? 'Primary' : i === 1 ? 'Secondary' : i === 2 ? 'Accent' : i === 3 ? 'Background' : i === 4 ? 'Text seed' : 'Extra'}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  className="h-6 w-6 min-h-0 rounded hover:bg-secondary-100 text-secondary-500 disabled:opacity-40"
+                                  onClick={() => {
+                                    if (i === 0) return
+                                    const next = [...brandColors]
+                                    const t = next[i - 1]; next[i - 1] = next[i]; next[i] = t
+                                    setBrandColors(next)
+                                    handleApplyBranding(next.slice(0, 5))
+                                  }}
+                                  disabled={i === 0}
+                                  aria-label="Move up"
+                                  title="Move up"
+                                >
+                                  ↑
+                                </button>
+                                <button
+                                  type="button"
+                                  className="h-6 w-6 min-h-0 rounded hover:bg-secondary-100 text-secondary-500 disabled:opacity-40"
+                                  onClick={() => {
+                                    if (i === brandColors.length - 1) return
+                                    const next = [...brandColors]
+                                    const t = next[i + 1]; next[i + 1] = next[i]; next[i] = t
+                                    setBrandColors(next)
+                                    handleApplyBranding(next.slice(0, 5))
+                                  }}
+                                  disabled={i === brandColors.length - 1}
+                                  aria-label="Move down"
+                                  title="Move down"
+                                >
+                                  ↓
+                                </button>
+                                <button
+                                  type="button"
+                                  className="h-6 w-6 min-h-0 rounded hover:bg-secondary-100 text-red-600"
+                                  onClick={() => {
+                                    const next = brandColors.filter((_, idx) => idx !== i)
+                                    setBrandColors(next)
+                                    handleApplyBranding(next.slice(0, 5))
+                                  }}
+                                  aria-label="Remove color"
+                                  title="Remove color"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-2 flex flex-col md:flex-row md:flex-wrap items-stretch gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full md:w-auto"
+                            onClick={() => {
+                              const next = brandColors.includes('#FFFFFF') ? brandColors : [...brandColors, '#FFFFFF']
+                              setBrandColors(next)
+                              handleApplyBranding(next.slice(0, 5))
+                            }}
+                          >
+                            Add White
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full md:w-auto"
+                            onClick={() => {
+                              const next = brandColors.includes('#111827') ? brandColors : [...brandColors, '#111827']
+                              setBrandColors(next)
+                              handleApplyBranding(next.slice(0, 5))
+                            }}
+                          >
+                            Add Black
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full md:w-auto"
+                            onClick={() => {
+                              const next = extractedColors || []
+                              setBrandColors(next)
+                              handleApplyBranding(next.slice(0, 5))
+                            }}
+                          >
+                            Reset
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               <p className="text-xs text-secondary-600 mt-2">Choose a theme or upload a brand image to auto-extract colors. We validate contrast to meet WCAG AA where possible.</p>
@@ -671,9 +980,14 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
           {/* Menu Image Section */}
           <Card>
             <CardHeader>
-              <CardTitle>Menu Photo</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Menu Photo</CardTitle>
+                <Button variant="outline" size="sm" onClick={() => setPhotoOpen(o => !o)} aria-expanded={photoOpen} aria-controls="photo-panel">
+                  {photoOpen ? 'Hide' : 'Show'}
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent id="photo-panel" className={photoOpen ? '' : 'hidden'}>
               {optimisticMenu.imageUrl ? (
                 <div className="space-y-4">
                   <div className="relative">
@@ -1020,132 +1334,238 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
           )}
 
           {/* Menu Items */}
-          <div className="space-y-3">
-            {optimisticMenu.items.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-12">
-                  <div className="mx-auto h-12 w-12 text-secondary-400 mb-4">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-medium text-secondary-900 mb-2">
-                    No items yet
-                  </h3>
-                  <p className="text-secondary-600 mb-6">
-                    Add your first menu item to get started
-                  </p>
-                  <Button
-                    variant="primary"
-                    onClick={openAddItemForm}
-                  >
-                    Add First Item
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              optimisticMenu.items.map((item, index) => (
-                <Card key={item.id} className={`p-0 ${!item.available ? 'opacity-60' : ''}`}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-medium text-secondary-900 truncate text-sm">
-                            {item.name}
-                          </h3>
-                          {!item.available && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-800">
-                              Out of stock
-                            </span>
-                          )}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Menu Items</CardTitle>
+                <Button variant="outline" size="sm" onClick={() => setItemsOpen(o => !o)} aria-expanded={itemsOpen} aria-controls="items-panel">
+                  {itemsOpen ? 'Hide' : 'Show'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent id="items-panel" className={itemsOpen ? '' : 'hidden'}>
+              <div className="space-y-3">
+                {optimisticMenu.items.length === 0 ? (
+                  <Card>
+                    <CardContent className="text-center py-12">
+                      <div className="mx-auto h-12 w-12 text-secondary-400 mb-4">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium text-secondary-900 mb-2">
+                        No items yet
+                      </h3>
+                      <p className="text-secondary-600 mb-6">
+                        Add your first menu item to get started
+                      </p>
+                      <Button
+                        variant="primary"
+                        onClick={openAddItemForm}
+                      >
+                        Add First Item
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  optimisticMenu.items.map((item, index) => (
+                    <Card key={item.id} className={`p-0 ${!item.available ? 'opacity-60' : ''}`}>
+                      <CardContent className="py-2 px-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              {editingField?.id === item.id && editingField.field === 'name' ? (
+                                <input
+                                  className="font-medium text-secondary-900 text-sm border border-secondary-300 rounded px-2 py-1 w-full max-w-[240px]"
+                                  value={editingValue}
+                                  autoFocus
+                                  onChange={(e) => setEditingValue(e.target.value)}
+                                  onBlur={commitEdit}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') commitEdit()
+                                    if (e.key === 'Escape') cancelEdit()
+                                  }}
+                                />
+                              ) : (
+                                <div className="group inline-flex items-center gap-1 max-w-full leading-none">
+                                  <h3
+                                    className="font-medium text-secondary-900 truncate text-sm"
+                                    onClick={() => beginEdit(item, 'name')}
+                                    tabIndex={0}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') beginEdit(item, 'name') }}
+                                    title="Edit name"
+                                  >
+                                    {item.name}
+                                  </h3>
+                                  <button
+                                    type="button"
+                                    className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-secondary-400 hover:text-secondary-600 p-0 h-4 min-h-0"
+                                    onClick={() => beginEdit(item, 'name')}
+                                    aria-label="Edit name"
+                                  >
+                                    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                      <path d="M13.586 3a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM12.172 4.414L4 12.586V16h3.414l8.172-8.172-3.414-3.414z" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              )}
+                              {!item.available && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-800">
+                                  Out of stock
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-0.5">
+                              {editingField?.id === item.id && editingField.field === 'description' ? (
+                                <textarea
+                                  className="text-xs text-secondary-600 border border-secondary-300 rounded px-2 py-1 w-full"
+                                  rows={2}
+                                  value={editingValue}
+                                  autoFocus
+                                  onChange={(e) => setEditingValue(e.target.value)}
+                                  onBlur={commitEdit}
+                                  onKeyDown={(e) => { if (e.key === 'Escape') cancelEdit() }}
+                                />
+                              ) : (
+                                <div className="group inline-flex items-center gap-1 max-w-full leading-none">
+                                  <p
+                                    className="text-xs text-secondary-600 truncate"
+                                    onClick={() => beginEdit(item, 'description')}
+                                    tabIndex={0}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') beginEdit(item, 'description') }}
+                                    title="Edit description"
+                                  >
+                                    {item.description || item.category || 'Add a description'}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-secondary-300 hover:text-secondary-500 p-0 h-4 min-h-0"
+                                    onClick={() => beginEdit(item, 'description')}
+                                    aria-label="Edit description"
+                                  >
+                                    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                      <path d="M13.586 3a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM12.172 4.414L4 12.586V16h3.414l8.172-8.172-3.414-3.414z" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            
+                          </div>
+                          <div className="shrink-0 text-sm font-semibold text-primary-600 min-w-[64px] text-right">
+                            {editingField?.id === item.id && editingField.field === 'price' ? (
+                              <input
+                                inputMode="decimal"
+                                pattern="[0-9]*"
+                                className="border border-secondary-300 rounded px-2 py-1 w-20 text-right"
+                                value={editingValue}
+                                autoFocus
+                                onChange={(e) => setEditingValue(e.target.value)}
+                                onBlur={commitEdit}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') commitEdit()
+                                  if (e.key === 'Escape') cancelEdit()
+                                }}
+                              />
+                            ) : (
+                              <div className="group inline-flex items-center gap-1 leading-none">
+                                <button
+                                  type="button"
+                                  className="px-1 py-0.5 -mr-1 rounded hover:bg-secondary-100 leading-none min-h-0"
+                                  onClick={() => beginEdit(item, 'price')}
+                                  aria-label="Edit price"
+                                  title="Edit price"
+                                >
+                                  {formatCurrency(item.price)}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-secondary-400 hover:text-secondary-600 p-0 h-4 min-h-0"
+                                  onClick={() => beginEdit(item, 'price')}
+                                  aria-label="Edit price"
+                                >
+                                  <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M13.586 3a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM12.172 4.414L4 12.586V16h3.414l8.172-8.172-3.414-3.414z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Condensed action bar */}
+                          <div className="ml-1 flex shrink-0 items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveItem(item.id, 'up')}
+                              disabled={index === 0 || loading !== null}
+                              className="h-8 w-8 min-h-0 rounded hover:bg-secondary-100 text-secondary-500 hover:text-secondary-700 disabled:opacity-50"
+                              title="Move up"
+                              aria-label="Move up"
+                            >
+                              <svg className="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveItem(item.id, 'down')}
+                              disabled={index === optimisticMenu.items.length - 1 || loading !== null}
+                              className="h-8 w-8 min-h-0 rounded hover:bg-secondary-100 text-secondary-500 hover:text-secondary-700 disabled:opacity-50"
+                              title="Move down"
+                              aria-label="Move down"
+                            >
+                              <svg className="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleToggleAvailability(item)}
+                              disabled={loading === item.id}
+                              className={`h-8 w-8 min-h-0 rounded hover:bg-secondary-100 ${
+                                item.available
+                                  ? 'text-red-600 hover:text-red-700'
+                                  : 'text-green-600 hover:text-green-700'
+                              }`}
+                              title={item.available ? 'Mark as out of stock' : 'Mark as available'}
+                              aria-label={item.available ? 'Mark as out of stock' : 'Mark as available'}
+                            >
+                              {item.available ? (
+                                // No entry sign
+                                <svg className="mx-auto h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                  <circle cx="12" cy="12" r="9" strokeWidth="2" />
+                                  <line x1="7" y1="12" x2="17" y2="12" strokeWidth="2" />
+                                </svg>
+                              ) : (
+                                // Checkmark to mark available again
+                                <svg className="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteItem(item.id)}
+                              disabled={loading === item.id}
+                              className="h-8 w-8 min-h-0 rounded hover:bg-secondary-100 text-red-500 hover:text-red-700 disabled:opacity-50"
+                              title="Delete item"
+                              aria-label="Delete item"
+                            >
+                              <svg className="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
-                        {item.description && (
-                          <p className="mt-0.5 text-xs text-secondary-600 truncate">
-                            {item.description}
-                          </p>
-                        )}
-                        {item.category && (
-                          <p className="mt-0.5 text-[11px] text-secondary-500 truncate">
-                            {item.category}
-                          </p>
-                        )}
-                      </div>
-                      <div className="shrink-0 text-sm font-semibold text-primary-600">
-                        {formatCurrency(item.price)}
-                      </div>
-
-                      {/* Condensed action bar */}
-                      <div className="ml-1 flex shrink-0 items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleMoveItem(item.id, 'up')}
-                          disabled={index === 0 || loading !== null}
-                          className="h-8 w-8 rounded hover:bg-secondary-100 text-secondary-500 hover:text-secondary-700 disabled:opacity-50"
-                          title="Move up"
-                          aria-label="Move up"
-                        >
-                          <svg className="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                          </svg>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleMoveItem(item.id, 'down')}
-                          disabled={index === optimisticMenu.items.length - 1 || loading !== null}
-                          className="h-8 w-8 rounded hover:bg-secondary-100 text-secondary-500 hover:text-secondary-700 disabled:opacity-50"
-                          title="Move down"
-                          aria-label="Move down"
-                        >
-                          <svg className="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleToggleAvailability(item)}
-                          disabled={loading === item.id}
-                          className={`h-8 w-8 rounded hover:bg-secondary-100 ${
-                            item.available
-                              ? 'text-red-600 hover:text-red-700'
-                              : 'text-green-600 hover:text-green-700'
-                          }`}
-                          title={item.available ? 'Mark as out of stock' : 'Mark as available'}
-                          aria-label={item.available ? 'Mark as out of stock' : 'Mark as available'}
-                        >
-                          {item.available ? (
-                            // No entry sign
-                            <svg className="mx-auto h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                              <circle cx="12" cy="12" r="9" strokeWidth="2" />
-                              <line x1="7" y1="12" x2="17" y2="12" strokeWidth="2" />
-                            </svg>
-                          ) : (
-                            // Checkmark to mark available again
-                            <svg className="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteItem(item.id)}
-                          disabled={loading === item.id}
-                          className="h-8 w-8 rounded hover:bg-secondary-100 text-red-500 hover:text-red-700 disabled:opacity-50"
-                          title="Delete item"
-                          aria-label="Delete item"
-                        >
-                          <svg className="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Payment Section (moved after items; collapsible) */}
           <Card>
@@ -1358,7 +1778,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                   <Button
                     variant="primary"
                     size="sm"
-                    className="w-full"
+                    className="w-full col-span-2"
                     onClick={handlePublishMenu}
                     loading={publishing}
                     disabled={loading !== null}
@@ -1367,18 +1787,18 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                     {publishing ? 'Publishing...' : optimisticMenu.status === 'published' ? 'Publish Update' : 'Publish Menu'}
                   </Button>
                   {menu.status === 'published' && (
-                    <div className="col-span-2 grid grid-cols-3 gap-3 items-start">
-                      <div className="col-span-1 flex items-center justify-center border rounded-md p-3 bg-white">
-                        {qrPreviewUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={qrPreviewUrl} alt="QR code" className="w-32 h-32" />
-                        ) : (
-                          <div className="text-sm text-secondary-500">QR preview</div>
-                        )}
-                      </div>
-                      <div className="col-span-2 flex flex-col gap-2">
-                        <div className="text-sm text-secondary-700">Share your menu</div>
-                        <div className="flex gap-2 flex-wrap">
+                    <div className="col-span-2">
+                      <div className="flex flex-col gap-2 items-center">
+                        <div className="text-sm text-secondary-700 flex items-center gap-1 justify-center">
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <rect x="3" y="3" width="7" height="7" rx="1" />
+                            <rect x="14" y="3" width="7" height="7" rx="1" />
+                            <rect x="3" y="14" width="7" height="7" rx="1" />
+                            <path d="M14 14h2v2h-2zM18 14h3v3h-1v1h-2v-4zM14 18h2v4h-2zM18 20h2v2h-2z" />
+                          </svg>
+                          <span>Share your menu</span>
+                        </div>
+                        <div className="flex gap-2 flex-wrap justify-center">
                           <a
                             href={`/api/menus/${menu.id}/qr?format=png&size=1024`}
                             target="_blank"
@@ -1414,7 +1834,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                             Share Link
                           </Button>
                         </div>
-                        <div className="text-xs text-secondary-500">QR codes link to a user-namespaced URL and remain valid after updates.</div>
+                        <div className="text-xs text-secondary-500 text-center">QR codes link to a user-namespaced URL and remain valid after updates.</div>
                       </div>
                     </div>
                   )}
