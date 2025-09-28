@@ -3,7 +3,7 @@
 import { useState, useOptimistic, useId, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Button, Input, Card, CardHeader, CardTitle, CardContent, useToast, ConfirmDialog } from '@/components/ui'
+import { Button, Input, Card, CardHeader, CardTitle, CardContent, useToast, ConfirmDialog, UpgradePrompt } from '@/components/ui'
 import { getAvailableThemes, applyTheme as applyThemeLib, generateThemePreview } from '@/lib/themes'
 import { pickDominantColorsFromImageData, hexToRgb } from '@/lib/color'
 import { formatCurrency } from '@/lib/utils'
@@ -206,7 +206,11 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       const result = await response.json()
 
       if (!response.ok) {
-        setErrors({ general: result.error || 'Failed to add item' })
+        if (result.code === 'PLAN_LIMIT_EXCEEDED') {
+          setErrors({ general: result.error || 'Plan limit reached' })
+        } else {
+          setErrors({ general: result.error || 'Failed to add item' })
+        }
         return
       }
 
@@ -237,7 +241,11 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       const response = await fetch(`/api/menus/${menu.id}/ocr?force=1`, { method: 'POST' })
       const result = await response.json()
       if (!response.ok) {
-        showToast({ type: 'error', title: 'OCR failed to start', description: result.error || 'Please try again.' })
+        if (result.code === 'PLAN_LIMIT_EXCEEDED') {
+          showToast({ type: 'info', title: 'Plan limit reached', description: result.error || 'Monthly OCR limit reached.' })
+        } else {
+          showToast({ type: 'error', title: 'OCR failed to start', description: result.error || 'Please try again.' })
+        }
         return
       }
       setOcrJobId(result.data.id)
@@ -619,7 +627,11 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       const result = await response.json()
 
       if (!response.ok) {
-        showToast({ type: 'error', title: 'Upload failed', description: result.error || 'Please try again.' })
+        if (result.code === 'PLAN_LIMIT_EXCEEDED') {
+          showToast({ type: 'info', title: 'Plan limit reached', description: result.error || 'Monthly upload limit reached.' })
+        } else {
+          showToast({ type: 'error', title: 'Upload failed', description: result.error || 'Please try again.' })
+        }
         return
       }
 
@@ -1139,7 +1151,11 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                                         })
                                         const result = await response.json()
                                         if (!response.ok) {
-                                          showToast({ type: 'error', title: 'Failed to add', description: result.error || 'Try again.' })
+                                          if (result.code === 'PLAN_LIMIT_EXCEEDED') {
+                                            showToast({ type: 'info', title: 'Plan limit reached', description: result.error || 'Item limit reached.' })
+                                          } else {
+                                            showToast({ type: 'error', title: 'Failed to add', description: result.error || 'Try again.' })
+                                          }
                                           return
                                         }
                                         setMenu(result.data)
@@ -1168,11 +1184,18 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                                   for (const it of parsedItems) {
                                     const validation = validateMenuItem(it)
                                     if (!validation.isValid) continue
-                                    await fetch(`/api/menus/${menu.id}/items`, {
+                                    const resp = await fetch(`/api/menus/${menu.id}/items`, {
                                       method: 'POST',
                                       headers: { 'Content-Type': 'application/json' },
                                       body: JSON.stringify(it),
                                     })
+                                    if (!resp.ok) {
+                                      const r = await resp.json().catch(() => ({}))
+                                      if (r?.code === 'PLAN_LIMIT_EXCEEDED') {
+                                        showToast({ type: 'info', title: 'Plan limit reached', description: r.error || 'Item limit reached.' })
+                                        break
+                                      }
+                                    }
                                   }
                                   const refreshed = await fetch(`/api/menus/${menu.id}`)
                                   const refreshedData = await refreshed.json().catch(() => null)

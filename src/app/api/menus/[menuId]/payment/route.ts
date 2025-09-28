@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { DatabaseError, menuOperations } from '@/lib/database'
+import { DatabaseError, menuOperations, userOperations } from '@/lib/database'
 
 // POST /api/menus/[menuId]/payment - Upload PayNow QR or update payment settings
 export async function POST(
@@ -19,6 +19,22 @@ export async function POST(
 
     // If multipart/form-data, treat as image upload for PayNow QR
     if (contentType.includes('multipart/form-data')) {
+      // Enforce monthly upload limits (per plan)
+      const { allowed, current, limit } = await userOperations.checkPlanLimits(user.id, 'monthlyUploads')
+      if (!allowed) {
+        return NextResponse.json(
+          {
+            error: `You have reached your monthly upload limit (${current}/${limit}).`,
+            code: 'PLAN_LIMIT_EXCEEDED',
+            upgrade: {
+              cta: 'Upgrade to Premium',
+              href: '/upgrade',
+              reason: 'Increase uploads/month from 10 to 100',
+            }
+          },
+          { status: 403 }
+        )
+      }
       const formData = await request.formData()
       const file = formData.get('qr') as File
       if (!file) {
@@ -46,6 +62,11 @@ export async function POST(
       // For MVP, skip QR content decoding; mark as not validated
       const paymentInfo = { payNowQR, disclaimer: requiredDisclaimer, validated: false }
       const updated = await menuOperations.updateMenu(params.menuId, user.id, { paymentInfo })
+      
+      // Log upload for quota tracking
+      await createServerSupabaseClient()
+        .from('uploads')
+        .insert({ user_id: user.id, menu_id: params.menuId, file_url: payNowQR })
       return NextResponse.json({ success: true, data: updated })
     }
 

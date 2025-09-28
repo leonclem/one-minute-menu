@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
+import { Button, Input, Card, CardHeader, CardTitle, CardContent, UpgradePrompt } from '@/components/ui'
 import { validateCreateMenu, generateSlugFromName } from '@/lib/validation'
 import type { CreateMenuFormData } from '@/types'
 
@@ -77,7 +77,11 @@ export default function NewMenuPage() {
           })
           setErrors(errorMap)
         } else {
-          setErrors({ general: result.error || 'Failed to create menu' })
+          if (result.code === 'PLAN_LIMIT_EXCEEDED') {
+            setErrors({ general: result.error || 'Plan limit reached' })
+          } else {
+            setErrors({ general: result.error || 'Failed to create menu' })
+          }
         }
         return
       }
@@ -123,11 +127,13 @@ export default function NewMenuPage() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* General Error */}
                 {errors.general && (
-                  <div className="rounded-md bg-red-50 p-4">
-                    <div className="text-sm text-red-800">
-                      {errors.general}
-                    </div>
-                  </div>
+                  <UpgradePrompt
+                    title="Plan limit reached"
+                    message={errors.general}
+                    cta="Upgrade to Premium"
+                    href="/upgrade"
+                    reason="Free plan allows 1 menu. Premium allows up to 10."
+                  />
                 )}
 
                 {/* Menu Name */}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { imageOperations, DatabaseError } from '@/lib/database'
+import { imageOperations, DatabaseError, userOperations } from '@/lib/database'
 
 // POST /api/menus/[menuId]/image - Upload menu image
 export async function POST(
@@ -39,11 +39,32 @@ export async function POST(
       )
     }
 
+    // Enforce monthly upload limits (per plan)
+    const { allowed, current, limit } = await userOperations.checkPlanLimits(user.id, 'monthlyUploads')
+    if (!allowed) {
+      return NextResponse.json(
+        {
+          error: `You have reached your monthly upload limit (${current}/${limit}).`,
+          code: 'PLAN_LIMIT_EXCEEDED',
+          upgrade: {
+            cta: 'Upgrade to Premium',
+            href: '/upgrade',
+            reason: 'Increase uploads/month from 10 to 100',
+          }
+        },
+        { status: 403 }
+      )
+    }
     // Upload image
     const imageUrl = await imageOperations.uploadMenuImage(user.id, file)
     
     // Update menu with image URL
     const menu = await imageOperations.updateMenuImage(params.menuId, user.id, imageUrl)
+    
+    // Log upload for quota tracking
+    await createServerSupabaseClient()
+      .from('uploads')
+      .insert({ user_id: user.id, menu_id: params.menuId, file_url: imageUrl })
     
     return NextResponse.json({
       success: true,

@@ -35,6 +35,7 @@ export const userOperations = {
       const defaults = PLAN_CONFIGS[plan]
       return {
         menus: typeof dbLimits?.menus === 'number' ? dbLimits.menus : defaults.menus,
+        menuItems: typeof dbLimits?.items === 'number' ? dbLimits.items : defaults.menuItems,
         ocrJobs: typeof dbLimits?.ocr_jobs === 'number' ? dbLimits.ocr_jobs : defaults.ocrJobs,
         monthlyUploads: typeof dbLimits?.monthly_uploads === 'number' ? dbLimits.monthly_uploads : defaults.monthlyUploads,
       }
@@ -59,6 +60,7 @@ export const userOperations = {
       // Map PlanLimits (camelCase) -> DB shape (snake_case)
       updateData.plan_limits = {
         menus: updates.limits.menus,
+        items: updates.limits.menuItems,
         ocr_jobs: updates.limits.ocrJobs,
         monthly_uploads: updates.limits.monthlyUploads,
       }
@@ -81,6 +83,7 @@ export const userOperations = {
       const defaults = PLAN_CONFIGS[plan]
       return {
         menus: typeof dbLimits?.menus === 'number' ? dbLimits.menus : defaults.menus,
+        menuItems: typeof dbLimits?.items === 'number' ? dbLimits.items : defaults.menuItems,
         ocrJobs: typeof dbLimits?.ocr_jobs === 'number' ? dbLimits.ocr_jobs : defaults.ocrJobs,
         monthlyUploads: typeof dbLimits?.monthly_uploads === 'number' ? dbLimits.monthly_uploads : defaults.monthlyUploads,
       }
@@ -123,11 +126,24 @@ export const userOperations = {
           .gte('created_at', startOfMonth.toISOString())
         current = ocrCount || 0
         break
+
+      case 'monthlyUploads':
+        const startMonth = new Date()
+        startMonth.setDate(1)
+        startMonth.setHours(0, 0, 0, 0)
+
+        const { count: uploadCount } = await createServerSupabaseClient()
+          .from('uploads')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .gte('created_at', startMonth.toISOString())
+        current = uploadCount || 0
+        break
     }
     
     const limit = profile.limits[resource]
     return {
-      allowed: current < limit,
+      allowed: typeof limit === 'number' && limit < 0 ? true : current < limit,
       current,
       limit
     }
@@ -543,6 +559,17 @@ export const menuItemOperations = {
     const menu = await menuOperations.getMenu(menuId, userId)
     if (!menu) throw new DatabaseError('Menu not found')
     
+    // Enforce plan limit for number of items per menu
+    const profile = await userOperations.getProfile(userId)
+    if (!profile) throw new DatabaseError('User profile not found')
+    const itemLimit = profile.limits.menuItems
+    if (typeof itemLimit === 'number' && itemLimit >= 0) {
+      const nextCount = menu.items.length + 1
+      if (nextCount > itemLimit) {
+        throw new DatabaseError('Item limit exceeded for your plan', 'PLAN_LIMIT_EXCEEDED')
+      }
+    }
+
     const newItem: MenuItem = {
       ...item,
       id: generateId(),

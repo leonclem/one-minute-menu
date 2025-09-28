@@ -25,7 +25,18 @@ export async function POST(
     // Enforce plan quota (monthly ocrJobs)
     const { allowed, current, limit } = await userOperations.checkPlanLimits(user.id, 'ocrJobs')
     if (!allowed) {
-      return NextResponse.json({ error: `Plan limit reached (${current}/${limit} this month)` }, { status: 429 })
+      return NextResponse.json(
+        {
+          error: `You have reached your monthly OCR limit (${current}/${limit}).`,
+          code: 'PLAN_LIMIT_EXCEEDED',
+          upgrade: {
+            cta: 'Upgrade to Premium',
+            href: '/upgrade',
+            reason: 'Increase OCR limit from 5 to 50 per month',
+          }
+        },
+        { status: 403 }
+      )
     }
 
     // Enforce rate limit (configurable uploads/hour per user)
