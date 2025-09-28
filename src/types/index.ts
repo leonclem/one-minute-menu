@@ -119,6 +119,7 @@ export interface PaymentInfo {
   instructions?: string
   disclaimer: string // Required: "Payment handled by your bank app; platform does not process funds"
   alternativePayments?: string[]
+  validated?: boolean
 }
 
 export interface AuditEntry {

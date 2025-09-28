@@ -494,6 +494,15 @@ export const menuOperations = {
     // Get current menu
     const currentMenu = await this.getMenu(menuId, userId)
     if (!currentMenu) throw new DatabaseError('Menu not found')
+
+    // Validate payment info disclaimer if payment is configured
+    if (currentMenu.paymentInfo) {
+      const disclaimer = currentMenu.paymentInfo.disclaimer?.trim()
+      const required = 'Payment handled by your bank app; platform does not process funds'
+      if (!disclaimer || disclaimer !== required) {
+        throw new DatabaseError('Payment disclaimer missing or invalid', 'PAYMENT_DISCLAIMER_REQUIRED')
+      }
+    }
     
     const newVersionNumber = currentMenu.version + 1
     

@@ -54,6 +54,9 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [extractedColors, setExtractedColors] = useState<string[] | null>(null)
   const brandFileInputRef = useRef<HTMLInputElement | null>(null)
   const [qrPreviewUrl, setQrPreviewUrl] = useState<string | null>(null)
+  const paynowFileInputRef = useRef<HTMLInputElement | null>(null)
+  const [updatingPayment, setUpdatingPayment] = useState<boolean>(false)
+  const [paymentOpen, setPaymentOpen] = useState<boolean>(true)
   const addItemFormRef = useRef<HTMLDivElement | null>(null)
   const router = useRouter()
   // Load available templates once
@@ -915,6 +918,8 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
             </CardContent>
           </Card>
 
+          {/* Payment Section removed here and re-inserted below, before Quick Actions */}
+
           {/* Image Upload Modal */}
           {showImageUpload && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1141,6 +1146,147 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
               ))
             )}
           </div>
+
+          {/* Payment Section (moved after items; collapsible) */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Payment</CardTitle>
+                <Button variant="outline" size="sm" onClick={() => setPaymentOpen(o => !o)} aria-expanded={paymentOpen} aria-controls="payment-panel">
+                  {paymentOpen ? 'Hide' : 'Show'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent id="payment-panel" className={paymentOpen ? '' : 'hidden'}>
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium text-secondary-700">PayNow QR</label>
+                    <div className="mt-2 flex items-center gap-3">
+                      {optimisticMenu.paymentInfo?.payNowQR ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={optimisticMenu.paymentInfo.payNowQR} alt="PayNow QR" className="w-24 h-24 rounded bg-white border" />
+                      ) : (
+                        <div className="w-24 h-24 rounded border flex items-center justify-center text-xs text-secondary-500">No QR</div>
+                      )}
+                      <div className="flex flex-col gap-2">
+                        <input
+                          ref={paynowFileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0]
+                            if (!f) return
+                            setUpdatingPayment(true)
+                            try {
+                              const fd = new FormData()
+                              fd.append('qr', f)
+                              const res = await fetch(`/api/menus/${menu.id}/payment`, { method: 'POST', body: fd })
+                              const data = await res.json()
+                              if (!res.ok) throw new Error(data.error || 'Upload failed')
+                              setMenu(data.data)
+                              addOptimisticUpdate(data.data)
+                              showToast({ type: 'success', title: 'QR uploaded', description: 'PayNow QR added to your menu.' })
+                            } catch (e) {
+                              showToast({ type: 'error', title: 'Upload failed', description: 'Please try again.' })
+                            } finally {
+                              setUpdatingPayment(false)
+                              if (e.target) (e.target as HTMLInputElement).value = ''
+                            }
+                          }}
+                        />
+                        <div className="flex gap-2 flex-wrap">
+                          <Button variant="outline" size="sm" onClick={() => paynowFileInputRef.current?.click()} loading={updatingPayment} disabled={updatingPayment}>Upload QR</Button>
+                          {optimisticMenu.paymentInfo?.payNowQR && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                setUpdatingPayment(true)
+                                try {
+                                  const res = await fetch(`/api/menus/${menu.id}/payment`, { method: 'DELETE' })
+                                  const data = await res.json()
+                                  if (!res.ok) throw new Error(data.error || 'Failed')
+                                  setMenu(data.data)
+                                  addOptimisticUpdate(data.data)
+                                  showToast({ type: 'success', title: 'Removed', description: 'Payment QR removed.' })
+                                } catch (e) {
+                                  showToast({ type: 'error', title: 'Remove failed', description: 'Please try again.' })
+                                } finally {
+                                  setUpdatingPayment(false)
+                                }
+                              }}
+                              disabled={updatingPayment}
+                            >
+                              Remove QR
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-secondary-700">Instructions</label>
+                    <textarea
+                      className="mt-1 block w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      placeholder="e.g., Please alert a member of our team to conduct the payment at the counter"
+                      rows={4}
+                      defaultValue={optimisticMenu.paymentInfo?.instructions || ''}
+                      onBlur={async (e) => {
+                        const value = e.currentTarget.value
+                        setUpdatingPayment(true)
+                        try {
+                          const res = await fetch(`/api/menus/${menu.id}/payment`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ instructions: value })
+                          })
+                          const data = await res.json()
+                          if (!res.ok) throw new Error(data.error || 'Failed')
+                          setMenu(data.data)
+                          addOptimisticUpdate(data.data)
+                        } catch (e) {
+                          showToast({ type: 'error', title: 'Save failed', description: 'Please try again.' })
+                        } finally {
+                          setUpdatingPayment(false)
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-secondary-700">Disclaimer</label>
+                  <Input
+                    value={optimisticMenu.paymentInfo?.disclaimer || 'Payment handled by your bank app; platform does not process funds'}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setMenu(prev => ({ ...prev, paymentInfo: { ...(prev.paymentInfo || { disclaimer: '' }), disclaimer: v } }))
+                    }}
+                    onBlur={async (e) => {
+                      const v = e.target.value
+                      setUpdatingPayment(true)
+                      try {
+                        const res = await fetch(`/api/menus/${menu.id}/payment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ disclaimer: v }) })
+                        const data = await res.json()
+                        if (!res.ok) throw new Error(data.error || 'Failed')
+                        setMenu(data.data)
+                        addOptimisticUpdate(data.data)
+                      } catch (e) {
+                        showToast({ type: 'error', title: 'Save failed', description: 'Please try again.' })
+                      } finally {
+                        setUpdatingPayment(false)
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-secondary-600 mt-1">Required: "Payment handled by your bank app; platform does not process funds"</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment Section moved above Quick Actions */}
 
           {/* Quick Actions */}
           {optimisticMenu.items.length > 0 && (

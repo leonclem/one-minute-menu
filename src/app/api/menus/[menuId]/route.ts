@@ -71,7 +71,14 @@ export async function PUT(
         )
       }
     }
-    
+    // Ensure payment disclaimer default if paymentInfo provided
+    if (body.paymentInfo) {
+      const required = 'Payment handled by your bank app; platform does not process funds'
+      if (!body.paymentInfo.disclaimer) {
+        body.paymentInfo.disclaimer = required
+      }
+    }
+
     const menu = await menuOperations.updateMenu(params.menuId, user.id, body)
     
     return NextResponse.json({

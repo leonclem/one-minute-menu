@@ -14,7 +14,7 @@ export async function POST(
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
+    // Publish will internally validate payment disclaimer when payment info exists
     const menu = await menuOperations.publishMenu(params.menuId, user.id)
     
     return NextResponse.json({
