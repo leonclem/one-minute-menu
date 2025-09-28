@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuOperations, ocrOperations, userOperations, DatabaseError } from '@/lib/database'
+import { PLAN_RUNTIME_LIMITS } from '@/types'
 
 // POST /api/menus/[menuId]/ocr - Enqueue OCR job for the menu's image
 export async function POST(
@@ -40,7 +41,10 @@ export async function POST(
     }
 
     // Enforce rate limit (configurable uploads/hour per user)
-    const rateLimitPerHour = Number.parseInt(process.env.OCR_RATE_LIMIT_PER_HOUR || '10', 10)
+    const profile = await userOperations.getProfile(user.id)
+    const plan = profile?.plan || 'free'
+    const planRate = PLAN_RUNTIME_LIMITS[plan]?.ocrRatePerHour ?? 10
+    const rateLimitPerHour = Number.parseInt(process.env.OCR_RATE_LIMIT_PER_HOUR || String(planRate), 10)
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
     const rateRes = await supabase
       .from('ocr_jobs')

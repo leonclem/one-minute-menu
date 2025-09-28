@@ -39,6 +39,23 @@ export const PLAN_CONFIGS: Record<User['plan'], PlanLimits> = {
   },
 }
 
+// Runtime, non-persisted limits by plan (e.g., rate limits)
+export interface PlanRuntimeLimits {
+  ocrRatePerHour: number
+}
+
+export const PLAN_RUNTIME_LIMITS: Record<User['plan'], PlanRuntimeLimits> = {
+  free: {
+    ocrRatePerHour: 6,
+  },
+  premium: {
+    ocrRatePerHour: 20,
+  },
+  enterprise: {
+    ocrRatePerHour: 60,
+  },
+}
+
 export interface Menu {
   id: string
   userId: string
