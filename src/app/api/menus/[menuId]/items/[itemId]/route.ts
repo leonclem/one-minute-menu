@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuItemOperations, DatabaseError } from '@/lib/database'
 import { VALIDATION_RULES } from '@/types'
 import type { MenuItemFormData } from '@/types'
+import { sanitizeMenuItemPayload } from '@/lib/security'
 
 // PUT /api/menus/[menuId]/items/[itemId] - Update menu item
 export async function PUT(
@@ -17,7 +18,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const body = await request.json() as Partial<MenuItemFormData>
+    const body = sanitizeMenuItemPayload(await request.json() as Partial<MenuItemFormData>)
     
     // Partial validation: only validate fields that are present in the request
     const errors: Array<{ field: string; message: string }> = []

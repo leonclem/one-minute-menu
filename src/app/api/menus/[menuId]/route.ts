@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuOperations, DatabaseError } from '@/lib/database'
 import { validateMenu } from '@/lib/validation'
+import { sanitizeMenuPayload } from '@/lib/security'
 import type { MenuFormData, ColorPalette } from '@/types'
 import { applyTheme as applyThemeFromPalette, buildPaletteFromColors, validateAccessibility, getAvailableThemes } from '@/lib/themes'
 import { createServerSupabaseClient as supa } from '@/lib/supabase-server'
@@ -59,7 +60,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const body = await request.json() as Partial<MenuFormData>
+    const body = sanitizeMenuPayload(await request.json() as Partial<MenuFormData>)
     
     // Validate input if provided
     if (Object.keys(body).length > 0) {

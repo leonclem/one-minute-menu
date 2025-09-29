@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuOperations, DatabaseError } from '@/lib/database'
 import { validateCreateMenu, generateSlugFromName } from '@/lib/validation'
+import { sanitizeMenuPayload } from '@/lib/security'
 import type { CreateMenuFormData } from '@/types'
 
 // GET /api/menus - Get user's menus
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const body = await request.json() as CreateMenuFormData
+    const body = sanitizeMenuPayload(await request.json() as CreateMenuFormData)
     
     // Validate input
     const validation = validateCreateMenu(body)

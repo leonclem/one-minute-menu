@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuItemOperations, DatabaseError } from '@/lib/database'
 import { validateMenuItem } from '@/lib/validation'
+import { sanitizeMenuItemPayload } from '@/lib/security'
 import type { MenuItemFormData } from '@/types'
 
 // POST /api/menus/[menuId]/items - Add menu item
@@ -17,7 +18,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const body = await request.json() as MenuItemFormData
+    const body = sanitizeMenuItemPayload(await request.json() as MenuItemFormData)
     
     // Validate input
     const validation = validateMenuItem(body)
