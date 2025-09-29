@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button, Input, Card, CardHeader, CardTitle, CardContent, UpgradePrompt } from '@/components/ui'
 import { validateCreateMenu, generateSlugFromName } from '@/lib/validation'
+import { fetchJsonWithRetry, HttpError } from '@/lib/retry'
 import type { CreateMenuFormData } from '@/types'
 
 export default function NewMenuPage() {
@@ -59,37 +60,29 @@ export default function NewMenuPage() {
     setErrors({})
 
     try {
-      const response = await fetch('/api/menus', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        if (result.errors) {
-          const errorMap: Record<string, string> = {}
-          result.errors.forEach((error: any) => {
-            errorMap[error.field] = error.message
-          })
-          setErrors(errorMap)
-        } else {
-          if (result.code === 'PLAN_LIMIT_EXCEEDED') {
-            setErrors({ general: result.error || 'Plan limit reached' })
-          } else {
-            setErrors({ general: result.error || 'Failed to create menu' })
-          }
-        }
-        return
-      }
-
-      // Success! Redirect to the new menu
+      const result = await fetchJsonWithRetry<{ success: boolean; data: any; errors?: any[]; error?: string; code?: string }>(
+        '/api/menus',
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) },
+        { retries: 2, baseDelayMs: 250, maxDelayMs: 1000 }
+      )
       router.push(`/dashboard/menus/${result.data.id}`)
     } catch (error) {
-      setErrors({ general: 'Network error. Please try again.' })
+      if (error instanceof HttpError) {
+        const body: any = error.body || {}
+        if (Array.isArray(body.errors)) {
+          const errorMap: Record<string, string> = {}
+          body.errors.forEach((err: any) => {
+            if (err?.field && err?.message) errorMap[err.field] = err.message
+          })
+          setErrors(errorMap)
+        } else if (body.code === 'PLAN_LIMIT_EXCEEDED') {
+          setErrors({ general: body.error || 'Plan limit reached' })
+        } else {
+          setErrors({ general: body.error || error.message || 'Failed to create menu' })
+        }
+      } else {
+        setErrors({ general: 'Network error. Please try again.' })
+      }
     } finally {
       setLoading(false)
     }

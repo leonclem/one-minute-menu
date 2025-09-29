@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button, Input, Card, CardHeader, CardTitle, CardContent, useToast, ConfirmDialog, UpgradePrompt } from '@/components/ui'
 import { getAvailableThemes, applyTheme as applyThemeLib, generateThemePreview } from '@/lib/themes'
+import { fetchJsonWithRetry, HttpError } from '@/lib/retry'
 import { pickDominantColorsFromImageData, hexToRgb } from '@/lib/color'
 import { formatCurrency } from '@/lib/utils'
 import { validateMenuItem } from '@/lib/validation'
@@ -238,43 +239,46 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const handleExtractItems = async () => {
     try {
       setOcrError(null)
-      const response = await fetch(`/api/menus/${menu.id}/ocr?force=1`, { method: 'POST' })
-      const result = await response.json()
-      if (!response.ok) {
-        if (result.code === 'PLAN_LIMIT_EXCEEDED') {
-          showToast({ type: 'info', title: 'Plan limit reached', description: result.error || 'Monthly OCR limit reached.' })
-        } else {
-          showToast({ type: 'error', title: 'OCR failed to start', description: result.error || 'Please try again.' })
-        }
-        return
-      }
+      const result = await fetchJsonWithRetry<{ success: boolean; data: any; error?: string; code?: string }>(
+        `/api/menus/${menu.id}/ocr?force=1`,
+        { method: 'POST' },
+        { retries: 2, baseDelayMs: 250, maxDelayMs: 1000 }
+      )
       setOcrJobId(result.data.id)
       setOcrStatus(result.data.status)
       pollJob(result.data.id)
     } catch (e) {
-      showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
+      if (e instanceof HttpError && (e.body as any)?.code === 'PLAN_LIMIT_EXCEEDED') {
+        const b: any = e.body || {}
+        showToast({ type: 'info', title: 'Plan limit reached', description: b.error || 'Monthly OCR limit reached.' })
+      } else {
+        showToast({ type: 'error', title: 'OCR failed to start', description: e instanceof Error ? e.message : 'Please try again.' })
+      }
     }
   }
 
   const pollJob = async (jobId: string) => {
     const poll = async () => {
-      const res = await fetch(`/api/ocr/jobs/${jobId}`)
-      const data = await res.json()
-      if (!res.ok) {
-        setOcrError(data.error || 'Failed to fetch job')
+      try {
+        const data = await fetchJsonWithRetry<{ success: boolean; data: any; error?: string }>(
+          `/api/ocr/jobs/${jobId}`,
+          { method: 'GET' },
+          { retries: 2, baseDelayMs: 300, maxDelayMs: 1200 }
+        )
+        setOcrStatus(data.data.status)
+        if (data.data.status === 'queued' || data.data.status === 'processing') {
+          setTimeout(poll, 1500)
+          return
+        }
+        if (data.data.status === 'completed') {
+          const text: string | undefined = data.data.result?.ocrText
+          if (text) setOcrText(text)
+          const conf: number | undefined = data.data.result?.confidence
+          if (typeof conf === 'number') setOcrConfidence(conf)
+        }
+      } catch (err: any) {
+        setOcrError((err?.body as any)?.error || err?.message || 'Failed to fetch job')
         setOcrStatus('failed')
-        return
-      }
-      setOcrStatus(data.data.status)
-      if (data.data.status === 'queued' || data.data.status === 'processing') {
-        setTimeout(poll, 1500)
-        return
-      }
-      if (data.data.status === 'completed') {
-        const text: string | undefined = data.data.result?.ocrText
-        if (text) setOcrText(text)
-        const conf: number | undefined = data.data.result?.confidence
-        if (typeof conf === 'number') setOcrConfidence(conf)
       }
     }
     await poll()
@@ -1062,13 +1066,11 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                             if (!ocrJobId) return
                             setParsing(true)
                             try {
-                              const res = await fetch(`/api/ocr/jobs/${ocrJobId}`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ useAI: true }),
-                              })
-                              const data = await res.json()
-                              if (!res.ok) throw new Error(data.error || 'Failed to parse')
+                              const data = await fetchJsonWithRetry<{ success: boolean; data: any; error?: string }>(
+                                `/api/ocr/jobs/${ocrJobId}`,
+                                { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ useAI: true }) },
+                                { retries: 2, baseDelayMs: 250, maxDelayMs: 1000 }
+                              )
                               const items = data?.data?.result?.extractedItems || []
                               setParsedItems(items)
                               showToast({ type: 'success', title: 'Items extracted', description: `${items.length} items found.` })
@@ -1089,13 +1091,11 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                             if (!ocrJobId) return
                             setParsing(true)
                             try {
-                              const res = await fetch(`/api/ocr/jobs/${ocrJobId}`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ useAI: false }),
-                              })
-                              const data = await res.json()
-                              if (!res.ok) throw new Error(data.error || 'Failed to parse')
+                              const data = await fetchJsonWithRetry<{ success: boolean; data: any; error?: string }>(
+                                `/api/ocr/jobs/${ocrJobId}`,
+                                { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ useAI: false }) },
+                                { retries: 2, baseDelayMs: 250, maxDelayMs: 1000 }
+                              )
                               const items = data?.data?.result?.extractedItems || []
                               setParsedItems(items)
                               showToast({ type: 'success', title: 'Heuristic items extracted', description: `${items.length} items found.` })
