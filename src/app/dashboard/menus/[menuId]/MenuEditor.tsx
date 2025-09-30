@@ -569,7 +569,9 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
             return
           }
           showToast({ type: 'success', title: 'Menu deleted', description: 'Returning to dashboard…' })
-          router.push('/dashboard')
+          // Navigate back and force a fresh server render so the list updates immediately
+          router.replace('/dashboard')
+          router.refresh()
         } catch (error) {
           showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
         } finally {

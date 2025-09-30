@@ -21,6 +21,8 @@ export default async function DashboardPage() {
     menuOperations.getUserMenus(user.id)
   ])
 
+  // Show dashboard even if the user has no menus. Onboarding remains available via links below.
+
   return (
     <div className="min-h-screen bg-secondary-50">
       {/* Header */}
@@ -98,12 +100,20 @@ export default async function DashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Link
-                    href="/dashboard/menus/new"
-                    className="inline-flex items-center text-sm font-medium text-primary-600 hover:text-primary-500"
-                  >
-                    Create your first menu →
-                  </Link>
+                  <div className="flex flex-col gap-2">
+                    <Link
+                      href="/dashboard/menus/new"
+                      className="inline-flex items-center text-sm font-medium text-primary-600 hover:text-primary-500"
+                    >
+                      Create your first menu →
+                    </Link>
+                    <Link
+                      href="/onboarding"
+                      className="inline-flex items-center text-xs text-secondary-600 hover:text-secondary-800"
+                    >
+                      Open onboarding walkthrough
+                    </Link>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -184,12 +194,20 @@ export default async function DashboardPage() {
                   <p className="text-secondary-600 mb-6">
                     Create your first digital menu to get started
                   </p>
-                  <Link
-                    href="/dashboard/menus/new"
-                    className="btn btn-primary"
-                  >
-                    Create Your First Menu
-                  </Link>
+                  <div className="flex flex-col items-center gap-2">
+                    <Link
+                      href="/dashboard/menus/new"
+                      className="btn btn-primary"
+                    >
+                      Create Your First Menu
+                    </Link>
+                    <Link
+                      href="/onboarding"
+                      className="text-xs text-secondary-600 hover:text-secondary-800"
+                    >
+                      Or open onboarding walkthrough
+                    </Link>
+                  </div>
                 </CardContent>
               </Card>
             )}

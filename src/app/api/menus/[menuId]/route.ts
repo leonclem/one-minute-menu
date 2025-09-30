@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuOperations, DatabaseError } from '@/lib/database'
 import { validateMenu } from '@/lib/validation'
@@ -81,6 +82,9 @@ export async function PUT(
     }
 
     const menu = await menuOperations.updateMenu(params.menuId, user.id, body)
+    // Ensure related paths show up-to-date data on client navigation
+    revalidatePath('/dashboard')
+    revalidatePath(`/dashboard/menus/${params.menuId}`)
     
     return NextResponse.json({
       success: true,
@@ -172,6 +176,8 @@ export async function DELETE(
     }
     
     await menuOperations.deleteMenu(params.menuId, user.id)
+    // Ensure dashboard reflects deletion immediately on client-side navigation
+    revalidatePath('/dashboard')
     
     return NextResponse.json({
       success: true,
