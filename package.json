@@ -9,7 +9,9 @@
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "setup-db": "node scripts/setup-database.js"
+    "setup-db": "node scripts/setup-database.js",
+    "deploy-check": "node scripts/deploy-check.js",
+    "deploy:vercel": "vercel --prod"
   },
   "dependencies": {
     "@google-cloud/vision": "^4.3.2",

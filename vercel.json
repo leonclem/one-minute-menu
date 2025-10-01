@@ -1,0 +1,35 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm ci",
+  "framework": "nextjs",
+  "regions": ["sin1", "hkg1", "syd1"],
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/ocr/**/*.ts": {
+      "maxDuration": 60
+    }
+  },
+  "headers": [
+    {
+      "source": "/u/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, s-maxage=3600"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/u/:username/:slug",
+      "destination": "/menu/:username/:slug"
+    }
+  ],
+  "env": {
+    "NEXT_PUBLIC_ENABLE_DEV_AUTH": "false"
+  }
+}
