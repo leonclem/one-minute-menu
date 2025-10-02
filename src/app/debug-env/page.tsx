@@ -4,6 +4,7 @@ export default function DebugEnvPage() {
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-4">Environment Variables Debug</h1>
+      <p className="text-sm text-gray-500 mb-4">Build time: {new Date().toISOString()}</p>
       <div className="space-y-2">
         <p>
           <strong>NEXT_PUBLIC_SUPABASE_URL:</strong>{' '}
