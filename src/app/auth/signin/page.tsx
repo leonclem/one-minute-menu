@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/components/ui'

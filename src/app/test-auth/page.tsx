@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
 import { supabase } from '@/lib/supabase'
 
 export default function TestAuthPage() {

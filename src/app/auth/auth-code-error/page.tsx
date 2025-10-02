@@ -2,8 +2,12 @@
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function AuthCodeError() {
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
+function AuthCodeErrorContent() {
   const searchParams = useSearchParams()
   const errorType = searchParams.get('type') || 'unknown'
   return (
@@ -61,5 +65,20 @@ export default function AuthCodeError() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AuthCodeError() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-sm text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AuthCodeErrorContent />
+    </Suspense>
   )
 }
