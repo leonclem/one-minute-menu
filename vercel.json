@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "installCommand": "npm ci",
@@ -31,5 +32,11 @@
   ],
   "env": {
     "NEXT_PUBLIC_ENABLE_DEV_AUTH": "false"
-  }
+  },
+  "ignores": [
+    "workers/**",
+    ".venv/**",
+    "**/*.pyc",
+    "**/__pycache__/**"
+  ]
 }
