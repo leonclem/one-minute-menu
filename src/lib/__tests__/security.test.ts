@@ -2,7 +2,8 @@ import { sanitizeString, sanitizeArrayOfStrings, sanitizeMenuItemPayload, saniti
 
 describe('security sanitizers', () => {
   test('sanitizeString trims, collapses whitespace and removes control chars', () => {
-    const input = '  hello\tworld\n\u0000bad  '\n+    const out = sanitizeString(input)
+    const input = '  hello\tworld\n\u0000bad  '
+    const out = sanitizeString(input)
     expect(out).toBe('hello world\nbad')
   })
 

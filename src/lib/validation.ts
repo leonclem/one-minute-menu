@@ -168,7 +168,7 @@ export function getMenuCategories(items: MenuItemFormData[]): string[] {
   const categories = new Set(
     items
       .map(item => item.category)
-      .filter(Boolean)
+      .filter((category): category is string => Boolean(category))
   )
   return Array.from(categories).sort()
 }

@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuOperations, DatabaseError } from '@/lib/database'
 import { validateMenu } from '@/lib/validation'
 import { sanitizeMenuPayload } from '@/lib/security'
-import type { MenuFormData, ColorPalette } from '@/types'
+import type { MenuFormData, ColorPalette, Menu } from '@/types'
 import { applyTheme as applyThemeFromPalette, buildPaletteFromColors, validateAccessibility, getAvailableThemes } from '@/lib/themes'
 import { createServerSupabaseClient as supa } from '@/lib/supabase-server'
 
@@ -81,7 +81,12 @@ export async function PUT(
       }
     }
 
-    const menu = await menuOperations.updateMenu(params.menuId, user.id, body)
+    // Exclude items from menu update - items are managed via separate endpoints
+    const { items, ...menuUpdates } = body
+    
+    // Type assertion for theme - updateMenu handles partial theme merging internally
+    const updatePayload = menuUpdates as Partial<Menu>
+    const menu = await menuOperations.updateMenu(params.menuId, user.id, updatePayload)
     // Ensure related paths show up-to-date data on client navigation
     revalidatePath('/dashboard')
     revalidatePath(`/dashboard/menus/${params.menuId}`)

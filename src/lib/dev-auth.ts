@@ -78,7 +78,7 @@ export async function createDevUser(email: string) {
 export function isLocalDevelopment(): boolean {
   // Multiple checks to ensure this NEVER runs in production
   const isDev = process.env.NODE_ENV === 'development'
-  const isLocalhost = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('localhost')
+  const isLocalhost = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('localhost') ?? false
   const isNotVercel = !process.env.VERCEL
   const isNotRailway = !process.env.RAILWAY_ENVIRONMENT
   const hasDevFlag = process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH === 'true'

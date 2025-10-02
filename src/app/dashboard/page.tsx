@@ -152,9 +152,9 @@ export default async function DashboardPage() {
                               : 'bg-yellow-100 text-yellow-800'
                           }`}>
                             {menu.status}
-                            {menu.status === 'published' && menu.published_at && (
+                            {menu.status === 'published' && menu.publishedAt && (
                               <span className="ml-1 text-xs opacity-75">
-                                ({new Date(menu.published_at).toLocaleDateString()})
+                                ({new Date(menu.publishedAt).toLocaleDateString()})
                               </span>
                             )}
                           </span>

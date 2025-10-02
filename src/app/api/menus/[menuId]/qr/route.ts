@@ -32,7 +32,7 @@ export async function GET(
 
     if (format === 'png') {
       const pngBuffer = await generateQrPng(targetUrl, size)
-      return new NextResponse(pngBuffer, {
+      return new NextResponse(new Uint8Array(pngBuffer), {
         status: 200,
         headers: {
           'Content-Type': 'image/png',
@@ -58,7 +58,7 @@ export async function GET(
       page.drawText(targetUrl, { x: 72, y: 72, size: 12, font, color: rgb(0, 0, 1) })
 
       const pdfBytes = await pdfDoc.save()
-      return new NextResponse(Buffer.from(pdfBytes), {
+      return new NextResponse(new Uint8Array(pdfBytes), {
         status: 200,
         headers: {
           'Content-Type': 'application/pdf',
