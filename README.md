@@ -2,6 +2,7 @@
 
 A mobile-first digital menu platform that transforms paper menus into QR code-accessible digital menus using AI-powered OCR technology.
 
+
 ## Features
 
 - 📱 **Mobile-First Design**: Optimized for restaurant owners who manage everything on their phones
