@@ -29,8 +29,5 @@
       "source": "/u/:username/:slug",
       "destination": "/menu/:username/:slug"
     }
-  ],
-  "env": {
-    "NEXT_PUBLIC_ENABLE_DEV_AUTH": "false"
-  }
+  ]
 }
