@@ -12,7 +12,11 @@ type PageProps = {
 export const revalidate = 30
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const menu = await menuOperations.getLatestPublishedSnapshotByUserAndSlug(params.userId, params.slug)
+  // Try published first, then draft
+  let menu = await menuOperations.getLatestPublishedSnapshotByUserAndSlug(params.userId, params.slug)
+  if (!menu) {
+    menu = await menuOperations.getDraftByUserAndSlug(params.userId, params.slug)
+  }
   if (!menu) return { title: 'Menu not found' }
   return {
     title: `${menu.name} · Menu`,
@@ -21,7 +25,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export async function generateViewport({ params }: PageProps): Promise<Viewport> {
-  const menu = await menuOperations.getPublishedMenuByUserAndSlug(params.userId, params.slug)
+  // Try published first, then draft
+  let menu = await menuOperations.getPublishedMenuByUserAndSlug(params.userId, params.slug)
+  if (!menu) {
+    menu = await menuOperations.getDraftByUserAndSlug(params.userId, params.slug)
+  }
   return {
     width: 'device-width',
     initialScale: 1,
@@ -37,13 +45,16 @@ export default async function PublicMenuPage({ params, searchParams }: PageProps
   const { data: { user } } = await supabase.auth.getUser()
   const preview = (typeof searchParams?.preview === 'string' && searchParams?.preview === '1') || (Array.isArray(searchParams?.preview) && searchParams?.preview.includes('1'))
 
-  // Fetch published snapshot by default
-  let menu = await menuOperations.getLatestPublishedSnapshotByUserAndSlug(params.userId, params.slug)
+  let menu = null
 
-  // If owner and query contains preview=1, fetch draft instead
+  // If owner and query contains preview=1, fetch draft first
   if (preview && user && user.id === params.userId) {
-    const draft = await menuOperations.getDraftByUserAndSlug(params.userId, params.slug)
-    if (draft) menu = draft
+    menu = await menuOperations.getDraftByUserAndSlug(params.userId, params.slug)
+  }
+  
+  // If no draft found (or not preview), try published version
+  if (!menu) {
+    menu = await menuOperations.getLatestPublishedSnapshotByUserAndSlug(params.userId, params.slug)
   }
 
   if (!menu) {
