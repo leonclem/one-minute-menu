@@ -24,10 +24,10 @@ export default function HomePage() {
               Get Started Free
             </Link>
             <Link 
-              href="/demo" 
+              href="/onboarding/demo" 
               className="btn btn-outline px-8 py-3 text-base"
             >
-              View Demo
+              Try Demo
             </Link>
           </div>
 
