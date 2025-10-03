@@ -1,8 +1,14 @@
 import sys
 import time
+import os
 from .config import load_config
 from . import db as dbops
 from . import ocr as ocrops
+
+# Set up credentials for production
+if os.getenv('RAILWAY_ENVIRONMENT'):
+    import subprocess
+    subprocess.run([sys.executable, 'setup-credentials.py'], check=True)
 
 
 def process_once(conn, cfg) -> bool:

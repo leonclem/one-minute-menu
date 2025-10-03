@@ -832,5 +832,75 @@ export const ocrOperations = {
       throw new DatabaseError(`Failed to update OCR job result: ${error.message}`, error.code)
     }
     return this.transformJob(data)
+  },
+
+  async findExistingJob(userId: string, imageUrl: string): Promise<OCRJob | null> {
+    const supabase = createServerSupabaseClient()
+    const imageHash = await computeSha256FromUrl(imageUrl)
+    
+    const { data, error } = await supabase
+      .from('ocr_jobs')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('image_hash', imageHash)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error) {
+      if (error.code === 'PGRST116') return null
+      throw new DatabaseError(`Failed to find existing OCR job: ${error.message}`, error.code)
+    }
+    
+    return data ? this.transformJob(data) : null
+  },
+
+  async markCompleted(jobId: string, ocrText: string, processingTime: number, confidence: number): Promise<OCRJob> {
+    const supabase = createServerSupabaseClient()
+    
+    const result = {
+      ocrText,
+      confidence,
+      extractedAt: new Date().toISOString()
+    }
+    
+    const { data, error } = await supabase
+      .from('ocr_jobs')
+      .update({ 
+        result, 
+        status: 'completed', 
+        processing_time: processingTime,
+        completed_at: new Date().toISOString() 
+      })
+      .eq('id', jobId)
+      .select('*')
+      .single()
+      
+    if (error) {
+      throw new DatabaseError(`Failed to mark OCR job as completed: ${error.message}`, error.code)
+    }
+    
+    return this.transformJob(data)
+  },
+
+  async markFailed(jobId: string, errorMessage: string): Promise<OCRJob> {
+    const supabase = createServerSupabaseClient()
+    
+    const { data, error } = await supabase
+      .from('ocr_jobs')
+      .update({ 
+        status: 'failed', 
+        error_message: errorMessage,
+        completed_at: new Date().toISOString() 
+      })
+      .eq('id', jobId)
+      .select('*')
+      .single()
+      
+    if (error) {
+      throw new DatabaseError(`Failed to mark OCR job as failed: ${error.message}`, error.code)
+    }
+    
+    return this.transformJob(data)
   }
 }

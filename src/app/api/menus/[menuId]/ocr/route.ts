@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuOperations, ocrOperations, userOperations, DatabaseError } from '@/lib/database'
 import { PLAN_RUNTIME_LIMITS } from '@/types'
+import { extractTextFromImage } from '@/lib/vision'
 
-// POST /api/menus/[menuId]/ocr - Enqueue OCR job for the menu's image
+// POST /api/menus/[menuId]/ocr - Process OCR directly for the menu's image
 export async function POST(
   request: NextRequest,
   { params }: { params: { menuId: string } }
 ) {
+  const startTime = Date.now()
+  
   try {
     const supabase = createServerSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -59,13 +62,54 @@ export async function POST(
     // Accept optional force flag to reprocess
     const { searchParams } = new URL(request.url)
     const force = searchParams.get('force') === '1'
-    // Enqueue or reuse job
+
+    // Check for existing completed job (unless force=1)
+    if (!force) {
+      const existingJob = await ocrOperations.findExistingJob(user.id, menu.imageUrl)
+      if (existingJob && existingJob.status === 'completed' && existingJob.result) {
+        return NextResponse.json({ 
+          success: true, 
+          data: existingJob,
+          cached: true 
+        })
+      }
+    }
+
+    // Create OCR job record
     const job = await ocrOperations.enqueueJob(user.id, menu.imageUrl, { force })
 
-    // Defer processing to Python worker (LISTEN/NOTIFY wakes it on enqueue)
-    return NextResponse.json({ success: true, data: job })
+    try {
+      // Process OCR directly using Google Vision API
+      const { text, confidence } = await extractTextFromImage(menu.imageUrl)
+      
+      const processingTime = Date.now() - startTime
+      
+      // Update job with results
+      const completedJob = await ocrOperations.markCompleted(
+        job.id, 
+        text, 
+        processingTime, 
+        confidence
+      )
+
+      return NextResponse.json({ 
+        success: true, 
+        data: completedJob,
+        processingTime 
+      })
+      
+    } catch (ocrError) {
+      // Mark job as failed
+      await ocrOperations.markFailed(job.id, ocrError instanceof Error ? ocrError.message : 'OCR processing failed')
+      
+      return NextResponse.json({ 
+        error: `OCR processing failed: ${ocrError instanceof Error ? ocrError.message : 'Unknown error'}`,
+        code: 'OCR_FAILED'
+      }, { status: 500 })
+    }
+
   } catch (error) {
-    console.error('Error enqueueing OCR job:', error)
+    console.error('Error processing OCR:', error)
     if (error instanceof DatabaseError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: 400 })
     }
