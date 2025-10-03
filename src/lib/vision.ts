@@ -5,12 +5,12 @@ let visionClient: ImageAnnotatorClient | null = null
 function getVisionClient(): ImageAnnotatorClient {
   if (!visionClient) {
     // Initialize Google Vision client
-    // In production, this will use the service account key from environment
+    // Use existing GOOGLE_APPLICATION_CREDENTIALS environment variable
     visionClient = new ImageAnnotatorClient({
-      // If GOOGLE_APPLICATION_CREDENTIALS is set, it will use that
-      // Otherwise, we can pass credentials directly
-      ...(process.env.GOOGLE_CREDENTIALS_JSON && {
-        credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON)
+      // If GOOGLE_APPLICATION_CREDENTIALS contains JSON directly, parse it
+      // Otherwise, it should be a file path (but in Vercel, it's usually JSON content)
+      ...(process.env.GOOGLE_APPLICATION_CREDENTIALS && {
+        credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS)
       })
     })
   }
