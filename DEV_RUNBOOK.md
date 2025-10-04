@@ -3,9 +3,9 @@
 This is a quick reference to start everything needed for local development and testing.
 
 ### Components
-- Next.js web app (App Router)
+- Next.js web app (App Router) with integrated OCR processing
 - Supabase local stack (Postgres, Auth, Storage)
-- Python OCR worker (Google Vision)
+- Google Vision API (integrated directly in Next.js API routes)
 - AI parsing via OpenAI API (optional)
 
 ### One-time setup (per machine)
@@ -21,29 +21,16 @@ This is a quick reference to start everything needed for local development and t
 npm install
 ```
 
-3) OCR worker deps (Windows PowerShell)
+3) Google Vision API setup (add to `.env.local`)
 ```
-cd .\workers\ocr
-python -m venv .venv
- .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-pip install -e .
-```
-
-4) OCR worker env (create `workers/ocr/.env`)
-```
-DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
-GOOGLE_APPLICATION_CREDENTIALS=C:\absolute\path\to\vision-key.json
-WORKER_POLL_INTERVAL_MS=5000
-WORKER_MAX_RETRIES=3
-WORKER_PROCESSING_TIMEOUT_MS=90000
-# Enable instant wake-ups (optional; auto-falls back to sleep)
-WORKER_USE_NOTIFY=1
+# Add your Google Vision service account JSON content as a single line
+GOOGLE_APPLICATION_CREDENTIALS={"type":"service_account","project_id":"..."}
 ```
 
 Notes
-- The worker reads `workers/ocr/.env`. It does not use the web app `.env.local`.
-- If your Vision key path has spaces, wrap it in quotes in `.env`.
+- OCR now runs directly in Next.js API routes (no separate worker needed)
+- The Google Vision credentials should be the JSON content, not a file path
+- If your JSON has spaces or special characters, wrap the entire value in quotes
 
 ### Every development session
 1) Start Supabase (repo root)
@@ -58,39 +45,23 @@ npm run dev
 
 Note: After pulling changes that add new dependencies (e.g., `openai`), run `npm install` again.
 
-3) Start the OCR worker (Windows PowerShell)
-```
-cd .\workers\ocr
- .\.venv\Scripts\Activate.ps1
-python -m ocr_worker.main
-```
-
-Optional noise reduction for Vision/gRPC warnings
-```
-$env:GRPC_VERBOSITY="ERROR"
-python -m ocr_worker.main
-```
+**That's it!** OCR processing now runs directly in the Next.js API routes - no separate worker needed.
 
 ### How to test OCR
 - In the dashboard, upload a menu photo, then click "Extract Items".
+- OCR processing happens immediately (no queuing) and results appear in the UI
 - Or via API (replace `<menuId>`):
 ```
 curl -X POST "http://localhost:3000/api/menus/<menuId>/ocr?force=1"
 ```
 
-After OCR completes (text appears in the UI), you can:
+After OCR completes (text appears immediately), you can:
 - Click "Parse with AI" to extract items using OpenAI (requires `OPENAI_API_KEY`).
 - Click "Fallback Parse" to use a heuristic parser (no API key required).
 
 ### Config reference
 - Web app env: `.env.local` (Next.js)
-- Worker env: `workers/ocr/.env`
 - Rate limit: `OCR_RATE_LIMIT_PER_HOUR` (default 10) — set in web app env
-- Worker knobs:
-  - `WORKER_POLL_INTERVAL_MS` (default 5000)
-  - `WORKER_MAX_RETRIES` (default 3)
-  - `WORKER_PROCESSING_TIMEOUT_MS` (default 90000)
-  - `WORKER_USE_NOTIFY` (0/1) — enables Postgres LISTEN/NOTIFY wake-ups
 
 AI parsing (web app `.env.local`):
 ```
@@ -108,25 +79,10 @@ Notes
 - No additional local services are required for AI parsing beyond the web app; ensure internet access for OpenAI API calls.
 
 ### Troubleshooting
-- ModuleNotFoundError: `ocr_worker`
-  - Ensure you installed editable package in the worker venv: `pip install -e .`
-  - Confirm the correct venv: `python -c "import sys; print(sys.executable)"`
-
-- `DATABASE_URL is required for OCR worker`
-  - Ensure `workers/ocr/.env` exists and is ASCII (no BOM)
-  - Verify: `python -c "from dotenv import dotenv_values; print(dotenv_values('.env').get('DATABASE_URL'))"`
-
-- Vision warnings (ALTS creds ignored)
-  - Harmless; set `GRPC_VERBOSITY=ERROR` to silence
-
-- Instant wake-ups not working
-  - Ensure `WORKER_USE_NOTIFY=1` in `workers/ocr/.env`
-  - Trigger `003_ocr_notify.sql` is included in migrations; `npx supabase start` applies migrations
-  - Worker will fall back to sleep if notify isn’t available
+- OCR not working: Ensure `GOOGLE_APPLICATION_CREDENTIALS` is set in `.env.local` with valid JSON
+- Vision API errors: Check that your Google Cloud project has Vision API enabled and billing set up
+- Database connection issues: Ensure Supabase is running with `npx supabase start`
 
 ### Stopping services
-- Stop the worker: Ctrl+C
 - Stop Next.js: Ctrl+C
 - Stop Supabase: `npx supabase stop`
-
-
