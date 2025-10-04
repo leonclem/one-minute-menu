@@ -23,11 +23,5 @@
         }
       ]
     }
-  ],
-  "rewrites": [
-    {
-      "source": "/u/:username/:slug",
-      "destination": "/menu/:username/:slug"
-    }
   ]
 }
