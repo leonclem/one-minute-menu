@@ -12,30 +12,48 @@ type PageProps = {
 export const revalidate = 30
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  // Try published first, then draft
-  let menu = await menuOperations.getLatestPublishedSnapshotByUserAndSlug(params.userId, params.slug)
-  if (!menu) {
-    menu = await menuOperations.getDraftByUserAndSlug(params.userId, params.slug)
-  }
-  if (!menu) return { title: 'Menu not found' }
-  return {
-    title: `${menu.name} · Menu`,
-    description: `View ${menu.name} menu`,
+  try {
+    // Try published first, then draft
+    let menu = await menuOperations.getLatestPublishedSnapshotByUserAndSlug(params.userId, params.slug)
+    if (!menu) {
+      menu = await menuOperations.getDraftByUserAndSlug(params.userId, params.slug)
+    }
+    if (!menu) return { title: 'Menu not found' }
+    return {
+      title: `${menu.name} · Menu`,
+      description: `View ${menu.name} menu`,
+    }
+  } catch (error) {
+    // Fallback for build-time errors
+    console.error('Error generating metadata:', error)
+    return { title: 'Menu' }
   }
 }
 
 export async function generateViewport({ params }: PageProps): Promise<Viewport> {
-  // Try published first, then draft
-  let menu = await menuOperations.getPublishedMenuByUserAndSlug(params.userId, params.slug)
-  if (!menu) {
-    menu = await menuOperations.getDraftByUserAndSlug(params.userId, params.slug)
-  }
-  return {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-    themeColor: menu ? menu.theme.colors.primary : '#3B82F6',
+  try {
+    // Try published first, then draft
+    let menu = await menuOperations.getPublishedMenuByUserAndSlug(params.userId, params.slug)
+    if (!menu) {
+      menu = await menuOperations.getDraftByUserAndSlug(params.userId, params.slug)
+    }
+    return {
+      width: 'device-width',
+      initialScale: 1,
+      maximumScale: 5,
+      userScalable: true,
+      themeColor: menu ? menu.theme.colors.primary : '#3B82F6',
+    }
+  } catch (error) {
+    // Fallback for build-time errors
+    console.error('Error generating viewport:', error)
+    return {
+      width: 'device-width',
+      initialScale: 1,
+      maximumScale: 5,
+      userScalable: true,
+      themeColor: '#3B82F6',
+    }
   }
 }
 
