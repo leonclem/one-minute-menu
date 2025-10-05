@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { analyticsOperations } from '@/lib/analytics'
+import { analyticsOperations } from '@/lib/analytics-server'
 
 export const runtime = 'edge'
 

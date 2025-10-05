@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { analyticsOperations } from '@/lib/analytics'
+import { analyticsOperations } from '@/lib/analytics-server'
 import { menuOperations } from '@/lib/database'
 
 /**

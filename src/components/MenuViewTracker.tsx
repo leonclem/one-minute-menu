@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { trackMenuView } from '@/lib/analytics'
+import { trackMenuView } from '@/lib/analytics-client'
 
 interface MenuViewTrackerProps {
   menuId: string

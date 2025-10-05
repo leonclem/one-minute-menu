@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { analyticsOperations } from '@/lib/analytics'
+import { analyticsOperations } from '@/lib/analytics-server'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
