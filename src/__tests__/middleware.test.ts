@@ -2,6 +2,18 @@
  * Middleware tests for CSRF and rate limiting.
  * We simulate NextRequest/NextResponse using minimal shims.
  */
+
+// Mock Next.js server APIs before importing middleware
+jest.mock('next/server', () => ({
+  NextResponse: {
+    next: jest.fn(() => ({ status: undefined })),
+    json: jest.fn((data: any, init?: any) => ({
+      status: init?.status || 200,
+      json: async () => data,
+    })),
+  },
+}))
+
 import { middleware } from '@/middleware'
 
 function makeReq(url: string, init?: { method?: string; headers?: Record<string, string>; ip?: string }) {

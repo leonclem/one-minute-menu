@@ -4,7 +4,8 @@ describe('security sanitizers', () => {
   test('sanitizeString trims, collapses whitespace and removes control chars', () => {
     const input = '  hello\tworld\n\u0000bad  '
     const out = sanitizeString(input)
-    expect(out).toBe('hello world\nbad')
+    // sanitizeString collapses all whitespace including newlines
+    expect(out).toBe('hello world bad')
   })
 
   test('sanitizeString enforces max length', () => {

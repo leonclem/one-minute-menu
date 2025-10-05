@@ -9,25 +9,26 @@ describe('OnboardingDemoPage (demo walkthrough)', () => {
     jest.useRealTimers()
   })
 
-  it('advances from select -> processing -> review', async () => {
+  it('advances from select -> review -> publish', async () => {
     render(<OnboardingDemoPage />)
 
+    // Step 0: Select photo
     expect(screen.getByText(/Pick a sample photo/i)).toBeInTheDocument()
+    expect(screen.getByText(/Choose a sample image to continue/i)).toBeInTheDocument()
 
+    // Click Sample Photo A
     fireEvent.click(screen.getByRole('button', { name: /Sample Photo A/i }))
 
-    // Now in processing step
-    expect(screen.getByText(/Running OCR/i)).toBeInTheDocument()
+    // Step 1: Review items (demo shows extracted items immediately)
+    expect(screen.getByText(/Extracted items \(demo\):/i)).toBeInTheDocument()
+    expect(screen.getByText(/Chicken Rice/i)).toBeInTheDocument()
+    
+    // Click Publish button
+    const publishButton = screen.getByRole('button', { name: /Publish/i })
+    fireEvent.click(publishButton)
 
-    await act(async () => {
-      jest.advanceTimersByTime(1300)
-    })
-
-    // After timeout, should show OCR complete and Review button
-    expect(screen.getByText(/OCR complete/i)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Review items/i }))
-
-    expect(screen.getByText(/Adjust availability or prices/i)).toBeInTheDocument()
+    // Step 2: Should show QR code
+    expect(screen.getByText(/Published!/i)).toBeInTheDocument()
   })
 })
 
