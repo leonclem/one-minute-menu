@@ -3,6 +3,7 @@ import { menuOperations } from '@/lib/database'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { cn, formatCurrency } from '@/lib/utils'
 import CopyOrderNote from '@/components/CopyOrderNote'
+import MenuViewTracker from '@/components/MenuViewTracker'
 
 type PageProps = {
   params: { userId: string; slug: string }
@@ -95,6 +96,9 @@ export default async function PublicMenuPage({ params, searchParams }: PageProps
       className="mx-auto min-h-screen w-full max-w-screen-sm p-4"
       style={{ backgroundColor: colors.background, color: colors.text }}
     >
+      {/* Track menu views (cookieless analytics) */}
+      {!preview && <MenuViewTracker menuId={menu.id} />}
+      
       {preview && user && user.id === params.userId && (
         <div className="-mx-4 mb-3 rounded-b-md bg-yellow-100 px-4 py-2 text-center text-xs font-medium text-yellow-900">
           Preview — not live. Customers still see the last published version.
@@ -188,7 +192,16 @@ export default async function PublicMenuPage({ params, searchParams }: PageProps
       
 
       <footer className="mt-12 pb-8 text-center text-xs" style={{ color: colors.secondary }}>
-        Updated {menu.updatedAt.toLocaleDateString()}
+        <p>Updated {menu.updatedAt.toLocaleDateString()}</p>
+        <p className="mt-2">
+          <a 
+            href={`/report/${menu.id}`}
+            className="underline hover:opacity-80"
+            style={{ color: colors.secondary }}
+          >
+            Report abuse or impersonation
+          </a>
+        </p>
       </footer>
     </main>
   )

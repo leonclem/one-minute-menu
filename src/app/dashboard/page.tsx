@@ -33,6 +33,12 @@ export default async function DashboardPage() {
               Dashboard
             </h1>
             <div className="flex items-center space-x-4">
+              <Link
+                href="/admin/analytics"
+                className="text-sm text-secondary-500 hover:text-secondary-700"
+              >
+                Analytics
+              </Link>
               <span className="text-sm text-secondary-600">
                 {user.email}
               </span>

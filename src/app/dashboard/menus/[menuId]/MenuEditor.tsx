@@ -11,6 +11,7 @@ import { formatCurrency } from '@/lib/utils'
 import { validateMenuItem } from '@/lib/validation'
 import VersionHistory from '@/components/VersionHistory'
 import ImageUpload from '@/components/ImageUpload'
+import MenuAnalyticsDashboard from '@/components/MenuAnalyticsDashboard'
 import type { Menu, MenuItem, MenuItemFormData } from '@/types'
 
 interface MenuEditorProps {
@@ -1050,6 +1051,36 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                       {ocrStatus === 'queued' || ocrStatus === 'processing' ? 'Processing…' : 'Extract Items'}
                     </Button>
                   </div>
+                  {optimisticMenu.status === 'published' && (
+                    <div className="mt-4 p-3 bg-blue-50 rounded-md">
+                      <p className="text-xs text-blue-900 mb-2">
+                        <strong>Data Retention:</strong> Once published, you can delete the original photo to save storage space. 
+                        Your menu items will remain intact.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`/api/menus/${menu.id}/delete-original`, {
+                              method: 'POST',
+                            })
+                            const result = await response.json()
+                            if (result.success) {
+                              showToast({ type: 'success', title: 'Original deleted', description: 'Original photo has been removed.' })
+                              router.refresh()
+                            } else {
+                              showToast({ type: 'error', title: 'Delete failed', description: result.error || 'Please try again.' })
+                            }
+                          } catch (error) {
+                            showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
+                          }
+                        }}
+                      >
+                        Delete Original Photo
+                      </Button>
+                    </div>
+                  )}
                   {ocrError && (
                     <p className="text-red-600 text-sm text-center">{ocrError}</p>
                   )}
@@ -1866,6 +1897,11 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Analytics Section */}
+          {optimisticMenu.status === 'published' && (
+            <MenuAnalyticsDashboard menuId={menu.id} />
           )}
         </div>
       </main>
