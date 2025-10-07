@@ -14,13 +14,17 @@ export const analyticsOperations = {
     const supabase = createServerSupabaseClient()
     const today = new Date().toISOString().split('T')[0]
     
+    console.log(`Recording menu view: menuId=${menuId}, visitorId=${visitorId}, date=${today}`)
+    
     // Get or create today's analytics record
-    const { data: existing } = await supabase
+    const { data: existing, error: selectError } = await supabase
       .from('menu_analytics')
       .select('*')
       .eq('menu_id', menuId)
       .eq('date', today)
       .single()
+    
+    console.log('Existing record:', existing, 'Error:', selectError)
     
     if (existing) {
       // Update existing record
@@ -28,25 +32,43 @@ export const analyticsOperations = {
       const uniqueVisitors = new Set(existing.unique_visitors_ids || [])
       uniqueVisitors.add(visitorId)
       
-      await supabase
+      const updateData = {
+        page_views: existing.page_views + 1,
+        unique_visitors: uniqueVisitors.size,
+        unique_visitors_ids: Array.from(uniqueVisitors),
+      }
+      
+      console.log('Updating existing record with:', updateData)
+      
+      const { error: updateError } = await supabase
         .from('menu_analytics')
-        .update({
-          page_views: existing.page_views + 1,
-          unique_visitors: uniqueVisitors.size,
-          unique_visitors_ids: Array.from(uniqueVisitors),
-        })
+        .update(updateData)
         .eq('id', existing.id)
+      
+      if (updateError) {
+        console.error('Update error:', updateError)
+        throw updateError
+      }
     } else {
       // Create new record
-      await supabase
+      const insertData = {
+        menu_id: menuId,
+        date: today,
+        page_views: 1,
+        unique_visitors: 1,
+        unique_visitors_ids: [visitorId],
+      }
+      
+      console.log('Creating new record with:', insertData)
+      
+      const { error: insertError } = await supabase
         .from('menu_analytics')
-        .insert({
-          menu_id: menuId,
-          date: today,
-          page_views: 1,
-          unique_visitors: 1,
-          unique_visitors_ids: [visitorId],
-        })
+        .insert(insertData)
+      
+      if (insertError) {
+        console.error('Insert error:', insertError)
+        throw insertError
+      }
     }
   },
 

@@ -1,42 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { analyticsOperations } from '@/lib/analytics-server'
-
-export const runtime = 'edge'
+import { platformMetrics } from '@/lib/platform-metrics'
 
 /**
- * Track menu view
- * POST /api/analytics/track
- * 
- * Body: { menuId: string, visitorId: string, timestamp: string }
+ * Track menu view endpoint
+ * Accepts cookieless analytics data and stores it aggregated by date
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { menuId, visitorId } = body
-    
-    // Validate input
-    if (!menuId || typeof menuId !== 'string') {
+    const { menuId, visitorId, timestamp } = body
+
+    // Validate required fields
+    if (!menuId || !visitorId) {
       return NextResponse.json(
-        { success: false, error: 'Invalid menuId' },
+        { error: 'Missing required fields: menuId, visitorId' },
         { status: 400 }
       )
     }
-    
-    if (!visitorId || typeof visitorId !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'Invalid visitorId' },
-        { status: 400 }
-      )
-    }
-    
-    // Record the view
+
+    // Record the menu view
     await analyticsOperations.recordMenuView(menuId, visitorId)
-    
+
+    // Track platform-level metrics (non-blocking)
+    platformMetrics.trackTotalMenuViews(1)
+
+    console.log(`Analytics tracked: menuId=${menuId}, visitorId=${visitorId}`)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Analytics tracking error:', error)
     
-    // Return success even on error to not break user experience
+    // Return success even on error to prevent breaking user experience
     // Analytics failures should be silent
     return NextResponse.json({ success: true })
   }

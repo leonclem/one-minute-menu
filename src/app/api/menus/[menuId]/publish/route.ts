@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuOperations, DatabaseError } from '@/lib/database'
+import { platformMetrics } from '@/lib/platform-metrics'
 
 // POST /api/menus/[menuId]/publish - Publish menu (creates version)
 export async function POST(
@@ -16,6 +17,9 @@ export async function POST(
     }
     // Publish will internally validate payment disclaimer when payment info exists
     const menu = await menuOperations.publishMenu(params.menuId, user.id)
+    
+    // Track platform metrics (non-blocking)
+    platformMetrics.trackMenuPublication()
     
     return NextResponse.json({
       success: true,
