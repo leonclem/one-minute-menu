@@ -15,6 +15,7 @@ export interface PlanLimits {
   menuItems: number
   ocrJobs: number
   monthlyUploads: number
+  aiImageGenerations: number
 }
 
 // Plan configurations
@@ -24,18 +25,21 @@ export const PLAN_CONFIGS: Record<User['plan'], PlanLimits> = {
     menuItems: 20,
     ocrJobs: 5,
     monthlyUploads: 10,
+    aiImageGenerations: 10,
   },
   premium: {
     menus: 10,
     menuItems: 500,
     ocrJobs: 50,
     monthlyUploads: 100,
+    aiImageGenerations: 100,
   },
   enterprise: {
     menus: -1, // unlimited
     menuItems: -1,
     ocrJobs: -1,
     monthlyUploads: -1,
+    aiImageGenerations: 1000,
   },
 }
 
@@ -83,6 +87,12 @@ export interface MenuItem {
   category?: string
   order: number
   confidence?: number // OCR confidence score
+  
+  // AI Image Generation fields
+  aiImageId?: string
+  customImageUrl?: string
+  imageSource: 'none' | 'ai' | 'custom'
+  generationParams?: ImageGenerationParams
 }
 
 export interface MenuTheme {
@@ -375,6 +385,119 @@ export interface AppError {
 export interface ValidationError extends AppError {
   field: string
   value: any
+}
+
+// AI Image Generation Types
+
+export interface ImageGenerationParams {
+  style?: 'rustic' | 'modern' | 'elegant' | 'casual'
+  presentation?: 'white_plate' | 'wooden_board' | 'overhead' | 'closeup'
+  lighting?: 'warm' | 'natural' | 'studio'
+  aspectRatio?: '1:1' | '16:9' | '9:16'
+  negativePrompt?: string
+  customPromptAdditions?: string
+}
+
+export interface GeneratedImage {
+  id: string
+  menuItemId: string
+  generationJobId?: string
+  originalUrl: string
+  thumbnailUrl: string
+  mobileUrl: string
+  desktopUrl: string
+  webpUrl?: string
+  prompt: string
+  negativePrompt?: string
+  aspectRatio: string
+  width?: number
+  height?: number
+  fileSize?: number
+  selected: boolean
+  metadata?: Record<string, any>
+  createdAt: Date
+}
+
+export interface ImageGenerationJob {
+  id: string
+  userId: string
+  menuItemId: string
+  status: 'queued' | 'processing' | 'completed' | 'failed'
+  prompt: string
+  negativePrompt?: string
+  apiParams: NanoBananaParams
+  numberOfVariations: number
+  resultCount: number
+  errorMessage?: string
+  errorCode?: string
+  processingTime?: number
+  estimatedCost?: number
+  retryCount: number
+  createdAt: Date
+  startedAt?: Date
+  completedAt?: Date
+}
+
+export interface NanoBananaParams {
+  prompt: string
+  negative_prompt?: string
+  aspect_ratio?: string
+  number_of_images?: number
+  safety_filter_level?: 'block_none' | 'block_some' | 'block_most'
+  person_generation?: 'allow' | 'dont_allow'
+}
+
+export interface GenerationQuota {
+  id: string
+  userId: string
+  plan: 'free' | 'premium' | 'enterprise'
+  monthlyLimit: number
+  currentUsage: number
+  resetDate: Date
+  lastGenerationAt?: Date
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface GenerationAnalytics {
+  id: string
+  userId: string
+  date: Date
+  successfulGenerations: number
+  failedGenerations: number
+  totalVariations: number
+  estimatedCost: number
+  avgProcessingTime?: number
+  metadata?: Record<string, any>
+  createdAt: Date
+}
+
+export interface ImageGenerationRequest {
+  userId: string
+  menuItemId: string
+  itemName: string
+  itemDescription?: string
+  generationNotes?: string
+  styleParams: ImageGenerationParams
+  numberOfVariations?: number
+}
+
+export interface QuotaStatus {
+  userId: string
+  plan: 'free' | 'premium' | 'enterprise'
+  limit: number
+  used: number
+  remaining: number
+  resetDate: Date
+  warningThreshold: number
+  needsUpgrade: boolean
+}
+
+export interface GenerationError {
+  code: string
+  message: string
+  suggestions?: string[]
+  retryable: boolean
 }
 
 // Utility Types
