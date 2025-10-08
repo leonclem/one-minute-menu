@@ -94,8 +94,8 @@ export class NanoBananaClient {
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.NANO_BANANA_API_KEY || ''
-    // Use env-provided base URL when available (test expects this)
-    this.baseUrl = process.env.NANO_BANANA_BASE_URL || 'https://api.nanobanana.com/v1'
+    // Default to Gemini image generation endpoint; allow override via env
+    this.baseUrl = process.env.NANO_BANANA_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent'
     
     if (!this.apiKey) {
       throw new Error('Nano Banana API key is required')
@@ -134,23 +134,44 @@ export class NanoBananaClient {
     try {
       console.log('🎨 [Nano Banana] Generating image with prompt:', requestParams.prompt.substring(0, 100))
       
-      // Build the request body expected by Nano Banana API
-      const requestBody: any = {
-        prompt: requestParams.prompt,
-        negative_prompt: requestParams.negative_prompt,
-        aspect_ratio: requestParams.aspect_ratio,
-        number_of_images: requestParams.number_of_images,
-        safety_filter_level: requestParams.safety_filter_level,
-        person_generation: requestParams.person_generation
+      // Translate our simplified params into Gemini generateContent request
+      const candidateCount = Math.min(Math.max(requestParams.number_of_images || 1, 1), 4)
+
+      let promptText = requestParams.prompt
+      if (requestParams.negative_prompt) {
+        promptText += `\nExclude: ${requestParams.negative_prompt}`
+      }
+      if (requestParams.aspect_ratio) {
+        promptText += `\nAspect ratio: ${requestParams.aspect_ratio}`
+      }
+      if (requestParams.person_generation === 'dont_allow') {
+        promptText += `\nNo people in the image.`
+      }
+      if (requestParams.safety_filter_level) {
+        promptText += `\nContent safety: ${requestParams.safety_filter_level}`
       }
 
+      const requestBody: any = {
+        contents: [{
+          role: 'user',
+          parts: [{ text: `Generate an image of: ${promptText}` }]
+        }],
+        generationConfig: {
+          responseModalities: ['image'],
+          candidateCount
+        }
+      }
+
+      // Build URL with API key as query param per Gemini requirements
+      const url = new URL(this.baseUrl)
+      url.searchParams.set('key', this.apiKey)
+
       // Make the API request
-      const apiResponse = await fetchJsonWithRetry<NanoBananaResponse>(
-        `${this.baseUrl}/generate`,
+      const apiResponse = await fetchJsonWithRetry<any>(
+        url.toString(),
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
             'User-Agent': 'OneMinuteMenu/1.0'
           },
@@ -164,14 +185,20 @@ export class NanoBananaClient {
         }
       )
 
-      // Use API response directly (tests mock this shape)
-      const response = apiResponse
-
-      if (!response.success) {
-        throw this.createErrorFromResponse(response)
+      // Parse Gemini response → base64 images array
+      const images: string[] = []
+      const candidates = apiResponse?.candidates || []
+      for (const cand of candidates) {
+        const parts = cand?.content?.parts || []
+        for (const part of parts) {
+          const inline = part?.inlineData
+          if (inline?.data) {
+            images.push(inline.data)
+          }
+        }
       }
 
-      if (!response.images || response.images.length === 0) {
+      if (images.length === 0) {
         throw new NanoBananaError(
           'No images returned from API',
           'NO_IMAGES_RETURNED'
@@ -179,12 +206,12 @@ export class NanoBananaClient {
       }
 
       return {
-        images: response.images,
+        images,
         metadata: {
-          processingTime: response.metadata?.processing_time_ms || 0,
-          modelVersion: response.metadata?.model_version || 'unknown',
-          safetyFilterApplied: response.metadata?.safety_filter_applied,
-          filterReason: response.metadata?.filter_reason
+          processingTime: apiResponse?.metadata?.processing_time_ms || 0,
+          modelVersion: apiResponse?.metadata?.model_version || 'gemini-2.5-flash-image',
+          safetyFilterApplied: apiResponse?.metadata?.safety_filter_applied,
+          filterReason: apiResponse?.metadata?.filter_reason
         }
       }
     } catch (error) {
@@ -201,28 +228,11 @@ export class NanoBananaClient {
    * This returns estimated values based on typical quotas
    */
   async checkRateLimit(): Promise<NanoBananaRateLimitInfo> {
-    try {
-      const response = await fetchJsonWithRetry<{ rate_limit: NanoBananaRateLimitInfo }>(
-        `${this.baseUrl}/rate-limit`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`
-          }
-        },
-        {
-          retries: 2,
-          timeoutMs: 5000
-        }
-      )
-      return response.rate_limit
-    } catch (_) {
-      // Fallback defaults
-      return {
-        remaining: 100,
-        reset_time: Date.now() + 3600000,
-        limit: 100
-      }
+    // Gemini API doesn't expose a simple rate-limit endpoint; return defaults
+    return {
+      remaining: 100,
+      reset_time: Date.now() + 3600000,
+      limit: 100
     }
   }
 
