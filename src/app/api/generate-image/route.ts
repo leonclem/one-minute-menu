@@ -75,6 +75,80 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       )
     }
+
+    // Normalize menu item ID to UUID to satisfy relational tables
+    const isUuid = (val: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(val)
+    let normalizedMenuItemId = body.menuItemId
+    if (!isUuid(body.menuItemId)) {
+      try {
+        // Generate a UUID and update this item in menu JSON
+        const newUuid = (globalThis as any).crypto?.randomUUID ? crypto.randomUUID() : `${Date.now().toString(16)}-0000-4000-8000-${Math.random().toString(16).slice(2, 14)}`
+        const updatedItems = items.map((it: any) => it.id === body.menuItemId ? { ...it, id: newUuid } : it)
+        const { error: updateErr } = await supabase
+          .from('menus')
+          .update({
+            menu_data: { ...menuRow.menu_data, items: updatedItems },
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', body.menuId)
+          .eq('user_id', user.id)
+        if (updateErr) {
+          console.error('❌ [Generate Image] Failed to normalize item id:', updateErr)
+          return NextResponse.json(
+            { error: 'Failed to normalize item identifier' },
+            { status: 500 }
+          )
+        }
+        normalizedMenuItemId = newUuid
+        // Note: triggers (if installed) will sync JSON to menu_items with the UUID id
+      } catch (normErr) {
+        console.error('❌ [Generate Image] Normalization error:', normErr)
+        return NextResponse.json(
+          { error: 'Failed to prepare image generation' },
+          { status: 500 }
+        )
+      }
+    }
+
+    // Ensure a corresponding menu_items row exists (in case sync triggers weren't installed)
+    try {
+      const { data: existingMenuItem } = await supabase
+        .from('menu_items')
+        .select('id')
+        .eq('id', normalizedMenuItemId)
+        .maybeSingle()
+      if (!existingMenuItem) {
+        const orderIndex = typeof (menuItem.order) === 'number' ? menuItem.order : (items.findIndex((it: any) => it.id === normalizedMenuItemId) >= 0 ? items.findIndex((it: any) => it.id === normalizedMenuItemId) : 0)
+        const { error: insertMiErr } = await supabase
+          .from('menu_items')
+          .insert({
+            id: normalizedMenuItemId,
+            menu_id: body.menuId,
+            name: menuItem.name || 'Unnamed Item',
+            description: menuItem.description || null,
+            price: typeof menuItem.price === 'number' ? menuItem.price : 0,
+            category: menuItem.category || null,
+            available: typeof menuItem.available === 'boolean' ? menuItem.available : true,
+            order_index: orderIndex,
+            image_source: menuItem.imageSource || 'none',
+            custom_image_url: menuItem.customImageUrl || null,
+          })
+        if (insertMiErr) {
+          console.error('❌ [Generate Image] Failed to ensure menu_items row:', insertMiErr)
+          // Not fatal if FK checks are relaxed, but in our schema this is required
+          return NextResponse.json(
+            { error: 'Failed to prepare menu item for generation' },
+            { status: 500 }
+          )
+        }
+      }
+    } catch (ensureErr) {
+      console.error('❌ [Generate Image] Error ensuring menu_items row:', ensureErr)
+      return NextResponse.json(
+        { error: 'Failed to prepare menu item' },
+        { status: 500 }
+      )
+    }
     
     // Enforce per-item daily regeneration limit (5 attempts per item per day)
     const startOfToday = new Date()
@@ -83,7 +157,7 @@ export async function POST(request: NextRequest) {
       .from('image_generation_jobs')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
-      .eq('menu_item_id', body.menuItemId)
+      .eq('menu_item_id', normalizedMenuItemId)
       .gte('created_at', startOfToday.toISOString())
 
     if (attemptsError) {
@@ -125,7 +199,7 @@ export async function POST(request: NextRequest) {
     // Construct generation request
     const generationRequest: ImageGenerationRequest = {
       userId: user.id,
-      menuItemId: body.menuItemId,
+      menuItemId: normalizedMenuItemId,
       itemName: menuItem.name,
       itemDescription: menuItem.description,
       generationNotes: body.generationNotes,
@@ -166,7 +240,7 @@ export async function POST(request: NextRequest) {
       .from('image_generation_jobs')
       .insert({
         user_id: user.id,
-        menu_item_id: body.menuItemId,
+        menu_item_id: normalizedMenuItemId,
         status: 'processing',
         prompt: promptResult.prompt,
         negative_prompt: promptResult.negativePrompt,

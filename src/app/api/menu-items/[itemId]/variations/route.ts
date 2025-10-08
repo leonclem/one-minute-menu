@@ -26,6 +26,21 @@ export async function GET(
       )
     }
     
+    // If non-UUID id is provided (older JSON short id), return empty set gracefully
+    const isUuid = (val: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(val)
+    if (!isUuid(itemId)) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          menuItemId: itemId,
+          menuItemName: undefined,
+          totalVariations: 0,
+          selectedImageId: null,
+          variations: [] as GeneratedImage[]
+        }
+      })
+    }
+
     // Verify user owns the menu item
     const { data: menuItem, error: itemError } = await supabase
       .from('menu_items')
