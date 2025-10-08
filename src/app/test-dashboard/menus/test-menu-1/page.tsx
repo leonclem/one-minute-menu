@@ -67,6 +67,7 @@ export default function TestMenuEditor() {
       ...newItem,
       id: Date.now().toString(),
       order: menu.items.length,
+      imageSource: newItem.imageSource || 'none',
     }
     
     setMenu(prev => ({

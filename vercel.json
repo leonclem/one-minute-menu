@@ -13,6 +13,11 @@
       "maxDuration": 60
     }
   },
+  "git": {
+    "deploymentEnabled": {
+      "main": false
+    }
+  },
   "headers": [
     {
       "source": "/u/(.*)",

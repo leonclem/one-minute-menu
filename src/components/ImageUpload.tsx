@@ -52,8 +52,9 @@ export default function ImageUpload({
         quality: 0.8,
         stripExif: true,
         autoRotate: true,
-        autoDeskew: true,
-        autoCrop: true
+        // Deskew/crop are disabled for preview to avoid rotation-induced borders
+        autoDeskew: false,
+        autoCrop: false
       })
 
       // Create preview
@@ -165,7 +166,21 @@ export default function ImageUpload({
     return (
       <Card className={className}>
         <CardContent className="p-6">
-          <div className="text-center">
+          <div className="relative text-center">
+            {/* Close button */}
+            {onCancel && (
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="absolute right-2 top-2 h-8 w-8 rounded hover:bg-gray-100 text-gray-500"
+                aria-label="Close"
+                title="Close"
+              >
+                <svg className="mx-auto h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               Preview Your Menu Photo
             </h3>
@@ -192,14 +207,14 @@ export default function ImageUpload({
                 onClick={() => handleRotate(3)}
                 disabled={processing}
               >
-                Rotate Left
+                Rotate left
               </Button>
               <Button
                 variant="outline"
                 onClick={() => handleRotate(1)}
                 disabled={processing}
               >
-                Rotate Right
+                Rotate right
               </Button>
             </div>
 
@@ -210,14 +225,14 @@ export default function ImageUpload({
                 onClick={handleRetake}
                 disabled={processing}
               >
-                Retake Photo
+                Use a different photo
               </Button>
               <Button
                 variant="primary"
                 onClick={handleConfirm}
                 disabled={processing}
               >
-                Use This Photo
+                Use this photo
               </Button>
             </div>
           </div>

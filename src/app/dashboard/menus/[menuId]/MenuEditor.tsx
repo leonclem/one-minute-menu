@@ -12,6 +12,8 @@ import { validateMenuItem } from '@/lib/validation'
 import VersionHistory from '@/components/VersionHistory'
 import ImageUpload from '@/components/ImageUpload'
 import MenuAnalyticsDashboard from '@/components/MenuAnalyticsDashboard'
+import AIImageGeneration from '@/components/AIImageGeneration'
+import AddPhotoDropdown from '@/components/AddPhotoDropdown'
 import type { Menu, MenuItem, MenuItemFormData } from '@/types'
 
 interface MenuEditorProps {
@@ -90,6 +92,9 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [editingMenuName, setEditingMenuName] = useState<boolean>(false)
   const [menuNameDraft, setMenuNameDraft] = useState<string>(initialMenu.name)
   const migratedCategoriesRef = useRef<boolean>(false)
+  const [showAIGeneration, setShowAIGeneration] = useState<string | null>(null) // menuItemId
+  const [showItemImageUpload, setShowItemImageUpload] = useState<string | null>(null) // menuItemId
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const router = useRouter()
   // Load available templates once
   useEffect(() => {
@@ -650,6 +655,87 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
     } finally {
       setUploadingImage(false)
+    }
+  }
+
+  // Handle AI image generation for menu items
+  const handleAIImageGenerated = async (itemId: string, imageUrl: string) => {
+    try {
+      // Update the menu item with the new AI image
+      const success = await handleUpdateItem(itemId, {
+        customImageUrl: imageUrl,
+        imageSource: 'ai'
+      })
+      
+      if (success) {
+        setShowAIGeneration(null)
+        showToast({
+          type: 'success',
+          title: 'Photo added',
+          description: 'AI-generated image has been added to your menu item.',
+        })
+      }
+    } catch (error) {
+      console.error('Error updating item with AI image:', error)
+      showToast({
+        type: 'error',
+        title: 'Update failed',
+        description: 'Please try again.',
+      })
+    }
+  }
+
+  // Handle custom image upload for menu items
+  const handleItemImageUpload = async (itemId: string, file: File) => {
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+
+      const response = await fetch(`/api/menu-items/${itemId}/image`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        if (result.code === 'PLAN_LIMIT_EXCEEDED') {
+          showToast({
+            type: 'info',
+            title: 'Plan limit reached',
+            description: result.error || 'Monthly upload limit reached.',
+          })
+        } else {
+          showToast({
+            type: 'error',
+            title: 'Upload failed',
+            description: result.error || 'Please try again.',
+          })
+        }
+        return
+      }
+
+      // Update the menu item with the new custom image
+      const success = await handleUpdateItem(itemId, {
+        customImageUrl: result.data.imageUrl,
+        imageSource: 'custom'
+      })
+
+      if (success) {
+        setShowItemImageUpload(null)
+        showToast({
+          type: 'success',
+          title: 'Photo uploaded',
+          description: 'Custom image has been added to your menu item.',
+        })
+      }
+    } catch (error) {
+      console.error('Error uploading item image:', error)
+      showToast({
+        type: 'error',
+        title: 'Network error',
+        description: 'Please try again.',
+      })
     }
   }
 
@@ -1302,6 +1388,28 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
             </div>
           )}
 
+          {/* AI Image Generation Modal */}
+          {showAIGeneration && (
+            <AIImageGeneration
+              menuItem={optimisticMenu.items.find(item => item.id === showAIGeneration)!}
+              menuId={menu.id}
+              onImageGenerated={(imageUrl) => handleAIImageGenerated(showAIGeneration, imageUrl)}
+              onCancel={() => setShowAIGeneration(null)}
+            />
+          )}
+
+          {/* Item Image Upload Modal */}
+          {showItemImageUpload && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="w-full max-w-2xl">
+                <ImageUpload
+                  onImageSelected={(file) => handleItemImageUpload(showItemImageUpload, file)}
+                  onCancel={() => setShowItemImageUpload(null)}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Add Item Form */}
           {showAddForm && (
             <div ref={addItemFormRef}>
@@ -1507,6 +1615,24 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                               )}
                             </div>
                             
+                            {/* Item Image Display */}
+                            {item.customImageUrl && (
+                              <div className="mt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewImageUrl(item.customImageUrl!)}
+                                  className="block rounded border focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-zoom-in"
+                                  aria-label={`View larger image for ${item.name}`}
+                                  title="View larger"
+                                >
+                                  <img
+                                    src={item.customImageUrl}
+                                    alt={item.name}
+                                    className="w-16 h-16 object-cover rounded"
+                                  />
+                                </button>
+                              </div>
+                            )}
                           </div>
                           <div className="shrink-0 text-sm font-semibold text-primary-600 min-w-[64px] text-right">
                             {editingField?.id === item.id && editingField.field === 'price' ? (
@@ -1550,6 +1676,45 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
 
                           {/* Condensed action bar */}
                           <div className="ml-1 flex shrink-0 items-center gap-1">
+                            {/* Add Photo Dropdown */}
+                            {!item.customImageUrl && (
+                              <div className="mr-1">
+                                <AddPhotoDropdown
+                                  onUploadPhoto={() => setShowItemImageUpload(item.id)}
+                                  onCreatePhoto={() => setShowAIGeneration(item.id)}
+                                  disabled={loading !== null}
+                                />
+                              </div>
+                            )}
+                            
+                            {/* Remove Photo Button (if image exists) */}
+                            {item.customImageUrl && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const success = await handleUpdateItem(item.id, {
+                                    // Use empty string so it is transmitted in JSON and clears the value
+                                    customImageUrl: '',
+                                    imageSource: 'none'
+                                  })
+                                  if (success) {
+                                    showToast({
+                                      type: 'success',
+                                      title: 'Photo removed',
+                                      description: 'Image has been removed from the menu item.',
+                                    })
+                                  }
+                                }}
+                                disabled={loading === item.id}
+                                className="h-8 w-8 min-h-0 rounded hover:bg-secondary-100 text-red-500 hover:text-red-700 disabled:opacity-50 mr-1"
+                                title="Remove photo"
+                                aria-label="Remove photo"
+                              >
+                                <svg className="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => handleMoveItem(item.id, 'up')}
@@ -1929,6 +2094,30 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
           action?.()
         }}
       />
+
+      {/* Image Preview Modal */}
+      {previewImageUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4" onClick={() => setPreviewImageUrl(null)}>
+          <div className="relative max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setPreviewImageUrl(null)}
+              className="absolute right-2 top-2 h-9 w-9 rounded hover:bg-black/30 text-white"
+              aria-label="Close"
+              title="Close"
+            >
+              <svg className="mx-auto h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <img
+              src={previewImageUrl}
+              alt="Menu item"
+              className="max-h-[80vh] w-full object-contain rounded-lg shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

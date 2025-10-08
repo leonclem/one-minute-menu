@@ -102,11 +102,11 @@ export async function processImage(
           return
         }
 
-        // Set canvas size based on orientation and draw oriented/scaled image
+        // Set canvas size based on orientation
         canvas.width = rotated ? drawHeight : drawWidth
         canvas.height = rotated ? drawWidth : drawHeight
-        applyExifOrientationTransform(ctx, orientation, drawWidth, drawHeight)
-        ctx.drawImage(img, 0, 0, drawWidth, drawHeight)
+        applyExifOrientationTransform(ctx!, orientation, drawWidth, drawHeight)
+        ctx!.drawImage(img, 0, 0, drawWidth, drawHeight)
 
         // Optional: deskew and crop on the oriented image
         let workCanvas: HTMLCanvasElement = canvas

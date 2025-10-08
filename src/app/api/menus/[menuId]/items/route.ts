@@ -29,7 +29,13 @@ export async function POST(
       )
     }
     
-    const menu = await menuItemOperations.addItem(params.menuId, user.id, body)
+    // Set default imageSource if not provided
+    const itemData = {
+      ...body,
+      imageSource: body.imageSource || 'none' as const
+    }
+    
+    const menu = await menuItemOperations.addItem(params.menuId, user.id, itemData)
     
     return NextResponse.json({
       success: true,

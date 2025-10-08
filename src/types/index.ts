@@ -187,12 +187,7 @@ export interface OCRResult {
   }
 }
 
-export interface QuotaStatus {
-  remaining: number
-  resetDate: Date
-  planLimit: number
-  upgradeRequired: boolean
-}
+
 
 // Public Menu Types
 
@@ -333,6 +328,12 @@ export interface MenuItemFormData {
   price: number
   category?: string
   available: boolean
+  
+  // AI Image Generation fields (optional for form data)
+  aiImageId?: string
+  customImageUrl?: string
+  imageSource?: 'none' | 'ai' | 'custom'
+  generationParams?: ImageGenerationParams
 }
 
 export interface CreateMenuFormData {

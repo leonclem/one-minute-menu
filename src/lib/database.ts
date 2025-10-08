@@ -38,6 +38,7 @@ export const userOperations = {
         menuItems: typeof dbLimits?.items === 'number' ? dbLimits.items : defaults.menuItems,
         ocrJobs: typeof dbLimits?.ocr_jobs === 'number' ? dbLimits.ocr_jobs : defaults.ocrJobs,
         monthlyUploads: typeof dbLimits?.monthly_uploads === 'number' ? dbLimits.monthly_uploads : defaults.monthlyUploads,
+        aiImageGenerations: typeof dbLimits?.ai_image_generations === 'number' ? dbLimits.ai_image_generations : defaults.aiImageGenerations,
       }
     }
 
@@ -63,6 +64,7 @@ export const userOperations = {
         items: updates.limits.menuItems,
         ocr_jobs: updates.limits.ocrJobs,
         monthly_uploads: updates.limits.monthlyUploads,
+        ai_image_generations: updates.limits.aiImageGenerations,
       }
     }
     if (updates.location !== undefined) updateData.location = updates.location
@@ -86,6 +88,7 @@ export const userOperations = {
         menuItems: typeof dbLimits?.items === 'number' ? dbLimits.items : defaults.menuItems,
         ocrJobs: typeof dbLimits?.ocr_jobs === 'number' ? dbLimits.ocr_jobs : defaults.ocrJobs,
         monthlyUploads: typeof dbLimits?.monthly_uploads === 'number' ? dbLimits.monthly_uploads : defaults.monthlyUploads,
+        aiImageGenerations: typeof dbLimits?.ai_image_generations === 'number' ? dbLimits.ai_image_generations : defaults.aiImageGenerations,
       }
     }
 
@@ -138,6 +141,20 @@ export const userOperations = {
           .eq('user_id', userId)
           .gte('created_at', startMonth.toISOString())
         current = uploadCount || 0
+        break
+
+      case 'aiImageGenerations':
+        const startOfCurrentMonth = new Date()
+        startOfCurrentMonth.setDate(1)
+        startOfCurrentMonth.setHours(0, 0, 0, 0)
+
+        const { count: generationCount } = await createServerSupabaseClient()
+          .from('image_generation_jobs')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('status', 'completed')
+          .gte('created_at', startOfCurrentMonth.toISOString())
+        current = generationCount || 0
         break
     }
     
