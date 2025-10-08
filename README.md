@@ -45,9 +45,19 @@ npm install
 
 3. Set up environment variables:
 ```bash
-cp .env.local.example .env.local
+# If .env.local.example exists
+# cp .env.local.example .env.local
+
+# Otherwise, use the provided env.example
+cp env.example .env.local
 # Edit .env.local with your credentials
 ```
+
+### Security: API keys and rotation
+
+- Never commit real API keys. Use `.env.local` locally and Vercel/Supabase project env vars in cloud.
+- If a key is exposed, rotate it immediately in Google Cloud Console and add key restrictions (HTTP referrers, IPs, and API scopes).
+- You can run `npm run scan:secrets` to catch obvious secrets before committing.
 
 4. Run the development server:
 ```bash

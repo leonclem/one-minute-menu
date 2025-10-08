@@ -3,9 +3,11 @@
 
 const https = require('https');
 
-const API_KEY = process.env.NANO_BANANA_API_KEY || 'AIzaSyAPJA9phQV5HfmJscg_jII63cLYB3rBwkE';
-
-console.log('🔑 API Key:', API_KEY.substring(0, 10) + '...');
+const API_KEY = process.env.NANO_BANANA_API_KEY;
+if (!API_KEY) {
+  console.log('ℹ️  Skipping: NANO_BANANA_API_KEY not set.');
+  process.exit(0);
+}
 
 // Try the exact format from the documentation
 const requestBody = {

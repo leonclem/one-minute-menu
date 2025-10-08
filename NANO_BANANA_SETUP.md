@@ -69,10 +69,11 @@ https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:g
 
 ## API Key Setup
 
-Your API key is already configured in `.env.local`:
+Create `.env.local` and add:
 ```
-NANO_BANANA_API_KEY=AIzaSyAPJA9phQV5HfmJscg_jII63cLYB3rBwkE
+NANO_BANANA_API_KEY=your_google_api_key_here
 ```
+Never commit real API keys. Use `.env.local.example` with placeholders for sharing.
 
 ## Current Issue: Quota Exceeded
 
