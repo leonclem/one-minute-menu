@@ -26,7 +26,6 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
   const [advancedParams, setAdvancedParams] = useState<Partial<ImageGenerationParams>>({
     negativePrompt: '',
     customPromptAdditions: '',
-    aspectRatio: '1:1',
     lighting: 'natural',
     presentation: 'white_plate',
   })
@@ -54,7 +53,6 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
         style: selectedStyle as any,
         presentation: advancedParams.presentation || 'white_plate',
         lighting: advancedParams.lighting || 'natural',
-        aspectRatio: advancedParams.aspectRatio || '1:1',
         negativePrompt: advancedParams.negativePrompt || '',
         customPromptAdditions: advancedParams.customPromptAdditions || '',
       }
@@ -136,14 +134,6 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
                   <input type="text" value={advancedParams.customPromptAdditions || ''} onChange={(e) => setAdvancedParams(prev => ({ ...prev, customPromptAdditions: e.target.value }))} placeholder="e.g., garnished with herbs, served in a bowl" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={running} />
                 </div>
                 <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Aspect ratio</label>
-                    <select className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm" value={advancedParams.aspectRatio || '1:1'} onChange={(e) => setAdvancedParams(prev => ({ ...prev, aspectRatio: e.target.value as any }))} disabled={running}>
-                      <option value="1:1">1:1</option>
-                      <option value="16:9">16:9</option>
-                      <option value="9:16">9:16</option>
-                    </select>
-                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Lighting</label>
                     <select className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm" value={advancedParams.lighting || 'natural'} onChange={(e) => setAdvancedParams(prev => ({ ...prev, lighting: e.target.value as any }))} disabled={running}>

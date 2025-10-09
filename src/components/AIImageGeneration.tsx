@@ -267,6 +267,8 @@ export default function AIImageGeneration({
                 
                 {showAdvanced && (
                   <div className="mt-3 space-y-4 p-4 bg-gray-50 rounded-lg">
+                    {/* Aspect ratio removed until API reliably honors it */}
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Exclude from image (negative prompt)
@@ -354,11 +356,11 @@ export default function AIImageGeneration({
               </div>
 
               {generatedImages.map((image) => (
-                <div key={image.id} className="border rounded-lg overflow-hidden">
+                <div key={image.id} className="border rounded-lg overflow-hidden bg-gray-50">
                   <img
                     src={image.originalUrl}
                     alt={`Generated image for ${menuItem.name}`}
-                    className="w-full h-64 object-cover"
+                    className="w-full h-auto object-contain"
                   />
                   <div className="p-4 flex gap-3">
                     <Button
@@ -393,11 +395,11 @@ export default function AIImageGeneration({
                   <h4 className="text-sm font-medium text-gray-900 mb-3">Previous images</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {previousImages.map((image) => (
-                      <div key={image.id} className="border rounded-lg overflow-hidden">
+                      <div key={image.id} className="border rounded-lg overflow-hidden bg-gray-50">
                         <img
                           src={image.thumbnailUrl || image.originalUrl}
                           alt={`Previous generated for ${menuItem.name}`}
-                          className="w-full h-40 object-cover"
+                          className="w-full h-auto object-contain"
                         />
                         <div className="p-3">
                           <Button

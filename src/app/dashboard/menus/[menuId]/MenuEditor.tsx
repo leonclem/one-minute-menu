@@ -13,6 +13,7 @@ import VersionHistory from '@/components/VersionHistory'
 import ImageUpload from '@/components/ImageUpload'
 import MenuAnalyticsDashboard from '@/components/MenuAnalyticsDashboard'
 import AIImageGeneration from '@/components/AIImageGeneration'
+import ImageVariationsManager from '@/components/ImageVariationsManager'
 import BatchAIImageGeneration from '@/components/BatchAIImageGeneration'
 import AddPhotoDropdown from '@/components/AddPhotoDropdown'
 import type { Menu, MenuItem, MenuItemFormData } from '@/types'
@@ -98,6 +99,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
   const [showBatchGeneration, setShowBatchGeneration] = useState(false)
+  const [showVariationsManagerFor, setShowVariationsManagerFor] = useState<string | null>(null)
   const router = useRouter()
   // Load available templates once
   useEffect(() => {
@@ -1444,6 +1446,15 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
             </div>
           )}
 
+          {/* Image Variations Manager */}
+          {showVariationsManagerFor && (
+            <ImageVariationsManager
+              itemId={showVariationsManagerFor}
+              itemName={optimisticMenu.items.find(i => i.id === showVariationsManagerFor)?.name}
+              onClose={() => setShowVariationsManagerFor(null)}
+            />
+          )}
+
           {/* Add Item Form */}
           {showAddForm && (
             <div ref={addItemFormRef}>
@@ -1751,6 +1762,17 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
 
                           {/* Condensed action bar */}
                           <div className="ml-1 flex shrink-0 items-center gap-1">
+                            {/* Manage Photos */}
+                            <button
+                              type="button"
+                              onClick={() => setShowVariationsManagerFor(item.id)}
+                              disabled={loading !== null}
+                              className="h-8 px-2 min-h-0 rounded hover:bg-secondary-100 text-secondary-600 hover:text-secondary-800 disabled:opacity-50"
+                              title="Manage photos"
+                              aria-label="Manage photos"
+                            >
+                              Manage Photos
+                            </button>
                             {/* Add Photo Dropdown */}
                             {!item.customImageUrl && (
                               <div className="mr-1">

@@ -394,7 +394,7 @@ export interface ImageGenerationParams {
   style?: 'rustic' | 'modern' | 'elegant' | 'casual'
   presentation?: 'white_plate' | 'wooden_board' | 'overhead' | 'closeup'
   lighting?: 'warm' | 'natural' | 'studio'
-  aspectRatio?: '1:1' | '16:9' | '9:16'
+  aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
   negativePrompt?: string
   customPromptAdditions?: string
 }
