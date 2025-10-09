@@ -2,6 +2,7 @@ import { Metadata, Viewport } from 'next'
 import { menuOperations } from '@/lib/database'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { cn, formatCurrency } from '@/lib/utils'
+import PublicMenuImage from '@/components/PublicMenuImage'
 import CopyOrderNote from '@/components/CopyOrderNote'
 import MenuViewTracker from '@/components/MenuViewTracker'
 
@@ -91,6 +92,8 @@ export default async function PublicMenuPage({ params, searchParams }: PageProps
   const unavailableItems = menu.items.filter(i => !i.available)
   const payment = menu.paymentInfo
 
+  const isWebp = (url?: string) => !!url && /\.webp($|\?)/i.test(url)
+
   return (
     <main
       className="mx-auto min-h-screen w-full max-w-screen-sm p-4"
@@ -116,11 +119,19 @@ export default async function PublicMenuPage({ params, searchParams }: PageProps
           {availableItems.map(item => (
             <li key={item.id} className={cn('rounded-lg border p-3', 'flex items-start justify-between gap-3')}
                 style={{ borderColor: colors.secondary }}>
-              <div className="min-w-0">
-                <p className="truncate text-base font-medium" style={{ color: colors.text }}>{item.name}</p>
-                {item.description ? (
-                  <p className="mt-1 text-sm" style={{ color: colors.secondary }}>{item.description}</p>
-                ) : null}
+              <div className="flex items-start gap-3 min-w-0">
+                {/* Image (AI or custom), lazy-loaded, responsive */}
+                {(item.imageSource === 'ai' || item.imageSource === 'custom') && (
+                  <div className="shrink-0">
+                    <PublicMenuImage url={item.customImageUrl!} alt={item.name} size="md" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-base font-medium" style={{ color: colors.text }}>{item.name}</p>
+                  {item.description ? (
+                    <p className="mt-1 text-sm" style={{ color: colors.secondary }}>{item.description}</p>
+                  ) : null}
+                </div>
               </div>
               <div className="shrink-0 text-base font-semibold" style={{ color: colors.primary }}>
                 {formatCurrency(item.price)}
@@ -175,11 +186,18 @@ export default async function PublicMenuPage({ params, searchParams }: PageProps
             {unavailableItems.map(item => (
               <li key={item.id} className="rounded-md border p-3 opacity-60" style={{ borderColor: colors.secondary }}>
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-base font-medium">{item.name}</p>
-                    {item.description ? (
-                      <p className="mt-1 text-sm">{item.description}</p>
-                    ) : null}
+                  <div className="flex items-start gap-3 min-w-0">
+                    {(item.imageSource === 'ai' || item.imageSource === 'custom') && (
+                      <div className="shrink-0">
+                        <PublicMenuImage url={item.customImageUrl!} alt={item.name} size="sm" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-medium">{item.name}</p>
+                      {item.description ? (
+                        <p className="mt-1 text-sm">{item.description}</p>
+                      ) : null}
+                    </div>
                   </div>
                   <span className="shrink-0 text-xs font-semibold" style={{ color: colors.secondary }}>Out of stock</span>
                 </div>
