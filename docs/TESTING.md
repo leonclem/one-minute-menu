@@ -387,6 +387,45 @@ npm run test:all
    })
    ```
 
+## Testing With Premium Plan Limits (dev/test only)
+
+Use this when you hit the free-plan menu limit during manual testing. This changes only a single test user in your Supabase project and is reversible.
+
+Notes
+- **Why this is safe**: the app derives limits from the user’s `plan` unless `plan_limits` JSON overrides them. Setting `plan_limits` to NULL ensures premium defaults apply without leaving stale overrides.
+- **Scope**: affects only the user you target by email. No `.env` or code changes required.
+
+Upgrade a test user to premium
+```sql
+-- Supabase Studio → SQL Editor
+UPDATE profiles p
+SET plan = 'premium',
+    plan_limits = NULL
+FROM auth.users u
+WHERE p.id = u.id
+  AND u.email = 'your-test-email@example.com';
+
+-- Verify
+SELECT u.email, p.plan, p.plan_limits
+FROM profiles p
+JOIN auth.users u ON u.id = p.id
+WHERE u.email = 'your-test-email@example.com';
+```
+
+Revert to free plan
+```sql
+UPDATE profiles p
+SET plan = 'free',
+    plan_limits = NULL
+FROM auth.users u
+WHERE p.id = u.id
+  AND u.email = 'your-test-email@example.com';
+```
+
+Tips
+- Consider using a dedicated premium test account so free-plan E2E scenarios remain unaffected.
+- If you created a test user via `scripts/create-test-user.sql`, you can run the upgrade SQL above against that email.
+
 ## Resources
 
 - [Jest Documentation](https://jestjs.io/docs/getting-started)
