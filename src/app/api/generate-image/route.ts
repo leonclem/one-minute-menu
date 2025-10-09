@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getNanoBananaClient, NanoBananaError } from '@/lib/nano-banana'
 import { quotaOperations } from '@/lib/quota-management'
+import { analyticsOperations } from '@/lib/analytics-server'
 import { getPromptConstructionService } from '@/lib/prompt-construction'
 import { imageProcessingService } from '@/lib/image-processing'
 import { DatabaseError } from '@/lib/database'
@@ -314,6 +315,25 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', jobRow.id)
 
+    // Record generation analytics (best-effort)
+    try {
+      await analyticsOperations.recordGenerationSuccess(
+        user.id,
+        genResult.images.length,
+        costEstimate.estimatedTotal,
+        processingTime,
+        {
+          aspect_ratio: apiParams.aspect_ratio,
+          number_of_images: apiParams.number_of_images,
+          menu_item_id: normalizedMenuItemId,
+        }
+      )
+      // Check cost thresholds for alerts
+      await analyticsOperations.checkGenerationCostThresholds()
+    } catch (e) {
+      console.warn('Failed to record generation analytics', e)
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -366,9 +386,34 @@ export async function POST(request: NextRequest) {
         error.code === 'SERVICE_UNAVAILABLE' ? 503 :
         400
       console.warn('⚠️ [Generate Image] Upstream error mapped:', { status, ...payload })
+      // Best-effort failure analytics
+      try {
+        const supabase = createServerSupabaseClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          await analyticsOperations.recordGenerationFailure(user.id, {
+            code: error.code,
+            filter_reason: error.filterReason,
+          })
+          await analyticsOperations.checkGenerationCostThresholds()
+        }
+      } catch (e) {
+        console.warn('Failed to record failure analytics', e)
+      }
       return NextResponse.json(payload, { status })
     }
 
+    // Unknown error path - record failure analytics (best-effort)
+    try {
+      const supabase = createServerSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await analyticsOperations.recordGenerationFailure(user.id, { code: 'UNKNOWN' })
+        await analyticsOperations.checkGenerationCostThresholds()
+      }
+    } catch (e) {
+      console.warn('Failed to record failure analytics (unknown error)', e)
+    }
     return NextResponse.json(
       {
         error: 'Internal server error',

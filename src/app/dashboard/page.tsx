@@ -127,10 +127,10 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Quota Usage Dashboard */}
+          {/* AI Image Generation (Summary) */}
           <div>
             <h2 className="mb-4 text-xl font-semibold text-secondary-900">AI Image Generation</h2>
-            <QuotaUsageDashboard />
+            <QuotaUsageDashboard variant="summary" />
           </div>
 
           {/* Menus Section */}

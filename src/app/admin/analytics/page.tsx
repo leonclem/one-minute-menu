@@ -24,6 +24,9 @@ export default async function AdminAnalyticsPage() {
   
   // Fetch platform analytics
   const platformData = await analyticsOperations.getPlatformAnalytics(30)
+
+  // Fetch generation analytics (admin view)
+  const generationAdmin = await analyticsOperations.getGenerationAnalyticsAdmin(30)
   
   // Group metrics by type
   const metricsByType = platformData.reduce((acc, metric) => {
@@ -139,6 +142,93 @@ export default async function AdminAnalyticsPage() {
               </CardContent>
             </Card>
           ))}
+
+          {/* Generation Analytics Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>AI Image Generation - Last 30 Days</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+                <div>
+                  <div className="text-xs text-secondary-600 mb-1">Total Generations</div>
+                  <div className="text-2xl font-bold text-secondary-900">{generationAdmin.totals.totalGenerations}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-secondary-600 mb-1">Success Rate</div>
+                  <div className="text-2xl font-bold text-secondary-900">{Math.round(generationAdmin.totals.successRate * 100)}%</div>
+                </div>
+                <div>
+                  <div className="text-xs text-secondary-600 mb-1">Total Variations</div>
+                  <div className="text-2xl font-bold text-secondary-900">{generationAdmin.totals.totalVariations}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-secondary-600 mb-1">Estimated Cost (USD)</div>
+                  <div className="text-2xl font-bold text-secondary-900">${generationAdmin.totals.estimatedCost.toFixed(2)}</div>
+                </div>
+              </div>
+
+              {generationAdmin.totals.avgProcessingTime && (
+                <p className="text-sm text-secondary-600 mb-4">Avg Processing Time: {generationAdmin.totals.avgProcessingTime} ms</p>
+              )}
+
+              {/* Optional breakdown by plan */}
+              {generationAdmin.totals.byPlan && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm mb-6">
+                    <thead>
+                      <tr className="border-b border-secondary-200">
+                        <th className="text-left py-2 px-2 font-medium text-secondary-600">Plan</th>
+                        <th className="text-right py-2 px-2 font-medium text-secondary-600">Generations</th>
+                        <th className="text-right py-2 px-2 font-medium text-secondary-600">Estimated Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(generationAdmin.totals.byPlan).map(([plan, stats]) => (
+                        <tr key={plan} className="border-b border-secondary-100">
+                          <td className="py-2 px-2 text-secondary-900 capitalize">{plan}</td>
+                          <td className="py-2 px-2 text-secondary-900 text-right">{stats.generations}</td>
+                          <td className="py-2 px-2 text-secondary-900 text-right">${stats.cost.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Raw rows table for debugging/visibility */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-secondary-200">
+                      <th className="text-left py-2 px-2 font-medium text-secondary-600">Date</th>
+                      <th className="text-right py-2 px-2 font-medium text-secondary-600">Success</th>
+                      <th className="text-right py-2 px-2 font-medium text-secondary-600">Failed</th>
+                      <th className="text-right py-2 px-2 font-medium text-secondary-600">Variations</th>
+                      <th className="text-right py-2 px-2 font-medium text-secondary-600">Cost</th>
+                      <th className="text-left py-2 px-2 font-medium text-secondary-600">Metadata</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {generationAdmin.rows.slice(-30).reverse().map((row) => (
+                      <tr key={row.id} className="border-b border-secondary-100">
+                        <td className="py-2 px-2 text-secondary-900">
+                          {new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
+                        <td className="text-right py-2 px-2 text-secondary-900">{row.successful_generations}</td>
+                        <td className="text-right py-2 px-2 text-secondary-900">{row.failed_generations}</td>
+                        <td className="text-right py-2 px-2 text-secondary-900">{row.total_variations}</td>
+                        <td className="text-right py-2 px-2 text-secondary-900">${Number(row.estimated_cost || 0).toFixed(2)}</td>
+                        <td className="py-2 px-2 text-secondary-600 text-xs">
+                          {row.metadata && Object.keys(row.metadata).length > 0 ? JSON.stringify(row.metadata) : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* No Data State */}
           {totalMetrics.length === 0 && (

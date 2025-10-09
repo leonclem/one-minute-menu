@@ -21,7 +21,7 @@ interface QuotaData {
   }
 }
 
-export default function QuotaUsageDashboard() {
+export default function QuotaUsageDashboard({ variant = 'full' as 'full' | 'summary' }: { variant?: 'full' | 'summary' }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<QuotaData | null>(null)
@@ -80,6 +80,43 @@ export default function QuotaUsageDashboard() {
   const percentUsed = quota.limit > 0 ? Math.min(100, Math.round((quota.used / quota.limit) * 100)) : 0
   const approachingLimit = quota.used >= quota.warningThreshold && quota.remaining > 0
   const exceeded = quota.remaining === 0
+
+  if (variant === 'summary') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium text-secondary-600">AI Image Generation</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-lg font-semibold text-secondary-900">{quota.used}/{quota.limit}</div>
+              <div className="text-xs text-secondary-600">Used this month</div>
+            </div>
+            <div className="w-40">
+              <div className="h-2 w-full overflow-hidden rounded bg-secondary-100">
+                <div
+                  className={`h-full ${exceeded ? 'bg-red-500' : approachingLimit ? 'bg-amber-500' : 'bg-primary-500'}`}
+                  style={{ width: `${percentUsed}%` }}
+                />
+              </div>
+              <div className="mt-1 text-right text-xs text-secondary-600">Resets {new Date(quota.resetDate).toLocaleDateString()}</div>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs">
+            {exceeded ? (
+              <span className="text-red-700">Limit reached</span>
+            ) : approachingLimit ? (
+              <span className="text-amber-700">Approaching limit</span>
+            ) : (
+              <span className="text-secondary-600">Within limit</span>
+            )}
+            <a href="/admin/analytics" className="text-primary-600 hover:text-primary-500">View details →</a>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>
