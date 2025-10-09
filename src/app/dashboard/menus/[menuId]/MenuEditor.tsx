@@ -13,6 +13,7 @@ import VersionHistory from '@/components/VersionHistory'
 import ImageUpload from '@/components/ImageUpload'
 import MenuAnalyticsDashboard from '@/components/MenuAnalyticsDashboard'
 import AIImageGeneration from '@/components/AIImageGeneration'
+import BatchAIImageGeneration from '@/components/BatchAIImageGeneration'
 import AddPhotoDropdown from '@/components/AddPhotoDropdown'
 import type { Menu, MenuItem, MenuItemFormData } from '@/types'
 
@@ -95,6 +96,8 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [showAIGeneration, setShowAIGeneration] = useState<string | null>(null) // menuItemId
   const [showItemImageUpload, setShowItemImageUpload] = useState<string | null>(null) // menuItemId
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
+  const [showBatchGeneration, setShowBatchGeneration] = useState(false)
   const router = useRouter()
   // Load available templates once
   useEffect(() => {
@@ -683,6 +686,25 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
         description: 'Please try again.',
       })
     }
+  }
+
+  const toggleSelectItem = (itemId: string, checked: boolean) => {
+    setSelectedItemIds(prev => {
+      const next = new Set(prev)
+      if (checked) next.add(itemId)
+      else next.delete(itemId)
+      return next
+    })
+  }
+
+  const toggleSelectAllVisible = (checked: boolean) => {
+    if (!checked) {
+      setSelectedItemIds(new Set())
+      return
+    }
+    const next = new Set<string>()
+    for (const it of optimisticMenu.items) next.add(it.id)
+    setSelectedItemIds(next)
   }
 
   // Handle custom image upload for menu items
@@ -1398,6 +1420,18 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
             />
           )}
 
+          {/* Batch AI Image Generation Modal */}
+          {showBatchGeneration && selectedItemIds.size > 0 && (
+            <BatchAIImageGeneration
+              menuId={menu.id}
+              items={optimisticMenu.items.filter(i => selectedItemIds.has(i.id)).map(i => ({ id: i.id, name: i.name, description: i.description }))}
+              onClose={() => setShowBatchGeneration(false)}
+              onItemImageGenerated={async (itemId, imageUrl) => {
+                await handleAIImageGenerated(itemId, imageUrl)
+              }}
+            />
+          )}
+
           {/* Item Image Upload Modal */}
           {showItemImageUpload && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1509,6 +1543,40 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
             </CardHeader>
             <CardContent id="items-panel" className={itemsOpen ? '' : 'hidden'}>
               <div className="space-y-3">
+                {optimisticMenu.items.length > 0 && (
+                  <div className="flex items-center justify-between p-2 border rounded">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all items"
+                        checked={selectedItemIds.size > 0 && selectedItemIds.size === optimisticMenu.items.length}
+                        onChange={(e) => toggleSelectAllVisible(e.target.checked)}
+                      />
+                      <span className="text-sm text-secondary-700">
+                        {selectedItemIds.size > 0 ? `${selectedItemIds.size} selected` : 'Select items'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={selectedItemIds.size === 0}
+                        onClick={() => setShowBatchGeneration(true)}
+                      >
+                        Batch Create Photos
+                      </Button>
+                      {selectedItemIds.size > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedItemIds(new Set())}
+                        >
+                          Clear Selection
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {optimisticMenu.items.length === 0 ? (
                   <Card>
                     <CardContent className="text-center py-12">
@@ -1538,6 +1606,13 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4"
+                                aria-label={`Select ${item.name}`}
+                                checked={selectedItemIds.has(item.id)}
+                                onChange={(e) => toggleSelectItem(item.id, e.target.checked)}
+                              />
                               {editingField?.id === item.id && editingField.field === 'name' ? (
                                 <input
                                   className="font-medium text-secondary-900 text-sm border border-secondary-300 rounded px-2 py-1 w-full max-w-[240px]"

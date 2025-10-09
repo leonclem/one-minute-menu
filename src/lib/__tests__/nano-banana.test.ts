@@ -31,7 +31,7 @@ describe('NanoBananaClient', () => {
     jest.clearAllMocks()
     // Set environment variable for tests
     process.env.NANO_BANANA_API_KEY = mockApiKey
-    process.env.NANO_BANANA_BASE_URL = 'https://api.test.nanobanana.com/v1'
+    process.env.NANO_BANANA_BASE_URL = 'https://api.test.nanobanana.com/v1/generateContent'
     client = new NanoBananaClient()
   })
 
@@ -65,8 +65,9 @@ describe('NanoBananaClient', () => {
 
     it('should generate image successfully', async () => {
       const mockResponse = {
-        success: true,
-        images: ['base64-encoded-image-data'],
+        candidates: [
+          { content: { parts: [{ inlineData: { data: 'base64-encoded-image-data' } }] } }
+        ],
         metadata: {
           processing_time_ms: 5000,
           model_version: 'gemini-1.0',
@@ -83,34 +84,29 @@ describe('NanoBananaClient', () => {
       expect(result.metadata.modelVersion).toBe('gemini-1.0')
       expect(result.metadata.safetyFilterApplied).toBe(false)
 
-      expect(mockFetchJsonWithRetry).toHaveBeenCalledWith(
-        'https://api.test.nanobanana.com/v1/generate',
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            'Authorization': `Bearer ${mockApiKey}`,
-            'Content-Type': 'application/json',
-            'User-Agent': 'OneMinuteMenu/1.0'
-          }),
-          body: expect.stringContaining('"prompt":"Delicious grilled salmon with quinoa"')
-        }),
-        expect.objectContaining({
-          retries: 3,
-          baseDelayMs: 1000,
-          maxDelayMs: 10000,
-          timeoutMs: 60000
+      // URL should include API key query param
+      const calledUrl = mockFetchJsonWithRetry.mock.calls[0][0] as string
+      expect(calledUrl.startsWith('https://api.test.nanobanana.com/v1/generateContent')).toBe(true)
+      expect(calledUrl).toContain(`key=${mockApiKey}`)
+
+      const calledOpts = mockFetchJsonWithRetry.mock.calls[0][1]
+      expect(calledOpts).toMatchObject({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'User-Agent': 'OneMinuteMenu/1.0'
         })
-      )
+      })
     })
 
     it('should handle multiple image variations', async () => {
       const mockResponse = {
-        success: true,
-        images: ['image1', 'image2', 'image3'],
-        metadata: {
-          processing_time_ms: 8000,
-          model_version: 'gemini-1.0'
-        }
+        candidates: [
+          { content: { parts: [{ inlineData: { data: 'image1' } }] } },
+          { content: { parts: [{ inlineData: { data: 'image2' } }] } },
+          { content: { parts: [{ inlineData: { data: 'image3' } }] } }
+        ],
+        metadata: { processing_time_ms: 8000, model_version: 'gemini-1.0' }
       }
 
       mockFetchJsonWithRetry.mockResolvedValueOnce(mockResponse)
@@ -126,8 +122,7 @@ describe('NanoBananaClient', () => {
 
     it('should apply default parameters', async () => {
       const mockResponse = {
-        success: true,
-        images: ['image'],
+        candidates: [{ content: { parts: [{ inlineData: { data: 'image' } }] } }],
         metadata: { processing_time_ms: 5000, model_version: 'gemini-1.0' }
       }
 
@@ -135,37 +130,17 @@ describe('NanoBananaClient', () => {
 
       await client.generateImage({ prompt: 'test prompt' })
 
-      expect(mockFetchJsonWithRetry).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          body: expect.stringContaining('"prompt":"test prompt"')
-        }),
-        expect.any(Object)
-      )
+      const body = mockFetchJsonWithRetry.mock.calls[0][1].body as string
+      expect(body).toContain('Generate an image of: test prompt')
     })
 
-    it('should throw error when API returns unsuccessful response', async () => {
-      const mockResponse = {
-        success: false,
-        error: {
-          code: 'CONTENT_POLICY_VIOLATION',
-          message: 'Content violates policy',
-          details: { filter_reason: 'inappropriate_content' }
-        }
-      }
+    it('should throw error when API indicates policy violation (HTTP 403)', async () => {
+      const httpError = new HttpError('Forbidden', 403)
+      mockFetchJsonWithRetry.mockRejectedValueOnce(httpError)
 
-      mockFetchJsonWithRetry.mockResolvedValueOnce(mockResponse)
-
-      try {
-        await client.generateImage(validParams)
-        fail('Expected error to be thrown')
-      } catch (error) {
-        expect(error).toBeInstanceOf(NanoBananaError)
-        const nanoBananaError = error as NanoBananaError
-        expect(nanoBananaError.code).toBe('CONTENT_POLICY_VIOLATION')
-        expect(nanoBananaError.message).toBe('Content violates policy')
-        expect(nanoBananaError.suggestions).toContain('Add more details about the dish ingredients')
-      }
+      await expect(client.generateImage(validParams)).rejects.toThrow(
+        new NanoBananaError('Content policy violation or forbidden request', 'CONTENT_POLICY_VIOLATION', 403)
+      )
     })
 
     it('should throw error when no images are returned', async () => {
@@ -292,44 +267,12 @@ describe('NanoBananaClient', () => {
   })
 
   describe('checkRateLimit', () => {
-    it('should return rate limit information', async () => {
-      const mockResponse = {
-        rate_limit: {
-          remaining: 50,
-          reset_time: Date.now() + 3600000,
-          limit: 100
-        }
-      }
-
-      mockFetchJsonWithRetry.mockResolvedValueOnce(mockResponse)
-
+    it('should return default values (Gemini has no rate-limit endpoint)', async () => {
       const result = await client.checkRateLimit()
-
-      expect(result.remaining).toBe(50)
-      expect(result.limit).toBe(100)
-      expect(mockFetchJsonWithRetry).toHaveBeenCalledWith(
-        'https://api.test.nanobanana.com/v1/rate-limit',
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            'Authorization': `Bearer ${mockApiKey}`
-          })
-        }),
-        expect.objectContaining({
-          retries: 2,
-          timeoutMs: 5000
-        })
-      )
-    })
-
-    it('should return default values when rate limit check fails', async () => {
-      mockFetchJsonWithRetry.mockRejectedValueOnce(new Error('Network error'))
-
-      const result = await client.checkRateLimit()
-
       expect(result.remaining).toBe(100)
       expect(result.limit).toBe(100)
       expect(result.reset_time).toBeGreaterThan(Date.now())
+      expect(mockFetchJsonWithRetry).not.toHaveBeenCalled()
     })
   })
 })

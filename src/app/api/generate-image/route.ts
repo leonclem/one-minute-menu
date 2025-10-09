@@ -317,6 +317,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
+        menuItemId: normalizedMenuItemId,
         images,
         prompt: promptResult.prompt,
         negativePrompt: promptResult.negativePrompt,
