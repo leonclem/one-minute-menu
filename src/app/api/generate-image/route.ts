@@ -334,7 +334,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ [Generate Image] Error:', error)
     console.error('❌ [Generate Image] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-    
+
+    // Map known DB errors
     if (error instanceof DatabaseError) {
       console.error('❌ [Generate Image] Database error:', error.code, error.message)
       if (error.code === 'QUOTA_EXCEEDED') {
@@ -343,17 +344,34 @@ export async function POST(request: NextRequest) {
           { status: 429 }
         )
       }
-      
       return NextResponse.json(
         { error: error.message, code: error.code },
         { status: 400 }
       )
     }
-    
+
+    // Map upstream generation errors with suggestions and retryability
+    if (error instanceof NanoBananaError) {
+      const payload = {
+        error: error.message,
+        code: error.code,
+        retryAfter: error.retryAfter,
+        suggestions: error.suggestions,
+      }
+      const status =
+        error.code === 'AUTHENTICATION_ERROR' ? 401 :
+        error.code === 'CONTENT_POLICY_VIOLATION' ? 403 :
+        error.code === 'RATE_LIMIT_EXCEEDED' ? 429 :
+        error.code === 'SERVICE_UNAVAILABLE' ? 503 :
+        400
+      console.warn('⚠️ [Generate Image] Upstream error mapped:', { status, ...payload })
+      return NextResponse.json(payload, { status })
+    }
+
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )

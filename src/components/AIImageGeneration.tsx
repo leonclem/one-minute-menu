@@ -35,6 +35,7 @@ export default function AIImageGeneration({
     negativePrompt: '',
     customPromptAdditions: '',
   })
+  const [lastError, setLastError] = useState<{ code?: string; message?: string; suggestions?: string[]; retryAfter?: number } | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -54,6 +55,7 @@ export default function AIImageGeneration({
 
   const handleGenerateImage = async () => {
     setGenerating(true)
+    setLastError(null)
     
     try {
       const styleParams: ImageGenerationParams = {
@@ -95,11 +97,11 @@ export default function AIImageGeneration({
             description: result.error || 'Try again tomorrow or generate for another item.',
           })
         } else {
-          showToast({
-            type: 'error',
-            title: 'Generation failed',
-            description: result.error || 'Please try again.',
-          })
+          // Store detailed error for inline display with suggestions
+          setLastError({ code: result.code, message: result.error, suggestions: result.suggestions, retryAfter: result.retryAfter })
+          const title = result.code === 'CONTENT_POLICY_VIOLATION' ? 'Content blocked' : result.code === 'RATE_LIMIT_EXCEEDED' ? 'Rate limited' : 'Generation failed'
+          const desc = result.error || 'Please try again.'
+          showToast({ type: 'error', title, description: desc })
         }
         return
       }
@@ -147,6 +149,13 @@ export default function AIImageGeneration({
         if (job.status === 'completed' && images.length > 0) {
           setGeneratedImages(images)
         } else if (job.status === 'failed') {
+          // If the job failed, display suggestions (if provided by API) and allow retry
+          const suggestions: string[] | undefined = result.data?.errorSuggestions
+          setLastError({
+            code: job.errorCode,
+            message: job.errorMessage || 'Generation failed',
+            suggestions,
+          })
           showToast({
             type: 'error',
             title: 'Generation failed',
@@ -320,6 +329,32 @@ export default function AIImageGeneration({
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
                     ) : null}
                     <p className="text-sm text-blue-800">{getStatusMessage()}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Inline error with suggestions and retry */}
+              {lastError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="text-sm text-red-800 font-medium mb-1">{lastError.message || 'Generation failed'}</div>
+                  {lastError.suggestions && lastError.suggestions.length > 0 && (
+                    <ul className="list-disc pl-5 text-sm text-red-800 space-y-1">
+                      {lastError.suggestions.map((s, idx) => (
+                        <li key={idx}>{s}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      variant="primary"
+                      onClick={handleGenerateImage}
+                      disabled={generating}
+                    >
+                      Retry Now
+                    </Button>
+                    {typeof lastError.retryAfter === 'number' && lastError.retryAfter > 0 && (
+                      <span className="text-xs text-red-700 self-center">Try again in ~{Math.ceil(lastError.retryAfter)}s</span>
+                    )}
                   </div>
                 </div>
               )}
