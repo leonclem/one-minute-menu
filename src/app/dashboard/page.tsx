@@ -5,6 +5,8 @@ import { userOperations, menuOperations } from '@/lib/database'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
 import EditableMenuTitle from './EditableMenuTitle'
 import Link from 'next/link'
+import nextDynamic from 'next/dynamic'
+const QuotaUsageDashboard = nextDynamic(() => import('@/components/QuotaUsageDashboard'), { ssr: false })
 
 export default async function DashboardPage() {
   const supabase = createServerSupabaseClient()
@@ -123,6 +125,12 @@ export default async function DashboardPage() {
                 </CardContent>
               </Card>
             </div>
+          </div>
+
+          {/* Quota Usage Dashboard */}
+          <div>
+            <h2 className="mb-4 text-xl font-semibold text-secondary-900">AI Image Generation</h2>
+            <QuotaUsageDashboard />
           </div>
 
           {/* Menus Section */}
