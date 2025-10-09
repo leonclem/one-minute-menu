@@ -357,6 +357,7 @@ export async function POST(request: NextRequest) {
         code: error.code,
         retryAfter: error.retryAfter,
         suggestions: error.suggestions,
+        filterReason: error.filterReason,
       }
       const status =
         error.code === 'AUTHENTICATION_ERROR' ? 401 :

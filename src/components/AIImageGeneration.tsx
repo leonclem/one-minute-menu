@@ -35,7 +35,7 @@ export default function AIImageGeneration({
     negativePrompt: '',
     customPromptAdditions: '',
   })
-  const [lastError, setLastError] = useState<{ code?: string; message?: string; suggestions?: string[]; retryAfter?: number } | null>(null)
+  const [lastError, setLastError] = useState<{ code?: string; message?: string; suggestions?: string[]; retryAfter?: number; filterReason?: string } | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -98,7 +98,7 @@ export default function AIImageGeneration({
           })
         } else {
           // Store detailed error for inline display with suggestions
-          setLastError({ code: result.code, message: result.error, suggestions: result.suggestions, retryAfter: result.retryAfter })
+          setLastError({ code: result.code, message: result.error, suggestions: result.suggestions, retryAfter: result.retryAfter, filterReason: result.filterReason })
           const title = result.code === 'CONTENT_POLICY_VIOLATION' ? 'Content blocked' : result.code === 'RATE_LIMIT_EXCEEDED' ? 'Rate limited' : 'Generation failed'
           const desc = result.error || 'Please try again.'
           showToast({ type: 'error', title, description: desc })
@@ -337,6 +337,9 @@ export default function AIImageGeneration({
               {lastError && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                   <div className="text-sm text-red-800 font-medium mb-1">{lastError.message || 'Generation failed'}</div>
+                  {lastError.filterReason && (
+                    <div className="text-xs text-red-700 mb-2">Reason: {lastError.filterReason}</div>
+                  )}
                   {lastError.suggestions && lastError.suggestions.length > 0 && (
                     <ul className="list-disc pl-5 text-sm text-red-800 space-y-1">
                       {lastError.suggestions.map((s, idx) => (
