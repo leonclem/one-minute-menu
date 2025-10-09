@@ -50,7 +50,8 @@ export default function PublicMenuImage({ url, alt, size = 'md' }: PublicMenuIma
   }, [isOpen])
 
   const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val))
-  const distance = (a: Touch, b: Touch) => {
+  type TouchPoint = { clientX: number; clientY: number }
+  const distance = (a: TouchPoint, b: TouchPoint) => {
     const dx = a.clientX - b.clientX
     const dy = a.clientY - b.clientY
     return Math.hypot(dx, dy)
