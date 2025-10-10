@@ -248,7 +248,7 @@ CREATE TRIGGER update_generation_quotas_updated_at
 
 -- Function to initialize quota for new users
 CREATE OR REPLACE FUNCTION initialize_generation_quota()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO generation_quotas (user_id, plan, monthly_limit, reset_date)
     VALUES (
@@ -264,7 +264,7 @@ BEGIN
     ON CONFLICT (user_id) DO NOTHING;
     RETURN NEW;
 END;
-$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger to initialize quota when user profile is created
 CREATE TRIGGER on_profile_created_init_quota
@@ -273,7 +273,7 @@ CREATE TRIGGER on_profile_created_init_quota
 
 -- Function to update quota when plan changes
 CREATE OR REPLACE FUNCTION update_generation_quota_on_plan_change()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 BEGIN
     IF OLD.plan != NEW.plan THEN
         UPDATE generation_quotas 
@@ -289,7 +289,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger to update quota when user plan changes
 CREATE TRIGGER on_plan_change_update_quota
@@ -298,7 +298,7 @@ CREATE TRIGGER on_plan_change_update_quota
 
 -- Function to reset monthly quotas (to be called by cron job)
 CREATE OR REPLACE FUNCTION reset_monthly_quotas()
-RETURNS INTEGER AS $
+RETURNS INTEGER AS $$
 BEGIN
     UPDATE generation_quotas 
     SET 
@@ -309,7 +309,7 @@ BEGIN
     
     RETURN (SELECT COUNT(*) FROM generation_quotas WHERE reset_date <= CURRENT_DATE);
 END;
-$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Enable realtime for job status updates
 ALTER PUBLICATION supabase_realtime ADD TABLE image_generation_jobs;

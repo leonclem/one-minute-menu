@@ -76,6 +76,25 @@ npm run test:all
 ```
 
 ## Test Categories
+### AI Image Generation (MVP)
+
+Preconditions
+- `NANO_BANANA_API_KEY` set in server env
+- Optional: `AI_IMAGE_GENERATION_DISABLED=true` to verify API fail-closed (503)
+- Optional: `NEXT_PUBLIC_AI_IMAGE_GENERATION_DISABLED=true` to verify UI hides "Create Photo"
+
+Flows
+- Single item generation produces selected image and stores variants
+- Regeneration enforces 5/day per item
+- Variations (2–4) return multiple images; selection marks first by default
+- Batch generation proceeds sequentially and reports per-item results
+- Quota enforcement blocks beyond plan limits and shows upgrade prompt
+- Safety/content policy blocks show actionable suggestions
+- Public menu renders responsive images (WebP with JPEG fallback)
+
+Notes
+- Prompt guidance and approval workflow are deferred (Tasks 19–20)
+
 
 ### 1. End-to-End Tests (E2E)
 

@@ -76,6 +76,22 @@ Required environment variables are documented in `.env.local`. Key services need
 - **Google Cloud**: Vision API for OCR processing (Phase 2)
 - **OpenAI**: GPT API for menu parsing (Phase 2)
 
+### AI Image Generation (Nano Banana / Gemini)
+
+Server
+- `NANO_BANANA_API_KEY` — required to enable image creation
+- `AI_IMAGE_GENERATION_DISABLED` — if `true`, backend returns 503 for create requests (kill switch)
+- Optional: `NANO_BANANA_BASE_URL` — override endpoint for testing
+
+Client
+- `NEXT_PUBLIC_AI_IMAGE_GENERATION_DISABLED` — if `true`, hides the “Create Photo” option (Upload Photo remains)
+
+Defaults (applied server-side)
+- Safety filter: `block_some`
+- Person generation: `dont_allow`
+- Aspect ratio: `1:1`
+- Variations: `1` (max 4)
+
 ## Project Structure
 
 ```

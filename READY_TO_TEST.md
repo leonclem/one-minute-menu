@@ -26,6 +26,23 @@ The Nano Banana API integration is now fully configured and working! Here's what
 
 ## How to Test
 
+### Preflight Checklist
+- Set server env `NANO_BANANA_API_KEY`
+- Leave `AI_IMAGE_GENERATION_DISABLED=false` (or unset) to allow generation
+- Optional: set `NEXT_PUBLIC_AI_IMAGE_GENERATION_DISABLED=true` to hide UI action during maintenance
+- Apply DB migrations in order:
+  - `supabase/migrations/010_ai_image_generation_schema.sql`
+  - `supabase/migrations/011_image_selection_functions.sql`
+
+### Smoke Tests
+- Single item: create photo → image appears and is selected
+- Regeneration: enforce 5/day per item
+- Variations: request 2–4 → multiple images saved
+- Batch: 3–5 items sequentially with per-item results
+- Quota: free plan blocks beyond limit with upgrade prompt
+- Safety block: returns suggestions and does not store image
+- Public menu: responsive image renders (WebP with JPEG fallback)
+
 ### Option 1: Test in Your App (Recommended)
 
 1. **Start your Next.js dev server:**

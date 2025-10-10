@@ -17,6 +17,23 @@ export async function POST(request: NextRequest) {
   console.log('🎨 [Generate Image] API called')
   
   try {
+    // Feature flag and fail-closed guard
+    const disabled = process.env.AI_IMAGE_GENERATION_DISABLED === 'true'
+    const hasApiKey = !!process.env.NANO_BANANA_API_KEY
+    if (disabled || !hasApiKey) {
+      console.warn('🛑 [Generate Image] Disabled via flag or missing API key', {
+        disabled,
+        hasApiKey
+      })
+      return NextResponse.json(
+        {
+          error: 'Image creation is temporarily unavailable',
+          code: 'FEATURE_DISABLED',
+        },
+        { status: 503 }
+      )
+    }
+
     console.log('🔧 [Generate Image] Creating Supabase client...')
     const supabase = createServerSupabaseClient()
     
