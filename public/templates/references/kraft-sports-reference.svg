@@ -1,0 +1,35 @@
+<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Kraft paper texture background -->
+  <defs>
+    <pattern id="kraft-texture" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+      <rect width="100" height="100" fill="#E8DCC8"/>
+      <circle cx="20" cy="20" r="1" fill="#D4C4A8" opacity="0.3"/>
+      <circle cx="60" cy="40" r="1.5" fill="#D4C4A8" opacity="0.2"/>
+      <circle cx="80" cy="70" r="1" fill="#D4C4A8" opacity="0.4"/>
+      <circle cx="30" cy="90" r="1" fill="#D4C4A8" opacity="0.3"/>
+    </pattern>
+  </defs>
+  
+  <!-- Base kraft paper color -->
+  <rect width="1024" height="1024" fill="url(#kraft-texture)"/>
+  
+  <!-- Subtle gradient overlay for depth -->
+  <rect width="1024" height="1024" fill="url(#gradient)" opacity="0.1"/>
+  <defs>
+    <radialGradient id="gradient">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#8B7355"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- Placeholder text -->
+  <text x="512" y="480" font-family="Arial, sans-serif" font-size="48" fill="#8B7355" text-anchor="middle" opacity="0.3">
+    KRAFT SPORTS
+  </text>
+  <text x="512" y="540" font-family="Arial, sans-serif" font-size="24" fill="#8B7355" text-anchor="middle" opacity="0.3">
+    Reference Style Image
+  </text>
+  <text x="512" y="580" font-family="Arial, sans-serif" font-size="18" fill="#8B7355" text-anchor="middle" opacity="0.2">
+    Replace with actual texture image
+  </text>
+</svg>

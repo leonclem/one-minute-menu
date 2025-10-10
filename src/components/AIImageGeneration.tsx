@@ -38,6 +38,12 @@ export default function AIImageGeneration({
   const [lastError, setLastError] = useState<{ code?: string; message?: string; suggestions?: string[]; retryAfter?: number; filterReason?: string } | null>(null)
 
   useEffect(() => {
+    // Guard against undefined menuItem.id
+    if (!menuItem?.id) {
+      console.warn('[AIImageGeneration] menuItem.id is undefined, skipping variations fetch')
+      return
+    }
+
     let isMounted = true
     ;(async () => {
       try {
@@ -51,11 +57,23 @@ export default function AIImageGeneration({
       }
     })()
     return () => { isMounted = false }
-  }, [menuItem.id])
+  }, [menuItem?.id])
 
   const handleGenerateImage = async () => {
     setGenerating(true)
     setLastError(null)
+    
+    // Guard against undefined menuItem.id
+    if (!menuItem?.id) {
+      console.error('[AIImageGeneration] Cannot generate image: menuItem.id is undefined')
+      showToast({
+        type: 'error',
+        title: 'Invalid menu item',
+        description: 'Unable to generate image. Please try again.',
+      })
+      setGenerating(false)
+      return
+    }
     
     try {
       const styleParams: ImageGenerationParams = {

@@ -1413,14 +1413,27 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
           )}
 
           {/* AI Image Generation Modal */}
-          {showAIGeneration && (
-            <AIImageGeneration
-              menuItem={optimisticMenu.items.find(item => item.id === showAIGeneration)!}
-              menuId={menu.id}
-              onImageGenerated={(imageUrl) => handleAIImageGenerated(showAIGeneration, imageUrl)}
-              onCancel={() => setShowAIGeneration(null)}
-            />
-          )}
+          {showAIGeneration && (() => {
+            const menuItem = optimisticMenu.items.find(item => item.id === showAIGeneration)
+            if (!menuItem) {
+              // Item not found - close modal and show error
+              setShowAIGeneration(null)
+              showToast({
+                type: 'error',
+                title: 'Item not found',
+                description: 'The menu item could not be found. Please try again.',
+              })
+              return null
+            }
+            return (
+              <AIImageGeneration
+                menuItem={menuItem}
+                menuId={menu.id}
+                onImageGenerated={(imageUrl) => handleAIImageGenerated(showAIGeneration, imageUrl)}
+                onCancel={() => setShowAIGeneration(null)}
+              />
+            )
+          })()}
 
           {/* Batch AI Image Generation Modal */}
           {showBatchGeneration && selectedItemIds.size > 0 && (

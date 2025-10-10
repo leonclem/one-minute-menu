@@ -26,22 +26,46 @@ export async function GET(
       )
     }
     
-    // If non-UUID id is provided (older JSON short id), return empty set gracefully
+    // Handle non-UUID item IDs by generating the tracking UUID
     const isUuid = (val: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(val)
+    
+    let trackingUuid = itemId
     if (!isUuid(itemId)) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          menuItemId: itemId,
-          menuItemName: undefined,
-          totalVariations: 0,
-          selectedImageId: null,
-          variations: [] as GeneratedImage[]
+      // Generate the same deterministic UUID that was used during image generation
+      // We need the menu ID to generate it, so we'll query for it first
+      const { data: menuData } = await supabase
+        .from('menus')
+        .select('id, menu_data')
+        .eq('user_id', user.id)
+        .single()
+      
+      if (menuData) {
+        const items = menuData.menu_data?.items || []
+        const menuItem = items.find((it: any) => it.id === itemId)
+        if (menuItem) {
+          // Generate deterministic UUID v5 from item ID
+          trackingUuid = await generateDeterministicUuid(itemId, menuData.id)
         }
-      })
+      }
+    }
+    
+    // Helper function to generate deterministic UUID v5 from a string
+    async function generateDeterministicUuid(itemId: string, menuId: string): Promise<string> {
+      const namespace = isUuid(menuId) ? menuId : '00000000-0000-0000-0000-000000000000'
+      const encoder = new TextEncoder()
+      const data = encoder.encode(namespace + itemId)
+      const hashBuffer = await crypto.subtle.digest('SHA-1', data)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      
+      // Format as UUID v5 (set version and variant bits)
+      hashArray[6] = (hashArray[6] & 0x0f) | 0x50 // Version 5
+      hashArray[8] = (hashArray[8] & 0x3f) | 0x80 // Variant
+      
+      const hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
     }
 
-    // Verify user owns the menu item
+    // Verify user owns the menu item (use trackingUuid for database query)
     const { data: menuItem, error: itemError } = await supabase
       .from('menu_items')
       .select(`
@@ -49,7 +73,7 @@ export async function GET(
         name,
         menus!inner(user_id)
       `)
-      .eq('id', itemId)
+      .eq('id', trackingUuid)
       .single()
     
     if (itemError || !menuItem) {
@@ -67,7 +91,7 @@ export async function GET(
       )
     }
     
-    // Get all generated images for this menu item
+    // Get all generated images for this menu item (use trackingUuid for database query)
     const { data: images, error: imagesError } = await supabase
       .from('ai_generated_images')
       .select(`
@@ -88,7 +112,7 @@ export async function GET(
         metadata,
         created_at
       `)
-      .eq('menu_item_id', itemId)
+      .eq('menu_item_id', trackingUuid)
       .order('created_at', { ascending: false })
     
     if (imagesError) {
@@ -99,7 +123,7 @@ export async function GET(
       )
     }
     
-    // Transform to GeneratedImage format
+    // Transform to GeneratedImage format (use original itemId, not trackingUuid)
     const variations: GeneratedImage[] = (images || []).map(image => ({
       id: image.id,
       menuItemId: itemId,

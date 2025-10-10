@@ -12,6 +12,24 @@ import type {
   MenuItem 
 } from '@/types'
 
+// Helper function to generate deterministic UUID v5 from a string
+async function generateDeterministicUuid(itemId: string, menuId: string): Promise<string> {
+  // Use a namespace UUID (we'll use the menu ID as namespace)
+  const isUuid = (val: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(val)
+  const namespace = isUuid(menuId) ? menuId : '00000000-0000-0000-0000-000000000000'
+  const encoder = new TextEncoder()
+  const data = encoder.encode(namespace + itemId)
+  const hashBuffer = await crypto.subtle.digest('SHA-1', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  
+  // Format as UUID v5 (set version and variant bits)
+  hashArray[6] = (hashArray[6] & 0x0f) | 0x50 // Version 5
+  hashArray[8] = (hashArray[8] & 0x3f) | 0x80 // Variant
+  
+  const hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
+}
+
 // POST /api/generate-image - Generate AI image for menu item
 export async function POST(request: NextRequest) {
   console.log('🎨 [Generate Image] API called')
@@ -94,53 +112,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Normalize menu item ID to UUID to satisfy relational tables
+    // Use the menu item ID as-is (no normalization)
+    // For tracking purposes (jobs, limits), we need a UUID. For non-UUID IDs, generate a deterministic UUID.
     const isUuid = (val: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(val)
-    let normalizedMenuItemId = body.menuItemId
-    if (!isUuid(body.menuItemId)) {
-      try {
-        // Generate a UUID and update this item in menu JSON
-        const newUuid = (globalThis as any).crypto?.randomUUID ? crypto.randomUUID() : `${Date.now().toString(16)}-0000-4000-8000-${Math.random().toString(16).slice(2, 14)}`
-        const updatedItems = items.map((it: any) => it.id === body.menuItemId ? { ...it, id: newUuid } : it)
-        const { error: updateErr } = await supabase
-          .from('menus')
-          .update({
-            menu_data: { ...menuRow.menu_data, items: updatedItems },
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', body.menuId)
-          .eq('user_id', user.id)
-        if (updateErr) {
-          console.error('❌ [Generate Image] Failed to normalize item id:', updateErr)
-          return NextResponse.json(
-            { error: 'Failed to normalize item identifier' },
-            { status: 500 }
-          )
-        }
-        normalizedMenuItemId = newUuid
-        // Note: triggers (if installed) will sync JSON to menu_items with the UUID id
-      } catch (normErr) {
-        console.error('❌ [Generate Image] Normalization error:', normErr)
-        return NextResponse.json(
-          { error: 'Failed to prepare image generation' },
-          { status: 500 }
-        )
-      }
-    }
+    const normalizedMenuItemId = body.menuItemId
+    
+    // Generate a tracking UUID for database tables that require UUIDs (image_generation_jobs, etc.)
+    // For actual UUIDs, use as-is. For non-UUIDs, generate a deterministic UUID v5.
+    const trackingUuid = isUuid(normalizedMenuItemId) 
+      ? normalizedMenuItemId 
+      : await generateDeterministicUuid(normalizedMenuItemId, body.menuId)
 
     // Ensure a corresponding menu_items row exists (in case sync triggers weren't installed)
+    // Note: The menu_items table has a UNIQUE constraint on (menu_id, order_index)
+    // and expects UUID for the id column. We use trackingUuid for this.
     try {
       const { data: existingMenuItem } = await supabase
         .from('menu_items')
         .select('id')
-        .eq('id', normalizedMenuItemId)
+        .eq('id', trackingUuid)
         .maybeSingle()
+        
       if (!existingMenuItem) {
-        const orderIndex = typeof (menuItem.order) === 'number' ? menuItem.order : (items.findIndex((it: any) => it.id === normalizedMenuItemId) >= 0 ? items.findIndex((it: any) => it.id === normalizedMenuItemId) : 0)
+        // Calculate order_index correctly - find the actual index in the items array
+        const itemIndex = items.findIndex((it: any) => it.id === normalizedMenuItemId)
+        const orderIndex = typeof (menuItem.order) === 'number' ? menuItem.order : (itemIndex >= 0 ? itemIndex : 0)
+        
+        // Try to insert using trackingUuid, but don't fail if there's a unique constraint violation
+        // This can happen if the menu_items table is out of sync with the JSONB
         const { error: insertMiErr } = await supabase
           .from('menu_items')
           .insert({
-            id: normalizedMenuItemId,
+            id: trackingUuid,
             menu_id: body.menuId,
             name: menuItem.name || 'Unnamed Item',
             description: menuItem.description || null,
@@ -151,13 +154,48 @@ export async function POST(request: NextRequest) {
             image_source: menuItem.imageSource || 'none',
             custom_image_url: menuItem.customImageUrl || null,
           })
+          
         if (insertMiErr) {
-          console.error('❌ [Generate Image] Failed to ensure menu_items row:', insertMiErr)
-          // Not fatal if FK checks are relaxed, but in our schema this is required
-          return NextResponse.json(
-            { error: 'Failed to prepare menu item for generation' },
-            { status: 500 }
-          )
+          // Check if it's a unique constraint violation on (menu_id, order_index)
+          if (insertMiErr.code === '23505' && insertMiErr.message?.includes('menu_items_menu_id_order_index_key')) {
+            console.warn(`⚠️ [Generate Image] menu_items table out of sync - row exists at order ${orderIndex}`)
+            // Delete the conflicting row and retry
+            await supabase
+              .from('menu_items')
+              .delete()
+              .eq('menu_id', body.menuId)
+              .eq('order_index', orderIndex)
+            
+            // Retry the insert with trackingUuid
+            const { error: retryErr } = await supabase
+              .from('menu_items')
+              .insert({
+                id: trackingUuid,
+                menu_id: body.menuId,
+                name: menuItem.name || 'Unnamed Item',
+                description: menuItem.description || null,
+                price: typeof menuItem.price === 'number' ? menuItem.price : 0,
+                category: menuItem.category || null,
+                available: typeof menuItem.available === 'boolean' ? menuItem.available : true,
+                order_index: orderIndex,
+                image_source: menuItem.imageSource || 'none',
+                custom_image_url: menuItem.customImageUrl || null,
+              })
+              
+            if (retryErr) {
+              console.error('❌ [Generate Image] Failed to insert menu_items row after retry:', retryErr)
+              return NextResponse.json(
+                { error: 'Failed to prepare menu item for generation' },
+                { status: 500 }
+              )
+            }
+          } else {
+            console.error('❌ [Generate Image] Failed to insert menu_items row:', insertMiErr)
+            return NextResponse.json(
+              { error: 'Failed to prepare menu item for generation' },
+              { status: 500 }
+            )
+          }
         }
       }
     } catch (ensureErr) {
@@ -175,7 +213,7 @@ export async function POST(request: NextRequest) {
       .from('image_generation_jobs')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
-      .eq('menu_item_id', normalizedMenuItemId)
+      .eq('menu_item_id', trackingUuid)
       .gte('created_at', startOfToday.toISOString())
 
     if (attemptsError) {
@@ -258,7 +296,7 @@ export async function POST(request: NextRequest) {
       .from('image_generation_jobs')
       .insert({
         user_id: user.id,
-        menu_item_id: normalizedMenuItemId,
+        menu_item_id: trackingUuid,
         status: 'processing',
         prompt: promptResult.prompt,
         negative_prompt: promptResult.negativePrompt,
@@ -287,7 +325,7 @@ export async function POST(request: NextRequest) {
       const processed = await imageProcessingService.processGeneratedImage(
         base64Image,
         {
-          menuItemId: generationRequest.menuItemId,
+          menuItemId: trackingUuid,
           generationJobId: jobRow.id,
           originalPrompt: promptResult.prompt,
           aspectRatio: generationRequest.styleParams.aspectRatio || '1:1',

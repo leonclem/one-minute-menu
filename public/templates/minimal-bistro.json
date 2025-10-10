@@ -1,0 +1,72 @@
+{
+  "id": "minimal-bistro",
+  "name": "Minimal Bistro",
+  "version": "1.0.0",
+  "canvas": {
+    "size": "A4",
+    "dpi": 300,
+    "cols": 1,
+    "gutter": 0,
+    "margins": {
+      "top": 80,
+      "right": 60,
+      "bottom": 80,
+      "left": 60
+    },
+    "bleed": 10
+  },
+  "layers": {
+    "background": {
+      "type": "raster",
+      "src": "/templates/references/minimal-bistro-reference.svg",
+      "color": "#FFFFFF",
+      "blend": "normal"
+    }
+  },
+  "fonts": {
+    "heading": {
+      "family": "Playfair Display",
+      "weight": 700,
+      "min": 28,
+      "max": 36,
+      "tabular": false
+    },
+    "body": {
+      "family": "Lato",
+      "weight": 400,
+      "min": 14,
+      "max": 16,
+      "tabular": false
+    },
+    "price": {
+      "family": "Lato",
+      "weight": 400,
+      "min": 14,
+      "max": 16,
+      "tabular": true
+    }
+  },
+  "textFrames": [
+    {
+      "key": "main-single",
+      "col": 1,
+      "overflow": ["wrap", "compact", "paginate", "shrink"]
+    }
+  ],
+  "imageDisplay": "thumbnail",
+  "price": {
+    "currency": "auto",
+    "decimals": 2,
+    "align": "right"
+  },
+  "limits": {
+    "nameChars": 60,
+    "descLinesWeb": 4,
+    "descLinesPrint": 3
+  },
+  "overflowPolicies": ["wrap", "compact", "paginate", "shrink"],
+  "accessibility": {
+    "minBodyPx": 14,
+    "contrastMin": 4.5
+  }
+}

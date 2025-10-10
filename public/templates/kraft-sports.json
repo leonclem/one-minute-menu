@@ -1,0 +1,77 @@
+{
+  "id": "kraft-sports",
+  "name": "Kraft Sports",
+  "version": "1.0.0",
+  "canvas": {
+    "size": "A4",
+    "dpi": 300,
+    "cols": 2,
+    "gutter": 40,
+    "margins": {
+      "top": 60,
+      "right": 50,
+      "bottom": 60,
+      "left": 50
+    },
+    "bleed": 10
+  },
+  "layers": {
+    "background": {
+      "type": "raster",
+      "src": "/templates/references/kraft-sports-reference.svg",
+      "color": "#E8DCC8",
+      "blend": "multiply"
+    }
+  },
+  "fonts": {
+    "heading": {
+      "family": "Bebas Neue",
+      "weight": 700,
+      "min": 24,
+      "max": 32,
+      "tabular": false
+    },
+    "body": {
+      "family": "Roboto",
+      "weight": 400,
+      "min": 13,
+      "max": 16,
+      "tabular": false
+    },
+    "price": {
+      "family": "Roboto",
+      "weight": 700,
+      "min": 13,
+      "max": 16,
+      "tabular": true
+    }
+  },
+  "textFrames": [
+    {
+      "key": "main-left",
+      "col": 1,
+      "overflow": ["wrap", "compact", "reflow", "paginate", "shrink"]
+    },
+    {
+      "key": "main-right",
+      "col": 2,
+      "overflow": ["wrap", "compact", "reflow", "paginate", "shrink"]
+    }
+  ],
+  "imageDisplay": "icon",
+  "price": {
+    "currency": "auto",
+    "decimals": 2,
+    "align": "right"
+  },
+  "limits": {
+    "nameChars": 50,
+    "descLinesWeb": 3,
+    "descLinesPrint": 2
+  },
+  "overflowPolicies": ["wrap", "compact", "reflow", "paginate", "shrink"],
+  "accessibility": {
+    "minBodyPx": 13,
+    "contrastMin": 4.5
+  }
+}
