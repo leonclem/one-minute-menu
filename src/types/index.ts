@@ -76,6 +76,53 @@ export interface Menu {
   auditTrail: AuditEntry[]
   createdAt: Date
   updatedAt: Date
+  
+  // Template system fields
+  templateId?: string
+  templateVersion?: string
+  backgroundUrl?: string
+  templateConfig?: TemplateConfiguration
+}
+
+/**
+ * Template configuration for a menu
+ * 
+ * Stores template-specific settings and customizations applied to a menu.
+ * This allows menus to override default template settings while maintaining
+ * the base template structure.
+ */
+export interface TemplateConfiguration {
+  /** Custom brand colors extracted from uploaded brand image */
+  customColors?: string[]
+  /** Override settings for template descriptor fields */
+  overrideSettings?: Record<string, any>
+  /** Timestamp when template was applied or background was generated */
+  generatedAt?: Date
+  /** Render metadata for reproducible exports */
+  renderMetadata?: RenderMetadata
+}
+
+/**
+ * Render metadata for reproducible exports
+ * 
+ * Stores information about how content was fitted and rendered,
+ * allowing for consistent re-exports without re-running the fit engine.
+ */
+export interface RenderMetadata {
+  /** Overflow policies that were applied during rendering */
+  appliedPolicies: string[]
+  /** Pagination points for multi-page layouts */
+  paginationPoints?: number[]
+  /** Warnings generated during rendering */
+  warnings?: string[]
+  /** Final font sizes after fit adjustments */
+  finalFontSizes?: {
+    heading: number
+    body: number
+    price: number
+  }
+  /** Number of pages in the rendered output */
+  pageCount?: number
 }
 
 export interface MenuItem {
@@ -510,3 +557,25 @@ export type DeepPartial<T> = {
 export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>
 
 export type OptionalFields<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
+
+// Template System Type Exports
+// Re-export template types from the templates module for convenience
+
+export type {
+  TemplateDescriptor,
+  TemplateMetadata,
+  CanvasConfig,
+  LayerConfig,
+  BackgroundLayer,
+  Ornament,
+  FontConfig,
+  FontSpec,
+  TextFrame,
+  OverflowPolicy,
+  PriceConfig,
+  ContentLimits,
+  ImageDisplayMode,
+  AccessibilityConfig,
+  TemplateMigration,
+  TemplateValidationError,
+} from '../lib/templates/types'

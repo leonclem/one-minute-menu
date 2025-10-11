@@ -13,6 +13,12 @@
       "maxDuration": 60
     }
   },
+  "crons": [
+    {
+      "path": "/api/background-jobs/process",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "git": {
     "deploymentEnabled": {
       "main": false

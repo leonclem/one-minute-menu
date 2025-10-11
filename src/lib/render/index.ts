@@ -11,5 +11,28 @@
  * - ImageCompositor: Composites text layers with backgrounds
  */
 
-// Placeholder - will be implemented in subsequent tasks
-export {};
+export { FitEngine } from './fit-engine';
+export type { 
+  FitResult, 
+  FitOptions, 
+  ContentMetrics 
+} from './fit-engine';
+
+export { MenuRenderer } from './renderer';
+export type {
+  RenderOptions,
+  RenderResult
+} from './renderer';
+
+export { MenuExporter, exportMenu } from './exporter';
+export type {
+  ExportOptions,
+  ExportFormat,
+  PaperSize
+} from './exporter';
+
+export { ImageCompositor, compositeImages } from './compositor';
+export type {
+  CompositeOptions,
+  CompositeResult
+} from './compositor';

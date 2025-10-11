@@ -73,7 +73,7 @@ export class TemplateRegistry {
     return templates.map(template => ({
       id: template.id,
       name: template.name,
-      preview: `/templates/previews/${template.id}.png`,
+      preview: this.getPreviewImagePath(template.id),
       description: this.getTemplateDescription(template.id)
     }));
   }
@@ -123,6 +123,19 @@ export class TemplateRegistry {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Gets the preview image path for a template
+   * Supports multiple image formats (webp, jpg, png)
+   * 
+   * @param id - Template identifier
+   * @returns Path to preview image
+   */
+  private getPreviewImagePath(id: string): string {
+    // Default to PNG format
+    // You can change this to .jpg or .webp if you prefer those formats
+    return `/templates/previews/${id}.png`;
   }
 
   /**

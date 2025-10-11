@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import type { GeneratedImage } from '@/types'
 
+// Helper function to check if a string is a valid UUID
+const isUuid = (val: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(val)
+
+// Helper function to generate deterministic UUID v5 from a string
+async function generateDeterministicUuid(itemId: string, menuId: string): Promise<string> {
+  const namespace = isUuid(menuId) ? menuId : '00000000-0000-0000-0000-000000000000'
+  const encoder = new TextEncoder()
+  const data = encoder.encode(namespace + itemId)
+  const hashBuffer = await crypto.subtle.digest('SHA-1', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  
+  // Format as UUID v5 (set version and variant bits)
+  hashArray[6] = (hashArray[6] & 0x0f) | 0x50 // Version 5
+  hashArray[8] = (hashArray[8] & 0x3f) | 0x80 // Variant
+  
+  const hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
+}
+
 // GET /api/menu-items/[itemId]/variations - Get all image variations for a menu item
 export async function GET(
   request: NextRequest,
@@ -27,45 +46,31 @@ export async function GET(
     }
     
     // Handle non-UUID item IDs by generating the tracking UUID
-    const isUuid = (val: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(val)
-    
     let trackingUuid = itemId
+    let menuIdForUuid: string | null = null
+    
     if (!isUuid(itemId)) {
-      // Generate the same deterministic UUID that was used during image generation
-      // We need the menu ID to generate it, so we'll query for it first
-      const { data: menuData } = await supabase
+      // Search through all user's menus to find the one containing this item
+      const { data: allMenus } = await supabase
         .from('menus')
         .select('id, menu_data')
         .eq('user_id', user.id)
-        .single()
       
-      if (menuData) {
-        const items = menuData.menu_data?.items || []
-        const menuItem = items.find((it: any) => it.id === itemId)
-        if (menuItem) {
-          // Generate deterministic UUID v5 from item ID
-          trackingUuid = await generateDeterministicUuid(itemId, menuData.id)
+      if (allMenus && allMenus.length > 0) {
+        for (const menu of allMenus) {
+          const items = menu.menu_data?.items || []
+          const menuItem = items.find((it: any) => it.id === itemId)
+          if (menuItem) {
+            menuIdForUuid = menu.id
+            trackingUuid = await generateDeterministicUuid(itemId, menu.id)
+            break
+          }
         }
       }
     }
-    
-    // Helper function to generate deterministic UUID v5 from a string
-    async function generateDeterministicUuid(itemId: string, menuId: string): Promise<string> {
-      const namespace = isUuid(menuId) ? menuId : '00000000-0000-0000-0000-000000000000'
-      const encoder = new TextEncoder()
-      const data = encoder.encode(namespace + itemId)
-      const hashBuffer = await crypto.subtle.digest('SHA-1', data)
-      const hashArray = Array.from(new Uint8Array(hashBuffer))
-      
-      // Format as UUID v5 (set version and variant bits)
-      hashArray[6] = (hashArray[6] & 0x0f) | 0x50 // Version 5
-      hashArray[8] = (hashArray[8] & 0x3f) | 0x80 // Variant
-      
-      const hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
-    }
 
-    // Verify user owns the menu item (use trackingUuid for database query)
+    // Try to get the menu item from menu_items table
+    // Note: This table is only populated when images are generated
     const { data: menuItem, error: itemError } = await supabase
       .from('menu_items')
       .select(`
@@ -76,11 +81,53 @@ export async function GET(
       .eq('id', trackingUuid)
       .single()
     
+    // If menu item doesn't exist in menu_items table yet, verify ownership via menus table
     if (itemError || !menuItem) {
-      return NextResponse.json(
-        { error: 'Menu item not found' },
-        { status: 404 }
-      )
+      // Search through all user's menus to find the one containing this item
+      const { data: allMenus, error: menusError } = await supabase
+        .from('menus')
+        .select('id, user_id, menu_data')
+        .eq('user_id', user.id)
+      
+      if (menusError || !allMenus || allMenus.length === 0) {
+        return NextResponse.json(
+          { error: 'No menus found' },
+          { status: 404 }
+        )
+      }
+      
+      // Find the menu containing this item
+      let foundMenu = null
+      let foundItem = null
+      
+      for (const menu of allMenus) {
+        const items = menu.menu_data?.items || []
+        const item = items.find((it: any) => it.id === itemId)
+        if (item) {
+          foundMenu = menu
+          foundItem = item
+          break
+        }
+      }
+      
+      if (!foundMenu || !foundItem) {
+        return NextResponse.json(
+          { error: 'Menu item not found' },
+          { status: 404 }
+        )
+      }
+      
+      // Item exists but no images generated yet - return empty variations
+      return NextResponse.json({
+        success: true,
+        data: {
+          menuItemId: itemId,
+          menuItemName: foundItem.name || 'Unnamed Item',
+          totalVariations: 0,
+          selectedImageId: null,
+          variations: []
+        }
+      })
     }
     
     // Verify user owns the menu

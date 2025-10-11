@@ -16,6 +16,7 @@ import AIImageGeneration from '@/components/AIImageGeneration'
 import ImageVariationsManager from '@/components/ImageVariationsManager'
 import BatchAIImageGeneration from '@/components/BatchAIImageGeneration'
 import AddPhotoDropdown from '@/components/AddPhotoDropdown'
+import { TemplateSelector } from '@/components/TemplateSelector'
 import type { Menu, MenuItem, MenuItemFormData } from '@/types'
 
 interface MenuEditorProps {
@@ -100,6 +101,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
   const [showBatchGeneration, setShowBatchGeneration] = useState(false)
   const [showVariationsManagerFor, setShowVariationsManagerFor] = useState<string | null>(null)
+  const [applyingTemplate, setApplyingTemplate] = useState(false)
   const router = useRouter()
   // Load available templates once
   useEffect(() => {
@@ -137,6 +139,37 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     }
   }
 
+  const handleTemplateSelect = async (templateId: string) => {
+    setApplyingTemplate(true)
+    try {
+      const res = await fetch(`/api/menus/${menu.id}/apply-template`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          templateId, 
+          brandColors: brandColors.length > 0 ? brandColors.slice(0, 5) : undefined 
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to apply template')
+      setMenu(data.data.menu)
+      addOptimisticUpdate(data.data.menu)
+      showToast({ 
+        type: 'success', 
+        title: 'Template applied', 
+        description: 'Your menu template has been updated.' 
+      })
+    } catch (e) {
+      showToast({ 
+        type: 'error', 
+        title: 'Template application failed', 
+        description: e instanceof Error ? e.message : 'Please try again.' 
+      })
+    } finally {
+      setApplyingTemplate(false)
+    }
+  }
+
   const handleExtractFromBrandImage = async (file: File) => {
     setExtracting(true)
     try {
@@ -159,9 +192,21 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       const deduped = dedupeSimilarColors(colors)
       setExtractedColors(deduped)
       setBrandColors(deduped)
-      // Auto-apply on extraction
-      await handleApplyBranding(deduped)
+      
+      // If a template is already selected, re-apply it with the new colors
+      if (optimisticMenu.templateId) {
+        await handleTemplateSelect(optimisticMenu.templateId)
+      } else {
+        // Otherwise, apply to the old theme system for backward compatibility
+        await handleApplyBranding(deduped)
+      }
+      
       URL.revokeObjectURL(url)
+      showToast({ 
+        type: 'success', 
+        title: 'Colors extracted', 
+        description: 'Brand colors have been extracted and applied.' 
+      })
     } catch (e) {
       showToast({ type: 'error', title: 'Extraction failed', description: 'Please try a different image.' })
     } finally {
@@ -932,35 +977,21 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       {/* Main Content */}
       <main className="container-mobile py-6">
         <div className="space-y-6">
-          {/* Branding Section */}
+          {/* Template Selection Section */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Brand Styling</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => setBrandingOpen(o => !o)} aria-expanded={brandingOpen} aria-controls="branding-panel">
+                <CardTitle>Menu Template</CardTitle>
+                <Button variant="outline" size="sm" onClick={() => setBrandingOpen(o => !o)} aria-expanded={brandingOpen} aria-controls="template-panel">
                   {brandingOpen ? 'Hide' : 'Show'}
                 </Button>
               </div>
             </CardHeader>
-            <CardContent id="branding-panel" className={brandingOpen ? '' : 'hidden'}>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium text-secondary-700">Theme</label>
-                  <select
-                    value={selectedTemplate}
-                    onChange={async (e) => {
-                      const next = e.target.value
-                      setSelectedTemplate(next)
-                      await handleApplyBranding(brandColors.length ? brandColors.slice(0, 5) : undefined, next)
-                    }}
-                    className="mt-1 block w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  >
-                    {themeTemplates.map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-end gap-2">
+            <CardContent id="template-panel" className={brandingOpen ? '' : 'hidden'}>
+              {/* Brand Image Upload */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium text-secondary-700">Brand Image</label>
                   <input
                     ref={brandFileInputRef}
                     type="file"
@@ -977,133 +1008,51 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                     variant="outline"
                     size="sm"
                     loading={extracting}
-                    disabled={extracting}
+                    disabled={extracting || applyingTemplate}
                     onClick={() => brandFileInputRef.current?.click()}
                   >
-                    {extracting ? 'Extracting…' : 'Use Brand Image'}
+                    {extracting ? 'Extracting…' : 'Upload Brand Image'}
                   </Button>
                 </div>
+                <p className="text-xs text-secondary-600">
+                  Upload your logo or brand image to extract colors that will inform your menu template styling.
+                </p>
+                
+                {/* Extracted Colors Display */}
+                {brandColors && brandColors.length > 0 && (
+                  <div className="mt-3 p-3 bg-secondary-50 rounded-md">
+                    <div className="text-xs text-secondary-700 font-medium mb-2">
+                      Extracted Brand Colors
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {brandColors.slice(0, 5).map((c, i) => (
+                        <div key={`${c}-${i}`} className="flex items-center gap-2">
+                          <div
+                            className="h-8 w-8 rounded border border-secondary-300 shadow-sm"
+                            style={{ backgroundColor: c }}
+                            title={c}
+                          />
+                          <span className="text-xs text-secondary-600">
+                            {i === 0 ? 'Primary' : i === 1 ? 'Secondary' : i === 2 ? 'Accent' : i === 3 ? 'Background' : 'Text'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              {(brandingPreview || (brandColors && brandColors.length > 0)) && (
-                <div className="mt-4 grid md:grid-cols-2 gap-4 md:gap-6 items-start">
-                  <div>
-                    {brandingPreview && (
-                      <div className="border border-secondary-200 rounded bg-white p-2 flex items-center justify-center">
-                        <img src={brandingPreview} alt="Theme preview" className="max-w-full max-h-64" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col">
-                    {brandColors && brandColors.length > 0 && (
-                      <div>
-                        <div className="text-xs text-secondary-600 mb-1">
-                          Drag or move to set roles (top to bottom): Primary, Secondary, Accent, Background, Text seed. Only first 5 are used.
-                        </div>
-                        <div className="flex flex-col gap-2 max-w-sm">
-                          {brandColors.map((c, i) => (
-                            <div key={`${c}-${i}`} className="flex items-center gap-2 p-1 border rounded w-full">
-                              <div
-                                className="h-6 w-6 rounded border border-secondary-200"
-                                style={{ backgroundColor: c }}
-                                aria-label={`Color swatch`}
-                              />
-                              <div className="text-xs text-secondary-700 flex-1">
-                                {i === 0 ? 'Primary' : i === 1 ? 'Secondary' : i === 2 ? 'Accent' : i === 3 ? 'Background' : i === 4 ? 'Text seed' : 'Extra'}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  className="h-6 w-6 min-h-0 rounded hover:bg-secondary-100 text-secondary-500 disabled:opacity-40"
-                                  onClick={() => {
-                                    if (i === 0) return
-                                    const next = [...brandColors]
-                                    const t = next[i - 1]; next[i - 1] = next[i]; next[i] = t
-                                    setBrandColors(next)
-                                    handleApplyBranding(next.slice(0, 5))
-                                  }}
-                                  disabled={i === 0}
-                                  aria-label="Move up"
-                                  title="Move up"
-                                >
-                                  ↑
-                                </button>
-                                <button
-                                  type="button"
-                                  className="h-6 w-6 min-h-0 rounded hover:bg-secondary-100 text-secondary-500 disabled:opacity-40"
-                                  onClick={() => {
-                                    if (i === brandColors.length - 1) return
-                                    const next = [...brandColors]
-                                    const t = next[i + 1]; next[i + 1] = next[i]; next[i] = t
-                                    setBrandColors(next)
-                                    handleApplyBranding(next.slice(0, 5))
-                                  }}
-                                  disabled={i === brandColors.length - 1}
-                                  aria-label="Move down"
-                                  title="Move down"
-                                >
-                                  ↓
-                                </button>
-                                <button
-                                  type="button"
-                                  className="h-6 w-6 min-h-0 rounded hover:bg-secondary-100 text-red-600"
-                                  onClick={() => {
-                                    const next = brandColors.filter((_, idx) => idx !== i)
-                                    setBrandColors(next)
-                                    handleApplyBranding(next.slice(0, 5))
-                                  }}
-                                  aria-label="Remove color"
-                                  title="Remove color"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-2 flex flex-col md:flex-row md:flex-wrap items-stretch gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full md:w-auto"
-                            onClick={() => {
-                              const next = brandColors.includes('#FFFFFF') ? brandColors : [...brandColors, '#FFFFFF']
-                              setBrandColors(next)
-                              handleApplyBranding(next.slice(0, 5))
-                            }}
-                          >
-                            Add White
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full md:w-auto"
-                            onClick={() => {
-                              const next = brandColors.includes('#111827') ? brandColors : [...brandColors, '#111827']
-                              setBrandColors(next)
-                              handleApplyBranding(next.slice(0, 5))
-                            }}
-                          >
-                            Add Black
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full md:w-auto"
-                            onClick={() => {
-                              const next = extractedColors || []
-                              setBrandColors(next)
-                              handleApplyBranding(next.slice(0, 5))
-                            }}
-                          >
-                            Reset
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              <p className="text-xs text-secondary-600 mt-2">Choose a theme or upload a brand image to auto-extract colors. We validate contrast to meet WCAG AA where possible.</p>
+
+              {/* Template Selector */}
+              <div>
+                <label className="text-sm font-medium text-secondary-700 mb-3 block">
+                  Choose Template
+                </label>
+                <TemplateSelector
+                  selectedTemplateId={optimisticMenu.templateId || 'kraft-sports'}
+                  onTemplateSelect={handleTemplateSelect}
+                  brandColors={brandColors.length > 0 ? brandColors.slice(0, 5) : undefined}
+                />
+              </div>
             </CardContent>
           </Card>
           {/* Menu Image Section */}

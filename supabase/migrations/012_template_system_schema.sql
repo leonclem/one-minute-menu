@@ -9,19 +9,22 @@
 ALTER TABLE menus ADD COLUMN IF NOT EXISTS template_id TEXT;
 ALTER TABLE menus ADD COLUMN IF NOT EXISTS template_version TEXT;
 ALTER TABLE menus ADD COLUMN IF NOT EXISTS background_url TEXT;
+ALTER TABLE menus ADD COLUMN IF NOT EXISTS template_config JSONB;
 ALTER TABLE menus ADD COLUMN IF NOT EXISTS render_metadata JSONB;
 
 -- Add indexes for template lookups
 CREATE INDEX IF NOT EXISTS idx_menus_template_id ON menus(template_id) WHERE template_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_menus_template_version ON menus(template_id, template_version) WHERE template_id IS NOT NULL;
 
--- Add GIN index for render_metadata JSONB queries
+-- Add GIN indexes for JSONB queries
+CREATE INDEX IF NOT EXISTS idx_menus_template_config_gin ON menus USING GIN (template_config) WHERE template_config IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_menus_render_metadata_gin ON menus USING GIN (render_metadata) WHERE render_metadata IS NOT NULL;
 
 -- Comments for documentation
 COMMENT ON COLUMN menus.template_id IS 'ID of the applied template (e.g., kraft-sports, minimal-bistro)';
 COMMENT ON COLUMN menus.template_version IS 'Version of the template for migration support';
 COMMENT ON COLUMN menus.background_url IS 'URL to AI-generated or fallback background image';
+COMMENT ON COLUMN menus.template_config IS 'Template configuration including custom colors and override settings';
 COMMENT ON COLUMN menus.render_metadata IS 'Applied policies, pagination points, warnings for reproducible exports';
 
 -- ============================================================================

@@ -657,6 +657,11 @@ function transformMenuFromDB(dbMenu: any): Menu {
     auditTrail: [], // Will be populated separately if needed
     createdAt: new Date(dbMenu.created_at),
     updatedAt: new Date(dbMenu.updated_at),
+    // Template system fields
+    templateId: dbMenu.template_id || undefined,
+    templateVersion: dbMenu.template_version || undefined,
+    backgroundUrl: dbMenu.background_url || undefined,
+    templateConfig: dbMenu.template_config || undefined,
   }
 }
 
