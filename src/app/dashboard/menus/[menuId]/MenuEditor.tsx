@@ -16,7 +16,9 @@ import AIImageGeneration from '@/components/AIImageGeneration'
 import ImageVariationsManager from '@/components/ImageVariationsManager'
 import BatchAIImageGeneration from '@/components/BatchAIImageGeneration'
 import AddPhotoDropdown from '@/components/AddPhotoDropdown'
+import ExtractionReview from '@/components/ExtractionReview'
 import type { Menu, MenuItem, MenuItemFormData } from '@/types'
+import type { Category, MenuItem as ExtractedMenuItem } from '@/lib/extraction/schema-stage1'
 
 interface MenuEditorProps {
   menu: Menu
@@ -63,13 +65,11 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [showImageUpload, setShowImageUpload] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
-  const [ocrJobId, setOcrJobId] = useState<string | null>(null)
-  const [ocrStatus, setOcrStatus] = useState<'idle' | 'queued' | 'processing' | 'completed' | 'failed'>('idle')
-  const [ocrError, setOcrError] = useState<string | null>(null)
-  const [ocrText, setOcrText] = useState<string | null>(null)
-  const [ocrConfidence, setOcrConfidence] = useState<number | null>(null)
-  const [parsedItems, setParsedItems] = useState<MenuItemFormData[] | null>(null)
-  const [parsing, setParsing] = useState<boolean>(false)
+  const [extractionJobId, setExtractionJobId] = useState<string | null>(null)
+  const [extractionStatus, setExtractionStatus] = useState<'idle' | 'queued' | 'processing' | 'completed' | 'failed'>('idle')
+  const [extractionError, setExtractionError] = useState<string | null>(null)
+  const [extractionResult, setExtractionResult] = useState<any | null>(null)
+  const [showExtractionReview, setShowExtractionReview] = useState(false)
   const [brandingPreview, setBrandingPreview] = useState<string | null>(null)
   const [themeTemplates, setThemeTemplates] = useState<Array<{ id: string; name: string }>>([])
   const [selectedTemplate, setSelectedTemplate] = useState<string>('modern')
@@ -246,53 +246,246 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     }
   }
 
-  // Trigger OCR extraction
+  // Trigger extraction with new vision-LLM service
   const handleExtractItems = async () => {
     try {
-      setOcrError(null)
+      setExtractionError(null)
+      setExtractionStatus('queued')
+      
+      // Submit extraction job
       const result = await fetchJsonWithRetry<{ success: boolean; data: any; error?: string; code?: string }>(
-        `/api/menus/${menu.id}/ocr?force=1`,
-        { method: 'POST' },
+        `/api/extraction/submit`,
+        { 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            menuId: menu.id,
+            imageUrl: menu.imageUrl 
+          })
+        },
         { retries: 2, baseDelayMs: 250, maxDelayMs: 1000 }
       )
-      setOcrJobId(result.data.id)
-      setOcrStatus(result.data.status)
-      pollJob(result.data.id)
+      
+      setExtractionJobId(result.data.jobId)
+      setExtractionStatus(result.data.status)
+      
+      showToast({ 
+        type: 'info', 
+        title: 'Extraction started', 
+        description: `Estimated time: ${result.data.estimatedTime || '30-60 seconds'}` 
+      })
+      
+      // Start polling for completion
+      pollExtractionJob(result.data.jobId)
     } catch (e) {
-      if (e instanceof HttpError && (e.body as any)?.code === 'PLAN_LIMIT_EXCEEDED') {
-        const b: any = e.body || {}
-        showToast({ type: 'info', title: 'Plan limit reached', description: b.error || 'Monthly OCR limit reached.' })
+      const body: any = e instanceof HttpError ? e.body : {}
+      const code = body?.code
+      
+      if (code === 'PLAN_LIMIT_EXCEEDED') {
+        showToast({ 
+          type: 'info', 
+          title: 'Plan limit reached', 
+          description: body.error || 'Monthly extraction limit reached.' 
+        })
+      } else if (code === 'RATE_LIMIT_EXCEEDED') {
+        showToast({ 
+          type: 'info', 
+          title: 'Rate limit', 
+          description: body.error || 'Please wait before trying again.' 
+        })
+      } else if (code === 'OPENAI_QUOTA_EXCEEDED') {
+        showToast({ 
+          type: 'warning', 
+          title: 'Service temporarily unavailable', 
+          description: body.userMessage || 'AI extraction service quota exceeded. You can add menu items manually.' 
+        })
+      } else if (code === 'OPENAI_RATE_LIMIT') {
+        showToast({ 
+          type: 'warning', 
+          title: 'Too many requests', 
+          description: body.userMessage || 'Please wait a few minutes and try again.' 
+        })
       } else {
-        showToast({ type: 'error', title: 'OCR failed to start', description: e instanceof Error ? e.message : 'Please try again.' })
+        showToast({ 
+          type: 'error', 
+          title: 'Extraction failed to start', 
+          description: body.userMessage || (e instanceof Error ? e.message : 'Please try again or add items manually.') 
+        })
       }
+      setExtractionStatus('failed')
     }
   }
 
-  const pollJob = async (jobId: string) => {
+  const pollExtractionJob = async (jobId: string) => {
     const poll = async () => {
       try {
         const data = await fetchJsonWithRetry<{ success: boolean; data: any; error?: string }>(
-          `/api/ocr/jobs/${jobId}`,
+          `/api/extraction/status/${jobId}`,
           { method: 'GET' },
           { retries: 2, baseDelayMs: 300, maxDelayMs: 1200 }
         )
-        setOcrStatus(data.data.status)
+        
+        setExtractionStatus(data.data.status)
+        
         if (data.data.status === 'queued' || data.data.status === 'processing') {
-          setTimeout(poll, 1500)
+          setTimeout(poll, 2000) // Poll every 2 seconds
           return
         }
+        
         if (data.data.status === 'completed') {
-          const text: string | undefined = data.data.result?.ocrText
-          if (text) setOcrText(text)
-          const conf: number | undefined = data.data.result?.confidence
-          if (typeof conf === 'number') setOcrConfidence(conf)
+          console.log('Extraction completed. Checking result structure...')
+          console.log('data.data.result:', data.data.result)
+          console.log('Has menu?', !!data.data.result?.menu)
+          console.log('Has categories?', !!data.data.result?.menu?.categories)
+          console.log('Categories length:', data.data.result?.menu?.categories?.length)
+          
+          if (data.data.result && data.data.result.menu && data.data.result.menu.categories) {
+            setExtractionResult(data.data.result)
+            setShowExtractionReview(true)
+            showToast({ 
+              type: 'success', 
+              title: 'Extraction complete', 
+              description: 'Review and save your menu items' 
+            })
+          } else {
+            // Result is missing or invalid - treat as failed
+            console.error('Extraction result validation failed:', {
+              hasResult: !!data.data.result,
+              hasMenu: !!data.data.result?.menu,
+              hasCategories: !!data.data.result?.menu?.categories,
+              result: data.data.result
+            })
+            setExtractionError('Extraction result is incomplete. Please try again.')
+            setExtractionStatus('failed')
+            showToast({ 
+              type: 'error', 
+              title: 'Extraction incomplete', 
+              description: 'The extraction result is missing. Please try uploading the image again.' 
+            })
+          }
+        }
+        
+        if (data.data.status === 'failed') {
+          setExtractionError(data.data.error || 'Extraction failed')
+          showToast({ 
+            type: 'error', 
+            title: 'Extraction failed', 
+            description: data.data.error || 'Please try again or add items manually' 
+          })
         }
       } catch (err: any) {
-        setOcrError((err?.body as any)?.error || err?.message || 'Failed to fetch job')
-        setOcrStatus('failed')
+        setExtractionError((err?.body as any)?.error || err?.message || 'Failed to fetch job status')
+        setExtractionStatus('failed')
+        showToast({ 
+          type: 'error', 
+          title: 'Status check failed', 
+          description: 'Please refresh the page' 
+        })
       }
     }
     await poll()
+  }
+
+  // Save extraction results to menu
+  const handleSaveExtraction = async (categories: Category[], resolvedItems: ExtractedMenuItem[]) => {
+    try {
+      // Convert extracted items to menu items format
+      const flattenCategories = (cats: Category[], parentCategory?: string): MenuItemFormData[] => {
+        const items: MenuItemFormData[] = []
+        
+        for (const cat of cats) {
+          const categoryName = parentCategory ? `${parentCategory} > ${cat.name}` : cat.name
+          
+          // Add items from this category
+          for (const item of cat.items) {
+            items.push({
+              name: item.name,
+              price: item.price,
+              description: item.description || '',
+              category: categoryName,
+              available: true
+            })
+          }
+          
+          // Recursively add items from subcategories
+          if (cat.subcategories && cat.subcategories.length > 0) {
+            items.push(...flattenCategories(cat.subcategories, categoryName))
+          }
+        }
+        
+        return items
+      }
+      
+      const allItems = flattenCategories(categories)
+      
+      // Add resolved uncertain items
+      for (const item of resolvedItems) {
+        allItems.push({
+          name: item.name,
+          price: item.price,
+          description: item.description || '',
+          category: 'Uncategorized',
+          available: true
+        })
+      }
+      
+      // Bulk add items to menu
+      setLoading('bulk-add')
+      let addedCount = 0
+      
+      for (const item of allItems) {
+        try {
+          const resp = await fetch(`/api/menus/${menu.id}/items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item),
+          })
+          
+          if (!resp.ok) {
+            const r = await resp.json().catch(() => ({}))
+            if (r?.code === 'PLAN_LIMIT_EXCEEDED') {
+              showToast({ 
+                type: 'info', 
+                title: 'Plan limit reached', 
+                description: `Added ${addedCount} items. ${r.error || 'Item limit reached.'}` 
+              })
+              break
+            }
+          } else {
+            addedCount++
+          }
+        } catch (e) {
+          console.error('Error adding item:', e)
+        }
+      }
+      
+      // Refresh menu data
+      const refreshed = await fetch(`/api/menus/${menu.id}`)
+      const refreshedData = await refreshed.json().catch(() => null)
+      if (refreshed.ok && refreshedData?.data) {
+        setMenu(refreshedData.data)
+        addOptimisticUpdate(refreshedData.data)
+      }
+      
+      showToast({ 
+        type: 'success', 
+        title: 'Items added', 
+        description: `Successfully added ${addedCount} items to your menu` 
+      })
+      
+      // Close extraction review
+      setShowExtractionReview(false)
+      setExtractionResult(null)
+      setExtractionStatus('idle')
+    } catch (e) {
+      showToast({ 
+        type: 'error', 
+        title: 'Save failed', 
+        description: 'Please try again' 
+      })
+    } finally {
+      setLoading(null)
+    }
   }
 
   // Update menu item
@@ -929,6 +1122,26 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
         </div>
       </header>
 
+      {/* Extraction Review Modal */}
+      {showExtractionReview && extractionResult && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+          <div className="min-h-screen px-4 py-8">
+            <div className="max-w-5xl mx-auto">
+              <ExtractionReview
+                result={extractionResult}
+                onSave={handleSaveExtraction}
+                onCancel={() => {
+                  setShowExtractionReview(false)
+                  setExtractionResult(null)
+                  setExtractionStatus('idle')
+                }}
+                loading={loading === 'bulk-add'}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="container-mobile py-6">
         <div className="space-y-6">
@@ -1156,9 +1369,9 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                       variant="primary"
                       size="sm"
                       onClick={handleExtractItems}
-                      disabled={ocrStatus === 'queued' || ocrStatus === 'processing'}
+                      disabled={extractionStatus === 'queued' || extractionStatus === 'processing'}
                     >
-                      {ocrStatus === 'queued' || ocrStatus === 'processing' ? 'Processing…' : 'Extract Items'}
+                      {extractionStatus === 'queued' || extractionStatus === 'processing' ? 'Extracting…' : 'Extract Items'}
                     </Button>
                   </div>
                   {optimisticMenu.status === 'published' && (
@@ -1191,182 +1404,44 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                       </Button>
                     </div>
                   )}
-                  {ocrError && (
-                    <p className="text-red-600 text-sm text-center">{ocrError}</p>
-                  )}
-                  {ocrText && (
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium text-secondary-700 mb-2">OCR Text (preview)</h4>
-                      <pre className="whitespace-pre-wrap text-sm bg-secondary-50 p-3 rounded-md max-h-56 overflow-auto">{ocrText}</pre>
-                      {ocrConfidence !== null && (
-                        <p className="text-xs text-secondary-600 mt-2">Confidence: {(ocrConfidence * 100).toFixed(0)}%</p>
-                      )}
-                      <div className="mt-3 flex items-center gap-3">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={async () => {
-                            if (!ocrJobId) return
-                            setParsing(true)
-                            try {
-                              const data = await fetchJsonWithRetry<{ success: boolean; data: any; error?: string }>(
-                                `/api/ocr/jobs/${ocrJobId}`,
-                                { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ useAI: true }) },
-                                { retries: 2, baseDelayMs: 250, maxDelayMs: 1000 }
-                              )
-                              const items = data?.data?.result?.extractedItems || []
-                              setParsedItems(items)
-                              showToast({ type: 'success', title: 'Items extracted', description: `${items.length} items found.` })
-                            } catch (e) {
-                              showToast({ type: 'error', title: 'Parse failed', description: 'Please try again.' })
-                            } finally {
-                              setParsing(false)
-                            }
-                          }}
-                          loading={parsing}
-                        >
-                          {parsing ? 'Parsing…' : 'Parse with AI'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={async () => {
-                            if (!ocrJobId) return
-                            setParsing(true)
-                            try {
-                              const data = await fetchJsonWithRetry<{ success: boolean; data: any; error?: string }>(
-                                `/api/ocr/jobs/${ocrJobId}`,
-                                { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ useAI: false }) },
-                                { retries: 2, baseDelayMs: 250, maxDelayMs: 1000 }
-                              )
-                              const items = data?.data?.result?.extractedItems || []
-                              setParsedItems(items)
-                              showToast({ type: 'success', title: 'Heuristic items extracted', description: `${items.length} items found.` })
-                            } catch (e) {
-                              showToast({ type: 'error', title: 'Parse failed', description: 'Please try again.' })
-                            } finally {
-                              setParsing(false)
-                            }
-                          }}
-                          disabled={parsing}
-                        >
-                          Fallback Parse
-                        </Button>
+                  {/* Extraction Status */}
+                  {extractionStatus === 'queued' && (
+                    <div className="mt-4 text-center">
+                      <div className="inline-flex items-center gap-2 text-sm text-secondary-600">
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Extraction queued...</span>
                       </div>
-                      {parsedItems && parsedItems.length > 0 && (
-                        <div className="mt-4">
-                          <h4 className="text-sm font-medium text-secondary-700 mb-2">Extracted Items ({parsedItems.length})</h4>
-                          <div className="space-y-2 max-h-64 overflow-auto">
-                            {parsedItems.map((it, idx) => (
-                              <div key={idx} className="flex items-start justify-between p-2 border rounded-md">
-                                <div className="min-w-0 pr-3">
-                                  <div className="font-medium truncate">{it.name}</div>
-                                  <div className="text-xs text-secondary-600 truncate">{it.description || ''}</div>
-                                  <div className="text-xs text-secondary-500">{it.category || 'Uncategorized'}</div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="number"
-                                    className="w-24 border rounded px-2 py-1 text-sm"
-                                    min="0"
-                                    step="0.01"
-                                    value={it.price}
-                                    onChange={(e) => {
-                                      const value = parseFloat(e.target.value) || 0
-                                      setParsedItems(prev => prev ? prev.map((p, i) => i === idx ? { ...p, price: value } : p) : prev)
-                                    }}
-                                  />
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={async () => {
-                                      const validation = validateMenuItem(it)
-                                      if (!validation.isValid) {
-                                        showToast({ type: 'error', title: 'Invalid item', description: 'Please edit before adding.' })
-                                        return
-                                      }
-                                      setLoading('add')
-                                      try {
-                                        const response = await fetch(`/api/menus/${menu.id}/items`, {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify(it),
-                                        })
-                                        const result = await response.json()
-                                        if (!response.ok) {
-                                          if (result.code === 'PLAN_LIMIT_EXCEEDED') {
-                                            showToast({ type: 'info', title: 'Plan limit reached', description: result.error || 'Item limit reached.' })
-                                          } else {
-                                            showToast({ type: 'error', title: 'Failed to add', description: result.error || 'Try again.' })
-                                          }
-                                          return
-                                        }
-                                        setMenu(result.data)
-                                        addOptimisticUpdate(result.data)
-                                      } catch (e) {
-                                        showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })
-                                      } finally {
-                                        setLoading(null)
-                                      }
-                                    }}
-                                  >
-                                    Add
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="mt-3 flex gap-2">
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={async () => {
-                                if (!parsedItems) return
-                                setLoading('bulk-add')
-                                try {
-                                  for (const it of parsedItems) {
-                                    const validation = validateMenuItem(it)
-                                    if (!validation.isValid) continue
-                                    const resp = await fetch(`/api/menus/${menu.id}/items`, {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify(it),
-                                    })
-                                    if (!resp.ok) {
-                                      const r = await resp.json().catch(() => ({}))
-                                      if (r?.code === 'PLAN_LIMIT_EXCEEDED') {
-                                        showToast({ type: 'info', title: 'Plan limit reached', description: r.error || 'Item limit reached.' })
-                                        break
-                                      }
-                                    }
-                                  }
-                                  const refreshed = await fetch(`/api/menus/${menu.id}`)
-                                  const refreshedData = await refreshed.json().catch(() => null)
-                                  if (refreshed.ok && refreshedData?.data) {
-                                    setMenu(refreshedData.data)
-                                    addOptimisticUpdate(refreshedData.data)
-                                  }
-                                  showToast({ type: 'success', title: 'Items added', description: 'Parsed items have been added.' })
-                                } catch (e) {
-                                  // ignore errors per-item
-                                } finally {
-                                  setLoading(null)
-                                }
-                              }}
-                              disabled={!parsedItems || parsedItems.length === 0 || loading === 'bulk-add'}
-                              loading={loading === 'bulk-add'}
-                            >
-                              Add All
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => setParsedItems(null)}>Clear</Button>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
-                  {ocrStatus === 'failed' && (
+                  
+                  {extractionStatus === 'processing' && (
+                    <div className="mt-4 text-center">
+                      <div className="inline-flex items-center gap-2 text-sm text-secondary-600">
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Extracting menu items with AI...</span>
+                      </div>
+                      <p className="text-xs text-secondary-500 mt-2">This usually takes 30-60 seconds</p>
+                    </div>
+                  )}
+                  
+                  {extractionError && (
+                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-800 mb-2">{extractionError}</p>
+                      <Button variant="outline" size="sm" onClick={openAddItemForm}>
+                        Enter Items Manually
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {extractionStatus === 'failed' && !extractionError && (
                     <div className="mt-3 text-center">
-                      <p className="text-sm text-secondary-600 mb-2">OCR failed. You can add items manually.</p>
+                      <p className="text-sm text-secondary-600 mb-2">Extraction failed. You can add items manually.</p>
                       <Button variant="outline" size="sm" onClick={openAddItemForm}>
                         Enter Items Manually
                       </Button>

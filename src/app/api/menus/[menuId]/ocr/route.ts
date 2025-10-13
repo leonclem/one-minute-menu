@@ -50,7 +50,7 @@ export async function POST(
     const rateLimitPerHour = Number.parseInt(process.env.OCR_RATE_LIMIT_PER_HOUR || String(planRate), 10)
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
     const rateRes = await supabase
-      .from('ocr_jobs')
+      .from('menu_extraction_jobs')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .gte('created_at', oneHourAgo.toISOString())

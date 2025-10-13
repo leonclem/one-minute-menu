@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const limit = Number.isFinite(limitParam) && limitParam > 0 && limitParam <= 100 ? limitParam : 20
 
     const { data, error, count } = await supabase
-      .from('ocr_jobs')
+      .from('menu_extraction_jobs')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })

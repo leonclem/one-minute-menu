@@ -123,7 +123,7 @@ export const userOperations = {
         startOfMonth.setHours(0, 0, 0, 0)
         
         const { count: ocrCount } = await createServerSupabaseClient()
-          .from('ocr_jobs')
+          .from('menu_extraction_jobs')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', userId)
           .gte('created_at', startOfMonth.toISOString())
@@ -772,7 +772,9 @@ export const imageOperations = {
   }
 }
 
-// OCR Job Operations
+// OCR Job Operations (Legacy - uses menu_extraction_jobs table)
+// Note: This maintains backward compatibility with existing OCR functionality
+// For new vision-LLM extraction, use JobQueueManager from @/lib/extraction/job-queue
 export const ocrOperations = {
   async enqueueJob(userId: string, imageUrl: string, options?: { force?: boolean }): Promise<OCRJob> {
     const supabase = createServerSupabaseClient()
@@ -782,7 +784,7 @@ export const ocrOperations = {
 
     // Check for existing job with same hash
     const { data: existing } = await supabase
-      .from('ocr_jobs')
+      .from('menu_extraction_jobs')
       .select('*')
       .eq('user_id', userId)
       .eq('image_hash', imageHash)
@@ -795,8 +797,15 @@ export const ocrOperations = {
     }
 
     const { data, error } = await supabase
-      .from('ocr_jobs')
-      .insert({ user_id: userId, image_url: imageUrl, image_hash: imageHash, status: 'queued' })
+      .from('menu_extraction_jobs')
+      .insert({ 
+        user_id: userId, 
+        image_url: imageUrl, 
+        image_hash: imageHash, 
+        status: 'queued',
+        schema_version: 'stage1',
+        prompt_version: 'v1.0'
+      })
       .select('*')
       .single()
 
@@ -809,7 +818,7 @@ export const ocrOperations = {
   async getJob(userId: string, jobId: string): Promise<OCRJob | null> {
     const supabase = createServerSupabaseClient()
     const { data, error } = await supabase
-      .from('ocr_jobs')
+      .from('menu_extraction_jobs')
       .select('*')
       .eq('id', jobId)
       .eq('user_id', userId)
@@ -839,7 +848,7 @@ export const ocrOperations = {
   async updateJobResult(userId: string, jobId: string, result: any): Promise<OCRJob> {
     const supabase = createServerSupabaseClient()
     const { data, error } = await supabase
-      .from('ocr_jobs')
+      .from('menu_extraction_jobs')
       .update({ result, status: 'completed', completed_at: new Date().toISOString() })
       .eq('id', jobId)
       .eq('user_id', userId)
@@ -856,7 +865,7 @@ export const ocrOperations = {
     const imageHash = await computeSha256FromUrl(imageUrl)
     
     const { data, error } = await supabase
-      .from('ocr_jobs')
+      .from('menu_extraction_jobs')
       .select('*')
       .eq('user_id', userId)
       .eq('image_hash', imageHash)
@@ -882,7 +891,7 @@ export const ocrOperations = {
     }
     
     const { data, error } = await supabase
-      .from('ocr_jobs')
+      .from('menu_extraction_jobs')
       .update({ 
         result, 
         status: 'completed', 
@@ -904,7 +913,7 @@ export const ocrOperations = {
     const supabase = createServerSupabaseClient()
     
     const { data, error } = await supabase
-      .from('ocr_jobs')
+      .from('menu_extraction_jobs')
       .update({ 
         status: 'failed', 
         error_message: errorMessage,
