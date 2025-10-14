@@ -85,6 +85,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [brandingOpen, setBrandingOpen] = useState<boolean>(true)
   const [photoOpen, setPhotoOpen] = useState<boolean>(true)
   const [itemsOpen, setItemsOpen] = useState<boolean>(true)
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
   const addItemFormRef = useRef<HTMLDivElement | null>(null)
   const [editingField, setEditingField] = useState<{
     id: string
@@ -316,9 +317,23 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     }
   }
 
-  const pollExtractionJob = async (jobId: string) => {
+  const pollExtractionJob = async (jobId: string, startedAt: number = Date.now()) => {
     const poll = async () => {
       try {
+        // If we've been polling for too long, treat as stalled
+        const MAX_WAIT_MS = 120000 // 2 minutes hard cap
+        const elapsed = Date.now() - startedAt
+        if (elapsed > MAX_WAIT_MS) {
+          setExtractionError('Extraction timed out. Try again or crop the image into sections (top/middle/bottom).')
+          setExtractionStatus('failed')
+          showToast({ 
+            type: 'warning', 
+            title: 'Extraction timed out', 
+            description: 'Try again, or crop long images into sections and extract each.' 
+          })
+          return
+        }
+
         const data = await fetchJsonWithRetry<{ success: boolean; data: any; error?: string }>(
           `/api/extraction/status/${jobId}`,
           { method: 'GET' },
@@ -366,11 +381,15 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
         }
         
         if (data.data.status === 'failed') {
-          setExtractionError(data.data.error || 'Extraction failed')
+          const raw = data.data.error || 'Extraction failed'
+          const friendly = raw.includes('parse extraction result as JSON') || raw.includes('No content in OpenAI response')
+            ? 'Extraction failed to produce valid output. Try again or crop the image into sections.'
+            : raw
+          setExtractionError(friendly)
           showToast({ 
             type: 'error', 
             title: 'Extraction failed', 
-            description: data.data.error || 'Please try again or add items manually' 
+            description: friendly 
           })
         }
       } catch (err: any) {
@@ -379,7 +398,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
         showToast({ 
           type: 'error', 
           title: 'Status check failed', 
-          description: 'Please refresh the page' 
+          description: 'Please retry extraction or refresh the page.' 
         })
       }
     }
@@ -548,6 +567,57 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     })
     return
 
+  }
+
+  // Selection helpers
+  const toggleSelectItem = (itemId: string) => {
+    setSelectedItemIds(prev => {
+      const next = new Set(prev)
+      if (next.has(itemId)) next.delete(itemId)
+      else next.add(itemId)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedItemIds(prev => {
+      if (prev.size === optimisticMenu.items.length) return new Set()
+      const all = new Set<string>()
+      for (const it of optimisticMenu.items) all.add(it.id)
+      return all
+    })
+  }
+
+  const handleDeleteSelected = () => {
+    if (selectedItemIds.size === 0) return
+    const count = selectedItemIds.size
+    setConfirmState({
+      open: true,
+      action: async () => {
+        setLoading('bulk-delete')
+        try {
+          let latest = menu
+          for (const id of Array.from(selectedItemIds)) {
+            const res = await fetch(`/api/menus/${menu.id}/items/${id}`, { method: 'DELETE' })
+            const data = await res.json()
+            if (res.ok) {
+              latest = data.data
+            }
+          }
+          setMenu(latest)
+          addOptimisticUpdate(latest)
+          setSelectedItemIds(new Set())
+          showToast({ type: 'success', title: 'Items deleted', description: `${count} item${count > 1 ? 's' : ''} removed.` })
+        } catch {
+          showToast({ type: 'error', title: 'Delete failed', description: 'Please try again.' })
+        } finally {
+          setLoading(null)
+        }
+      },
+      title: `Delete ${count} selected item${count > 1 ? 's' : ''}?`,
+      description: 'This action cannot be undone.',
+      confirmText: 'Delete Selected',
+    })
   }
 
   // Toggle item availability
@@ -1620,8 +1690,29 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
           {/* Menu Items */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <CardTitle>Menu Items</CardTitle>
+                {optimisticMenu.items.length > 0 && (
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 text-sm text-secondary-700">
+                      <input
+                        type="checkbox"
+                        checked={selectedItemIds.size === optimisticMenu.items.length && optimisticMenu.items.length > 0}
+                        onChange={toggleSelectAll}
+                      />
+                      Select all
+                    </label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDeleteSelected}
+                      disabled={selectedItemIds.size === 0 || loading !== null}
+                      className={selectedItemIds.size > 0 ? 'text-red-600 hover:text-red-700' : ''}
+                    >
+                      Delete Selected
+                    </Button>
+                  </div>
+                )}
                 <Button variant="outline" size="sm" onClick={() => setItemsOpen(o => !o)} aria-expanded={itemsOpen} aria-controls="items-panel">
                   {itemsOpen ? 'Hide' : 'Show'}
                 </Button>
@@ -1690,6 +1781,14 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                     <Card key={item.id} className={`p-0 ${!item.available ? 'opacity-60' : ''}`}>
                       <CardContent className="py-2 px-3">
                         <div className="flex items-center justify-between gap-3">
+                          <div className="shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={selectedItemIds.has(item.id)}
+                              onChange={() => toggleSelectItem(item.id)}
+                              aria-label={`Select ${item.name}`}
+                            />
+                          </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <input

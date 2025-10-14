@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { menuOperations } from '@/lib/database'
+import { menuOperations, imageOperations } from '@/lib/database'
 
 /**
  * Delete original menu photo after publishing
@@ -51,38 +51,11 @@ export async function POST(
       )
     }
     
-    // Extract the file path from the URL
-    const imageUrl = menu.imageUrl
-    const urlParts = imageUrl.split('/storage/v1/object/public/')
-    if (urlParts.length < 2) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid image URL format' },
-        { status: 400 }
-      )
-    }
+    // Use shared image operations to remove the stored file and clear the menu image URL
+    // This ensures the DB column `image_url` is updated correctly and avoids dead links
+    await imageOperations.updateMenuImage(menuId, user.id, '')
     
-    const filePath = urlParts[1]
-    
-    // Delete the file from storage
-    const { error: deleteError } = await supabase.storage
-      .from('menu-images')
-      .remove([filePath])
-    
-    if (deleteError) {
-      console.error('Error deleting image from storage:', deleteError)
-      return NextResponse.json(
-        { success: false, error: 'Failed to delete image from storage' },
-        { status: 500 }
-      )
-    }
-    
-    // Update the menu to remove the imageUrl
-    await menuOperations.updateMenu(menuId, user.id, { imageUrl: undefined })
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Original image deleted successfully',
-    })
+    return NextResponse.json({ success: true, message: 'Original image deleted successfully' })
   } catch (error) {
     console.error('Error deleting original image:', error)
     return NextResponse.json(

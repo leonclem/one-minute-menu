@@ -52,6 +52,7 @@ export default function ImageUpload({
         quality: 0.8,
         stripExif: true,
         autoRotate: true,
+
         // Deskew/crop are disabled for preview to avoid rotation-induced borders
         autoDeskew: false,
         autoCrop: false

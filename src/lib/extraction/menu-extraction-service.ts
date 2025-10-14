@@ -227,59 +227,54 @@ export class MenuExtractionService {
     // Preprocess image
     const processedImageUrl = await this.preprocessImage(imageUrl)
 
-    // Make API call with retry logic
-    const completion = await withRetry(
-      async () => {
-        try {
-          const response = await this.openai.chat.completions.create({
-            model: OPENAI_MODEL,
-            messages: [
-              {
-                role: 'system',
-                content: promptPackage.systemRole
-              },
-              {
-                role: 'user',
-                content: [
-                  {
-                    type: 'text',
-                    text: promptPackage.userPrompt
-                  },
-                  {
-                    type: 'image_url',
-                    image_url: {
-                      url: processedImageUrl,
-                      detail: 'high' // High detail for better extraction
-                    }
-                  }
-                ]
-              }
-            ],
-            temperature: promptPackage.temperature,
-            max_tokens: 4096,
-            response_format: { type: 'json_object' }
-          })
-
-          return response
-        } catch (error: any) {
-          // Convert OpenAI errors to HttpError for retry logic
-          if (error?.status) {
-            throw new HttpError(
-              error.message || 'OpenAI API error',
-              error.status,
-              error
-            )
+    // Helper to run the completion with a given detail level and prompt weight
+    const runCompletion = async (detail: 'high' | 'low', includeExamples: boolean) => {
+      const userPrompt = includeExamples ? promptPackage.userPrompt : promptPackage.userPromptNoExamples || promptPackage.userPrompt
+      return withRetry(
+        async () => {
+          try {
+            const response = await this.openai.chat.completions.create({
+              model: OPENAI_MODEL,
+              messages: [
+                { role: 'system', content: promptPackage.systemRole },
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: userPrompt },
+                    { type: 'image_url', image_url: { url: processedImageUrl, detail } }
+                  ]
+                }
+              ],
+              temperature: promptPackage.temperature,
+              max_tokens: 4096,
+              response_format: { type: 'json_object' }
+            })
+            return response
+          } catch (error: any) {
+            if (error?.status) {
+              throw new HttpError(error.message || 'OpenAI API error', error.status, error)
+            }
+            throw error
           }
-          throw error
+        },
+        {
+          retries: 3,
+          baseDelayMs: 1000,
+          maxDelayMs: 5000,
+          timeoutMs: 120000 // allow up to 120s for very tall/dense images
         }
-      },
-      {
-        retries: 3,
-        baseDelayMs: 1000,
-        maxDelayMs: 5000,
-        timeoutMs: 60000 // 60 second timeout
-      }
-    )
+      )
+    }
+
+    // First attempt: high detail with examples
+    let completion
+    try {
+      completion = await runCompletion('high', options.includeExamples ?? true)
+    } catch (primaryError) {
+      console.warn('Primary extraction attempt failed, retrying with lower detail and fewer examples...', primaryError)
+      // Fallback attempt: lower detail and omit examples to reduce token pressure
+      completion = await runCompletion('low', false)
+    }
 
     // Extract response
     const content = completion.choices[0]?.message?.content
