@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { imageProcessingService } from '@/lib/image-processing'
 
+export const runtime = 'nodejs'
+
 // DELETE /api/images/[imageId] - Delete an AI-generated image
 export async function DELETE(
   request: NextRequest,

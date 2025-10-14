@@ -246,7 +246,8 @@ export class MenuExtractionService {
                 }
               ],
               temperature: promptPackage.temperature,
-              max_tokens: 4096,
+              // Adaptive token limit: reduce for potentially large outputs
+              max_tokens: detail === 'high' && includeExamples ? 3500 : 4096,
               response_format: { type: 'json_object' }
             })
             return response
@@ -269,7 +270,10 @@ export class MenuExtractionService {
     // First attempt: high detail with examples
     let completion
     try {
-      completion = await runCompletion('high', options.includeExamples ?? true)
+      // Detect potentially huge images and disable examples to reduce prompt size
+      const largeImageHeuristic = processedImageUrl.includes('_cb=') // already fetched; heuristic can be expanded
+      const includeExamples = largeImageHeuristic ? false : (options.includeExamples ?? true)
+      completion = await runCompletion('high', includeExamples)
     } catch (primaryError) {
       console.warn('Primary extraction attempt failed, retrying with lower detail and fewer examples...', primaryError)
       // Fallback attempt: lower detail and omit examples to reduce token pressure
@@ -287,7 +291,19 @@ export class MenuExtractionService {
     try {
       rawData = JSON.parse(content)
     } catch (error) {
-      throw new Error(`Failed to parse extraction result as JSON: ${error}`)
+      // Attempt to salvage truncated JSON by trimming to the last full object
+      try {
+        const lastBrace = content.lastIndexOf('}')
+        if (lastBrace > 0) {
+          const trimmed = content.slice(0, lastBrace + 1)
+          rawData = JSON.parse(trimmed)
+          console.warn('Recovered from truncated JSON by trimming to last closing brace')
+        } else {
+          throw error
+        }
+      } catch (e2) {
+        throw new Error(`Failed to parse extraction result as JSON: ${error}`)
+      }
     }
 
     // Validate against schema
@@ -370,9 +386,18 @@ export class MenuExtractionService {
    */
   private async calculateImageHash(imageUrl: string): Promise<string> {
     try {
-      const response = await fetch(imageUrl)
+      // Cache-bust to avoid stale CDN/browser caches causing inconsistent hashes
+      const url = new URL(imageUrl)
+      url.searchParams.set('_cb', String(Date.now()))
+
+      let response = await fetch(url.toString())
       if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.statusText}`)
+        // Brief retry once in case of transient edge/cache issue
+        await new Promise(r => setTimeout(r, 200))
+        response = await fetch(url.toString())
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.statusText}`)
+        }
       }
 
       const arrayBuffer = await response.arrayBuffer()

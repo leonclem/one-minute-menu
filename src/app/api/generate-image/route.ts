@@ -12,6 +12,8 @@ import type {
   MenuItem 
 } from '@/types'
 
+export const runtime = 'nodejs'
+
 // POST /api/generate-image - Generate AI image for menu item
 export async function POST(request: NextRequest) {
   console.log('🎨 [Generate Image] API called')
@@ -136,7 +138,30 @@ export async function POST(request: NextRequest) {
         .eq('id', normalizedMenuItemId)
         .maybeSingle()
       if (!existingMenuItem) {
-        const orderIndex = typeof (menuItem.order) === 'number' ? menuItem.order : (items.findIndex((it: any) => it.id === normalizedMenuItemId) >= 0 ? items.findIndex((it: any) => it.id === normalizedMenuItemId) : 0)
+        // Determine a safe order_index that will not violate unique(menu_id, order_index)
+        // Prefer menu JSON order if valid; otherwise append after current max
+        let orderIndex = typeof (menuItem.order) === 'number' && Number.isFinite(menuItem.order)
+          ? menuItem.order
+          : (() => {
+              const idx = items.findIndex((it: any) => it.id === normalizedMenuItemId)
+              return idx >= 0 ? idx : 0
+            })()
+        // Ensure uniqueness by bumping to max+1 if this order is already taken in normalized table
+        const { data: maxOrderRow } = await supabase
+          .from('menu_items')
+          .select('order_index')
+          .eq('menu_id', body.menuId)
+          .order('order_index', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        const nextIndex = (maxOrderRow && typeof (maxOrderRow as any).order_index === 'number')
+          ? (maxOrderRow as any).order_index + 1
+          : 0
+        if (typeof orderIndex !== 'number' || orderIndex < 0) orderIndex = nextIndex
+        // If chosen order collides, append to end
+        if (maxOrderRow && typeof (maxOrderRow as any).order_index === 'number' && orderIndex <= (maxOrderRow as any).order_index) {
+          orderIndex = nextIndex
+        }
         const { error: insertMiErr } = await supabase
           .from('menu_items')
           .insert({

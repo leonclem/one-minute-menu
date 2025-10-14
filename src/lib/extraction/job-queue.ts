@@ -184,17 +184,21 @@ export class JobQueueManager {
     uncertainItems?: any[],
     superfluousText?: any[]
   ): Promise<ExtractionJob> {
+    // Ensure result has expected structure before marking completed
+    const hasCategories = !!result?.menu?.categories && Array.isArray(result.menu.categories)
+    const statusToSet = hasCategories ? 'completed' : 'processing'
+
     const { data, error } = await this.supabase
       .from('menu_extraction_jobs')
       .update({
-        status: 'completed',
+        status: statusToSet,
         result,
         processing_time: processingTime,
         token_usage: tokenUsage,
         confidence,
         uncertain_items: uncertainItems,
         superfluous_text: superfluousText,
-        completed_at: new Date().toISOString()
+        completed_at: hasCategories ? new Date().toISOString() : null
       })
       .eq('id', jobId)
       .select('*')

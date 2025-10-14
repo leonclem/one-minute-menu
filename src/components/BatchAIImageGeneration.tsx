@@ -80,7 +80,23 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
       setResults(batchResults)
       const successes = batchResults.filter(r => r.status === 'success').length
       const failures = batchResults.length - successes
-      showToast({ type: failures > 0 ? 'info' : 'success', title: 'Batch complete', description: `${successes} succeeded, ${failures} failed` })
+      
+      // Check if batch stopped due to quota exceeded
+      const quotaExceeded = batchResults.some(r => r.errorCode === 'QUOTA_EXCEEDED')
+      
+      if (quotaExceeded) {
+        showToast({ 
+          type: 'info', 
+          title: 'Monthly limit reached', 
+          description: 'Upgrade to generate more images this month.' 
+        })
+      } else {
+        showToast({ 
+          type: failures > 0 ? 'info' : 'success', 
+          title: 'Batch complete', 
+          description: `${successes} succeeded, ${failures} failed` 
+        })
+      }
     } catch (e) {
       showToast({ type: 'error', title: 'Batch failed', description: e instanceof Error ? e.message : 'Please try again.' })
     } finally {

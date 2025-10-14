@@ -98,7 +98,6 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [showAIGeneration, setShowAIGeneration] = useState<string | null>(null) // menuItemId
   const [showItemImageUpload, setShowItemImageUpload] = useState<string | null>(null) // menuItemId
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
   const [showBatchGeneration, setShowBatchGeneration] = useState(false)
   const [showVariationsManagerFor, setShowVariationsManagerFor] = useState<string | null>(null)
   const router = useRouter()
@@ -252,6 +251,44 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     try {
       setExtractionError(null)
       setExtractionStatus('queued')
+      // Heuristic: detect very large images to set user expectations
+      try {
+        const imgUrl = menu.imageUrl
+        if (imgUrl) {
+          let bytes: number | undefined
+          try {
+            const head = await fetch(imgUrl, { method: 'HEAD' })
+            const len = head.headers.get('content-length')
+            if (len) bytes = parseInt(len, 10)
+          } catch {}
+          let width: number | undefined
+          let height: number | undefined
+          try {
+            const img = new Image()
+            img.src = imgUrl
+            await new Promise((resolve, reject) => {
+              img.onload = resolve
+              img.onerror = reject
+            })
+            // @ts-ignore - naturalWidth/Height exist in browser Image
+            width = img.naturalWidth as number
+            // @ts-ignore
+            height = img.naturalHeight as number
+          } catch {}
+          const sizeLarge = typeof bytes === 'number' && bytes > 3 * 1024 * 1024 // >3MB
+          const dimsLarge = (typeof width === 'number' && width > 3500) || (typeof height === 'number' && height > 4500)
+          if (sizeLarge || dimsLarge) {
+            const parts: string[] = []
+            if (bytes) parts.push(`${(bytes / (1024 * 1024)).toFixed(1)}MB`)
+            if (width && height) parts.push(`${width}×${height}px`)
+            showToast({
+              type: 'info',
+              title: 'Large image detected',
+              description: `Processing may take up to a few minutes${parts.length ? ` (${parts.join(', ')})` : ''}.`
+            })
+          }
+        }
+      } catch {}
       
       // Submit extraction job
       const result = await fetchJsonWithRetry<{ success: boolean; data: any; error?: string; code?: string }>(
@@ -264,7 +301,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
             imageUrl: menu.imageUrl 
           })
         },
-        { retries: 2, baseDelayMs: 250, maxDelayMs: 1000 }
+        { retries: 2, baseDelayMs: 250, maxDelayMs: 1000, timeoutMs: 90000 }
       )
       
       setExtractionJobId(result.data.jobId)
@@ -273,7 +310,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       showToast({ 
         type: 'info', 
         title: 'Extraction started', 
-        description: `Estimated time: ${result.data.estimatedTime || '30-60 seconds'}` 
+        description: 'Large images may take up to 2–3 minutes. Please keep this tab open.' 
       })
       
       // Start polling for completion
@@ -296,13 +333,13 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
         })
       } else if (code === 'OPENAI_QUOTA_EXCEEDED') {
         showToast({ 
-          type: 'warning', 
+          type: 'info', 
           title: 'Service temporarily unavailable', 
           description: body.userMessage || 'AI extraction service quota exceeded. You can add menu items manually.' 
         })
       } else if (code === 'OPENAI_RATE_LIMIT') {
         showToast({ 
-          type: 'warning', 
+          type: 'info', 
           title: 'Too many requests', 
           description: body.userMessage || 'Please wait a few minutes and try again.' 
         })
@@ -321,15 +358,15 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     const poll = async () => {
       try {
         // If we've been polling for too long, treat as stalled
-        const MAX_WAIT_MS = 120000 // 2 minutes hard cap
+        const MAX_WAIT_MS = 240000 // 4 minutes hard cap for large images
         const elapsed = Date.now() - startedAt
         if (elapsed > MAX_WAIT_MS) {
           setExtractionError('Extraction timed out. Try again or crop the image into sections (top/middle/bottom).')
           setExtractionStatus('failed')
           showToast({ 
-            type: 'warning', 
-            title: 'Extraction timed out', 
-            description: 'Try again, or crop long images into sections and extract each.' 
+            type: 'info', 
+            title: 'Taking longer than expected', 
+            description: 'This appears to be a very large image. Try cropping into sections if it keeps timing out.' 
           })
           return
         }
@@ -337,7 +374,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
         const data = await fetchJsonWithRetry<{ success: boolean; data: any; error?: string }>(
           `/api/extraction/status/${jobId}`,
           { method: 'GET' },
-          { retries: 2, baseDelayMs: 300, maxDelayMs: 1200 }
+          { retries: 3, baseDelayMs: 500, maxDelayMs: 2500, timeoutMs: 60000 }
         )
         
         setExtractionStatus(data.data.status)
@@ -363,6 +400,23 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
               description: 'Review and save your menu items' 
             })
           } else {
+            // Grace period re-check in case status flips to completed before result is persisted
+            await new Promise(r => setTimeout(r, 500))
+            const confirm = await fetchJsonWithRetry<{ success: boolean; data: any; error?: string }>(
+              `/api/extraction/status/${jobId}`,
+              { method: 'GET' },
+              { retries: 1, baseDelayMs: 200, maxDelayMs: 400, timeoutMs: 20000 }
+            )
+            if (confirm.data?.result?.menu?.categories) {
+              setExtractionResult(confirm.data.result)
+              setShowExtractionReview(true)
+              showToast({ 
+                type: 'success', 
+                title: 'Extraction complete', 
+                description: 'Review and save your menu items' 
+              })
+              return
+            }
             // Result is missing or invalid - treat as failed
             console.error('Extraction result validation failed:', {
               hasResult: !!data.data.result,
@@ -393,6 +447,12 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
           })
         }
       } catch (err: any) {
+        const msg = String(err?.message || '')
+        // If the request was aborted (timeout) or transient network error, keep polling
+        if (msg.toLowerCase().includes('abort') || msg.toLowerCase().includes('timed out')) {
+          setTimeout(poll, 1500)
+          return
+        }
         setExtractionError((err?.body as any)?.error || err?.message || 'Failed to fetch job status')
         setExtractionStatus('failed')
         showToast({ 
@@ -570,11 +630,16 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   }
 
   // Selection helpers
-  const toggleSelectItem = (itemId: string) => {
+  const toggleSelectItem = (itemId: string, checked?: boolean) => {
     setSelectedItemIds(prev => {
       const next = new Set(prev)
-      if (next.has(itemId)) next.delete(itemId)
-      else next.add(itemId)
+      if (typeof checked === 'boolean') {
+        if (checked) next.add(itemId)
+        else next.delete(itemId)
+      } else {
+        if (next.has(itemId)) next.delete(itemId)
+        else next.add(itemId)
+      }
       return next
     })
   }
@@ -723,11 +788,12 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       migratedCategoriesRef.current = true
       return
     }
+    // Mark as running immediately to avoid re-entrancy during re-renders
+    migratedCategoriesRef.current = true
     ;(async () => {
       for (const it of toMigrate) {
         await handleUpdateItem(it.id, { description: it.category || '', category: '' })
       }
-      migratedCategoriesRef.current = true
     })()
   }, [optimisticMenu.items])
 
@@ -953,14 +1019,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     }
   }
 
-  const toggleSelectItem = (itemId: string, checked: boolean) => {
-    setSelectedItemIds(prev => {
-      const next = new Set(prev)
-      if (checked) next.add(itemId)
-      else next.delete(itemId)
-      return next
-    })
-  }
+  
 
   const toggleSelectAllVisible = (checked: boolean) => {
     if (!checked) {
@@ -1558,14 +1617,17 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
           )}
 
           {/* AI Image Generation Modal */}
-          {showAIGeneration && (
-            <AIImageGeneration
-              menuItem={optimisticMenu.items.find(item => item.id === showAIGeneration)!}
-              menuId={menu.id}
-              onImageGenerated={(imageUrl) => handleAIImageGenerated(showAIGeneration, imageUrl)}
-              onCancel={() => setShowAIGeneration(null)}
-            />
-          )}
+          {showAIGeneration && (() => {
+            const selected = optimisticMenu.items.find(item => item.id === showAIGeneration)
+            return selected ? (
+              <AIImageGeneration
+                menuItem={selected}
+                menuId={menu.id}
+                onImageGenerated={(normalizedItemId, imageUrl) => handleAIImageGenerated(normalizedItemId, imageUrl)}
+                onCancel={() => setShowAIGeneration(null)}
+              />
+            ) : null
+          })()}
 
           {/* Batch AI Image Generation Modal */}
           {showBatchGeneration && selectedItemIds.size > 0 && (
@@ -1692,27 +1754,6 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
                 <CardTitle>Menu Items</CardTitle>
-                {optimisticMenu.items.length > 0 && (
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 text-sm text-secondary-700">
-                      <input
-                        type="checkbox"
-                        checked={selectedItemIds.size === optimisticMenu.items.length && optimisticMenu.items.length > 0}
-                        onChange={toggleSelectAll}
-                      />
-                      Select all
-                    </label>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDeleteSelected}
-                      disabled={selectedItemIds.size === 0 || loading !== null}
-                      className={selectedItemIds.size > 0 ? 'text-red-600 hover:text-red-700' : ''}
-                    >
-                      Delete Selected
-                    </Button>
-                  </div>
-                )}
                 <Button variant="outline" size="sm" onClick={() => setItemsOpen(o => !o)} aria-expanded={itemsOpen} aria-controls="items-panel">
                   {itemsOpen ? 'Hide' : 'Show'}
                 </Button>
@@ -1741,6 +1782,15 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                         onClick={() => setShowBatchGeneration(true)}
                       >
                         Batch Create Photos
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDeleteSelected}
+                        disabled={selectedItemIds.size === 0 || loading !== null}
+                        className={selectedItemIds.size > 0 ? 'text-red-600 hover:text-red-700' : ''}
+                      >
+                        Delete Selected
                       </Button>
                       {selectedItemIds.size > 0 && (
                         <Button
@@ -1781,14 +1831,6 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                     <Card key={item.id} className={`p-0 ${!item.available ? 'opacity-60' : ''}`}>
                       <CardContent className="py-2 px-3">
                         <div className="flex items-center justify-between gap-3">
-                          <div className="shrink-0">
-                            <input
-                              type="checkbox"
-                              checked={selectedItemIds.has(item.id)}
-                              onChange={() => toggleSelectItem(item.id)}
-                              aria-label={`Select ${item.name}`}
-                            />
-                          </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <input

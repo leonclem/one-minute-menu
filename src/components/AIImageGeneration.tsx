@@ -7,7 +7,7 @@ import type { MenuItem, ImageGenerationParams, ImageGenerationJob, GeneratedImag
 interface AIImageGenerationProps {
   menuItem: MenuItem
   menuId: string
-  onImageGenerated: (imageUrl: string) => void
+  onImageGenerated: (itemId: string, imageUrl: string) => void
   onCancel: () => void
 }
 
@@ -24,6 +24,9 @@ export default function AIImageGeneration({
   onImageGenerated, 
   onCancel 
 }: AIImageGenerationProps) {
+  if (!menuItem) {
+    return null
+  }
   const { showToast } = useToast()
   const [selectedStyle, setSelectedStyle] = useState<string>('modern')
   const [generating, setGenerating] = useState(false)
@@ -37,11 +40,13 @@ export default function AIImageGeneration({
   })
   const [lastError, setLastError] = useState<{ code?: string; message?: string; suggestions?: string[]; retryAfter?: number; filterReason?: string } | null>(null)
 
+  const stableItemId = menuItem?.id
   useEffect(() => {
     let isMounted = true
     ;(async () => {
       try {
-        const res = await fetch(`/api/menu-items/${menuItem.id}/variations`)
+        if (!stableItemId) return
+        const res = await fetch(`/api/menu-items/${stableItemId}/variations`)
         const json = await res.json()
         if (res.ok && json?.data?.variations && isMounted) {
           setPreviousImages(json.data.variations as GeneratedImage[])
@@ -51,7 +56,7 @@ export default function AIImageGeneration({
       }
     })()
     return () => { isMounted = false }
-  }, [menuItem.id])
+  }, [stableItemId])
 
   const handleGenerateImage = async () => {
     setGenerating(true)
@@ -73,7 +78,7 @@ export default function AIImageGeneration({
         },
         body: JSON.stringify({
           menuId,
-          menuItemId: menuItem.id,
+          menuItemId: stableItemId,
           itemName: menuItem.name,
           itemDescription: menuItem.description,
           styleParams,
@@ -178,7 +183,9 @@ export default function AIImageGeneration({
   const handleSelectImage = async (image: GeneratedImage) => {
     try {
       // Directly apply the generated image URL to the menu item via parent callback
-      onImageGenerated(image.originalUrl)
+      if (stableItemId) {
+        onImageGenerated(stableItemId, image.originalUrl)
+      }
       showToast({
         type: 'success',
         title: 'Image selected',

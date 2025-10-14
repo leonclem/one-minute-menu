@@ -14,6 +14,7 @@ export type BatchGenerationResult = {
   status: 'success' | 'failed'
   imageUrl?: string
   error?: string
+  errorCode?: string
 }
 
 export type BatchProgressUpdate = {
@@ -81,8 +82,23 @@ export async function runBatchGenerationSequential(
 
       if (!response.ok) {
         const errMsg = result?.error || 'Generation failed'
+        const errorCode = result?.code
         options.onProgress?.({ index, total, itemId: item.id, status: 'failed', error: errMsg })
-        results.push({ itemId: item.id, status: 'failed', error: errMsg })
+        results.push({ itemId: item.id, status: 'failed', error: errMsg, errorCode })
+        
+        // Stop batch immediately if quota exceeded
+        if (errorCode === 'QUOTA_EXCEEDED') {
+          // Mark remaining items as not attempted
+          for (let j = index + 1; j < items.length; j++) {
+            results.push({ 
+              itemId: items[j].id, 
+              status: 'failed', 
+              error: 'Batch stopped due to quota limit',
+              errorCode: 'QUOTA_EXCEEDED'
+            })
+          }
+          break
+        }
         continue
       }
 

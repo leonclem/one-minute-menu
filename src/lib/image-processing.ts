@@ -1,5 +1,13 @@
-import sharp from 'sharp';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+let _sharp: any;
+async function getSharp() {
+  if (!_sharp) {
+    const mod = await import('sharp');
+    _sharp = (mod as any).default ?? (mod as any);
+  }
+  return _sharp as typeof import('sharp');
+}
 
 export interface ImageMetadata {
   menuItemId: string;
@@ -127,6 +135,7 @@ export class ImageProcessingService {
    * Generate thumbnail version of image
    */
   async generateThumbnail(imageBuffer: Buffer, size: number): Promise<{ buffer: Buffer; size: number }> {
+    const sharp = await getSharp()
     const thumbnailBuffer = await sharp(imageBuffer)
       .resize(size, size, {
         fit: 'cover',
@@ -158,6 +167,7 @@ export class ImageProcessingService {
     maxWidth: number, 
     maxFileSize: number
   ): Promise<{ buffer: Buffer; size: number }> {
+    const sharp = await getSharp()
     let quality = 85;
     let optimizedBuffer: Buffer;
 
@@ -187,6 +197,7 @@ export class ImageProcessingService {
    * Convert image to WebP format
    */
   private async convertToWebP(imageBuffer: Buffer): Promise<{ buffer: Buffer; size: number }> {
+    const sharp = await getSharp()
     const webpBuffer = await sharp(imageBuffer)
       .webp({ quality: 85 })
       .toBuffer();
@@ -201,6 +212,7 @@ export class ImageProcessingService {
    * Convert image to JPEG format (fallback)
    */
   private async convertToJPEG(imageBuffer: Buffer): Promise<{ buffer: Buffer; size: number }> {
+    const sharp = await getSharp()
     const jpegBuffer = await sharp(imageBuffer)
       .jpeg({ quality: 85, progressive: true })
       .toBuffer();

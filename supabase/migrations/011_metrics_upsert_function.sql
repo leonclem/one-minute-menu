@@ -11,7 +11,7 @@ CREATE OR REPLACE FUNCTION upsert_extraction_metrics(
   p_token_usage INTEGER,
   p_cost REAL
 )
-RETURNS VOID AS $
+RETURNS VOID AS $$
 DECLARE
   v_existing_record RECORD;
   v_new_total INTEGER;
@@ -86,7 +86,7 @@ BEGIN
     );
   END IF;
 END;
-$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION upsert_extraction_metrics TO authenticated;
