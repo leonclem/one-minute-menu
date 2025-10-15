@@ -24,9 +24,6 @@ export default function AIImageGeneration({
   onImageGenerated, 
   onCancel 
 }: AIImageGenerationProps) {
-  if (!menuItem) {
-    return null
-  }
   const { showToast } = useToast()
   const [selectedStyle, setSelectedStyle] = useState<string>('modern')
   const [generating, setGenerating] = useState(false)
@@ -41,6 +38,12 @@ export default function AIImageGeneration({
   const [lastError, setLastError] = useState<{ code?: string; message?: string; suggestions?: string[]; retryAfter?: number; filterReason?: string } | null>(null)
 
   const stableItemId = menuItem?.id
+
+  // If the component is rendered without a valid menu item, render nothing
+  // Hooks above must always run unconditionally to satisfy rules-of-hooks
+  if (!menuItem) {
+    return null
+  }
   useEffect(() => {
     let isMounted = true
     ;(async () => {

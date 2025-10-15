@@ -31,23 +31,13 @@ export default function ExtractionReview({
   onCancel,
   loading = false
 }: ExtractionReviewProps) {
-  // Safety check for undefined result
-  if (!result || !result.menu || !result.menu.categories) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-        <h3 className="text-red-800 font-semibold mb-2">Extraction Result Missing</h3>
-        <p className="text-red-600 mb-4">
-          The extraction result is not available. This may be due to an incomplete extraction or a cached result from an older version.
-        </p>
-        <Button onClick={onCancel} variant="outline">
-          Go Back
-        </Button>
-      </div>
-    )
-  }
+  // Compute safe initial values first; hooks must be unconditional
+  const hasValidResult = !!(result && result.menu && result.menu.categories)
+  const initialCategories: Category[] = hasValidResult ? result.menu.categories : []
+  const initialUncertain: UncertainItem[] = hasValidResult ? (result.uncertainItems || []) : []
 
-  const [categories, setCategories] = useState<Category[]>(result.menu.categories)
-  const [uncertainItems, setUncertainItems] = useState<UncertainItem[]>(result.uncertainItems || [])
+  const [categories, setCategories] = useState<Category[]>(initialCategories)
+  const [uncertainItems, setUncertainItems] = useState<UncertainItem[]>(initialUncertain)
   const [resolvedItems, setResolvedItems] = useState<ExtractedMenuItem[]>([])
   const [saving, setSaving] = useState(false)
 
@@ -169,6 +159,21 @@ export default function ExtractionReview({
     const subItems = cat.subcategories?.reduce((subSum, sub) => subSum + sub.items.length, 0) || 0
     return sum + catItems + subItems
   }, 0)
+
+  // Safety check for undefined or invalid result (after hooks are declared)
+  if (!hasValidResult) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <h3 className="text-red-800 font-semibold mb-2">Extraction Result Missing</h3>
+        <p className="text-red-600 mb-4">
+          The extraction result is not available. This may be due to an incomplete extraction or a cached result from an older version.
+        </p>
+        <Button onClick={onCancel} variant="outline">
+          Go Back
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
