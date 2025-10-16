@@ -45,6 +45,7 @@ export interface ExtractionJob {
   confidence?: number
   uncertainItems?: any[]
   superfluousText?: any[]
+  retryCount?: number
 }
 
 export interface TokenUsage {
@@ -621,7 +622,8 @@ export class MenuExtractionService {
       completedAt: data.completed_at ? new Date(data.completed_at) : undefined,
       processingTime: data.processing_time,
       tokenUsage: data.token_usage,
-      confidence: data.confidence
+      confidence: data.confidence,
+      retryCount: data.retry_count
     }
   }
 }
