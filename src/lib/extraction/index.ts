@@ -91,6 +91,14 @@ export {
   getSimpleExampleForPrompt
 } from './example-outputs'
 
+// Stage 2 Example Outputs
+export {
+  EXAMPLE_V2_WITH_VARIANTS_AND_MODIFIERS,
+  EXAMPLE_V2_SET_MENU,
+  formatExampleV2ForPrompt,
+  getStage2SimpleExampleForPrompt
+} from './example-outputs-stage2'
+
 // ============================================================================
 // Version Management Exports
 // ============================================================================
@@ -193,6 +201,27 @@ export {
   isSupportedCurrency,
   getCurrencyInfo
 } from './prompt-stage1'
+
+// ============================================================================
+// Prompt Template Exports (Stage 2)
+// ============================================================================
+
+export {
+  // Prompt Configuration
+  PROMPT_VERSION_V2,
+  PROMPT_TEMPERATURE_V2,
+  PROMPT_SCHEMA_VERSION_V2,
+
+  // Reuse PromptOptions type from Stage 1
+  type PromptOptions,
+
+  // Prompt Builders
+  buildStage2Prompt,
+  getSystemRoleV2,
+  getTemperatureV2,
+  getPromptVersionV2,
+  getPromptPackageV2
+} from './prompt-stage2'
 
 // ============================================================================
 // Menu Extraction Service Exports
