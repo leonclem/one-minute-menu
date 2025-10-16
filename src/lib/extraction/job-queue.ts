@@ -9,7 +9,7 @@
 
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { SupabaseClient } from '@supabase/supabase-js'
-import type { ExtractionJob, ExtractionOptions } from './types'
+import type { ExtractionJob, ExtractionOptions } from './menu-extraction-service'
 
 export class JobQueueError extends Error {
   constructor(message: string, public code?: string) {

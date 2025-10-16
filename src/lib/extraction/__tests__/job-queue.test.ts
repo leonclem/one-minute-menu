@@ -5,7 +5,7 @@
  */
 
 import { JobQueueManager, JobQueueError, pollJobStatus } from '../job-queue'
-import type { ExtractionJob } from '../types'
+import type { ExtractionJob } from '../menu-extraction-service'
 
 // Mock Supabase client
 const mockSupabase = {
