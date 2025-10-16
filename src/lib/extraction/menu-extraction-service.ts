@@ -16,6 +16,7 @@ import { createHash } from 'crypto'
 import { withRetry, HttpError } from '../retry'
 import { validateExtraction, type ValidationResult, SchemaValidator } from './schema-validator'
 import { getPromptPackage, type PromptOptions } from './prompt-stage1'
+import { getPromptPackageV2 } from './prompt-stage2'
 import type { ExtractionResult } from './schema-stage1'
 import { 
   ExtractionErrorHandler, 
@@ -149,12 +150,19 @@ export class MenuExtractionService {
         }
       }
 
-      // Get prompt package
-      const promptPackage = getPromptPackage({
-        currencyOverride: options.currency as any,
-        includeExamples: options.includeExamples ?? true,
-        customInstructions: options.customInstructions
-      })
+      // Get prompt package based on schema version
+      const useStage2 = (options.schemaVersion || 'stage1') === 'stage2'
+      const promptPackage = useStage2
+        ? getPromptPackageV2({
+            currencyOverride: options.currency as any,
+            includeExamples: options.includeExamples ?? true,
+            customInstructions: options.customInstructions
+          })
+        : getPromptPackage({
+            currencyOverride: options.currency as any,
+            includeExamples: options.includeExamples ?? true,
+            customInstructions: options.customInstructions
+          })
 
       // Create job record only if we don't have an existing one to reuse
       if (!job!) {
@@ -311,12 +319,17 @@ export class MenuExtractionService {
       }
     }
 
-    // Validate against schema
-    const validation = await this.validateResult(rawData)
+    // Stage 2 normalization (variants, modifier price deltas)
+    if (promptPackage?.schemaVersion === 'stage2') {
+      rawData = this.normalizeStage2Extraction(rawData)
+    }
+
+    // Validate against schema (respect schema version from prompt)
+    const validation = await this.validateResult(rawData, promptPackage?.schemaVersion)
     
     if (!validation.valid) {
       // Attempt to salvage partial data
-      const validator = new SchemaValidator()
+      const validator = new SchemaValidator(promptPackage?.schemaVersion || 'stage1')
       const salvageAttempt = validator.salvagePartialData(rawData)
       
       if (salvageAttempt.itemsRecovered > 0) {
@@ -341,7 +354,7 @@ export class MenuExtractionService {
     }
 
     return {
-      extractionResult: validation.data!,
+      extractionResult: validation.data as any,
       usage: completion.usage,
       validation
     }
@@ -351,8 +364,8 @@ export class MenuExtractionService {
    * Validate extraction result against schema
    * Requirement: 10.4
    */
-  async validateResult(data: unknown): Promise<ValidationResult> {
-    const validator = new SchemaValidator()
+  async validateResult(data: unknown, schemaVersion: 'stage1' | 'stage2' = 'stage1'): Promise<ValidationResult> {
+    const validator = new SchemaValidator(schemaVersion)
     return validator.validateExtractionResult(data)
   }
 
@@ -604,6 +617,133 @@ export class MenuExtractionService {
     }
   }
 
+  /**
+   * Normalize Stage 2 extraction output:
+   * - Parse variant price strings and ranges into numeric variants
+   * - Extract price deltas embedded in modifier option names
+   */
+  private normalizeStage2Extraction(data: any): any {
+    try {
+      if (!data?.menu?.categories) return data
+
+      const clone = JSON.parse(JSON.stringify(data))
+
+      const normalizePriceNumber = (value: any): number | undefined => {
+        if (typeof value === 'number' && isFinite(value)) return value
+        if (typeof value !== 'string') return undefined
+        // Remove currency symbols and plus signs
+        const cleaned = value.replace(/[^0-9.\-–—]/g, '')
+        if (!cleaned) return undefined
+        // Handle ranges like 12-18 or 12–18
+        const rangeMatch = cleaned.match(/^(\d+(?:\.\d+)?)[\-–—](\d+(?:\.\d+)?)$/)
+        if (rangeMatch) {
+          // Caller will handle splitting
+          return NaN
+        }
+        const num = Number(cleaned)
+        return isFinite(num) ? num : undefined
+      }
+
+      const splitPriceRange = (rangeStr: string): [number, number] | null => {
+        const parts = rangeStr.split(/[\-–—]/).map(s => s.trim())
+        if (parts.length === 2) {
+          const a = Number(parts[0])
+          const b = Number(parts[1])
+          if (isFinite(a) && isFinite(b)) return [a, b]
+        }
+        return null
+      }
+
+      const parsePriceDeltaFromName = (name: string): { cleanName: string; delta?: number } => {
+        // Match patterns like "+$2", "+2", "(+2)", "(+$2.50)"
+        const match = name.match(/\(?(?:\+\s*)?([$€£¥S\$RMNTWDHKDAU$]?)(\d+(?:\.\d+)?)\)?/i)
+        if (match) {
+          const amount = Number(match[2])
+          if (isFinite(amount)) {
+            const cleanName = name.replace(match[0], '').trim().replace(/\s{2,}/g, ' ')
+            return { cleanName, delta: amount }
+          }
+        }
+        return { cleanName: name }
+      }
+
+      const walkCategories = (categories: any[]) => {
+        for (const cat of categories) {
+          if (Array.isArray(cat.items)) {
+            for (const item of cat.items) {
+              // Variants normalization
+              if (Array.isArray(item.variants)) {
+                const normalizedVariants: any[] = []
+                for (const variant of item.variants) {
+                  if (variant == null) continue
+                  // If price is a string range, split into two variants
+                  if (typeof variant.price === 'string') {
+                    const cleaned = variant.price.replace(/[^0-9.\-–—]/g, '')
+                    const range = splitPriceRange(cleaned)
+                    if (range) {
+                      const [minP, maxP] = range
+                      normalizedVariants.push({
+                        size: variant.size ? `${variant.size} (min)` : 'Min',
+                        price: minP,
+                        attributes: variant.attributes,
+                        confidence: variant.confidence
+                      })
+                      normalizedVariants.push({
+                        size: variant.size ? `${variant.size} (max)` : 'Max',
+                        price: maxP,
+                        attributes: variant.attributes,
+                        confidence: variant.confidence
+                      })
+                      continue
+                    }
+                    const num = normalizePriceNumber(variant.price)
+                    if (typeof num === 'number') {
+                      variant.price = num
+                    }
+                  }
+                  // Ensure numeric price
+                  if (typeof variant.price === 'number') {
+                    normalizedVariants.push(variant)
+                  }
+                }
+                item.variants = normalizedVariants
+              }
+
+              // Modifier price delta parsing
+              if (Array.isArray(item.modifierGroups)) {
+                for (const group of item.modifierGroups) {
+                  if (!Array.isArray(group.options)) continue
+                  for (const opt of group.options) {
+                    if (typeof opt.name === 'string') {
+                      const { cleanName, delta } = parsePriceDeltaFromName(opt.name)
+                      opt.name = cleanName
+                      if (delta != null && opt.priceDelta == null) {
+                        opt.priceDelta = delta
+                      }
+                    }
+                    if (typeof (opt as any).priceDelta === 'string') {
+                      const n = normalizePriceNumber((opt as any).priceDelta)
+                      if (typeof n === 'number') {
+                        opt.priceDelta = n
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          if (Array.isArray(cat.subcategories)) {
+            walkCategories(cat.subcategories)
+          }
+        }
+      }
+
+      walkCategories(clone.menu.categories)
+      return clone
+    } catch {
+      return data
+    }
+  }
   /**
    * Map database record to ExtractionJob
    */

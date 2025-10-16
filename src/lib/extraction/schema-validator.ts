@@ -18,6 +18,10 @@ import {
   type Category,
   type MenuItem
 } from './schema-stage1'
+import {
+  ExtractionResultV2Schema,
+  StructuredMenuV2Schema
+} from './schema-stage2'
 
 // ============================================================================
 // Validation Result Types
@@ -39,7 +43,7 @@ export interface ValidationResult {
   valid: boolean
   errors: ValidationError[]
   warnings: ValidationWarning[]
-  data?: ExtractionResult
+  data?: any
 }
 
 // ============================================================================
@@ -58,8 +62,10 @@ export class SchemaValidator {
    */
   validateExtractionResult(data: unknown): ValidationResult {
     try {
-      const parsed = ExtractionResultSchema.parse(data)
-      const warnings = this.generateWarnings(parsed)
+      const parsed = this.schemaVersion === 'stage2'
+        ? ExtractionResultV2Schema.parse(data)
+        : ExtractionResultSchema.parse(data)
+      const warnings = this.schemaVersion === 'stage2' ? [] : this.generateWarnings(parsed as ExtractionResult)
       
       return {
         valid: true,
@@ -93,7 +99,9 @@ export class SchemaValidator {
    */
   validateMenu(data: unknown): ValidationResult {
     try {
-      const parsed = StructuredMenuSchema.parse(data)
+      const parsed = this.schemaVersion === 'stage2'
+        ? StructuredMenuV2Schema.parse(data)
+        : StructuredMenuSchema.parse(data)
       
       return {
         valid: true,
@@ -280,7 +288,9 @@ export class SchemaValidator {
     return {
       version: this.schemaVersion,
       versionNumber: SCHEMA_VERSION_NUMBER,
-      description: 'Stage 1 schema with basic structured extraction'
+      description: this.schemaVersion === 'stage2'
+        ? 'Stage 2 schema with variants, modifiers, and complex structures'
+        : 'Stage 1 schema with basic structured extraction'
     }
   }
 
