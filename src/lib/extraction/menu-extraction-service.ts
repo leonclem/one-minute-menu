@@ -616,7 +616,8 @@ export class MenuExtractionService {
       createdAt: new Date(data.created_at),
       completedAt: data.completed_at ? new Date(data.completed_at) : undefined,
       processingTime: data.processing_time,
-      tokenUsage: data.token_usage
+      tokenUsage: data.token_usage,
+      confidence: data.confidence
     }
   }
 }

@@ -44,7 +44,7 @@ describe('Full Extraction Flow Integration Tests', () => {
     jest.clearAllMocks()
     mockCreate.mockReset()
 
-    // Mock Supabase client
+    // Mock Supabase client with chaining and default resolvers
     const chain: any = {}
     chain.from = jest.fn().mockReturnValue(chain)
     chain.select = jest.fn().mockReturnValue(chain)
@@ -54,8 +54,8 @@ describe('Full Extraction Flow Integration Tests', () => {
     chain.gte = jest.fn().mockReturnValue(chain)
     chain.order = jest.fn().mockReturnValue(chain)
     chain.limit = jest.fn().mockReturnValue(chain)
-    chain.single = jest.fn()
-    chain.maybeSingle = jest.fn()
+    chain.single = jest.fn().mockResolvedValue({ data: null, error: null })
+    chain.rpc = jest.fn().mockResolvedValue({ data: null, error: null })
 
     mockSupabase = chain
 
@@ -90,7 +90,7 @@ describe('Full Extraction Flow Integration Tests', () => {
       })
 
       // Step 2: Check for existing job (none found)
-      mockSupabase.maybeSingle.mockResolvedValueOnce({
+      mockSupabase.single.mockResolvedValueOnce({
         data: null,
         error: null
       })
@@ -108,9 +108,30 @@ describe('Full Extraction Flow Integration Tests', () => {
         created_at: new Date().toISOString()
       }
 
-      mockSupabase.single.mockResolvedValueOnce({
-        data: mockJob,
-        error: null
+      // First .from(): findExistingJob query returns no data
+      mockSupabase.from.mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                order: jest.fn().mockReturnValue({
+                  limit: jest.fn().mockReturnValue({
+                    single: jest.fn().mockResolvedValue({ data: null, error: null })
+                  })
+                })
+              })
+            })
+          })
+        })
+      })
+
+      // Second .from(): createJobRecord insert returns created job
+      mockSupabase.from.mockReturnValueOnce({
+        insert: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: mockJob, error: null })
+          })
+        })
       })
 
       // Step 4: Process with vision-LLM
@@ -167,7 +188,7 @@ describe('Full Extraction Flow Integration Tests', () => {
       })
 
       // Step 5: Update job status to processing
-      mockSupabase.eq.mockResolvedValueOnce({ error: null })
+      mockSupabase.eq.mockReturnValue(mockSupabase)
 
       // Step 6: Complete job with results
       const completedJob = {
@@ -229,7 +250,7 @@ describe('Full Extraction Flow Integration Tests', () => {
       }) as any
 
       // Mock no existing job
-      mockSupabase.maybeSingle.mockResolvedValueOnce({
+      mockSupabase.single.mockResolvedValueOnce({
         data: null,
         error: null
       })
@@ -250,7 +271,7 @@ describe('Full Extraction Flow Integration Tests', () => {
       })
 
       // Mock status update
-      mockSupabase.eq.mockResolvedValue({ error: null })
+      mockSupabase.eq.mockReturnValue(mockSupabase)
 
       // Mock extraction with uncertainties
       const mockExtractionResult = {
@@ -337,7 +358,7 @@ describe('Full Extraction Flow Integration Tests', () => {
         arrayBuffer: async () => Buffer.from('test-image-data')
       }) as any
 
-      mockSupabase.maybeSingle.mockResolvedValueOnce({
+      mockSupabase.single.mockResolvedValueOnce({
         data: null,
         error: null
       })
@@ -356,7 +377,7 @@ describe('Full Extraction Flow Integration Tests', () => {
         error: null
       })
 
-      mockSupabase.eq.mockResolvedValue({ error: null })
+      mockSupabase.eq.mockReturnValue(mockSupabase)
 
       const mockExtractionResult = {
         menu: {
@@ -464,7 +485,7 @@ describe('Full Extraction Flow Integration Tests', () => {
         completed_at: new Date().toISOString()
       }
 
-      mockSupabase.maybeSingle.mockResolvedValue({
+      mockSupabase.single.mockResolvedValue({
         data: existingJob,
         error: null
       })
@@ -488,7 +509,7 @@ describe('Full Extraction Flow Integration Tests', () => {
         arrayBuffer: async () => Buffer.from('test-image-data')
       }) as any
 
-      mockSupabase.maybeSingle.mockResolvedValueOnce({
+      mockSupabase.single.mockResolvedValueOnce({
         data: null,
         error: null
       })
@@ -507,7 +528,7 @@ describe('Full Extraction Flow Integration Tests', () => {
         error: null
       })
 
-      mockSupabase.eq.mockResolvedValue({ error: null })
+      mockSupabase.eq.mockReturnValue(mockSupabase)
 
       mockCreate.mockResolvedValue({
         choices: [{

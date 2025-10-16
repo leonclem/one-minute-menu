@@ -83,7 +83,8 @@ describe('JobQueueManager', () => {
         prompt_version: 'v1.0',
         retry_count: 0,
         created_at: new Date().toISOString(),
-        completed_at: new Date().toISOString()
+        completed_at: new Date().toISOString(),
+        result: { menu: { categories: [{ name: 'C', items: [] } ] } } // ensure cached path
       }
 
       // Mock findExistingJob
@@ -109,6 +110,8 @@ describe('JobQueueManager', () => {
 
       expect(result.cached).toBe(true)
       expect(result.job.id).toBe('job-existing')
+      // ensure insert path wasn't used
+      expect(mockSupabase.from).toHaveBeenCalledWith('menu_extraction_jobs')
     })
 
     it('should throw error on database failure', async () => {

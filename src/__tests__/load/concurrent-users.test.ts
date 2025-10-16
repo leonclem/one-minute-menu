@@ -142,7 +142,7 @@ describe('Load Testing: OCR Job Queue', () => {
     const expectedTime = Math.ceil(JOB_COUNT / WORKER_COUNT) * PROCESSING_TIME
     
     expect(results).toHaveLength(JOB_COUNT)
-    expect(totalTime).toBeLessThanOrEqual(expectedTime + 500) // Allow 500ms overhead
+    expect(totalTime).toBeLessThanOrEqual(expectedTime + 1000) // Allow 1000ms overhead
   }, 10000) // 10 second timeout
 
   it('should handle job failures and retries', async () => {

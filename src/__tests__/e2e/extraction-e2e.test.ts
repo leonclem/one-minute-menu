@@ -44,7 +44,7 @@ describe('End-to-End Extraction Tests', () => {
     jest.clearAllMocks()
     mockCreate.mockReset()
 
-    // Mock Supabase client
+    // Mock Supabase client with chaining and default resolvers
     const chain: any = {}
     chain.from = jest.fn().mockReturnValue(chain)
     chain.select = jest.fn().mockReturnValue(chain)
@@ -54,8 +54,8 @@ describe('End-to-End Extraction Tests', () => {
     chain.gte = jest.fn().mockReturnValue(chain)
     chain.order = jest.fn().mockReturnValue(chain)
     chain.limit = jest.fn().mockReturnValue(chain)
-    chain.single = jest.fn()
-    chain.maybeSingle = jest.fn()
+    chain.single = jest.fn().mockResolvedValue({ data: null, error: null })
+    chain.rpc = jest.fn().mockResolvedValue({ data: null, error: null })
 
     mockSupabase = chain
 
@@ -90,9 +90,20 @@ describe('End-to-End Extraction Tests', () => {
       })
 
       // Step 3: No existing job for this image
-      mockSupabase.maybeSingle.mockResolvedValueOnce({
-        data: null,
-        error: null
+      mockSupabase.from.mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                order: jest.fn().mockReturnValue({
+                  limit: jest.fn().mockReturnValue({
+                    single: jest.fn().mockResolvedValue({ data: null, error: null })
+                  })
+                })
+              })
+            })
+          })
+        })
       })
 
       // Step 4: Create extraction job
@@ -114,7 +125,7 @@ describe('End-to-End Extraction Tests', () => {
       })
 
       // Step 5: Update status to processing
-      mockSupabase.eq.mockResolvedValueOnce({ error: null })
+      mockSupabase.eq.mockReturnValue(mockSupabase)
 
       // Step 6: Vision-LLM extracts menu data
       const extractedMenu: ExtractionResult = {
@@ -281,26 +292,43 @@ describe('End-to-End Extraction Tests', () => {
         arrayBuffer: async () => Buffer.from('unclear-menu-image-data')
       }) as any
 
-      mockSupabase.maybeSingle.mockResolvedValueOnce({
-        data: null,
-        error: null
+      mockSupabase.from.mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                order: jest.fn().mockReturnValue({
+                  limit: jest.fn().mockReturnValue({
+                    single: jest.fn().mockResolvedValue({ data: null, error: null })
+                  })
+                })
+              })
+            })
+          })
+        })
       })
 
-      mockSupabase.single.mockResolvedValueOnce({
-        data: {
-          id: 'job-456',
-          user_id: mockUserId,
-          image_url: mockImageUrl,
-          image_hash: 'def456hash',
-          status: 'queued',
-          schema_version: 'stage1',
-          prompt_version: 'v1.0',
-          created_at: new Date().toISOString()
-        },
-        error: null
+      mockSupabase.from.mockReturnValueOnce({
+        insert: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({
+              data: {
+                id: 'job-456',
+                user_id: mockUserId,
+                image_url: mockImageUrl,
+                image_hash: 'def456hash',
+                status: 'queued',
+                schema_version: 'stage1',
+                prompt_version: 'v1.0',
+                created_at: new Date().toISOString()
+              },
+              error: null
+            })
+          })
+        })
       })
 
-      mockSupabase.eq.mockResolvedValue({ error: null })
+      mockSupabase.eq.mockReturnValue(mockSupabase)
 
       const extractedMenu: ExtractionResult = {
         menu: {
@@ -411,26 +439,50 @@ describe('End-to-End Extraction Tests', () => {
         arrayBuffer: async () => Buffer.from('hierarchical-menu-image-data')
       }) as any
 
-      mockSupabase.maybeSingle.mockResolvedValueOnce({
+      mockSupabase.single.mockResolvedValueOnce({
         data: null,
         error: null
       })
 
-      mockSupabase.single.mockResolvedValueOnce({
-        data: {
-          id: 'job-789',
-          user_id: mockUserId,
-          image_url: mockImageUrl,
-          image_hash: 'ghi789hash',
-          status: 'queued',
-          schema_version: 'stage1',
-          prompt_version: 'v1.0',
-          created_at: new Date().toISOString()
-        },
-        error: null
+      // First query: findExistingJob returns no data
+      mockSupabase.from.mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                order: jest.fn().mockReturnValue({
+                  limit: jest.fn().mockReturnValue({
+                    single: jest.fn().mockResolvedValue({ data: null, error: null })
+                  })
+                })
+              })
+            })
+          })
+        })
       })
 
-      mockSupabase.eq.mockResolvedValue({ error: null })
+      // Second query: createJobRecord insert
+      mockSupabase.from.mockReturnValueOnce({
+        insert: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({
+              data: {
+                id: 'job-789',
+                user_id: mockUserId,
+                image_url: mockImageUrl,
+                image_hash: 'ghi789hash',
+                status: 'queued',
+                schema_version: 'stage1',
+                prompt_version: 'v1.0',
+                created_at: new Date().toISOString()
+              },
+              error: null
+            })
+          })
+        })
+      })
+
+      mockSupabase.eq.mockReturnValue(mockSupabase)
 
       const extractedMenu: ExtractionResult = {
         menu: {

@@ -15,6 +15,24 @@ jest.mock('@/lib/supabase-server')
 jest.mock('@/lib/database')
 jest.mock('@/lib/extraction/menu-extraction-service')
 jest.mock('@/lib/extraction/job-queue')
+jest.mock('@/lib/extraction/metrics-collector', () => ({
+  createMetricsCollector: jest.fn(() => ({
+    trackExtraction: jest.fn(),
+    trackCost: jest.fn(),
+  }))
+}))
+jest.mock('@/lib/extraction/cost-monitor', () => ({
+  createCostMonitor: jest.fn(() => ({
+    canPerformExtraction: jest.fn().mockResolvedValue({
+      allowed: true,
+      alerts: [],
+      currentSpending: 0,
+      remainingBudget: 999,
+    }),
+    processAlerts: jest.fn(),
+    updateSpendingCaps: jest.fn(),
+  }))
+}))
 
 const mockCreateServerSupabaseClient = createServerSupabaseClient as jest.MockedFunction<typeof createServerSupabaseClient>
 const mockUserOperations = userOperations as jest.Mocked<typeof userOperations>
