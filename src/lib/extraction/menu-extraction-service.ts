@@ -61,6 +61,7 @@ export interface ExtractionOptions {
   language?: string
   includeExamples?: boolean
   customInstructions?: string
+  force?: boolean
 }
 
 export interface ProcessingMetadata {
