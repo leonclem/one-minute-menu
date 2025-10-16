@@ -42,6 +42,9 @@ export interface ExtractionJob {
   completedAt?: Date
   processingTime?: number
   tokenUsage?: TokenUsage
+  confidence?: number
+  uncertainItems?: any[]
+  superfluousText?: any[]
 }
 
 export interface TokenUsage {
