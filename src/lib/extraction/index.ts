@@ -54,6 +54,13 @@ export {
   getMinifiedSchema
 } from './json-schema-stage1'
 
+// Stage 2 JSON Schema Exports
+export {
+  STAGE2_JSON_SCHEMA,
+  getStage2SchemaForPrompt,
+  getStage2MinifiedSchema
+} from './json-schema-stage2'
+
 // ============================================================================
 // Validator Exports
 // ============================================================================
@@ -98,6 +105,58 @@ export {
   isValidSchemaVersion,
   getDefaultSchemaInfo
 } from './schema-version'
+
+// Stage 2 Schema Exports
+export {
+  // Interfaces
+  type ItemVariant,
+  type ModifierOption,
+  type ModifierGroup,
+  type AdditionalInfo,
+  type SetMenuOption,
+  type SetMenuCourse,
+  type SetMenu,
+  type MenuItemV2,
+  type CategoryV2,
+  type StructuredMenuV2,
+  type UncertainItemV2,
+  type SuperfluousTextV2,
+  type ExtractionResultV2,
+
+  // Zod Schemas
+  ItemVariantSchema,
+  ModifierOptionSchema,
+  ModifierGroupSchema,
+  AdditionalInfoSchema,
+  SetMenuOptionSchema,
+  SetMenuCourseSchema,
+  SetMenuSchema,
+  MenuItemV2Schema,
+  CategoryV2Schema,
+  StructuredMenuV2Schema,
+  UncertainItemV2Schema,
+  SuperfluousTextV2Schema,
+  ExtractionResultV2Schema,
+
+  // Versions
+  SCHEMA_VERSION_V2,
+  SCHEMA_VERSION_NUMBER_V2,
+
+  // Inferred Types
+  type ItemVariantType,
+  type ModifierOptionType,
+  type ModifierGroupType,
+  type AdditionalInfoType,
+  type SetMenuOptionType,
+  type SetMenuCourseType,
+  type SetMenuType,
+  type MenuItemV2Type,
+  type CategoryV2Type,
+  type StructuredMenuV2Type,
+  type UncertainItemV2Type,
+  type SuperfluousTextV2Type,
+  type ExtractionResultV2Type
+} from './schema-stage2'
 
 // ============================================================================
 // Prompt Template Exports (Stage 1)

@@ -8,6 +8,7 @@
 import type { ExtractionResult } from './schema-stage1'
 import { SchemaValidator } from './schema-validator'
 import { STAGE1_JSON_SCHEMA } from './json-schema-stage1'
+import { STAGE2_JSON_SCHEMA } from './json-schema-stage2'
 
 // ============================================================================
 // Schema Version Types
@@ -119,8 +120,9 @@ export class SchemaVersionManager {
     if (version === 'stage1') {
       return STAGE1_JSON_SCHEMA
     }
-    
-    // Stage 2 JSON schema will be added later
+    if (version === 'stage2') {
+      return STAGE2_JSON_SCHEMA
+    }
     throw new Error(`JSON schema for version ${version} not yet implemented`)
   }
 
