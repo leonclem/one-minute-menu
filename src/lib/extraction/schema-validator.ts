@@ -335,6 +335,33 @@ export class SchemaValidator {
     // Check for suspicious prices
     this.checkSuspiciousPrices(data.menu.categories, warnings)
 
+    // Stage 2: set menu completeness warnings (best-effort on Stage 1 types)
+    // Note: We only have Stage 1 types here. Heuristically check items with keywords
+    // that imply set/combo but missing structured courses.
+    try {
+      const checkSetMenuHeuristics = (categories: any[], basePath = 'menu.categories') => {
+        categories.forEach((cat: any, ci: number) => {
+          const catPath = `${basePath}[${ci}]`
+          ;(cat.items || []).forEach((item: any, ii: number) => {
+            const name: string = String(item?.name || '')
+            const desc: string = String(item?.description || '')
+            const looksLikeSet = /(set|combo|meal|course)/i.test(name) || /(choose|choice|includes|course)/i.test(desc)
+            if (looksLikeSet && (item as any).type !== 'set_menu') {
+              warnings.push({
+                path: `${catPath}.items[${ii}]`,
+                message: 'Item looks like a set/combo but is not structured as set_menu. Consider annotating courses and options.',
+                severity: 'low'
+              })
+            }
+          })
+          if (Array.isArray(cat.subcategories)) {
+            checkSetMenuHeuristics(cat.subcategories, `${catPath}.subcategories`)
+          }
+        })
+      }
+      checkSetMenuHeuristics((data as any).menu?.categories || [])
+    } catch {}
+
     return warnings
   }
 

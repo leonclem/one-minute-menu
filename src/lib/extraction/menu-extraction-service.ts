@@ -667,6 +667,27 @@ export class MenuExtractionService {
         return { cleanName: name }
       }
 
+      const parseSetMenuOptionDelta = (name: string): { cleanName: string; delta?: number } => {
+        // Match patterns like "+$2", "+2", "(+2)", "(+$2.50)", "add $3"
+        const plusMatch = name.match(/\(?(?:\+\s*)?([$€£¥S\$RMNTWDHKDAU$]?)(\d+(?:\.\d+)?)\)?/i)
+        if (plusMatch) {
+          const amount = Number(plusMatch[2])
+          if (isFinite(amount)) {
+            const cleanName = name.replace(plusMatch[0], '').trim().replace(/\s{2,}/g, ' ')
+            return { cleanName, delta: amount }
+          }
+        }
+        const addMatch = name.match(/\badd\s+([$€£¥S\$RMNTWDHKDAU$]?)(\d+(?:\.\d+)?)/i)
+        if (addMatch) {
+          const amount = Number(addMatch[2])
+          if (isFinite(amount)) {
+            const cleanName = name.replace(addMatch[0], '').trim().replace(/\s{2,}/g, ' ')
+            return { cleanName, delta: amount }
+          }
+        }
+        return { cleanName: name }
+      }
+
       const walkCategories = (categories: any[]) => {
         for (const cat of categories) {
           if (Array.isArray(cat.items)) {
@@ -725,6 +746,28 @@ export class MenuExtractionService {
                       const n = normalizePriceNumber((opt as any).priceDelta)
                       if (typeof n === 'number') {
                         opt.priceDelta = n
+                      }
+                    }
+                  }
+                }
+              }
+
+              // Set menu option surcharge parsing
+              if (item?.type === 'set_menu' && item?.setMenu?.courses && Array.isArray(item.setMenu.courses)) {
+                for (const course of item.setMenu.courses) {
+                  if (!Array.isArray(course.options)) continue
+                  for (const option of course.options) {
+                    if (typeof option.name === 'string') {
+                      const { cleanName, delta } = parseSetMenuOptionDelta(option.name)
+                      option.name = cleanName
+                      if (delta != null && option.priceDelta == null) {
+                        option.priceDelta = delta
+                      }
+                    }
+                    if (typeof (option as any).priceDelta === 'string') {
+                      const n = normalizePriceNumber((option as any).priceDelta)
+                      if (typeof n === 'number') {
+                        option.priceDelta = n
                       }
                     }
                   }

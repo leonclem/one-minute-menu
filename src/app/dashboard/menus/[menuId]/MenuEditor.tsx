@@ -298,7 +298,8 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             menuId: menu.id,
-            imageUrl: menu.imageUrl 
+            imageUrl: menu.imageUrl,
+            schemaVersion: 'stage2'
           })
         },
         { retries: 2, baseDelayMs: 250, maxDelayMs: 1000, timeoutMs: 90000 }

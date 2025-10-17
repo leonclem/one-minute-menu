@@ -14,6 +14,7 @@
 
 import React, { useState } from 'react'
 import { Category, MenuItem } from '@/lib/extraction/schema-stage1'
+import SetMenuEditor from '@/components/SetMenuEditor'
 import { ChevronDown, ChevronRight, ArrowUp, ArrowDown, Edit2, Check, X } from 'lucide-react'
 
 interface CategoryTreeProps {
@@ -208,7 +209,7 @@ export function CategoryTree({
     )
   }
 
-  const renderMenuItem = (item: MenuItem, categoryPath: number[], itemIndex: number, totalItems: number) => {
+  const renderMenuItem = (item: MenuItem & { type?: 'standard' | 'set_menu' | 'combo'; setMenu?: any }, categoryPath: number[], itemIndex: number, totalItems: number) => {
     const itemKey = `${categoryPath.join('-')}:${itemIndex}`
     const isExcluded = excludedKeys?.has(itemKey) ?? false
     const confidenceColor = getConfidenceColor(item.confidence)
@@ -250,18 +251,33 @@ export function CategoryTree({
               </div>
             )}
 
-            {/* Item Price */}
-            <div className="flex items-center gap-1">
-              <span className="text-sm text-gray-500">Price:</span>
-              {renderEditableField(
-                'item',
-                categoryPath,
-                'price',
-                item.price,
-                itemIndex,
-                'text-sm font-semibold text-gray-900'
+            {/* Item Price and Type Badge */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-gray-500">Price:</span>
+                {renderEditableField(
+                  'item',
+                  categoryPath,
+                  'price',
+                  item.price,
+                  itemIndex,
+                  'text-sm font-semibold text-gray-900'
+                )}
+              </div>
+              {item.type === 'set_menu' && (
+                <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-800 border border-purple-200">Set Menu</span>
               )}
             </div>
+
+            {/* Set Menu Details (Stage 2) */}
+            {item.type === 'set_menu' && item.setMenu && (
+              <div className="mt-3">
+                <SetMenuEditor
+                  value={item.setMenu}
+                  onChange={(next) => onEditItem?.(categoryPath, itemIndex, { setMenu: next } as any)}
+                />
+              </div>
+            )}
           </div>
 
           {/* Reorder Buttons */}

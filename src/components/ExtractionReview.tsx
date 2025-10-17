@@ -215,6 +215,29 @@ export default function ExtractionReview({
     return sum + catItems + subItems
   }, 0)
 
+  // Heuristic detection for set/combo menus to guide users per MVP stance
+  const looksLikeSetMenu = (() => {
+    try {
+      const re = /(prix\s*fixe|set|combo|course|for\s*2|for\s*two)/i
+      const scanCats = (cats: any[]): boolean => {
+        for (const c of cats || []) {
+          if (re.test(String(c?.name || ''))) return true
+          for (const it of c?.items || []) {
+            const nm = String(it?.name || '')
+            const ds = String(it?.description || '')
+            if (re.test(nm) || re.test(ds)) return true
+            if ((it as any)?.type === 'set_menu' || (it as any)?.setMenu) return true
+          }
+          if (c?.subcategories && scanCats(c.subcategories)) return true
+        }
+        return false
+      }
+      return scanCats(categories)
+    } catch {
+      return false
+    }
+  })()
+
   // Safety check for undefined or invalid result (after hooks are declared)
   if (!hasValidResult) {
     return (
@@ -282,6 +305,11 @@ export default function ExtractionReview({
         <h4 className="text-sm font-medium text-secondary-700 mb-3">
           Menu Structure
         </h4>
+        {looksLikeSetMenu && (
+          <div className="mb-3 p-3 rounded border border-yellow-200 bg-yellow-50 text-sm text-yellow-900">
+            Set menus handled separately: For set/combos like “PRIX FIXE SET FOR 2”, please create them as their own menu. This extraction focuses on individual items; set menus are treated as separate menus.
+          </div>
+        )}
         <CategoryTree
           categories={categories}
           onReorder={handleReorder}
