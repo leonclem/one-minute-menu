@@ -40,6 +40,7 @@ export default function ExtractionReview({
   const [uncertainItems, setUncertainItems] = useState<UncertainItem[]>(initialUncertain)
   const [resolvedItems, setResolvedItems] = useState<ExtractedMenuItem[]>([])
   const [saving, setSaving] = useState(false)
+  const [excludedKeys, setExcludedKeys] = useState<Set<string>>(new Set())
 
   const handleReorder = (newCategories: Category[]) => {
     setCategories(newCategories)
@@ -145,10 +146,32 @@ export default function ExtractionReview({
     setUncertainItems(prev => prev.filter((_, idx) => idx !== itemIndex))
   }
 
+  const handleToggleExclude = (categoryPath: number[], itemIndex: number) => {
+    const key = `${categoryPath.join('-')}:${itemIndex}`
+    setExcludedKeys(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   const handleSave = async () => {
     setSaving(true)
     try {
-      await onSave(categories, resolvedItems)
+      // Build a copy where excluded items are removed before saving
+      const filtered = JSON.parse(JSON.stringify(categories)) as Category[]
+
+      const prune = (cats: Category[], path: number[] = []) => {
+        for (let i = 0; i < cats.length; i++) {
+          const cat = cats[i]
+          cat.items = cat.items.filter((_, idx) => !excludedKeys.has(`${[...path, i].join('-')}:${idx}`))
+          if (cat.subcategories && cat.subcategories.length > 0) prune(cat.subcategories, [...path, i])
+        }
+      }
+      prune(filtered)
+
+      await onSave(filtered, resolvedItems)
     } finally {
       setSaving(false)
     }
@@ -232,6 +255,8 @@ export default function ExtractionReview({
           onReorder={handleReorder}
           onEditItem={handleEditItem}
           onEditCategory={handleEditCategory}
+          excludedKeys={excludedKeys}
+          onToggleExclude={handleToggleExclude}
         />
       </div>
 

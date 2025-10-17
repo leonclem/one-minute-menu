@@ -472,18 +472,52 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       const flattenCategories = (cats: Category[], parentCategory?: string): MenuItemFormData[] => {
         const items: MenuItemFormData[] = []
         
+        const looksLikeVariantName = (name: string): boolean => {
+          const n = (name || '').trim()
+          return /^w\s*\//i.test(n) || /^with\b/i.test(n)
+        }
+
+        const normalizeVariantDescription = (name: string): string => {
+          const n = (name || '').trim()
+          if (/^w\s*\//i.test(n)) {
+            const rest = n.replace(/^w\s*\//i, '').trim()
+            return `with ${rest}`
+          }
+          if (/^with\b/i.test(n)) return n.replace(/^with\b/i, 'with').trim()
+          return n
+        }
+
         for (const cat of cats) {
           const categoryName = parentCategory ? `${parentCategory} > ${cat.name}` : cat.name
           
-          // Add items from this category
-          for (const item of cat.items) {
-            items.push({
-              name: item.name,
-              price: item.price,
-              description: item.description || '',
-              category: categoryName,
-              available: true
-            })
+          // Heuristic: if this category's items look like variants (e.g., names starting with "W/" or "With"),
+          // save them as base item name = category name, and move variant text into description.
+          const variantishCount = cat.items.filter(i => looksLikeVariantName(i.name)).length
+          const treatAsVariantCategory = cat.items.length >= 2 && variantishCount >= Math.ceil(cat.items.length * 0.7)
+
+          if (treatAsVariantCategory) {
+            for (const item of cat.items) {
+              const variantDesc = normalizeVariantDescription(item.name)
+              const combinedDescription = [variantDesc, item.description].filter(Boolean).join(' — ')
+              items.push({
+                name: cat.name,
+                price: item.price,
+                description: combinedDescription,
+                category: categoryName,
+                available: true
+              })
+            }
+          } else {
+            // Add items from this category as-is
+            for (const item of cat.items) {
+              items.push({
+                name: item.name,
+                price: item.price,
+                description: item.description || '',
+                category: categoryName,
+                available: true
+              })
+            }
           }
           
           // Recursively add items from subcategories

@@ -21,6 +21,9 @@ interface CategoryTreeProps {
   onReorder?: (newCategories: Category[]) => void
   onEditItem?: (categoryPath: number[], itemIndex: number, updates: Partial<MenuItem>) => void
   onEditCategory?: (categoryPath: number[], updates: Partial<Category>) => void
+  // Optional exclusion controls: grey out and skip on save
+  excludedKeys?: Set<string>
+  onToggleExclude?: (categoryPath: number[], itemIndex: number) => void
   readonly?: boolean
 }
 
@@ -37,6 +40,8 @@ export function CategoryTree({
   onReorder,
   onEditItem,
   onEditCategory,
+  excludedKeys,
+  onToggleExclude,
   readonly = false
 }: CategoryTreeProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
@@ -204,16 +209,18 @@ export function CategoryTree({
   }
 
   const renderMenuItem = (item: MenuItem, categoryPath: number[], itemIndex: number, totalItems: number) => {
+    const itemKey = `${categoryPath.join('-')}:${itemIndex}`
+    const isExcluded = excludedKeys?.has(itemKey) ?? false
     const confidenceColor = getConfidenceColor(item.confidence)
     const confidenceBg = getConfidenceBgColor(item.confidence)
 
     return (
       <div
         key={itemIndex}
-        className={`ml-8 p-3 mb-2 border rounded-lg ${confidenceBg} transition-colors`}
+        className={`ml-8 p-3 mb-2 border rounded-lg ${isExcluded ? 'bg-gray-50 border-gray-200 opacity-60' : confidenceBg} transition-colors`}
       >
         <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
+          <div className={`flex-1 min-w-0 ${isExcluded ? 'line-through' : ''}`}>
             {/* Item Name */}
             <div className="flex items-center gap-2 mb-1">
               {renderEditableField(
@@ -262,7 +269,7 @@ export function CategoryTree({
             <div className="flex flex-col gap-1">
               <button
                 onClick={() => moveItem(categoryPath, itemIndex, 'up')}
-                disabled={itemIndex === 0}
+                disabled={itemIndex === 0 || isExcluded}
                 className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded disabled:opacity-30 disabled:cursor-not-allowed"
                 title="Move up"
               >
@@ -270,12 +277,21 @@ export function CategoryTree({
               </button>
               <button
                 onClick={() => moveItem(categoryPath, itemIndex, 'down')}
-                disabled={itemIndex === totalItems - 1}
+                disabled={itemIndex === totalItems - 1 || isExcluded}
                 className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded disabled:opacity-30 disabled:cursor-not-allowed"
                 title="Move down"
               >
                 <ArrowDown size={16} />
               </button>
+              {onToggleExclude && (
+                <button
+                  onClick={() => onToggleExclude(categoryPath, itemIndex)}
+                  className={`px-2 py-1 mt-1 rounded text-xs border ${isExcluded ? 'text-green-700 border-green-300 hover:bg-green-50' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                  title={isExcluded ? 'Include this item' : "Don't add this item"}
+                >
+                  {isExcluded ? 'Include' : "Don\'t add"}
+                </button>
+              )}
             </div>
           )}
         </div>
