@@ -1,6 +1,7 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import ExtractionReview from '@/components/ExtractionReview'
+import { ToastProvider } from '@/components/ui'
 
 const mockResult = {
   menu: {
@@ -26,19 +27,21 @@ describe('ExtractionReview exclude feature', () => {
     const onCancel = jest.fn()
 
     render(
-      <ExtractionReview
-        result={mockResult as any}
-        onSave={onSave}
-        onCancel={onCancel}
-      />
+      <ToastProvider>
+        <ExtractionReview
+          result={mockResult as any}
+          onSave={onSave}
+          onCancel={onCancel}
+        />
+      </ToastProvider>
     )
 
     // Expand category
     fireEvent.click(screen.getByText('MAINS'))
 
-    // Click "Don't add" for the first item
-    const dontAddBtn = screen.getByText("Don't add")
-    fireEvent.click(dontAddBtn)
+    // Click "Don't add" for the first item (use getAllByText since there are multiple)
+    const dontAddButtons = screen.getAllByText("Don't add")
+    fireEvent.click(dontAddButtons[0])
 
     // Save to Menu
     fireEvent.click(screen.getByText('Save to Menu'))
@@ -56,17 +59,19 @@ describe('ExtractionReview exclude feature', () => {
     const onCancel = jest.fn()
 
     render(
-      <ExtractionReview
-        result={mockResult as any}
-        onSave={onSave}
-        onCancel={onCancel}
-      />
+      <ToastProvider>
+        <ExtractionReview
+          result={mockResult as any}
+          onSave={onSave}
+          onCancel={onCancel}
+        />
+      </ToastProvider>
     )
 
     fireEvent.click(screen.getByText('MAINS'))
 
-    const dontAddBtn = screen.getByText("Don't add")
-    fireEvent.click(dontAddBtn)
+    const dontAddButtons = screen.getAllByText("Don't add")
+    fireEvent.click(dontAddButtons[0])
 
     const includeBtn = screen.getByText('Include')
     fireEvent.click(includeBtn)

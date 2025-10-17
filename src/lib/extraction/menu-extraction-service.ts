@@ -102,13 +102,14 @@ export class MenuExtractionService {
   private openai: OpenAI
   private supabase: any // Supabase client
 
-  constructor(openaiApiKey: string, supabaseClient: any) {
+  constructor(openaiApiKey: string, supabaseClient: any, openaiOptions?: { dangerouslyAllowBrowser?: boolean }) {
     if (!openaiApiKey) {
       throw new Error('OpenAI API key is required')
     }
 
     this.openai = new OpenAI({
-      apiKey: openaiApiKey
+      apiKey: openaiApiKey,
+      ...openaiOptions
     })
     
     this.supabase = supabaseClient
@@ -668,8 +669,18 @@ export class MenuExtractionService {
       }
 
       const parseSetMenuOptionDelta = (name: string): { cleanName: string; delta?: number } => {
-        // Match patterns like "+$2", "+2", "(+2)", "(+$2.50)", "add $3"
-        const plusMatch = name.match(/\(?(?:\+\s*)?([$€£¥S\$RMNTWDHKDAU$]?)(\d+(?:\.\d+)?)\)?/i)
+        // Match patterns like "+$2", "+2", "(+2)", "(+$2.50)", "add $3", "(add $4.50)"
+        // Try to match parenthesized patterns first
+        const parenMatch = name.match(/\(\s*(?:add\s+)?\+?\s*([$€£¥S\$RMNTWDHKDAU$]?)(\d+(?:\.\d+)?)\s*\)/i)
+        if (parenMatch) {
+          const amount = Number(parenMatch[2])
+          if (isFinite(amount)) {
+            const cleanName = name.replace(parenMatch[0], '').trim().replace(/\s{2,}/g, ' ')
+            return { cleanName, delta: amount }
+          }
+        }
+        // Match plus patterns like "+$2", "+2"
+        const plusMatch = name.match(/\+\s*([$€£¥S\$RMNTWDHKDAU$]?)(\d+(?:\.\d+)?)/i)
         if (plusMatch) {
           const amount = Number(plusMatch[2])
           if (isFinite(amount)) {
@@ -677,6 +688,7 @@ export class MenuExtractionService {
             return { cleanName, delta: amount }
           }
         }
+        // Match "add" patterns like "add $3"
         const addMatch = name.match(/\badd\s+([$€£¥S\$RMNTWDHKDAU$]?)(\d+(?:\.\d+)?)/i)
         if (addMatch) {
           const amount = Number(addMatch[2])
@@ -820,9 +832,10 @@ export class MenuExtractionService {
  */
 export function createMenuExtractionService(
   openaiApiKey: string,
-  supabaseClient: any
+  supabaseClient: any,
+  openaiOptions?: { dangerouslyAllowBrowser?: boolean }
 ): MenuExtractionService {
-  return new MenuExtractionService(openaiApiKey, supabaseClient)
+  return new MenuExtractionService(openaiApiKey, supabaseClient, openaiOptions)
 }
 
 // ============================================================================

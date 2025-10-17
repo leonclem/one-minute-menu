@@ -4,7 +4,7 @@ import SetMenuEditor from '@/components/SetMenuEditor'
 
 describe('SetMenuEditor', () => {
   it('adds a course and options and updates values', () => {
-    const handleChange = vi.fn()
+    const handleChange = jest.fn()
     render(<SetMenuEditor value={undefined} onChange={handleChange} currency="USD" />)
 
     // Add a course
@@ -26,8 +26,9 @@ describe('SetMenuEditor', () => {
     const deltaInput = deltaInputs.find(i => i.getAttribute('type') === 'number') || deltaInputs[0]
     fireEvent.change(deltaInput, { target: { value: '5' } })
 
-    // Remove option
-    fireEvent.click(screen.getByText('Remove'))
+    // Remove option (use getAllByText since there are multiple Remove buttons)
+    const removeButtons = screen.getAllByText('Remove')
+    fireEvent.click(removeButtons[0])
 
     // Remove course
     fireEvent.click(screen.getByText('Remove course'))

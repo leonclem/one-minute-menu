@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from '@jest/globals'
 import { createMenuExtractionService } from '@/lib/extraction/menu-extraction-service'
+
+// Mock fetch for OpenAI client in test environment
+global.fetch = jest.fn() as any
 
 // Minimal fake supabase client for constructor
 const fakeSupabase = {
@@ -16,7 +19,7 @@ const fakeSupabase = {
 
 describe('Stage 2 normalization - set menu option price deltas', () => {
   it('parses price deltas embedded in set menu option names', async () => {
-    const svc = createMenuExtractionService('test-key', fakeSupabase) as any
+    const svc = createMenuExtractionService('test-key', fakeSupabase, { dangerouslyAllowBrowser: true }) as any
 
     const raw = {
       menu: {
