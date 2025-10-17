@@ -1299,6 +1299,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                   setExtractionStatus('idle')
                 }}
                 loading={loading === 'bulk-add'}
+                jobId={extractionJobId || undefined}
               />
             </div>
           </div>

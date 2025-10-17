@@ -8,7 +8,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui'
+import { Button, useToast } from '@/components/ui'
 import { CategoryTree } from './CategoryTree'
 import { UncertainItemsPanel } from './UncertainItemsPanel'
 import type { 
@@ -23,13 +23,15 @@ interface ExtractionReviewProps {
   onSave: (categories: Category[], resolvedItems: ExtractedMenuItem[]) => Promise<void>
   onCancel: () => void
   loading?: boolean
+  jobId?: string
 }
 
 export default function ExtractionReview({
   result,
   onSave,
   onCancel,
-  loading = false
+  loading = false,
+  jobId
 }: ExtractionReviewProps) {
   // Compute safe initial values first; hooks must be unconditional
   const hasValidResult = !!(result && result.menu && result.menu.categories)
@@ -41,6 +43,10 @@ export default function ExtractionReview({
   const [resolvedItems, setResolvedItems] = useState<ExtractedMenuItem[]>([])
   const [saving, setSaving] = useState(false)
   const [excludedKeys, setExcludedKeys] = useState<Set<string>>(new Set())
+  const [overallFeedbackType, setOverallFeedbackType] = useState<'excellent' | 'system_error' | 'menu_unclear' | 'needs_improvement' | ''>('')
+  const [overallFeedback, setOverallFeedback] = useState<string>('')
+  const [submittingFeedback, setSubmittingFeedback] = useState<boolean>(false)
+  const { showToast } = useToast()
 
   const handleReorder = (newCategories: Category[]) => {
     setCategories(newCategories)
@@ -144,6 +150,32 @@ export default function ExtractionReview({
 
   const handleDismissUncertain = (itemIndex: number) => {
     setUncertainItems(prev => prev.filter((_, idx) => idx !== itemIndex))
+  }
+
+  const handleSubmitItemFeedback = async (
+    itemIndex: number,
+    feedback: string,
+    feedbackType: 'system_error' | 'menu_unclear'
+  ) => {
+    if (!jobId) return
+    try {
+      const res = await fetch('/api/extraction/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId,
+          feedbackType,
+          itemId: String(itemIndex),
+          comment: feedback
+        })
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        showToast({ type: 'error', title: 'Feedback failed', description: data.error || 'Please try again.' })
+        return
+      }
+      showToast({ type: 'success', title: 'Feedback submitted', description: 'Thanks for your help!' })
+    } catch {}
   }
 
   const handleToggleExclude = (categoryPath: number[], itemIndex: number) => {
@@ -303,6 +335,98 @@ export default function ExtractionReview({
           </div>
         </dl>
       </div>
+
+      {/* Overall Feedback */}
+      {jobId && (
+        <div className="bg-white rounded-lg border border-secondary-200 p-4">
+          <h4 className="text-sm font-medium text-secondary-700 mb-3">Feedback on this extraction</h4>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="overallFeedbackType"
+                value="excellent"
+                checked={overallFeedbackType === 'excellent'}
+                onChange={() => setOverallFeedbackType('excellent')}
+              />
+              Excellent
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="overallFeedbackType"
+                value="system_error"
+                checked={overallFeedbackType === 'system_error'}
+                onChange={() => setOverallFeedbackType('system_error')}
+              />
+              System error
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="overallFeedbackType"
+                value="menu_unclear"
+                checked={overallFeedbackType === 'menu_unclear'}
+                onChange={() => setOverallFeedbackType('menu_unclear')}
+              />
+              Menu unclear
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="overallFeedbackType"
+                value="needs_improvement"
+                checked={overallFeedbackType === 'needs_improvement'}
+                onChange={() => setOverallFeedbackType('needs_improvement')}
+              />
+              Needs improvement
+            </label>
+          </div>
+          <div className="mt-3">
+            <textarea
+              className="w-full border rounded-md p-2 text-sm"
+              rows={3}
+              placeholder="Optional comments (what went well or what needs fixing)"
+              value={overallFeedback}
+              onChange={(e) => setOverallFeedback(e.target.value)}
+            />
+          </div>
+          <div className="mt-3 flex justify-end">
+            <Button
+              variant="outline"
+              disabled={!overallFeedbackType || submittingFeedback}
+              loading={submittingFeedback}
+              onClick={async () => {
+                if (!jobId || !overallFeedbackType) return
+                setSubmittingFeedback(true)
+                try {
+                  const res = await fetch('/api/extraction/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      jobId,
+                      feedbackType: overallFeedbackType,
+                      comment: overallFeedback || undefined
+                    })
+                  })
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}))
+                    showToast({ type: 'error', title: 'Feedback failed', description: data.error || 'Please try again.' })
+                  } else {
+                    setOverallFeedback('')
+                    setOverallFeedbackType('')
+                    showToast({ type: 'success', title: 'Feedback submitted', description: 'Thanks for your help!' })
+                  }
+                } finally {
+                  setSubmittingFeedback(false)
+                }
+              }}
+            >
+              Submit Feedback
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
