@@ -65,7 +65,8 @@ export interface Menu {
   userId: string
   name: string
   slug: string
-  items: MenuItem[]
+  items: MenuItem[] // Flat items array (backward compatibility)
+  categories?: MenuCategory[] // Stage 2: Hierarchical structure
   theme: MenuTheme
   version: number
   status: 'draft' | 'published'
@@ -73,6 +74,7 @@ export interface Menu {
   imageUrl?: string
   qrCode?: QRCodeData
   paymentInfo?: PaymentInfo
+  extractionMetadata?: ExtractionMetadata
   auditTrail: AuditEntry[]
   createdAt: Date
   updatedAt: Date
@@ -88,11 +90,79 @@ export interface MenuItem {
   order: number
   confidence?: number // OCR confidence score
   
+  // Stage 2 fields
+  variants?: ItemVariant[]
+  modifierGroups?: ModifierGroup[]
+  additional?: AdditionalItemInfo
+  type?: 'standard' | 'set_menu' | 'combo'
+  setMenu?: SetMenu
+  
   // AI Image Generation fields
   aiImageId?: string
   customImageUrl?: string
   imageSource: 'none' | 'ai' | 'custom'
   generationParams?: ImageGenerationParams
+}
+
+// Stage 2 Menu Item Extensions
+export interface ItemVariant {
+  size?: string
+  price: number
+  attributes?: Record<string, string | number | boolean>
+  confidence?: number
+}
+
+export interface ModifierOption {
+  name: string
+  priceDelta?: number
+}
+
+export interface ModifierGroup {
+  name: string
+  type: 'single' | 'multi'
+  required: boolean
+  options: ModifierOption[]
+}
+
+export interface AdditionalItemInfo {
+  servedWith?: string[]
+  forPax?: number
+  prepTimeMin?: number
+  notes?: string
+}
+
+export interface SetMenuOption {
+  name: string
+  priceDelta?: number
+}
+
+export interface SetMenuCourse {
+  name: string
+  options: SetMenuOption[]
+}
+
+export interface SetMenu {
+  courses: SetMenuCourse[]
+  notes?: string
+}
+
+// Hierarchical Category Structure (Stage 2)
+export interface MenuCategory {
+  id: string
+  name: string
+  items: MenuItem[]
+  subcategories?: MenuCategory[]
+  confidence?: number
+  order: number
+}
+
+// Extraction Metadata
+export interface ExtractionMetadata {
+  schemaVersion: 'stage1' | 'stage2'
+  promptVersion: string
+  confidence: number
+  extractedAt: Date
+  jobId?: string
 }
 
 export interface MenuTheme {

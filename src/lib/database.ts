@@ -4,6 +4,10 @@ import { generateImageFilename } from '@/lib/image-utils'
 import type { Menu, MenuItem, User, PlanLimits, MenuTheme, OCRJob } from '@/types'
 import { PLAN_CONFIGS } from '@/types'
 import { computeSha256FromUrl } from '@/lib/utils'
+import { ensureBackwardCompatibility } from '@/lib/menu-data-migration'
+
+// Re-export migration utilities for convenience
+export * from '@/lib/menu-data-migration'
 
 // Database utility functions for menu management
 
@@ -438,15 +442,17 @@ export const menuOperations = {
     const updateData: any = {}
     if (updates.name) updateData.name = updates.name
     if (updates.status) updateData.status = updates.status
-    if (updates.items || updates.theme || updates.paymentInfo) {
+    if (updates.items || updates.categories || updates.theme || updates.paymentInfo || updates.extractionMetadata) {
       // Get current menu data and merge updates
       const currentMenu = await this.getMenu(menuId, userId)
       if (!currentMenu) throw new DatabaseError('Menu not found')
       
       updateData.menu_data = {
         items: updates.items || currentMenu.items,
+        categories: updates.categories !== undefined ? updates.categories : currentMenu.categories,
         theme: updates.theme || currentMenu.theme,
         paymentInfo: updates.paymentInfo !== undefined ? updates.paymentInfo : currentMenu.paymentInfo,
+        extractionMetadata: updates.extractionMetadata !== undefined ? updates.extractionMetadata : currentMenu.extractionMetadata,
       }
     }
     
@@ -521,6 +527,48 @@ export const menuOperations = {
     return slug
   },
 
+  async updateMenuFromExtraction(
+    menuId: string,
+    userId: string,
+    extractionData: {
+      items: MenuItem[]
+      categories?: any[]
+      extractionMetadata?: any
+    }
+  ): Promise<Menu> {
+    const supabase = createServerSupabaseClient()
+    
+    // Get current menu
+    const currentMenu = await this.getMenu(menuId, userId)
+    if (!currentMenu) throw new DatabaseError('Menu not found')
+    
+    // Prepare updated menu data
+    const updatedMenuData = {
+      items: extractionData.items,
+      categories: extractionData.categories,
+      theme: currentMenu.theme,
+      paymentInfo: currentMenu.paymentInfo,
+      extractionMetadata: extractionData.extractionMetadata,
+    }
+    
+    const { data, error } = await supabase
+      .from('menus')
+      .update({
+        menu_data: updatedMenuData,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', menuId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+    
+    if (error) {
+      throw new DatabaseError(`Failed to update menu from extraction: ${error.message}`, error.code)
+    }
+    
+    return transformMenuFromDB(data)
+  },
+
   async publishMenu(menuId: string, userId: string): Promise<Menu> {
     const supabase = createServerSupabaseClient()
     
@@ -560,8 +608,10 @@ export const menuOperations = {
     await menuVersionOperations.createVersion(menuId, {
       menu_data: {
         items: currentMenu.items,
+        categories: currentMenu.categories,
         theme: currentMenu.theme,
         paymentInfo: currentMenu.paymentInfo,
+        extractionMetadata: currentMenu.extractionMetadata,
       },
       version: newVersionNumber,
     })
@@ -642,22 +692,32 @@ export const menuItemOperations = {
 
 // Helper functions
 function transformMenuFromDB(dbMenu: any): Menu {
-  return {
+  const menuData = dbMenu.menu_data || {}
+  
+  const menu: Menu = {
     id: dbMenu.id,
     userId: dbMenu.user_id,
     name: dbMenu.name,
     slug: dbMenu.slug,
-    items: dbMenu.menu_data?.items || [],
-    theme: dbMenu.menu_data?.theme || getDefaultTheme(),
+    items: menuData.items || [],
+    categories: menuData.categories || undefined,
+    theme: menuData.theme || getDefaultTheme(),
     version: dbMenu.current_version,
     status: dbMenu.status,
     publishedAt: dbMenu.published_at ? new Date(dbMenu.published_at) : undefined,
     imageUrl: dbMenu.image_url || undefined,
-    paymentInfo: dbMenu.menu_data?.paymentInfo || undefined,
+    paymentInfo: menuData.paymentInfo || undefined,
+    extractionMetadata: menuData.extractionMetadata ? {
+      ...menuData.extractionMetadata,
+      extractedAt: new Date(menuData.extractionMetadata.extractedAt)
+    } : undefined,
     auditTrail: [], // Will be populated separately if needed
     createdAt: new Date(dbMenu.created_at),
     updatedAt: new Date(dbMenu.updated_at),
   }
+  
+  // Ensure backward compatibility between items and categories
+  return ensureBackwardCompatibility(menu)
 }
 
 function getDefaultTheme(): MenuTheme {
