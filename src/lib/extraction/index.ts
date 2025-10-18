@@ -212,10 +212,7 @@ export {
   PROMPT_TEMPERATURE_V2,
   PROMPT_SCHEMA_VERSION_V2,
 
-  // Reuse PromptOptions type from Stage 1
-  type PromptOptions,
-
-  // Prompt Builders
+  // Prompt Builders (PromptOptions type is already exported from Stage 1)
   buildStage2Prompt,
   getSystemRoleV2,
   getTemperatureV2,
