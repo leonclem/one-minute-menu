@@ -17,8 +17,8 @@ const RATE_LIMIT_RULES: Array<{
 }> = [
   // Authentication endpoints: stricter
   { matcher: /^\/api\/auth\//, windowMs: 60_000, max: 5 },
-  // OCR enqueue endpoint
-  { matcher: /^\/api\/menus\/[^/]+\/ocr$/, windowMs: 60 * 60_000, max: 10 },
+  // Extraction endpoints
+  { matcher: /^\/api\/extraction\/submit$/, windowMs: 60 * 60_000, max: 10 },
 ]
 
 function getClientIp(req: NextRequest): string {

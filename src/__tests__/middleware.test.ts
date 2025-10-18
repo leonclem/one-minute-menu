@@ -54,16 +54,16 @@ describe('middleware CSRF checks', () => {
 })
 
 describe('middleware rate limiting', () => {
-  const ocrUrl = 'https://example.com/api/menus/abc123/ocr'
+  const extractionUrl = 'https://example.com/api/extraction/submit'
 
   test('allows under the limit and blocks after exceeding', () => {
     // Do 10 requests from the same IP within window
     for (let i = 0; i < 10; i++) {
-      const res = runMiddleware(ocrUrl, { method: 'POST', headers: { origin: 'https://example.com' }, ip: '1.2.3.4' }) as any
+      const res = runMiddleware(extractionUrl, { method: 'POST', headers: { origin: 'https://example.com' }, ip: '1.2.3.4' }) as any
       expect(res.status).toBeUndefined()
     }
     // 11th should be blocked (limit is 10/hour)
-    const blocked = runMiddleware(ocrUrl, { method: 'POST', headers: { origin: 'https://example.com' }, ip: '1.2.3.4' }) as Response
+    const blocked = runMiddleware(extractionUrl, { method: 'POST', headers: { origin: 'https://example.com' }, ip: '1.2.3.4' }) as Response
     expect(blocked.status).toBe(429)
   })
 })

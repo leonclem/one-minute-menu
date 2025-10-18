@@ -308,12 +308,6 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       setExtractionJobId(result.data.jobId)
       setExtractionStatus(result.data.status)
       
-      showToast({ 
-        type: 'info', 
-        title: 'Extraction started', 
-        description: 'Large images may take up to 2–3 minutes. Please keep this tab open.' 
-      })
-      
       // Start polling for completion
       pollExtractionJob(result.data.jobId)
     } catch (e) {

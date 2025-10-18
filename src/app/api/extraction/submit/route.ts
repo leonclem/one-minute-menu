@@ -94,27 +94,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check monthly quota
-    const quotaCheck = await userOperations.checkPlanLimits(user.id, 'ocrJobs')
-    if (!quotaCheck.allowed) {
-      return NextResponse.json(
-        {
-          error: `Monthly extraction limit reached (${quotaCheck.current}/${quotaCheck.limit})`,
-          code: 'QUOTA_EXCEEDED',
-          upgrade: {
-            cta: 'Upgrade to Premium',
-            href: '/upgrade',
-            reason: 'Increase extraction limit from 5 to 50 per month'
-          }
-        },
-        { status: 403 }
-      )
-    }
-
     // Check rate limit (10 uploads/hour per user)
     const profile = await userOperations.getProfile(user.id)
     const plan = profile?.plan || 'free'
-    const planRate = PLAN_RUNTIME_LIMITS[plan]?.ocrRatePerHour ?? 10
+    const planRate = PLAN_RUNTIME_LIMITS[plan]?.extractionRatePerHour ?? 10
     const rateLimitPerHour = Number.parseInt(
       process.env.EXTRACTION_RATE_LIMIT_PER_HOUR || String(planRate),
       10
@@ -193,7 +176,6 @@ export async function POST(request: NextRequest) {
         jobId: job.id,
         status: job.status,
         estimatedCompletionTime: estimatedCompletionTime.toISOString(),
-        quotaRemaining: quotaCheck.limit - quotaCheck.current - 1,
         processingTime: Date.now() - startTime
       }
     })

@@ -14,7 +14,6 @@ export interface User {
 export interface PlanLimits {
   menus: number
   menuItems: number
-  ocrJobs: number
   monthlyUploads: number
   aiImageGenerations: number
 }
@@ -24,21 +23,18 @@ export const PLAN_CONFIGS: Record<User['plan'], PlanLimits> = {
   free: {
     menus: 1,
     menuItems: 20,
-    ocrJobs: 5,
     monthlyUploads: 10,
     aiImageGenerations: 10,
   },
   premium: {
     menus: 10,
     menuItems: 500,
-    ocrJobs: 50,
     monthlyUploads: 100,
     aiImageGenerations: 100,
   },
   enterprise: {
     menus: -1, // unlimited
     menuItems: -1,
-    ocrJobs: -1,
     monthlyUploads: -1,
     aiImageGenerations: 1000,
   },
@@ -46,18 +42,18 @@ export const PLAN_CONFIGS: Record<User['plan'], PlanLimits> = {
 
 // Runtime, non-persisted limits by plan (e.g., rate limits)
 export interface PlanRuntimeLimits {
-  ocrRatePerHour: number
+  extractionRatePerHour: number
 }
 
 export const PLAN_RUNTIME_LIMITS: Record<User['plan'], PlanRuntimeLimits> = {
   free: {
-    ocrRatePerHour: 6,
+    extractionRatePerHour: 6,
   },
   premium: {
-    ocrRatePerHour: 20,
+    extractionRatePerHour: 20,
   },
   enterprise: {
-    ocrRatePerHour: 60,
+    extractionRatePerHour: 60,
   },
 }
 
@@ -89,7 +85,7 @@ export interface MenuItem {
   available: boolean
   category?: string
   order: number
-  confidence?: number // OCR confidence score
+  confidence?: number // Extraction confidence score
   
   // Stage 2 fields
   variants?: ItemVariant[]
@@ -229,34 +225,8 @@ export interface AuditEntry {
   userId: string
 }
 
-// OCR and AI Processing Types
-
-export interface OCRJob {
-  id: string
-  userId: string
-  imageHash: string // SHA-256 for idempotency
-  imageUrl: string
-  status: 'queued' | 'processing' | 'completed' | 'failed'
-  result?: OCRResult
-  error?: string
-  createdAt: Date
-  processingTime?: number
-  retryCount: number
-}
-
-export interface OCRResult {
-  extractedItems: MenuItem[]
-  confidence: number
-  flaggedFields: string[]
-  processingTime: number
-  ocrText: string
-  aiParsingUsed: boolean
-  tokenUsage?: {
-    input: number
-    output: number
-    cost: number
-  }
-}
+// OCR types removed - use extraction service types instead
+// See src/lib/extraction/schema-stage1.ts and schema-stage2.ts
 
 
 

@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { supabase } from '@/lib/supabase'
 import { generateImageFilename } from '@/lib/image-utils'
-import type { Menu, MenuItem, User, PlanLimits, MenuTheme, OCRJob } from '@/types'
+import type { Menu, MenuItem, User, PlanLimits, MenuTheme } from '@/types'
 import { PLAN_CONFIGS } from '@/types'
 import { computeSha256FromUrl } from '@/lib/utils'
 import { ensureBackwardCompatibility } from '@/lib/menu-data-migration'
@@ -40,7 +40,6 @@ export const userOperations = {
       return {
         menus: typeof dbLimits?.menus === 'number' ? dbLimits.menus : defaults.menus,
         menuItems: typeof dbLimits?.items === 'number' ? dbLimits.items : defaults.menuItems,
-        ocrJobs: typeof dbLimits?.ocr_jobs === 'number' ? dbLimits.ocr_jobs : defaults.ocrJobs,
         monthlyUploads: typeof dbLimits?.monthly_uploads === 'number' ? dbLimits.monthly_uploads : defaults.monthlyUploads,
         aiImageGenerations: typeof dbLimits?.ai_image_generations === 'number' ? dbLimits.ai_image_generations : defaults.aiImageGenerations,
       }
@@ -67,7 +66,6 @@ export const userOperations = {
       updateData.plan_limits = {
         menus: updates.limits.menus,
         items: updates.limits.menuItems,
-        ocr_jobs: updates.limits.ocrJobs,
         monthly_uploads: updates.limits.monthlyUploads,
         ai_image_generations: updates.limits.aiImageGenerations,
       }
@@ -91,7 +89,6 @@ export const userOperations = {
       return {
         menus: typeof dbLimits?.menus === 'number' ? dbLimits.menus : defaults.menus,
         menuItems: typeof dbLimits?.items === 'number' ? dbLimits.items : defaults.menuItems,
-        ocrJobs: typeof dbLimits?.ocr_jobs === 'number' ? dbLimits.ocr_jobs : defaults.ocrJobs,
         monthlyUploads: typeof dbLimits?.monthly_uploads === 'number' ? dbLimits.monthly_uploads : defaults.monthlyUploads,
         aiImageGenerations: typeof dbLimits?.ai_image_generations === 'number' ? dbLimits.ai_image_generations : defaults.aiImageGenerations,
       }
@@ -121,19 +118,6 @@ export const userOperations = {
           .select('*', { count: 'exact', head: true })
           .eq('user_id', userId)
         current = count || 0
-        break
-      
-      case 'ocrJobs':
-        const startOfMonth = new Date()
-        startOfMonth.setDate(1)
-        startOfMonth.setHours(0, 0, 0, 0)
-        
-        const { count: ocrCount } = await createServerSupabaseClient()
-          .from('menu_extraction_jobs')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', userId)
-          .gte('created_at', startOfMonth.toISOString())
-        current = ocrCount || 0
         break
 
       case 'monthlyUploads':
@@ -848,181 +832,10 @@ export const imageOperations = {
 }
 
 // ============================================================================
-// DEPRECATED: OCR Job Operations (Legacy)
+// OCR Operations Removed
 // ============================================================================
 // 
-// ⚠️ DEPRECATION NOTICE: This OCR service is deprecated as of Task 27
-// 
-// The old two-step OCR→parsing approach has been replaced with a unified
-// vision-LLM extraction system that provides:
-// - Better accuracy (90%+ field-level accuracy vs ~70% with OCR)
-// - Hierarchical structure extraction (categories, subcategories)
-// - Confidence scoring and uncertain item detection
-// - Direct structured output (no parsing step needed)
-// 
-// Migration Path:
-// - For new implementations, use MenuExtractionService from @/lib/extraction/menu-extraction-service
-// - For job queue operations, use JobQueueManager from @/lib/extraction/job-queue
-// - This legacy code is maintained only for backward compatibility with existing data
-// 
-// Removal Timeline:
-// - Phase 1 (Current): Marked as deprecated, still functional
-// - Phase 2 (Next release): Remove from new code paths
-// - Phase 3 (Future): Complete removal after data migration
+// The old OCR-based extraction has been completely removed.
+// Use the extraction service instead: /api/extraction/*
 // 
 // ============================================================================
-export const ocrOperations = {
-  async enqueueJob(userId: string, imageUrl: string, options?: { force?: boolean }): Promise<OCRJob> {
-    const supabase = createServerSupabaseClient()
-
-    // Compute idempotency key from image bytes
-    const imageHash = await computeSha256FromUrl(imageUrl)
-
-    // Check for existing job with same hash
-    const { data: existing } = await supabase
-      .from('menu_extraction_jobs')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('image_hash', imageHash)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (existing && !options?.force) {
-      return this.transformJob(existing)
-    }
-
-    const { data, error } = await supabase
-      .from('menu_extraction_jobs')
-      .insert({ 
-        user_id: userId, 
-        image_url: imageUrl, 
-        image_hash: imageHash, 
-        status: 'queued',
-        schema_version: 'stage1',
-        prompt_version: 'v1.0'
-      })
-      .select('*')
-      .single()
-
-    if (error) {
-      throw new DatabaseError(`Failed to enqueue OCR job: ${error.message}`, error.code)
-    }
-    return this.transformJob(data)
-  },
-
-  async getJob(userId: string, jobId: string): Promise<OCRJob | null> {
-    const supabase = createServerSupabaseClient()
-    const { data, error } = await supabase
-      .from('menu_extraction_jobs')
-      .select('*')
-      .eq('id', jobId)
-      .eq('user_id', userId)
-      .single()
-    if (error) {
-      if (error.code === 'PGRST116') return null
-      throw new DatabaseError(`Failed to get OCR job: ${error.message}`, error.code)
-    }
-    return this.transformJob(data)
-  },
-
-  transformJob(row: any): OCRJob {
-    return {
-      id: row.id,
-      userId: row.user_id,
-      imageHash: row.image_hash,
-      imageUrl: row.image_url,
-      status: row.status,
-      result: row.result ?? undefined,
-      error: row.error_message ?? undefined,
-      createdAt: new Date(row.created_at),
-      processingTime: row.processing_time ?? undefined,
-      retryCount: row.retry_count ?? 0,
-    }
-  },
-
-  async updateJobResult(userId: string, jobId: string, result: any): Promise<OCRJob> {
-    const supabase = createServerSupabaseClient()
-    const { data, error } = await supabase
-      .from('menu_extraction_jobs')
-      .update({ result, status: 'completed', completed_at: new Date().toISOString() })
-      .eq('id', jobId)
-      .eq('user_id', userId)
-      .select('*')
-      .single()
-    if (error) {
-      throw new DatabaseError(`Failed to update OCR job result: ${error.message}`, error.code)
-    }
-    return this.transformJob(data)
-  },
-
-  async findExistingJob(userId: string, imageUrl: string): Promise<OCRJob | null> {
-    const supabase = createServerSupabaseClient()
-    const imageHash = await computeSha256FromUrl(imageUrl)
-    
-    const { data, error } = await supabase
-      .from('menu_extraction_jobs')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('image_hash', imageHash)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (error) {
-      if (error.code === 'PGRST116') return null
-      throw new DatabaseError(`Failed to find existing OCR job: ${error.message}`, error.code)
-    }
-    
-    return data ? this.transformJob(data) : null
-  },
-
-  async markCompleted(jobId: string, ocrText: string, processingTime: number, confidence: number): Promise<OCRJob> {
-    const supabase = createServerSupabaseClient()
-    
-    const result = {
-      ocrText,
-      confidence,
-      extractedAt: new Date().toISOString()
-    }
-    
-    const { data, error } = await supabase
-      .from('menu_extraction_jobs')
-      .update({ 
-        result, 
-        status: 'completed', 
-        processing_time: processingTime,
-        completed_at: new Date().toISOString() 
-      })
-      .eq('id', jobId)
-      .select('*')
-      .single()
-      
-    if (error) {
-      throw new DatabaseError(`Failed to mark OCR job as completed: ${error.message}`, error.code)
-    }
-    
-    return this.transformJob(data)
-  },
-
-  async markFailed(jobId: string, errorMessage: string): Promise<OCRJob> {
-    const supabase = createServerSupabaseClient()
-    
-    const { data, error } = await supabase
-      .from('menu_extraction_jobs')
-      .update({ 
-        status: 'failed', 
-        error_message: errorMessage,
-        completed_at: new Date().toISOString() 
-      })
-      .eq('id', jobId)
-      .select('*')
-      .single()
-      
-    if (error) {
-      throw new DatabaseError(`Failed to mark OCR job as failed: ${error.message}`, error.code)
-    }
-    
-    return this.transformJob(data)
-  }
-}
