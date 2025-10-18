@@ -2,6 +2,52 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 /**
+ * GET /api/extraction/feedback
+ * Retrieve feedback (admin only)
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = createServerSupabaseClient()
+
+    // Auth check
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check admin role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
+    }
+
+    // Get feedback with limit
+    const limit = parseInt(request.nextUrl.searchParams.get('limit') || '200')
+    
+    const { data: feedback, error: queryError } = await supabase
+      .from('extraction_feedback')
+      .select('id, job_id, user_id, feedback_type, item_id, correction_made, comment, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (queryError) {
+      console.error('Failed to fetch feedback:', queryError)
+      return NextResponse.json({ error: 'Failed to fetch feedback' }, { status: 500 })
+    }
+
+    return NextResponse.json({ feedback: feedback || [] })
+  } catch (err) {
+    console.error('Error fetching feedback:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+/**
  * POST /api/extraction/feedback
  * Collect user feedback for an extraction job.
  *

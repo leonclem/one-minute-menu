@@ -41,10 +41,10 @@ export default async function DashboardPage() {
             <div className="flex items-center space-x-4">
               {isAdmin && (
                 <Link
-                  href="/admin/analytics"
+                  href="/admin"
                   className="text-sm text-secondary-500 hover:text-secondary-700"
                 >
-                  Analytics
+                  Admin
                 </Link>
               )}
               <span className="text-sm text-secondary-600">

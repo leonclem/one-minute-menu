@@ -118,7 +118,7 @@ export default function QuotaUsageDashboard({
               <span className="text-secondary-600">Within limit</span>
             )}
             {showAdminLink && (
-              <a href="/admin/analytics" className="text-primary-600 hover:text-primary-500">View details →</a>
+              <a href="/admin?tab=image-generation" className="text-primary-600 hover:text-primary-500">View details →</a>
             )}
           </div>
         </CardContent>

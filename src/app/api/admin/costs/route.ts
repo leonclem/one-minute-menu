@@ -26,9 +26,19 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // TODO: Add admin role check
-    // For now, allow all authenticated users
-    // In production, check if user has admin role
+    // Check admin role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
+      )
+    }
 
     // Create services
     const metricsCollector = createMetricsCollector(supabase)
@@ -47,6 +57,77 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error fetching cost data:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const supabase = createServerSupabaseClient()
+
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Check admin role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
+      )
+    }
+
+    // Parse request body
+    const body = await request.json()
+    const { dailyCapGlobal, monthlyCapGlobal, dailyCapPerUser, monthlyCapPerUser } = body
+
+    // Validate caps
+    if (dailyCapGlobal !== undefined && (typeof dailyCapGlobal !== 'number' || dailyCapGlobal < 0)) {
+      return NextResponse.json(
+        { error: 'Invalid dailyCapGlobal' },
+        { status: 400 }
+      )
+    }
+
+    if (monthlyCapGlobal !== undefined && (typeof monthlyCapGlobal !== 'number' || monthlyCapGlobal < 0)) {
+      return NextResponse.json(
+        { error: 'Invalid monthlyCapGlobal' },
+        { status: 400 }
+      )
+    }
+
+    // Create services
+    const metricsCollector = createMetricsCollector(supabase)
+    const costMonitor = createCostMonitor(supabase, metricsCollector)
+
+    // Update caps
+    costMonitor.updateSpendingCaps({
+      dailyCapGlobal,
+      monthlyCapGlobal,
+      dailyCapPerUser,
+      monthlyCapPerUser
+    })
+
+    return NextResponse.json({
+      success: true,
+      caps: costMonitor.getSpendingCaps()
+    })
+  } catch (error) {
+    console.error('Error updating cost caps:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -109,19 +190,34 @@ async function getTopSpenders(supabase: any, limit: number = 10) {
     .sort((a, b) => b.monthlySpending - a.monthlySpending)
     .slice(0, limit)
 
-  // Get user emails
+  // Get user emails from auth.users
   const userIds = sorted.map(s => s.userId)
-  const { data: users } = await supabase.auth.admin.listUsers()
+  
+  // Query profiles for user info
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, email')
+    .in('id', userIds)
   
   const userEmailMap = new Map<string, string>()
-  if (users?.users) {
-    for (const user of users.users) {
-      userEmailMap.set(user.id, user.email || 'Unknown')
+  if (profiles) {
+    for (const profile of profiles) {
+      userEmailMap.set(profile.id, profile.email || 'Unknown')
+    }
+  }
+
+  // If profiles don't have email, try to get from auth
+  for (const userId of userIds) {
+    if (!userEmailMap.has(userId)) {
+      const { data: authUser } = await supabase.auth.admin.getUserById(userId)
+      if (authUser?.user?.email) {
+        userEmailMap.set(userId, authUser.user.email)
+      }
     }
   }
 
   return sorted.map(s => ({
     ...s,
-    email: userEmailMap.get(s.userId) || 'Unknown'
+    email: userEmailMap.get(s.userId) || 'Unknown User'
   }))
 }
