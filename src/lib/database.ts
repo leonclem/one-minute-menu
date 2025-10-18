@@ -434,11 +434,17 @@ export const menuOperations = {
       if (!currentMenu) throw new DatabaseError('Menu not found')
       
       updateData.menu_data = {
-        items: updates.items || currentMenu.items,
+        items: updates.items !== undefined ? updates.items : currentMenu.items,
         categories: updates.categories !== undefined ? updates.categories : currentMenu.categories,
-        theme: updates.theme || currentMenu.theme,
+        theme: updates.theme !== undefined ? updates.theme : currentMenu.theme,
         paymentInfo: updates.paymentInfo !== undefined ? updates.paymentInfo : currentMenu.paymentInfo,
         extractionMetadata: updates.extractionMetadata !== undefined ? updates.extractionMetadata : currentMenu.extractionMetadata,
+      }
+
+      // If items are explicitly set to empty and categories were not provided in updates,
+      // clear categories too to keep data consistent and avoid rehydration via ensureBackwardCompatibility
+      if (Array.isArray(updates.items) && updates.items.length === 0 && updates.categories === undefined) {
+        updateData.menu_data.categories = []
       }
     }
     
@@ -649,9 +655,15 @@ export const menuItemOperations = {
     const menu = await menuOperations.getMenu(menuId, userId)
     if (!menu) throw new DatabaseError('Menu not found')
     
+    console.log('[DELETE ITEM] Attempting to delete item:', itemId)
+    console.log('[DELETE ITEM] Current items:', menu.items.map(i => ({ id: i.id, name: i.name })))
+    
     const updatedItems = menu.items
       .filter(item => item.id !== itemId)
       .map((item, index) => ({ ...item, order: index })) // Reorder
+    
+    console.log('[DELETE ITEM] Items after filter:', updatedItems.map(i => ({ id: i.id, name: i.name })))
+    console.log('[DELETE ITEM] Deleted count:', menu.items.length - updatedItems.length)
     
     return menuOperations.updateMenu(menuId, userId, { items: updatedItems })
   },
@@ -660,10 +672,16 @@ export const menuItemOperations = {
     const menu = await menuOperations.getMenu(menuId, userId)
     if (!menu) throw new DatabaseError('Menu not found')
     
+    console.log('[DELETE MULTIPLE] Attempting to delete items:', itemIds)
+    console.log('[DELETE MULTIPLE] Current items:', menu.items.map(i => ({ id: i.id, name: i.name })))
+    
     const itemIdsSet = new Set(itemIds)
     const updatedItems = menu.items
       .filter(item => !itemIdsSet.has(item.id))
       .map((item, index) => ({ ...item, order: index })) // Reorder
+    
+    console.log('[DELETE MULTIPLE] Items after filter:', updatedItems.map(i => ({ id: i.id, name: i.name })))
+    console.log('[DELETE MULTIPLE] Deleted count:', menu.items.length - updatedItems.length)
     
     return menuOperations.updateMenu(menuId, userId, { items: updatedItems })
   },
@@ -671,7 +689,10 @@ export const menuItemOperations = {
   async clearItems(menuId: string, userId: string): Promise<Menu> {
     const menu = await menuOperations.getMenu(menuId, userId)
     if (!menu) throw new DatabaseError('Menu not found')
-    return menuOperations.updateMenu(menuId, userId, { items: [] })
+    console.log('[CLEAR ITEMS] Clearing all items from menu:', menuId)
+    console.log('[CLEAR ITEMS] Current item count:', menu.items.length)
+    // Clear both items and categories to avoid items being rehydrated from categories
+    return menuOperations.updateMenu(menuId, userId, { items: [], categories: [] })
   },
 
   async reorderItems(menuId: string, userId: string, itemIds: string[]): Promise<Menu> {

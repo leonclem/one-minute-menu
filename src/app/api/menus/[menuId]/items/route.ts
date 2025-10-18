@@ -135,12 +135,19 @@ export async function DELETE(
     const body = await request.json().catch(() => ({}))
     const { itemIds } = body as { itemIds?: string[] }
 
+    console.log('[DELETE API] Request body:', body)
+    console.log('[DELETE API] itemIds:', itemIds)
+    console.log('[DELETE API] itemIds is array?', Array.isArray(itemIds))
+    console.log('[DELETE API] itemIds length:', itemIds?.length)
+
     let menu
     if (itemIds && Array.isArray(itemIds) && itemIds.length > 0) {
       // Batch delete specific items
+      console.log('[DELETE API] Using deleteMultipleItems')
       menu = await menuItemOperations.deleteMultipleItems(params.menuId, user.id, itemIds)
     } else {
       // Clear all items
+      console.log('[DELETE API] Using clearItems')
       menu = await menuItemOperations.clearItems(params.menuId, user.id)
     }
 

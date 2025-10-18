@@ -97,23 +97,27 @@ export function flattenCategoriesToItems(categories: MenuCategory[]): MenuItem[]
  * Ensures menu has both items and categories for backward compatibility
  * If categories exist but items is empty, flatten categories to items
  * If items exist but categories is empty, create categories from items
+ * Also migrates old-style IDs to UUIDs
  */
 export function ensureBackwardCompatibility(menu: Menu): Menu {
+  // First, migrate any old-style IDs to UUIDs
+  let migratedMenu = migrateItemIdsToUUIDs(menu)
+  
   // Case 1: Has categories but no items - flatten categories
-  if (menu.categories && menu.categories.length > 0 && menu.items.length === 0) {
+  if (migratedMenu.categories && migratedMenu.categories.length > 0 && migratedMenu.items.length === 0) {
     return {
-      ...menu,
-      items: flattenCategoriesToItems(menu.categories),
+      ...migratedMenu,
+      items: flattenCategoriesToItems(migratedMenu.categories),
     }
   }
   
   // Case 2: Has items but no categories - create categories
-  if (menu.items.length > 0 && (!menu.categories || menu.categories.length === 0)) {
-    return migrateStage1ToStage2(menu)
+  if (migratedMenu.items.length > 0 && (!migratedMenu.categories || migratedMenu.categories.length === 0)) {
+    return migrateStage1ToStage2(migratedMenu)
   }
   
   // Case 3: Has both or has neither - no change needed
-  return menu
+  return migratedMenu
 }
 
 /**
@@ -221,11 +225,11 @@ export function validateMenuDataConsistency(menu: Menu): { valid: boolean; error
 // Helper functions
 
 function generateCategoryId(): string {
-  return `cat_${Math.random().toString(36).substr(2, 9)}`
+  return crypto.randomUUID()
 }
 
 function generateItemId(): string {
-  return `item_${Math.random().toString(36).substr(2, 9)}`
+  return crypto.randomUUID()
 }
 
 function calculateAverageConfidence(items: MenuItem[]): number {
@@ -281,6 +285,73 @@ export function prepareMenuForPublishing(menu: Menu): { valid: boolean; errors: 
   return {
     valid: errors.length === 0,
     errors,
+  }
+}
+
+/**
+ * Migrates old-style item IDs (item_XXXXXXXXX) to proper UUIDs
+ * This ensures compatibility with database operations that expect UUIDs
+ */
+export function migrateItemIdsToUUIDs(menu: Menu): Menu {
+  const needsMigration = (id: string) => id.startsWith('item_') || id.startsWith('cat_')
+  
+  // Check if any items need migration
+  const hasOldIds = menu.items.some(item => needsMigration(item.id))
+  if (!hasOldIds) {
+    return menu
+  }
+  
+  // Create ID mapping for items
+  const idMap = new Map<string, string>()
+  menu.items.forEach(item => {
+    if (needsMigration(item.id)) {
+      idMap.set(item.id, crypto.randomUUID())
+    }
+  })
+  
+  // Migrate items
+  const migratedItems = menu.items.map(item => {
+    if (needsMigration(item.id)) {
+      return { ...item, id: idMap.get(item.id)! }
+    }
+    return item
+  })
+  
+  // Migrate categories if they exist
+  let migratedCategories = menu.categories
+  if (migratedCategories && migratedCategories.length > 0) {
+    const migrateCategoryIds = (categories: MenuCategory[]): MenuCategory[] => {
+      return categories.map(category => {
+        const newCategoryId = needsMigration(category.id) ? crypto.randomUUID() : category.id
+        const newItems = category.items.map(item => {
+          if (needsMigration(item.id)) {
+            const newId = idMap.get(item.id) || crypto.randomUUID()
+            if (!idMap.has(item.id)) {
+              idMap.set(item.id, newId)
+            }
+            return { ...item, id: newId }
+          }
+          return item
+        })
+        
+        return {
+          ...category,
+          id: newCategoryId,
+          items: newItems,
+          subcategories: category.subcategories 
+            ? migrateCategoryIds(category.subcategories)
+            : undefined
+        }
+      })
+    }
+    
+    migratedCategories = migrateCategoryIds(migratedCategories)
+  }
+  
+  return {
+    ...menu,
+    items: migratedItems,
+    categories: migratedCategories
   }
 }
 

@@ -1,4 +1,13 @@
 import '@testing-library/jest-dom'
+import { randomUUID } from 'crypto'
+
+// Polyfill crypto.randomUUID for Node.js test environment
+if (typeof global.crypto === 'undefined') {
+  global.crypto = {}
+}
+if (typeof global.crypto.randomUUID === 'undefined') {
+  global.crypto.randomUUID = randomUUID
+}
 
 // Mock Next.js router
 jest.mock('next/router', () => ({
