@@ -1,0 +1,386 @@
+-- Migration 013: Template System
+-- Creates tables and storage infrastructure for the Figma menu template system
+
+-- ============================================================================
+-- TABLES
+-- ============================================================================
+
+-- Menu Templates Table
+-- Stores metadata and configuration for all available templates
+CREATE TABLE IF NOT EXISTS menu_templates (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  description TEXT,
+  author TEXT NOT NULL,
+  version TEXT NOT NULL,
+  figma_file_key TEXT NOT NULL,
+  preview_image_url TEXT NOT NULL,
+  thumbnail_url TEXT NOT NULL,
+  page_format TEXT NOT NULL CHECK (page_format IN ('A4', 'US_LETTER', 'TABLOID', 'DIGITAL')),
+  orientation TEXT NOT NULL CHECK (orientation IN ('portrait', 'landscape')),
+  tags TEXT[] DEFAULT '{}',
+  is_premium BOOLEAN DEFAULT FALSE,
+  config JSONB NOT NULL, -- TemplateConfig
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for menu_templates
+CREATE INDEX IF NOT EXISTS idx_menu_templates_tags ON menu_templates USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_menu_templates_active ON menu_templates(is_active) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_menu_templates_format ON menu_templates(page_format, orientation);
+
+-- Template Renders Table
+-- Stores render history and results for user menu renders
+CREATE TABLE IF NOT EXISTS template_renders (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  menu_id UUID NOT NULL REFERENCES menus(id) ON DELETE CASCADE,
+  template_id UUID NOT NULL REFERENCES menu_templates(id) ON DELETE CASCADE,
+  render_data JSONB NOT NULL, -- RenderResult
+  customization JSONB, -- UserCustomization
+  format TEXT NOT NULL CHECK (format IN ('html', 'pdf', 'png')),
+  output_url TEXT,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+
+-- Indexes for template_renders
+CREATE INDEX IF NOT EXISTS idx_template_renders_user ON template_renders(user_id);
+CREATE INDEX IF NOT EXISTS idx_template_renders_menu ON template_renders(menu_id);
+CREATE INDEX IF NOT EXISTS idx_template_renders_template ON template_renders(template_id);
+CREATE INDEX IF NOT EXISTS idx_template_renders_status ON template_renders(status);
+CREATE INDEX IF NOT EXISTS idx_template_renders_created ON template_renders(created_at DESC);
+
+-- User Template Preferences Table
+-- Stores user's preferred template and customization settings per menu
+CREATE TABLE IF NOT EXISTS user_template_preferences (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  menu_id UUID NOT NULL REFERENCES menus(id) ON DELETE CASCADE,
+  template_id UUID NOT NULL REFERENCES menu_templates(id) ON DELETE CASCADE,
+  customization JSONB NOT NULL, -- UserCustomization
+  is_default BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, menu_id)
+);
+
+-- Indexes for user_template_preferences
+CREATE INDEX IF NOT EXISTS idx_user_template_prefs_user_menu ON user_template_preferences(user_id, menu_id);
+CREATE INDEX IF NOT EXISTS idx_user_template_prefs_template ON user_template_preferences(template_id);
+
+-- ============================================================================
+-- STORAGE BUCKETS
+-- ============================================================================
+
+-- Create storage buckets for templates and rendered outputs
+-- Note: This uses Supabase storage API, executed via SQL
+
+-- Templates bucket (public) - stores original Figma files and preview images
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'templates',
+  'templates',
+  true,
+  52428800, -- 50MB limit
+  ARRAY['image/png', 'image/jpeg', 'image/webp', 'application/json']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Templates-compiled bucket (system) - stores compiled template artifacts
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'templates-compiled',
+  'templates-compiled',
+  false,
+  104857600, -- 100MB limit
+  ARRAY['application/json', 'text/css', 'image/png', 'image/jpeg']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Rendered-menus bucket (private) - stores user exports with signed URLs
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'rendered-menus',
+  'rendered-menus',
+  false,
+  104857600, -- 100MB limit
+  ARRAY['application/pdf', 'image/png', 'image/jpeg', 'text/html']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- ============================================================================
+
+-- Enable RLS on all tables
+ALTER TABLE menu_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE template_renders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_template_preferences ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- RLS POLICIES: menu_templates
+-- ============================================================================
+
+-- Public read access to active templates
+CREATE POLICY "Templates are publicly readable"
+  ON menu_templates
+  FOR SELECT
+  USING (is_active = TRUE);
+
+-- Only admins can insert templates
+CREATE POLICY "Admins can insert templates"
+  ON menu_templates
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'admin'
+    )
+  );
+
+-- Only admins can update templates
+CREATE POLICY "Admins can update templates"
+  ON menu_templates
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'admin'
+    )
+  );
+
+-- Only admins can delete templates
+CREATE POLICY "Admins can delete templates"
+  ON menu_templates
+  FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'admin'
+    )
+  );
+
+-- ============================================================================
+-- RLS POLICIES: template_renders
+-- ============================================================================
+
+-- Users can view their own renders
+CREATE POLICY "Users can view their own renders"
+  ON template_renders
+  FOR SELECT
+  USING (user_id = auth.uid());
+
+-- Users can create renders for their own menus
+CREATE POLICY "Users can create renders for their own menus"
+  ON template_renders
+  FOR INSERT
+  WITH CHECK (
+    user_id = auth.uid() AND
+    EXISTS (
+      SELECT 1 FROM menus
+      WHERE menus.id = template_renders.menu_id
+      AND menus.user_id = auth.uid()
+    )
+  );
+
+-- Users can update their own renders
+CREATE POLICY "Users can update their own renders"
+  ON template_renders
+  FOR UPDATE
+  USING (user_id = auth.uid());
+
+-- Users can delete their own renders
+CREATE POLICY "Users can delete their own renders"
+  ON template_renders
+  FOR DELETE
+  USING (user_id = auth.uid());
+
+-- Admins can view all renders
+CREATE POLICY "Admins can view all renders"
+  ON template_renders
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'admin'
+    )
+  );
+
+-- ============================================================================
+-- RLS POLICIES: user_template_preferences
+-- ============================================================================
+
+-- Users can view their own preferences
+CREATE POLICY "Users can view their own preferences"
+  ON user_template_preferences
+  FOR SELECT
+  USING (user_id = auth.uid());
+
+-- Users can create preferences for their own menus
+CREATE POLICY "Users can create preferences for their own menus"
+  ON user_template_preferences
+  FOR INSERT
+  WITH CHECK (
+    user_id = auth.uid() AND
+    EXISTS (
+      SELECT 1 FROM menus
+      WHERE menus.id = user_template_preferences.menu_id
+      AND menus.user_id = auth.uid()
+    )
+  );
+
+-- Users can update their own preferences
+CREATE POLICY "Users can update their own preferences"
+  ON user_template_preferences
+  FOR UPDATE
+  USING (user_id = auth.uid());
+
+-- Users can delete their own preferences
+CREATE POLICY "Users can delete their own preferences"
+  ON user_template_preferences
+  FOR DELETE
+  USING (user_id = auth.uid());
+
+-- ============================================================================
+-- STORAGE RLS POLICIES
+-- ============================================================================
+
+-- Templates bucket: Public read access
+CREATE POLICY "Templates are publicly readable"
+  ON storage.objects
+  FOR SELECT
+  USING (bucket_id = 'templates');
+
+-- Templates bucket: Admin write access
+CREATE POLICY "Admins can upload templates"
+  ON storage.objects
+  FOR INSERT
+  WITH CHECK (
+    bucket_id = 'templates' AND
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'admin'
+    )
+  );
+
+-- Templates bucket: Admin update access
+CREATE POLICY "Admins can update templates"
+  ON storage.objects
+  FOR UPDATE
+  USING (
+    bucket_id = 'templates' AND
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'admin'
+    )
+  );
+
+-- Templates bucket: Admin delete access
+CREATE POLICY "Admins can delete templates"
+  ON storage.objects
+  FOR DELETE
+  USING (
+    bucket_id = 'templates' AND
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'admin'
+    )
+  );
+
+-- Templates-compiled bucket: System read access (authenticated users)
+CREATE POLICY "Authenticated users can read compiled templates"
+  ON storage.objects
+  FOR SELECT
+  USING (
+    bucket_id = 'templates-compiled' AND
+    auth.role() = 'authenticated'
+  );
+
+-- Templates-compiled bucket: Admin write access
+CREATE POLICY "Admins can upload compiled templates"
+  ON storage.objects
+  FOR INSERT
+  WITH CHECK (
+    bucket_id = 'templates-compiled' AND
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'admin'
+    )
+  );
+
+-- Rendered-menus bucket: Users can read their own renders
+CREATE POLICY "Users can read their own renders"
+  ON storage.objects
+  FOR SELECT
+  USING (
+    bucket_id = 'rendered-menus' AND
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+-- Rendered-menus bucket: Users can upload their own renders
+CREATE POLICY "Users can upload their own renders"
+  ON storage.objects
+  FOR INSERT
+  WITH CHECK (
+    bucket_id = 'rendered-menus' AND
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+-- Rendered-menus bucket: Users can delete their own renders
+CREATE POLICY "Users can delete their own renders"
+  ON storage.objects
+  FOR DELETE
+  USING (
+    bucket_id = 'rendered-menus' AND
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+-- ============================================================================
+-- FUNCTIONS
+-- ============================================================================
+
+-- Function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Triggers for updated_at
+CREATE TRIGGER update_menu_templates_updated_at
+  BEFORE UPDATE ON menu_templates
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_template_preferences_updated_at
+  BEFORE UPDATE ON user_template_preferences
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- COMMENTS
+-- ============================================================================
+
+COMMENT ON TABLE menu_templates IS 'Stores metadata and configuration for Figma menu templates';
+COMMENT ON TABLE template_renders IS 'Stores render history and results for user menu renders';
+COMMENT ON TABLE user_template_preferences IS 'Stores user preferred template and customization settings per menu';
+
+COMMENT ON COLUMN menu_templates.config IS 'JSONB containing TemplateConfig with bindings, styling, and customization options';
+COMMENT ON COLUMN template_renders.render_data IS 'JSONB containing RenderResult with HTML, CSS, and metadata';
+COMMENT ON COLUMN template_renders.customization IS 'JSONB containing UserCustomization with colors and fonts';
+COMMENT ON COLUMN user_template_preferences.customization IS 'JSONB containing UserCustomization with colors and fonts';
