@@ -150,7 +150,7 @@ function AttributesEditor({ value, onChange, readonly = false }: AttributesEdito
   }
 
   const addPair = () => {
-    const next = [...entries, ['', '']]
+    const next = [...entries, ['', ''] as [string, string | number | boolean]]
     setEntries(next)
     onChange(Object.fromEntries(next))
   }
