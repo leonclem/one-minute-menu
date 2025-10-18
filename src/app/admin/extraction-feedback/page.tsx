@@ -1,20 +1,17 @@
-import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { requireAdmin } from '@/lib/auth-utils'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * Admin page: List recent extraction feedback for review
+ * Requirements: 14.1, 14.2, 14.3, 14.4
  */
 export default async function AdminExtractionFeedbackPage() {
+  // Require admin access - redirects to /dashboard if not admin
+  await requireAdmin()
+  
   const supabase = createServerSupabaseClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) {
-    redirect('/auth/signin')
-  }
-
-  // TODO: Replace with real admin role check when role metadata exists
-  // if (user.app_metadata?.role !== 'admin') redirect('/dashboard')
 
   const { data, error: queryError } = await supabase
     .from('extraction_feedback')

@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
 import EditableMenuTitle from './EditableMenuTitle'
 import Link from 'next/link'
 import nextDynamic from 'next/dynamic'
+import { getCurrentUser } from '@/lib/auth-utils'
 const QuotaUsageDashboard = nextDynamic(() => import('@/components/QuotaUsageDashboard'), { ssr: false })
 
 export default async function DashboardPage() {
@@ -17,11 +18,14 @@ export default async function DashboardPage() {
     redirect('/auth/signin')
   }
 
-  // Get user profile and menus
-  const [profile, menus] = await Promise.all([
+  // Get user profile, menus, and check if user is admin
+  const [profile, menus, currentUser] = await Promise.all([
     userOperations.getProfile(user.id),
-    menuOperations.getUserMenus(user.id)
+    menuOperations.getUserMenus(user.id),
+    getCurrentUser()
   ])
+  
+  const isAdmin = currentUser?.role === 'admin'
 
   // Show dashboard even if the user has no menus. Onboarding remains available via links below.
 
@@ -35,12 +39,14 @@ export default async function DashboardPage() {
               Dashboard
             </h1>
             <div className="flex items-center space-x-4">
-              <Link
-                href="/admin/analytics"
-                className="text-sm text-secondary-500 hover:text-secondary-700"
-              >
-                Analytics
-              </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin/analytics"
+                  className="text-sm text-secondary-500 hover:text-secondary-700"
+                >
+                  Analytics
+                </Link>
+              )}
               <span className="text-sm text-secondary-600">
                 {user.email}
               </span>
@@ -130,7 +136,7 @@ export default async function DashboardPage() {
           {/* AI Image Generation (Summary) */}
           <div>
             <h2 className="mb-4 text-xl font-semibold text-secondary-900">AI Image Generation</h2>
-            <QuotaUsageDashboard variant="summary" />
+            <QuotaUsageDashboard variant="summary" showAdminLink={isAdmin} />
           </div>
 
           {/* Menus Section */}

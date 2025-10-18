@@ -21,7 +21,13 @@ interface QuotaData {
   }
 }
 
-export default function QuotaUsageDashboard({ variant = 'full' as 'full' | 'summary' }: { variant?: 'full' | 'summary' }) {
+export default function QuotaUsageDashboard({ 
+  variant = 'full' as 'full' | 'summary',
+  showAdminLink = false
+}: { 
+  variant?: 'full' | 'summary'
+  showAdminLink?: boolean
+}) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<QuotaData | null>(null)
@@ -111,7 +117,9 @@ export default function QuotaUsageDashboard({ variant = 'full' as 'full' | 'summ
             ) : (
               <span className="text-secondary-600">Within limit</span>
             )}
-            <a href="/admin/analytics" className="text-primary-600 hover:text-primary-500">View details →</a>
+            {showAdminLink && (
+              <a href="/admin/analytics" className="text-primary-600 hover:text-primary-500">View details →</a>
+            )}
           </div>
         </CardContent>
       </Card>

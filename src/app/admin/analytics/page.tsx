@@ -1,26 +1,17 @@
-import { redirect } from 'next/navigation'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { analyticsOperations } from '@/lib/analytics-server'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
+import { requireAdmin } from '@/lib/auth-utils'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * Admin analytics dashboard
  * Shows platform-wide metrics for monitoring
+ * Requirements: 8.1, 8.2, 8.3
  */
 export default async function AdminAnalyticsPage() {
-  const supabase = createServerSupabaseClient()
-  
-  const { data: { user }, error } = await supabase.auth.getUser()
-  
-  if (error || !user) {
-    redirect('/auth/signin')
-  }
-  
-  // TODO: Add proper admin role check
-  // For now, this is accessible to all authenticated users
-  // In production, add: if (!user.app_metadata?.role === 'admin') redirect('/dashboard')
+  // Require admin access - redirects to /dashboard if not admin
+  await requireAdmin()
   
   // Fetch platform analytics
   const platformData = await analyticsOperations.getPlatformAnalytics(30)

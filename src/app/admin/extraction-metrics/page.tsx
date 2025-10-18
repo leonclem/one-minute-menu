@@ -9,13 +9,19 @@
 import { Metadata } from 'next'
 import { MetricsDashboard } from '@/components/admin/MetricsDashboard'
 import { CostMonitorDashboard } from '@/components/admin/CostMonitorDashboard'
+import { requireAdmin } from '@/lib/auth-utils'
 
 export const metadata: Metadata = {
   title: 'Extraction Metrics | Admin',
   description: 'Monitor extraction performance and costs'
 }
 
-export default function ExtractionMetricsPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function ExtractionMetricsPage() {
+  // Require admin access - redirects to /dashboard if not admin
+  await requireAdmin()
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

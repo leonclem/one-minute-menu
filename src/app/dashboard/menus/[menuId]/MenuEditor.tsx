@@ -696,18 +696,20 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       action: async () => {
         setLoading('bulk-delete')
         try {
-          let latest = menu
-          for (const id of Array.from(selectedItemIds)) {
-            const res = await fetch(`/api/menus/${menu.id}/items/${id}`, { method: 'DELETE' })
-            const data = await res.json()
-            if (res.ok) {
-              latest = data.data
-            }
+          const res = await fetch(`/api/menus/${menu.id}/items`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemIds: Array.from(selectedItemIds) })
+          })
+          const data = await res.json()
+          if (res.ok) {
+            setMenu(data.data)
+            addOptimisticUpdate(data.data)
+            setSelectedItemIds(new Set())
+            showToast({ type: 'success', title: 'Items deleted', description: `${count} item${count > 1 ? 's' : ''} removed.` })
+          } else {
+            showToast({ type: 'error', title: 'Delete failed', description: data.error || 'Please try again.' })
           }
-          setMenu(latest)
-          addOptimisticUpdate(latest)
-          setSelectedItemIds(new Set())
-          showToast({ type: 'success', title: 'Items deleted', description: `${count} item${count > 1 ? 's' : ''} removed.` })
         } catch {
           showToast({ type: 'error', title: 'Delete failed', description: 'Please try again.' })
         } finally {

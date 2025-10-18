@@ -8,6 +8,7 @@ export interface User {
   createdAt: Date
   location?: string
   securityFlags?: string[]
+  role?: 'user' | 'admin'
 }
 
 export interface PlanLimits {

@@ -53,6 +53,7 @@ export const userOperations = {
       limits: mapPlanLimitsFromDb(data.plan_limits, data.plan as 'free' | 'premium' | 'enterprise'),
       createdAt: new Date(data.created_at),
       location: data.location || undefined,
+      role: data.role as 'user' | 'admin' || 'user',
     }
   },
 
@@ -103,6 +104,7 @@ export const userOperations = {
       limits: mapPlanLimitsFromDb(data.plan_limits, data.plan),
       createdAt: new Date(data.created_at),
       location: data.location || undefined,
+      role: data.role as 'user' | 'admin' || 'user',
     }
   },
 
@@ -670,6 +672,18 @@ export const menuItemOperations = {
     return menuOperations.updateMenu(menuId, userId, { items: updatedItems })
   },
 
+  async deleteMultipleItems(menuId: string, userId: string, itemIds: string[]): Promise<Menu> {
+    const menu = await menuOperations.getMenu(menuId, userId)
+    if (!menu) throw new DatabaseError('Menu not found')
+    
+    const itemIdsSet = new Set(itemIds)
+    const updatedItems = menu.items
+      .filter(item => !itemIdsSet.has(item.id))
+      .map((item, index) => ({ ...item, order: index })) // Reorder
+    
+    return menuOperations.updateMenu(menuId, userId, { items: updatedItems })
+  },
+
   async clearItems(menuId: string, userId: string): Promise<Menu> {
     const menu = await menuOperations.getMenu(menuId, userId)
     if (!menu) throw new DatabaseError('Menu not found')
@@ -752,7 +766,8 @@ function getDefaultTheme(): MenuTheme {
 }
 
 function generateId(): string {
-  return Math.random().toString(36).substr(2, 9)
+  // Generate a UUID v4 compatible with the menu_items table
+  return crypto.randomUUID()
 }
 
 // Image Storage Operations

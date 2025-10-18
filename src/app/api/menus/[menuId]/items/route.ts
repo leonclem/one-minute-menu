@@ -119,7 +119,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/menus/[menuId]/items - Clear all items
+// DELETE /api/menus/[menuId]/items - Clear all items or delete specific items
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { menuId: string } }
@@ -131,10 +131,22 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const menu = await menuItemOperations.clearItems(params.menuId, user.id)
+    // Check if specific item IDs are provided in the request body
+    const body = await request.json().catch(() => ({}))
+    const { itemIds } = body as { itemIds?: string[] }
+
+    let menu
+    if (itemIds && Array.isArray(itemIds) && itemIds.length > 0) {
+      // Batch delete specific items
+      menu = await menuItemOperations.deleteMultipleItems(params.menuId, user.id, itemIds)
+    } else {
+      // Clear all items
+      menu = await menuItemOperations.clearItems(params.menuId, user.id)
+    }
+
     return NextResponse.json({ success: true, data: menu })
   } catch (error) {
-    console.error('Error clearing menu items:', error)
+    console.error('Error deleting menu items:', error)
     if (error instanceof DatabaseError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: 400 })
     }
