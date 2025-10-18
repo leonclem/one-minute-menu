@@ -152,16 +152,17 @@ export class MenuExtractionService {
       }
 
       // Get prompt package based on schema version
+      // Temporarily forcing examples to be included to help LLM understand the schema better
       const useStage2 = (options.schemaVersion || 'stage1') === 'stage2'
       const promptPackage = useStage2
         ? getPromptPackageV2({
             currencyOverride: options.currency as any,
-            includeExamples: options.includeExamples ?? true,
+            includeExamples: options.includeExamples ?? true, // Temporarily enabled to fix extraction issues
             customInstructions: options.customInstructions
           })
         : getPromptPackage({
             currencyOverride: options.currency as any,
-            includeExamples: options.includeExamples ?? true,
+            includeExamples: options.includeExamples ?? true, // Temporarily enabled to fix extraction issues
             customInstructions: options.customInstructions
           })
 
@@ -241,9 +242,8 @@ export class MenuExtractionService {
     // Preprocess image
     const processedImageUrl = await this.preprocessImage(imageUrl)
 
-    // Helper to run the completion with a given detail level and prompt weight
-    const runCompletion = async (detail: 'high' | 'low', includeExamples: boolean) => {
-      const userPrompt = includeExamples ? promptPackage.userPrompt : promptPackage.userPromptNoExamples || promptPackage.userPrompt
+    // Helper to run the completion with a given detail level
+    const runCompletion = async (detail: 'high' | 'low') => {
       return withRetry(
         async () => {
           try {
@@ -254,14 +254,13 @@ export class MenuExtractionService {
                 {
                   role: 'user',
                   content: [
-                    { type: 'text', text: userPrompt },
+                    { type: 'text', text: promptPackage.userPrompt },
                     { type: 'image_url', image_url: { url: processedImageUrl, detail } }
                   ]
                 }
               ],
               temperature: promptPackage.temperature,
-              // Adaptive token limit: reduce for potentially large outputs
-              max_tokens: detail === 'high' && includeExamples ? 3500 : 4096,
+              max_tokens: 4096,
               response_format: { type: 'json_object' }
             })
             return response
@@ -281,17 +280,14 @@ export class MenuExtractionService {
       )
     }
 
-    // First attempt: high detail with examples
+    // First attempt: high detail (optimized prompts without examples by default)
     let completion
     try {
-      // Detect potentially huge images and disable examples to reduce prompt size
-      const largeImageHeuristic = processedImageUrl.includes('_cb=') // already fetched; heuristic can be expanded
-      const includeExamples = largeImageHeuristic ? false : (options.includeExamples ?? true)
-      completion = await runCompletion('high', includeExamples)
+      completion = await runCompletion('high')
     } catch (primaryError) {
-      console.warn('Primary extraction attempt failed, retrying with lower detail and fewer examples...', primaryError)
-      // Fallback attempt: lower detail and omit examples to reduce token pressure
-      completion = await runCompletion('low', false)
+      console.warn('Primary extraction attempt failed, retrying with lower detail...', primaryError)
+      // Fallback attempt: lower detail to reduce token pressure
+      completion = await runCompletion('low')
     }
 
     // Extract response
@@ -322,13 +318,24 @@ export class MenuExtractionService {
 
     // Stage 2 normalization (variants, modifier price deltas)
     if (promptPackage?.schemaVersion === 'stage2') {
+      console.log('Before normalization - sample item:', JSON.stringify(rawData?.menu?.categories?.[0]?.items?.[0], null, 2))
       rawData = this.normalizeStage2Extraction(rawData)
+      console.log('After normalization - sample item:', JSON.stringify(rawData?.menu?.categories?.[0]?.items?.[0], null, 2))
     }
 
     // Validate against schema (respect schema version from prompt)
     const validation = await this.validateResult(rawData, promptPackage?.schemaVersion)
     
     if (!validation.valid) {
+      console.error('Validation failed with errors:', validation.errors.map(e => ({
+        path: e.path,
+        message: e.message
+      })))
+      
+      // Log a few sample items that might be failing
+      const sampleItems = rawData?.menu?.categories?.flatMap((cat: any) => cat.items || []).slice(0, 3)
+      console.error('Sample items from raw data:', JSON.stringify(sampleItems, null, 2))
+      
       // Attempt to salvage partial data
       const validator = new SchemaValidator(promptPackage?.schemaVersion || 'stage1')
       const salvageAttempt = validator.salvagePartialData(rawData)
@@ -704,6 +711,18 @@ export class MenuExtractionService {
         for (const cat of categories) {
           if (Array.isArray(cat.items)) {
             for (const item of cat.items) {
+              // Normalize base price if it's a string
+              if (typeof item.price === 'string') {
+                const num = normalizePriceNumber(item.price)
+                if (typeof num === 'number' && isFinite(num) && !isNaN(num)) {
+                  item.price = num
+                } else {
+                  // Can't parse - remove it
+                  console.warn(`Item "${item.name}" has unparseable base price: ${item.price}`)
+                  delete item.price
+                }
+              }
+              
               // Variants normalization
               if (Array.isArray(item.variants)) {
                 const normalizedVariants: any[] = []
@@ -730,16 +749,29 @@ export class MenuExtractionService {
                       continue
                     }
                     const num = normalizePriceNumber(variant.price)
-                    if (typeof num === 'number') {
+                    if (typeof num === 'number' && !isNaN(num)) {
                       variant.price = num
+                    } else {
+                      // Can't parse price - skip this variant but log warning
+                      console.warn(`Skipping variant with unparseable price: ${variant.price}`)
+                      continue
                     }
                   }
                   // Ensure numeric price
-                  if (typeof variant.price === 'number') {
+                  if (typeof variant.price === 'number' && isFinite(variant.price)) {
                     normalizedVariants.push(variant)
+                  } else {
+                    console.warn(`Skipping variant with invalid price: ${variant.price}`)
                   }
                 }
-                item.variants = normalizedVariants
+                
+                // If all variants were filtered out but item has a base price, keep the item
+                // The validation will pass because item.price exists
+                if (normalizedVariants.length === 0 && typeof item.price !== 'number') {
+                  console.warn(`Item "${item.name}" has no valid variants and no base price`)
+                }
+                
+                item.variants = normalizedVariants.length > 0 ? normalizedVariants : undefined
               }
 
               // Modifier price delta parsing
@@ -844,18 +876,20 @@ export function createMenuExtractionService(
 
 /**
  * Calculate estimated cost for an extraction
+ * 
+ * Updated estimates based on optimized prompts (examples disabled by default)
  */
 export function estimateExtractionCost(
   imageSize: number,
-  includeExamples: boolean = true
+  includeExamples: boolean = false // Updated default to match optimization
 ): number {
-  // Rough estimation based on typical token usage
+  // Optimized estimation based on reduced token usage
   // Image tokens: ~765 tokens per image (for high detail)
-  // Prompt tokens: ~1000-1500 depending on examples
+  // Prompt tokens: ~600-800 (optimized, no examples) or ~1200-1500 (with examples)
   // Output tokens: ~500-1000 depending on menu complexity
   
   const imageTokens = 765
-  const promptTokens = includeExamples ? 1500 : 1000
+  const promptTokens = includeExamples ? 1350 : 700 // Reduced from 1500/1000
   const outputTokens = 750 // Average
   
   const inputCost = ((imageTokens + promptTokens) / 1_000_000) * PRICING.inputTokensPer1M

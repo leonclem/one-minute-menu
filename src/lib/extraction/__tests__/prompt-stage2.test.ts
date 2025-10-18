@@ -20,7 +20,8 @@ describe('Stage 2 Prompt Template', () => {
       expect(prompt).toContain('CRITICAL RULES')
       expect(prompt).toContain('EXTRACTION GUIDELINES (Stage 2)')
       expect(prompt).toContain('OUTPUT SCHEMA (Stage 2)')
-      expect(prompt).toContain('EXAMPLE OUTPUT (Stage 2)')
+      // Examples are disabled by default now (optimization)
+      expect(prompt).not.toContain('EXAMPLE OUTPUT (Stage 2)')
       expect(prompt).toContain('FINAL OUTPUT FORMAT')
     })
 

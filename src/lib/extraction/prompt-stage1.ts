@@ -66,6 +66,7 @@ export interface PromptOptions {
   
   /**
    * Include detailed examples in prompt (increases token usage)
+   * Default: false (optimized for cost)
    */
   includeExamples?: boolean
   
@@ -85,53 +86,49 @@ const SYSTEM_ROLE = `You are an expert data extraction assistant specializing in
 // Core Instructions
 // ============================================================================
 
-const CORE_INSTRUCTIONS = `Your task is to extract structured menu data from the provided image and return it as JSON.
+const CORE_INSTRUCTIONS = `Extract structured menu data from the image as JSON.
 
 CRITICAL RULES:
-1. Return ONLY valid JSON - no commentary, no markdown, no explanations
-2. Do NOT fabricate data - if uncertain, use the uncertainItems array
-3. Extract ALL visible text that appears to be menu content
-4. Preserve hierarchical structure (categories → subcategories → items)
-5. Assign accurate confidence scores based on text clarity
+1. Return ONLY valid JSON - no commentary, markdown, or explanations
+2. Do NOT fabricate data - use uncertainItems array if unsure
+3. Extract ALL visible menu content
+4. Preserve hierarchy (categories → subcategories → items)
+5. Assign accurate confidence scores (0.0-1.0)
 
 EXTRACTION GUIDELINES:
 
-**Categories and Hierarchy:**
-- Extract ALL category names exactly as they appear (preserve capitalization)
-- Detect subcategories and nest them under parent categories
-- If no clear categories exist, create a single "Main Menu" category
-- Category confidence should reflect how certain you are about the categorization
+**Categories:**
+- Extract category names exactly as shown (preserve case)
+- Nest subcategories under parents
+- Use "Main Menu" if no categories visible
+- Confidence reflects categorization certainty
 
-**Menu Items:**
-- Extract item name, price, and description (if present)
-- Strip currency symbols from prices - store as numeric values only
-- If an item has multiple sizes/prices, extract the first/smallest price for Stage 1
-- Include any visible description text (ingredients, preparation, serving info)
-- Item confidence should reflect text clarity and completeness
+**Items:**
+- Extract name, price, description (if present)
+- Strip currency symbols - numeric values only
+- For multiple sizes/prices, use first/smallest
+- Confidence reflects text clarity
 
-**Confidence Scoring Logic:**
-- 0.9-1.0: Text is clear, certain, and complete
-- 0.7-0.8: Text is mostly readable with minor ambiguity
-- 0.5-0.6: Text is partially readable or inferred from context
-- 0.3-0.4: Text is fragmentary or heavily obscured
-- 0.0-0.2: Text is barely visible or completely uncertain
+**Confidence Scores:**
+- 0.9-1.0: Clear and complete
+- 0.7-0.8: Mostly readable, minor ambiguity
+- 0.5-0.6: Partially readable or inferred
+- 0.3-0.4: Fragmentary or obscured
+- 0.0-0.2: Barely visible or uncertain
 
 **Uncertain Items:**
-- Include ANY text that might be a menu item but you're not confident about
-- Provide a clear reason (e.g., "text blurred", "price not visible", "ambiguous category")
-- If you can make a reasonable guess, include suggestedCategory and/or suggestedPrice
-- Better to flag as uncertain than to fabricate data
+- Flag any uncertain text with reason
+- Include suggestedCategory/suggestedPrice if possible
+- Better to flag than fabricate
 
 **Superfluous Text:**
-- Identify decorative or non-menu text (taglines, social media, service charges)
-- Include context about where it appeared (header, footer, sidebar, etc.)
-- Examples: "Follow us @...", "Established 20XX", "All prices subject to..."
+- Identify non-menu text (taglines, social media, service charges)
+- Note context (header, footer, sidebar)
 
-**Currency Detection:**
-- Detect currency from symbols: $, S$, RM, ฿, Rp, ₱, ₫, ¥, €, £, etc.
-- Look for currency codes: SGD, USD, MYR, THB, IDR, PHP, VND, JPY, CNY, EUR, GBP
-- If multiple currencies appear, use the most common one
-- If no currency is detected, use the fallback currency provided`
+**Currency:**
+- Detect from symbols ($, S$, RM, ฿, etc.) or codes (SGD, USD, etc.)
+- Use most common if multiple found
+- Fall back to provided default if none detected`
 
 // ============================================================================
 // Currency Detection Instructions
@@ -164,29 +161,50 @@ IMPORTANT: Strip all currency symbols from price values. Store prices as numbers
 // ============================================================================
 
 function getSchemaInstructions(): string {
-  const schemaString = JSON.stringify(STAGE1_JSON_SCHEMA, null, 2)
-  
+  // Optimized: Provide concise schema structure instead of full JSON Schema
   return `
 **OUTPUT SCHEMA:**
 
-Your output MUST conform to this JSON schema:
+Return JSON with this structure:
 
-\`\`\`json
-${schemaString}
-\`\`\`
+{
+  "menu": {
+    "categories": [
+      {
+        "name": "string (1-100 chars)",
+        "confidence": number (0.0-1.0),
+        "items": [
+          {
+            "name": "string (1-200 chars)",
+            "price": number (non-negative),
+            "description": "string (optional, max 500 chars)",
+            "confidence": number (0.0-1.0)
+          }
+        ],
+        "subcategories": [] // Optional nested categories
+      }
+    ]
+  },
+  "currency": "string (e.g., SGD, USD, MYR)",
+  "uncertainItems": [
+    {
+      "text": "string",
+      "reason": "string",
+      "confidence": number,
+      "suggestedCategory": "string (optional)",
+      "suggestedPrice": number (optional)
+    }
+  ],
+  "superfluousText": [
+    {
+      "text": "string",
+      "context": "string",
+      "confidence": number
+    }
+  ]
+}
 
-**Required Fields:**
-- menu.categories: Array of at least one category
-- currency: Currency code (e.g., "SGD", "USD", "MYR")
-- uncertainItems: Array (can be empty if all items extracted confidently)
-- superfluousText: Array (can be empty if no decorative text found)
-
-**Field Constraints:**
-- Item names: 1-200 characters
-- Category names: 1-100 characters
-- Descriptions: max 500 characters
-- Prices: non-negative numbers
-- Confidence: 0.0 to 1.0`
+**Required:** menu.categories (min 1), currency, uncertainItems, superfluousText (arrays can be empty)`
 }
 
 // ============================================================================
@@ -240,10 +258,13 @@ Your response should start with { and end with } - nothing else.`
 
 /**
  * Build the complete extraction prompt for Stage 1
+ * 
+ * Optimization: Examples are now disabled by default to reduce token usage
+ * and cost. The model performs well without examples in most cases.
  */
 export function buildStage1Prompt(options: PromptOptions = {}): string {
   const {
-    includeExamples = true,
+    includeExamples = false, // Changed default to false for cost optimization
     customInstructions = ''
   } = options
   

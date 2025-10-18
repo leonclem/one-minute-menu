@@ -28,7 +28,8 @@ describe('Stage 1 Prompt Template', () => {
       expect(prompt).toContain('EXTRACTION GUIDELINES')
       expect(prompt).toContain('Currency Detection')
       expect(prompt).toContain('OUTPUT SCHEMA')
-      expect(prompt).toContain('EXAMPLE OUTPUT')
+      // Examples are disabled by default now (optimization)
+      expect(prompt).not.toContain('EXAMPLE OUTPUT')
       expect(prompt).toContain('FINAL OUTPUT FORMAT')
     })
 
@@ -44,7 +45,7 @@ describe('Stage 1 Prompt Template', () => {
     it('should include confidence scoring instructions', () => {
       const prompt = buildStage1Prompt()
       
-      expect(prompt).toContain('Confidence Scoring Logic')
+      expect(prompt).toContain('Confidence Scores')
       expect(prompt).toContain('0.9-1.0')
       expect(prompt).toContain('0.7-0.8')
       expect(prompt).toContain('0.5-0.6')
@@ -62,7 +63,7 @@ describe('Stage 1 Prompt Template', () => {
       const prompt = buildStage1Prompt()
       
       expect(prompt).toContain('Superfluous Text')
-      expect(prompt).toContain('decorative or non-menu text')
+      expect(prompt).toContain('non-menu text')
     })
 
     it('should exclude examples when includeExamples is false', () => {
@@ -285,20 +286,20 @@ describe('Stage 1 Prompt Template', () => {
       
       expect(prompt).toContain('Return ONLY valid JSON')
       expect(prompt).toContain('no commentary')
-      expect(prompt).toContain('no markdown')
+      expect(prompt).toContain('markdown')
     })
 
     it('should instruct not to fabricate data', () => {
       const prompt = buildStage1Prompt()
       
       expect(prompt).toContain('Do NOT fabricate data')
-      expect(prompt).toContain('if uncertain')
+      expect(prompt).toContain('unsure')
     })
 
     it('should include hierarchical structure instructions', () => {
       const prompt = buildStage1Prompt()
       
-      expect(prompt).toContain('hierarchical structure')
+      expect(prompt).toContain('hierarchy')
       expect(prompt).toContain('categories')
       expect(prompt).toContain('subcategories')
     })

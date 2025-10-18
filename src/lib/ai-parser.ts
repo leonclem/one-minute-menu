@@ -1,3 +1,23 @@
+/**
+ * ⚠️ DEPRECATED: AI-powered menu parser using OpenAI GPT-4
+ * 
+ * This module implements the old two-step OCR→parsing approach and is
+ * deprecated as of Task 27. It has been replaced by the vision-LLM
+ * extraction system in @/lib/extraction/menu-extraction-service
+ * 
+ * Deprecation Reason:
+ * - The two-step approach (OCR then parse) is less accurate than direct vision-LLM
+ * - Cannot extract hierarchical structure (categories, subcategories)
+ * - No confidence scoring or uncertain item detection
+ * - Higher token usage due to separate OCR and parsing steps
+ * 
+ * Migration:
+ * - Use MenuExtractionService.submitExtractionJob() instead
+ * - See @/lib/extraction/menu-extraction-service for new implementation
+ * 
+ * This code is maintained only for backward compatibility.
+ */
+
 import OpenAI from 'openai'
 import type { MenuItemFormData } from '@/types'
 

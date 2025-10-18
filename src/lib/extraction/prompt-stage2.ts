@@ -29,13 +29,21 @@ export const PROMPT_SCHEMA_VERSION_V2 = 'stage2' as const
 // System Role
 // ============================================================================
 
-const SYSTEM_ROLE_V2 = `You are an expert data extraction assistant specializing in food and beverage menus. Convert menu images into clean, hierarchical JSON that matches the provided Stage 2 schema with high accuracy and confidence scoring.`
+const SYSTEM_ROLE_V2 = `You are an expert data extraction assistant specializing in food and beverage menus. Convert menu images into clean, hierarchical JSON that matches the provided Stage 2 schema with high accuracy and confidence scoring.
+
+CRITICAL: Every menu item MUST include pricing information (either a price field, variants with prices, or be part of a set menu with a price). Items without any pricing should be added to uncertainItems instead.`
 
 // ============================================================================
 // Core Instructions (Stage 2)
 // ============================================================================
 
 const CORE_INSTRUCTIONS_V2 = `Your task is to extract structured menu data from the provided image and return it as JSON.
+
+⚠️ MOST IMPORTANT RULE: Every menu item MUST have pricing information! ⚠️
+- If an item has a visible price, include it in the "price" field
+- If an item has multiple size/price options, include them in "variants"
+- If an item is part of a set menu, include the set menu price
+- If you cannot find ANY price for an item, do NOT include it in the items array - add it to uncertainItems instead with reason "price not visible"
 
 CRITICAL RULES:
 1. Return ONLY valid JSON - no commentary, no markdown, no explanations
@@ -54,17 +62,21 @@ EXTRACTION GUIDELINES (Stage 2):
 
 **Menu Items (Base):**
 - Extract item name and description (if present)
-- If an item shows a single price, set it in price
+- CRITICAL: Every menu item MUST have pricing information - either a base price, variants with prices, or be part of a set menu
+- If an item shows a single price, set it in the price field
 - If multiple sizes/prices are shown, use variants (see below)
+- If you cannot find a price for an item, add it to uncertainItems instead with reason "price not visible"
 - Item confidence should reflect text clarity and completeness
 
 **Variants (sizes/prices/attributes):**
 - Detect size/price pairs (e.g., Small 9" $12, Large 12" $18) and create variants
-- Normalize prices to numbers only (strip currency symbols)
+- CRITICAL: Each variant MUST have a numeric price value
+- Normalize prices to numbers only (strip currency symbols like $, S$, RM, etc.)
 - Set variant.size using visible labels (e.g., Small, Large, 9", 12")
 - If no explicit label but multiple prices exist, infer labels like "Regular", "Large" based on ordering
 - If price is shown as a range (e.g., $12–$18), create separate variants for min and max or use attributes to encode range
 - Include variant.confidence based on clarity of the size/price pairing
+- If a size is visible but price is not clear, do NOT create a variant - instead note in uncertainItems
 
 **Modifier Groups (toppings/add-ons/options):**
 - Detect groups such as "Add-ons", "Toppings", "Extras", "Choice of"
@@ -191,9 +203,15 @@ Your response should start with { and end with } - nothing else.`
 // Prompt Builder (Stage 2)
 // ============================================================================
 
+/**
+ * Build the complete extraction prompt for Stage 2
+ * 
+ * Optimization: Examples are now disabled by default to reduce token usage
+ * and cost. The model performs well without examples in most cases.
+ */
 export function buildStage2Prompt(options: PromptOptions = {}): string {
   const {
-    includeExamples = true,
+    includeExamples = false, // Changed default to false for cost optimization
     customInstructions = ''
   } = options
 

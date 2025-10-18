@@ -239,8 +239,22 @@ export class SchemaValidator {
                   const validatedItem = MenuItemSchema.parse(item)
                   validItems.push(validatedItem)
                   itemsRecovered++
-                } catch {
-                  // Skip invalid items
+                } catch (error) {
+                  // If item has no price/variants/setMenu, move to uncertainItems
+                  if (item && typeof item.name === 'string') {
+                    const hasPrice = typeof item.price === 'number'
+                    const hasVariants = Array.isArray(item.variants) && item.variants.length > 0
+                    const hasSetMenu = !!item.setMenu
+                    
+                    if (!hasPrice && !hasVariants && !hasSetMenu) {
+                      salvaged.uncertainItems!.push({
+                        text: item.name,
+                        reason: 'price not visible',
+                        suggestedCategory: String(cat.name),
+                        confidence: typeof item.confidence === 'number' ? item.confidence : 0.5
+                      })
+                    }
+                  }
                 }
               }
               
