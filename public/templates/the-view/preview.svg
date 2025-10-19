@@ -1,0 +1,81 @@
+<svg width="1200" height="1600" viewBox="0 0 1200 1600" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="1600" fill="white"/>
+  
+  <!-- Border -->
+  <rect x="40" y="40" width="1120" height="1520" stroke="#e0e0e0" stroke-width="2" fill="none"/>
+  
+  <!-- Restaurant Name -->
+  <text x="600" y="120" font-family="serif" font-size="48" font-weight="700" text-anchor="middle" fill="#1a1a1a">
+    The View
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="600" y="160" font-family="sans-serif" font-size="18" text-anchor="middle" fill="#666666">
+    Restaurant Menu Template
+  </text>
+  
+  <!-- Category 1 -->
+  <line x1="100" y1="240" x2="1100" y2="240" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="100" y="280" font-family="serif" font-size="32" font-weight="600" fill="#1a1a1a">
+    Appetizers
+  </text>
+  
+  <!-- Item 1 -->
+  <text x="100" y="340" font-family="sans-serif" font-size="20" font-weight="600" fill="#1a1a1a">
+    Spring Rolls
+  </text>
+  <text x="1100" y="340" font-family="sans-serif" font-size="20" font-weight="600" text-anchor="end" fill="#1a1a1a">
+    $8.99
+  </text>
+  <text x="100" y="370" font-family="sans-serif" font-size="16" fill="#666666">
+    Crispy vegetable spring rolls served with sweet chili sauce
+  </text>
+  
+  <!-- Item 2 -->
+  <text x="100" y="430" font-family="sans-serif" font-size="20" font-weight="600" fill="#1a1a1a">
+    Bruschetta
+  </text>
+  <text x="1100" y="430" font-family="sans-serif" font-size="20" font-weight="600" text-anchor="end" fill="#1a1a1a">
+    $12.50
+  </text>
+  <text x="100" y="460" font-family="sans-serif" font-size="16" fill="#666666">
+    Toasted bread topped with fresh tomatoes, basil, and olive oil
+  </text>
+  
+  <!-- Category 2 -->
+  <line x1="100" y1="540" x2="1100" y2="540" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="100" y="580" font-family="serif" font-size="32" font-weight="600" fill="#1a1a1a">
+    Main Courses
+  </text>
+  
+  <!-- Item 3 -->
+  <text x="100" y="640" font-family="sans-serif" font-size="20" font-weight="600" fill="#1a1a1a">
+    Grilled Salmon
+  </text>
+  <text x="1100" y="640" font-family="sans-serif" font-size="20" font-weight="600" text-anchor="end" fill="#1a1a1a">
+    $28.00
+  </text>
+  <text x="100" y="670" font-family="sans-serif" font-size="16" fill="#666666">
+    Fresh Atlantic salmon with seasonal vegetables and lemon butter
+  </text>
+  
+  <!-- Item 4 -->
+  <text x="100" y="730" font-family="sans-serif" font-size="20" font-weight="600" fill="#1a1a1a">
+    Ribeye Steak
+  </text>
+  <text x="1100" y="730" font-family="sans-serif" font-size="20" font-weight="600" text-anchor="end" fill="#1a1a1a">
+    $42.00
+  </text>
+  <text x="100" y="760" font-family="sans-serif" font-size="16" fill="#666666">
+    12oz prime ribeye with garlic mashed potatoes and red wine reduction
+  </text>
+  
+  <!-- Decorative accent -->
+  <circle cx="600" cy="1450" r="4" fill="#d4af37"/>
+  
+  <!-- Footer text -->
+  <text x="600" y="1500" font-family="sans-serif" font-size="14" text-anchor="middle" fill="#999999">
+    Template Preview - The View
+  </text>
+</svg>

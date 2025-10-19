@@ -1,0 +1,59 @@
+<svg width="400" height="533" viewBox="0 0 400 533" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="533" fill="white"/>
+  
+  <!-- Border -->
+  <rect x="10" y="10" width="380" height="513" stroke="#e0e0e0" stroke-width="2" fill="none"/>
+  
+  <!-- Restaurant Name -->
+  <text x="200" y="60" font-family="serif" font-size="28" font-weight="700" text-anchor="middle" fill="#1a1a1a">
+    The View
+  </text>
+  
+  <!-- Category -->
+  <line x1="30" y1="100" x2="370" y2="100" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="30" y="130" font-family="serif" font-size="18" font-weight="600" fill="#1a1a1a">
+    Appetizers
+  </text>
+  
+  <!-- Item 1 -->
+  <text x="30" y="160" font-family="sans-serif" font-size="12" font-weight="600" fill="#1a1a1a">
+    Spring Rolls
+  </text>
+  <text x="370" y="160" font-family="sans-serif" font-size="12" font-weight="600" text-anchor="end" fill="#1a1a1a">
+    $8.99
+  </text>
+  
+  <!-- Item 2 -->
+  <text x="30" y="190" font-family="sans-serif" font-size="12" font-weight="600" fill="#1a1a1a">
+    Bruschetta
+  </text>
+  <text x="370" y="190" font-family="sans-serif" font-size="12" font-weight="600" text-anchor="end" fill="#1a1a1a">
+    $12.50
+  </text>
+  
+  <!-- Category 2 -->
+  <line x1="30" y1="220" x2="370" y2="220" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="30" y="250" font-family="serif" font-size="18" font-weight="600" fill="#1a1a1a">
+    Main Courses
+  </text>
+  
+  <!-- Item 3 -->
+  <text x="30" y="280" font-family="sans-serif" font-size="12" font-weight="600" fill="#1a1a1a">
+    Grilled Salmon
+  </text>
+  <text x="370" y="280" font-family="sans-serif" font-size="12" font-weight="600" text-anchor="end" fill="#1a1a1a">
+    $28.00
+  </text>
+  
+  <!-- Item 4 -->
+  <text x="30" y="310" font-family="sans-serif" font-size="12" font-weight="600" fill="#1a1a1a">
+    Ribeye Steak
+  </text>
+  <text x="370" y="310" font-family="sans-serif" font-size="12" font-weight="600" text-anchor="end" fill="#1a1a1a">
+    $42.00
+  </text>
+  
+  <!-- Decorative accent -->
+  <circle cx="200" cy="480" r="3" fill="#d4af37"/>
+</svg>
