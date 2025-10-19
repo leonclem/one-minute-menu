@@ -853,6 +853,415 @@ export const imageOperations = {
 }
 
 // ============================================================================
+// Template Operations
+// ============================================================================
+
+import type {
+  TemplateMetadata,
+  TemplateConfig,
+  TemplateRender,
+  UserTemplatePreference,
+  TemplateFilters,
+  RenderResult,
+  UserCustomization,
+  RenderFormat,
+} from '@/types/templates'
+
+export const templateOperations = {
+  async createTemplate(config: TemplateConfig): Promise<TemplateMetadata> {
+    const supabase = createServerSupabaseClient()
+    
+    const { data, error } = await supabase
+      .from('menu_templates')
+      .insert({
+        name: config.metadata.name,
+        description: config.metadata.description,
+        author: config.metadata.author,
+        version: config.metadata.version,
+        figma_file_key: config.metadata.figmaFileKey,
+        preview_image_url: config.metadata.previewImageUrl,
+        thumbnail_url: config.metadata.thumbnailUrl,
+        page_format: config.metadata.pageFormat,
+        orientation: config.metadata.orientation,
+        tags: config.metadata.tags,
+        is_premium: config.metadata.isPremium,
+        config: config,
+        is_active: true,
+      })
+      .select()
+      .single()
+    
+    if (error) {
+      throw new DatabaseError(`Failed to create template: ${error.message}`, error.code)
+    }
+    
+    return transformTemplateMetadataFromDB(data)
+  },
+
+  async getTemplate(templateId: string): Promise<TemplateConfig | null> {
+    const supabase = createServerSupabaseClient()
+    
+    const { data, error } = await supabase
+      .from('menu_templates')
+      .select('*')
+      .eq('id', templateId)
+      .eq('is_active', true)
+      .single()
+    
+    if (error) {
+      if (error.code === 'PGRST116') return null
+      throw new DatabaseError(`Failed to get template: ${error.message}`, error.code)
+    }
+    
+    return data.config as TemplateConfig
+  },
+
+  async listTemplates(filters?: TemplateFilters): Promise<TemplateMetadata[]> {
+    const supabase = createServerSupabaseClient()
+    
+    let query = supabase
+      .from('menu_templates')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+    
+    if (filters?.tags && filters.tags.length > 0) {
+      query = query.contains('tags', filters.tags)
+    }
+    
+    if (filters?.pageFormat) {
+      query = query.eq('page_format', filters.pageFormat)
+    }
+    
+    if (filters?.orientation) {
+      query = query.eq('orientation', filters.orientation)
+    }
+    
+    if (filters?.isPremium !== undefined) {
+      query = query.eq('is_premium', filters.isPremium)
+    }
+    
+    if (filters?.searchQuery) {
+      query = query.or(`name.ilike.%${filters.searchQuery}%,description.ilike.%${filters.searchQuery}%`)
+    }
+    
+    const { data, error } = await query
+    
+    if (error) {
+      throw new DatabaseError(`Failed to list templates: ${error.message}`, error.code)
+    }
+    
+    return data.map(transformTemplateMetadataFromDB)
+  },
+
+  async updateTemplate(templateId: string, updates: Partial<TemplateConfig>): Promise<TemplateMetadata> {
+    const supabase = createServerSupabaseClient()
+    
+    // Get current template
+    const currentTemplate = await this.getTemplate(templateId)
+    if (!currentTemplate) throw new DatabaseError('Template not found')
+    
+    // Merge updates with current config
+    const updatedConfig: TemplateConfig = {
+      ...currentTemplate,
+      ...updates,
+      metadata: {
+        ...currentTemplate.metadata,
+        ...(updates.metadata || {}),
+        updatedAt: new Date(),
+      },
+    }
+    
+    const updateData: any = {
+      config: updatedConfig,
+      updated_at: new Date().toISOString(),
+    }
+    
+    if (updates.metadata?.name) updateData.name = updates.metadata.name
+    if (updates.metadata?.description) updateData.description = updates.metadata.description
+    if (updates.metadata?.version) updateData.version = updates.metadata.version
+    if (updates.metadata?.previewImageUrl) updateData.preview_image_url = updates.metadata.previewImageUrl
+    if (updates.metadata?.thumbnailUrl) updateData.thumbnail_url = updates.metadata.thumbnailUrl
+    if (updates.metadata?.tags) updateData.tags = updates.metadata.tags
+    if (updates.metadata?.isPremium !== undefined) updateData.is_premium = updates.metadata.isPremium
+    
+    const { data, error } = await supabase
+      .from('menu_templates')
+      .update(updateData)
+      .eq('id', templateId)
+      .select()
+      .single()
+    
+    if (error) {
+      throw new DatabaseError(`Failed to update template: ${error.message}`, error.code)
+    }
+    
+    return transformTemplateMetadataFromDB(data)
+  },
+
+  async deleteTemplate(templateId: string): Promise<void> {
+    const supabase = createServerSupabaseClient()
+    
+    // Soft delete by setting is_active to false
+    const { error } = await supabase
+      .from('menu_templates')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('id', templateId)
+    
+    if (error) {
+      throw new DatabaseError(`Failed to delete template: ${error.message}`, error.code)
+    }
+  },
+
+  async createRender(renderData: {
+    userId: string
+    menuId: string
+    templateId: string
+    renderData: RenderResult
+    customization?: UserCustomization
+    format: RenderFormat
+  }): Promise<TemplateRender> {
+    const supabase = createServerSupabaseClient()
+    
+    const { data, error } = await supabase
+      .from('template_renders')
+      .insert({
+        user_id: renderData.userId,
+        menu_id: renderData.menuId,
+        template_id: renderData.templateId,
+        render_data: renderData.renderData,
+        customization: renderData.customization,
+        format: renderData.format,
+        status: 'completed',
+      })
+      .select()
+      .single()
+    
+    if (error) {
+      throw new DatabaseError(`Failed to create render: ${error.message}`, error.code)
+    }
+    
+    return transformTemplateRenderFromDB(data)
+  },
+
+  async getRender(renderId: string, userId: string): Promise<TemplateRender | null> {
+    const supabase = createServerSupabaseClient()
+    
+    const { data, error } = await supabase
+      .from('template_renders')
+      .select('*')
+      .eq('id', renderId)
+      .eq('user_id', userId)
+      .single()
+    
+    if (error) {
+      if (error.code === 'PGRST116') return null
+      throw new DatabaseError(`Failed to get render: ${error.message}`, error.code)
+    }
+    
+    return transformTemplateRenderFromDB(data)
+  },
+
+  async listRenders(userId: string, menuId?: string): Promise<TemplateRender[]> {
+    const supabase = createServerSupabaseClient()
+    
+    let query = supabase
+      .from('template_renders')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+    
+    if (menuId) {
+      query = query.eq('menu_id', menuId)
+    }
+    
+    const { data, error } = await query
+    
+    if (error) {
+      throw new DatabaseError(`Failed to list renders: ${error.message}`, error.code)
+    }
+    
+    return data.map(transformTemplateRenderFromDB)
+  },
+
+  async updateRender(
+    renderId: string,
+    userId: string,
+    updates: {
+      status?: TemplateRender['status']
+      outputUrl?: string
+      errorMessage?: string
+    }
+  ): Promise<TemplateRender> {
+    const supabase = createServerSupabaseClient()
+    
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
+    }
+    
+    if (updates.status) {
+      updateData.status = updates.status
+      if (updates.status === 'completed' || updates.status === 'failed') {
+        updateData.completed_at = new Date().toISOString()
+      }
+    }
+    
+    if (updates.outputUrl) updateData.output_url = updates.outputUrl
+    if (updates.errorMessage) updateData.error_message = updates.errorMessage
+    
+    const { data, error } = await supabase
+      .from('template_renders')
+      .update(updateData)
+      .eq('id', renderId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+    
+    if (error) {
+      throw new DatabaseError(`Failed to update render: ${error.message}`, error.code)
+    }
+    
+    return transformTemplateRenderFromDB(data)
+  },
+
+  async getUserPreference(userId: string, menuId: string): Promise<UserTemplatePreference | null> {
+    const supabase = createServerSupabaseClient()
+    
+    const { data, error } = await supabase
+      .from('user_template_preferences')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('menu_id', menuId)
+      .single()
+    
+    if (error) {
+      if (error.code === 'PGRST116') return null
+      throw new DatabaseError(`Failed to get user preference: ${error.message}`, error.code)
+    }
+    
+    return transformUserTemplatePreferenceFromDB(data)
+  },
+
+  async updateUserPreference(
+    userId: string,
+    menuId: string,
+    templateId: string,
+    customization: UserCustomization,
+    isDefault: boolean = false
+  ): Promise<UserTemplatePreference> {
+    const supabase = createServerSupabaseClient()
+    
+    // Check if preference exists
+    const existing = await this.getUserPreference(userId, menuId)
+    
+    if (existing) {
+      // Update existing preference
+      const { data, error } = await supabase
+        .from('user_template_preferences')
+        .update({
+          template_id: templateId,
+          customization,
+          is_default: isDefault,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId)
+        .eq('menu_id', menuId)
+        .select()
+        .single()
+      
+      if (error) {
+        throw new DatabaseError(`Failed to update user preference: ${error.message}`, error.code)
+      }
+      
+      return transformUserTemplatePreferenceFromDB(data)
+    } else {
+      // Create new preference
+      const { data, error } = await supabase
+        .from('user_template_preferences')
+        .insert({
+          user_id: userId,
+          menu_id: menuId,
+          template_id: templateId,
+          customization,
+          is_default: isDefault,
+        })
+        .select()
+        .single()
+      
+      if (error) {
+        throw new DatabaseError(`Failed to create user preference: ${error.message}`, error.code)
+      }
+      
+      return transformUserTemplatePreferenceFromDB(data)
+    }
+  },
+
+  async deleteUserPreference(userId: string, menuId: string): Promise<void> {
+    const supabase = createServerSupabaseClient()
+    
+    const { error } = await supabase
+      .from('user_template_preferences')
+      .delete()
+      .eq('user_id', userId)
+      .eq('menu_id', menuId)
+    
+    if (error) {
+      throw new DatabaseError(`Failed to delete user preference: ${error.message}`, error.code)
+    }
+  },
+}
+
+// Helper functions for template operations
+function transformTemplateMetadataFromDB(dbTemplate: any): TemplateMetadata {
+  return {
+    id: dbTemplate.id,
+    name: dbTemplate.name,
+    description: dbTemplate.description,
+    author: dbTemplate.author,
+    version: dbTemplate.version,
+    previewImageUrl: dbTemplate.preview_image_url,
+    thumbnailUrl: dbTemplate.thumbnail_url,
+    figmaFileKey: dbTemplate.figma_file_key,
+    pageFormat: dbTemplate.page_format,
+    orientation: dbTemplate.orientation,
+    tags: dbTemplate.tags || [],
+    isPremium: dbTemplate.is_premium,
+    createdAt: new Date(dbTemplate.created_at),
+    updatedAt: new Date(dbTemplate.updated_at),
+  }
+}
+
+function transformTemplateRenderFromDB(dbRender: any): TemplateRender {
+  return {
+    id: dbRender.id,
+    userId: dbRender.user_id,
+    menuId: dbRender.menu_id,
+    templateId: dbRender.template_id,
+    renderData: dbRender.render_data,
+    customization: dbRender.customization,
+    format: dbRender.format,
+    outputUrl: dbRender.output_url,
+    status: dbRender.status,
+    errorMessage: dbRender.error_message,
+    createdAt: new Date(dbRender.created_at),
+    completedAt: dbRender.completed_at ? new Date(dbRender.completed_at) : undefined,
+  }
+}
+
+function transformUserTemplatePreferenceFromDB(dbPref: any): UserTemplatePreference {
+  return {
+    id: dbPref.id,
+    userId: dbPref.user_id,
+    menuId: dbPref.menu_id,
+    templateId: dbPref.template_id,
+    customization: dbPref.customization,
+    isDefault: dbPref.is_default,
+    createdAt: new Date(dbPref.created_at),
+    updatedAt: new Date(dbPref.updated_at),
+  }
+}
+
+// ============================================================================
 // OCR Operations Removed
 // ============================================================================
 // 
