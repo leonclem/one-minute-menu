@@ -6,8 +6,11 @@ import { BindingEngine } from '@/lib/templates/binding-engine'
 import { RenderEngine } from '@/lib/render/engine'
 import { ExportService } from '@/lib/render/export-service'
 import type { UserCustomization, ExportFormat, PageSize, CategoryV2 } from '@/types/templates'
-import type { MenuCategory } from '@/types'
+import type { MenuCategory, Menu, MenuItem } from '@/types'
 import { z } from 'zod'
+import { exportRequestSchema } from '@/lib/templates/schemas'
+import { TemplateError, mapErrorToHttp } from '@/lib/templates/errors'
+import { CategoryV2Schema } from '@/lib/extraction/schema-stage2'
 
 /**
  * Convert MenuCategory to CategoryV2 format
@@ -32,28 +35,57 @@ function convertToCategoryV2(category: MenuCategory): CategoryV2 {
   }
 }
 
-// Validation schema for export request
-const exportRequestSchema = z.object({
-  menuId: z.string().uuid(),
-  templateId: z.string().uuid(),
-  customization: z.object({
-    colors: z.object({
-      primary: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
-      secondary: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
-      accent: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
-    }).optional(),
-    fonts: z.object({
-      heading: z.string().optional(),
-      body: z.string().optional(),
-    }).optional(),
-    priceDisplayMode: z.enum(['symbol', 'amount-only']).optional(),
-  }).optional(),
-  format: z.enum(['pdf', 'png', 'html']),
-  filename: z.string().min(1).max(255),
-  pageSize: z.enum(['A4', 'US_LETTER', 'TABLOID']).optional(),
-  dpi: z.number().min(72).max(600).optional(),
-  includeBleed: z.boolean().optional(),
-})
+function buildCategoriesV2(menu: Menu): CategoryV2[] {
+  const itemsLen = (menu.items || []).length
+  const catItemsCount = countItemsInCategories(menu.categories as any as MenuCategory[] | undefined)
+
+  if (!menu.categories || menu.categories.length === 0 || itemsLen >= catItemsCount) {
+    const map = new Map<string, MenuItem[]>()
+    ;(menu.items || []).forEach((item: any) => {
+      const cat = item.category || 'Menu'
+      if (!map.has(cat)) map.set(cat, [])
+      map.get(cat)!.push(item)
+    })
+
+    const categories: CategoryV2[] = []
+    for (const [name, items] of map.entries()) {
+      categories.push({
+        name,
+        confidence: 1.0,
+        items: items.map((i) => ({
+          name: i.name,
+          description: i.description,
+          price: i.price,
+          confidence: i.confidence ?? 1.0,
+          variants: i.variants,
+          modifierGroups: i.modifierGroups,
+          additional: i.additional,
+          type: i.type,
+          setMenu: i.setMenu,
+        })),
+      })
+    }
+
+    return categories
+  }
+
+  return (menu.categories as any as MenuCategory[]).map(convertToCategoryV2)
+}
+
+function countItemsInCategories(categories?: MenuCategory[]): number {
+  if (!categories || categories.length === 0) return 0
+  let count = 0
+  const walk = (cats: MenuCategory[]) => {
+    cats.forEach((c) => {
+      count += (c.items || []).length
+      if (c.subcategories) walk(c.subcategories as any)
+    })
+  }
+  walk(categories)
+  return count
+}
+
+// Validation schema imported from centralized schemas
 
 // POST /api/templates/export - Enqueue export job (asynchronous)
 export async function POST(request: NextRequest) {
@@ -85,10 +117,8 @@ export async function POST(request: NextRequest) {
     const menu = await menuOperations.getMenu(menuId, user.id)
     
     if (!menu) {
-      return NextResponse.json(
-        { error: 'Menu not found' },
-        { status: 404 }
-      )
+      const { status, body } = mapErrorToHttp(new TemplateError('Menu not found', 'MENU_NOT_FOUND'))
+      return NextResponse.json(body, { status })
     }
     
     // Create a render record with pending status for the export
@@ -149,18 +179,11 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error('Error starting export:', error)
-    
     if (error instanceof DatabaseError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 400 })
     }
-    
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    const mapped = mapErrorToHttp(error)
+    return NextResponse.json(mapped.body, { status: mapped.status })
   }
 }
 
@@ -187,11 +210,19 @@ async function processExportJob(
     const menu = await menuOperations.getMenu(options.menuId, userId)
     if (!menu) throw new Error('Menu not found')
     
-    // 2. Load template
+    // 2. Validate categories structure early to fail fast on bad data
+    const categoriesPreview = buildCategoriesV2(menu)
+    const catValidation = z.array(CategoryV2Schema).safeParse(categoriesPreview)
+    if (!catValidation.success) {
+      const { status, body } = mapErrorToHttp(new TemplateError('Invalid menu data', 'VALIDATION_FAILED', { errors: catValidation.error.errors }))
+      return NextResponse.json(body, { status })
+    }
+
+    // 3. Load template
     const registry = new TemplateRegistry()
     const templateConfig = await registry.loadTemplate(options.templateId)
     
-    // 3. Parse template
+    // 4. Parse template
     const parsedTemplate = {
       structure: templateConfig.metadata as any,
       bindings: templateConfig.bindings,
@@ -199,9 +230,9 @@ async function processExportJob(
       assets: { images: [], fonts: [] },
     }
     
-    // 4. Bind data
+    // 5. Bind data
     const bindingEngine = new BindingEngine()
-    const categories = (menu.categories || []).map(convertToCategoryV2)
+    const categories = buildCategoriesV2(menu)
     
     const boundData = bindingEngine.bind({
       menu: {
@@ -212,7 +243,7 @@ async function processExportJob(
       customization: options.customization,
     })
     
-    // 5. Render
+    // 6. Render
     const renderEngine = new RenderEngine()
     const renderResult = await renderEngine.render(
       boundData,
@@ -220,7 +251,7 @@ async function processExportJob(
       { format: 'html' } // Always render to HTML first
     )
     
-    // 6. Export to requested format
+    // 7. Export to requested format
     const exportService = new ExportService()
     let exportBuffer: Buffer
     
@@ -248,9 +279,14 @@ async function processExportJob(
       })
     }
     
-    // 7. Upload to storage
+    // 8. Upload to storage
     const supabase = createServerSupabaseClient()
-    const filePath = `${userId}/${renderId}/${options.filename}`
+    // Ensure filename has correct extension
+    const ext = options.format === 'pdf' ? 'pdf' : options.format === 'png' ? 'png' : 'html'
+    const finalFilename = options.filename?.toLowerCase().endsWith(`.${ext}`)
+      ? options.filename
+      : `${options.filename}.${ext}`
+    const filePath = `${userId}/${renderId}/${finalFilename}`
     
     const { error: uploadError } = await supabase.storage
       .from('rendered-menus')
@@ -264,16 +300,16 @@ async function processExportJob(
       throw new Error(`Failed to upload export: ${uploadError.message}`)
     }
     
-    // 8. Generate signed URL (24 hour expiration)
+    // 9. Generate signed URL (24 hour expiration) and force download with filename
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from('rendered-menus')
-      .createSignedUrl(filePath, 24 * 60 * 60) // 24 hours
+      .createSignedUrl(filePath, 24 * 60 * 60, { download: finalFilename })
     
     if (signedUrlError) {
       throw new Error(`Failed to generate signed URL: ${signedUrlError.message}`)
     }
     
-    // 9. Update render record with success
+    // 10. Update render record with success
     await templateOperations.updateRender(renderId, userId, {
       status: 'completed',
       outputUrl: signedUrlData.signedUrl,

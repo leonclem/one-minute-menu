@@ -292,11 +292,22 @@ export class RenderEngine {
    * Generate CSS from template and global styles
    */
   private generateCSS(template: ParsedTemplate, globalStyles: GlobalStyles): string {
-    const baseCSS = template.styles.css || this.generateDefaultCSS()
+    // Always include default semantic CSS to ensure a readable baseline,
+    // then append compiled template CSS so it can override and refine.
+    const defaultCSS = this.generateDefaultCSS()
+    const compiledCSS = template.styles.css || ''
     const customCSS = this.generateCustomCSS(globalStyles)
     
+    // Generate Google Fonts imports for all fonts used in the template
+    const fontImports = this.generateFontImports(template.styles.fonts || [])
+    
     return `
-${baseCSS}
+${fontImports}
+
+${defaultCSS}
+
+/* Compiled template CSS */
+${compiledCSS}
 
 /* Custom styles from global configuration */
 ${customCSS}
@@ -316,6 +327,25 @@ ${customCSS}
   }
 
   /**
+   * Generate Google Fonts @import statements
+   */
+  private generateFontImports(fonts: string[]): string {
+    if (!fonts || fonts.length === 0) return ''
+    
+    // Build Google Fonts URL with all fonts
+    const fontFamilies = fonts.map(font => {
+      // Google Fonts API expects font names with + instead of spaces
+      // and we want multiple weights: 400,600,700
+      const encodedFont = font.replace(/\s+/g, '+')
+      return `family=${encodedFont}:wght@400;600;700`
+    }).join('&')
+    
+    const googleFontsUrl = `https://fonts.googleapis.com/css2?${fontFamilies}&display=swap`
+    
+    return `@import url('${googleFontsUrl}');`
+  }
+
+  /**
    * Generate default CSS when template doesn't provide styles
    */
   private generateDefaultCSS(): string {
@@ -327,15 +357,20 @@ ${customCSS}
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
   line-height: 1.6;
-  color: #333;
+  color: var(--color-primary, #333);
+  background-color: var(--color-background, #ffffff);
 }
 
 .menu-container {
   max-width: 800px;
   margin: 0 auto;
   padding: 24px;
+  /* Apply base styles here because preview injects a body-less fragment */
+  background-color: var(--color-background, #ffffff);
+  color: var(--color-primary, #333);
+  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
 }
 
 .restaurant-name {
@@ -343,6 +378,7 @@ body {
   font-weight: 700;
   margin-bottom: 32px;
   text-align: center;
+  font-family: var(--font-restaurant-name, inherit);
 }
 
 .categories-container {
@@ -358,7 +394,7 @@ body {
 }
 
 .category-header {
-  border-bottom: 2px solid #333;
+  border-bottom: 2px solid var(--color-category-divider, #333);
   padding-bottom: 8px;
   margin-bottom: 8px;
 }
@@ -366,6 +402,7 @@ body {
 .category-name {
   font-size: 24px;
   font-weight: 600;
+  font-family: var(--font-category-name, inherit);
 }
 
 .subcategory {
@@ -412,6 +449,7 @@ body {
 .item-name {
   font-size: 16px;
   font-weight: 500;
+  font-family: var(--font-item-name, inherit);
 }
 
 .item-right-group {
@@ -423,12 +461,14 @@ body {
   font-size: 16px;
   font-weight: 600;
   white-space: nowrap;
+  font-family: var(--font-item-price, inherit);
 }
 
 .item-description {
   font-size: 14px;
-  color: #666;
+  color: var(--color-secondary, #666);
   margin-top: 4px;
+  font-family: var(--font-item-description, inherit);
 }
 
 .item-dietary-tags {
@@ -442,10 +482,11 @@ body {
   font-size: 11px;
   padding: 2px 6px;
   border-radius: 3px;
-  background-color: #f0f0f0;
-  color: #666;
+  background-color: var(--color-dietary-tag-bg, #f0f0f0);
+  color: var(--color-dietary-tag-text, #666);
   text-transform: uppercase;
   font-weight: 500;
+  font-family: var(--font-dietary-tags, inherit);
 }
 
 .dietary-tag-vegetarian { background-color: #d4edda; color: #155724; }
@@ -454,7 +495,7 @@ body {
 
 .item-allergens {
   font-size: 12px;
-  color: #dc3545;
+  color: var(--color-allergen-text, #dc3545);
   margin-top: 4px;
 }
 

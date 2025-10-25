@@ -33,6 +33,8 @@ export interface TemplateConfig {
   bindings: TemplateBindings
   styling: TemplateStyling
   customization: CustomizationOptions
+  // Optional compiled styles produced by the parser/compiler
+  styles?: ComputedStyles
 }
 
 // ============================================================================

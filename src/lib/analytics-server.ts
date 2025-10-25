@@ -22,7 +22,7 @@ export const analyticsOperations = {
       .select('*')
       .eq('menu_id', menuId)
       .eq('date', today)
-      .single()
+      .maybeSingle()
     
     console.log('Existing record:', existing, 'Error:', selectError)
     
@@ -50,24 +50,59 @@ export const analyticsOperations = {
         throw updateError
       }
     } else {
-      // Create new record
-      const insertData = {
+      // Create or update record atomically to avoid duplicates on race
+      // Try an upsert first
+      const upsertData = {
         menu_id: menuId,
         date: today,
         page_views: 1,
         unique_visitors: 1,
         unique_visitors_ids: [visitorId],
       }
-      
-      console.log('Creating new record with:', insertData)
-      
-      const { error: insertError } = await supabase
+
+      console.log('Creating new record (upsert) with:', upsertData)
+
+      const { error: upsertError } = await supabase
         .from('menu_analytics')
-        .insert(insertData)
-      
-      if (insertError) {
-        console.error('Insert error:', insertError)
-        throw insertError
+        .upsert(upsertData, { onConflict: 'menu_id,date' })
+
+      if (upsertError) {
+        // If conflict or other error still occurs, fall back to read-modify-write
+        console.warn('Upsert failed, attempting read-modify-write path:', upsertError)
+
+        const { data: afterRead } = await supabase
+          .from('menu_analytics')
+          .select('*')
+          .eq('menu_id', menuId)
+          .eq('date', today)
+          .maybeSingle()
+
+        if (afterRead) {
+          const uniq = new Set(afterRead.unique_visitors_ids || [])
+          uniq.add(visitorId)
+          const { error: fallbackUpdateError } = await supabase
+            .from('menu_analytics')
+            .update({
+              page_views: (afterRead.page_views || 0) + 1,
+              unique_visitors: uniq.size,
+              unique_visitors_ids: Array.from(uniq),
+            })
+            .eq('id', afterRead.id)
+
+          if (fallbackUpdateError) {
+            console.error('Fallback update error:', fallbackUpdateError)
+            throw fallbackUpdateError
+          }
+        } else {
+          // Last resort: try insert again (may succeed if conflict was transient)
+          const { error: finalInsertError } = await supabase
+            .from('menu_analytics')
+            .insert(upsertData)
+          if (finalInsertError) {
+            console.error('Final insert error:', finalInsertError)
+            throw finalInsertError
+          }
+        }
       }
     }
   },

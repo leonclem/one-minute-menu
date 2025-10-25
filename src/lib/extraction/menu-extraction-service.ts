@@ -122,6 +122,7 @@ export class MenuExtractionService {
   async submitExtractionJob(
     imageUrl: string,
     userId: string,
+    menuId: string,
     options: ExtractionOptions = {}
   ): Promise<ExtractionJob> {
     const startTime = Date.now()
@@ -170,6 +171,7 @@ export class MenuExtractionService {
       if (!job!) {
         job = await this.createJobRecord(
           userId,
+          menuId,
           imageUrl,
           imageHash,
           options.schemaVersion || 'stage1',
@@ -471,6 +473,7 @@ export class MenuExtractionService {
    */
   private async createJobRecord(
     userId: string,
+    menuId: string,
     imageUrl: string,
     imageHash: string,
     schemaVersion: string,
@@ -480,9 +483,12 @@ export class MenuExtractionService {
       .from('menu_extraction_jobs')
       .insert({
         user_id: userId,
+        menu_id: menuId,
         image_url: imageUrl,
+        image_urls: [imageUrl],
         image_hash: imageHash,
-        status: 'queued',
+        extraction_method: 'vision_llm',
+        status: 'pending',
         schema_version: schemaVersion,
         prompt_version: promptVersion,
         created_at: new Date().toISOString()

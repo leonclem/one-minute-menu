@@ -37,9 +37,9 @@ export function TemplateSelector({
         }
 
         const params = new URLSearchParams()
-        if (filters.searchQuery) params.append('search', filters.searchQuery)
-        if (filters.tags) filters.tags.forEach(tag => params.append('tags', tag))
-        if (filters.pageFormat) params.append('format', filters.pageFormat)
+        if (filters.searchQuery) params.set('search', filters.searchQuery)
+        if (filters.tags) params.set('tags', filters.tags.join(','))
+        if (filters.pageFormat) params.set('pageFormat', filters.pageFormat)
 
         const response = await fetch(`/api/templates?${params.toString()}`)
         if (!response.ok) {
@@ -47,7 +47,8 @@ export function TemplateSelector({
         }
 
         const data = await response.json()
-        setTemplates(data.templates || [])
+        // API returns { success, data, total }
+        setTemplates(data.data || [])
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load templates')
       } finally {

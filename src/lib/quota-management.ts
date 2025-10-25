@@ -20,25 +20,82 @@ import { DatabaseError } from '@/lib/database'
  * - Cost estimation for generation requests
  */
 export class QuotaManagementService {
-  
   /**
-   * Check current quota status for a user
+   * Ensure the current user has a profile and return the plan.
+   * - Creates a default profile if missing (plan='free', role='user' when column exists)
+   * - Handles race conditions and schema drift (role column may not exist locally)
    */
-  async checkQuota(userId: string): Promise<QuotaStatus> {
+  private async getOrCreateUserPlan(userId: string): Promise<User['plan']> {
     const supabase = createServerSupabaseClient()
-    
-    // Get user profile to determine plan
+
+    // First try to read existing profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('plan')
       .eq('id', userId)
       .single()
-    
-    if (profileError) {
-      throw new DatabaseError(`Failed to get user profile: ${profileError.message}`, profileError.code)
+
+    if (!profileError && profile) {
+      return (profile.plan as User['plan'])
     }
-    
-    const plan = profile.plan as User['plan']
+
+    // If not found, create it with safe defaults
+    if (profileError && profileError.code === 'PGRST116') {
+      // Fetch user email from auth session cookies
+      const { data: userData } = await supabase.auth.getUser()
+      const email = userData.user?.email || ''
+
+      // Try insert with role column (if present). If schema lacks column, retry without it.
+      let insertError: any | null = null
+      const tryInsert = async () => {
+        const { error } = await supabase
+          .from('profiles')
+          .insert({ id: userId, email, role: 'user' })
+        return error
+      }
+
+      insertError = await tryInsert()
+
+      if (insertError) {
+        // 42703 = undefined_column (e.g., role column not present yet)
+        if (insertError.code === '42703') {
+          const { error: retryError } = await supabase
+            .from('profiles')
+            .insert({ id: userId, email })
+          // If duplicate (race), proceed to read below
+          if (retryError && retryError.code !== '23505') {
+            throw new DatabaseError(`Failed to create user profile: ${retryError.message}`, retryError.code)
+          }
+        } else if (insertError.code !== '23505') {
+          // Not a duplicate key (race) -> surface error
+          throw new DatabaseError(`Failed to create user profile: ${insertError.message}`, insertError.code)
+        }
+      }
+
+      // Read back the profile to get the plan
+      const { data: createdProfile, error: readBackError } = await supabase
+        .from('profiles')
+        .select('plan')
+        .eq('id', userId)
+        .single()
+
+      if (readBackError) {
+        throw new DatabaseError(`Failed to get user profile after creation: ${readBackError.message}`, readBackError.code)
+      }
+
+      return (createdProfile.plan as User['plan'])
+    }
+
+    // Any other error
+    throw new DatabaseError(`Failed to get user profile: ${profileError?.message}`, profileError?.code)
+  }
+  
+  /**
+   * Check current quota status for a user
+   */
+  async checkQuota(userId: string): Promise<QuotaStatus> {
+    // Ensure a profile exists and get plan (creates if missing)
+    const plan = await this.getOrCreateUserPlan(userId)
     const planLimit = PLAN_CONFIGS[plan].aiImageGenerations
     
     // Get or create quota record
@@ -198,18 +255,8 @@ export class QuotaManagementService {
   async resetMonthlyQuota(userId: string): Promise<GenerationQuota> {
     const supabase = createServerSupabaseClient()
     
-    // Get user plan to determine new limit
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('plan')
-      .eq('id', userId)
-      .single()
-    
-    if (profileError) {
-      throw new DatabaseError(`Failed to get user profile: ${profileError.message}`, profileError.code)
-    }
-    
-    const plan = profile.plan as User['plan']
+    // Get user plan to determine new limit (auto-create profile if missing)
+    const plan = await this.getOrCreateUserPlan(userId)
     const newLimit = PLAN_CONFIGS[plan].aiImageGenerations
     
     // Calculate next reset date (first day of next month)

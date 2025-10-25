@@ -24,6 +24,7 @@ const SUPPORTED_FORMATS = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024 // 8MB
 
 interface SubmitRequest {
+  menuId: string
   imageUrl: string
   schemaVersion?: 'stage1' | 'stage2'
   promptVersion?: string
@@ -59,6 +60,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate required fields
+    if (!body.menuId) {
+      return NextResponse.json(
+        { error: 'menuId is required' },
+        { status: 400 }
+      )
+    }
+    
     if (!body.imageUrl) {
       return NextResponse.json(
         { error: 'imageUrl is required' },
@@ -158,6 +166,7 @@ export async function POST(request: NextRequest) {
     const job = await extractionService.submitExtractionJob(
       body.imageUrl,
       user.id,
+      body.menuId,
       {
         schemaVersion: body.schemaVersion || 'stage1',
         promptVersion: body.promptVersion,

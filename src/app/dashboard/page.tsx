@@ -187,12 +187,18 @@ export default async function DashboardPage() {
                           <span className="text-secondary-600">Version:</span>
                           <span>v{menu.version}</span>
                         </div>
-                        <div className="pt-2">
+                        <div className="pt-2 flex items-center gap-4">
                           <Link
                             href={`/dashboard/menus/${menu.id}`}
                             className="text-sm font-medium text-primary-600 hover:text-primary-500"
                           >
                             Edit menu →
+                          </Link>
+                          <Link
+                            href={`/dashboard/menus/${menu.id}/templates`}
+                            className="text-sm font-medium text-secondary-600 hover:text-secondary-800"
+                          >
+                            Templates
                           </Link>
                         </div>
                       </div>

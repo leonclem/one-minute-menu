@@ -1,0 +1,13 @@
+.menu-container { display: flex; flex-direction: column; padding: 24px 23px 24px 23px; justify-content: center; align-items: flex-start; flex-shrink: 0 }
+.restaurant-name { justify-content: flex-start; align-items: flex-start; flex-grow: 1; font-family: 'Holtwood One SC', sans-serif; font-weight: 400; font-size: 32px; line-height: 52px; color: #d0cab9 }
+.category-name { justify-content: flex-start; align-items: flex-start; flex-grow: 1; font-family: 'Holtwood One SC', sans-serif; font-weight: 400; font-size: 32px; line-height: 52px; color: #363636 }
+.item-name { justify-content: flex-start; align-items: flex-start; flex-grow: 1; font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 20px; line-height: 20px; color: #ba1e1e }
+.item-price { justify-content: flex-start; align-items: flex-start; flex-grow: 1; font-family: 'Poly', sans-serif; font-weight: 400; font-size: 14px; line-height: 17px; color: #363636 }
+.item-description { justify-content: flex-start; align-items: flex-start; flex-grow: 1; font-family: 'Poly', sans-serif; font-weight: 400; font-size: 11px; line-height: 13px; color: #363636 }
+.category-items { display: flex; flex-direction: row; gap: 4px; justify-content: space-between; align-items: flex-start; flex-shrink: 0 }
+.category { background-color: #c3c3c3 }
+.category-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px }
+.categories-container { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px }
+.menu-container{position:relative}
+.menu-container::before{content:"";position:absolute;inset:0;pointer-events:none;background-image: url("https://figma-alpha-api.s3.us-west-2.amazonaws.com/images/9e6f3c04-fa3a-4e92-919e-82c1980b9eaf");background-size:cover;background-position:center;opacity:.35;mix-blend-mode:multiply}
+.section--banner::before{content:"";display:block;width:100%;height:8mm;background:#ba1e1e;}

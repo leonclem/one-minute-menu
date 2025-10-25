@@ -39,6 +39,32 @@ jest.mock('../registry', () => ({
   },
 }))
 
+// Mock parser to avoid network in unit tests
+jest.mock('../parser', () => ({
+  createTemplateParser: jest.fn(() => ({
+    parseFigmaFile: jest.fn(async () => ({
+      structure: {
+        id: 'root',
+        name: 'Template Root',
+        type: 'FRAME',
+        styles: { fills: [], strokes: [], effects: [] },
+        layout: {
+          layoutMode: 'VERTICAL', primaryAxisSizingMode: 'AUTO', counterAxisSizingMode: 'AUTO', paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0, itemSpacing: 0, counterAxisAlignItems: 'MIN', primaryAxisAlignItems: 'MIN'
+        },
+      },
+      bindings: {
+        restaurantName: '{{restaurant.name}}',
+        categoryName: '{{category.name}}',
+        categoryItems: '{{category.items}}',
+        itemName: '{{item.name}}',
+        conditionalLayers: [],
+      },
+      styles: { css: '.template-root { display: flex; }', fonts: ['Inter'], colors: { background: '#ffffff' } },
+      assets: { images: [], fonts: [] },
+    })),
+  })),
+}))
+
 describe('TemplateCompiler', () => {
   let compiler: TemplateCompiler
 
@@ -48,7 +74,7 @@ describe('TemplateCompiler', () => {
   })
 
   describe('compile', () => {
-    it('should throw error for unimplemented Figma parsing', async () => {
+    it('produces config with compiled styles and bindings', async () => {
       const options: CompilationOptions = {
         figmaFileKey: 'test-key',
         templateId: 'test-template',
@@ -59,10 +85,9 @@ describe('TemplateCompiler', () => {
         },
       }
 
-      await expect(compiler.compile(options)).rejects.toThrow(TemplateCompilerError)
-      await expect(compiler.compile(options)).rejects.toThrow('Figma parsing not yet implemented')
+      const result = await compiler.compile(options)
+      expect(result.success).toBe(true)
     })
-
     it('should validate compilation options', async () => {
       const options: CompilationOptions = {
         figmaFileKey: '',

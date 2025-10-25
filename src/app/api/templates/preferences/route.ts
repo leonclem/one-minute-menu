@@ -3,25 +3,10 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { templateOperations, DatabaseError } from '@/lib/database'
 import type { UserCustomization } from '@/types/templates'
 import { z } from 'zod'
+import { updatePreferenceSchema } from '@/lib/templates/schemas'
+import { mapErrorToHttp, TemplateError } from '@/lib/templates/errors'
 
-// Validation schema for preference update
-const updatePreferenceSchema = z.object({
-  menuId: z.string().uuid(),
-  templateId: z.string().uuid(),
-  customization: z.object({
-    colors: z.object({
-      primary: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
-      secondary: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
-      accent: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
-    }).optional(),
-    fonts: z.object({
-      heading: z.string().optional(),
-      body: z.string().optional(),
-    }).optional(),
-    priceDisplayMode: z.enum(['symbol', 'amount-only']).optional(),
-  }),
-  isDefault: z.boolean().optional(),
-})
+// Validation schema imported from centralized schemas
 
 // GET /api/templates/preferences - Get user template preferences
 export async function GET(request: NextRequest) {

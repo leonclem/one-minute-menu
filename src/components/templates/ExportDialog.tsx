@@ -55,11 +55,9 @@ export function ExportDialog({
           menuId,
           templateId,
           format,
-          options: {
-            filename,
-            pageSize: format === 'pdf' ? pageSize : undefined,
-            dpi: format === 'png' ? dpi : undefined,
-          },
+          filename,
+          pageSize: format === 'pdf' ? pageSize : undefined,
+          dpi: format === 'png' ? dpi : undefined,
         }),
       })
 
@@ -69,10 +67,12 @@ export function ExportDialog({
       }
 
       const data = await response.json()
-      setExportJob(data.job)
-
+      const jobId: string | undefined = data?.data?.jobId
+      if (!jobId) {
+        throw new Error('Export job did not return a jobId')
+      }
       // Poll for completion
-      await pollExportStatus(data.job.id)
+      await pollExportStatus(jobId)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Export failed')
       setStep('options')
@@ -91,13 +91,13 @@ export function ExportDialog({
         }
 
         const data = await response.json()
-        setExportJob(data.job)
+        const info = data.data
 
-        if (data.job.status === 'completed') {
-          setDownloadUrl(data.job.result.url)
+        if (info.status === 'completed' && info.downloadUrl) {
+          setDownloadUrl(info.downloadUrl)
           setStep('complete')
-        } else if (data.job.status === 'failed') {
-          throw new Error(data.job.errorMessage || 'Export failed')
+        } else if (info.status === 'failed') {
+          throw new Error(info.error || 'Export failed')
         } else if (attempts < maxAttempts) {
           attempts++
           setTimeout(poll, 1000)

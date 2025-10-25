@@ -11,38 +11,7 @@
 import { TemplateRegistry } from '@/lib/templates/registry'
 import { BindingEngine } from '@/lib/templates/binding-engine'
 import { RenderEngine } from '@/lib/render/engine'
-import { ExportService } from '@/lib/render/export-service'
 import type { TemplateConfig, TemplateMetadata } from '@/types/templates'
-import { it } from 'node:test'
-import { describe } from 'node:test'
-import { it } from 'node:test'
-import { describe } from 'node:test'
-import { it } from 'node:test'
-import { it } from 'node:test'
-import { describe } from 'node:test'
-import { it } from 'node:test'
-import { it } from 'node:test'
-import { describe } from 'node:test'
-import { it } from 'node:test'
-import { it } from 'node:test'
-import { it } from 'node:test'
-import { it } from 'node:test'
-import { describe } from 'node:test'
-import { it } from 'node:test'
-import { it } from 'node:test'
-import { describe } from 'node:test'
-import { it } from 'node:test'
-import { it } from 'node:test'
-import { it } from 'node:test'
-import { it } from 'node:test'
-import { describe } from 'node:test'
-import { it } from 'node:test'
-import { it } from 'node:test'
-import { it } from 'node:test'
-import { it } from 'node:test'
-import { describe } from 'node:test'
-import { beforeEach } from 'node:test'
-import { describe } from 'node:test'
 
 // Mock modules
 jest.mock('@/lib/supabase-server', () => ({
@@ -74,6 +43,11 @@ jest.mock('@/lib/templates/registry')
 jest.mock('@/lib/templates/binding-engine')
 jest.mock('@/lib/render/engine')
 jest.mock('@/lib/render/export-service')
+jest.mock('@/lib/templates/compiler', () => ({
+  templateCompiler: {
+    compile: jest.fn().mockResolvedValue({ success: true, templateId: 'template-1', version: '1.0.0', artifactPath: 'template-1@1.0.0' }),
+  },
+}))
 
 // Mock Supabase client
 let mockSupabase: any

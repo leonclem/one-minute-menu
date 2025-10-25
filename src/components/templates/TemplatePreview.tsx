@@ -1,18 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { CategoryV2 } from '@/types/templates'
 import type { UserCustomization } from '@/types/templates'
 
 export interface TemplatePreviewProps {
   templateId: string
-  menuData: { categories: CategoryV2[] }
+  menuId: string
   customization?: UserCustomization
 }
 
 export function TemplatePreview({
   templateId,
-  menuData,
+  menuId,
   customization,
 }: TemplatePreviewProps) {
   const [html, setHtml] = useState<string>('')
@@ -32,10 +31,12 @@ export function TemplatePreview({
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            menuId,
             templateId,
-            menuData,
             customization,
             format: 'html',
+            // Provide client-side menu data to ensure full rendering if server lacks categories
+            menuData: (window as any).__MENU_CATEGORIES__ || undefined,
           }),
         })
 
@@ -45,8 +46,11 @@ export function TemplatePreview({
         }
 
         const data = await response.json()
-        setHtml(data.render.renderData.html)
-        setCss(data.render.renderData.css)
+        const fullHtml: string = data.data?.html || ''
+        const match = fullHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i)
+        const fragment = match ? match[1] : fullHtml
+        setHtml(fragment)
+        setCss(data.data?.css || '')
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to render template')
       } finally {
@@ -54,10 +58,10 @@ export function TemplatePreview({
       }
     }
 
-    if (templateId && menuData.categories.length > 0) {
+    if (templateId && menuId) {
       renderTemplate()
     }
-  }, [templateId, menuData, customization])
+  }, [templateId, menuId, customization])
 
   if (loading) {
     return (
@@ -109,21 +113,28 @@ export function TemplatePreview({
         {/* Preview Header */}
         <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 flex items-center justify-between">
           <span className="text-sm font-medium text-gray-700">Preview</span>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">
-              {menuData.categories.length} categories
-            </span>
-            <span className="text-xs text-gray-400">•</span>
-            <span className="text-xs text-gray-500">
-              {menuData.categories.reduce((sum, cat) => sum + (cat.items?.length || 0), 0)} items
-            </span>
-          </div>
+          <div className="flex items-center gap-2" />
         </div>
 
         {/* Rendered Content */}
         <div className="p-6 bg-gray-100 overflow-auto max-h-[800px]">
           <div className="bg-white shadow-xl mx-auto" style={{ maxWidth: '210mm' }}>
-            <style dangerouslySetInnerHTML={{ __html: css }} />
+            {/* Extract and inject Google Fonts links to avoid CSP issues */}
+            {(() => {
+              const fontImportMatch = css.match(/@import url\('([^']+)'\);?/)
+              if (fontImportMatch) {
+                const fontUrl = fontImportMatch[1]
+                // Remove the @import from CSS since we're using <link> instead
+                const cssWithoutImport = css.replace(/@import url\('[^']+'\);?\s*/g, '')
+                return (
+                  <>
+                    <link rel="stylesheet" href={fontUrl} />
+                    <style dangerouslySetInnerHTML={{ __html: cssWithoutImport }} />
+                  </>
+                )
+              }
+              return <style dangerouslySetInnerHTML={{ __html: css }} />
+            })()}
             <div dangerouslySetInnerHTML={{ __html: html }} />
           </div>
         </div>

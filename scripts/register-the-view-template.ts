@@ -2,6 +2,10 @@
 // Script to register "The View" template in the database
 // Usage: npx tsx scripts/register-the-view-template.ts
 
+// Load environment variables from .env.local so CLI has Supabase creds
+import dotenv from 'dotenv'
+dotenv.config({ path: '.env.local' })
+
 import { registerTheViewTemplate, isTheViewTemplateRegistered } from '@/lib/templates/configs/register-the-view'
 
 async function main() {

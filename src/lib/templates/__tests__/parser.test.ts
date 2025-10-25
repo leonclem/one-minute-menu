@@ -1,3 +1,27 @@
+import { TemplateParser } from '../parser'
+
+describe('TemplateParser', () => {
+  it('maps basic Auto Layout to CSS', async () => {
+    const parser = new TemplateParser({ generateCSS: true, extractAssets: false, figmaClient: {
+      getFile: jest.fn(),
+      getImages: jest.fn(),
+      extractNodes: jest.fn().mockReturnValue([
+        { id: 'root', name: 'Template Root', type: 'FRAME', children: [], styles: { fills: [], strokes: [], effects: [] }, layout: {
+          layoutMode: 'VERTICAL', primaryAxisSizingMode: 'AUTO', counterAxisSizingMode: 'AUTO', paddingLeft: 10, paddingRight: 20, paddingTop: 30, paddingBottom: 40, itemSpacing: 8, counterAxisAlignItems: 'CENTER', primaryAxisAlignItems: 'SPACE_BETWEEN'
+        } }
+      ]) as any,
+    } as any })
+
+    const result = await parser.parseFigmaFile('dummy')
+    expect(result.styles.css).toContain('display: flex')
+    expect(result.styles.css).toContain('flex-direction: column')
+    expect(result.styles.css).toContain('gap: 8px')
+    expect(result.styles.css).toContain('padding: 30px 20px 40px 10px')
+    expect(result.styles.css).toContain('justify-content: space-between')
+    expect(result.styles.css).toContain('align-items: center')
+  })
+})
+
 // Template Parser Unit Tests
 
 import { TemplateParser, createTemplateParser } from '../parser'

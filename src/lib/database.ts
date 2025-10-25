@@ -1095,9 +1095,7 @@ export const templateOperations = {
   ): Promise<TemplateRender> {
     const supabase = createServerSupabaseClient()
     
-    const updateData: any = {
-      updated_at: new Date().toISOString(),
-    }
+    const updateData: any = {}
     
     if (updates.status) {
       updateData.status = updates.status
