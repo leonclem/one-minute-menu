@@ -73,12 +73,29 @@ export default function GridMenuLayout({
   // Build grid template columns CSS
   const gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`
 
+  // Announce layout changes to screen readers
+  const [announcement, setAnnouncement] = React.useState('')
+
+  React.useEffect(() => {
+    const totalItems = layout.sections.reduce((sum, s) => sum + s.tiles.filter(t => t.type === 'item').length, 0)
+    setAnnouncement(`Menu loaded with ${layout.sections.length} sections and ${totalItems} items`)
+  }, [layout])
+
   return (
-    <div 
+    <main 
       className={`menu-layout ${className}`}
-      role="main"
-      aria-label={data.metadata.title}
+      aria-label={`${data.metadata.title} menu`}
     >
+      {/* Screen reader announcement for layout changes */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {announcement}
+      </div>
+
       {/* Menu Title */}
       <header className="menu-header mb-8">
         <h1 className="text-3xl font-bold text-gray-900">
@@ -86,10 +103,27 @@ export default function GridMenuLayout({
         </h1>
       </header>
 
+      {/* Navigation for sections (skip links) */}
+      <nav aria-label="Menu sections" className="sr-only focus-within:not-sr-only focus-within:absolute focus-within:top-0 focus-within:left-0 focus-within:z-50 focus-within:bg-white focus-within:p-4 focus-within:shadow-lg">
+        <ul className="space-y-2">
+          {layout.sections.map((section, sectionIndex) => (
+            <li key={`nav-${sectionIndex}`}>
+              <a 
+                href={`#section-${sectionIndex}`}
+                className="text-blue-600 hover:text-blue-800 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded px-2 py-1"
+              >
+                Skip to {section.name}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
       {/* Sections */}
       {layout.sections.map((section, sectionIndex) => (
         <section
           key={`section-${sectionIndex}`}
+          id={`section-${sectionIndex}`}
           className={`menu-section ${preset.gridConfig.sectionSpacing}`}
           aria-labelledby={`section-heading-${sectionIndex}`}
         >
@@ -102,7 +136,7 @@ export default function GridMenuLayout({
           </h2>
 
           {/* Grid Container */}
-          <div
+          <ul
             className={`grid ${preset.gridConfig.gap}`}
             style={{
               gridTemplateColumns
@@ -116,35 +150,37 @@ export default function GridMenuLayout({
 
               if (isItemTile(tile)) {
                 return (
-                  <MenuTile
-                    key={key}
-                    item={tile.item}
-                    preset={preset}
-                    context={context}
-                    currency={data.metadata.currency}
-                    themeColors={themeColors}
-                  />
+                  <li key={key} role="listitem">
+                    <MenuTile
+                      item={tile.item}
+                      preset={preset}
+                      context={context}
+                      currency={data.metadata.currency}
+                      themeColors={themeColors}
+                    />
+                  </li>
                 )
               }
 
               if (isFillerTile(tile)) {
                 return (
-                  <FillerTile
-                    key={key}
-                    style={tile.style}
-                    content={tile.content}
-                    preset={preset}
-                    themeColors={themeColors}
-                  />
+                  <li key={key} role="presentation" aria-hidden="true">
+                    <FillerTile
+                      style={tile.style}
+                      content={tile.content}
+                      preset={preset}
+                      themeColors={themeColors}
+                    />
+                  </li>
                 )
               }
 
               return null
             })}
-          </div>
+          </ul>
         </section>
       ))}
-    </div>
+    </main>
   )
 }
 

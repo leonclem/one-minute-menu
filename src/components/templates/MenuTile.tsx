@@ -18,6 +18,7 @@ import React from 'react'
 import Image from 'next/image'
 import type { LayoutItem, LayoutPreset, OutputContext } from '@/lib/templates/types'
 import MetadataOverlay from './MetadataOverlay'
+import { getSuggestedTextColor } from '@/lib/templates/contrast-validator'
 
 // ============================================================================
 // Component Props
@@ -64,12 +65,12 @@ export default function MenuTile({
 
   return (
     <article
-      className={`menu-tile relative overflow-hidden ${tileConfig.borderRadius} bg-gray-100`}
+      className={`menu-tile relative overflow-hidden ${tileConfig.borderRadius} bg-gray-100 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2`}
       style={{
         aspectRatio: tileConfig.aspectRatio
       }}
-      role="listitem"
-      aria-label={`${item.name}, ${formattedPrice}`}
+      tabIndex={0}
+      aria-label={`${item.name}, ${formattedPrice}${item.description ? `, ${item.description}` : ''}`}
     >
       {/* Image or Fallback */}
       {hasImage ? (
@@ -204,7 +205,10 @@ function ColorFallback({
   themeColors
 }: ImageFallbackProps) {
   const backgroundColor = themeColors?.secondary || '#e5e7eb'
-  const textColor = themeColors?.text || '#111827'
+  const preferredTextColor = themeColors?.text || '#111827'
+  
+  // Ensure text color meets WCAG AA contrast requirements
+  const textColor = getSuggestedTextColor(backgroundColor, preferredTextColor)
 
   return (
     <div
@@ -249,7 +253,10 @@ function IconFallback({
 }: ImageFallbackProps) {
   const backgroundColor = themeColors?.background || '#f9fafb'
   const iconColor = themeColors?.accent || '#9ca3af'
-  const textColor = themeColors?.text || '#111827'
+  const preferredTextColor = themeColors?.text || '#111827'
+  
+  // Ensure text color meets WCAG AA contrast requirements
+  const textColor = getSuggestedTextColor(backgroundColor, preferredTextColor)
 
   // Select icon based on item name keywords
   const icon = selectIconForItem(name)
@@ -306,8 +313,11 @@ function TextOnlyFallback({
   themeColors
 }: ImageFallbackProps) {
   const backgroundColor = themeColors?.background || '#ffffff'
-  const textColor = themeColors?.text || '#111827'
+  const preferredTextColor = themeColors?.text || '#111827'
   const borderColor = themeColors?.secondary || '#e5e7eb'
+  
+  // Ensure text color meets WCAG AA contrast requirements
+  const textColor = getSuggestedTextColor(backgroundColor, preferredTextColor)
 
   return (
     <div

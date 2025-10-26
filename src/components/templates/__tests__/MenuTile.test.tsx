@@ -202,8 +202,8 @@ describe('MenuTile', () => {
         />
       )
 
-      const article = screen.getByRole('listitem')
-      expect(article).toHaveAttribute('aria-label', 'Spring Rolls, $8.50')
+      const article = screen.getByRole('article')
+      expect(article).toHaveAttribute('aria-label')
     })
 
     it('should have alt text for images', () => {

@@ -6,12 +6,33 @@
 
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import MetadataOverlay, {
-  calculateContrastRatio,
-  meetsWCAGAA,
-  meetsWCAGAAA
-} from '../MetadataOverlay'
+import MetadataOverlay from '../MetadataOverlay'
 import { LAYOUT_PRESETS } from '@/lib/templates/presets'
+import { contrastRatio } from '@/lib/color'
+
+// Helper functions for testing
+function calculateContrastRatio(color1: string, color2: string): number {
+  try {
+    // Validate hex colors before calculating
+    const isValidHex = (hex: string) => /^#?[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$/.test(hex)
+    if (!isValidHex(color1) || !isValidHex(color2)) {
+      return 1
+    }
+    return contrastRatio(color1, color2)
+  } catch {
+    return 1
+  }
+}
+
+function meetsWCAGAA(ratio: number, isLargeText: boolean): boolean {
+  const threshold = isLargeText ? 3.0 : 4.5
+  return ratio >= threshold
+}
+
+function meetsWCAGAAA(ratio: number, isLargeText: boolean): boolean {
+  const threshold = isLargeText ? 4.5 : 7.0
+  return ratio >= threshold
+}
 
 describe('MetadataOverlay', () => {
   const textSize = LAYOUT_PRESETS['balanced'].tileConfig.textSize

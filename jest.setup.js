@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom'
+import 'jest-axe/extend-expect'
 import { randomUUID, webcrypto } from 'crypto'
 import { TextEncoder, TextDecoder } from 'util'
 

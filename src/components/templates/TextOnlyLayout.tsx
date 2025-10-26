@@ -59,10 +59,9 @@ export default function TextOnlyLayout({
   const accentColor = themeColors?.accent || '#6b7280'
 
   return (
-    <div
+    <main
       className={`text-only-layout ${className}`}
-      role="main"
-      aria-label={data.metadata.title}
+      aria-label={`${data.metadata.title} menu`}
     >
       {/* Menu Title */}
       <header className="menu-header mb-8 text-center">
@@ -74,16 +73,34 @@ export default function TextOnlyLayout({
         </h1>
       </header>
 
+      {/* Navigation for sections (skip links) */}
+      <nav aria-label="Menu sections" className="sr-only focus-within:not-sr-only focus-within:absolute focus-within:top-0 focus-within:left-0 focus-within:z-50 focus-within:bg-white focus-within:p-4 focus-within:shadow-lg">
+        <ul className="space-y-2">
+          {data.sections.map((section, sectionIndex) => (
+            <li key={`nav-${sectionIndex}`}>
+              <a 
+                href={`#text-section-${sectionIndex}`}
+                className="underline focus:outline-none focus:ring-2 focus:ring-offset-2 rounded px-2 py-1"
+                style={{ color: accentColor }}
+              >
+                Skip to {section.name}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
       {/* Sections */}
       {data.sections.map((section, sectionIndex) => (
         <section
           key={`section-${sectionIndex}`}
+          id={`text-section-${sectionIndex}`}
           className={`menu-section ${preset.gridConfig.sectionSpacing}`}
-          aria-labelledby={`section-heading-${sectionIndex}`}
+          aria-labelledby={`text-section-heading-${sectionIndex}`}
         >
           {/* Section Header */}
           <h2
-            id={`section-heading-${sectionIndex}`}
+            id={`text-section-heading-${sectionIndex}`}
             className="text-2xl font-semibold mb-4 pb-2 border-b-2"
             style={{
               color: textColor,
@@ -127,7 +144,7 @@ export default function TextOnlyLayout({
           </ul>
         </section>
       ))}
-    </div>
+    </main>
   )
 }
 

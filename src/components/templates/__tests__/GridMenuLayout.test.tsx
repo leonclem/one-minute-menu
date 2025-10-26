@@ -180,7 +180,7 @@ describe('GridMenuLayout', () => {
         />
       )
 
-      expect(screen.getByRole('main')).toHaveAttribute('aria-label', 'Test Restaurant Menu')
+      expect(screen.getByRole('main')).toHaveAttribute('aria-label', 'Test Restaurant Menu menu')
     })
 
     it('should have semantic section elements', () => {
