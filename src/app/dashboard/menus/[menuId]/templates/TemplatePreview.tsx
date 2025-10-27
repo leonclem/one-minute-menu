@@ -403,18 +403,8 @@ function GridLayoutPreview({ layout, menuTitle }: GridLayoutPreviewProps) {
   const columns = preset.gridConfig.columns[layout.context]
   const gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`
 
-  // Extract currency from first item with a price
-  let currency = '$'
-  for (const section of layout.sections) {
-    for (const tile of section.tiles) {
-      if (isItemTile(tile) && tile.item.price) {
-        // Currency is already in the layout data
-        currency = '$' // Default, could be extracted from menu metadata
-        break
-      }
-    }
-    if (currency !== '$') break
-  }
+  // Extract currency from first item with a price (default to USD)
+  const currency = '$'
 
   return (
     <main className="menu-layout" aria-label={`${menuTitle} menu`}>

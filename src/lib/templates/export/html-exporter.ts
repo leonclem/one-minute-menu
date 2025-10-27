@@ -215,6 +215,19 @@ function generateBaseStyles(themeColors?: HTMLExportOptions['themeColors']): str
       display: block;
     }
 
+    /* List Reset */
+    ul[role="list"], ol[role="list"] {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    ul[role="list"] li, ol[role="list"] li {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
     /* Accessibility */
     .sr-only {
       position: absolute;
@@ -226,6 +239,20 @@ function generateBaseStyles(themeColors?: HTMLExportOptions['themeColors']): str
       clip: rect(0, 0, 0, 0);
       white-space: nowrap;
       border-width: 0;
+    }
+
+    /* Filler Tile Styles */
+    .filler-tile {
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .filler-tile svg {
+      width: 32px;
+      height: 32px;
+      display: block;
     }
 
     /* Print Styles */
@@ -315,10 +342,13 @@ function generateTailwindStyles(): string {
     }
     
     /* Colors */
+    .text-gray-300 { color: rgb(209 213 219); }
+    .text-gray-400 { color: rgb(156 163 175); }
     .text-gray-600 { color: rgb(75 85 99); }
     .text-gray-700 { color: rgb(55 65 81); }
     .text-gray-800 { color: rgb(31 41 55); }
     .text-gray-900 { color: rgb(17 24 39); }
+    .bg-gray-50 { background-color: rgb(249 250 251); }
     .bg-gray-100 { background-color: rgb(243 244 246); }
     .bg-white { background-color: rgb(255 255 255); }
     .border-gray-200 { border-color: rgb(229 231 235); }

@@ -199,29 +199,10 @@ function createFillerTile(
  * @returns Filler style
  */
 function selectFillerStyle(preset: LayoutPreset, context: OutputContext): FillerStyle {
-  // Dense layouts use solid colors for minimal distraction
-  if (preset.family === 'dense') {
-    return 'color'
-  }
-  
-  // Image-forward layouts use icons to complement visual content
-  if (preset.family === 'image-forward') {
-    return 'icon'
-  }
-  
-  // Feature band layouts use patterns for elegance
-  if (preset.family === 'feature-band') {
-    return 'pattern'
-  }
-  
-  // Balanced layouts use a mix based on context
-  if (context === 'mobile') {
-    return 'color' // Keep it simple on mobile
-  } else if (context === 'print') {
-    return 'pattern' // Patterns work well in print
-  } else {
-    return 'icon' // Icons for tablet/desktop
-  }
+  // For better visibility and user experience, always use icons
+  // Icons are more visually clear than patterns or solid colors
+  // This ensures consistent filler tile appearance across all presets
+  return 'icon'
 }
 
 /**

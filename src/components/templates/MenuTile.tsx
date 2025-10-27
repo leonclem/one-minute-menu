@@ -96,18 +96,16 @@ export default function MenuTile({
             src={item.imageRef!}
             alt={item.name}
             fill
-            className="object-cover transition-opacity duration-300"
+            className="object-cover transition-opacity duration-300 opacity-0"
             sizes={imageSizes}
             priority={isPriority}
             loading={loadingStrategy}
             quality={imageQuality}
             placeholder="blur"
             blurDataURL={blurDataURL}
-            onLoadingComplete={(img) => {
-              img.classList.add('opacity-100')
-            }}
-            style={{
-              opacity: 0
+            onLoad={(e) => {
+              e.currentTarget.classList.remove('opacity-0')
+              e.currentTarget.classList.add('opacity-100')
             }}
           />
 

@@ -200,6 +200,17 @@ export async function POST(request: NextRequest) {
       menu.name
     )
     
+    // Analyze menu characteristics (needed for metrics regardless of preset selection)
+    const { analyzeMenuCharacteristics } = await import('@/lib/templates/data-transformer')
+    const characteristics = analyzeMenuCharacteristics(layoutData)
+    metricsBuilder.setMenuCharacteristics({
+      sectionCount: characteristics.sectionCount,
+      totalItems: characteristics.totalItems,
+      imageRatio: characteristics.imageRatio,
+      avgNameLength: characteristics.avgNameLength,
+      hasDescriptions: characteristics.hasDescriptions
+    })
+    
     // Select preset (use provided presetId or auto-select)
     let preset
     if (presetId) {
@@ -212,15 +223,6 @@ export async function POST(request: NextRequest) {
         )
       }
     } else {
-      const { analyzeMenuCharacteristics } = await import('@/lib/templates/data-transformer')
-      const characteristics = analyzeMenuCharacteristics(layoutData)
-      metricsBuilder.setMenuCharacteristics({
-        sectionCount: characteristics.sectionCount,
-        totalItems: characteristics.totalItems,
-        imageRatio: characteristics.imageRatio,
-        avgNameLength: characteristics.avgNameLength,
-        hasDescriptions: characteristics.hasDescriptions
-      })
       preset = selectLayoutPresetWithContext(characteristics, context)
     }
     

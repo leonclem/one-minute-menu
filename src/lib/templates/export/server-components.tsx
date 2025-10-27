@@ -170,10 +170,34 @@ interface ServerFillerTileProps {
 function ServerFillerTile({ style, content, preset }: ServerFillerTileProps) {
   const { tileConfig } = preset
 
+  // Render based on style type
+  if (style === 'pattern' && content) {
+    const patternStyle = getPatternCSS(content)
+    return (
+      <div 
+        className={`filler-tile ${tileConfig.padding} ${tileConfig.borderRadius} bg-gray-50`} 
+        style={{ 
+          backgroundImage: patternStyle,
+          backgroundSize: '20px 20px',
+          backgroundRepeat: 'repeat',
+          opacity: 0.7
+        }} 
+        aria-hidden="true" 
+      />
+    )
+  }
+
+  if (style === 'icon' && content) {
+    return (
+      <div className={`filler-tile ${tileConfig.padding} ${tileConfig.borderRadius} bg-gray-50 flex items-center justify-center`} style={{ opacity: 0.7 }} aria-hidden="true">
+        {getIconJSX(content)}
+      </div>
+    )
+  }
+
+  // Default: solid color
   return (
-    <div className={`filler-tile ${tileConfig.padding} ${tileConfig.borderRadius} bg-gray-100 opacity-70`} aria-hidden="true">
-      {content && <span className="text-gray-400 text-sm">{content}</span>}
-    </div>
+    <div className={`filler-tile ${tileConfig.padding} ${tileConfig.borderRadius} bg-gray-100`} style={{ opacity: 0.7 }} aria-hidden="true" />
   )
 }
 
@@ -293,4 +317,94 @@ function formatPrice(price: number, currency: string): string {
   }
 
   return `${symbol}${formatted}`
+}
+
+/**
+ * Get CSS pattern for filler tiles
+ */
+function getPatternCSS(pattern: string): string {
+  const color = '#d1d5db'
+  
+  switch (pattern) {
+    case 'dots':
+      return `radial-gradient(circle, ${color} 2px, transparent 2px)`
+    case 'stripes':
+      return `repeating-linear-gradient(45deg, transparent, transparent 10px, ${color} 10px, ${color} 12px)`
+    case 'grid':
+      return `linear-gradient(${color} 1px, transparent 1px), linear-gradient(90deg, ${color} 1px, transparent 1px)`
+    case 'waves':
+      return `repeating-linear-gradient(0deg, transparent, transparent 8px, ${color} 8px, ${color} 9px)`
+    case 'chevron':
+      return `repeating-linear-gradient(45deg, ${color} 0px, ${color} 2px, transparent 2px, transparent 10px)`
+    default:
+      return `radial-gradient(circle, ${color} 2px, transparent 2px)`
+  }
+}
+
+/**
+ * Get JSX icon element for filler tiles
+ */
+function getIconJSX(icon: string): React.ReactElement {
+  const color = '#d1d5db'
+  const size = 32
+  
+  switch (icon) {
+    case 'utensils':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 002-2V2M7 2v20M21 15V2v0a2 2 0 00-2 2v9"/>
+        </svg>
+      )
+    case 'coffee':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/>
+        </svg>
+      )
+    case 'wine-glass':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8 22h8M12 15v7M12 15c3 0 5-2 5-5V3H7v7c0 3 2 5 5 5z"/>
+        </svg>
+      )
+    case 'leaf':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11 20A7 7 0 019.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+        </svg>
+      )
+    case 'star':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        </svg>
+      )
+    case 'heart':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+        </svg>
+      )
+    case 'chef-hat':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 13.87A4 4 0 017.41 6a5.11
+ 5.11 0 011.05-1.54 5 5 0 017.08 0A5.11 5.11 0 0116.59 6 4 4 0 0118 13.87V21H6zM6 17h12"/>
+        </svg>
+      )
+    case 'plate':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <circle cx="12" cy="12" r="6"/>
+        </svg>
+      )
+    default:
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+          <circle cx="12" cy="12" r="10"/>
+          <circle cx="12" cy="12" r="6"/>
+        </svg>
+      )
+  }
 }
