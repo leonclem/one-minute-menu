@@ -10,13 +10,12 @@
  * - Responsive meta tags and viewport configuration
  * - Semantic HTML structure
  * - Accessibility-compliant markup
+ * 
+ * Note: This module does NOT import react-dom/server directly.
+ * The rendering is done by the caller (API route) to avoid Next.js bundling issues.
  */
 
-import { renderToString } from 'react-dom/server'
-import { createElement } from 'react'
 import type { LayoutMenuData, LayoutPreset, OutputContext } from '../types'
-import GridMenuLayout from '@/components/templates/GridMenuLayout'
-import TextOnlyLayout from '@/components/templates/TextOnlyLayout'
 
 // ============================================================================
 // Export Options
@@ -66,8 +65,8 @@ export interface HTMLExportResult {
  * @returns HTML export result with generated HTML string
  */
 export function exportToHTML(
+  componentHTML: string,
   data: LayoutMenuData,
-  preset: LayoutPreset,
   context: OutputContext,
   options: HTMLExportOptions = {}
 ): HTMLExportResult {
@@ -81,29 +80,6 @@ export function exportToHTML(
   } = options
 
   const startTime = Date.now()
-
-  // Determine which layout component to use
-  const isTextOnly = preset.id === 'text-only'
-
-  // Render React component to HTML string
-  const componentHTML = isTextOnly
-    ? renderToString(
-        createElement(TextOnlyLayout, {
-          data,
-          preset,
-          className: 'max-w-4xl mx-auto p-6',
-          themeColors
-        })
-      )
-    : renderToString(
-        createElement(GridMenuLayout, {
-          data,
-          preset,
-          context,
-          className: 'max-w-7xl mx-auto p-6',
-          themeColors
-        })
-      )
 
   // Build complete HTML document
   let html = ''
@@ -149,50 +125,24 @@ export function exportToHTML(
 // ============================================================================
 
 /**
- * Export only the menu content without HTML document wrapper
- * Useful for embedding in existing pages
+ * Export HTML fragment without document wrapper
+ * Returns just the component HTML without DOCTYPE, html, head, or body tags
  */
 export function exportToHTMLFragment(
-  data: LayoutMenuData,
-  preset: LayoutPreset,
-  context: OutputContext,
-  themeColors?: HTMLExportOptions['themeColors']
+  componentHTML: string
 ): string {
-  const isTextOnly = preset.id === 'text-only'
-
-  return isTextOnly
-    ? renderToString(
-        createElement(TextOnlyLayout, {
-          data,
-          preset,
-          className: 'max-w-4xl mx-auto p-6',
-          themeColors
-        })
-      )
-    : renderToString(
-        createElement(GridMenuLayout, {
-          data,
-          preset,
-          context,
-          className: 'max-w-7xl mx-auto p-6',
-          themeColors
-        })
-      )
+  return componentHTML
 }
 
 /**
  * Export with custom wrapper element
  */
 export function exportToHTMLWithWrapper(
-  data: LayoutMenuData,
-  preset: LayoutPreset,
-  context: OutputContext,
+  componentHTML: string,
   wrapperTag: string = 'div',
-  wrapperClass: string = '',
-  themeColors?: HTMLExportOptions['themeColors']
+  wrapperClass: string = ''
 ): string {
-  const fragment = exportToHTMLFragment(data, preset, context, themeColors)
-  return `<${wrapperTag} class="${wrapperClass}">\n${fragment}\n</${wrapperTag}>`
+  return `<${wrapperTag} class="${wrapperClass}">\n${componentHTML}\n</${wrapperTag}>`
 }
 
 // ============================================================================

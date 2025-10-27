@@ -9,6 +9,7 @@
  * - Handle section boundaries and row wrapping
  * - Generate GridLayout with positioned ItemTiles
  * - Prepare structure for filler tile insertion
+ * - Cache layout calculations for performance
  */
 
 import type {
@@ -20,6 +21,25 @@ import type {
   GridTile,
   ItemTile
 } from './types'
+import {
+  generateCacheKey,
+  getCachedLayout,
+  setCachedLayout,
+  recordCacheHit,
+  recordCacheMiss,
+  invalidateCacheForMenu,
+  clearCache,
+  getCacheStats,
+  getCacheHitRate
+} from './layout-cache'
+
+// Re-export cache management functions for convenience
+export {
+  invalidateCacheForMenu,
+  clearCache,
+  getCacheStats,
+  getCacheHitRate
+}
 
 // ============================================================================
 // Grid Layout Generation
@@ -30,6 +50,8 @@ import type {
  * 
  * This function takes menu data and a preset configuration, then calculates
  * the position of each menu item tile within a responsive grid structure.
+ * 
+ * Results are cached based on menu data hash and preset ID for improved performance.
  * 
  * @param data - Normalized menu data
  * @param preset - Selected layout preset
@@ -43,6 +65,39 @@ import type {
  * ```
  */
 export function generateGridLayout(
+  data: LayoutMenuData,
+  preset: LayoutPreset,
+  context: OutputContext
+): GridLayout {
+  // Check cache first
+  const cacheKey = generateCacheKey(data, preset, context)
+  const cachedLayout = getCachedLayout(cacheKey)
+  
+  if (cachedLayout) {
+    recordCacheHit()
+    return cachedLayout
+  }
+  
+  recordCacheMiss()
+  
+  // Generate layout if not cached
+  const layout = generateGridLayoutInternal(data, preset, context)
+  
+  // Store in cache
+  setCachedLayout(cacheKey, layout)
+  
+  return layout
+}
+
+/**
+ * Internal grid layout generation (uncached)
+ * 
+ * @param data - Normalized menu data
+ * @param preset - Selected layout preset
+ * @param context - Target output context
+ * @returns Complete grid layout with positioned tiles
+ */
+function generateGridLayoutInternal(
   data: LayoutMenuData,
   preset: LayoutPreset,
   context: OutputContext
@@ -362,9 +417,11 @@ export function validateGridLayout(layout: GridLayout): string[] {
         errors.push(`Tile in section "${section.name}" has negative column: ${tile.column}`)
       }
       
-      if (tile.column >= columns) {
+      // Check if tile (including its span) exceeds grid columns
+      const tileEndColumn = tile.column + tile.span.columns
+      if (tileEndColumn > columns) {
         errors.push(
-          `Tile in section "${section.name}" exceeds grid columns: ${tile.column} >= ${columns}`
+          `Tile in section "${section.name}" exceeds grid columns: ${tile.column} + ${tile.span.columns} > ${columns}`
         )
       }
       

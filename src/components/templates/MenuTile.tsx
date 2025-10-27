@@ -19,6 +19,13 @@ import Image from 'next/image'
 import type { LayoutItem, LayoutPreset, OutputContext } from '@/lib/templates/types'
 import MetadataOverlay from './MetadataOverlay'
 import { getSuggestedTextColor } from '@/lib/templates/contrast-validator'
+import {
+  getResponsiveSizes,
+  shouldPrioritizeImage,
+  getLoadingStrategy,
+  getOptimalQuality,
+  generateInlineBlurDataURL
+} from '@/lib/templates/next-image-config'
 
 // ============================================================================
 // Component Props
@@ -33,6 +40,8 @@ export interface MenuTileProps {
   context: OutputContext
   /** Currency symbol or code */
   currency: string
+  /** Item index in grid (for priority loading) */
+  index?: number
   /** Optional theme color overrides */
   themeColors?: {
     primary?: string
@@ -55,6 +64,7 @@ export default function MenuTile({
   preset,
   context,
   currency,
+  index = 0,
   themeColors
 }: MenuTileProps) {
   const { tileConfig, metadataMode } = preset
@@ -62,6 +72,13 @@ export default function MenuTile({
 
   // Format price with currency
   const formattedPrice = formatPrice(item.price, currency)
+
+  // Determine image loading strategy
+  const isPriority = shouldPrioritizeImage(item.featured, index, context)
+  const loadingStrategy = getLoadingStrategy(isPriority)
+  const imageQuality = getOptimalQuality(context, 'webp')
+  const imageSizes = getResponsiveSizes(context, preset.gridConfig.columns[context])
+  const blurDataURL = generateInlineBlurDataURL(themeColors?.secondary)
 
   return (
     <article
@@ -74,14 +91,24 @@ export default function MenuTile({
     >
       {/* Image or Fallback */}
       {hasImage ? (
-        <div className="relative w-full h-full">
+        <div className="relative w-full h-full bg-gray-200">
           <Image
             src={item.imageRef!}
             alt={item.name}
             fill
-            className="object-cover"
-            sizes={getSizesForContext(context)}
-            priority={item.featured}
+            className="object-cover transition-opacity duration-300"
+            sizes={imageSizes}
+            priority={isPriority}
+            loading={loadingStrategy}
+            quality={imageQuality}
+            placeholder="blur"
+            blurDataURL={blurDataURL}
+            onLoadingComplete={(img) => {
+              img.classList.add('opacity-100')
+            }}
+            style={{
+              opacity: 0
+            }}
           />
 
           {/* Metadata Overlay (if overlay mode) */}
@@ -522,20 +549,4 @@ function formatPrice(price: number, currency: string): string {
   return `${symbol}${formatted}`
 }
 
-/**
- * Get responsive image sizes attribute based on output context
- */
-function getSizesForContext(context: OutputContext): string {
-  switch (context) {
-    case 'mobile':
-      return '(max-width: 640px) 50vw, 33vw'
-    case 'tablet':
-      return '(max-width: 1024px) 33vw, 25vw'
-    case 'desktop':
-      return '(max-width: 1280px) 25vw, 20vw'
-    case 'print':
-      return '300px'
-    default:
-      return '25vw'
-  }
-}
+

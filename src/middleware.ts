@@ -19,6 +19,8 @@ const RATE_LIMIT_RULES: Array<{
   { matcher: /^\/api\/auth\//, windowMs: 60_000, max: 5 },
   // Extraction endpoints
   { matcher: /^\/api\/extraction\/submit$/, windowMs: 60 * 60_000, max: 10 },
+  // Template export endpoints: IP-based backup limit (per-user limits handled in routes)
+  { matcher: /^\/api\/templates\/export\/(pdf|image)$/, windowMs: 60_000, max: 20 },
 ]
 
 function getClientIp(req: NextRequest): string {

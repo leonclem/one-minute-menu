@@ -168,6 +168,16 @@ export class RateLimiter {
     const result = this.check(identifier)
 
     if (!result.allowed) {
+      // Log rate limit violation
+      console.warn('[RateLimiter] Rate limit exceeded', {
+        identifier,
+        maxRequests: this.config.maxRequests,
+        windowMs: this.config.windowMs,
+        retryAfter: result.retryAfter,
+        resetTime: new Date(result.resetTime).toISOString(),
+        timestamp: new Date().toISOString()
+      })
+
       throw new LayoutEngineError(
         this.config.message || 'Rate limit exceeded. Please try again later.',
         ERROR_CODES.CONCURRENCY_LIMIT,
@@ -287,6 +297,16 @@ export function applyRateLimit(
 } {
   const result = limiter.check(identifier)
   const headers = getRateLimitHeaders(result)
+
+  // Log rate limit violation
+  if (!result.allowed) {
+    console.warn('[RateLimiter] Rate limit exceeded', {
+      identifier,
+      retryAfter: result.retryAfter,
+      resetTime: new Date(result.resetTime).toISOString(),
+      timestamp: new Date().toISOString()
+    })
+  }
 
   return {
     ...result,

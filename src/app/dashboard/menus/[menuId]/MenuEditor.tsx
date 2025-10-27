@@ -2341,10 +2341,23 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                   >
                     Preview (not live)
                   </Button>
+                  {menu.extractionMetadata && (
+                    <Link href={`/dashboard/menus/${menu.id}/templates`} className="w-full">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={loading !== null || publishing}
+                        aria-label="View template layouts"
+                      >
+                        View Templates
+                      </Button>
+                    </Link>
+                  )}
                   <Button
                     variant="primary"
                     size="sm"
-                    className="w-full col-span-2"
+                    className={menu.extractionMetadata ? "w-full" : "w-full col-span-2"}
                     onClick={handlePublishMenu}
                     loading={publishing}
                     disabled={loading !== null}

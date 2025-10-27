@@ -21,7 +21,8 @@ import {
   getSectionRowCount,
   validateGridLayout,
   isGridLayoutValid,
-  calculateLayoutStatistics
+  calculateLayoutStatistics,
+  clearCache
 } from '@/lib/templates/grid-generator'
 import {
   insertFillerTiles,
@@ -38,6 +39,11 @@ import { LAYOUT_PRESETS } from '@/lib/templates/presets'
 import type { LayoutMenuData, GridLayout } from '@/lib/templates/types'
 
 describe('Grid Layout Generator', () => {
+  // Clear cache before each test to prevent state pollution
+  beforeEach(() => {
+    clearCache()
+  })
+
   // Sample menu data for testing
   const sampleMenuData: LayoutMenuData = {
     metadata: {

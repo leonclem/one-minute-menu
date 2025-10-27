@@ -21,10 +21,25 @@ import {
 } from '../html-exporter'
 import type { LayoutMenuData, LayoutPreset, OutputContext } from '../../types'
 import { LAYOUT_PRESETS } from '../../presets'
+import { renderToString } from 'react-dom/server'
+import { createElement } from 'react'
+import { ServerGridMenuLayout } from '../server-components'
 
 // ============================================================================
 // Test Data
 // ============================================================================
+
+// Helper function to render component HTML
+function renderComponentHTML(data: LayoutMenuData, preset: LayoutPreset, context: OutputContext): string {
+  return renderToString(
+    createElement(ServerGridMenuLayout, {
+      data,
+      preset,
+      context,
+      className: 'max-w-7xl mx-auto p-6'
+    })
+  )
+}
 
 const mockMenuData: LayoutMenuData = {
   metadata: {
@@ -73,7 +88,8 @@ const mockContext: OutputContext = 'desktop'
 
 describe('exportToHTML', () => {
   it('should generate valid HTML with default options', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext)
 
     expect(result.html).toBeTruthy()
     expect(result.html).toContain('<!DOCTYPE html>')
@@ -84,20 +100,23 @@ describe('exportToHTML', () => {
   })
 
   it('should include menu title in HTML', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext)
 
     expect(result.html).toContain('Test Restaurant Menu')
   })
 
   it('should include all sections', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext)
 
     expect(result.html).toContain('Appetizers')
     expect(result.html).toContain('Main Courses')
   })
 
   it('should include all menu items', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext)
 
     expect(result.html).toContain('Caesar Salad')
     expect(result.html).toContain('Garlic Bread')
@@ -105,7 +124,8 @@ describe('exportToHTML', () => {
   })
 
   it('should include prices', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext)
 
     expect(result.html).toContain('12.99')
     expect(result.html).toContain('6.99')
@@ -113,7 +133,8 @@ describe('exportToHTML', () => {
   })
 
   it('should include descriptions when present', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext)
 
     expect(result.html).toContain('Fresh romaine lettuce with parmesan')
     expect(result.html).toContain('Atlantic salmon with seasonal vegetables')
@@ -126,7 +147,8 @@ describe('exportToHTML', () => {
 
 describe('HTML Document Structure', () => {
   it('should include DOCTYPE when includeDoctype is true', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext, {
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext, {
       includeDoctype: true
     })
 
@@ -134,7 +156,8 @@ describe('HTML Document Structure', () => {
   })
 
   it('should exclude DOCTYPE when includeDoctype is false', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext, {
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext, {
       includeDoctype: false
     })
 
@@ -144,7 +167,8 @@ describe('HTML Document Structure', () => {
   })
 
   it('should include meta tags when includeMetaTags is true', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext, {
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext, {
       includeMetaTags: true
     })
 
@@ -154,7 +178,8 @@ describe('HTML Document Structure', () => {
   })
 
   it('should exclude meta tags when includeMetaTags is false', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext, {
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext, {
       includeMetaTags: false
     })
 
@@ -164,7 +189,8 @@ describe('HTML Document Structure', () => {
 
   it('should use custom page title when provided', () => {
     const customTitle = 'My Custom Menu Title'
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext, {
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext, {
       pageTitle: customTitle
     })
 
@@ -178,7 +204,8 @@ describe('HTML Document Structure', () => {
 
 describe('Inline Styles', () => {
   it('should include inline styles when includeStyles is true', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext, {
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext, {
       includeStyles: true
     })
 
@@ -187,7 +214,8 @@ describe('Inline Styles', () => {
   })
 
   it('should exclude inline styles when includeStyles is false', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext, {
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext, {
       includeStyles: false
     })
 
@@ -195,7 +223,8 @@ describe('Inline Styles', () => {
   })
 
   it('should include base CSS reset styles', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext, {
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext, {
       includeStyles: true
     })
 
@@ -204,7 +233,8 @@ describe('Inline Styles', () => {
   })
 
   it('should include Tailwind utility classes', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext, {
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext, {
       includeStyles: true
     })
 
@@ -215,7 +245,8 @@ describe('Inline Styles', () => {
 
   it('should include custom CSS when provided', () => {
     const customCSS = '.custom-class { color: red; }'
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext, {
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext, {
       customCSS
     })
 
@@ -223,7 +254,8 @@ describe('Inline Styles', () => {
   })
 
   it('should include print styles', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext, {
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext, {
       includeStyles: true
     })
 
@@ -246,7 +278,9 @@ describe('Theme Colors', () => {
       text: '#000000'
     }
 
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext, {
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext, {
       themeColors
     })
 
@@ -255,7 +289,8 @@ describe('Theme Colors', () => {
   })
 
   it('should use default colors when theme colors not provided', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext)
 
     expect(result.html).toContain('#ffffff')
     expect(result.html).toContain('#111827')
@@ -268,26 +303,30 @@ describe('Theme Colors', () => {
 
 describe('Output Context', () => {
   it('should generate HTML for mobile context', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, 'mobile')
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, 'mobile')
+    const result = exportToHTML(componentHTML, mockMenuData, 'mobile')
 
     expect(result.html).toBeTruthy()
     expect(result.html).toContain('viewport')
   })
 
   it('should generate HTML for tablet context', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, 'tablet')
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, 'tablet')
+    const result = exportToHTML(componentHTML, mockMenuData, 'tablet')
 
     expect(result.html).toBeTruthy()
   })
 
   it('should generate HTML for desktop context', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, 'desktop')
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, 'desktop')
+    const result = exportToHTML(componentHTML, mockMenuData, 'desktop')
 
     expect(result.html).toBeTruthy()
   })
 
   it('should generate HTML for print context', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, 'print')
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, 'print')
+    const result = exportToHTML(componentHTML, mockMenuData, 'print')
 
     expect(result.html).toBeTruthy()
   })
@@ -300,7 +339,8 @@ describe('Output Context', () => {
 describe('Text-Only Layout', () => {
   it('should use TextOnlyLayout for text-only preset', () => {
     const textOnlyPreset = LAYOUT_PRESETS['text-only']
-    const result = exportToHTML(mockMenuData, textOnlyPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, textOnlyPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext)
 
     expect(result.html).toBeTruthy()
     expect(result.html).toContain('Test Restaurant Menu')
@@ -313,7 +353,8 @@ describe('Text-Only Layout', () => {
 
 describe('exportToHTMLFragment', () => {
   it('should export HTML without document wrapper', () => {
-    const fragment = exportToHTMLFragment(mockMenuData, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const fragment = exportToHTMLFragment(componentHTML)
 
     expect(fragment).toBeTruthy()
     expect(fragment).not.toContain('<!DOCTYPE html>')
@@ -323,23 +364,16 @@ describe('exportToHTMLFragment', () => {
   })
 
   it('should include menu content in fragment', () => {
-    const fragment = exportToHTMLFragment(mockMenuData, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const fragment = exportToHTMLFragment(componentHTML)
 
     expect(fragment).toContain('Test Restaurant Menu')
     expect(fragment).toContain('Caesar Salad')
   })
 
   it('should apply theme colors to fragment', () => {
-    const themeColors = {
-      text: '#ff0000'
-    }
-
-    const fragment = exportToHTMLFragment(
-      mockMenuData,
-      mockPreset,
-      mockContext,
-      themeColors
-    )
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const fragment = exportToHTMLFragment(componentHTML)
 
     expect(fragment).toBeTruthy()
   })
@@ -351,10 +385,9 @@ describe('exportToHTMLFragment', () => {
 
 describe('exportToHTMLWithWrapper', () => {
   it('should wrap fragment in custom element', () => {
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
     const html = exportToHTMLWithWrapper(
-      mockMenuData,
-      mockPreset,
-      mockContext,
+      componentHTML,
       'section',
       'menu-container'
     )
@@ -364,11 +397,8 @@ describe('exportToHTMLWithWrapper', () => {
   })
 
   it('should use default div wrapper', () => {
-    const html = exportToHTMLWithWrapper(
-      mockMenuData,
-      mockPreset,
-      mockContext
-    )
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const html = exportToHTMLWithWrapper(componentHTML)
 
     expect(html).toContain('<div class="">')
     expect(html).toContain('</div>')
@@ -477,7 +507,7 @@ describe('Utility Functions', () => {
 describe('Performance', () => {
   it('should generate HTML within reasonable time', () => {
     const startTime = Date.now()
-    exportToHTML(mockMenuData, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext); exportToHTML(componentHTML, mockMenuData, mockContext)
     const endTime = Date.now()
 
     const duration = endTime - startTime
@@ -503,7 +533,8 @@ describe('Performance', () => {
     }
 
     const startTime = Date.now()
-    const result = exportToHTML(largeMenu, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(largeMenu, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, largeMenu, mockContext)
     const endTime = Date.now()
 
     const duration = endTime - startTime
@@ -531,7 +562,9 @@ describe('Edge Cases', () => {
       ]
     }
 
-    const result = exportToHTML(emptyMenu, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(emptyMenu, mockPreset, mockContext)
+
+    const result = exportToHTML(componentHTML, emptyMenu, mockContext)
 
     expect(result.html).toBeTruthy()
     expect(result.html).toContain('Empty Section')
@@ -558,7 +591,9 @@ describe('Edge Cases', () => {
       ]
     }
 
-    const result = exportToHTML(specialCharsMenu, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(specialCharsMenu, mockPreset, mockContext)
+
+    const result = exportToHTML(componentHTML, specialCharsMenu, mockContext)
 
     expect(result.html).toBeTruthy()
     // HTML should be escaped in title tag
@@ -588,7 +623,9 @@ describe('Edge Cases', () => {
       ]
     }
 
-    const result = exportToHTML(noDescMenu, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(noDescMenu, mockPreset, mockContext)
+
+    const result = exportToHTML(componentHTML, noDescMenu, mockContext)
 
     expect(result.html).toBeTruthy()
     expect(result.html).toContain('Item without description')
@@ -614,7 +651,9 @@ describe('Edge Cases', () => {
       ]
     }
 
-    const result = exportToHTML(noImageMenu, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(noImageMenu, mockPreset, mockContext)
+
+    const result = exportToHTML(componentHTML, noImageMenu, mockContext)
 
     expect(result.html).toBeTruthy()
     expect(result.html).toContain('Item without image')
@@ -627,7 +666,8 @@ describe('Edge Cases', () => {
 
 describe('Accessibility', () => {
   it('should include semantic HTML elements', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext)
 
     expect(result.html).toContain('<header')
     expect(result.html).toContain('<section')
@@ -636,14 +676,16 @@ describe('Accessibility', () => {
   })
 
   it('should include ARIA labels', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext)
 
     expect(result.html).toContain('aria-label')
     expect(result.html).toContain('role=')
   })
 
   it('should include lang attribute', () => {
-    const result = exportToHTML(mockMenuData, mockPreset, mockContext)
+    const componentHTML = renderComponentHTML(mockMenuData, mockPreset, mockContext)
+    const result = exportToHTML(componentHTML, mockMenuData, mockContext)
 
     expect(result.html).toContain('lang="en"')
   })

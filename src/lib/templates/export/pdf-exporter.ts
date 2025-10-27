@@ -1,27 +1,21 @@
 /**
  * PDF Export Module
  * 
- * Exports menu layouts as PDF documents using pdf-lib.
+ * Exports menu layouts as PDF documents using Puppeteer for HTML rendering.
  * Supports A4 portrait and landscape orientations with proper pagination.
  * 
  * Features:
+ * - Full HTML/CSS rendering with images
  * - A4 page dimensions with configurable orientation
  * - Proper margins and baseline grid
  * - Page break handling to prevent orphaned section headers
  * - Design token consistency for spacing and typography
- * - Optimized for synchronous execution within Next.js API routes
  */
 
-import { PDFDocument, PDFPage, rgb, StandardFonts } from 'pdf-lib'
-import type { LayoutMenuData, LayoutPreset, OutputContext, GridLayout } from '../types'
-import { generateGridLayout } from '../grid-generator'
-import {
-  A4_DIMENSIONS,
-  PRINT_MARGINS,
-  FONT_SIZE_PX,
-  SPACING_PX,
-  FONT_WEIGHT
-} from '../design-tokens'
+import { getSharedBrowser } from './puppeteer-shared'
+import type { LayoutMenuData, LayoutPreset } from '../types'
+
+// Use shared Puppeteer browser to avoid userDataDir conflicts across tests
 
 // ============================================================================
 // Export Options
@@ -61,16 +55,16 @@ export interface PDFExportResult {
 // ============================================================================
 
 /**
- * Export menu layout as PDF document
+ * Export menu layout as PDF document using Puppeteer
  * 
- * @param data - Normalized menu data
- * @param preset - Selected layout preset
+ * @param htmlContent - Pre-rendered HTML string
+ * @param data - Normalized menu data (for metadata)
  * @param options - PDF export configuration
  * @returns PDF export result with document bytes
  */
 export async function exportToPDF(
+  htmlContent: string,
   data: LayoutMenuData,
-  preset: LayoutPreset,
   options: PDFExportOptions = {}
 ): Promise<PDFExportResult> {
   const startTime = Date.now()
@@ -82,110 +76,60 @@ export async function exportToPDF(
     margins
   } = options
 
-  // Create PDF document
-  const pdfDoc = await PDFDocument.create()
+  let page
+  try {
+    // Use shared browser instance
+    const browser = await getSharedBrowser()
+    page = await browser.newPage()
 
-  // Embed fonts
-  const regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
-  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+    // Set viewport for consistent rendering
+    await page.setViewport({
+      width: orientation === 'portrait' ? 794 : 1123, // A4 dimensions in pixels at 96 DPI
+      height: orientation === 'portrait' ? 1123 : 794
+    })
 
-  // Get page dimensions
-  const pageDimensions = orientation === 'portrait'
-    ? A4_DIMENSIONS.portrait
-    : A4_DIMENSIONS.landscape
+    // Set HTML content
+    await page.setContent(htmlContent, {
+      waitUntil: 'networkidle0'
+    })
 
-  // Calculate margins
-  const pageMargins = {
-    top: margins?.top ?? PRINT_MARGINS.top,
-    right: margins?.right ?? PRINT_MARGINS.right,
-    bottom: margins?.bottom ?? PRINT_MARGINS.bottom,
-    left: margins?.left ?? PRINT_MARGINS.left
-  }
+    // Generate PDF
+    const pdfBytes = await page.pdf({
+      format: 'A4',
+      landscape: orientation === 'landscape',
+      printBackground: true,
+      margin: margins || {
+        top: '20mm',
+        right: '15mm',
+        bottom: '20mm',
+        left: '15mm'
+      },
+      displayHeaderFooter: includePageNumbers,
+      headerTemplate: '<div></div>',
+      footerTemplate: includePageNumbers
+        ? '<div style="font-size: 10px; text-align: center; width: 100%;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
+        : '<div></div>'
+    })
 
-  // Calculate content area
-  const contentWidth = pageDimensions.width - pageMargins.left - pageMargins.right
-  const contentHeight = pageDimensions.height - pageMargins.top - pageMargins.bottom
+    await page.close()
 
-  // Generate grid layout for print context
-  const gridLayout = generateGridLayout(data, preset, 'print')
+    const endTime = Date.now()
+    const duration = endTime - startTime
 
-  // Render content to PDF
-  let currentPage = pdfDoc.addPage([pageDimensions.width, pageDimensions.height])
-  let currentY = pageDimensions.height - pageMargins.top
+    console.log(`[PDFExporter] Generated PDF in ${duration}ms (${pdfBytes.length} bytes)`)
 
-  // Render title
-  currentY = renderTitle(currentPage, title, pageMargins.left, currentY, contentWidth, boldFont)
-  currentY -= SPACING_PX.lg
-
-  // Render sections
-  for (const section of gridLayout.sections) {
-    // Check if we need a new page for section header
-    const sectionHeaderHeight = FONT_SIZE_PX['2xl'] + SPACING_PX.md
-    if (currentY - sectionHeaderHeight < pageMargins.bottom + SPACING_PX.xl) {
-      currentPage = pdfDoc.addPage([pageDimensions.width, pageDimensions.height])
-      currentY = pageDimensions.height - pageMargins.top
+    return {
+      pdfBytes,
+      size: pdfBytes.length,
+      pageCount: 1, // Puppeteer doesn't easily expose page count
+      timestamp: new Date(),
+      duration
     }
-
-    // Render section header
-    currentY = renderSectionHeader(
-      currentPage,
-      section.name,
-      pageMargins.left,
-      currentY,
-      contentWidth,
-      boldFont
-    )
-    currentY -= SPACING_PX.md
-
-    // Render items in section
-    for (const tile of section.tiles) {
-      if (tile.type === 'item') {
-        const itemHeight = calculateItemHeight(tile.item, preset, contentWidth)
-
-        // Check if we need a new page
-        if (currentY - itemHeight < pageMargins.bottom) {
-          currentPage = pdfDoc.addPage([pageDimensions.width, pageDimensions.height])
-          currentY = pageDimensions.height - pageMargins.top
-        }
-
-        // Render item
-        currentY = renderMenuItem(
-          currentPage,
-          tile.item,
-          data.metadata.currency,
-          pageMargins.left,
-          currentY,
-          contentWidth,
-          regularFont,
-          boldFont,
-          preset
-        )
-        currentY -= SPACING_PX.sm
-      }
+  } catch (error) {
+    if (page) {
+      await page.close().catch(() => {})
     }
-
-    currentY -= SPACING_PX.lg // Extra spacing between sections
-  }
-
-  // Add page numbers if requested
-  if (includePageNumbers) {
-    addPageNumbers(pdfDoc, regularFont, pageMargins, pageDimensions)
-  }
-
-  // Serialize PDF to bytes
-  const pdfBytes = await pdfDoc.save()
-
-  const endTime = Date.now()
-  const duration = endTime - startTime
-
-  console.log(`[PDFExporter] Generated PDF in ${duration}ms (${pdfBytes.length} bytes, ${pdfDoc.getPageCount()} pages)`)
-
-  return {
-    pdfBytes,
-    size: pdfBytes.length,
-    pageCount: pdfDoc.getPageCount(),
-    timestamp: new Date(),
-    duration
+    throw error
   }
 }
 

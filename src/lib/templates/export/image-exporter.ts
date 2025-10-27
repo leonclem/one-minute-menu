@@ -13,6 +13,7 @@
  */
 
 import sharp from 'sharp'
+import { getSharedBrowser } from './puppeteer-shared'
 import type { LayoutMenuData, LayoutPreset, OutputContext } from '../types'
 import { exportToHTML } from './html-exporter'
 
@@ -98,15 +99,18 @@ export const PRESET_DIMENSIONS = {
 /**
  * Export menu layout as PNG or JPG image
  * 
+ * NOTE: This is currently a placeholder implementation that returns a preview image.
+ * Full HTML-to-image rendering requires headless browser integration (Puppeteer/Playwright).
+ * 
+ * @param componentHTML - Pre-rendered HTML string from React components
  * @param data - Normalized menu data
- * @param preset - Selected layout preset
  * @param context - Output context (mobile, tablet, desktop, print)
  * @param options - Image export configuration
- * @returns Image export result with buffer
+ * @returns Image export result with buffer (currently placeholder)
  */
 export async function exportToImage(
+  componentHTML: string,
   data: LayoutMenuData,
-  preset: LayoutPreset,
   context: OutputContext,
   options: ImageExportOptions = {}
 ): Promise<ImageExportResult> {
@@ -133,8 +137,8 @@ export async function exportToImage(
   const actualWidth = Math.round(width * pixelRatio)
   const actualHeight = Math.round(height * pixelRatio)
 
-  // Generate HTML with inline styles
-  const htmlResult = exportToHTML(data, preset, context, {
+  // Build complete HTML document
+  const htmlResult = exportToHTML(componentHTML, data, context, {
     includeDoctype: true,
     includeMetaTags: true,
     includeStyles: true,
@@ -143,7 +147,7 @@ export async function exportToImage(
     themeColors
   })
 
-  // Convert HTML to image using sharp
+  // Convert HTML to image using Puppeteer
   const imageBuffer = await renderHTMLToImage(
     htmlResult.html,
     actualWidth,
@@ -176,6 +180,8 @@ export async function exportToImage(
 // HTML to Image Rendering
 // ============================================================================
 
+// Use shared Puppeteer browser to avoid conflicts across concurrent tests
+
 /**
  * Render HTML string to image buffer using sharp
  * 
@@ -198,66 +204,41 @@ async function renderHTMLToImage(
   quality: number,
   backgroundColor: string
 ): Promise<Buffer> {
-  // Create a blank canvas with the specified background color
-  const canvas = sharp({
-    create: {
+  let page
+  try {
+    // Use shared browser instance
+    const browser = await getSharedBrowser()
+    page = await browser.newPage()
+
+    // Set viewport to match desired dimensions
+    await page.setViewport({
       width,
       height,
-      channels: 4,
-      background: backgroundColor
+      deviceScaleFactor: 1
+    })
+
+    // Set HTML content
+    await page.setContent(html, {
+      waitUntil: 'networkidle0'
+    })
+
+    // Take screenshot
+    const screenshot = await page.screenshot({
+      type: format === 'jpg' ? 'jpeg' : 'png',
+      quality: format === 'jpg' ? quality : undefined,
+      fullPage: false,
+      omitBackground: format === 'png'
+    })
+
+    await page.close()
+
+    return Buffer.from(screenshot)
+  } catch (error) {
+    if (page) {
+      await page.close().catch(() => {})
     }
-  })
-
-  // For MVP: Create a basic placeholder image
-  // The HTML content is prepared but not rendered to pixels
-  // This allows the export API to function and return valid images
-  // 
-  // TODO: Integrate headless browser for full HTML rendering
-  // Options:
-  // 1. Puppeteer: page.setContent(html) -> page.screenshot()
-  // 2. Playwright: page.setContent(html) -> page.screenshot()
-  // 3. @vercel/og: Use ImageResponse with JSX
-  // 4. html-to-image: Direct HTML to canvas conversion
-  
-  // Add a text overlay indicating this is a placeholder
-  // In production, this would be replaced with actual HTML rendering
-  const textSvg = Buffer.from(`
-    <svg width="${width}" height="${height}">
-      <rect width="100%" height="100%" fill="${backgroundColor}"/>
-      <text x="50%" y="50%" 
-            font-family="Arial, sans-serif" 
-            font-size="24" 
-            fill="#333333" 
-            text-anchor="middle" 
-            dominant-baseline="middle">
-        Menu Layout Preview
-      </text>
-      <text x="50%" y="55%" 
-            font-family="Arial, sans-serif" 
-            font-size="14" 
-            fill="#666666" 
-            text-anchor="middle" 
-            dominant-baseline="middle">
-        (Full HTML rendering requires headless browser integration)
-      </text>
-    </svg>
-  `)
-
-  let pipeline = canvas.composite([
-    {
-      input: textSvg,
-      top: 0,
-      left: 0
-    }
-  ])
-
-  if (format === 'jpg') {
-    pipeline = pipeline.jpeg({ quality, mozjpeg: true })
-  } else {
-    pipeline = pipeline.png({ compressionLevel: 9 })
+    throw error
   }
-
-  return await pipeline.toBuffer()
 }
 
 // ============================================================================
@@ -319,15 +300,15 @@ export function getPresetDimensions(
  * Export with preset dimensions
  */
 export async function exportToImageWithPreset(
+  componentHTML: string,
   data: LayoutMenuData,
-  preset: LayoutPreset,
   context: OutputContext,
   presetName: keyof typeof PRESET_DIMENSIONS,
   options: Omit<ImageExportOptions, 'width' | 'height'> = {}
 ): Promise<ImageExportResult> {
   const dimensions = getPresetDimensions(presetName)
   
-  return exportToImage(data, preset, context, {
+  return exportToImage(componentHTML, data, context, {
     ...options,
     width: dimensions.width,
     height: dimensions.height
