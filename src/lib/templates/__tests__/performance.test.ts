@@ -11,7 +11,7 @@
  * Requirements: 3.5, 8.5
  */
 
-import { generateGridLayout, calculateLayoutStatistics } from '../grid-generator'
+import { generateGridLayout, calculateLayoutStatistics, clearCache } from '../grid-generator'
 import { selectLayoutPreset } from '../layout-selector'
 import { analyzeMenuCharacteristics } from '../data-transformer'
 import { LAYOUT_PRESETS } from '../presets'
@@ -105,6 +105,8 @@ describe('Performance: Layout Generation', () => {
     })
     
     it('should benefit from caching on repeated calls', () => {
+      // Ensure first call is a cache miss for accurate comparison
+      clearCache()
       const characteristics = analyzeMenuCharacteristics(menuData)
       const preset = selectLayoutPreset(characteristics, 'desktop')
       

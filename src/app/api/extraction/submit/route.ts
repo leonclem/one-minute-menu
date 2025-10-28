@@ -25,7 +25,7 @@ const MAX_IMAGE_SIZE = 8 * 1024 * 1024 // 8MB
 
 interface SubmitRequest {
   imageUrl: string
-  menuId: string
+  menuId?: string
   schemaVersion?: 'stage1' | 'stage2'
   promptVersion?: string
   currency?: string
@@ -67,12 +67,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!body.menuId) {
-      return NextResponse.json(
-        { error: 'menuId is required' },
-        { status: 400 }
-      )
-    }
+    // menuId is optional; if provided it will be used downstream for metrics/associations
 
     // Validate image URL format
     let imageUrl: URL
@@ -182,11 +177,11 @@ export async function POST(request: NextRequest) {
       body.imageUrl,
       user.id,
       {
-        menuId: body.menuId,
         schemaVersion: body.schemaVersion || 'stage1',
         promptVersion: body.promptVersion,
         currency: body.currency,
-        language: body.language
+        language: body.language,
+        ...(body.menuId ? { menuId: body.menuId } : {})
       }
     )
 
