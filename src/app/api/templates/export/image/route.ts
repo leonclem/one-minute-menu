@@ -9,6 +9,7 @@ import { imageExportLimiter, applyRateLimit } from '@/lib/templates/rate-limiter
 import { MetricsBuilder, logLayoutMetrics, validatePerformance } from '@/lib/templates/metrics'
 import type { OutputContext } from '@/lib/templates/types'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 // Extended timeout for image generation (30 seconds)
 export const maxDuration = 30
@@ -269,7 +270,7 @@ export async function POST(request: NextRequest) {
     // Validate performance
     const performanceCheck = validatePerformance(metrics)
     if (!performanceCheck.isValid) {
-      console.warn('[ImageExporter] Performance warnings:', performanceCheck.warnings)
+      logger.warn('[ImageExporter] Performance warnings:', performanceCheck.warnings)
     }
     
     // Return image with appropriate headers
@@ -287,7 +288,7 @@ export async function POST(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Error exporting image:', error)
+    logger.error('Error exporting image:', error)
     
     // Handle specific error types
     if (error instanceof DatabaseError) {

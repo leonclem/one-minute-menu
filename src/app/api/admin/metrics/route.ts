@@ -12,6 +12,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createMetricsCollector } from '@/lib/extraction/metrics-collector'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerSupabaseClient()

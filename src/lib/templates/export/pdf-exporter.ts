@@ -13,8 +13,10 @@
  */
 
 import { getSharedBrowser } from './puppeteer-shared'
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, rgb } from 'pdf-lib'
+import type { PDFPage } from 'pdf-lib'
 import type { LayoutMenuData, LayoutPreset } from '../types'
+import { FONT_SIZE_PX, SPACING_PX } from '../design-tokens'
 
 // Use shared Puppeteer browser to avoid userDataDir conflicts across tests
 

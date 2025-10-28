@@ -37,6 +37,7 @@ export const maxDuration = 10
 export async function POST(request: NextRequest) {
   // Initialize metrics builder
   const metricsBuilder = new MetricsBuilder()
+  const startTime = Date.now()
   
   try {
     // Authenticate user

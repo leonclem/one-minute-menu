@@ -11,19 +11,20 @@ import type {
   NanoBananaParams,
   MenuItem 
 } from '@/types'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
 // POST /api/generate-image - Generate AI image for menu item
 export async function POST(request: NextRequest) {
-  console.log('🎨 [Generate Image] API called')
+  logger.info('🎨 [Generate Image] API called')
   
   try {
     // Feature flag and fail-closed guard
     const disabled = process.env.AI_IMAGE_GENERATION_DISABLED === 'true'
     const hasApiKey = !!process.env.NANO_BANANA_API_KEY
     if (disabled || !hasApiKey) {
-      console.warn('🛑 [Generate Image] Disabled via flag or missing API key', {
+      logger.warn('🛑 [Generate Image] Disabled via flag or missing API key', {
         disabled,
         hasApiKey
       })
@@ -36,22 +37,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('🔧 [Generate Image] Creating Supabase client...')
+    logger.debug('🔧 [Generate Image] Creating Supabase client...')
     const supabase = createServerSupabaseClient()
     
     // Authenticate user
-    console.log('🔐 [Generate Image] Authenticating user...')
+    logger.debug('🔐 [Generate Image] Authenticating user...')
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
-      console.error('❌ [Generate Image] Auth failed:', authError)
+      logger.error('❌ [Generate Image] Auth failed:', authError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    console.log('✅ [Generate Image] User authenticated:', user.id)
+    logger.info('✅ [Generate Image] User authenticated:', user.id)
     
     // Parse request body
-    console.log('📦 [Generate Image] Parsing request body...')
+    logger.debug('📦 [Generate Image] Parsing request body...')
     const body = await request.json() as {
       menuId: string
       menuItemId: string
@@ -60,14 +61,14 @@ export async function POST(request: NextRequest) {
       generationNotes?: string
     }
     
-    console.log('📝 [Generate Image] Request:', { 
+    logger.debug('📝 [Generate Image] Request:', { 
       menuItemId: body.menuItemId, 
       styleParams: body.styleParams,
       numberOfVariations: body.numberOfVariations 
     })
     
     if (!body.menuItemId || !body.menuId) {
-      console.error('❌ [Generate Image] Missing menuItemId')
+      logger.error('❌ [Generate Image] Missing menuItemId')
       return NextResponse.json(
         { error: 'Menu ID and menu item ID are required' },
         { status: 400 }
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
           .eq('id', body.menuId)
           .eq('user_id', user.id)
         if (updateErr) {
-          console.error('❌ [Generate Image] Failed to normalize item id:', updateErr)
+          logger.error('❌ [Generate Image] Failed to normalize item id:', updateErr)
           return NextResponse.json(
             { error: 'Failed to normalize item identifier' },
             { status: 500 }
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
         normalizedMenuItemId = newUuid
         // Note: triggers (if installed) will sync JSON to menu_items with the UUID id
       } catch (normErr) {
-        console.error('❌ [Generate Image] Normalization error:', normErr)
+        logger.error('❌ [Generate Image] Normalization error:', normErr)
         return NextResponse.json(
           { error: 'Failed to prepare image generation' },
           { status: 500 }
@@ -177,7 +178,7 @@ export async function POST(request: NextRequest) {
             custom_image_url: menuItem.customImageUrl || null,
           })
         if (insertMiErr) {
-          console.error('❌ [Generate Image] Failed to ensure menu_items row:', insertMiErr)
+          logger.error('❌ [Generate Image] Failed to ensure menu_items row:', insertMiErr)
           // Not fatal if FK checks are relaxed, but in our schema this is required
           return NextResponse.json(
             { error: 'Failed to prepare menu item for generation' },
@@ -186,7 +187,7 @@ export async function POST(request: NextRequest) {
         }
       }
     } catch (ensureErr) {
-      console.error('❌ [Generate Image] Error ensuring menu_items row:', ensureErr)
+      logger.error('❌ [Generate Image] Error ensuring menu_items row:', ensureErr)
       return NextResponse.json(
         { error: 'Failed to prepare menu item' },
         { status: 500 }
@@ -204,7 +205,7 @@ export async function POST(request: NextRequest) {
       .gte('created_at', startOfToday.toISOString())
 
     if (attemptsError) {
-      console.error('❌ [Generate Image] Failed to count daily attempts:', attemptsError)
+      logger.warn('❌ [Generate Image] Failed to count daily attempts:', attemptsError)
     } else if ((todaysAttempts || 0) >= 5) {
       return NextResponse.json(
         {
@@ -296,7 +297,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (jobInsertError || !jobRow) {
-      console.error('❌ [Generate Image] Failed to create job record:', jobInsertError)
+      logger.error('❌ [Generate Image] Failed to create job record:', jobInsertError)
       return NextResponse.json(
         { error: 'Failed to start image generation' },
         { status: 500 }
@@ -373,7 +374,7 @@ export async function POST(request: NextRequest) {
       // Check cost thresholds for alerts
       await analyticsOperations.checkGenerationCostThresholds()
     } catch (e) {
-      console.warn('Failed to record generation analytics', e)
+      logger.warn('Failed to record generation analytics', e)
     }
 
     return NextResponse.json({
@@ -394,12 +395,11 @@ export async function POST(request: NextRequest) {
     }, { status: 201 })
     
   } catch (error) {
-    console.error('❌ [Generate Image] Error:', error)
-    console.error('❌ [Generate Image] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    logger.error('❌ [Generate Image] Error:', error)
 
     // Map known DB errors
     if (error instanceof DatabaseError) {
-      console.error('❌ [Generate Image] Database error:', error.code, error.message)
+      logger.error('❌ [Generate Image] Database error:', error.code, error.message)
       if (error.code === 'QUOTA_EXCEEDED') {
         return NextResponse.json(
           { error: error.message, code: error.code },
@@ -427,7 +427,7 @@ export async function POST(request: NextRequest) {
         error.code === 'RATE_LIMIT_EXCEEDED' ? 429 :
         error.code === 'SERVICE_UNAVAILABLE' ? 503 :
         400
-      console.warn('⚠️ [Generate Image] Upstream error mapped:', { status, ...payload })
+      logger.warn('⚠️ [Generate Image] Upstream error mapped:', { status, ...payload })
       // Best-effort failure analytics
       try {
         const supabase = createServerSupabaseClient()
@@ -440,7 +440,7 @@ export async function POST(request: NextRequest) {
           await analyticsOperations.checkGenerationCostThresholds()
         }
       } catch (e) {
-        console.warn('Failed to record failure analytics', e)
+        logger.warn('Failed to record failure analytics', e)
       }
       return NextResponse.json(payload, { status })
     }
@@ -454,7 +454,7 @@ export async function POST(request: NextRequest) {
         await analyticsOperations.checkGenerationCostThresholds()
       }
     } catch (e) {
-      console.warn('Failed to record failure analytics (unknown error)', e)
+      logger.warn('Failed to record failure analytics (unknown error)', e)
     }
     return NextResponse.json(
       {
@@ -463,148 +463,5 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     )
-  }
-}
-
-/**
- * Process image generation in the background
- * This runs asynchronously after the API response is sent
- */
-async function processImageGeneration(
-  jobId: string,
-  request: ImageGenerationRequest,
-  prompt: string,
-  negativePrompt?: string
-): Promise<void> {
-  const supabase = createServerSupabaseClient()
-  
-  try {
-    // Update job status to processing
-    await supabase
-      .from('image_generation_jobs')
-      .update({
-        status: 'processing',
-        started_at: new Date().toISOString()
-      })
-      .eq('id', jobId)
-    
-    // Get Nano Banana client and generate images
-    const nanoBananaClient = getNanoBananaClient()
-    const startTime = Date.now()
-    
-    const apiParams: NanoBananaParams = {
-      prompt,
-      negative_prompt: negativePrompt,
-      aspect_ratio: request.styleParams.aspectRatio || '1:1',
-      number_of_images: request.numberOfVariations || 1,
-      safety_filter_level: 'block_some',
-      person_generation: 'dont_allow'
-    }
-    
-    const result = await nanoBananaClient.generateImage(apiParams)
-    const processingTime = Date.now() - startTime
-    
-    // Process and store generated images
-    const imageRecords = []
-    
-    for (let i = 0; i < result.images.length; i++) {
-      const base64Image = result.images[i]
-      
-      try {
-        // Process the base64 image using the image processing service
-        const processedImage = await imageProcessingService.processGeneratedImage(
-          base64Image,
-          {
-            menuItemId: request.menuItemId,
-            generationJobId: jobId,
-            originalPrompt: prompt,
-            aspectRatio: request.styleParams.aspectRatio || '1:1',
-            generatedAt: new Date()
-          },
-          request.userId
-        )
-        
-        // Store the processed image metadata in the database
-        await imageProcessingService.storeImageMetadata(processedImage)
-        
-        // Update the processed image record to mark first image as selected
-        if (i === 0) {
-          await supabase
-            .from('ai_generated_images')
-            .update({ selected: true })
-            .eq('id', processedImage.id)
-        }
-        
-        imageRecords.push({
-          id: processedImage.id,
-          urls: {
-            original: processedImage.originalUrl,
-            thumbnail: processedImage.thumbnailUrl,
-            mobile: processedImage.mobileUrl,
-            desktop: processedImage.desktopUrl,
-            webp: processedImage.webpUrl,
-            jpeg: processedImage.jpegUrl
-          },
-          sizes: processedImage.sizes,
-          selected: i === 0
-        })
-        
-        console.log(`Processed image ${i + 1}/${result.images.length} for job ${jobId}`)
-        
-      } catch (imageError) {
-        console.error(`Failed to process image ${i + 1} for job ${jobId}:`, imageError)
-        throw new Error(`Failed to process image ${i + 1}: ${imageError instanceof Error ? imageError.message : 'Unknown error'}`)
-      }
-    }
-    
-    // Note: Persisting to normalized table is skipped in JSON-backed model.
-    // The client updates the menu JSON with the chosen image URL via select-image.
-    
-    // Update job as completed
-    await supabase
-      .from('image_generation_jobs')
-      .update({
-        status: 'completed',
-        result_count: result.images.length,
-        processing_time: processingTime,
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', jobId)
-    
-    // Consume quota
-    await quotaOperations.consumeQuota(request.userId, request.numberOfVariations || 1)
-    
-    console.log(`Image generation completed for job ${jobId}: ${result.images.length} images in ${processingTime}ms`)
-    
-  } catch (error) {
-    console.error(`Image generation failed for job ${jobId}:`, error)
-    
-    let errorMessage = 'Unknown error occurred'
-    let errorCode = 'UNKNOWN_ERROR'
-    let shouldRetry = false
-    
-    if (error instanceof NanoBananaError) {
-      errorMessage = error.message
-      errorCode = error.code
-      shouldRetry = ['RATE_LIMIT_EXCEEDED', 'SERVICE_UNAVAILABLE', 'NETWORK_ERROR'].includes(error.code)
-    } else if (error instanceof Error) {
-      errorMessage = error.message
-    }
-    
-    // Update job as failed
-    await supabase
-      .from('image_generation_jobs')
-      .update({
-        status: 'failed',
-        error_message: errorMessage,
-        error_code: errorCode,
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', jobId)
-    
-    // TODO: Implement retry logic for retryable errors
-    if (shouldRetry) {
-      console.log(`Job ${jobId} failed with retryable error: ${errorCode}. Retry logic not yet implemented.`)
-    }
   }
 }

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { quotaOperations } from '@/lib/quota-management'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/quota - Get current user's quota status and usage stats
 export async function GET(_request: NextRequest) {
   try {

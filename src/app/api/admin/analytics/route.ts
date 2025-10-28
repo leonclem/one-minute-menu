@@ -11,6 +11,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { analyticsOperations } from '@/lib/analytics-server'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,7 +71,7 @@ export async function GET() {
       totalMetrics
     })
   } catch (error) {
-    console.error('Error fetching analytics:', error)
+    logger.error('Error fetching analytics:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

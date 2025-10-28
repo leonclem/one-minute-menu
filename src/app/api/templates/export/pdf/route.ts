@@ -8,6 +8,7 @@ import { logLayoutError, LayoutEngineError, ERROR_CODES } from '@/lib/templates/
 import { pdfExportLimiter, applyRateLimit } from '@/lib/templates/rate-limiter'
 import { MetricsBuilder, logLayoutMetrics, validatePerformance } from '@/lib/templates/metrics'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 // Extended timeout for PDF generation (30 seconds)
 export const maxDuration = 30
@@ -260,7 +261,7 @@ export async function POST(request: NextRequest) {
     // Validate performance
     const performanceCheck = validatePerformance(metrics)
     if (!performanceCheck.isValid) {
-      console.warn('[PDFExporter] Performance warnings:', performanceCheck.warnings)
+      logger.warn('[PDFExporter] Performance warnings:', performanceCheck.warnings)
     }
     
     // Return PDF with appropriate headers
@@ -276,7 +277,7 @@ export async function POST(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Error exporting PDF:', error)
+    logger.error('Error exporting PDF:', error)
     
     // Handle specific error types
     if (error instanceof DatabaseError) {

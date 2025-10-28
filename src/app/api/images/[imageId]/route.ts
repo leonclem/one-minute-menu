@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { imageProcessingService } from '@/lib/image-processing'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -77,7 +78,7 @@ export async function DELETE(
         try {
           await imageProcessingService.deleteImageFromStorage(url)
         } catch (storageError) {
-          console.warn(`Failed to delete image from storage: ${url}`, storageError)
+          logger.warn(`Failed to delete image from storage: ${url}`, storageError)
           // Continue with database cleanup even if storage deletion fails
         }
       }
@@ -88,7 +89,7 @@ export async function DELETE(
       })
       
       if (deleteError) {
-        console.error('Failed to delete AI image:', deleteError)
+        logger.error('Failed to delete AI image:', deleteError)
         return NextResponse.json(
           { error: 'Failed to delete image' },
           { status: 500 }
@@ -106,7 +107,7 @@ export async function DELETE(
       })
       
     } catch (error) {
-      console.error('Error during image deletion:', error)
+      logger.error('Error during image deletion:', error)
       return NextResponse.json(
         { error: 'Failed to delete image files' },
         { status: 500 }
@@ -114,7 +115,7 @@ export async function DELETE(
     }
     
   } catch (error) {
-    console.error('Error in delete image API:', error)
+    logger.error('Error in delete image API:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -221,7 +222,7 @@ export async function GET(
     })
     
   } catch (error) {
-    console.error('Error in get image API:', error)
+    logger.error('Error in get image API:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

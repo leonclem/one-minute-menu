@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createMetricsCollector } from '@/lib/extraction/metrics-collector'
 import { createCostMonitor } from '@/lib/extraction/cost-monitor'
+import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
       caps: costMonitor.getSpendingCaps()
     })
   } catch (error) {
-    console.error('Error fetching cost data:', error)
+    logger.error('Error fetching cost data:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -127,7 +128,7 @@ export async function PATCH(request: NextRequest) {
       caps: costMonitor.getSpendingCaps()
     })
   } catch (error) {
-    console.error('Error updating cost caps:', error)
+    logger.error('Error updating cost caps:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -152,7 +153,7 @@ async function getTopSpenders(supabase: any, limit: number = 10) {
     .gte('created_at', monthStartStr)
 
   if (error || !jobs) {
-    console.error('Error fetching jobs for top spenders:', error)
+    logger.error('Error fetching jobs for top spenders:', error)
     return []
   }
 

@@ -1,26 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { logger } from '@/lib/logger'
 
 // POST /api/menu-items/[itemId]/select-image - Select an image variation for a menu item
 export async function POST(
   request: NextRequest,
   { params }: { params: { itemId: string } }
 ) {
-  console.log('🖼️ [Select Image API] Called')
+  logger.info('🖼️ [Select Image API] Called')
   
   try {
     const supabase = createServerSupabaseClient()
     
     // Authenticate user
-    console.log('🔐 [Select Image API] Authenticating...')
+    logger.debug('🔐 [Select Image API] Authenticating...')
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
-      console.error('❌ [Select Image API] Auth failed:', authError)
+      logger.error('❌ [Select Image API] Auth failed:', authError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    console.log('✅ [Select Image API] User:', user.id)
+    logger.info('✅ [Select Image API] User:', user.id)
     
     const { itemId } = params
     
@@ -37,7 +38,7 @@ export async function POST(
       imageSource?: 'ai' | 'custom'
     }
     
-    console.log('📝 [Select Image API] Request:', { itemId, imageId: body.imageId, imageSource: body.imageSource })
+    logger.debug('📝 [Select Image API] Request:', { itemId, imageId: body.imageId, imageSource: body.imageSource })
     
     if (!body.imageId) {
       return NextResponse.json(
@@ -97,7 +98,7 @@ export async function POST(
       })
       
       if (transactionError) {
-        console.error('Failed to select AI image:', transactionError)
+        logger.error('Failed to select AI image:', transactionError)
         return NextResponse.json(
           { error: 'Failed to select image' },
           { status: 500 }
@@ -134,7 +135,7 @@ export async function POST(
         .eq('id', itemId)
       
       if (updateError) {
-        console.error('Failed to select custom image:', updateError)
+        logger.error('Failed to select custom image:', updateError)
         return NextResponse.json(
           { error: 'Failed to select custom image' },
           { status: 500 }
@@ -158,8 +159,7 @@ export async function POST(
     )
     
   } catch (error) {
-    console.error('❌ [Select Image API] Error:', error)
-    console.error('❌ [Select Image API] Stack:', error instanceof Error ? error.stack : 'No stack')
+    logger.error('❌ [Select Image API] Error:', error)
     return NextResponse.json(
       { error: 'Failed to select image', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

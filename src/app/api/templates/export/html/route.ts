@@ -22,7 +22,14 @@ const ExportHTMLRequestSchema = z.object({
     includeMetaTags: z.boolean().optional(),
     includeStyles: z.boolean().optional(),
     customCSS: z.string().optional(),
-    pageTitle: z.string().optional()
+    pageTitle: z.string().optional(),
+    themeColors: z.object({
+      primary: z.string().optional(),
+      secondary: z.string().optional(),
+      accent: z.string().optional(),
+      background: z.string().optional(),
+      text: z.string().optional()
+    }).optional()
   }).optional()
 })
 
@@ -43,6 +50,7 @@ const ExportHTMLRequestSchema = z.object({
 export async function POST(request: NextRequest) {
   // Initialize metrics builder
   const metricsBuilder = new MetricsBuilder()
+  const startTime = Date.now()
   
   try {
     // Authenticate user

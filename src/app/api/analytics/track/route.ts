@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { analyticsOperations } from '@/lib/analytics-server'
 import { platformMetrics } from '@/lib/platform-metrics'
+import { logger } from '@/lib/logger'
 
 /**
  * Track menu view endpoint
@@ -9,7 +10,7 @@ import { platformMetrics } from '@/lib/platform-metrics'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { menuId, visitorId, timestamp } = body
+    const { menuId, visitorId } = body
 
     // Validate required fields
     if (!menuId || !visitorId) {
@@ -25,10 +26,10 @@ export async function POST(request: NextRequest) {
     // Track platform-level metrics (non-blocking)
     platformMetrics.trackTotalMenuViews(1)
 
-    console.log(`Analytics tracked: menuId=${menuId}, visitorId=${visitorId}`)
+    logger.info(`Analytics tracked: menuId=${menuId}, visitorId=${visitorId}`)
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Analytics tracking error:', error)
+    logger.error('Analytics tracking error:', error)
     
     // Return success even on error to prevent breaking user experience
     // Analytics failures should be silent
