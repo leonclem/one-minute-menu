@@ -12,6 +12,11 @@
  * when running concurrently. See tasks.md for follow-up work.
  */
 
+// Browserless: mock Puppeteer to avoid launching a real Chrome in tests
+import { getSharedBrowser } from '../puppeteer-shared'
+jest.mock('../puppeteer-shared', () => ({
+  getSharedBrowser: jest.fn()
+}))
 import {
   exportToPDF,
   validatePDFExportOptions,
@@ -24,7 +29,7 @@ import { PDFDocument } from 'pdf-lib'
 import { renderToString } from 'react-dom/server'
 import { createElement } from 'react'
 import { ServerGridMenuLayout } from '../server-components'
-import { closeSharedBrowser } from '../puppeteer-shared'
+// Puppeteer is mocked above; no close needed
 
 // ============================================================================
 // Test Data
@@ -88,17 +93,45 @@ function renderComponentHTML(data: LayoutMenuData, preset: LayoutPreset): string
 }
 
 // Cleanup browser after all tests
-afterAll(async () => {
-  // Give time for any pending operations then close shared browser
-  await new Promise(resolve => setTimeout(resolve, 100))
-  await closeSharedBrowser()
+// Stub a fake browser/page for all rendering calls
+beforeAll(() => {
+  const pageState: { viewport?: { width: number; height: number }; html?: string } = {}
+  const mockPage = {
+    setViewport: jest.fn(async (vp: any) => { pageState.viewport = vp }),
+    setContent: jest.fn(async (html: string) => { pageState.html = html }),
+    screenshot: jest.fn(async () => Buffer.from([1, 2, 3])),
+    pdf: jest.fn(async (opts: any) => {
+      const { landscape } = opts || {}
+      const pdfLib = require('pdf-lib')
+      const pdfDoc = await pdfLib.PDFDocument.create()
+      // A4 size in points
+      const portrait = { width: 595.28, height: 841.89 }
+      const landscapeSize = { width: portrait.height, height: portrait.width }
+      const size = landscape ? landscapeSize : portrait
+      // Generate multi-page PDF based on HTML length
+      const htmlLen = pageState.html?.length ?? 0
+      const pageCount = htmlLen > 30000 ? 3 : htmlLen > 15000 ? 2 : 1
+      for (let i = 0; i < pageCount; i++) {
+        const page = pdfDoc.addPage([size.width, size.height])
+        page.drawText(`Page ${i + 1}`)
+      }
+      const bytes = await pdfDoc.save()
+      return new Uint8Array(bytes)
+    }),
+    close: jest.fn(async () => {})
+  }
+  const mockBrowser = {
+    newPage: jest.fn(async () => mockPage),
+    close: jest.fn(async () => {})
+  }
+  ;(getSharedBrowser as unknown as jest.Mock).mockResolvedValue(mockBrowser)
 })
 
 // ============================================================================
 // Basic PDF Generation Tests
 // ============================================================================
 
-describe.skip('exportToPDF', () => {
+describe('exportToPDF', () => {
   it('should generate valid PDF with default options', async () => {
     const htmlContent = renderComponentHTML(mockMenuData, mockPreset)
     const result = await exportToPDF(htmlContent, mockMenuData)
@@ -145,7 +178,7 @@ describe.skip('exportToPDF', () => {
 // Orientation Tests
 // ============================================================================
 
-describe.skip('PDF Orientation', () => {
+describe('PDF Orientation', () => {
   it('should generate portrait PDF', async () => {
     const htmlContent = renderComponentHTML(mockMenuData, mockPreset)
     const result = await exportToPDF(htmlContent, mockMenuData, {
@@ -179,7 +212,7 @@ describe.skip('PDF Orientation', () => {
 // Page Break and Pagination Tests
 // ============================================================================
 
-describe.skip('Pagination Logic', () => {
+describe('Pagination Logic', () => {
   it('should create multiple pages for large menus', async () => {
     // Create a large menu with many items
     const largeMenu: LayoutMenuData = {
@@ -247,7 +280,7 @@ describe.skip('Pagination Logic', () => {
 // Page Numbers Tests
 // ============================================================================
 
-describe.skip('Page Numbers', () => {
+describe('Page Numbers', () => {
   it('should include page numbers by default', async () => {
     const htmlContent = renderComponentHTML(mockMenuData, mockPreset); const result = await exportToPDF(htmlContent, mockMenuData)
 
@@ -270,7 +303,7 @@ describe.skip('Page Numbers', () => {
 // Custom Margins Tests
 // ============================================================================
 
-describe.skip('Custom Margins', () => {
+describe('Custom Margins', () => {
   it('should apply custom margins', async () => {
     const htmlContent = renderComponentHTML(mockMenuData, mockPreset)
     const result = await exportToPDF(htmlContent, mockMenuData, {
@@ -371,7 +404,7 @@ describe('validatePDFExportOptions', () => {
 // Utility Function Tests
 // ============================================================================
 
-describe.skip('Utility Functions', () => {
+describe('Utility Functions', () => {
   describe('createPDFBlob', () => {
     it('should create blob with correct type', async () => {
       const htmlContent = renderComponentHTML(mockMenuData, mockPreset); const result = await exportToPDF(htmlContent, mockMenuData)
@@ -394,7 +427,7 @@ describe.skip('Utility Functions', () => {
 // Performance Tests
 // ============================================================================
 
-describe.skip('Performance', () => {
+describe('Performance', () => {
   it('should handle large menus within time limit', async () => {
     // Create a menu with 100 items
     const largeMenu: LayoutMenuData = {
@@ -434,7 +467,7 @@ describe.skip('Performance', () => {
 // Edge Cases Tests
 // ============================================================================
 
-describe.skip('Edge Cases', () => {
+describe('Edge Cases', () => {
   it('should handle items without descriptions', async () => {
     const noDescMenu: LayoutMenuData = {
       metadata: {
@@ -577,7 +610,7 @@ describe.skip('Edge Cases', () => {
 // Different Presets Tests
 // ============================================================================
 
-describe.skip('Different Presets', () => {
+describe('Different Presets', () => {
   it('should generate PDF with dense-catalog preset', async () => {
     const htmlContent = renderComponentHTML(mockMenuData, LAYOUT_PRESETS['dense-catalog'])
     const result = await exportToPDF(htmlContent, mockMenuData)

@@ -17,6 +17,7 @@
     "test:edge-cases": "jest --testPathPattern=edge-cases",
     "test:coverage": "jest --coverage",
     "test:all": "jest --coverage --verbose",
+    
     "setup-db": "node scripts/setup-database.js",
     "deploy-check": "node scripts/deploy-check.js",
     "deploy:vercel": "vercel --prod",

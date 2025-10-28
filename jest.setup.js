@@ -74,3 +74,30 @@ if (typeof window !== 'undefined') {
     })),
   })
 }
+
+// ---------------------------------------------------------------------------
+// Test-only environment defaults to avoid real network costs
+// ---------------------------------------------------------------------------
+
+if (!process.env.OPENAI_API_KEY) {
+  process.env.OPENAI_API_KEY = 'test'
+}
+
+// Mock OpenAI client globally so no tokens are consumed in tests
+jest.mock('openai', () => {
+  const mockOutputText = '{"menu":{"categories":[{"name":"Test","items":[]}]} }'
+  const responses = {
+    parse: jest.fn(async () => ({ output: [{ content: [{ type: 'output_text', text: mockOutputText }] }] })),
+    create: jest.fn(async () => ({ output: [{ content: [{ type: 'output_text', text: mockOutputText }] }] })),
+  }
+  const OpenAI = function () {
+    return { responses }
+  }
+  return { __esModule: true, default: OpenAI, OpenAI }
+})
+
+// jsdom does not implement canvas; mock getContext to prevent errors
+if (typeof HTMLCanvasElement !== 'undefined') {
+  // @ts-ignore
+  HTMLCanvasElement.prototype.getContext = jest.fn(() => ({ }))
+}

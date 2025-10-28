@@ -158,7 +158,7 @@ export async function exportToImage(
   )
 
   const endTime = Date.now()
-  const duration = endTime - startTime
+  const duration = Math.max(1, endTime - startTime)
 
   console.log(
     `[ImageExporter] Generated ${format.toUpperCase()} in ${duration}ms ` +

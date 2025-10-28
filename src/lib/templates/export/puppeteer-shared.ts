@@ -5,7 +5,8 @@ import fs from 'fs'
 
 let sharedBrowser: any = null
 let browserPromise: Promise<any> | null = null
-let userDataDirPath: string | null = null
+
+// Keep minimal: no persisted WS endpoint; production code launches a single process
 
 export async function getSharedBrowser() {
   if (sharedBrowser) {
@@ -16,41 +17,39 @@ export async function getSharedBrowser() {
     return browserPromise
   }
 
-  // Create a unique temporary userDataDir for this browser instance to avoid
-  // Windows profile locking issues when tests run concurrently.
+  // Launch a single shared browser with a unique userDataDir (avoids default profile contention)
   const createAndLaunch = async (): Promise<any> => {
-    const base = path.join(os.tmpdir(), 'puppeteer_profile_')
-    const dir = fs.mkdtempSync(base)
-    userDataDirPath = dir
-
-    return puppeteer.launch({
+    const launch = () => puppeteer.launch({
       headless: true,
-      // Extra flags reduce chrome startup prompts and sandbox issues in CI/Windows
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
         '--no-first-run',
         '--no-default-browser-check'
       ],
-      userDataDir: dir
+      userDataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'kiro_puppeteer_profile_'))
     })
+
+    const maxAttempts = 3
+    let attempt = 0
+    // Simple linear backoff (200ms, 400ms)
+    while (true) {
+      try {
+        return await launch()
+      } catch (err: any) {
+        attempt += 1
+        const message = err && err.message ? String(err.message) : ''
+        if (attempt >= maxAttempts || !message.toLowerCase().includes('browser is already running')) {
+          throw err
+        }
+        await new Promise(r => setTimeout(r, attempt * 200))
+      }
+    }
   }
 
   browserPromise = (async () => {
-    try {
-      return await createAndLaunch()
-    } catch (err: any) {
-      // If profile is reported as already running, retry with a fresh directory
-      const message = err && err.message ? String(err.message) : ''
-      if (message.toLowerCase().includes('browser is already running')) {
-        try {
-          return await createAndLaunch()
-        } catch {
-          throw err
-        }
-      }
-      throw err
-    }
+    return await createAndLaunch()
   })()
 
   sharedBrowser = await browserPromise
@@ -67,13 +66,7 @@ export async function closeSharedBrowser() {
     sharedBrowser = null
   }
   browserPromise = null
-  // Best-effort cleanup of the temporary userDataDir
-  if (userDataDirPath) {
-    try {
-      fs.rmSync(userDataDirPath, { recursive: true, force: true })
-    } catch {}
-    userDataDirPath = null
-  }
+  // No persisted state to clean up here; per-testcode cleanup closes pages
 }
 
 

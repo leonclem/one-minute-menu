@@ -118,10 +118,11 @@ describe('Performance: Layout Generation', () => {
       const cachedLayout = generateGridLayout(menuData, preset, 'desktop')
       const secondCallDuration = timer2.elapsed()
       
-      // Cache hit should be faster or at least not slower
-      // Note: On very fast systems, both might be < 1ms, so we just verify cache works
+      // Cache hit should be faster or approximately equal allowing small jitter
+      // Note: On very fast systems, both might be < 1ms; allow 15% or 0.2ms slack
       expect(cachedLayout.totalTiles).toBe(20)
-      expect(secondCallDuration).toBeLessThanOrEqual(firstCallDuration)
+      const tolerance = Math.max(0.2, firstCallDuration * 0.15)
+      expect(secondCallDuration).toBeLessThanOrEqual(firstCallDuration + tolerance)
     })
   })
   

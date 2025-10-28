@@ -13,6 +13,11 @@
  * when running concurrently. See tasks.md for follow-up work.
  */
 
+// Browserless: mock Puppeteer to avoid launching a real Chrome in tests
+import { getSharedBrowser } from '../puppeteer-shared'
+jest.mock('../puppeteer-shared', () => ({
+  getSharedBrowser: jest.fn()
+}))
 import {
   exportToImage,
   exportToImageWithPreset,
@@ -30,7 +35,7 @@ import sharp from 'sharp'
 import { renderToString } from 'react-dom/server'
 import { createElement } from 'react'
 import { ServerGridMenuLayout } from '../server-components'
-import { closeSharedBrowser } from '../puppeteer-shared'
+// Puppeteer is mocked above; no close needed
 
 // ============================================================================
 // Test Data
@@ -96,17 +101,42 @@ function renderComponentHTML(data: LayoutMenuData, preset: LayoutPreset, context
 }
 
 // Cleanup browser after all tests
-afterAll(async () => {
-  // Give time for any pending operations then close shared browser
-  await new Promise(resolve => setTimeout(resolve, 100))
-  await closeSharedBrowser()
+// Stub a fake browser/page for all rendering calls
+beforeAll(() => {
+  const pageState: { viewport?: { width: number; height: number } ; html?: string } = {}
+  const mockPage = {
+    setViewport: jest.fn(async (vp: any) => { pageState.viewport = vp }),
+    setContent: jest.fn(async (html: string) => { pageState.html = html }),
+    screenshot: jest.fn(async (opts: any) => {
+      const width = pageState.viewport?.width ?? 1200
+      const height = pageState.viewport?.height ?? 1600
+      if (opts?.type === 'jpeg') {
+        const quality = typeof opts?.quality === 'number' ? opts.quality : 80
+        const buf = await require('sharp')({
+          create: { width, height, channels: 3, background: { r: quality, g: 0, b: 0 } }
+        }).jpeg({ quality }).toBuffer()
+        return buf
+      }
+      const buf = await require('sharp')({
+        create: { width, height, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
+      }).png().toBuffer()
+      return buf
+    }),
+    pdf: jest.fn(async () => new Uint8Array([1, 2, 3])),
+    close: jest.fn(async () => {})
+  }
+  const mockBrowser = {
+    newPage: jest.fn(async () => mockPage),
+    close: jest.fn(async () => {})
+  }
+  ;(getSharedBrowser as unknown as jest.Mock).mockResolvedValue(mockBrowser)
 })
 
 // ============================================================================
 // Basic Image Generation Tests
 // ============================================================================
 
-describe.skip('exportToImage', () => {
+describe('exportToImage', () => {
   it('should generate valid PNG with default options', async () => {
     const componentHTML = renderComponentHTML(mockMenuData, mockPreset, 'desktop')
     const result = await exportToImage(componentHTML, mockMenuData, 'desktop')
@@ -158,7 +188,7 @@ describe.skip('exportToImage', () => {
 // Format Tests
 // ============================================================================
 
-describe.skip('Image Formats', () => {
+describe('Image Formats', () => {
   it('should generate PNG image', async () => {
     const componentHTML = renderComponentHTML(mockMenuData, mockPreset, 'desktop')
     const result = await exportToImage(componentHTML, mockMenuData, 'desktop', {
@@ -204,7 +234,7 @@ describe.skip('Image Formats', () => {
 // Dimension Tests
 // ============================================================================
 
-describe.skip('Custom Dimensions', () => {
+describe('Custom Dimensions', () => {
   it('should respect custom width and height', async () => {
     const componentHTML = renderComponentHTML(mockMenuData, mockPreset, 'desktop')
     const result = await exportToImage(componentHTML, mockMenuData, 'desktop', {
@@ -256,7 +286,7 @@ describe.skip('Custom Dimensions', () => {
 // Preset Dimensions Tests
 // ============================================================================
 
-describe.skip('Preset Dimensions', () => {
+describe('Preset Dimensions', () => {
   it('should export with Instagram square dimensions', async () => {
     const componentHTML = renderComponentHTML(mockMenuData, mockPreset, 'mobile')
     const result = await exportToImageWithPreset(
@@ -327,7 +357,7 @@ describe.skip('Preset Dimensions', () => {
 // Background Color Tests
 // ============================================================================
 
-describe.skip('Background Color', () => {
+describe('Background Color', () => {
   it('should apply custom background color', async () => {
     const componentHTML = renderComponentHTML(mockMenuData, mockPreset, 'desktop')
     const result = await exportToImage(componentHTML, mockMenuData, 'desktop', {
@@ -472,7 +502,7 @@ describe('validateImageExportOptions', () => {
 // Utility Function Tests
 // ============================================================================
 
-describe.skip('Utility Functions', () => {
+describe('Utility Functions', () => {
   describe('getPresetDimensions', () => {
     it('should return correct dimensions for Instagram square', () => {
       const dimensions = getPresetDimensions('instagramSquare')
@@ -618,7 +648,7 @@ describe.skip('Utility Functions', () => {
 // Performance Tests
 // ============================================================================
 
-describe.skip('Performance', () => {
+describe('Performance', () => {
   it('should handle large menus within time limit', async () => {
     // Create a menu with 100 items
     const largeMenu: LayoutMenuData = {
@@ -660,7 +690,7 @@ describe.skip('Performance', () => {
 // Different Presets Tests
 // ============================================================================
 
-describe.skip('Different Presets', () => {
+describe('Different Presets', () => {
   it('should generate image with dense-catalog preset', async () => {
     const componentHTML = renderComponentHTML(mockMenuData, LAYOUT_PRESETS['dense-catalog'], 'desktop')
     const result = await exportToImage(componentHTML, mockMenuData, 'desktop')
@@ -698,7 +728,7 @@ describe.skip('Different Presets', () => {
 // Different Output Contexts Tests
 // ============================================================================
 
-describe.skip('Output Contexts', () => {
+describe('Output Contexts', () => {
   it('should generate image for mobile context', async () => {
     const componentHTML = renderComponentHTML(mockMenuData, mockPreset, 'mobile')
     const result = await exportToImage(componentHTML, mockMenuData, 'mobile')
@@ -736,7 +766,7 @@ describe.skip('Output Contexts', () => {
 // Error Handling Tests
 // ============================================================================
 
-describe.skip('Error Handling', () => {
+describe('Error Handling', () => {
   it('should throw error for invalid options', async () => {
     const invalidOptions: any = {
       format: 'invalid',

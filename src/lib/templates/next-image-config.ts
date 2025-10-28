@@ -256,9 +256,19 @@ export function supportsWebP(): boolean {
   }
 
   // Client-side: check canvas support
-  const canvas = document.createElement('canvas')
-  if (canvas.getContext && canvas.getContext('2d')) {
-    return canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0
+  const canvas = document.createElement('canvas') as HTMLCanvasElement & { toDataURL?: any }
+  if (typeof canvas.getContext !== 'function') {
+    return false
+  }
+  const ctx = canvas.getContext('2d')
+  if (!ctx || typeof canvas.toDataURL !== 'function') {
+    return false
+  }
+  try {
+    const dataUrl = canvas.toDataURL('image/webp')
+    return typeof dataUrl === 'string' && dataUrl.indexOf('data:image/webp') === 0
+  } catch {
+    return false
   }
 
   return false

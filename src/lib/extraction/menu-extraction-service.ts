@@ -57,6 +57,7 @@ export interface TokenUsage {
 }
 
 export interface ExtractionOptions {
+  menuId?: string
   schemaVersion?: 'stage1' | 'stage2'
   promptVersion?: string
   currency?: string
@@ -169,6 +170,7 @@ export class MenuExtractionService {
       // Create job record only if we don't have an existing one to reuse
       if (!job!) {
         job = await this.createJobRecord(
+          options.menuId,
           userId,
           imageUrl,
           imageHash,
@@ -470,6 +472,7 @@ export class MenuExtractionService {
    * Create job record in database
    */
   private async createJobRecord(
+    menuId: string | undefined,
     userId: string,
     imageUrl: string,
     imageHash: string,
@@ -479,10 +482,12 @@ export class MenuExtractionService {
     const { data, error } = await this.supabase
       .from('menu_extraction_jobs')
       .insert({
+        ...(menuId ? { menu_id: menuId } : {}),
         user_id: userId,
         image_url: imageUrl,
         image_hash: imageHash,
-        status: 'queued',
+        extraction_method: 'vision_llm',
+        status: 'processing',
         schema_version: schemaVersion,
         prompt_version: promptVersion,
         created_at: new Date().toISOString()

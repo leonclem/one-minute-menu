@@ -313,39 +313,60 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
     } catch (e) {
       const body: any = e instanceof HttpError ? e.body : {}
       const code = body?.code
-      
+
       if (code === 'PLAN_LIMIT_EXCEEDED') {
-        showToast({ 
-          type: 'info', 
-          title: 'Plan limit reached', 
-          description: body.error || 'Monthly extraction limit reached.' 
-        })
-      } else if (code === 'RATE_LIMIT_EXCEEDED') {
-        showToast({ 
-          type: 'info', 
-          title: 'Rate limit', 
-          description: body.error || 'Please wait before trying again.' 
-        })
-      } else if (code === 'OPENAI_QUOTA_EXCEEDED') {
-        showToast({ 
-          type: 'info', 
-          title: 'Service temporarily unavailable', 
-          description: body.userMessage || 'AI extraction service quota exceeded. You can add menu items manually.' 
-        })
-      } else if (code === 'OPENAI_RATE_LIMIT') {
-        showToast({ 
-          type: 'info', 
-          title: 'Too many requests', 
-          description: body.userMessage || 'Please wait a few minutes and try again.' 
-        })
-      } else {
-        showToast({ 
-          type: 'error', 
-          title: 'Extraction failed to start', 
-          description: body.userMessage || (e instanceof Error ? e.message : 'Please try again or add items manually.') 
-        })
+        const msg = body?.userMessage || body?.error || 'You’ve reached your monthly extraction limit.'
+        showToast({ type: 'info', title: 'Please try again soon', description: msg })
+        setExtractionStatus('idle')
+        setExtractionError(msg)
+        return
       }
-      setExtractionStatus('failed')
+
+      if (code === 'RATE_LIMIT_EXCEEDED') {
+        const retrySecs = typeof body?.retryAfterSeconds === 'number' ? body.retryAfterSeconds : undefined
+        const mins = retrySecs != null ? Math.floor(retrySecs / 60) : undefined
+        const secs = retrySecs != null ? retrySecs % 60 : undefined
+        const friendly = body?.userMessage
+          || (retrySecs != null
+            ? `You’ve reached the hourly limit (${body?.current ?? '?'} / ${body?.limit ?? '?'}). Thanks for your patience — please try again in ${mins}m ${secs}s.`
+            : (body?.error || 'You’re sending requests a little quickly. Please try again in a moment.'))
+        showToast({ type: 'info', title: 'Please try again soon', description: friendly })
+        setExtractionStatus('idle')
+        setExtractionError(friendly)
+        return
+      }
+
+      if (code === 'OPENAI_QUOTA_EXCEEDED') {
+        const msg = body?.userMessage || 'The AI service is temporarily at capacity. Please try again shortly.'
+        showToast({ type: 'info', title: 'Please try again soon', description: msg })
+        setExtractionStatus('idle')
+        setExtractionError(msg)
+        return
+      }
+
+      if (code === 'OPENAI_RATE_LIMIT') {
+        const retrySecs = typeof body?.retryAfterSeconds === 'number' ? body.retryAfterSeconds : undefined
+        const mins = retrySecs != null ? Math.floor(retrySecs / 60) : undefined
+        const secs = retrySecs != null ? retrySecs % 60 : undefined
+        const msg = body?.userMessage
+          || (retrySecs != null
+            ? `We’re getting a lot of requests right now. Thanks for your patience — please try again in ${mins}m ${secs}s.`
+            : 'We’re getting a lot of requests right now. Please try again shortly.')
+        showToast({ type: 'info', title: 'Please try again soon', description: msg })
+        setExtractionStatus('idle')
+        setExtractionError(msg)
+        return
+      }
+
+      // Default unknown error: keep UI in idle and show inline guidance
+      const fallbackMsg = body?.userMessage || (e instanceof Error ? e.message : 'Please try again or add items manually.')
+      showToast({ 
+        type: 'error', 
+        title: 'Extraction failed to start', 
+        description: fallbackMsg 
+      })
+      setExtractionStatus('idle')
+      setExtractionError(fallbackMsg)
     }
   }
 

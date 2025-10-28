@@ -75,6 +75,9 @@ npm run test:coverage
 npm run test:all
 ```
 
+### Export Tests (browserless in Jest)
+Exporter unit tests do not launch a real browser; they mock the Puppeteer layer and assert contracts (options, dimensions, buffers). Visual rendering is covered by Playwright screenshot tests.
+
 ## Test Categories
 ### AI Image Generation (MVP)
 

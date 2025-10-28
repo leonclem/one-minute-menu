@@ -25,6 +25,7 @@ const MAX_IMAGE_SIZE = 8 * 1024 * 1024 // 8MB
 
 interface SubmitRequest {
   imageUrl: string
+  menuId: string
   schemaVersion?: 'stage1' | 'stage2'
   promptVersion?: string
   currency?: string
@@ -62,6 +63,13 @@ export async function POST(request: NextRequest) {
     if (!body.imageUrl) {
       return NextResponse.json(
         { error: 'imageUrl is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!body.menuId) {
+      return NextResponse.json(
+        { error: 'menuId is required' },
         { status: 400 }
       )
     }
@@ -107,14 +115,29 @@ export async function POST(request: NextRequest) {
     const rateLimitCheck = await queueManager.checkRateLimit(user.id, rateLimitPerHour)
     
     if (!rateLimitCheck.allowed) {
-      return NextResponse.json(
-        {
-          error: `Rate limit exceeded (${rateLimitCheck.current}/${rateLimitCheck.limit} uploads/hour)`,
-          code: 'RATE_LIMIT_EXCEEDED',
-          resetAt: rateLimitCheck.resetAt?.toISOString()
-        },
-        { status: 429 }
-      )
+      const resetAt = rateLimitCheck.resetAt || new Date(Date.now() + 60 * 60 * 1000)
+      const retryAfterSeconds = Math.max(1, Math.ceil((resetAt.getTime() - Date.now()) / 1000))
+
+      const body = {
+        error: `Rate limit exceeded (${rateLimitCheck.current}/${rateLimitCheck.limit} uploads/hour)`,
+        code: 'RATE_LIMIT_EXCEEDED',
+        resetAt: resetAt.toISOString(),
+        current: rateLimitCheck.current,
+        limit: rateLimitCheck.limit,
+        retryAfterSeconds,
+        userMessage: `You've hit the hourly extraction limit (${rateLimitCheck.current}/${rateLimitCheck.limit}). Try again in ${Math.floor(retryAfterSeconds/60)}m ${retryAfterSeconds%60}s.`
+      }
+
+      return new NextResponse(JSON.stringify(body), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(retryAfterSeconds),
+          'X-RateLimit-Limit': String(rateLimitCheck.limit),
+          'X-RateLimit-Remaining': String(Math.max(0, rateLimitCheck.limit - rateLimitCheck.current)),
+          'X-RateLimit-Reset': String(Math.floor(resetAt.getTime() / 1000))
+        }
+      })
     }
 
     // Check cost budget (Requirements: 8.3, 12.1, 12.4)
@@ -159,6 +182,7 @@ export async function POST(request: NextRequest) {
       body.imageUrl,
       user.id,
       {
+        menuId: body.menuId,
         schemaVersion: body.schemaVersion || 'stage1',
         promptVersion: body.promptVersion,
         currency: body.currency,
