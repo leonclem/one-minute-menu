@@ -1,4 +1,3 @@
-import puppeteer from 'puppeteer'
 import os from 'os'
 import path from 'path'
 import fs from 'fs'
@@ -19,17 +18,47 @@ export async function getSharedBrowser() {
 
   // Launch a single shared browser with a unique userDataDir (avoids default profile contention)
   const createAndLaunch = async (): Promise<any> => {
-    const launch = () => puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--no-first-run',
-        '--no-default-browser-check'
-      ],
-      userDataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'kiro_puppeteer_profile_'))
-    })
+    // Detect Vercel/AWS Lambda style environment
+    const isServerless = !!(process.env.VERCEL || process.env.AWS_REGION)
+
+    const userDataDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'kiro_puppeteer_profile_')
+    )
+
+    const launch = async () => {
+      if (isServerless) {
+        // Use puppeteer-core with @sparticuz/chromium on Vercel
+        const chromium = await import('@sparticuz/chromium')
+        const puppeteerCore = (await import('puppeteer-core')).default
+
+        const executablePath = await chromium.executablePath()
+
+        return puppeteerCore.launch({
+          headless: chromium.headless ?? 'new',
+          args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+          executablePath,
+          defaultViewport: chromium.defaultViewport ?? {
+            width: 1280,
+            height: 800
+          },
+          userDataDir
+        })
+      }
+
+      // Local/dev: use full puppeteer which downloads Chrome during install
+      const puppeteer = (await import('puppeteer')).default
+      return puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--no-first-run',
+          '--no-default-browser-check'
+        ],
+        userDataDir
+      })
+    }
 
     const maxAttempts = 3
     let attempt = 0
