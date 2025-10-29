@@ -4,6 +4,18 @@ const nextConfig = {
     domains: ['uztyljbiqyrykzwtdbpa.supabase.co', 'localhost'],
     formats: ['image/webp', 'image/avif'],
   },
+  experimental: {
+    // Ensure puppeteer-core and @sparticuz/chromium are not bundled into .next
+    // so their binaries/assets remain available in node_modules at runtime
+    serverComponentsExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      const externals = Array.isArray(config.externals) ? config.externals : []
+      config.externals = [...externals, '@sparticuz/chromium', 'puppeteer-core']
+    }
+    return config
+  },
   // Performance optimizations
   compress: true,
   poweredByHeader: false,
