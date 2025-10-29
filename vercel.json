@@ -6,14 +6,9 @@
   "framework": "nextjs",
   "regions": ["sin1"],
   "functions": {
-    "api/**": {
-      "memory": 1024,
-      "maxDuration": 300,
-      "includeFiles": "node_modules/@sparticuz/chromium/**"
-    },
-    "app/**": {
-      "memory": 1024,
-      "maxDuration": 300,
+    "src/app/api/**/route.ts": {
+      "memory": 1536,
+      "maxDuration": 30,
       "includeFiles": "node_modules/@sparticuz/chromium/**"
     }
   },
