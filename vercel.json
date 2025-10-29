@@ -2,9 +2,14 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "installCommand": "npm ci",
+  "installCommand": "npm install --no-audit --no-fund",
   "framework": "nextjs",
   "regions": ["sin1"],
+  "build": {
+    "env": {
+      "PUPPETEER_SKIP_DOWNLOAD": "true"
+    }
+  },
   "git": {
     "deploymentEnabled": {
       "main": false
