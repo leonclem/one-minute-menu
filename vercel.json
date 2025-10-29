@@ -5,6 +5,18 @@
   "installCommand": "npm install --no-audit --no-fund",
   "framework": "nextjs",
   "regions": ["sin1"],
+  "functions": {
+    "api/**": {
+      "memory": 1024,
+      "maxDuration": 30,
+      "includeFiles": "node_modules/@sparticuz/chromium/**"
+    },
+    "app/**": {
+      "memory": 1024,
+      "maxDuration": 30,
+      "includeFiles": "node_modules/@sparticuz/chromium/**"
+    }
+  },
   "build": {
     "env": {
       "PUPPETEER_SKIP_DOWNLOAD": "true"
