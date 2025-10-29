@@ -33,6 +33,17 @@ export async function getSharedBrowser() {
 
         const executablePath = await chromium.executablePath()
 
+        // Ensure dynamic linker can find Chromium's bundled libs (e.g., libnss3.so)
+        try {
+          const chromiumDir = path.dirname(executablePath)
+          const libDir = path.join(chromiumDir, 'lib')
+          const currentLdPath = process.env.LD_LIBRARY_PATH || ''
+          const newLdPath = [libDir, chromiumDir, currentLdPath]
+            .filter(Boolean)
+            .join(':')
+          process.env.LD_LIBRARY_PATH = newLdPath
+        } catch {}
+
         return puppeteerCore.launch({
           headless: chromium.headless,
           args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
