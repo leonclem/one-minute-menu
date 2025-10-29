@@ -8,12 +8,12 @@
   "functions": {
     "api/**": {
       "memory": 1024,
-      "maxDuration": 30,
+      "maxDuration": 300,
       "includeFiles": "node_modules/@sparticuz/chromium/**"
     },
     "app/**": {
       "memory": 1024,
-      "maxDuration": 30,
+      "maxDuration": 300,
       "includeFiles": "node_modules/@sparticuz/chromium/**"
     }
   },
