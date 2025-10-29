@@ -28,19 +28,16 @@ export async function getSharedBrowser() {
     const launch = async () => {
       if (isServerless) {
         // Use puppeteer-core with @sparticuz/chromium on Vercel
-        const chromium = await import('@sparticuz/chromium')
+        const chromium = (await import('@sparticuz/chromium')).default
         const puppeteerCore = (await import('puppeteer-core')).default
 
         const executablePath = await chromium.executablePath()
 
         return puppeteerCore.launch({
-          headless: chromium.headless ?? 'new',
+          headless: chromium.headless,
           args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
           executablePath,
-          defaultViewport: chromium.defaultViewport ?? {
-            width: 1280,
-            height: 800
-          },
+          defaultViewport: chromium.defaultViewport,
           userDataDir
         })
       }
