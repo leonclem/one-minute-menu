@@ -91,9 +91,14 @@ export async function exportToPDF(
       height: orientation === 'portrait' ? 1123 : 794
     })
 
-    // Set HTML content
+    // Increase default timeouts and avoid hanging on networkidle in serverless
+    page.setDefaultTimeout(60000)
+    page.setDefaultNavigationTimeout(60000)
+
+    // Set HTML content (avoid networkidle which can hang on external assets)
     await page.setContent(htmlContent, {
-      waitUntil: 'networkidle0'
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
     })
 
     // Generate PDF

@@ -217,9 +217,14 @@ async function renderHTMLToImage(
       deviceScaleFactor: 1
     })
 
-    // Set HTML content
+    // Increase default timeouts and avoid networkidle hangs
+    page.setDefaultTimeout(60000)
+    page.setDefaultNavigationTimeout(60000)
+
+    // Set HTML content (avoid networkidle which can hang on external assets)
     await page.setContent(html, {
-      waitUntil: 'networkidle0'
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
     })
 
     // Take screenshot
