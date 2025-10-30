@@ -36,7 +36,6 @@ export async function getSharedBrowser() {
         const puppeteerCore = (await import('puppeteer-core')).default
         return puppeteerCore.connect({
           browserWSEndpoint: browserlessWSEndpoint,
-          ignoreHTTPSErrors: true,
           defaultViewport: { width: 1280, height: 800 }
         })
       }
