@@ -11,8 +11,8 @@ import { MetricsBuilder, logLayoutMetrics, validatePerformance } from '@/lib/tem
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
 
-// Extended timeout for PDF generation (30 seconds)
-export const maxDuration = 30
+// Extended timeout for PDF generation
+export const maxDuration = 60
 
 // Request body schema
 const ExportPDFRequestSchema = z.object({

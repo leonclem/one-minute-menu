@@ -12,8 +12,8 @@ import type { OutputContext } from '@/lib/templates/types'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
 
-// Extended timeout for image generation (30 seconds)
-export const maxDuration = 30
+// Extended timeout for image generation
+export const maxDuration = 60
 
 // Request body schema
 const ExportImageRequestSchema = z.object({
