@@ -18,6 +18,12 @@ export async function getSharedBrowser() {
 
   // Launch a single shared browser with a unique userDataDir (avoids default profile contention)
   const createAndLaunch = async (): Promise<any> => {
+    // Prefer external Browserless endpoint if configured
+    const browserlessWSEndpoint =
+      process.env.BROWSERLESS_URL ||
+      process.env.BROWSERLESS_WS ||
+      process.env.BROWSER_WS_ENDPOINT
+
     // Detect Vercel/AWS Lambda style environment
     const isServerless = !!(process.env.VERCEL || process.env.AWS_REGION)
 
@@ -26,6 +32,15 @@ export async function getSharedBrowser() {
     )
 
     const launch = async () => {
+      if (browserlessWSEndpoint) {
+        const puppeteerCore = (await import('puppeteer-core')).default
+        return puppeteerCore.connect({
+          browserWSEndpoint: browserlessWSEndpoint,
+          ignoreHTTPSErrors: true,
+          defaultViewport: { width: 1280, height: 800 }
+        })
+      }
+
       if (isServerless) {
         // Use puppeteer-core with @sparticuz/chromium on Vercel
         const chromium = (await import('@sparticuz/chromium')).default
