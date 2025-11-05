@@ -125,7 +125,7 @@ describe('E2E: Menu Creation Workflow', () => {
   })
 })
 
-describe('E2E: OCR Processing Workflow', () => {
+describe('E2E: Extraction Processing Workflow', () => {
   const mockMenuId = 'menu-123'
   const mockImageUrl = 'https://storage.example.com/menu.jpg'
 
@@ -133,7 +133,7 @@ describe('E2E: OCR Processing Workflow', () => {
     jest.clearAllMocks()
   })
 
-  it('should submit OCR job and return job ID', async () => {
+  it('should submit extraction job and return job ID', async () => {
     const mockJob = {
       id: 'job-123',
       menu_id: mockMenuId,
@@ -148,7 +148,7 @@ describe('E2E: OCR Processing Workflow', () => {
     })
 
     const result = await mockSupabase
-      .from('ocr_jobs')
+      .from('menu_extraction_jobs')
       .insert({ menu_id: mockMenuId, image_url: mockImageUrl })
       .select()
       .single()
@@ -189,7 +189,7 @@ describe('E2E: OCR Processing Workflow', () => {
     let attempts = 0
     while (status === 'processing' && attempts < 5) {
       const result = await mockSupabase
-        .from('ocr_jobs')
+        .from('menu_extraction_jobs')
         .select()
         .eq('id', jobId)
         .single()
@@ -320,7 +320,7 @@ describe('E2E: Plan Limits Enforcement', () => {
     const mockProfile = {
       id: 'user-123',
       plan: 'free',
-      plan_limits: { menus: 1, items: 20, ocr_jobs: 5 },
+      plan_limits: { menus: 1, items: 20, extraction_jobs: 5 },
     }
 
     mockSupabase.from.mockReturnValue({
@@ -342,11 +342,11 @@ describe('E2E: Plan Limits Enforcement', () => {
     expect(canCreateMenu).toBe(true)
   })
 
-  it('should enforce OCR job quota', async () => {
+  it('should enforce extraction job quota', async () => {
     const mockProfile = {
       id: 'user-123',
       plan: 'free',
-      plan_limits: { menus: 1, items: 20, ocr_jobs: 5 },
+      plan_limits: { menus: 1, items: 20, extraction_jobs: 5 },
     }
 
     // Mock checking current OCR job count
@@ -363,12 +363,12 @@ describe('E2E: Plan Limits Enforcement', () => {
     mockSupabase.from.mockReturnValue(mockJobsQuery)
 
     const jobsThisMonth = await mockSupabase
-      .from('ocr_jobs')
+      .from('menu_extraction_jobs')
       .select()
       .eq('user_id', 'user-123')
       .gte('created_at', new Date().toISOString())
 
-    const hasQuota = (jobsThisMonth.count || 0) < mockProfile.plan_limits.ocr_jobs
+    const hasQuota = (jobsThisMonth.count || 0) < mockProfile.plan_limits.extraction_jobs
     expect(hasQuota).toBe(false) // At limit
   })
 })

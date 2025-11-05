@@ -79,7 +79,7 @@ describe('End-to-End Extraction Tests', () => {
         data: {
           id: mockUserId,
           plan: 'free',
-          plan_limits: { ocr_jobs: 5 }
+          plan_limits: { extraction_jobs: 5 }
         },
         error: null
       })
@@ -675,7 +675,7 @@ describe('End-to-End Extraction Tests', () => {
         data: {
           id: mockUserId,
           plan: 'free',
-          plan_limits: { ocr_jobs: 5 }
+          plan_limits: { extraction_jobs: 5 }
         },
         error: null
       })
@@ -700,7 +700,7 @@ describe('End-to-End Extraction Tests', () => {
         data: {
           id: mockUserId,
           plan: 'premium',
-          plan_limits: { ocr_jobs: 50 }
+          plan_limits: { extraction_jobs: 50 }
         },
         error: null
       })

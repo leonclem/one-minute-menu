@@ -75,8 +75,8 @@ describe('Performance: Menu Loading', () => {
   })
 })
 
-describe('Performance: OCR Processing', () => {
-  const OCR_PERFORMANCE_TARGETS = {
+describe('Performance: Extraction Processing', () => {
+  const EXTRACTION_PERFORMANCE_TARGETS = {
     p50: 20000, // 20 seconds
     p95: 60000, // 60 seconds
   }
@@ -84,13 +84,13 @@ describe('Performance: OCR Processing', () => {
   it('should process standard menu within p50 target', async () => {
     const startTime = Date.now()
     
-    // Mock OCR processing
+    // Mock extraction processing
     await new Promise(resolve => setTimeout(resolve, 15000)) // 15s simulation
     
     const endTime = Date.now()
     const processingTime = endTime - startTime
 
-    expect(processingTime).toBeLessThan(OCR_PERFORMANCE_TARGETS.p50)
+    expect(processingTime).toBeLessThan(EXTRACTION_PERFORMANCE_TARGETS.p50)
   }, 25000) // Increase Jest timeout for this test
 
   it('should handle large images within p95 target', async () => {
@@ -102,7 +102,7 @@ describe('Performance: OCR Processing', () => {
     const endTime = Date.now()
     const processingTime = endTime - startTime
 
-    expect(processingTime).toBeLessThan(OCR_PERFORMANCE_TARGETS.p95)
+    expect(processingTime).toBeLessThan(EXTRACTION_PERFORMANCE_TARGETS.p95)
   }, 65000)
 
   it('should preprocess images efficiently', () => {

@@ -1,12 +1,12 @@
 # QR Menu System
 
-A mobile-first digital menu platform that transforms paper menus into QR code-accessible digital menus using AI-powered OCR technology.
+A mobile-first digital menu platform that transforms paper menus into QR code-accessible digital menus using AI-powered vision-LLM extraction.
 
 
 ## Features
 
 - 📱 **Mobile-First Design**: Optimized for restaurant owners who manage everything on their phones
-- 📸 **Photo to Menu**: AI-powered OCR extracts menu items from photos automatically
+- 📸 **Photo to Menu**: AI-powered vision-LLM extracts menu items from photos automatically
 - 🎨 **Brand Styling**: Automatic color extraction from brand images with professional themes
 - 📱 **QR Code Generation**: Instant QR codes for customer access
 - ⚡ **Performance Optimized**: <3s load times, <130KB initial payload
@@ -17,8 +17,9 @@ A mobile-first digital menu platform that transforms paper menus into QR code-ac
 
 - **Frontend**: Next.js 14, TypeScript, Tailwind CSS
 - **Backend**: Supabase (PostgreSQL, Auth, Storage)
-- **OCR**: Google Vision API + OpenAI for parsing
-- **Hosting**: Vercel (frontend) + Railway (Python worker)
+- **AI Extraction**: OpenAI GPT-4V for direct image-to-menu parsing
+- **AI Image Generation**: Nano Banana
+- **Hosting**: Vercel (serverless + edge)
 - **Queue**: PostgreSQL LISTEN/NOTIFY
 
 ## Getting Started
@@ -56,7 +57,7 @@ cp env.example .env.local
 ### Security: API keys and rotation
 
 - Never commit real API keys. Use `.env.local` locally and Vercel/Supabase project env vars in cloud.
-- If a key is exposed, rotate it immediately in Google Cloud Console and add key restrictions (HTTP referrers, IPs, and API scopes).
+- If a key is exposed, rotate it immediately and update restrictions (HTTP referrers, IPs, and API scopes) in the relevant provider (e.g., OpenAI, Supabase, Vercel).
 - You can run `npm run scan:secrets` to catch obvious secrets before committing.
 
 4. Run the development server:
@@ -71,10 +72,9 @@ npm run dev
 Required environment variables are documented in `.env.local`. Key services needed:
 
 - **Supabase**: Database, authentication, file storage
-- **Vercel**: Frontend hosting and deployment
-- **Railway**: Python OCR worker hosting
-- **Google Cloud**: Vision API for OCR processing (Phase 2)
-- **OpenAI**: GPT API for menu parsing (Phase 2)
+- **Vercel**: Hosting and deployment
+- **OpenAI**: GPT-4V API for menu extraction
+- **Nano Banana**: AI food image generation
 
 ### AI Image Generation (Nano Banana / Gemini)
 
@@ -122,10 +122,10 @@ src/
 - [ ] Menu versioning system
 - [ ] Mobile-optimized interface
 
-### Phase 4: OCR & AI Processing
+### Phase 4: AI Extraction & Image Generation
 - [ ] Image upload system
-- [ ] Python OCR worker
-- [ ] AI-powered menu parsing
+- [ ] Vision-LLM menu extraction
+- [ ] AI image generation
 
 ### Phase 5: Publishing & QR Codes
 - [ ] Public menu viewer
@@ -175,7 +175,7 @@ vercel --prod
 ## Performance Targets
 
 - **Initial Load**: ≤130KB payload, ≤3s TTFP on 4G
-- **OCR Processing**: p50 ≤20s, p95 ≤60s
+- **AI Extraction Processing**: p50 ≤20s, p95 ≤60s
 - **Menu Availability**: 99.9% uptime
 - **Accessibility**: WCAG 2.1 AA compliance
 

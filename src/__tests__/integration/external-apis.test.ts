@@ -1,93 +1,9 @@
 /**
  * Integration Tests for External API Interactions
- * Tests Google Vision API, OpenAI API, and other external services
+ * Tests OpenAI and other current external services
  */
 
-describe('Integration: Google Vision API', () => {
-  const mockVisionClient = {
-    textDetection: jest.fn(),
-  }
-
-  beforeEach(() => {
-    jest.clearAllMocks()
-  })
-
-  it('should extract text from menu image', async () => {
-    const mockResponse = {
-      textAnnotations: [
-        {
-          description: 'Chicken Rice $5.00\nBeef Noodles $8.50\nIced Tea $2.00',
-          boundingPoly: { vertices: [] },
-        },
-      ],
-    }
-
-    mockVisionClient.textDetection.mockResolvedValue([mockResponse])
-
-    const result = await mockVisionClient.textDetection('menu-image.jpg')
-    const extractedText = result[0].textAnnotations[0].description
-
-    expect(extractedText).toContain('Chicken Rice')
-    expect(extractedText).toContain('$5.00')
-    expect(mockVisionClient.textDetection).toHaveBeenCalledWith('menu-image.jpg')
-  })
-
-  it('should handle OCR errors gracefully', async () => {
-    mockVisionClient.textDetection.mockRejectedValue(
-      new Error('API quota exceeded')
-    )
-
-    await expect(
-      mockVisionClient.textDetection('menu-image.jpg')
-    ).rejects.toThrow('API quota exceeded')
-  })
-
-  it('should return confidence scores', async () => {
-    const mockResponse = {
-      textAnnotations: [
-        {
-          description: 'Menu Item',
-          confidence: 0.95,
-        },
-      ],
-    }
-
-    mockVisionClient.textDetection.mockResolvedValue([mockResponse])
-
-    const result = await mockVisionClient.textDetection('menu-image.jpg')
-    const confidence = result[0].textAnnotations[0].confidence
-
-    expect(confidence).toBeGreaterThan(0.85) // 85% threshold
-  })
-
-  it('should handle empty or invalid images', async () => {
-    const mockResponse = {
-      textAnnotations: [],
-    }
-
-    mockVisionClient.textDetection.mockResolvedValue([mockResponse])
-
-    const result = await mockVisionClient.textDetection('empty-image.jpg')
-    
-    expect(result[0].textAnnotations).toHaveLength(0)
-  })
-
-  it('should respect rate limits', async () => {
-    const requests = []
-    
-    // Simulate multiple requests
-    for (let i = 0; i < 5; i++) {
-      requests.push(mockVisionClient.textDetection(`image-${i}.jpg`))
-    }
-
-    mockVisionClient.textDetection.mockResolvedValue([{ textAnnotations: [] }])
-
-    const results = await Promise.all(requests)
-    
-    expect(results).toHaveLength(5)
-    expect(mockVisionClient.textDetection).toHaveBeenCalledTimes(5)
-  })
-})
+// Google Vision API tests removed as part of OCR deprecation
 
 describe('Integration: OpenAI API', () => {
   const mockOpenAI = {
@@ -102,7 +18,7 @@ describe('Integration: OpenAI API', () => {
     jest.clearAllMocks()
   })
 
-  it('should parse OCR text into structured menu items', async () => {
+  it('should parse menu text into structured menu items', async () => {
     const mockResponse = {
       choices: [
         {
@@ -356,12 +272,12 @@ describe('Integration: Email Service (SendGrid)', () => {
     expect(mockEmailClient.send).toHaveBeenCalledWith(mockEmail)
   })
 
-  it('should send OCR completion notification', async () => {
+  it('should send extraction completion notification', async () => {
     const mockEmail = {
       to: 'user@example.com',
       from: 'noreply@qrmenu.com',
       subject: 'Your menu is ready!',
-      html: '<p>OCR processing complete</p>',
+      html: '<p>Extraction processing complete</p>',
     }
 
     mockEmailClient.send.mockResolvedValue({ statusCode: 202 })

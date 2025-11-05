@@ -86,8 +86,8 @@ describe('Load Testing: Concurrent Menu Views', () => {
   })
 })
 
-describe('Load Testing: OCR Job Queue', () => {
-  it('should queue multiple OCR jobs efficiently', async () => {
+describe('Load Testing: Extraction Job Queue', () => {
+  it('should queue multiple extraction jobs efficiently', async () => {
     const jobCount = 50
     const jobs = Array.from({ length: jobCount }, (_, i) => ({
       id: `job-${i}`,
@@ -110,7 +110,7 @@ describe('Load Testing: OCR Job Queue', () => {
     expect(queueTime).toBeLessThan(1000) // Should queue quickly
   })
 
-  it('should process jobs with worker pool', async () => {
+  it('should process extraction jobs with worker pool', async () => {
     const WORKER_COUNT = 5
     const JOB_COUNT = 25
     const PROCESSING_TIME = 1000 // 1 second per job

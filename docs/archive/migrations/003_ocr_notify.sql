@@ -30,5 +30,3 @@ DROP TRIGGER IF EXISTS ocr_jobs_notify_update ON public.ocr_jobs;
 CREATE TRIGGER ocr_jobs_notify_update
 AFTER UPDATE OF status ON public.ocr_jobs
 FOR EACH ROW EXECUTE FUNCTION public.notify_ocr_jobs();
-
-

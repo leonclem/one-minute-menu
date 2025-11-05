@@ -276,7 +276,7 @@ describe('Edge Cases: Formatting Issues', () => {
     expect(items[0].name.toLowerCase()).toContain('burger')
   })
 
-  it('should handle OCR artifacts', () => {
+  it('should handle recognition artifacts', () => {
     const testCases = [
       'Burger $1O.OO', // O instead of 0
       'Burger $l0.00', // l instead of 1
@@ -428,7 +428,7 @@ describe('Edge Cases: Multilingual Menus', () => {
 
 describe('Edge Cases: Handwritten Menu Challenges', () => {
   it('should handle unclear number recognition', () => {
-    // Simulate OCR confusion between similar characters
+    // Simulate recognition confusion between similar characters
     const testCases = [
       'Burger $1O.OO', // O vs 0
       'Burger $l0.00', // l vs 1
