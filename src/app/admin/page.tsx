@@ -15,7 +15,7 @@ import { requireAdmin } from '@/lib/auth-utils'
 import { AdminHubClient } from './admin-hub-client'
 
 export const metadata: Metadata = {
-  title: 'Admin Hub | QR Menu System',
+  title: 'Admin Hub | GridMenu',
   description: 'Central admin dashboard for monitoring and management'
 }
 

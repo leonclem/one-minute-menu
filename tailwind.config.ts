@@ -43,6 +43,21 @@ const config: Config = {
           secondary: 'rgb(var(--menu-secondary) / <alpha-value>)',
           background: 'rgb(var(--menu-background) / <alpha-value>)',
           text: 'rgb(var(--menu-text) / <alpha-value>)',
+        },
+        // UX Implementation colors
+        ux: {
+          primary: 'rgb(var(--ux-primary) / <alpha-value>)',
+          'primary-dark': 'rgb(var(--ux-primary-dark) / <alpha-value>)',
+          'primary-light': 'rgb(var(--ux-primary-light) / <alpha-value>)',
+          secondary: 'rgb(var(--ux-secondary) / <alpha-value>)',
+          text: 'rgb(var(--ux-text) / <alpha-value>)',
+          'text-secondary': 'rgb(var(--ux-text-secondary) / <alpha-value>)',
+          background: 'rgb(var(--ux-background) / <alpha-value>)',
+          'background-secondary': 'rgb(var(--ux-background-secondary) / <alpha-value>)',
+          border: 'rgb(var(--ux-border) / <alpha-value>)',
+          success: 'rgb(var(--ux-success) / <alpha-value>)',
+          error: 'rgb(var(--ux-error) / <alpha-value>)',
+          warning: 'rgb(var(--ux-warning) / <alpha-value>)',
         }
       },
       // Typography system

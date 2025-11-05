@@ -18,7 +18,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'QR Menu System',
+  title: 'GridMenu',
   description: 'Create digital menus with QR codes for restaurants',
   manifest: '/manifest.json',
   icons: [
@@ -37,10 +37,10 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <head>
         {/* PWA meta tags */}
-        <meta name="application-name" content="QR Menu System" />
+        <meta name="application-name" content="GridMenu" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="QR Menu System" />
+        <meta name="apple-mobile-web-app-title" content="GridMenu" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         

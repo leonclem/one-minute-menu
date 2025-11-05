@@ -8,7 +8,7 @@ export default function PrivacyPage() {
         <div className="container-mobile">
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="text-xl font-bold text-primary-600">
-              QR Menu System
+              GridMenu
             </Link>
             <Link 
               href="/auth/signup" 

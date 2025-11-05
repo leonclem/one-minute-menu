@@ -1,6 +1,6 @@
 {
-  "name": "QR Menu System",
-  "short_name": "QR Menu",
+  "name": "GridMenu",
+  "short_name": "GridMenu",
   "description": "Create digital menus with QR codes for restaurants",
   "start_url": "/",
   "display": "standalone",

@@ -4,18 +4,18 @@
 
 /* Design System CSS Custom Properties */
 :root {
-  /* Platform theme colors - Blue/Gray palette */
-  --color-primary-50: 239 246 255;
-  --color-primary-100: 219 234 254;
-  --color-primary-200: 191 219 254;
-  --color-primary-300: 147 197 253;
-  --color-primary-400: 96 165 250;
-  --color-primary-500: 59 130 246;
-  --color-primary-600: 37 99 235;
-  --color-primary-700: 29 78 216;
-  --color-primary-800: 30 64 175;
-  --color-primary-900: 30 58 138;
-  --color-primary-950: 23 37 84;
+  /* Platform theme colors - Teal/Cyan palette */
+  --color-primary-50: 236 254 255;
+  --color-primary-100: 207 250 254;
+  --color-primary-200: 165 243 252;
+  --color-primary-300: 103 232 249;
+  --color-primary-400: 34 211 238;
+  --color-primary-500: 1 179 191;
+  --color-primary-600: 8 145 178;
+  --color-primary-700: 14 116 144;
+  --color-primary-800: 21 94 117;
+  --color-primary-900: 22 78 99;
+  --color-primary-950: 8 51 68;
 
   --color-secondary-50: 249 250 251;
   --color-secondary-100: 243 244 246;
@@ -30,10 +30,24 @@
   --color-secondary-950: 3 7 18;
 
   /* Menu theme defaults (will be overridden dynamically) */
-  --menu-primary: 59 130 246;
+  --menu-primary: 1 179 191;
   --menu-secondary: 107 114 128;
   --menu-background: 255 255 255;
   --menu-text: 17 24 39;
+
+  /* UX Implementation Color Palette */
+  --ux-primary: 1 179 191; /* Teal primary #01B3BF */
+  --ux-primary-dark: 8 145 178; /* Darker teal for hover states */
+  --ux-primary-light: 165 243 252; /* Lighter teal for backgrounds */
+  --ux-secondary: 33 37 41; /* Dark gray */
+  --ux-text: 33 37 41; /* Primary text color */
+  --ux-text-secondary: 108 117 125; /* Secondary text color */
+  --ux-background: 255 255 255; /* White background */
+  --ux-background-secondary: 248 249 250; /* Light gray background */
+  --ux-border: 222 226 230; /* Border color */
+  --ux-success: 40 167 69; /* Green for success states */
+  --ux-error: 220 53 69; /* Red for error states */
+  --ux-warning: 255 193 7; /* Yellow for warning states */
 
   /* Typography */
   --font-sans: 'Inter', system-ui, sans-serif;
@@ -52,8 +66,8 @@
 /* Dark mode overrides */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-primary-500: 96 165 250;
-    --color-primary-600: 59 130 246;
+    --color-primary-500: 34 211 238;
+    --color-primary-600: 1 179 191;
     --color-secondary-500: 156 163 175;
     --color-secondary-600: 107 114 128;
   }
@@ -127,6 +141,83 @@
     --menu-secondary: var(--extracted-secondary, 107 114 128);
     --menu-background: var(--extracted-background, 255 255 255);
     --menu-text: var(--extracted-text, 17 24 39);
+  }
+
+  /* UX Implementation Styles */
+  .ux-implementation {
+    font-family: var(--font-sans);
+  }
+
+  /* UX Container */
+  .container-ux {
+    @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  /* UX Button Variants */
+  .btn-ux-primary {
+    @apply inline-flex items-center justify-center rounded-lg px-6 py-3 text-base font-semibold transition-all duration-200;
+    background-color: rgb(var(--ux-primary));
+    color: rgb(var(--ux-text));
+  }
+
+  .btn-ux-primary:hover {
+    background-color: rgb(var(--ux-primary-dark));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--ux-primary), 0.3);
+  }
+
+  .btn-ux-secondary {
+    @apply inline-flex items-center justify-center rounded-lg px-6 py-3 text-base font-semibold transition-all duration-200;
+    background-color: rgb(var(--ux-background));
+    color: rgb(var(--ux-text));
+    border: 2px solid rgb(var(--ux-border));
+  }
+
+  .btn-ux-secondary:hover {
+    background-color: rgb(var(--ux-background-secondary));
+    border-color: rgb(var(--ux-primary));
+    transform: translateY(-1px);
+  }
+
+  .btn-ux-outline {
+    @apply inline-flex items-center justify-center rounded-lg px-6 py-3 text-base font-semibold transition-all duration-200;
+    background-color: transparent;
+    color: rgb(var(--ux-primary));
+    border: 2px solid rgb(var(--ux-primary));
+  }
+
+  .btn-ux-outline:hover {
+    background-color: rgb(var(--ux-primary));
+    color: rgb(var(--ux-text));
+    transform: translateY(-1px);
+  }
+
+  /* UX Card Styles */
+  .card-ux {
+    @apply rounded-xl border border-ux-border bg-white p-6 shadow-sm transition-shadow duration-200;
+  }
+
+  .card-ux:hover {
+    @apply shadow-lg;
+  }
+
+  /* UX Input Styles */
+  .input-ux {
+    @apply block w-full rounded-lg border border-ux-border px-4 py-3 text-base transition-colors duration-200;
+    background-color: rgb(var(--ux-background));
+    color: rgb(var(--ux-text));
+  }
+
+  .input-ux:focus {
+    outline: none;
+    border-color: rgb(var(--ux-primary));
+    box-shadow: 0 0 0 3px rgba(var(--ux-primary), 0.1);
+  }
+
+  /* UX Placeholder Image */
+  .placeholder-ux {
+    background-color: rgb(var(--ux-primary-light));
+    @apply flex items-center justify-center rounded-lg;
   }
 }
 

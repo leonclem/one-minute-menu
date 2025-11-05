@@ -8,7 +8,7 @@ export default function TermsPage() {
         <div className="container-mobile">
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="text-xl font-bold text-primary-600">
-              QR Menu System
+              GridMenu
             </Link>
             <Link 
               href="/auth/signup" 
@@ -33,7 +33,7 @@ export default function TermsPage() {
             <section className="mb-8">
               <h2 className="text-xl font-semibold text-secondary-900 mb-4">Acceptance of Terms</h2>
               <p className="text-secondary-700 mb-4">
-                By accessing and using QR Menu System, you accept and agree to be bound by the 
+                By accessing and using GridMenu, you accept and agree to be bound by the 
                 terms and provision of this agreement.
               </p>
             </section>
@@ -41,7 +41,7 @@ export default function TermsPage() {
             <section className="mb-8">
               <h2 className="text-xl font-semibold text-secondary-900 mb-4">Use License</h2>
               <p className="text-secondary-700 mb-4">
-                Permission is granted to temporarily use QR Menu System for personal, 
+                Permission is granted to temporarily use GridMenu for personal, 
                 non-commercial transitory viewing only. This is the grant of a license, not a transfer of title.
               </p>
             </section>

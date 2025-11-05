@@ -1,4 +1,4 @@
-# QR Menu System
+# GridMenu
 
 A mobile-first digital menu platform that transforms paper menus into QR code-accessible digital menus using AI-powered vision-LLM extraction.
 

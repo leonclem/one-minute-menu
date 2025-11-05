@@ -78,7 +78,7 @@ export default function HomePage() {
         <div className="container-mobile">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <p className="text-sm text-secondary-600">
-              © 2024 QR Menu System. Built for restaurants.
+              © 2024 GridMenu. Built for restaurants.
             </p>
             <div className="flex gap-6 text-sm">
               <Link href="/privacy" className="text-secondary-600 hover:text-secondary-900">
