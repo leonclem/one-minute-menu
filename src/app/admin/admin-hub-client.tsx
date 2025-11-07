@@ -56,12 +56,20 @@ export function AdminHubClient() {
                 Central dashboard for monitoring and management
               </p>
             </div>
-            <a
-              href="/dashboard"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Back to Dashboard
-            </a>
+            <div className="flex items-center gap-4">
+              <a
+                href="/admin/image-generator"
+                className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Imagen 4.0 Generator
+              </a>
+              <a
+                href="/dashboard"
+                className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                Back to Dashboard
+              </a>
+            </div>
           </div>
 
           {/* Tabs */}

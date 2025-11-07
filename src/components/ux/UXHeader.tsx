@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState } from 'react'
+import Logo from '../../../.kiro/specs/ux-implementation/Logos/logo.svg'
 
 export function UXHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -10,22 +12,17 @@ export function UXHeader() {
   const navigationItems = [
     { href: '/ux/pricing', label: 'Pricing' },
     { href: '/support', label: 'Support' },
-    { href: '/admin', label: 'Admin' }, // Admin access as per requirements
     { href: '/auth/signin', label: 'Sign In' },
   ]
 
   return (
-    <header className="ux-header border-b border-ux-border bg-white sticky top-0 z-50">
+    <header className="ux-header bg-transparent shrink-0">
       <div className="container-ux">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/ux" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-            <div className="h-8 w-8 rounded bg-ux-primary flex items-center justify-center">
-              <svg className="w-5 h-5 text-ux-text" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-              </svg>
-            </div>
-            <span className="text-xl font-bold text-ux-text">GridMenu</span>
+            <Image src={Logo} alt="GridMenu" width={24} height={24} priority className="logo-drop-shadow" />
+            <span className="font-semibold text-white text-[21px] leading-none text-soft-shadow pl-[2px] pt-[4px]">GridMenu</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -34,7 +31,7 @@ export function UXHeader() {
               <Link 
                 key={item.href}
                 href={item.href} 
-                className="text-ux-text-secondary hover:text-ux-text transition-colors font-medium px-3 py-2 rounded-md hover:bg-ux-background-secondary"
+                className="text-white/90 hover:text-white transition-colors font-medium px-3 py-2 rounded-md text-soft-shadow"
               >
                 {item.label}
               </Link>
@@ -60,13 +57,13 @@ export function UXHeader() {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden border-t border-ux-border bg-white py-4 animate-in slide-in-from-top-2 duration-200">
+          <div className="md:hidden py-4 animate-in slide-in-from-top-2 duration-200 bg-transparent">
             <nav className="flex flex-col space-y-2">
               {navigationItems.map((item) => (
                 <Link 
                   key={item.href}
                   href={item.href} 
-                  className="text-ux-text-secondary hover:text-ux-text transition-colors font-medium px-3 py-2 rounded-md hover:bg-ux-background-secondary"
+                  className="text-white/90 hover:text-white transition-colors font-medium px-3 py-2 rounded-md text-soft-shadow"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.label}

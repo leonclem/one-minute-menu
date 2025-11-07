@@ -50,7 +50,7 @@
   --ux-warning: 255 193 7; /* Yellow for warning states */
 
   /* Typography */
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-sans: 'Bahnschrift', 'Microsoft PhagsPa', 'Microsoft YaHei', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   /* Spacing unit */
@@ -75,6 +75,7 @@
 
 /* Base styles */
 @layer base {
+  *, *::before, *::after { box-sizing: border-box; }
   html {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -157,13 +158,13 @@
   .btn-ux-primary {
     @apply inline-flex items-center justify-center rounded-lg px-6 py-3 text-base font-semibold transition-all duration-200;
     background-color: rgb(var(--ux-primary));
-    color: rgb(var(--ux-text));
+    color: white;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    border: 1px solid rgba(255,255,255,0.2);
   }
 
   .btn-ux-primary:hover {
     background-color: rgb(var(--ux-primary-dark));
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(var(--ux-primary), 0.3);
   }
 
   .btn-ux-secondary {
@@ -171,25 +172,37 @@
     background-color: rgb(var(--ux-background));
     color: rgb(var(--ux-text));
     border: 2px solid rgb(var(--ux-border));
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
   }
 
   .btn-ux-secondary:hover {
     background-color: rgb(var(--ux-background-secondary));
     border-color: rgb(var(--ux-primary));
-    transform: translateY(-1px);
   }
 
   .btn-ux-outline {
     @apply inline-flex items-center justify-center rounded-lg px-6 py-3 text-base font-semibold transition-all duration-200;
     background-color: transparent;
-    color: rgb(var(--ux-primary));
-    border: 2px solid rgb(var(--ux-primary));
+    color: rgb(var(--ux-text));
+    border: 1px solid rgb(var(--ux-border));
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
   }
 
   .btn-ux-outline:hover {
-    background-color: rgb(var(--ux-primary));
+    background-color: rgba(var(--ux-primary), 0.08);
     color: rgb(var(--ux-text));
-    transform: translateY(-1px);
+  }
+
+  /* UX Warning (Yellow) Button */
+  .btn-ux-warning {
+    @apply inline-flex items-center justify-center rounded-lg px-6 py-3 text-base font-semibold transition-all duration-200;
+    background-color: rgb(var(--ux-warning));
+    color: rgb(var(--ux-secondary-900));
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .btn-ux-warning:hover {
+    filter: brightness(0.95);
   }
 
   /* UX Card Styles */
@@ -218,6 +231,24 @@
   .placeholder-ux {
     background-color: rgb(var(--ux-primary-light));
     @apply flex items-center justify-center rounded-lg;
+  }
+
+  /* Hero text shadow and font */
+  .text-hero-shadow {
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  }
+  .ux-hero {
+    font-family: 'Inter', 'Poppins', 'Nunito Sans', var(--font-sans);
+  }
+
+  /* Subtle text shadow for improved legibility on busy backgrounds */
+  .text-soft-shadow {
+    text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+  }
+
+  /* Drop shadow for logos/icons to add depth on busy photos */
+  .logo-drop-shadow {
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.45));
   }
 }
 
@@ -254,4 +285,9 @@
   .text-responsive {
     @apply text-sm sm:text-base lg:text-lg;
   }
+}
+
+/* Optional desktop guardrail to avoid scrollbars from subpixel rounding */
+@media (min-width: 1024px) and (min-height: 800px) {
+  html, body { overflow-y: hidden; }
 }
