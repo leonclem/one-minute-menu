@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { UXWrapper, UXSection, UXCard, UXButton } from '@/components/ux'
+import { UXWrapper, UXSection, UXCard, UXButton, UXProgressSteps } from '@/components/ux'
 import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
 
@@ -18,109 +18,56 @@ interface SampleMenu {
 // Sample menu data with pre-configured options
 const SAMPLE_MENUS: SampleMenu[] = [
   {
-    id: 'sample-restaurant',
-    name: 'Bella Vista Restaurant',
-    description: 'Italian fine dining with classic dishes and modern presentation',
-    imageUrl: '/placeholder-menu-restaurant.jpg', // Will be yellow placeholder for now
-    category: 'restaurant',
+    id: 'sample-breakfast',
+    name: 'Breakfast menu',
+    description: 'Classic breakfast board with omelettes, eggs benedict, and more',
+    imageUrl: '/ux/sample-menus/breakfast.jpg',
+    category: 'cafe',
     extractedText: `
-BELLA VISTA RESTAURANT
+BREAKFAST
 
-APPETIZERS
-Bruschetta al Pomodoro - $12.00
-Fresh tomatoes, basil, garlic on toasted bread
+Three Organic Eggs Your Way! - $10.60
+With mixed greens & bread
 
-Antipasto Platter - $18.00
-Selection of cured meats, cheeses, and olives
+Parisian Omelette - $11.60
+Ham, swiss, mushroom & spinach with baby greens
 
-Calamari Fritti - $15.00
-Crispy fried squid with marinara sauce
+Eggs Benedict - $10.50
+On brioche (Scottish, Classic, or Florentine)
 
-PASTA
-Spaghetti Carbonara - $22.00
-Eggs, pancetta, parmesan, black pepper
+Breakfast Sandwich - $10.50
+Scrambled eggs & BLT
 
-Fettuccine Alfredo - $20.00
-Creamy parmesan sauce with fresh herbs
-
-Penne Arrabbiata - $19.00
-Spicy tomato sauce with garlic and chili
-
-MAIN COURSES
-Osso Buco - $32.00
-Braised veal shank with risotto milanese
-
-Grilled Salmon - $28.00
-Atlantic salmon with lemon herb butter
-
-Chicken Parmigiana - $25.00
-Breaded chicken breast with marinara and mozzarella
-
-DESSERTS
-Tiramisu - $9.00
-Classic coffee-flavored dessert
-
-Panna Cotta - $8.00
-Vanilla custard with berry compote
+French Toast - $9.50
+With maple syrup, homemade jam & whipped cream
     `.trim()
   },
   {
-    id: 'sample-cafe',
-    name: 'Morning Brew Cafe',
-    description: 'Cozy neighborhood cafe with artisan coffee and fresh pastries',
-    imageUrl: '/placeholder-menu-cafe.jpg', // Will be yellow placeholder for now
-    category: 'cafe',
+    id: 'sample-fine-dining',
+    name: 'Fine Dining',
+    description: 'Elegant multi-course selections including appetizers, mains, and desserts',
+    imageUrl: '/ux/sample-menus/fine-dining.jpg',
+    category: 'restaurant',
     extractedText: `
-MORNING BREW CAFE
+Today's Menu
 
-COFFEE & ESPRESSO
-Americano - $4.50
-Double shot espresso with hot water
+Appetizers
+Marinated Local Oyster Mushroom Salad - $16
+Pig ear terrine, pickled plum jelly, Jerusalem artichoke, Bose pear with mint, petit greens, red wine mousseline
 
-Cappuccino - $5.25
-Espresso with steamed milk and foam
+Main Course
+Grilled Faroe Island Salmon - $26
+Quinoa, oyster mushrooms, brussels sprout leaves, beet mustard
 
-Latte - $5.75
-Espresso with steamed milk
+Crispy Duck in Port Cherry Sauce - $36
+Roasted turnips, parsnips, rutabaga and carrots with cornmeal, duck confit, bok choy
 
-Mocha - $6.00
-Espresso with chocolate and steamed milk
+Desserts
+Tres Leches Cake - $9
+Strawberry compote, strawberry balsamic
 
-Cold Brew - $4.75
-Smooth, cold-extracted coffee
-
-BREAKFAST
-Avocado Toast - $12.00
-Multigrain bread, smashed avocado, cherry tomatoes
-
-Breakfast Burrito - $11.00
-Scrambled eggs, bacon, cheese, potatoes
-
-Pancakes - $10.00
-Fluffy buttermilk pancakes with maple syrup
-
-Granola Bowl - $9.50
-House-made granola with yogurt and berries
-
-LUNCH
-Grilled Chicken Sandwich - $13.50
-Herb-marinated chicken with arugula
-
-Caesar Salad - $11.00
-Romaine lettuce, parmesan, croutons
-
-Soup of the Day - $8.00
-Ask your server for today's selection
-
-PASTRIES & SWEETS
-Croissant - $3.50
-Buttery, flaky French pastry
-
-Muffin - $4.00
-Blueberry or chocolate chip
-
-Scone - $4.50
-Traditional British teatime treat
+House Made Ice Cream - $9
+Black raspberry
     `.trim()
   }
 ]
@@ -159,8 +106,9 @@ export default function DemoSampleClient() {
 
       const menu: Menu = result.data
 
-      // Store demo menu data in sessionStorage for the demo flow
-      sessionStorage.setItem('demoMenu', JSON.stringify(result.data))
+      // Store demo menu data in sessionStorage for the demo flow, include imageUrl for preview consistency
+      const demoWithImage = { ...result.data, imageUrl: sampleMenu.imageUrl }
+      sessionStorage.setItem('demoMenu', JSON.stringify(demoWithImage))
 
       // Show success message
       showToast({
@@ -187,48 +135,82 @@ export default function DemoSampleClient() {
 
   return (
     <UXWrapper variant="centered">
-      <UXSection 
-        title="Choose a Sample Menu"
-        subtitle="Try our menu creation process with one of these sample menus"
-      >
+      <UXSection>
+        <div className="mb-2">
+          <UXProgressSteps currentStep="upload" menuId="demo" clickable={false} />
+        </div>
+        {/* Page heading styled like the upload page */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
+            Choose a Sample Menu
+          </h1>
+          <p className="mt-2 text-white/90 text-hero-shadow-strong">
+            Try our menu creation process with one of these sample menus
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {SAMPLE_MENUS.map((sampleMenu) => (
             <UXCard 
               key={sampleMenu.id}
-              className="cursor-pointer transition-all duration-200 hover:shadow-lg"
-              onClick={() => !loading && handleMenuSelect(sampleMenu)}
-              clickable
             >
-              {/* Menu Image Placeholder */}
-              <div className="placeholder-ux w-full h-48 mb-4 flex items-center justify-center">
-                <span className="text-ux-text-secondary text-sm">
-                  {sampleMenu.name} Preview
-                </span>
-              </div>
-
               {/* Menu Details */}
               <div className="p-6">
-                <h3 className="text-xl font-semibold text-ux-text mb-2">
-                  {sampleMenu.name}
-                </h3>
-                <p className="text-ux-text-secondary mb-4">
-                  {sampleMenu.description}
-                </p>
-                
-                {/* Category Badge */}
-                <div className="mb-4">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <h3 className="text-xl font-semibold text-ux-text">
+                    {sampleMenu.name}
+                  </h3>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-ux-primary/10 text-ux-primary capitalize">
                     {sampleMenu.category}
                   </span>
                 </div>
+                <p className="text-ux-text mb-2">
+                  {sampleMenu.description}
+                </p>
+              </div>
 
-                {/* Action Button */}
+              {/* Menu Image */}
+              {sampleMenu.imageUrl ? (
+                <div className="w-full h-56 md:h-64 overflow-visible flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                  src={sampleMenu.imageUrl}
+                    alt={`${sampleMenu.name} preview`}
+                    className="h-full max-w-full object-contain drop-shadow-md md:drop-shadow-lg"
+                  onError={(e) => {
+                    // Try simple extension fallback from .jpg -> .png once
+                    const el = e.currentTarget as HTMLImageElement
+                    if (el.dataset.fallbackTried !== '1' && sampleMenu.imageUrl.endsWith('.jpg')) {
+                      el.dataset.fallbackTried = '1'
+                      el.src = sampleMenu.imageUrl.replace(/\\.jpg$/i, '.png')
+                    } else {
+                      // Final fallback to placeholder style background
+                      el.style.display = 'none'
+                      const parent = el.parentElement
+                      if (parent) {
+                        parent.innerHTML = '<div class=\"placeholder-ux w-full h-48 flex items-center justify-center\"><span class=\"text-ux-text-secondary text-sm\">Preview unavailable</span></div>'
+                      }
+                    }
+                  }}
+                  />
+                </div>
+              ) : (
+                <div className="placeholder-ux w-full h-56 md:h-64 flex items-center justify-center shadow-md md:shadow-lg">
+                  <span className="text-ux-text-secondary text-sm">
+                    {sampleMenu.name} Preview
+                  </span>
+                </div>
+              )}
+
+              {/* Action Button at bottom */}
+              <div className="p-6 pt-4">
                 <UXButton
                   variant="primary"
                   size="md"
                   className="w-full"
                   loading={loading && selectedMenu?.id === sampleMenu.id}
                   disabled={loading}
+                  onClick={() => !loading && handleMenuSelect(sampleMenu)}
                 >
                   {loading && selectedMenu?.id === sampleMenu.id 
                     ? 'Creating demo menu...' 
@@ -244,7 +226,8 @@ export default function DemoSampleClient() {
         <div className="text-center mt-8">
           <UXButton
             variant="outline"
-            size="md"
+            size="sm"
+            className="bg-white/20 border-white/40 text-white hover:bg-white/30"
             onClick={() => router.push('/ux')}
             disabled={loading}
           >

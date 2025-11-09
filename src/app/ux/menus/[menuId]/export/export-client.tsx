@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { UXSection, UXButton, UXCard } from '@/components/ux'
+import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
 
@@ -177,7 +178,8 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Menu Summary */}
         <UXCard>
-          <div className="p-6">
+          <MenuThumbnailBadge imageUrl={demoMenu?.imageUrl} position="right" />
+          <div className="p-6 relative z-10">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-ux-text mb-2">
@@ -246,7 +248,7 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
         </div>
 
         {/* Conversion Incentives */}
-        <div className="bg-gradient-to-br from-ux-primary/5 to-ux-primary/10 rounded-xl p-8">
+        <div className="bg-gradient-to-br from-ux-primary/15 to-ux-primary/25 rounded-md p-8 border border-ux-border">
           <div className="text-center mb-8">
             <h4 className="text-2xl font-bold text-ux-text mb-4">
               Want to unlock more features?

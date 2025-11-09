@@ -11,7 +11,7 @@ export default function UXHomePage() {
               Ready to create your new beautiful menu in under 5 minutes?
             </h1>
             <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto text-hero-shadow mt-3">
-              Transform your restaurant menu into a print- and mobile-friendly flexible digital menu.  Instant price changes, 86'ing and much more.
+              Transform your menu into a print- and mobile-friendly, flexible digital menu. Instant price changes, 86'ing and much more.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-4">
               <Link href="/ux/register" className="w-full sm:w-auto">

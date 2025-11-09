@@ -10,13 +10,13 @@ export function UXFooter() {
             © {year} GridMenu. Built for food & beverage businesses.
           </p>
           <div className="flex gap-6 text-sm">
-            <Link href="/privacy" className="text-white/90 hover:text-white transition-colors text-soft-shadow">
+            <Link href="/privacy" className="ux-footer-link">
               Privacy Policy
             </Link>
-            <Link href="/terms" className="text-white/90 hover:text-white transition-colors text-soft-shadow">
+            <Link href="/terms" className="ux-footer-link">
               Terms of Service
             </Link>
-            <Link href="/support" className="text-white/90 hover:text-white transition-colors text-soft-shadow">
+            <Link href="/support" className="ux-footer-link">
               Contact Us
             </Link>
           </div>

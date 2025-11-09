@@ -5,6 +5,7 @@ interface UXButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'warning'
   size?: 'sm' | 'md' | 'lg'
   loading?: boolean
+  noShadow?: boolean
   children: React.ReactNode
 }
 
@@ -16,6 +17,7 @@ export const UXButton = forwardRef<HTMLButtonElement, UXButtonProps>(
     variant = 'primary', 
     size = 'md', 
     loading = false, 
+    noShadow = false,
     className, 
     children, 
     disabled,
@@ -24,10 +26,10 @@ export const UXButton = forwardRef<HTMLButtonElement, UXButtonProps>(
     const baseClasses = 'inline-flex items-center justify-center font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ux-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
     
     const variantClasses = {
-      primary: 'btn-ux-primary text-soft-shadow',
-      secondary: 'btn-ux-secondary text-soft-shadow', 
-      outline: 'btn-ux-outline text-soft-shadow',
-      warning: 'btn-ux-warning' // intentionally no text shadow for yellow button
+      primary: 'btn-ux-primary',
+      secondary: 'btn-ux-secondary', 
+      outline: 'btn-ux-outline',
+      warning: 'btn-ux-warning'
     } as const
     
     const sizeClasses = {
@@ -36,6 +38,8 @@ export const UXButton = forwardRef<HTMLButtonElement, UXButtonProps>(
       lg: 'px-8 py-4 text-lg rounded-full'
     }
 
+    const textShadowClass = !noShadow && variant !== 'warning' ? 'text-soft-shadow' : ''
+
     return (
       <button
         ref={ref}
@@ -43,6 +47,7 @@ export const UXButton = forwardRef<HTMLButtonElement, UXButtonProps>(
           baseClasses,
           variantClasses[variant],
           sizeClasses[size],
+          textShadowClass,
           className
         )}
         disabled={disabled || loading}

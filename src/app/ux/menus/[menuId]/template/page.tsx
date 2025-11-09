@@ -1,11 +1,12 @@
-import UXMenuTemplateClient from './template-client'
+import type { Metadata } from 'next'
+import dynamic from 'next/dynamic'
 
-interface UXMenuTemplatePageProps {
-  params: {
-    menuId: string
-  }
+export const metadata: Metadata = {
+  title: 'Choose Template | GridMenu',
 }
 
-export default function UXMenuTemplatePage({ params }: UXMenuTemplatePageProps) {
+const UXMenuTemplateClient = dynamic(() => import('./template-client'), { ssr: false })
+
+export default function Page({ params }: { params: { menuId: string } }) {
   return <UXMenuTemplateClient menuId={params.menuId} />
 }

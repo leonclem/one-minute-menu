@@ -1,23 +1,21 @@
 import type { Metadata } from 'next'
 import { UXHeader } from '@/components/ux/UXHeader'
 import { UXFooter } from '@/components/ux/UXFooter'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 export const metadata: Metadata = {
-  title: 'Create Your Digital Menu | GridMenu',
-  description: 'Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required.',
-  keywords: ['QR menu', 'digital menu', 'restaurant menu', 'mobile menu', 'QR code menu'],
-  openGraph: {
-    title: 'Create Your Digital Menu | GridMenu',
-    description: 'Transform your restaurant menu into a mobile-friendly QR code menu in minutes.',
-    type: 'website',
-  },
+  title: 'Menu Upload | GridMenu',
+  description: 'Upload your menu and proceed to extraction in a streamlined flow.',
 }
 
-export default function UXLayout({
+export default async function MenuUxLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const supabase = createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
   return (
     <div className="ux-implementation min-h-dvh md:min-h-screen flex flex-col overflow-x-hidden relative">
       {/* Background image + soft overlay behind header and main, does not affect layout height */}
@@ -31,11 +29,12 @@ export default function UXLayout({
           backgroundPosition: 'center 30%'
         }}
       />
-      <UXHeader />
-      <main className="flex-1 grid place-items-center">
+      <UXHeader userEmail={user?.email ?? undefined} />
+      <main className="flex-1">
         {children}
       </main>
       <UXFooter />
     </div>
-  )
-}
+  )}
+
+

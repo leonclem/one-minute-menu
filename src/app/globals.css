@@ -207,7 +207,9 @@
 
   /* UX Card Styles */
   .card-ux {
-    @apply rounded-xl border border-ux-border bg-white p-6 shadow-sm transition-shadow duration-200;
+    @apply relative overflow-hidden rounded-md border border-ux-border p-6 shadow-sm transition-shadow duration-200;
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(1.5px);
   }
 
   .card-ux:hover {
@@ -237,6 +239,9 @@
   .text-hero-shadow {
     text-shadow: 0 1px 3px rgba(0,0,0,0.5);
   }
+  .text-hero-shadow-strong {
+    text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  }
   .ux-hero {
     font-family: 'Inter', 'Poppins', 'Nunito Sans', var(--font-sans);
   }
@@ -249,6 +254,44 @@
   /* Drop shadow for logos/icons to add depth on busy photos */
   .logo-drop-shadow {
     filter: drop-shadow(0 1px 2px rgba(0,0,0,0.45));
+  }
+
+  /* Reusable header styles */
+  .ux-header {
+    @apply w-full z-10 relative;
+  }
+
+  /* Navigation link styling for header (white on dark hero) */
+  .ux-nav-link {
+    @apply transition-colors font-medium px-3 py-2 rounded-md text-soft-shadow;
+    color: rgba(255,255,255,0.9);
+  }
+
+  .ux-nav-link:hover {
+    color: #ffffff;
+  }
+
+  /* Reusable footer styles */
+  .ux-footer {
+    @apply w-full;
+  }
+
+  .ux-footer-link {
+    @apply transition-colors text-soft-shadow;
+    color: rgba(255,255,255,0.9);
+  }
+
+  .ux-footer-link:hover {
+    color: #ffffff;
+  }
+
+  /* Reusable hero typography */
+  .hero-title {
+    @apply font-bold tracking-[0.5px] leading-tight text-4xl md:text-6xl text-white text-hero-shadow;
+  }
+
+  .hero-subtitle {
+    @apply text-lg md:text-xl text-white/80 text-hero-shadow;
   }
 }
 
@@ -285,9 +328,41 @@
   .text-responsive {
     @apply text-sm sm:text-base lg:text-lg;
   }
+
+  /* Background helpers for full-bleed hero images */
+  .bg-cover-center {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  /* Dark overlay helpers for legibility on photos */
+  .overlay-dark {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0,0,0,0.45);
+  }
+
+  .overlay-dark-60 {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0,0,0,0.6);
+  }
+
+  /* Simple route transition for single-page workflow */
+  @keyframes uxFadeInUp {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, 6px, 0);
+    }
+    100% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .ux-route-fade {
+    animation: uxFadeInUp 220ms ease-out both;
+  }
 }
 
-/* Optional desktop guardrail to avoid scrollbars from subpixel rounding */
-@media (min-width: 1024px) and (min-height: 800px) {
-  html, body { overflow-y: hidden; }
-}

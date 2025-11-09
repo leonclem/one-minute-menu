@@ -5,15 +5,24 @@ import Image from 'next/image'
 import { useState } from 'react'
 import Logo from '../../../.kiro/specs/ux-implementation/Logos/logo.svg'
 
-export function UXHeader() {
+interface UXHeaderProps {
+  userEmail?: string
+}
+
+export function UXHeader({ userEmail }: UXHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   // Navigation items
-  const navigationItems = [
-    { href: '/ux/pricing', label: 'Pricing' },
-    { href: '/support', label: 'Support' },
-    { href: '/auth/signin', label: 'Sign In' },
-  ]
+  const navigationItems = userEmail
+    ? [
+        { href: '/ux/pricing', label: 'Pricing' },
+        { href: '/support', label: 'Support' },
+      ]
+    : [
+        { href: '/ux/pricing', label: 'Pricing' },
+        { href: '/support', label: 'Support' },
+        { href: '/auth/signin', label: 'Sign In' },
+      ]
 
   return (
     <header className="ux-header bg-transparent shrink-0">
@@ -31,11 +40,18 @@ export function UXHeader() {
               <Link 
                 key={item.href}
                 href={item.href} 
-                className="text-white/90 hover:text-white transition-colors font-medium px-3 py-2 rounded-md text-soft-shadow"
+                className="ux-nav-link"
               >
                 {item.label}
               </Link>
             ))}
+            {userEmail && (
+              <div className="flex items-center space-x-3">
+                <form action="/auth/signout" method="post">
+                  <button type="submit" className="ux-nav-link">Sign out</button>
+                </form>
+              </div>
+            )}
           </nav>
 
           {/* Mobile Menu Button */}
@@ -63,12 +79,19 @@ export function UXHeader() {
                 <Link 
                   key={item.href}
                   href={item.href} 
-                  className="text-white/90 hover:text-white transition-colors font-medium px-3 py-2 rounded-md text-soft-shadow"
+                  className="ux-nav-link"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.label}
                 </Link>
               ))}
+              {userEmail && (
+                <div className="flex items-center justify-end pt-2">
+                  <form action="/auth/signout" method="post">
+                    <button type="submit" className="ux-nav-link">Sign out</button>
+                  </form>
+                </div>
+              )}
             </nav>
           </div>
         )}
