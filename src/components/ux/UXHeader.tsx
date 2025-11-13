@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState } from 'react'
-import Logo from '../../../.kiro/specs/ux-implementation/Logos/logo.svg'
 
 interface UXHeaderProps {
   userEmail?: string
@@ -30,7 +29,7 @@ export function UXHeader({ userEmail }: UXHeaderProps) {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/ux" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-            <Image src={Logo} alt="GridMenu" width={24} height={24} priority className="logo-drop-shadow" />
+            <Image src="/logos/logo.svg" alt="GridMenu" width={24} height={24} priority className="logo-drop-shadow" />
             <span className="font-semibold text-white text-[21px] leading-none text-soft-shadow pl-[2px] pt-[4px]">GridMenu</span>
           </Link>
 
