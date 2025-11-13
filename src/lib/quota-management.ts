@@ -7,7 +7,7 @@ import type {
   GenerationAnalytics 
 } from '@/types'
 import { PLAN_CONFIGS } from '@/types'
-import { DatabaseError } from '@/lib/database'
+import { DatabaseError, userOperations } from '@/lib/database'
 
 /**
  * Quota Management Service for AI Image Generation
@@ -27,19 +27,9 @@ export class QuotaManagementService {
   async checkQuota(userId: string): Promise<QuotaStatus> {
     const supabase = createServerSupabaseClient()
     
-    // Get user profile to determine plan
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('plan')
-      .eq('id', userId)
-      .single()
-    
-    if (profileError) {
-      throw new DatabaseError(`Failed to get user profile: ${profileError.message}`, profileError.code)
-    }
-    
-    const plan = profile.plan as User['plan']
-    const planLimit = PLAN_CONFIGS[plan].aiImageGenerations
+    // Get user profile to determine plan (default to 'free' if not found)
+    const profile = await userOperations.getProfile(userId)
+    const plan = (profile?.plan ?? 'free') as User['plan']
     
     // Get or create quota record
     let quotaRecord = await this.getQuotaRecord(userId)
@@ -198,18 +188,9 @@ export class QuotaManagementService {
   async resetMonthlyQuota(userId: string): Promise<GenerationQuota> {
     const supabase = createServerSupabaseClient()
     
-    // Get user plan to determine new limit
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('plan')
-      .eq('id', userId)
-      .single()
-    
-    if (profileError) {
-      throw new DatabaseError(`Failed to get user profile: ${profileError.message}`, profileError.code)
-    }
-    
-    const plan = profile.plan as User['plan']
+    // Get user plan to determine new limit (default to 'free' if not found)
+    const profile = await userOperations.getProfile(userId)
+    const plan = (profile?.plan ?? 'free') as User['plan']
     const newLimit = PLAN_CONFIGS[plan].aiImageGenerations
     
     // Calculate next reset date (first day of next month)

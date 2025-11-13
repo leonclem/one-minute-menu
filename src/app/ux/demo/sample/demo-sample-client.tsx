@@ -177,6 +177,8 @@ export default function DemoSampleClient() {
                   src={sampleMenu.imageUrl}
                     alt={`${sampleMenu.name} preview`}
                     className="h-full max-w-full object-contain drop-shadow-md md:drop-shadow-lg"
+                    loading="lazy"
+                    decoding="async"
                   onError={(e) => {
                     // Try simple extension fallback from .jpg -> .png once
                     const el = e.currentTarget as HTMLImageElement

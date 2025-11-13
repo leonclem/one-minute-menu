@@ -150,7 +150,7 @@ export default function UXRegisterClient() {
 
       {/* Navigation Links */}
       <div className="text-center space-y-4">
-        <p className="text-sm text-ux-text-secondary">
+        <p className="text-sm text-white text-hero-shadow">
           Already have an account?{' '}
           <Link 
             href="/auth/signin" 
@@ -162,7 +162,7 @@ export default function UXRegisterClient() {
 
         <Link 
           href="/ux" 
-          className="inline-flex items-center text-sm text-ux-text-secondary hover:text-ux-text transition-colors"
+          className="inline-flex items-center text-sm rounded-full bg-white/20 border border-white/40 text-white hover:bg-white/30 px-4 py-2 transition-colors"
         >
           <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />

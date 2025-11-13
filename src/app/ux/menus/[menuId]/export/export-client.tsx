@@ -75,68 +75,174 @@ const CONVERSION_INCENTIVES = [
 
 export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) {
   const [demoMenu, setDemoMenu] = useState<Menu | null>(null)
+  const [authMenu, setAuthMenu] = useState<Menu | null>(null)
   const [exportingFormat, setExportingFormat] = useState<string | null>(null)
   const [completedExports, setCompletedExports] = useState<Set<string>>(new Set())
   const router = useRouter()
   const { showToast } = useToast()
 
   useEffect(() => {
-    // Check if this is a demo menu
-    if (menuId.startsWith('demo-')) {
-      const storedDemoMenu = sessionStorage.getItem('demoMenu')
-      if (storedDemoMenu) {
-        try {
-          const parsedMenu = JSON.parse(storedDemoMenu)
-          setDemoMenu(parsedMenu)
-        } catch (error) {
-          console.error('Error parsing demo menu:', error)
-          router.push('/ux/demo/sample')
+    // Attempt to treat dashed IDs as valid when possible:
+    // If menuId is like "demo-<uuid>", try authenticated fetch with the uuid.
+    const baseId = menuId.startsWith('demo-') ? menuId.slice(5) : menuId
+
+    ;(async () => {
+      try {
+        const resp = await fetch(`/api/menus/${baseId}`)
+        if (resp.ok) {
+          const json = await resp.json()
+          setAuthMenu(json?.data ?? null)
+          return
         }
-      } else {
-        // No demo menu data found, redirect back to sample selection
-        router.push('/ux/demo/sample')
+        // If unauthorized or not found and the original is a demo route, fall back to demo session
+        if (menuId.startsWith('demo-')) {
+          const storedDemoMenu = sessionStorage.getItem('demoMenu')
+          if (storedDemoMenu) {
+            try {
+              const parsedMenu = JSON.parse(storedDemoMenu)
+              setDemoMenu(parsedMenu)
+            } catch (error) {
+              console.error('Error parsing demo menu:', error)
+              router.push('/ux/demo/sample')
+            }
+          } else {
+            router.push('/ux/demo/sample')
+          }
+        } else if (resp.status === 401) {
+          showToast({
+            type: 'info',
+            title: 'Sign in required',
+            description: 'Please sign in to export your menu.'
+          })
+        }
+      } catch (err) {
+        // Network or parsing error; if demo path, try session storage
+        if (menuId.startsWith('demo-')) {
+          const storedDemoMenu = sessionStorage.getItem('demoMenu')
+          if (storedDemoMenu) {
+            try {
+              const parsedMenu = JSON.parse(storedDemoMenu)
+              setDemoMenu(parsedMenu)
+            } catch {
+              router.push('/ux/demo/sample')
+            }
+          } else {
+            router.push('/ux/demo/sample')
+          }
+        } else {
+          console.error('Failed to load menu info:', err)
+        }
       }
-    } else {
-      // Handle authenticated user menu
-      showToast({
-        type: 'info',
-        title: 'Feature coming soon',
-        description: 'Authenticated user export will be implemented in the next task.'
-      })
-    }
+    })()
   }, [menuId, router, showToast])
 
   const handleExport = async (option: ExportOption) => {
-    if (!demoMenu) return
-
+    const baseId = menuId.startsWith('demo-') ? menuId.slice(5) : menuId
+    const isDemo = !authMenu
     setExportingFormat(option.id)
 
     try {
-      // Simulate export process for demo
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      if (isDemo) {
+        if (!demoMenu) return
+        // Simulate export process for demo
+        await new Promise(resolve => setTimeout(resolve, 1200))
 
-      // For demo purposes, we'll simulate successful export
-      // In a real implementation, this would call the actual export API
-      
-      setCompletedExports(prev => new Set(Array.from(prev).concat(option.id)))
-      
-      showToast({
-        type: 'success',
-        title: `${option.name} exported`,
-        description: `Your ${option.name.toLowerCase()} has been generated successfully`
+        setCompletedExports(prev => new Set(Array.from(prev).concat(option.id)))
+        showToast({
+          type: 'success',
+          title: `${option.name} exported`,
+          description: `Your ${option.name.toLowerCase()} has been generated successfully`
+        })
+
+        // Simulate download (placeholder file for demo only)
+        const blob = new Blob([`Demo ${option.name} for ${demoMenu.name}`], { type: 'text/plain' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${demoMenu.name.replace(/\s+/g, '-').toLowerCase()}-${option.format}.txt`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        return
+      }
+
+      // Authenticated export via API
+      const menuName =
+        authMenu?.name ||
+        demoMenu?.name ||
+        'menu'
+
+      let endpoint = ''
+      let body: any = { menuId: baseId }
+      let filename = ''
+
+      switch (option.id) {
+        case 'pdf':
+          endpoint = '/api/templates/export/pdf'
+          body.options = { orientation: 'portrait', includePageNumbers: true, title: menuName }
+          filename = `${menuName.replace(/\s+/g, '-').toLowerCase()}-menu.pdf`
+          break
+        case 'image':
+          endpoint = '/api/templates/export/image'
+          body.context = 'desktop'
+          body.options = { format: 'png', width: 1200, height: 1600 }
+          filename = `${menuName.replace(/\s+/g, '-').toLowerCase()}-menu.png`
+          break
+        case 'html':
+          endpoint = '/api/templates/export/html'
+          body.context = 'desktop'
+          body.options = { includeDoctype: true, includeMetaTags: true, includeStyles: true, pageTitle: menuName }
+          filename = `${menuName.replace(/\s+/g, '-').toLowerCase()}-menu.html`
+          break
+        case 'images-zip':
+          // Not yet implemented server-side; show helpful toast
+          showToast({
+            type: 'info',
+            title: 'Images ZIP coming soon',
+            description: 'Multiple image sizes ZIP will be available shortly.'
+          })
+          return
+        default:
+          return
+      }
+
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       })
 
-      // Simulate download (in real implementation, this would be an actual file)
-      const blob = new Blob([`Demo ${option.name} for ${demoMenu.name}`], { type: 'text/plain' })
+      if (!resp.ok) {
+        if (resp.status === 401) {
+          showToast({
+            type: 'info',
+            title: 'Sign in required',
+            description: 'Create an account to export your real menu.'
+          })
+          router.push('/ux/register')
+          return
+        }
+        const errText = await resp.text().catch(() => 'Export failed')
+        throw new Error(errText)
+      }
+
+      const blob = await resp.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${demoMenu.name.replace(/\s+/g, '-').toLowerCase()}-${option.format}.txt`
+      a.download = filename
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
 
+      setCompletedExports(prev => new Set(Array.from(prev).concat(option.id)))
+      showToast({
+        type: 'success',
+        title: `${option.name} exported`,
+        description: `Your ${option.name.toLowerCase()} has been generated successfully`
+      })
     } catch (error) {
       console.error('Error exporting menu:', error)
       showToast({
@@ -157,12 +263,21 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
     router.push(`/ux/menus/${menuId}/template`)
   }
 
-  if (!demoMenu) {
+  const isDemo = menuId.startsWith('demo-')
+  const ready = isDemo ? !!demoMenu : !!authMenu
+  const menuForSummary = isDemo ? demoMenu : authMenu
+
+  if (!ready) {
     return (
-      <UXSection 
-        title="Loading..."
-        subtitle="Preparing export options"
-      >
+      <UXSection>
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
+            Loading...
+          </h1>
+          <p className="mt-2 text-white/90 text-hero-shadow-strong">
+            Preparing for export
+          </p>
+        </div>
         <div className="flex justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ux-primary"></div>
         </div>
@@ -171,22 +286,28 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
   }
 
   return (
-    <UXSection 
-      title="Export Your Menu"
-      subtitle={`Download ${demoMenu.name} in multiple formats`}
-    >
+    <UXSection>
+      {/* Hero heading (consistent with earlier steps) */}
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
+          Export Your Menu
+        </h1>
+        <p className="mt-2 text-white/90 text-hero-shadow-strong">
+          Download {menuForSummary?.name ?? 'your menu'} in multiple formats
+        </p>
+      </div>
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Menu Summary */}
         <UXCard>
-          <MenuThumbnailBadge imageUrl={demoMenu?.imageUrl} position="right" />
+          <MenuThumbnailBadge imageUrl={menuForSummary?.imageUrl} position="right" />
           <div className="p-6 relative z-10">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-ux-text mb-2">
-                  {demoMenu.name}
+                  {menuForSummary?.name}
                 </h3>
                 <p className="text-ux-text-secondary">
-                  {demoMenu.items.length} items • {demoMenu.theme.name} template • Ready for export
+                  {(menuForSummary?.items?.length ?? 0)} items • {(menuForSummary as any)?.theme?.name ?? 'Modern'} template • Ready for export
                 </p>
               </div>
               <div className="text-right">
@@ -203,7 +324,7 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
 
         {/* Export Options */}
         <div>
-          <h4 className="text-xl font-semibold text-ux-text mb-6 text-center">
+          <h4 className="text-xl font-semibold text-white text-hero-shadow mb-6 text-center">
             Choose Your Export Format
           </h4>
           
@@ -247,13 +368,13 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           </div>
         </div>
 
-        {/* Conversion Incentives */}
-        <div className="bg-gradient-to-br from-ux-primary/15 to-ux-primary/25 rounded-md p-8 border border-ux-border">
+        {/* Conversion Incentives (improved contrast) */}
+        <div className="bg-gradient-to-br from-ux-primary/30 to-ux-primary/40 rounded-md p-8 border border-ux-primary/40 text-white">
           <div className="text-center mb-8">
-            <h4 className="text-2xl font-bold text-ux-text mb-4">
+            <h4 className="text-2xl font-bold text-white text-hero-shadow mb-4">
               Want to unlock more features?
             </h4>
-            <p className="text-ux-text-secondary text-lg">
+            <p className="text-white/90 text-lg text-hero-shadow-strong">
               Sign up to get access to advanced features and create your own custom menus
             </p>
           </div>
@@ -262,10 +383,10 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
             {CONVERSION_INCENTIVES.map((incentive, index) => (
               <div key={index} className="text-center">
                 <div className="text-3xl mb-3">{incentive.icon}</div>
-                <h5 className="font-semibold text-ux-text mb-2">
+                <h5 className="font-semibold text-white mb-2">
                   {incentive.title}
                 </h5>
-                <p className="text-sm text-ux-text-secondary">
+                <p className="text-sm text-white/90">
                   {incentive.description}
                 </p>
               </div>
@@ -289,6 +410,7 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           <UXButton
             variant="outline"
             size="lg"
+            className="bg-white/20 border-white/40 text-white hover:bg-white/30"
             onClick={handleBackToTemplate}
             disabled={exportingFormat !== null}
           >
@@ -298,6 +420,7 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           <UXButton
             variant="outline"
             size="lg"
+            className="bg-white/20 border-white/40 text-white hover:bg-white/30"
             onClick={() => router.push('/ux')}
             disabled={exportingFormat !== null}
           >

@@ -316,7 +316,9 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
                   <img
                     src={demoMenu.imageUrl}
                     alt={`${demoMenu.name} menu`}
-                    className="w-full max-h-96 object-contain drop-shadow-md md:drop-shadow-lg"
+                  className="w-full max-h-96 object-contain drop-shadow-md md:drop-shadow-lg"
+                  loading="lazy"
+                  decoding="async"
                   />
                 </div>
               ) : (
@@ -398,7 +400,9 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
                 <img
                   src={menu.imageUrl}
                   alt={`${menu.name} menu`}
-                  className="w-full max-h-96 object-contain drop-shadow-md md:drop-shadow-lg"
+                className="w-full max-h-96 object-contain drop-shadow-md md:drop-shadow-lg"
+                loading="lazy"
+                decoding="async"
                 />
               </div>
             ) : (
