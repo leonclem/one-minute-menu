@@ -4,15 +4,25 @@
  */
 
 // Mock Next.js server APIs before importing middleware
-jest.mock('next/server', () => ({
-  NextResponse: {
-    next: jest.fn(() => ({ status: undefined })),
+jest.mock('next/server', () => {
+  const nextResponseMock = {
+    next: jest.fn(() => ({ status: undefined, headers: new Map<string, string>() })),
     json: jest.fn((data: any, init?: any) => ({
       status: init?.status || 200,
+      headers: new Map<string, string>(),
       json: async () => data,
     })),
-  },
-}))
+    redirect: jest.fn((url: URL, status?: number) => ({
+      status: status || 308,
+      headers: new Map<string, string>(),
+      url: url.toString(),
+    })),
+  }
+
+  return {
+    NextResponse: nextResponseMock,
+  }
+})
 
 import { middleware } from '@/middleware'
 
@@ -22,6 +32,7 @@ function makeReq(url: string, init?: { method?: string; headers?: Record<string,
     method: init?.method || 'GET',
     headers,
     url,
+    nextUrl: new URL(url),
   } as any
   ;(request as any).ip = init?.ip
   return request

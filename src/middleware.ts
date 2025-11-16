@@ -81,8 +81,28 @@ function passesCsrfCheck(req: NextRequest): boolean {
   return false
 }
 
+function applySecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  // Long-lived HSTS for production environments; harmless in non-TLS test/dev
+  response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
+  return response
+}
+
 export function middleware(req: NextRequest) {
-  const { pathname } = new URL(req.url)
+  const url = req.nextUrl
+  const pathname = url.pathname
+
+  // Enforce HTTPS in production when running behind a proxy that sets x-forwarded-proto
+  if (process.env.NODE_ENV === 'production') {
+    const proto = req.headers.get('x-forwarded-proto')
+    if (proto && proto !== 'https') {
+      url.protocol = 'https'
+      return NextResponse.redirect(url, 308)
+    }
+  }
 
   // CSRF protection for state-changing API requests
   if (pathname.startsWith('/api/') && isStateChanging(req.method)) {
@@ -95,7 +115,9 @@ export function middleware(req: NextRequest) {
         origin: req.headers.get('origin') || null,
         referer: req.headers.get('referer') || null,
       })
-      return NextResponse.json({ error: 'CSRF check failed' }, { status: 403 })
+      return applySecurityHeaders(
+        NextResponse.json({ error: 'CSRF check failed' }, { status: 403 }),
+      )
     }
   }
 
@@ -107,16 +129,19 @@ export function middleware(req: NextRequest) {
       if (!applyRateLimit(key, rule)) {
         // eslint-disable-next-line no-console
         console.warn('[security] Rate limit exceeded', { path: pathname, ip })
-        return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+        return applySecurityHeaders(
+          NextResponse.json({ error: 'Too many requests' }, { status: 429 }),
+        )
       }
     }
   }
 
-  return NextResponse.next()
+  const res = NextResponse.next()
+  return applySecurityHeaders(res)
 }
 
 export const config = {
-  matcher: ['/api/:path*'],
+  matcher: ['/:path*'],
 }
 
 

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { ToastProvider } from '@/components/ui'
+import { ConsentBanner } from '@/components/privacy/ConsentBanner'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -54,6 +55,7 @@ export default function RootLayout({
           <div id="root" className="relative flex min-h-screen flex-col">
             {children}
           </div>
+          <ConsentBanner />
         </ToastProvider>
       </body>
     </html>

@@ -1,6 +1,8 @@
 // Client-side analytics implementation using rotating localStorage identifiers
 // No cookies, no IP addresses, only aggregated counts
 
+import { hasAnalyticsConsent } from './consent'
+
 /**
  * Generate a rotating visitor identifier that changes daily
  * This provides approximate unique visitor counts without persistent tracking
@@ -50,6 +52,11 @@ export function getVisitorId(): string {
  */
 export async function trackMenuView(menuId: string): Promise<void> {
   try {
+    // Respect user consent before storing anything in localStorage
+    if (typeof window !== 'undefined' && !hasAnalyticsConsent()) {
+      return
+    }
+
     const visitorId = getVisitorId()
     
     await fetch('/api/analytics/track', {
