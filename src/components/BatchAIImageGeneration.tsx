@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Button, useToast } from '@/components/ui'
 import type { ImageGenerationParams } from '@/types'
 import { runBatchGenerationSequential, type BatchGenerationItem, type BatchGenerationResult, type BatchProgressUpdate } from '@/lib/batch-generation'
@@ -104,7 +105,15 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
     }
   }
 
-  return (
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  if (!mounted) return null
+
+  return createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
@@ -212,7 +221,8 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

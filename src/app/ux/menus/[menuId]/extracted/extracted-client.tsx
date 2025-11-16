@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { UXSection, UXButton, UXCard } from '@/components/ux'
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
@@ -9,6 +9,10 @@ import { formatCurrency } from '@/lib/utils'
 import type { Menu, MenuItem } from '@/types'
 import type { ExtractionResultType as Stage1ExtractionResult } from '@/lib/extraction/schema-stage1'
 import type { ExtractionResultV2Type as Stage2ExtractionResult } from '@/lib/extraction/schema-stage2'
+import { ImageUp, Sparkles, QrCode } from 'lucide-react'
+import AIImageGeneration from '@/components/AIImageGeneration'
+import BatchAIImageGeneration from '@/components/BatchAIImageGeneration'
+import ImageVariationsManager from '@/components/ImageVariationsManager'
 
 interface UXMenuExtractedClientProps {
   menuId: string
@@ -17,10 +21,20 @@ interface UXMenuExtractedClientProps {
 export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientProps) {
   const [demoMenu, setDemoMenu] = useState<Menu | null>(null)
   const [authResult, setAuthResult] = useState<Stage1ExtractionResult | Stage2ExtractionResult | null>(null)
+  const [authMenu, setAuthMenu] = useState<Menu | null>(null)
   const [loading, setLoading] = useState(false)
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
+  const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(new Set())
+  const [summaryOpen, setSummaryOpen] = useState(true)
+  const [controlPanelOpen, setControlPanelOpen] = useState(true)
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
+  const [activeImageItemId, setActiveImageItemId] = useState<string | null>(null)
+  const [activeImageItemName, setActiveImageItemName] = useState<string | undefined>(undefined)
+  const [activeImageMode, setActiveImageMode] = useState<'generate' | 'manage'>('generate')
+  const [showBatchGeneration, setShowBatchGeneration] = useState(false)
   const router = useRouter()
   const { showToast } = useToast()
+  const appliedRef = useRef(false)
 
   useEffect(() => {
     // Check if this is a demo menu
@@ -65,6 +79,38 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           if (status === 'completed' && json?.data?.result) {
             if (!cancelled) {
               setAuthResult(json.data.result as Stage1ExtractionResult | Stage2ExtractionResult)
+
+              // Apply extraction results to the menu once and get the updated menu items
+              if (!appliedRef.current) {
+                appliedRef.current = true
+                try {
+                  const applyResp = await fetch(`/api/menus/${menuId}/apply-extraction`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      result: json.data.result,
+                      schemaVersion: (json.data.schemaVersion || 'stage2') as 'stage1' | 'stage2',
+                      promptVersion: json.data.promptVersion,
+                      jobId,
+                    }),
+                  })
+                  const applyJson = await applyResp.json()
+                  if (!applyResp.ok) {
+                    throw new Error(applyJson?.error || 'Failed to save extracted items to menu')
+                  }
+                  setAuthMenu(applyJson.data as Menu)
+                  setThumbnailUrl(applyJson.data?.imageUrl ?? null)
+                } catch (err) {
+                  console.error('Failed to apply extraction to menu', err)
+                  showToast({
+                    type: 'error',
+                    title: 'Could not save items',
+                    description: 'Please try again from the extraction step.',
+                  })
+                  router.push(`/ux/menus/${menuId}/extract`)
+                  return true
+                }
+              }
             }
             return true
           }
@@ -90,13 +136,14 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         }
       }
 
-      // Also, fetch menu once for thumbnail (non-blocking)
+      // Also, fetch menu once (for thumbnail / reloads where extraction was already applied)
       ;(async () => {
         try {
           const resp = await fetch(`/api/menus/${menuId}`)
           if (!resp.ok) return
           const json = await resp.json()
           setThumbnailUrl(json?.data?.imageUrl ?? null)
+          setAuthMenu(json?.data as Menu)
         } catch {}
       })()
 
@@ -129,9 +176,54 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     router.push(`/ux/menus/${menuId}/extract`)
   }
 
-  // Helper: compute items grouped by category for demo menus
-  const groupDemoItemsByCategory = (menu: Menu) => {
-    return menu.items.reduce((acc, item) => {
+  const refreshMenu = async () => {
+    try {
+      const resp = await fetch(`/api/menus/${menuId}`)
+      if (!resp.ok) return
+      const json = await resp.json()
+      setAuthMenu(json?.data as Menu)
+      setThumbnailUrl(json?.data?.imageUrl ?? null)
+    } catch {
+      // best-effort refresh
+    }
+  }
+
+  const handleAIImageGenerated = async (itemId: string, imageUrl: string) => {
+    try {
+      const response = await fetch(`/api/menus/${menuId}/items/${itemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customImageUrl: imageUrl, imageSource: 'ai' }),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json?.error || 'Failed to update item image')
+      }
+      setAuthMenu(json.data as Menu)
+      showToast({
+        type: 'success',
+        title: 'Photo added',
+        description: 'AI-generated image has been added to your menu item.',
+      })
+    } catch (error) {
+      console.error('Error updating item with AI image from UX page:', error)
+      showToast({
+        type: 'error',
+        title: 'Update failed',
+        description: 'Please try again.',
+      })
+    } finally {
+      setActiveImageItemId(null)
+    }
+  }
+
+  // Helper: compute items grouped by category for menus
+  const groupDemoItemsByCategory = (menu: Menu | { items?: MenuItem[] }) => {
+    const items: MenuItem[] = Array.isArray((menu as any).items)
+      ? ((menu as any).items as MenuItem[])
+      : []
+
+    return items.reduce((acc, item) => {
       const category = (item as MenuItem).category || 'Uncategorized'
       if (!acc[category]) acc[category] = []
       acc[category].push(item as MenuItem)
@@ -172,13 +264,18 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     return map
   }
 
-  // Loading state if neither demo nor auth results are present
-  if (!demoMenu && !authResult) {
+  // Loading state if neither demo nor authenticated menu are present
+  if (!demoMenu && !authMenu) {
     return (
-      <UXSection 
-        title="Loading..."
-        subtitle="Loading your extracted menu items"
-      >
+      <UXSection>
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
+            Loading...
+          </h1>
+          <p className="mt-2 text-white/90 text-hero-shadow-strong">
+            Loading your extracted menu items
+          </p>
+        </div>
         <div className="flex justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ux-primary"></div>
         </div>
@@ -188,12 +285,59 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
 
   // Compute grouping and totals depending on flow
   const isDemo = !!demoMenu
-  const itemsByCategory: Record<string, AnyItem[] | MenuItem[]> = isDemo
-    ? groupDemoItemsByCategory(demoMenu as Menu)
-    : groupExtractedItemsByCategory(authResult as Stage1ExtractionResult | Stage2ExtractionResult)
+  const baseMenu: Menu | null = isDemo ? (demoMenu as Menu) : authMenu
+
+  let itemsByCategory: Record<string, AnyItem[] | MenuItem[]> = {}
+
+  if (isDemo && baseMenu) {
+    itemsByCategory = groupDemoItemsByCategory(baseMenu)
+  } else if (!isDemo) {
+    if (authMenu && Array.isArray((authMenu as any).items) && (authMenu as any).items.length > 0) {
+      itemsByCategory = groupDemoItemsByCategory(authMenu as Menu)
+    } else if (authResult) {
+      // Fallback: derive items directly from extraction result if menu items are not yet available
+      itemsByCategory = groupExtractedItemsByCategory(authResult)
+    }
+  }
 
   const categories = Object.keys(itemsByCategory)
   const totalItems = categories.reduce((sum, c) => sum + (itemsByCategory[c]?.length || 0), 0)
+
+  // Compute an overall confidence indicator based on per-item confidences,
+  // using the same default (0.95) we show in the item list when confidence is missing.
+  let confidenceTotal = 0
+  let confidenceCount = 0
+  for (const category of categories) {
+    for (const item of itemsByCategory[category] as AnyItem[] | MenuItem[]) {
+      const conf = (item as any).confidence as number | undefined
+      const value = typeof conf === 'number' && isFinite(conf) ? conf : 0.95
+      confidenceTotal += value
+      confidenceCount += 1
+    }
+  }
+  const overallConfidence = confidenceCount > 0
+    ? Math.round((confidenceTotal / confidenceCount) * 100)
+    : 95
+
+  const selectedCount = selectedItemKeys.size
+
+  const makeItemKey = (category: string, item: AnyItem | MenuItem, index: number) => {
+    const rawId = (item as any).id as string | undefined
+    const name = (item as any).name as string | undefined
+    return rawId || `${category}:${name || 'item'}:${index}`
+  }
+
+  const toggleItemSelected = (key: string, selected: boolean) => {
+    setSelectedItemKeys(prev => {
+      const next = new Set(prev)
+      if (selected) {
+        next.add(key)
+      } else {
+        next.delete(key)
+      }
+      return next
+    })
+  }
 
   return (
     <UXSection>
@@ -211,69 +355,304 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         <UXCard>
           <MenuThumbnailBadge imageUrl={thumbnailUrl} position="right" />
           <div className="p-6 relative z-10">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-ux-text">
-                {isDemo ? (demoMenu as Menu).name : 'Extracted Menu'}
-              </h3>
-              <div className="flex items-center space-x-4 text-sm text-ux-text-secondary">
-                <span>{totalItems} items</span>
-                <span>{categories.length} {categories.length === 1 ? 'category' : 'categories'}</span>
-                <span className="inline-flex items-center px-2 py-1 rounded-full bg-ux-success/10 text-ux-success">
-                  <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  95% confidence
-                </span>
+            <div className="flex items-center justify-between mb-4 gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-ux-text">
+                  {isDemo ? (demoMenu as Menu).name : 'Extracted Menu'}
+                </h3>
+                <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-ux-text-secondary">
+                  <span>{totalItems} items</span>
+                  <span>{categories.length} {categories.length === 1 ? 'category' : 'categories'}</span>
+                  <span className="inline-flex items-center px-2 py-1 rounded-full bg-ux-success/10 text-ux-success">
+                    <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    {overallConfidence}% confidence
+                  </span>
+                </div>
               </div>
+              <button
+                type="button"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-primary transition-colors"
+                onClick={() => setSummaryOpen(open => !open)}
+                aria-expanded={summaryOpen}
+                aria-label={summaryOpen ? 'Collapse summary' : 'Expand summary'}
+              >
+                <svg
+                  className={`h-3.5 w-3.5 transition-transform ${summaryOpen ? '' : '-rotate-90'}`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path d="M7 5a1 1 0 00-.707 1.707L9.586 10l-3.293 3.293A1 1 0 108.707 14.707l4-4a1 1 0 000-1.414l-4-4A1 1 0 007 5z" />
+                </svg>
+              </button>
             </div>
-            <p className="text-ux-text">
-              Please review the extracted items below. All items look good and are ready for template selection.
-            </p>
+            {summaryOpen && (
+              <p className="text-ux-text">
+                Please review the extracted items below. All items look good and are ready for template selection.
+              </p>
+            )}
           </div>
         </UXCard>
 
+        {/* Control Panel – authenticated menus only */}
+        {!isDemo && (
+          <UXCard>
+            <div className="p-6 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-ux-text">
+                    Menu control panel
+                  </h3>
+                  <p className="text-sm text-ux-text-secondary mt-1">
+                    Shortcuts to update your menu image or open the full editor for batch photos, item tools, and QR codes.
+                  </p>
+                  <p className="mt-2 text-xs text-ux-text-secondary">
+                    {selectedCount > 0
+                      ? `${selectedCount} item${selectedCount === 1 ? '' : 's'} selected across all categories.`
+                      : 'No items selected yet.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-primary transition-colors mt-1"
+                  onClick={() => setControlPanelOpen(open => !open)}
+                  aria-expanded={controlPanelOpen}
+                  aria-label={controlPanelOpen ? 'Collapse control panel' : 'Expand control panel'}
+                >
+                  <svg
+                    className={`h-3.5 w-3.5 transition-transform ${controlPanelOpen ? '' : '-rotate-90'}`}
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path d="M7 5a1 1 0 00-.707 1.707L9.586 10l-3.293 3.293A1 1 0 108.707 14.707l4-4a1 1 0 000-1.414l-4-4A1 1 0 007 5z" />
+                  </svg>
+                </button>
+              </div>
+
+              {controlPanelOpen && (
+                <>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <UXButton
+                  variant="warning"
+                  size="md"
+                  onClick={() => router.push(`/menus/${menuId}/upload`)}
+                  disabled={loading}
+                >
+                  <ImageUp className="hidden sm:inline-block h-4 w-4 mr-2" />
+                  Upload a menu image
+                </UXButton>
+                <UXButton
+                  variant="warning"
+                  size="md"
+                  onClick={() => {
+                    if (!authMenu) return
+                    const selected = authMenu.items.filter(item => selectedItemKeys.has(item.id))
+                    if (selected.length === 0) {
+                      showToast({
+                        type: 'info',
+                        title: 'Select items first',
+                        description: 'Choose one or more items to create photos for.',
+                      })
+                      return
+                    }
+                    setShowBatchGeneration(true)
+                  }}
+                  disabled={loading}
+                >
+                  <Sparkles className="hidden sm:inline-block h-4 w-4 mr-2" />
+                  Batch Create Photos
+                </UXButton>
+                <UXButton
+                  variant="warning"
+                  size="md"
+                  onClick={() => router.push(`/dashboard/menus/${menuId}`)}
+                  disabled={loading}
+                >
+                  <QrCode className="hidden sm:inline-block h-4 w-4 mr-2" />
+                  Add QR / manage items
+                </UXButton>
+              </div>
+              {thumbnailUrl && (
+                <p className="text-xs text-ux-text-secondary">
+                  You&apos;ve already uploaded a menu image. Uploading a new one will replace the existing image and you may need to re-run extraction.
+                </p>
+              )}
+                </>
+              )}
+            </div>
+          </UXCard>
+        )}
+
         {/* Extracted Items by Category */}
         <div className="space-y-6">
-          {categories.map((category) => (
-            <UXCard key={category}>
-              <div className="p-6">
-                <h4 className="text-lg font-semibold text-ux-text mb-4 border-b-2 border-ux-border pb-2">
-                  {category}
-                </h4>
-                <div className="space-y-3">
-                  {itemsByCategory[category].map((item: any) => (
-                    <div 
-                      key={(item as any).id || `${category}:${(item as any).name}`}
-                      className="flex items-start justify-between p-3 bg-ux-background rounded-lg border border-ux-border"
-                    >
-                      <div className="flex-1">
-                        <h5 className="font-medium text-ux-text">
-                          {item.name}
-                        </h5>
-                        {item.description && (
-                          <p className="text-sm text-ux-text-secondary mt-1">
-                            {item.description}
-                          </p>
-                        )}
-                      </div>
-                      <div className="ml-4 text-right">
-                        <div className="font-semibold text-ux-text">
-                          {typeof item.price === 'number'
-                            ? formatCurrency(item.price)
-                            : Array.isArray(item.variants) && item.variants.length > 0 && typeof item.variants[0]?.price === 'number'
-                              ? formatCurrency(item.variants[0].price as number)
-                              : '—'}
-                        </div>
-                        <div className="text-xs text-ux-text-secondary">
-                          {Math.round(((item.confidence as number | undefined) || 0.95) * 100)}% confidence
-                        </div>
-                      </div>
+          {categories.map((category) => {
+            const items = itemsByCategory[category] as (AnyItem | MenuItem)[]
+            const selectedInCategory = items.reduce((count, item, index) => {
+              const key = makeItemKey(category, item, index)
+              return count + (selectedItemKeys.has(key) ? 1 : 0)
+            }, 0)
+            const isCollapsed = collapsedCategories.has(category)
+            return (
+              <UXCard key={category}>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4 border-b-2 border-ux-border pb-2 gap-3">
+                    <h4 className="text-lg font-semibold text-ux-text">
+                      {category}
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      {items.length > 0 && (
+                        <span className="inline-flex items-center px-3 py-1 rounded-lg bg-ux-primary text-white text-xs font-semibold shadow-sm whitespace-nowrap">
+                          {items.length} {items.length === 1 ? 'item' : 'items'}
+                          {selectedInCategory > 0 && (
+                            <span className="ml-1">
+                              · {selectedInCategory} selected
+                            </span>
+                          )}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-primary transition-colors"
+                        onClick={() => {
+                          setCollapsedCategories(prev => {
+                            const next = new Set(prev)
+                            if (next.has(category)) next.delete(category)
+                            else next.add(category)
+                            return next
+                          })
+                        }}
+                        aria-expanded={!isCollapsed}
+                        aria-label={isCollapsed ? `Expand ${category}` : `Collapse ${category}`}
+                      >
+                        <svg
+                          className={`h-3.5 w-3.5 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path d="M7 5a1 1 0 00-.707 1.707L9.586 10l-3.293 3.293A1 1 0 108.707 14.707l4-4a1 1 0 000-1.414l-4-4A1 1 0 007 5z" />
+                        </svg>
+                      </button>
                     </div>
-                  ))}
+                  </div>
+                  <div className={isCollapsed ? 'hidden' : 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}>
+                    {items.map((item, index) => {
+                      const key = makeItemKey(category, item, index)
+                      const selected = selectedItemKeys.has(key)
+                      const raw = item as any
+                      const imageSrc =
+                        (raw.customImageUrl as string | undefined)
+                        || (raw.imageUrl as string | undefined)
+                      const hasImage = typeof imageSrc === 'string' && imageSrc.length > 0
+                      const price =
+                        typeof raw.price === 'number'
+                          ? raw.price
+                          : Array.isArray(raw.variants) && raw.variants.length > 0 && typeof raw.variants[0]?.price === 'number'
+                            ? (raw.variants[0].price as number)
+                            : undefined
+                      const confidence = Math.round(((raw.confidence as number | undefined) || 0.95) * 100)
+
+                      return (
+                        <div
+                          key={key}
+                          className={`relative flex flex-col gap-3 p-3 bg-ux-background rounded-lg border border-ux-border transition-shadow ${
+                            selected ? 'ring-2 ring-ux-primary/60 shadow-md' : ''
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <button
+                              type="button"
+                              role="checkbox"
+                              aria-checked={selected}
+                              aria-label={`Select ${raw.name || 'item'}`}
+                              onClick={() => toggleItemSelected(key, !selected)}
+                              className="mt-1 h-3 w-3 min-h-0 min-w-0 p-0 rounded border border-ux-border flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ux-primary transition-colors"
+                              style={{
+                                backgroundColor: selected ? 'rgb(var(--ux-primary) / 1)' : 'transparent',
+                              }}
+                            >
+                              {selected && (
+                                <svg
+                                  className="h-2.5 w-2.5 text-white"
+                                  viewBox="0 0 20 20"
+                                  fill="none"
+                                >
+                                  <path
+                                    d="M5 10.5L8 13.5L15 6.5"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              )}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <h5 className="font-medium text-ux-text truncate">
+                                {raw.name}
+                              </h5>
+                              {raw.description && (
+                                <p className="text-xs text-ux-text-secondary mt-1 line-clamp-3">
+                                  {raw.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              className="h-16 w-16 rounded-md border border-dashed border-ux-border bg-ux-background-secondary overflow-hidden flex items-center justify-center text-[11px] text-ux-text-secondary focus:outline-none focus:ring-2 focus:ring-ux-primary"
+                              onClick={() => {
+                                if (isDemo || !authMenu) return
+                                const id = (raw as MenuItem).id
+                                if (!id) return
+                                setActiveImageItemId(id)
+                                setActiveImageItemName(raw.name as string | undefined)
+                                setActiveImageMode(hasImage ? 'manage' : 'generate')
+                              }}
+                              aria-label={hasImage ? `Manage photos for ${raw.name}` : `Create photo for ${raw.name}`}
+                              disabled={isDemo || !authMenu}
+                            >
+                              {hasImage ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={imageSrc}
+                                  alt={raw.name || 'Menu item photo'}
+                                  className="h-full w-full object-cover"
+                                  loading="lazy"
+                                  decoding="async"
+                                />
+                              ) : (
+                                <span>No photo</span>
+                              )}
+                            </button>
+                            <div className="flex-1 flex flex-col items-end text-right gap-1">
+                              <div className="font-semibold text-ux-text">
+                                {typeof price === 'number' ? formatCurrency(price) : '—'}
+                              </div>
+                              <div className="text-xs text-ux-text-secondary">
+                                {confidence}% confidence
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action row reserved for future wiring (manage photos, stock, delete) */}
+                          {!isDemo && (
+                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-dashed border-ux-border/60 mt-1">
+                              <span className="text-[11px] text-ux-text-secondary">
+                                Bulk tools will use your current selection.
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            </UXCard>
-          ))}
+              </UXCard>
+            )
+          })}
         </div>
 
         {/* Action Buttons */}
@@ -295,7 +674,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             loading={loading}
             disabled={loading}
           >
-            Proceed to Image Generation and GridMenu layout →
+            Proceed to GridMenu layout →
           </UXButton>
         </div>
 
@@ -311,6 +690,43 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           </div>
         )}
       </div>
+
+      {/* Single-item AI image generation modal */}
+      {!isDemo && activeImageItemId && activeImageMode === 'generate' && authMenu && (
+        <AIImageGeneration
+          menuId={menuId}
+          menuItem={authMenu.items.find(i => i.id === activeImageItemId)!}
+          onImageGenerated={handleAIImageGenerated}
+          onCancel={() => setActiveImageItemId(null)}
+        />
+      )}
+
+      {/* Single-item image variations manager */}
+      {!isDemo && activeImageItemId && activeImageMode === 'manage' && (
+        <ImageVariationsManager
+          itemId={activeImageItemId}
+          itemName={activeImageItemName}
+          onClose={async () => {
+            setActiveImageItemId(null)
+            await refreshMenu()
+          }}
+        />
+      )}
+
+      {/* Batch image generation modal */}
+      {!isDemo && showBatchGeneration && authMenu && (
+        <BatchAIImageGeneration
+          menuId={menuId}
+          items={authMenu.items
+            .filter(item => selectedItemKeys.has(item.id))
+            .map(item => ({ id: item.id, name: item.name, description: item.description }))}
+          onClose={async () => {
+            setShowBatchGeneration(false)
+            await refreshMenu()
+          }}
+          onItemImageGenerated={handleAIImageGenerated}
+        />
+      )}
     </UXSection>
   )
 }

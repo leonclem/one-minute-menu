@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Button, Input, Card, CardHeader, CardTitle, CardContent, UpgradePrompt } from '@/components/ui'
+import { UpgradePrompt } from '@/components/ui'
+import { UXButton, UXInput, UXCard } from '@/components/ux'
 import { validateCreateMenu, generateSlugFromName } from '@/lib/validation'
 import { fetchJsonWithRetry, HttpError } from '@/lib/retry'
 import type { CreateMenuFormData } from '@/types'
@@ -89,35 +90,37 @@ export default function NewMenuPage() {
   }
 
   return (
-    <div className="min-h-screen bg-secondary-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="container-mobile py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link 
-                href="/dashboard"
-                className="text-secondary-500 hover:text-secondary-700"
-              >
-                ← Back
-              </Link>
-              <h1 className="text-2xl font-bold text-secondary-900">
-                Create New Menu
-              </h1>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
+      {/* Background image + soft overlay behind content */}
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10"
+        style={{
+          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.45)), url(/ux/backgrounds/kung-pao-chicken.png)`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center 30%'
+        }}
+      />
 
       {/* Main Content */}
-      <main className="container-mobile py-8">
-        <div className="max-w-2xl mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle>Menu Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
+      <main className="container-ux w-full py-10 md:py-12">
+        {/* Hero heading */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
+            Create New Menu
+          </h1>
+          <p className="mt-2 text-white/90 text-hero-shadow-strong">
+            Set up your menu details to get started
+          </p>
+        </div>
+
+        <div className="w-full max-w-2xl mx-auto">
+          <UXCard className="w-full">
+            <div className="p-6 w-full">
+              <h3 className="text-lg font-semibold text-ux-text mb-4">Menu Details</h3>
+
+              <form onSubmit={handleSubmit} className="space-y-6 w-full">
                 {/* General Error */}
                 {errors.general && (
                   <UpgradePrompt
@@ -130,7 +133,7 @@ export default function NewMenuPage() {
                 )}
 
                 {/* Menu Name */}
-                <Input
+                <UXInput
                   label="Menu Name"
                   type="text"
                   value={formData.name}
@@ -143,7 +146,7 @@ export default function NewMenuPage() {
                 />
 
                 {/* Menu Slug */}
-                <Input
+                <UXInput
                   label="Menu URL"
                   type="text"
                   value={formData.slug}
@@ -155,7 +158,7 @@ export default function NewMenuPage() {
 
                 {/* Description (Optional) */}
                 <div className="space-y-1">
-                  <label className="block text-sm font-medium text-secondary-700">
+                  <label className="block text-sm font-medium text-ux-text">
                     Description (Optional)
                   </label>
                   <textarea
@@ -163,45 +166,40 @@ export default function NewMenuPage() {
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Brief description of your menu..."
                     rows={3}
-                    className="input resize-none"
+                    className="input-ux resize-none"
                   />
-                  <p className="text-sm text-secondary-500">
+                  <p className="text-sm text-ux-text-secondary">
                     This will help customers understand what this menu is for
                   </p>
                 </div>
 
                 {/* Actions */}
-                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                  <Link
-                    href="/dashboard"
-                    className="btn btn-outline w-full sm:w-auto"
-                  >
-                    Cancel
-                  </Link>
-                  <Button
+                <div className="flex justify-center">
+                  <UXButton
                     type="submit"
                     variant="primary"
+                    size="md"
                     loading={loading}
                     className="w-full sm:w-auto"
                   >
                     {loading ? 'Creating Menu...' : 'Create Menu'}
-                  </Button>
+                  </UXButton>
                 </div>
               </form>
-            </CardContent>
-          </Card>
+            </div>
+          </UXCard>
 
-          {/* Help Section */}
-          <div className="mt-8 rounded-lg bg-blue-50 p-6">
-            <h3 className="text-lg font-medium text-blue-900 mb-2">
-              What happens next?
-            </h3>
-            <ul className="space-y-2 text-sm text-blue-800">
-              <li>• Your menu will be created with a unique URL</li>
-              <li>• You can add menu items manually or upload a photo for OCR</li>
-              <li>• Customize colors and styling to match your brand</li>
-              <li>• Generate a QR code for customers to scan</li>
-            </ul>
+          {/* Back to Dashboard glass button below card */}
+          <div className="mt-6 text-center">
+            <Link 
+              href="/dashboard" 
+              className="inline-flex items-center text-sm rounded-full bg-white/20 border border-white/40 text-white hover:bg-white/30 px-4 py-2 transition-colors"
+            >
+              <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Dashboard
+            </Link>
           </div>
         </div>
       </main>

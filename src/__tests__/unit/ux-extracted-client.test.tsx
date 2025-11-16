@@ -43,7 +43,7 @@ describe('UX Extracted Page', () => {
     const { unmount } = render(<UXMenuExtractedClient menuId="demo-1" />)
 
     expect(await screen.findByText(/Review Extracted Items/i)).toBeInTheDocument()
-    expect(screen.getByText(/Proceed to Image Generation and GridMenu layout/i)).toBeInTheDocument()
+    expect(screen.getByText(/Proceed to GridMenu layout/i)).toBeInTheDocument()
     // There are two occurrences ("We found 2 items..." and a summary badge). Accept either.
     expect(screen.getAllByText(/2\s*items/i).length).toBeGreaterThan(0)
     // Should show category headers
@@ -53,7 +53,7 @@ describe('UX Extracted Page', () => {
     unmount()
   })
 
-  it('fetches and renders authenticated extraction results', async () => {
+  it('fetches and renders authenticated extraction results and control panel', async () => {
     sessionStorage.setItem('extractionJob:abc123', 'job-1')
     // @ts-ignore
     global.fetch = jest.fn().mockResolvedValue({
@@ -84,6 +84,7 @@ describe('UX Extracted Page', () => {
     await waitFor(() => {
       expect(screen.getByText('Starters')).toBeInTheDocument()
       expect(screen.getByText('Soup')).toBeInTheDocument()
+      expect(screen.getByText(/Menu control panel/i)).toBeInTheDocument()
     })
 
     unmount()

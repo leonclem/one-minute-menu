@@ -206,7 +206,7 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
             title: 'Extraction complete',
             description: 'Your items are ready to review.'
           })
-          router.push(`/dashboard/menus/${menuId}`)
+          router.push(`/ux/menus/${menuId}/extracted`)
           return
         }
         if (status === 'failed') {
@@ -284,10 +284,15 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
   if (isDemo) {
     if (!demoMenu) {
       return (
-        <UXSection 
-          title="Loading..."
-          subtitle="Preparing your demo menu"
-        >
+        <UXSection>
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
+              Loading...
+            </h1>
+            <p className="mt-2 text-white/90 text-hero-shadow-strong">
+              Preparing your demo menu
+            </p>
+          </div>
           <div className="flex justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ux-primary"></div>
           </div>
@@ -362,10 +367,15 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
   // Authenticated flow UI
   if (!menu) {
     return (
-      <UXSection 
-        title="Loading..."
-        subtitle="Loading your menu"
-      >
+      <UXSection>
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
+            Loading...
+          </h1>
+          <p className="mt-2 text-white/90 text-hero-shadow-strong">
+            Loading your menu
+          </p>
+        </div>
         <div className="flex justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ux-primary"></div>
         </div>

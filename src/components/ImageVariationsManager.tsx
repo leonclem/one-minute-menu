@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { GeneratedImage } from '@/types'
 import { Button } from '@/components/ui'
 import ImageUpload from '@/components/ImageUpload'
@@ -108,7 +109,15 @@ export default function ImageVariationsManager({ itemId, itemName, onClose }: Im
     }
   }
 
-  return (
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  if (!mounted) return null
+
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
       <div className="w-full max-w-5xl bg-white rounded-lg shadow-lg border border-secondary-200 overflow-hidden">
         <div className="px-4 py-3 border-b flex items-center justify-between">
@@ -203,7 +212,8 @@ export default function ImageVariationsManager({ itemId, itemName, onClose }: Im
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Button, useToast } from '@/components/ui'
 import type { MenuItem, ImageGenerationParams, ImageGenerationJob, GeneratedImage } from '@/types'
 
@@ -55,11 +56,19 @@ export default function AIImageGeneration({
     return () => { isMounted = false }
   }, [stableItemId])
 
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
   // If the component is rendered without a valid menu item, render nothing
   // Hooks above must always run unconditionally to satisfy rules-of-hooks
   if (!menuItem) {
     return null
   }
+
+  if (!mounted) return null
 
   const handleGenerateImage = async () => {
     setGenerating(true)
@@ -221,7 +230,7 @@ export default function AIImageGeneration({
     }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
@@ -467,6 +476,7 @@ export default function AIImageGeneration({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

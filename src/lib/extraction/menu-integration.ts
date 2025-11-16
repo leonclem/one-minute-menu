@@ -8,10 +8,13 @@ import { menuOperations } from '@/lib/database'
 import { extractionResultToMenu } from '@/lib/menu-data-migration'
 import type { ExtractionResultV2Type } from './schema-stage2'
 import type { ExtractionResultType } from './schema-stage1'
+import type { Menu } from '@/types'
 
 /**
- * Applies extraction results to an existing menu
- * Handles both Stage 1 and Stage 2 extraction results
+ * Applies extraction results to an existing menu and returns the updated menu.
+ * Handles both Stage 1 and Stage 2 extraction results.
+ * If the menu has already been updated for the given jobId, the existing menu
+ * is returned without re-applying the extraction.
  */
 export async function applyExtractionToMenu(
   menuId: string,
@@ -20,7 +23,13 @@ export async function applyExtractionToMenu(
   schemaVersion: 'stage1' | 'stage2',
   promptVersion: string,
   jobId?: string
-): Promise<void> {
+): Promise<Menu> {
+  // If we already applied this job's extraction to the menu, return existing menu
+  const existing = await menuOperations.getMenu(menuId, userId)
+  if (existing && jobId && existing.extractionMetadata?.jobId === jobId) {
+    return existing
+  }
+
   // Convert extraction result to menu structure
   const menuUpdates = extractionResultToMenu(
     extractionResult,
@@ -33,12 +42,14 @@ export async function applyExtractionToMenu(
     jobId
   )
 
-  // Update the menu in database
-  await menuOperations.updateMenuFromExtraction(menuId, userId, {
+  // Update the menu in database and return the updated menu
+  const updated = await menuOperations.updateMenuFromExtraction(menuId, userId, {
     items: menuUpdates.items || [],
     categories: menuUpdates.categories,
     extractionMetadata: menuUpdates.extractionMetadata,
   })
+
+  return updated
 }
 
 /**

@@ -6,14 +6,17 @@ import { useState } from 'react'
 
 interface UXHeaderProps {
   userEmail?: string
+  isAdmin?: boolean
 }
 
-export function UXHeader({ userEmail }: UXHeaderProps) {
+export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   // Navigation items
   const navigationItems = userEmail
     ? [
+        { href: '/dashboard', label: 'Dashboard' },
+        ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
         { href: '/ux/pricing', label: 'Pricing' },
         { href: '/support', label: 'Support' },
       ]

@@ -18,10 +18,10 @@ export default async function MenuUxLayout({
 
   return (
     <div className="ux-implementation min-h-dvh md:min-h-screen flex flex-col overflow-x-hidden relative">
-      {/* Background image + soft overlay behind header and main, does not affect layout height */}
+      {/* Background image fixed to viewport so tall content scrolls over without stretching */}
       <div
         aria-hidden
-        className="absolute inset-0 -z-10"
+        className="fixed inset-0 -z-10"
         style={{
           backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.45)), url(/ux/backgrounds/kung-pao-chicken.png)`,
           backgroundSize: 'cover',

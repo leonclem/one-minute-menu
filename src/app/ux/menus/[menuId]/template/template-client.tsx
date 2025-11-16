@@ -102,8 +102,18 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           setAuthMenu(loadedMenu)
           setThumbnailUrl(loadedMenu?.imageUrl ?? null)
 
-          // Ensure the menu has either extraction metadata or items
-          if (!loadedMenu?.extractionMetadata && (!loadedMenu?.items || loadedMenu.items.length === 0)) {
+          // Ensure the menu has either extraction metadata or items, or a recent extraction result in session storage
+          let hasLocalExtractionResult = false
+          try {
+            const stored = sessionStorage.getItem(`extractionResult:${menuId}`)
+            if (stored) {
+              hasLocalExtractionResult = true
+            }
+          } catch {
+            // ignore sessionStorage errors
+          }
+
+          if (!loadedMenu?.extractionMetadata && (!loadedMenu?.items || loadedMenu.items.length === 0) && !hasLocalExtractionResult) {
             showToast({
               type: 'info',
               title: 'Extraction required',
@@ -201,10 +211,15 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
 
   if (!demoMenu && isDemoUser) {
     return (
-      <UXSection 
-        title="Loading..."
-        subtitle="Loading template options"
-      >
+      <UXSection>
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
+            Loading...
+          </h1>
+          <p className="mt-2 text-white/90 text-hero-shadow-strong">
+            Loading template options
+          </p>
+        </div>
         <div className="flex justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ux-primary"></div>
         </div>

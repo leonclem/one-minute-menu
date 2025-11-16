@@ -22,7 +22,7 @@ export default async function UploadPage({ params }: PageProps) {
     redirect('/dashboard')
   }
 
-  return <UploadClient menuId={params.menuId} />
+  return <UploadClient menuId={params.menuId} menuName={menu.name} />
 }
 
 

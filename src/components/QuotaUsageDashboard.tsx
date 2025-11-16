@@ -23,10 +23,19 @@ interface QuotaData {
 
 export default function QuotaUsageDashboard({ 
   variant = 'full' as 'full' | 'summary',
-  showAdminLink = false
+  showAdminLink = false,
+  unstyled = false,
+  hideTitle = false
 }: { 
   variant?: 'full' | 'summary'
   showAdminLink?: boolean
+  /**
+   * When true, renders only the inner content without the legacy Card wrapper,
+   * so parents (e.g., UXCard) can control surface and headings.
+   */
+  unstyled?: boolean
+  /** When true, omits the internal title header */
+  hideTitle?: boolean
 }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -58,27 +67,35 @@ export default function QuotaUsageDashboard({
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-secondary-600">AI Image Generation Quota</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-16 animate-pulse rounded bg-secondary-100" />
-        </CardContent>
-      </Card>
+      unstyled ? (
+        <div className="h-16 animate-pulse rounded bg-white/50" />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-secondary-600">AI Image Generation Quota</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-16 animate-pulse rounded bg-secondary-100" />
+          </CardContent>
+        </Card>
+      )
     )
   }
 
   if (error || !data) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-secondary-600">AI Image Generation Quota</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm text-red-700">{error || 'Failed to load quota'}</div>
-        </CardContent>
-      </Card>
+      unstyled ? (
+        <div className="text-sm text-red-700">{error || 'Failed to load quota'}</div>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-secondary-600">AI Image Generation Quota</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm text-red-700">{error || 'Failed to load quota'}</div>
+          </CardContent>
+        </Card>
+      )
     )
   }
 
@@ -89,11 +106,11 @@ export default function QuotaUsageDashboard({
 
   if (variant === 'summary') {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-secondary-600">AI Image Generation</CardTitle>
-        </CardHeader>
-        <CardContent>
+      unstyled ? (
+        <div>
+          {!hideTitle && (
+            <div className="text-sm font-medium text-secondary-600 mb-3">AI Image Generation</div>
+          )}
           <div className="flex items-center justify-between">
             <div>
               <div className="text-lg font-semibold text-secondary-900">{quota.used}/{quota.limit}</div>
@@ -121,8 +138,43 @@ export default function QuotaUsageDashboard({
               <a href="/admin?tab=image-generation" className="text-primary-600 hover:text-primary-500">View details →</a>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-secondary-600">AI Image Generation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-lg font-semibold text-secondary-900">{quota.used}/{quota.limit}</div>
+                <div className="text-xs text-secondary-600">Used this month</div>
+              </div>
+              <div className="w-40">
+                <div className="h-2 w-full overflow-hidden rounded bg-secondary-100">
+                  <div
+                    className={`h-full ${exceeded ? 'bg-red-500' : approachingLimit ? 'bg-amber-500' : 'bg-primary-500'}`}
+                    style={{ width: `${percentUsed}%` }}
+                  />
+                </div>
+                <div className="mt-1 text-right text-xs text-secondary-600">Resets {new Date(quota.resetDate).toLocaleDateString()}</div>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-xs">
+              {exceeded ? (
+                <span className="text-red-700">Limit reached</span>
+              ) : approachingLimit ? (
+                <span className="text-amber-700">Approaching limit</span>
+              ) : (
+                <span className="text-secondary-600">Within limit</span>
+              )}
+              {showAdminLink && (
+                <a href="/admin?tab=image-generation" className="text-primary-600 hover:text-primary-500">View details →</a>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )
     )
   }
 

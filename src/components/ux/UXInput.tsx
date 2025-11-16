@@ -42,7 +42,7 @@ const UXInput = forwardRef<HTMLInputElement, UXInputProps>(
           </p>
         )}
         {helperText && !error && (
-          <p className="text-sm text-ux-text-secondary">
+          <p className="text-sm text-ux-text-secondary break-words">
             {helperText}
           </p>
         )}
