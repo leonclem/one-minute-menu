@@ -34,8 +34,11 @@ export default async function UXLayout({
           backgroundPosition: 'center 30%'
         }}
       />
+      <a href="#ux-main-content" className="sr-only-focusable">
+        Skip to main content
+      </a>
       <UXHeader userEmail={user?.email} />
-      <main className="flex-1 grid place-items-center">
+      <main id="ux-main-content" className="flex-1 grid place-items-center">
         {children}
       </main>
       <UXFooter />

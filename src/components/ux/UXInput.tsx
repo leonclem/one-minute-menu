@@ -14,6 +14,11 @@ const UXInput = forwardRef<HTMLInputElement, UXInputProps>(
   ({ className, type = 'text', label, error, helperText, id, ...props }, ref) => {
     const generatedId = useId()
     const inputId = id || generatedId
+    const errorId = `${inputId}-error`
+    const helperId = `${inputId}-helper`
+
+    const describedBy =
+      error ? errorId : helperText ? helperId : undefined
 
     return (
       <div className="space-y-2">
@@ -33,16 +38,18 @@ const UXInput = forwardRef<HTMLInputElement, UXInputProps>(
             error && 'border-ux-error focus:border-ux-error',
             className
           )}
+          aria-invalid={!!error}
+          aria-describedby={describedBy}
           ref={ref}
           {...props}
         />
         {error && (
-          <p className="text-sm text-ux-error" role="alert">
+          <p className="text-sm text-ux-error" role="alert" id={errorId}>
             {error}
           </p>
         )}
         {helperText && !error && (
-          <p className="text-sm text-ux-text-secondary break-words">
+          <p className="text-sm text-ux-text-secondary break-words" id={helperId}>
             {helperText}
           </p>
         )}

@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import { ReactNode, KeyboardEvent } from 'react'
 import { cn } from '@/lib/utils'
 
 interface UXWrapperProps {
@@ -85,12 +85,28 @@ export function UXCard({
 }: UXCardProps) {
   const baseClasses = 'card-ux'
   const interactiveClasses = clickable ? 'cursor-pointer hover:shadow-lg' : hover ? 'hover:shadow-lg' : ''
+  const isInteractive = clickable || typeof onClick === 'function'
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!isInteractive || !onClick) return
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onClick(event as any)
+    }
+
+    if (typeof props.onKeyDown === 'function') {
+      props.onKeyDown(event as any)
+    }
+  }
   
   return (
     <div 
+      {...props}
       className={cn(baseClasses, interactiveClasses, className)}
       onClick={onClick}
-      {...props}
+      role={isInteractive ? 'button' : props.role}
+      tabIndex={isInteractive && props.tabIndex === undefined ? 0 : props.tabIndex}
+      onKeyDown={handleKeyDown}
     >
       {children}
     </div>

@@ -33,11 +33,13 @@ export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
           {/* Logo */}
           <Link href="/ux" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <Image src="/logos/logo.svg" alt="GridMenu" width={24} height={24} priority className="logo-drop-shadow" />
-            <span className="font-semibold text-white text-[21px] leading-none text-soft-shadow pl-[2px] pt-[4px]">GridMenu</span>
+            <span className="font-semibold text-white text-[21px] leading-none text-soft-shadow pl-[2px] pt-[4px]">
+              GridMenu
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
+          <nav className="hidden md:flex items-center space-x-6" aria-label="Primary navigation">
             {navigationItems.map((item) => (
               <Link 
                 key={item.href}
@@ -76,7 +78,7 @@ export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
         {/* Mobile Navigation */}
         {isMenuOpen && (
           <div className="md:hidden py-4 animate-in slide-in-from-top-2 duration-200 bg-transparent">
-            <nav className="flex flex-col space-y-2">
+            <nav className="flex flex-col space-y-2" aria-label="Mobile primary navigation">
               {navigationItems.map((item) => (
                 <Link 
                   key={item.href}
