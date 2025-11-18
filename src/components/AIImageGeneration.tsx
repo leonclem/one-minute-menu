@@ -414,10 +414,13 @@ export default function AIImageGeneration({
 
               {generatedImages.map((image) => (
                 <div key={image.id} className="border rounded-lg overflow-hidden bg-gray-50">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={image.originalUrl}
                     alt={`Generated image for ${menuItem.name}`}
                     className="w-full h-auto object-contain"
+                    loading="lazy"
+                    decoding="async"
                   />
                   <div className="p-4 flex gap-3">
                     <Button
@@ -453,10 +456,13 @@ export default function AIImageGeneration({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {previousImages.map((image) => (
                       <div key={image.id} className="border rounded-lg overflow-hidden bg-gray-50">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={image.thumbnailUrl || image.originalUrl}
                           alt={`Previous generated for ${menuItem.name}`}
                           className="w-full h-auto object-contain"
+                          loading="lazy"
+                          decoding="async"
                         />
                         <div className="p-3">
                           <Button

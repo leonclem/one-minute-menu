@@ -149,7 +149,13 @@ export default async function PublicMenuPage({ params, searchParams }: PageProps
             {payment.payNowQR && (
               <div className="mb-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={payment.payNowQR} alt="PayNow QR code" className="w-40 h-40 mx-auto rounded bg-white" />
+                <img
+                  src={payment.payNowQR}
+                  alt="PayNow QR code"
+                  className="w-40 h-40 mx-auto rounded bg-white"
+                  loading="lazy"
+                  decoding="async"
+                />
                 <p className="mt-2 text-center text-xs" style={{ color: colors.secondary }}>Scan with your banking app</p>
               </div>
             )}

@@ -1,16 +1,19 @@
 import type { Metadata } from 'next'
 import { UXHeader } from '@/components/ux/UXHeader'
 import { UXFooter } from '@/components/ux/UXFooter'
+import { UXAnalyticsProvider } from '@/components/ux'
 import { getCurrentUser } from '@/lib/auth-utils'
 
 export const metadata: Metadata = {
   title: 'Create Your Digital Menu | GridMenu',
-  description: 'Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required.',
+  description:
+    'Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required.',
   keywords: ['QR menu', 'digital menu', 'restaurant menu', 'mobile menu', 'QR code menu'],
   openGraph: {
     title: 'Create Your Digital Menu | GridMenu',
     description: 'Transform your restaurant menu into a mobile-friendly QR code menu in minutes.',
     type: 'website',
+    url: '/ux',
   },
 }
 
@@ -38,9 +41,11 @@ export default async function UXLayout({
         Skip to main content
       </a>
       <UXHeader userEmail={user?.email} />
-      <main id="ux-main-content" className="flex-1 grid place-items-center">
-        {children}
-      </main>
+      <UXAnalyticsProvider>
+        <main id="ux-main-content" className="flex-1 grid place-items-center">
+          {children}
+        </main>
+      </UXAnalyticsProvider>
       <UXFooter />
     </div>
   )

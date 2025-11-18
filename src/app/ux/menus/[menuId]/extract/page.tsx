@@ -1,4 +1,8 @@
-import UXMenuExtractClient from './extract-client'
+import dynamic from 'next/dynamic'
+
+const UXMenuExtractClient = dynamic(() => import('./extract-client'), {
+  ssr: false,
+})
 
 interface UXMenuExtractPageProps {
   params: {

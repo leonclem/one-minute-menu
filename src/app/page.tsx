@@ -1,8 +1,30 @@
 import Link from 'next/link'
 
 export default function HomePage() {
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://gridmenu.app'
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'GridMenu',
+    url: siteUrl,
+    description: 'Create digital menus with QR codes for restaurants. Turn your existing menu into a mobile-friendly experience in minutes.',
+    potentialAction: {
+      '@type': 'RegisterAction',
+      target: `${siteUrl}/auth/signup`,
+    },
+  }
+
   return (
     <main className="flex min-h-screen flex-col">
+      <head>
+        <script
+          type="application/ld+json"
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       {/* Hero Section */}
       <section className="flex flex-1 flex-col items-center justify-center px-4 py-16 text-center">
         <div className="container-mobile">

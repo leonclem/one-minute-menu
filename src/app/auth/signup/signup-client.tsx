@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { UXHeader, UXFooter, UXButton, UXInput, UXCard } from '@/components/ux'
 import { isValidEmail } from '@/lib/utils'
+import { trackConversionEvent } from '@/lib/conversion-tracking'
 
 export default function SignUpClient() {
   const [email, setEmail] = useState('')
@@ -30,6 +31,15 @@ export default function SignUpClient() {
     setMessage('')
 
     try {
+      // Track registration start when the user submits a valid email
+      trackConversionEvent({
+        event: 'registration_start',
+        metadata: {
+          path: '/auth/signup',
+          source: 'signup_form',
+        },
+      })
+
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -41,6 +51,15 @@ export default function SignUpClient() {
         setError(error.message)
       } else {
         setMessage('Check your email for the magic link to sign in!')
+
+        // Treat successful magic link dispatch as a signup conversion
+        trackConversionEvent({
+          event: 'signup_completed',
+          metadata: {
+            path: '/auth/signup',
+            source: 'signup_form',
+          },
+        })
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.')

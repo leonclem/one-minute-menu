@@ -196,10 +196,13 @@ export default function ImageUpload({
             
             {/* Image preview */}
             <div className="mb-6">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewImage}
                 alt="Menu preview"
                 className="max-w-full max-h-96 mx-auto rounded-lg shadow-lg"
+                loading="lazy"
+                decoding="async"
               />
             </div>
 

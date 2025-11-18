@@ -1384,7 +1384,14 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                   <div>
                     {brandingPreview && (
                       <div className="border border-secondary-200 rounded bg-white p-2 flex items-center justify-center">
-                        <img src={brandingPreview} alt="Theme preview" className="max-w-full max-h-64" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={brandingPreview}
+                          alt="Theme preview"
+                          className="max-w-full max-h-64"
+                          loading="lazy"
+                          decoding="async"
+                        />
                       </div>
                     )}
                   </div>

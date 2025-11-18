@@ -78,14 +78,28 @@ export default function OnboardingDemoPage() {
                       className={`overflow-hidden rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary-500 ${selected==='A' ? 'ring-2 ring-primary-500' : ''}`}
                       onClick={() => { setSelected('A'); setStep(1) }}
                     >
-                      <img src={PLACEHOLDER_A} alt="Sample Photo A" className="w-full h-40 object-cover" />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={PLACEHOLDER_A}
+                        alt="Sample Photo A"
+                        className="w-full h-40 object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
                       <div className="p-3 text-center text-sm">Sample Photo A</div>
                     </button>
                     <button
                       className={`overflow-hidden rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary-500 ${selected==='B' ? 'ring-2 ring-primary-500' : ''}`}
                       onClick={() => { setSelected('B'); setStep(1) }}
                     >
-                      <img src={PLACEHOLDER_B} alt="Sample Photo B" className="w-full h-40 object-cover" />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={PLACEHOLDER_B}
+                        alt="Sample Photo B"
+                        className="w-full h-40 object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
                       <div className="p-3 text-center text-sm">Sample Photo B</div>
                     </button>
                   </div>
@@ -112,10 +126,13 @@ export default function OnboardingDemoPage() {
                   <p className="text-secondary-700 mb-3">Published! Here’s a sample QR code.</p>
                   <div className="flex justify-center">
                     {/* Render QR via Google Chart API for zero-dep preview */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`https://chart.googleapis.com/chart?cht=qr&chs=256x256&chl=${encodeURIComponent(qrUrl)}`}
                       alt="Sample QR linking to demo menu"
                       className="h-40 w-40"
+                      loading="lazy"
+                      decoding="async"
                     />
                   </div>
                   <div className="mt-6">

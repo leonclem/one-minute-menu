@@ -146,7 +146,13 @@ export default function ImageVariationsManager({ itemId, itemName, onClose }: Im
               <div className="text-xs text-secondary-600 mb-1">Current selection</div>
               {selectedImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={selectedImage.desktopUrl || selectedImage.originalUrl} alt="Selected" className="w-full max-h-80 object-contain rounded border" />
+                <img
+                  src={selectedImage.desktopUrl || selectedImage.originalUrl}
+                  alt="Selected"
+                  className="w-full max-h-80 object-contain rounded border"
+                  loading="lazy"
+                  decoding="async"
+                />
               ) : (
                 <div className="h-40 border rounded flex items-center justify-center text-secondary-500 text-sm">No AI image selected</div>
               )}
@@ -155,7 +161,13 @@ export default function ImageVariationsManager({ itemId, itemName, onClose }: Im
               <div className="text-xs text-secondary-600 mb-1">Candidate</div>
               {compareImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={compareImage.desktopUrl || compareImage.originalUrl} alt="Candidate" className="w-full max-h-80 object-contain rounded border" />
+                <img
+                  src={compareImage.desktopUrl || compareImage.originalUrl}
+                  alt="Candidate"
+                  className="w-full max-h-80 object-contain rounded border"
+                  loading="lazy"
+                  decoding="async"
+                />
               ) : (
                 <div className="h-40 border rounded flex items-center justify-center text-secondary-500 text-sm">Select a variation to preview</div>
               )}
@@ -175,7 +187,13 @@ export default function ImageVariationsManager({ itemId, itemName, onClose }: Im
                 <div key={v.id} className={`border rounded overflow-hidden ${v.id === selectedId ? 'ring-2 ring-primary-500' : ''}`}>
                   <button type="button" className="block w-full" onClick={() => setCompareId(v.id)} aria-label="Preview variation">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={v.thumbnailUrl || v.mobileUrl || v.originalUrl} alt={itemName || 'Variation'} className="w-full h-32 object-cover" />
+                    <img
+                      src={v.thumbnailUrl || v.mobileUrl || v.originalUrl}
+                      alt={itemName || 'Variation'}
+                      className="w-full h-32 object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   </button>
                   <div className="p-2 flex items-center justify-between gap-2">
                     <Button

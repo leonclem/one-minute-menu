@@ -6,6 +6,7 @@ import { UXSection, UXButton, UXCard } from '@/components/ux'
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
+import { trackConversionEvent } from '@/lib/conversion-tracking'
 
 interface UXMenuExportClientProps {
   menuId: string
@@ -141,6 +142,16 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
     const isDemo = !authMenu
     setExportingFormat(option.id)
 
+    // Track export start for funnel analytics
+    trackConversionEvent({
+      event: 'export_start',
+      metadata: {
+        path: `/ux/menus/${menuId}/export`,
+        format: option.format,
+        isDemo,
+      },
+    })
+
     try {
       if (isDemo) {
         if (!demoMenu) return
@@ -152,6 +163,15 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           type: 'success',
           title: `${option.name} exported`,
           description: `Your ${option.name.toLowerCase()} has been generated successfully`
+        })
+
+        trackConversionEvent({
+          event: 'export_completed',
+          metadata: {
+            path: `/ux/menus/${menuId}/export`,
+            format: option.format,
+            isDemo: true,
+          },
         })
 
         // Simulate download (placeholder file for demo only)
@@ -243,6 +263,14 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
         title: `${option.name} exported`,
         description: `Your ${option.name.toLowerCase()} has been generated successfully`
       })
+      trackConversionEvent({
+        event: 'export_completed',
+        metadata: {
+          path: `/ux/menus/${menuId}/export`,
+          format: option.format,
+          isDemo: false,
+        },
+      })
     } catch (error) {
       console.error('Error exporting menu:', error)
       showToast({
@@ -256,6 +284,20 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
   }
 
   const handleTryOwnMenu = () => {
+    trackConversionEvent({
+      event: 'cta_click_try_own_menu',
+      metadata: {
+        path: `/ux/menus/${menuId}/export`,
+        isDemo: menuId.startsWith('demo-'),
+      },
+    })
+    trackConversionEvent({
+      event: 'registration_start',
+      metadata: {
+        path: `/ux/menus/${menuId}/export`,
+        source: 'export_conversion_panel',
+      },
+    })
     router.push('/ux/register')
   }
 

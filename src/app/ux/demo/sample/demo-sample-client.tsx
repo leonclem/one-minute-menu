@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { UXWrapper, UXSection, UXCard, UXButton, UXProgressSteps } from '@/components/ux'
+import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
 
@@ -82,6 +83,16 @@ export default function DemoSampleClient() {
     setSelectedMenu(sampleMenu)
     setLoading(true)
 
+    // Track demo flow engagement
+    trackConversionEvent({
+      event: 'demo_start',
+      metadata: {
+        path: '/ux/demo/sample',
+        sampleId: sampleMenu.id,
+        category: sampleMenu.category,
+      },
+    })
+
     try {
       // Create a new demo menu using the sample data
       const response = await fetch('/api/demo/menus', {
@@ -109,6 +120,15 @@ export default function DemoSampleClient() {
       // Store demo menu data in sessionStorage for the demo flow, include imageUrl for preview consistency
       const demoWithImage = { ...result.data, imageUrl: sampleMenu.imageUrl }
       sessionStorage.setItem('demoMenu', JSON.stringify(demoWithImage))
+
+      trackConversionEvent({
+        event: 'demo_completed',
+        metadata: {
+          path: '/ux/demo/sample',
+          sampleId: sampleMenu.id,
+          menuId: menu.id,
+        },
+      })
 
       // Show success message
       showToast({

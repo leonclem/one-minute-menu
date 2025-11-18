@@ -18,15 +18,35 @@ export const viewport: Viewport = {
   themeColor: '#3B82F6',
 }
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://gridmenu.app'
+
 export const metadata: Metadata = {
   title: 'GridMenu',
   description: 'Create digital menus with QR codes for restaurants',
   manifest: '/manifest.json',
+  metadataBase: new URL(siteUrl),
   icons: [
     { rel: 'icon', url: '/favicon.ico' },
     { rel: 'shortcut icon', url: '/favicon.ico' },
     { rel: 'apple-touch-icon', url: '/favicon.svg' },
   ],
+  openGraph: {
+    title: 'GridMenu – Digital QR Code Menus for Restaurants',
+    description: 'Turn your existing paper menu into a mobile-friendly QR code menu in minutes. No tech skills required.',
+    url: siteUrl,
+    type: 'website',
+    siteName: 'GridMenu',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'GridMenu – Digital QR Code Menus for Restaurants',
+    description: 'Turn your existing paper menu into a mobile-friendly QR code menu in minutes.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function RootLayout({

@@ -87,6 +87,10 @@ export function UXCard({
   const interactiveClasses = clickable ? 'cursor-pointer hover:shadow-lg' : hover ? 'hover:shadow-lg' : ''
   const isInteractive = clickable || typeof onClick === 'function'
 
+  // Only attach interactive handlers in the browser to avoid passing
+  // event handler functions from Server Components to the client boundary.
+  const isBrowser = typeof window !== 'undefined'
+
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!isInteractive || !onClick) return
     if (event.key === 'Enter' || event.key === ' ') {
@@ -103,10 +107,10 @@ export function UXCard({
     <div 
       {...props}
       className={cn(baseClasses, interactiveClasses, className)}
-      onClick={onClick}
+      onClick={isBrowser ? onClick : undefined}
       role={isInteractive ? 'button' : props.role}
       tabIndex={isInteractive && props.tabIndex === undefined ? 0 : props.tabIndex}
-      onKeyDown={handleKeyDown}
+      onKeyDown={isBrowser ? handleKeyDown : undefined}
     >
       {children}
     </div>
