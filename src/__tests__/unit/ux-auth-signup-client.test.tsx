@@ -13,9 +13,17 @@ jest.mock('@/lib/supabase', () => ({
 
 // Mock next/link to avoid Next.js runtime in tests
 jest.mock('next/link', () => {
-  return ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  )
+  const MockLink = ({
+    children,
+    href,
+  }: {
+    children: React.ReactNode
+    href: string
+  }) => <a href={href}>{children}</a>
+
+  MockLink.displayName = 'MockLink'
+
+  return MockLink
 })
 
 import SignUpClient from '@/app/auth/signup/signup-client'

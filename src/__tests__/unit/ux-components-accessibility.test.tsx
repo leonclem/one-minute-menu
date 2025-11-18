@@ -2,6 +2,16 @@ import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
+// Provide a minimal router implementation so components using next/navigation
+// (like UXProgressSteps) can render in tests without requiring the app router.
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+  }),
+}))
+
 import { UXInput } from '@/components/ux/UXInput'
 import { UXCard } from '@/components/ux/UXWrapper'
 import { UXProgressSteps } from '@/components/ux'
