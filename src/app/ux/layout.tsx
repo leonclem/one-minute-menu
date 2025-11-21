@@ -14,6 +14,18 @@ export const metadata: Metadata = {
     description: 'Transform your restaurant menu into a mobile-friendly QR code menu in minutes.',
     type: 'website',
     url: '/ux',
+    images: [
+      {
+        url: '/logos/social-1200x630.png',
+        width: 1200,
+        height: 630,
+        alt: 'GridMenu UX marketing preview',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/logos/social-1200x630.png'],
   },
 }
 

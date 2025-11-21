@@ -27,9 +27,32 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   metadataBase: new URL(siteUrl),
   icons: [
-    { rel: 'icon', url: '/favicon.ico' },
+    {
+      rel: 'icon',
+      url: '/logos/favicon-16.png',
+      sizes: '16x16',
+      type: 'image/png',
+    },
+    {
+      rel: 'icon',
+      url: '/logos/favicon-32.png',
+      sizes: '32x32',
+      type: 'image/png',
+    },
+    {
+      rel: 'icon',
+      url: '/logos/favicon-48.png',
+      sizes: '48x48',
+      type: 'image/png',
+    },
+    {
+      rel: 'icon',
+      url: '/favicon.ico',
+      sizes: 'any',
+      type: 'image/x-icon',
+    },
     { rel: 'shortcut icon', url: '/favicon.ico' },
-    { rel: 'apple-touch-icon', url: '/favicon.svg' },
+    { rel: 'apple-touch-icon', url: '/logos/apple-touch-icon.png' },
   ],
   openGraph: {
     title: 'GridMenu – Digital QR Code Menus for Restaurants',
@@ -37,11 +60,38 @@ export const metadata: Metadata = {
     url: siteUrl,
     type: 'website',
     siteName: 'GridMenu',
+    images: [
+      {
+        url: '/logos/social-1200x630.png',
+        width: 1200,
+        height: 630,
+        alt: 'GridMenu hero preview',
+      },
+      {
+        url: '/logos/logo-1600.png',
+        width: 1600,
+        height: 1600,
+        alt: 'GridMenu brand mark',
+      },
+      {
+        url: '/logos/logo-800.png',
+        width: 800,
+        height: 800,
+        alt: 'GridMenu brand mark (800x800)',
+      },
+      {
+        url: '/logos/logo-400.png',
+        width: 400,
+        height: 400,
+        alt: 'GridMenu brand mark (400x400)',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'GridMenu – Digital QR Code Menus for Restaurants',
     description: 'Turn your existing paper menu into a mobile-friendly QR code menu in minutes.',
+    images: ['/logos/social-1200x630.png'],
   },
   robots: {
     index: true,
