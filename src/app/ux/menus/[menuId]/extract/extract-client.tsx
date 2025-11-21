@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { UXSection, UXButton, UXCard } from '@/components/ux'
 import { useToast } from '@/components/ui'
+import ZoomableImageModal from '@/components/ZoomableImageModal'
 import type { Menu } from '@/types'
 import { fetchJsonWithRetry, HttpError } from '@/lib/retry'
 
@@ -17,6 +18,7 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
   const [extracting, setExtracting] = useState(false)
   const [extractionComplete, setExtractionComplete] = useState(false)
   const [jobId, setJobId] = useState<string | null>(null)
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const router = useRouter()
   const { showToast } = useToast()
 
@@ -317,13 +319,26 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
             <div className="p-6">
               {demoMenu.imageUrl ? (
                 <div className="w-full overflow-visible flex items-center justify-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={demoMenu.imageUrl}
+                  <button
+                    type="button"
+                    onClick={() => setIsImageModalOpen(true)}
+                    className="w-full focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg cursor-zoom-in"
+                    aria-label="View larger menu image"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={demoMenu.imageUrl}
+                      alt={`${demoMenu.name} menu`}
+                      className="w-full max-h-96 object-contain drop-shadow-md md:drop-shadow-lg rounded-lg"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </button>
+                  <ZoomableImageModal
+                    isOpen={isImageModalOpen}
+                    onClose={() => setIsImageModalOpen(false)}
+                    url={demoMenu.imageUrl}
                     alt={`${demoMenu.name} menu`}
-                  className="w-full max-h-96 object-contain drop-shadow-md md:drop-shadow-lg"
-                  loading="lazy"
-                  decoding="async"
                   />
                 </div>
               ) : (
@@ -406,13 +421,26 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
             </p>
             {menu.imageUrl ? (
               <div className="w-full overflow-visible flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={menu.imageUrl}
+                <button
+                  type="button"
+                  onClick={() => setIsImageModalOpen(true)}
+                  className="w-full focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg cursor-zoom-in"
+                  aria-label="View larger menu image"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={menu.imageUrl}
+                    alt={`${menu.name} menu`}
+                    className="w-full max-h-96 object-contain drop-shadow-md md:drop-shadow-lg rounded-lg"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </button>
+                <ZoomableImageModal
+                  isOpen={isImageModalOpen}
+                  onClose={() => setIsImageModalOpen(false)}
+                  url={menu.imageUrl}
                   alt={`${menu.name} menu`}
-                className="w-full max-h-96 object-contain drop-shadow-md md:drop-shadow-lg"
-                loading="lazy"
-                decoding="async"
                 />
               </div>
             ) : (
