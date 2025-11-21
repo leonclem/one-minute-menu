@@ -273,10 +273,21 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
       })
     } catch (error) {
       console.error('Error exporting menu:', error)
+      const isDemoError = isDemo && !authMenu
       showToast({
         type: 'error',
-        title: 'Export failed',
-        description: 'Please try again or contact support.'
+        title: isDemoError ? 'Demo export failed' : 'Export failed',
+        description: isDemoError
+          ? 'Something went wrong while generating the demo export. Please try again or restart the demo.'
+          : 'Something went wrong while generating your export. Please try again or contact support if this keeps happening.'
+      })
+      trackConversionEvent({
+        event: 'ux_error',
+        metadata: {
+          path: `/ux/menus/${menuId}/export`,
+          format: option.format,
+          isDemo,
+        },
       })
     } finally {
       setExportingFormat(null)

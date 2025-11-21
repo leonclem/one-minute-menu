@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
 // Provide a minimal router implementation so components using next/navigation
@@ -10,11 +10,17 @@ jest.mock('next/navigation', () => ({
     replace: jest.fn(),
     prefetch: jest.fn(),
   }),
+  usePathname: () => '/ux/menus/demo-menu/upload',
 }))
 
 import { UXInput } from '@/components/ux/UXInput'
 import { UXCard } from '@/components/ux/UXWrapper'
-import { UXProgressSteps } from '@/components/ux'
+import { UXProgressSteps, UXHeader, UXFooter, UXErrorFeedback } from '@/components/ux'
+
+const mockShowToast = jest.fn()
+jest.mock('@/components/ui', () => ({
+  useToast: () => ({ showToast: mockShowToast }),
+}))
 
 describe('UXInput accessibility', () => {
   it('links error message to input via aria attributes', () => {
@@ -81,4 +87,78 @@ describe('UXProgressSteps accessibility', () => {
   })
 })
 
+describe('UXHeader accessibility', () => {
+  it('renders primary navigation with expected links for anonymous users', () => {
+    render(<UXHeader />)
+
+    const nav = screen.getByRole('navigation', { name: /primary navigation/i })
+    expect(nav).toBeInTheDocument()
+
+    expect(screen.getByRole('link', { name: /pricing/i })).toHaveAttribute('href', '/ux/pricing')
+    expect(screen.getByRole('link', { name: /support/i })).toHaveAttribute('href', '/support')
+    expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/auth/signin')
+  })
+})
+
+describe('UXFooter accessibility', () => {
+  it('renders footer links with correct destinations', () => {
+    render(<UXFooter />)
+
+    expect(screen.getByRole('link', { name: /privacy policy/i })).toHaveAttribute('href', '/privacy')
+    expect(screen.getByRole('link', { name: /terms of service/i })).toHaveAttribute('href', '/terms')
+    expect(screen.getByRole('link', { name: /contact us/i })).toHaveAttribute('href', '/support')
+  })
+})
+
+describe('UXErrorFeedback behaviour', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    // @ts-ignore
+    global.fetch = jest.fn().mockResolvedValue({ ok: true })
+  })
+
+  afterEach(() => {
+    // @ts-ignore
+    global.fetch = undefined
+  })
+
+  it('sends feedback and tracks ux_feedback event', async () => {
+    const mockTrackConversionEvent = jest.fn()
+    jest.doMock('@/lib/conversion-tracking', () => ({
+      trackConversionEvent: (...args: any[]) => mockTrackConversionEvent(...args),
+    }))
+
+    render(<UXErrorFeedback context="demo" menuId="menu-123" />)
+
+    const textarea = screen.getByPlaceholderText(/what were you trying to do/i)
+    fireEvent.change(textarea, { target: { value: 'Something went wrong during demo' } })
+
+    const submit = screen.getByRole('button', { name: /send feedback/i })
+    fireEvent.click(submit)
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/logs',
+        expect.objectContaining({
+          method: 'POST',
+        }),
+      )
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'success',
+        }),
+      )
+    })
+
+    expect(mockTrackConversionEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'ux_feedback',
+        metadata: expect.objectContaining({
+          context: 'demo',
+          hasMenuId: true,
+        }),
+      }),
+    )
+  })
+})
 

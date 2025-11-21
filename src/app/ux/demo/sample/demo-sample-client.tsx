@@ -144,8 +144,8 @@ export default function DemoSampleClient() {
       console.error('Error creating demo menu:', error)
       showToast({
         type: 'error',
-        title: 'Failed to create demo menu',
-        description: 'Please try again or contact support.'
+        title: 'Demo menu could not be created',
+        description: 'The sample menu failed to start. Please try again in a moment or choose the other sample.'
       })
       setSelectedMenu(null)
     } finally {

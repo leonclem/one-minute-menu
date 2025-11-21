@@ -16,6 +16,8 @@ export type ConversionEvent =
   | 'cta_click_primary'
   | 'cta_click_secondary'
   | 'cta_click_try_own_menu'
+  | 'ux_error'
+  | 'ux_feedback'
   | 'web_vitals_sample'
 
 interface ConversionPayload {

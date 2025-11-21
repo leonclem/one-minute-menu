@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, ReactNode } from 'react'
+import { useEffect, ReactNode, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 import { UXProgressSteps } from '@/components/ux'
+import { saveUXProgress, type UXFlowStep } from '@/lib/ux-progress'
 
 interface ClientFlowShellProps {
   menuId: string
@@ -12,36 +13,23 @@ interface ClientFlowShellProps {
 export default function ClientFlowShell({ menuId, children }: ClientFlowShellProps) {
   const pathname = usePathname()
 
+  const currentStep: UXFlowStep = useMemo(() => {
+    const segments = pathname?.split('/').filter(Boolean) ?? []
+    const step = (segments[segments.length - 1] || 'upload') as UXFlowStep
+    const validSteps: UXFlowStep[] = ['upload', 'extract', 'extracted', 'template', 'export']
+    return validSteps.includes(step) ? step : 'upload'
+  }, [pathname])
+
   useEffect(() => {
     if (!pathname || !menuId) return
-    const segments = pathname.split('/').filter(Boolean)
-    const step = segments[segments.length - 1] || ''
-    const validSteps = new Set(['upload', 'extract', 'extracted', 'template', 'export'])
-    const lastStep = validSteps.has(step) ? step : undefined
-    try {
-      const key = `uxFlow:${menuId}`
-      const existing = sessionStorage.getItem(key)
-      const parsed = existing ? JSON.parse(existing) : {}
-      sessionStorage.setItem(
-        key,
-        JSON.stringify({
-          ...parsed,
-          lastStep: lastStep ?? parsed.lastStep ?? 'upload',
-          updatedAt: new Date().toISOString(),
-        })
-      )
-    } catch {
-      // ignore storage errors
-    }
+    // Persist last visited step for this menu in encrypted localStorage.
+    saveUXProgress(menuId, currentStep)
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [pathname, menuId])
+  }, [pathname, menuId, currentStep])
 
   return (
     <>
-      <UXProgressSteps
-        currentStep={(pathname?.split('/').filter(Boolean).at(-1) as any) || 'upload'}
-        menuId={menuId}
-      />
+      <UXProgressSteps currentStep={currentStep} menuId={menuId} />
       <div key={pathname} className="ux-route-fade w-full">
         {children}
       </div>

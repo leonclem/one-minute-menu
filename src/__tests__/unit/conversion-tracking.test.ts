@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom'
 
-import { getABVariant, trackConversionEvent } from '@/lib/conversion-tracking'
+import { getABVariant, trackConversionEvent, initWebVitalsTracking } from '@/lib/conversion-tracking'
 
 describe('conversion tracking utilities', () => {
   beforeEach(() => {
@@ -41,6 +41,10 @@ describe('conversion tracking utilities', () => {
     // @ts-expect-error restore
     global.navigator = originalNavigator
   })
-})
 
+  it('initialises web vitals tracking without throwing in jsdom', () => {
+    // jsdom does not provide PerformanceObserver; this should no-op
+    expect(() => initWebVitalsTracking()).not.toThrow()
+  })
+})
 

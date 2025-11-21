@@ -2,6 +2,7 @@ import '@testing-library/jest-dom'
 
 import { getStoredConsent, saveConsent, hasAnalyticsConsent } from '@/lib/consent'
 import { trackMenuView } from '@/lib/analytics-client'
+import { trackConversionEvent } from '@/lib/conversion-tracking'
 
 describe('consent utilities', () => {
   beforeEach(() => {
@@ -53,6 +54,33 @@ describe('analytics tracking and consent', () => {
     await trackMenuView('menu-456')
     expect(global.fetch).toHaveBeenCalledTimes(1)
     expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe('/api/analytics/track')
+  })
+
+  it('tracks demo conversion events alongside analytics when consent is granted', async () => {
+    saveConsent({ analytics: true })
+
+    // First, a menu view should go to /api/analytics/track
+    await trackMenuView('menu-ux-demo')
+
+    // Then a demo_start conversion should go to /api/analytics/conversion
+    await trackConversionEvent({
+      event: 'demo_start',
+      metadata: { path: '/ux/demo/sample', menuId: 'menu-ux-demo' },
+    })
+
+    const endpoints = (global.fetch as jest.Mock).mock.calls.map((call) => call[0])
+    expect(endpoints).toContain('/api/analytics/track')
+    expect(endpoints).toContain('/api/analytics/conversion')
+  })
+
+  it('still allows conversion events when analytics consent is not granted', async () => {
+    await trackConversionEvent({
+      event: 'demo_start',
+      metadata: { path: '/ux/demo/sample', sampleId: 'sample-breakfast' },
+    })
+
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+    expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe('/api/analytics/conversion')
   })
 })
 
