@@ -116,6 +116,5 @@ describe('DemoSampleClient (sample demo flow)', () => {
     // Should not navigate on failure
     expect(mockPush).not.toHaveBeenCalled()
   })
-}
-
+})
 

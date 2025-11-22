@@ -173,7 +173,13 @@ export default async function DashboardPage() {
                         </div>
                         <div className="pt-3 flex justify-center">
                           <Link
-                            href={menu.imageUrl ? `/ux/menus/${menu.id}/extract` : `/menus/${menu.id}/upload`}
+                            href={
+                              !menu.imageUrl
+                                ? `/menus/${menu.id}/upload`
+                                : ((menu.items?.length ?? 0) > 0 || (menu.categories?.length ?? 0) > 0 || menu.extractionMetadata)
+                                  ? `/ux/menus/${menu.id}/extracted`
+                                  : `/ux/menus/${menu.id}/extract`
+                            }
                             className="inline-block w-full sm:w-auto"
                           >
                             <span className="inline-flex items-center justify-center font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ux-primary focus:ring-offset-2 btn-ux-primary px-5 py-2.5 text-sm rounded-full text-soft-shadow w-full sm:w-auto">

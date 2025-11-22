@@ -215,8 +215,13 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
           {/* Actions */}
           <div className="flex gap-3">
             <Button variant="outline" onClick={onClose} disabled={running}>Close</Button>
-            <Button variant="primary" onClick={startBatch} loading={running} disabled={running}>
-              {running ? 'Creating…' : 'Create Photos'}
+            <Button 
+              variant="primary" 
+              onClick={startBatch} 
+              loading={running} 
+              disabled={running || !!results}
+            >
+              {results ? 'Batch Completed' : (running ? 'Creating…' : 'Create Photos')}
             </Button>
           </div>
         </div>

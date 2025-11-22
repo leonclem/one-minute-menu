@@ -13,6 +13,7 @@ import { ImageUp, Sparkles, QrCode } from 'lucide-react'
 import AIImageGeneration from '@/components/AIImageGeneration'
 import BatchAIImageGeneration from '@/components/BatchAIImageGeneration'
 import ImageVariationsManager from '@/components/ImageVariationsManager'
+import ZoomableImageModal from '@/components/ZoomableImageModal'
 
 interface UXMenuExtractedClientProps {
   menuId: string
@@ -25,16 +26,44 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const [loading, setLoading] = useState(false)
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(new Set())
-  const [summaryOpen, setSummaryOpen] = useState(true)
   const [controlPanelOpen, setControlPanelOpen] = useState(true)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
   const [activeImageItemId, setActiveImageItemId] = useState<string | null>(null)
   const [activeImageItemName, setActiveImageItemName] = useState<string | undefined>(undefined)
   const [activeImageMode, setActiveImageMode] = useState<'generate' | 'manage'>('generate')
   const [showBatchGeneration, setShowBatchGeneration] = useState(false)
+  const [demoGenerating, setDemoGenerating] = useState(false)
+  const [previewImage, setPreviewImage] = useState<{ url: string; alt: string } | null>(null)
   const router = useRouter()
   const { showToast } = useToast()
   const appliedRef = useRef(false)
+
+  // Demo image assets
+  const DEMO_IMAGES = {
+    breakfast: {
+      'Breakfast Sandwich': '/ux/sample-menus/generated/breakfast/breakfast-sandwich.webp',
+      'Country Tartine': '/ux/sample-menus/generated/breakfast/country-tartine.webp',
+      'Eggs Benedict': '/ux/sample-menus/generated/breakfast/eggs-benedict.webp',
+      'French Toast': '/ux/sample-menus/generated/breakfast/french-toast.webp',
+      'Le Parfait': '/ux/sample-menus/generated/breakfast/le-parfait.webp',
+      'Morning Tartine': '/ux/sample-menus/generated/breakfast/morning-tartine.webp',
+      'Parisian Omelette': '/ux/sample-menus/generated/breakfast/parisian-omelette.webp',
+      'Provençal Eggs': '/ux/sample-menus/generated/breakfast/provencal-eggs.webp',
+      'Three Organic Eggs Your Way!': '/ux/sample-menus/generated/breakfast/three-organic-eggs-your-way.webp',
+      'Two Soft-Boiled Eggs & \'Mouillettes\'': '/ux/sample-menus/generated/breakfast/two-soft-boiled-eggs-mouillettes.webp'
+    },
+    fine_dining: {
+      'Crispy Duck in Port Cherry Sauce': '/ux/sample-menus/generated/fine-dining/crispy-duck-in-port-cherry-sauce.webp',
+      'Grilled Faroe Island Salmon': '/ux/sample-menus/generated/fine-dining/grilled-faroe-island-salmon.webp',
+      'House Made Ice Cream': '/ux/sample-menus/generated/fine-dining/house-made-ice-cream.webp',
+      'Key Lime Pudding': '/ux/sample-menus/generated/fine-dining/key-lime-pudding.webp',
+      'Marinated Local Oyster Mushroom Salad': '/ux/sample-menus/generated/fine-dining/marinated-local-oyster-mushroom-salad.webp',
+      'Pan Roasted Duck Breast': '/ux/sample-menus/generated/fine-dining/pan-roasted-duck-breast.webp',
+      'Rutabaga and Toasted Hazelnut Soup': '/ux/sample-menus/generated/fine-dining/rutabaga-and-toasted-hazelnut-soup.webp',
+      'Tenderloin of Beef Wellington': '/ux/sample-menus/generated/fine-dining/tenderloin-of-beef-wellington.webp',
+      'Tres Leches Cake': '/ux/sample-menus/generated/fine-dining/tres-leches-cake.webp'
+    }
+  }
 
   useEffect(() => {
     // Check if this is a demo menu
@@ -164,6 +193,55 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       }
     }
   }, [menuId, router, showToast])
+
+  const handleDemoGenerateImages = async () => {
+    if (!demoMenu) return
+    
+    setDemoGenerating(true)
+    
+    // Determine which image set to use based on menu name/content
+    const isBreakfast = demoMenu.name.toLowerCase().includes('breakfast')
+    const images = isBreakfast ? DEMO_IMAGES.breakfast : DEMO_IMAGES.fine_dining
+    
+    // Select all items to generate images for
+    const itemsToUpdate = [...(demoMenu.items || [])]
+    const updatedItems = [...itemsToUpdate]
+    
+    // Simulate progressive generation
+    for (let i = 0; i < itemsToUpdate.length; i++) {
+      // Random delay between 800ms and 2000ms to feel organic
+      await new Promise(r => setTimeout(r, 800 + Math.random() * 1200))
+      
+      const item = itemsToUpdate[i]
+      // Look up specific image for this item
+      // @ts-ignore - we know the keys exist for demo data
+      const imageUrl = images[item.name]
+      
+      if (imageUrl) {
+        updatedItems[i] = {
+          ...item,
+          customImageUrl: imageUrl,
+          imageSource: 'ai'
+        }
+        
+        // Update state incrementally to show progress
+        const inProgressMenu = {
+          ...demoMenu,
+          items: [...updatedItems]
+        }
+        setDemoMenu(inProgressMenu)
+        // Update session storage so it persists
+        sessionStorage.setItem('demoMenu', JSON.stringify(inProgressMenu))
+      }
+    }
+    
+    setDemoGenerating(false)
+    showToast({
+      type: 'success',
+      title: 'Images Generated',
+      description: 'AI has created photos for your menu items.'
+    })
+  }
 
   const handleProceedToTemplate = () => {
     setLoading(true)
@@ -339,6 +417,26 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     })
   }
 
+  const handleToggleSelectAll = () => {
+    // If all items are already selected, deselect all
+    if (selectedCount === totalItems && totalItems > 0) {
+      setSelectedItemKeys(new Set())
+      return
+    }
+
+    // Otherwise select all
+    const newSelected = new Set<string>()
+    categories.forEach((category) => {
+      const items = itemsByCategory[category]
+      if (Array.isArray(items)) {
+        items.forEach((item, index) => {
+          newSelected.add(makeItemKey(category, item, index))
+        })
+      }
+    })
+    setSelectedItemKeys(newSelected)
+  }
+
   return (
     <UXSection>
       {/* Page heading styled like the sample page */}
@@ -355,48 +453,29 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         <UXCard>
           <MenuThumbnailBadge imageUrl={thumbnailUrl} position="right" />
           <div className="p-6 relative z-10">
-            <div className="flex items-center justify-between mb-4 gap-3">
-              <div>
-                <h3 className="text-lg font-semibold text-ux-text">
-                  {isDemo ? (demoMenu as Menu).name : 'Extracted Menu'}
-                </h3>
-                <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-ux-text-secondary">
-                  <span>{totalItems} items</span>
-                  <span>{categories.length} {categories.length === 1 ? 'category' : 'categories'}</span>
-                  <span className="inline-flex items-center px-2 py-1 rounded-full bg-ux-success/10 text-ux-success">
-                    <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    {overallConfidence}% confidence
-                  </span>
-                </div>
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-ux-text">
+                {isDemo ? (demoMenu as Menu).name : 'Extracted Menu'}
+              </h3>
+              <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-ux-text-secondary">
+                <span>{totalItems} items</span>
+                <span>{categories.length} {categories.length === 1 ? 'category' : 'categories'}</span>
+                <span className="inline-flex items-center px-2 py-1 rounded-full bg-ux-success/10 text-ux-success">
+                  <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  {overallConfidence}% confidence
+                </span>
               </div>
-              <button
-                type="button"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-primary transition-colors"
-                onClick={() => setSummaryOpen(open => !open)}
-                aria-expanded={summaryOpen}
-                aria-label={summaryOpen ? 'Collapse summary' : 'Expand summary'}
-              >
-                <svg
-                  className={`h-3.5 w-3.5 transition-transform ${summaryOpen ? '' : '-rotate-90'}`}
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path d="M7 5a1 1 0 00-.707 1.707L9.586 10l-3.293 3.293A1 1 0 108.707 14.707l4-4a1 1 0 000-1.414l-4-4A1 1 0 007 5z" />
-                </svg>
-              </button>
             </div>
-            {summaryOpen && (
-              <p className="text-ux-text">
-                Please review the extracted items below. All items look good and are ready for template selection.
-              </p>
-            )}
+            <p className="text-ux-text">
+              Please review the extracted items below. All items look good and are ready for template selection.
+            </p>
           </div>
         </UXCard>
 
         {/* Control Panel – authenticated menus only */}
-        {!isDemo && (
+        {(!isDemo || isDemo) && (
           <UXCard>
             <div className="p-6 space-y-4">
               <div className="flex items-start justify-between gap-3">
@@ -405,13 +484,41 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                     Menu control panel
                   </h3>
                   <p className="text-sm text-ux-text-secondary mt-1">
-                    Shortcuts to update your menu image or open the full editor for batch photos, item tools, and QR codes.
+                    {isDemo 
+                      ? 'Try out our AI image generation tools. In the full version, you can customize styles and regenerate images until they are perfect.'
+                      : 'Shortcuts to update your menu image or open the full editor for batch photos, item tools, and QR codes.'}
                   </p>
-                  <p className="mt-2 text-xs text-ux-text-secondary">
-                    {selectedCount > 0
-                      ? `${selectedCount} item${selectedCount === 1 ? '' : 's'} selected across all categories.`
-                      : 'No items selected yet.'}
-                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <p className="text-xs text-ux-text-secondary">
+                      {selectedCount > 0
+                        ? `${selectedCount} item${selectedCount === 1 ? '' : 's'} selected.`
+                        : 'No items selected yet.'}
+                    </p>
+                    {!isDemo && totalItems > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleToggleSelectAll}
+                        className="text-xs font-medium text-ux-primary hover:text-ux-primary/80 transition-colors flex items-center gap-1.5"
+                        aria-label={selectedCount === totalItems ? "Deselect all items" : "Select all items"}
+                      >
+                        {selectedCount === totalItems ? (
+                          <>
+                            <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-[3px] bg-ux-primary text-white">
+                              <svg className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </span>
+                            Deselect all
+                          </>
+                        ) : (
+                          <>
+                            <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-[3px] border border-ux-primary/50"></span>
+                            Select all
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -432,52 +539,85 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
 
               {controlPanelOpen && (
                 <>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <UXButton
-                  variant="warning"
-                  size="md"
-                  onClick={() => router.push(`/menus/${menuId}/upload`)}
-                  disabled={loading}
-                >
-                  <ImageUp className="hidden sm:inline-block h-4 w-4 mr-2" />
-                  Upload a menu image
-                </UXButton>
-                <UXButton
-                  variant="warning"
-                  size="md"
-                  onClick={() => {
-                    if (!authMenu) return
-                    const selected = authMenu.items.filter(item => selectedItemKeys.has(item.id))
-                    if (selected.length === 0) {
-                      showToast({
-                        type: 'info',
-                        title: 'Select items first',
-                        description: 'Choose one or more items to create photos for.',
-                      })
-                      return
-                    }
-                    setShowBatchGeneration(true)
-                  }}
-                  disabled={loading}
-                >
-                  <Sparkles className="hidden sm:inline-block h-4 w-4 mr-2" />
-                  Batch Create Photos
-                </UXButton>
-                <UXButton
-                  variant="warning"
-                  size="md"
-                  onClick={() => router.push(`/dashboard/menus/${menuId}`)}
-                  disabled={loading}
-                >
-                  <QrCode className="hidden sm:inline-block h-4 w-4 mr-2" />
-                  Add QR / manage items
-                </UXButton>
-              </div>
-              {thumbnailUrl && (
-                <p className="text-xs text-ux-text-secondary">
-                  You&apos;ve already uploaded a menu image. Uploading a new one will replace the existing image and you may need to re-run extraction.
-                </p>
-              )}
+                      {isDemo ? (
+                        <div className="flex flex-col gap-2 w-full sm:w-auto">
+                          <UXButton
+                            variant="warning"
+                            size="md"
+                            onClick={handleDemoGenerateImages}
+                            disabled={demoGenerating || (demoMenu?.items?.some(i => i.customImageUrl) ?? false)}
+                            className="w-full sm:w-auto"
+                          >
+                            {demoGenerating ? (
+                              <>
+                                <div className="animate-spin mr-2 h-4 w-4 border-b-2 border-white"></div>
+                                Generating Photos...
+                              </>
+                            ) : (demoMenu?.items?.some(i => i.customImageUrl) ? (
+                              <>
+                                <Sparkles className="hidden sm:inline-block h-4 w-4 mr-2" />
+                                Photos Generated
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="hidden sm:inline-block h-4 w-4 mr-2" />
+                                Auto-Generate Photos (Demo)
+                              </>
+                            ))}
+                          </UXButton>
+                          <div className="flex items-center justify-center sm:justify-start text-xs text-ux-text-secondary">
+                            <span className="mr-1 not-italic">ℹ️</span> 
+                            <span className="italic">Simulates AI generation with sample images</span>
+                          </div>
+                        </div>
+                      ) : (
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <UXButton
+                        variant="warning"
+                        size="md"
+                        onClick={() => router.push(`/menus/${menuId}/upload`)}
+                        disabled={loading}
+                      >
+                        <ImageUp className="hidden sm:inline-block h-4 w-4 mr-2" />
+                        Upload a menu image
+                      </UXButton>
+                      <UXButton
+                        variant="warning"
+                        size="md"
+                        onClick={() => {
+                          if (!authMenu) return
+                          const selected = authMenu.items.filter(item => selectedItemKeys.has(item.id))
+                          if (selected.length === 0) {
+                            showToast({
+                              type: 'info',
+                              title: 'Select items first',
+                              description: 'Choose one or more items to create photos for.',
+                            })
+                            return
+                          }
+                          setShowBatchGeneration(true)
+                        }}
+                        disabled={loading}
+                      >
+                        <Sparkles className="hidden sm:inline-block h-4 w-4 mr-2" />
+                        Batch Create Photos
+                      </UXButton>
+                      <UXButton
+                        variant="warning"
+                        size="md"
+                        onClick={() => router.push(`/dashboard/menus/${menuId}`)}
+                        disabled={loading}
+                      >
+                        <QrCode className="hidden sm:inline-block h-4 w-4 mr-2" />
+                        Add QR / manage items
+                      </UXButton>
+                    </div>
+                  )}
+                  {!isDemo && thumbnailUrl && (
+                    <p className="text-xs text-ux-text-secondary">
+                      You&apos;ve already uploaded a menu image. Uploading a new one will replace the existing image and you may need to re-run extraction.
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -555,56 +695,65 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                       return (
                         <div
                           key={key}
-                          className={`relative flex flex-col gap-3 p-3 bg-ux-background rounded-lg border border-ux-border transition-shadow ${
+                          className={`relative flex flex-col justify-between gap-3 p-3 bg-ux-background rounded-lg border border-ux-border transition-shadow h-full ${
                             selected ? 'ring-2 ring-ux-primary/60 shadow-md' : ''
                           }`}
                         >
-                          <div className="flex items-start gap-2">
-                            <button
-                              type="button"
-                              role="checkbox"
-                              aria-checked={selected}
-                              aria-label={`Select ${raw.name || 'item'}`}
-                              onClick={() => toggleItemSelected(key, !selected)}
-                              className="mt-1 h-3 w-3 min-h-0 min-w-0 p-0 rounded border border-ux-border flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ux-primary transition-colors"
-                              style={{
-                                backgroundColor: selected ? 'rgb(var(--ux-primary) / 1)' : 'transparent',
-                              }}
-                            >
-                              {selected && (
-                                <svg
-                                  className="h-2.5 w-2.5 text-white"
-                                  viewBox="0 0 20 20"
-                                  fill="none"
-                                >
-                                  <path
-                                    d="M5 10.5L8 13.5L15 6.5"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </svg>
-                              )}
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <h5 className="font-medium text-ux-text truncate">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-start gap-2">
+                              <button
+                                type="button"
+                                role="checkbox"
+                                aria-checked={selected}
+                                aria-label={`Select ${raw.name || 'item'}`}
+                                onClick={() => toggleItemSelected(key, !selected)}
+                                className="mt-1 h-4 w-4 min-h-[1rem] min-w-[1rem] p-0 rounded border border-ux-border flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ux-primary transition-colors shrink-0"
+                                style={{
+                                  backgroundColor: selected ? 'rgb(var(--ux-primary) / 1)' : 'transparent',
+                                }}
+                              >
+                                {selected && (
+                                  <svg
+                                    className="h-3 w-3 text-white"
+                                    viewBox="0 0 20 20"
+                                    fill="none"
+                                  >
+                                    <path
+                                      d="M5 10.5L8 13.5L15 6.5"
+                                      stroke="currentColor"
+                                      strokeWidth="3"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                )}
+                              </button>
+                              <h5 className="font-medium text-ux-text leading-tight pt-0.5">
                                 {raw.name}
                               </h5>
-                              {raw.description && (
-                                <p className="text-xs text-ux-text-secondary mt-1 line-clamp-3">
-                                  {raw.description}
-                                </p>
-                              )}
                             </div>
+                            {raw.description && (
+                              <p className="text-xs text-ux-text-secondary leading-relaxed line-clamp-3">
+                                {raw.description}
+                              </p>
+                            )}
                           </div>
 
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-end gap-3 mt-auto pt-2">
                             <button
                               type="button"
                               className="h-16 w-16 rounded-md border border-dashed border-ux-border bg-ux-background-secondary overflow-hidden flex items-center justify-center text-[11px] text-ux-text-secondary focus:outline-none focus:ring-2 focus:ring-ux-primary"
                               onClick={() => {
-                                if (isDemo || !authMenu) return
+                                if (isDemo) {
+                                  if (hasImage && typeof imageSrc === 'string') {
+                                    setPreviewImage({
+                                      url: imageSrc,
+                                      alt: (raw.name as string) || 'Menu item photo',
+                                    })
+                                  }
+                                  return
+                                }
+                                if (!authMenu) return
                                 const id = (raw as MenuItem).id
                                 if (!id) return
                                 setActiveImageItemId(id)
@@ -612,20 +761,26 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                                 setActiveImageMode(hasImage ? 'manage' : 'generate')
                               }}
                               aria-label={hasImage ? `Manage photos for ${raw.name}` : `Create photo for ${raw.name}`}
-                              disabled={isDemo || !authMenu}
+                              disabled={(!isDemo && !authMenu) || (isDemo && !hasImage)}
                             >
                               {hasImage ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={imageSrc}
-                                  alt={raw.name || 'Menu item photo'}
-                                  className="h-full w-full object-cover"
-                                  loading="lazy"
-                                  decoding="async"
-                                />
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={imageSrc}
+                                alt={raw.name || 'Menu item photo'}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            ) : (
+                              demoGenerating ? (
+                                <div className="flex items-center justify-center w-full h-full bg-ux-background-secondary">
+                                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-ux-primary"></div>
+                                </div>
                               ) : (
                                 <span>No photo</span>
-                              )}
+                              )
+                            )}
                             </button>
                             <div className="flex-1 flex flex-col items-end text-right gap-1">
                               <div className="font-semibold text-ux-text">
@@ -725,6 +880,16 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             await refreshMenu()
           }}
           onItemImageGenerated={handleAIImageGenerated}
+        />
+      )}
+
+      {/* Demo thumbnail zoom modal (demo flow only) */}
+      {isDemo && previewImage && (
+        <ZoomableImageModal
+          isOpen={!!previewImage}
+          onClose={() => setPreviewImage(null)}
+          url={previewImage.url}
+          alt={previewImage.alt}
         />
       )}
     </UXSection>

@@ -33,8 +33,23 @@ With mixed greens & bread
 Parisian Omelette - $11.60
 Ham, swiss, mushroom & spinach with baby greens
 
-Eggs Benedict - $10.50
+Two Soft-Boiled Eggs & 'Mouillettes' - $8.80
+With bread fingers
+
+Provençal Eggs - $10.50
+2 sunny side-up eggs, fried tomatoes & provence herbs
+
+Eggs Benedict - $13.50
 On brioche (Scottish, Classic, or Florentine)
+
+Le Parfait - $7.95
+Homemade granola & yogurt with fresh fruit
+
+Morning Tartine - $5.80
+With non-salted butter & jam/acacia honey
+
+Country Tartine - $9.95
+Ham & brie with cornichons & non-salted butter
 
 Breakfast Sandwich - $10.50
 Scrambled eggs & BLT
@@ -50,26 +65,41 @@ With maple syrup, homemade jam & whipped cream
     imageUrl: '/ux/sample-menus/fine-dining.jpg',
     category: 'restaurant',
     extractedText: `
-Today's Menu
+TODAY'S MENU
 
-Appetizers
+APPETIZERS
+
+Rutabaga and Toasted Hazelnut Soup - $12
+Soy roasted hazelnuts, horseradish cream, Chällerhocker
+
 Marinated Local Oyster Mushroom Salad - $16
-Pig ear terrine, pickled plum jelly, Jerusalem artichoke, Bose pear with mint, petit greens, red wine mousseline
+Pig ear terrine, pickled plum jelly, Jerusalem artichoke, Bosc pear with mint, petit greens, red wine mousseline
 
-Main Course
+MAIN ENTRÉES
+
 Grilled Faroe Island Salmon - $26
 Quinoa, oyster mushrooms, brussels sprout leaves, beet mustard
 
-Crispy Duck in Port Cherry Sauce - $36
-Roasted turnips, parsnips, rutabaga and carrots with cornmeal, duck confit, bok choy
+Pan Roasted Duck Breast - $29
+Herbed farro, orange-frisée salad, honey gastrique
 
-Desserts
+Crispy Duck in Port Cherry Sauce - $36
+Roasted turnips, parsnips, rutabaga and carrots with cornmeal, johnnycake wrapped duck confit, bok choy
+
+Tenderloin of Beef Wellington - $48
+Foie gras, spinach, duxelles
+
+DESSERTS
+
 Tres Leches Cake - $9
 Strawberry compote, strawberry balsamic
 
+Key Lime Pudding - $8
+Chantilly cream & wafer cookies
+
 House Made Ice Cream - $9
 Black raspberry
-    `.trim()
+`.trim()
   }
 ]
 

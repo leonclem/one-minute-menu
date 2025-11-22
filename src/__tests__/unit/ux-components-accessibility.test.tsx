@@ -22,6 +22,11 @@ jest.mock('@/components/ui', () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }))
 
+const mockTrackConversionEvent = jest.fn()
+jest.mock('@/lib/conversion-tracking', () => ({
+  trackConversionEvent: (...args: any[]) => mockTrackConversionEvent(...args),
+}))
+
 describe('UXInput accessibility', () => {
   it('links error message to input via aria attributes', () => {
     render(
@@ -123,11 +128,6 @@ describe('UXErrorFeedback behaviour', () => {
   })
 
   it('sends feedback and tracks ux_feedback event', async () => {
-    const mockTrackConversionEvent = jest.fn()
-    jest.doMock('@/lib/conversion-tracking', () => ({
-      trackConversionEvent: (...args: any[]) => mockTrackConversionEvent(...args),
-    }))
-
     render(<UXErrorFeedback context="demo" menuId="menu-123" />)
 
     const textarea = screen.getByPlaceholderText(/what were you trying to do/i)
@@ -143,22 +143,23 @@ describe('UXErrorFeedback behaviour', () => {
           method: 'POST',
         }),
       )
+
+      expect(mockTrackConversionEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'ux_feedback',
+          metadata: expect.objectContaining({
+            context: 'demo',
+            hasMenuId: true,
+          }),
+        }),
+      )
+
       expect(mockShowToast).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'success',
         }),
       )
     })
-
-    expect(mockTrackConversionEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        event: 'ux_feedback',
-        metadata: expect.objectContaining({
-          context: 'demo',
-          hasMenuId: true,
-        }),
-      }),
-    )
   })
 })
 

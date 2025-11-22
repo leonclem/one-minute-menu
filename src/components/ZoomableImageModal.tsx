@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 interface ZoomableImageModalProps {
   isOpen: boolean
@@ -221,9 +222,10 @@ export default function ZoomableImageModal({ isOpen, onClose, url, alt }: Zoomab
 
   if (!isOpen) return null
 
-  return (
+  // Use portal to render modal at body level to avoid positioning issues
+  const modalContent = (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -232,7 +234,7 @@ export default function ZoomableImageModal({ isOpen, onClose, url, alt }: Zoomab
     >
       <div
         ref={containerRef}
-        className="relative w-full h-full flex items-center justify-center touch-none select-none overflow-hidden"
+        className="relative w-full h-full flex items-center justify-center touch-none select-none overflow-hidden px-4 sm:px-8"
         onClick={(e) => e.stopPropagation()}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -245,12 +247,23 @@ export default function ZoomableImageModal({ isOpen, onClose, url, alt }: Zoomab
         {/* Close button fixed at top right of screen */}
         <button
           type="button"
-          onClick={onClose}
-          className="absolute top-4 right-4 z-50 rounded-full bg-black/50 text-white p-2 hover:bg-black/70 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation()
+            onClose()
+          }}
+          className="absolute top-4 right-4 sm:top-6 sm:right-6 z-[10000] rounded-full bg-white text-gray-900 p-3 shadow-2xl hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-white/50 transition-all"
           aria-label="Close image preview"
-          title="Close"
+          title="Close (Esc)"
         >
-          <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            className="h-6 w-6 sm:h-7 sm:w-7"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
@@ -264,13 +277,13 @@ export default function ZoomableImageModal({ isOpen, onClose, url, alt }: Zoomab
           <img
             src={url}
             alt={alt}
-            className={`max-w-full max-h-full w-auto h-auto object-contain transition-transform duration-75 ${
+            className={`max-w-full max-h-[80vh] w-auto h-auto object-contain transition-transform duration-75 ${
               dragRef.current.isDragging ? 'cursor-grabbing' : scale > 1 ? 'cursor-grab' : 'cursor-zoom-in'
             }`}
-            style={{ 
-                transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`, 
-                // Use faster transition during drag/pinch for responsiveness, smoother for snaps
-                transition: dragRef.current.isDragging || pinchStartDistance ? 'none' : 'transform 0.2s cubic-bezier(0.2, 0, 0.2, 1)'
+            style={{
+              transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`,
+              // Use faster transition during drag/pinch for responsiveness, smoother for snaps
+              transition: dragRef.current.isDragging || pinchStartDistance ? 'none' : 'transform 0.2s cubic-bezier(0.2, 0, 0.2, 1)'
             }}
             draggable={false}
           />
@@ -285,4 +298,7 @@ export default function ZoomableImageModal({ isOpen, onClose, url, alt }: Zoomab
       </div>
     </div>
   )
+
+  // Render to document body using portal
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null
 }

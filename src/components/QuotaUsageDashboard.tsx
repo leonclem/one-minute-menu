@@ -68,14 +68,36 @@ export default function QuotaUsageDashboard({
   if (loading) {
     return (
       unstyled ? (
-        <div className="h-16 animate-pulse rounded bg-white/50" />
+        <div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="h-6 w-16 animate-pulse rounded bg-white/50" />
+              <div className="h-4 w-24 animate-pulse rounded bg-white/50 mt-1" />
+            </div>
+            <div className="w-40">
+              <div className="h-2 w-full animate-pulse rounded bg-white/50" />
+              <div className="mt-1 h-3 w-32 ml-auto animate-pulse rounded bg-white/50" />
+            </div>
+          </div>
+          <div className="mt-3 h-4 w-24 animate-pulse rounded bg-white/50" />
+        </div>
       ) : (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-secondary-600">AI Image Generation Quota</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-16 animate-pulse rounded bg-secondary-100" />
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="h-6 w-16 animate-pulse rounded bg-secondary-100" />
+                <div className="h-4 w-24 animate-pulse rounded bg-secondary-100 mt-1" />
+              </div>
+              <div className="w-40">
+                <div className="h-2 w-full animate-pulse rounded bg-secondary-100" />
+                <div className="mt-1 h-3 w-32 ml-auto animate-pulse rounded bg-secondary-100" />
+              </div>
+            </div>
+            <div className="mt-3 h-4 w-24 animate-pulse rounded bg-secondary-100" />
           </CardContent>
         </Card>
       )

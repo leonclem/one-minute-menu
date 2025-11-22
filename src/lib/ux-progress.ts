@@ -48,7 +48,7 @@ function encodeBase64(bytes: Uint8Array): string {
       return window.btoa(binary)
     }
     // Fallback for test environments without window.btoa
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line
     const Buf: any = (globalThis as any).Buffer
     if (Buf) {
       return Buf.from(bytes).toString('base64')
@@ -70,7 +70,7 @@ function decodeBase64(str: string): Uint8Array | null {
       return bytes
     }
     // Fallback for test environments without window.atob
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line
     const Buf: any = (globalThis as any).Buffer
     if (Buf) {
       return new Uint8Array(Buf.from(str, 'base64'))

@@ -485,6 +485,7 @@ function parseSampleTextToItems(text: string) {
   const items = []
   let currentCategory = ''
   let itemOrder = 0
+  let currentItem: any = null
 
   for (const line of lines) {
     const trimmedLine = line.trim()
@@ -495,8 +496,10 @@ function parseSampleTextToItems(text: string) {
     }
     
     // Check if this is a category header (all caps, no price)
-    if (trimmedLine === trimmedLine.toUpperCase() && !trimmedLine.includes('$')) {
+    // Ensure it has some length and isn't just punctuation
+    if (trimmedLine === trimmedLine.toUpperCase() && !trimmedLine.includes('$') && /[A-Z]/.test(trimmedLine) && trimmedLine.length > 2) {
       currentCategory = trimmedLine
+      currentItem = null
       continue
     }
     
@@ -504,23 +507,43 @@ function parseSampleTextToItems(text: string) {
     const priceMatch = trimmedLine.match(/\$(\d+\.?\d*)/)
     if (priceMatch) {
       const price = parseFloat(priceMatch[1])
-      const nameAndDescription = trimmedLine.replace(/\s*-\s*\$\d+\.?\d*.*$/, '').trim()
-      const descriptionMatch = trimmedLine.match(/-\s*\$\d+\.?\d*\s*(.*)$/)
-      const description = descriptionMatch ? descriptionMatch[1].trim() : ''
+      // Extract name: everything before the price
+      // Handle "Name - $Price" or "Name $Price"
+      let namePart = trimmedLine.substring(0, trimmedLine.indexOf('$')).trim()
+      if (namePart.endsWith('-')) {
+        namePart = namePart.slice(0, -1).trim()
+      }
       
-      items.push({
+      // Extract description on same line: everything after price
+      // e.g. "$10.60 - description" or "$10.60 description"
+      // The regex priceMatch index gives start of price.
+      const priceEndIndex = trimmedLine.indexOf(priceMatch[0]) + priceMatch[0].length
+      let description = trimmedLine.substring(priceEndIndex).trim()
+      // Remove leading ' - ' if present
+      if (description.startsWith('-')) description = description.substring(1).trim()
+      
+      const newItem = {
         id: `demo-item-${Date.now()}-${itemOrder}`,
-        name: nameAndDescription,
+        name: namePart,
         description: description || '',
         price: price,
         available: true,
-        category: currentCategory,
+        category: currentCategory || 'Main',
         order: itemOrder,
         confidence: 0.95,
         imageSource: 'none' as const
-      })
+      }
       
+      items.push(newItem)
+      currentItem = newItem
       itemOrder++
+    } else if (currentItem) {
+      // If not a category and not a new item, append to previous item description
+      if (currentItem.description) {
+        currentItem.description += ' ' + trimmedLine
+      } else {
+        currentItem.description = trimmedLine
+      }
     }
   }
   

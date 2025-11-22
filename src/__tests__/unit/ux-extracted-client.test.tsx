@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import UXMenuExtractedClient from '../../app/ux/menus/[menuId]/extracted/extracted-client'
 
@@ -49,6 +49,41 @@ describe('UX Extracted Page', () => {
     // Should show category headers
     expect(screen.getByText('Starters')).toBeInTheDocument()
     expect(screen.getByText('Mains')).toBeInTheDocument()
+
+    unmount()
+  })
+
+  it('opens zoom modal when clicking a demo item thumbnail image', async () => {
+    const demoMenuWithImages = {
+      id: 'demo-zoom',
+      name: 'Demo Zoom Menu',
+      items: [
+        {
+          id: '1',
+          name: 'Zoom Soup',
+          price: 7.5,
+          description: 'Tomato soup',
+          category: 'Starters',
+          customImageUrl: '/ux/sample-menus/generated/test/zoom-soup.webp',
+        },
+      ],
+    }
+
+    sessionStorage.setItem('demoMenu', JSON.stringify(demoMenuWithImages))
+
+    const { unmount } = render(<UXMenuExtractedClient menuId="demo-zoom" />)
+
+    // Wait for the extracted page heading
+    expect(await screen.findByText(/Review Extracted Items/i)).toBeInTheDocument()
+
+    // Click the thumbnail button for the demo item
+    const thumbButton = screen.getByRole('button', { name: /photos for Zoom Soup/i })
+    fireEvent.click(thumbButton)
+
+    // Zoomable modal should appear
+    expect(
+      screen.getByRole('dialog', { name: /Image preview/i })
+    ).toBeInTheDocument()
 
     unmount()
   })
