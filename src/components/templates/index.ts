@@ -18,3 +18,6 @@ export type { FillerTileProps } from './FillerTile'
 
 export { default as TextOnlyLayout, CompactTextOnlyLayout, TwoColumnTextOnlyLayout } from './TextOnlyLayout'
 export type { TextOnlyLayoutProps, CompactTextOnlyLayoutProps, TwoColumnTextOnlyLayoutProps } from './TextOnlyLayout'
+
+export { default as CompatibilityBadge } from './CompatibilityBadge'
+export type { CompatibilityBadgeProps } from './CompatibilityBadge'
