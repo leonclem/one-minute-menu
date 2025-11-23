@@ -74,9 +74,22 @@ const CONVERSION_INCENTIVES = [
   }
 ]
 
+interface TemplateSelection {
+  id?: string
+  menuId: string
+  templateId: string
+  templateVersion: string
+  configuration: {
+    textOnly: boolean
+    useLogo: boolean
+    colourPaletteId?: string
+  }
+}
+
 export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) {
   const [demoMenu, setDemoMenu] = useState<Menu | null>(null)
   const [authMenu, setAuthMenu] = useState<Menu | null>(null)
+  const [templateSelection, setTemplateSelection] = useState<TemplateSelection | null>(null)
   const [exportingFormat, setExportingFormat] = useState<string | null>(null)
   const [completedExports, setCompletedExports] = useState<Set<string>>(new Set())
   const router = useRouter()
@@ -93,6 +106,21 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
         if (resp.ok) {
           const json = await resp.json()
           setAuthMenu(json?.data ?? null)
+          
+          // Fetch saved template selection for authenticated menus
+          try {
+            const selectionResp = await fetch(`/api/menus/${baseId}/template-selection`)
+            if (selectionResp.ok) {
+              const selectionJson = await selectionResp.json()
+              if (selectionJson?.data) {
+                setTemplateSelection(selectionJson.data)
+              }
+            }
+          } catch (selectionErr) {
+            console.error('Error fetching template selection:', selectionErr)
+            // Non-fatal error, continue without template selection
+          }
+          
           return
         }
         // If unauthorized or not found and the original is a demo route, fall back to demo session
@@ -102,6 +130,17 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
             try {
               const parsedMenu = JSON.parse(storedDemoMenu)
               setDemoMenu(parsedMenu)
+              
+              // Check for demo template selection in sessionStorage
+              const storedSelection = sessionStorage.getItem(`templateSelection-${menuId}`)
+              if (storedSelection) {
+                try {
+                  const parsedSelection = JSON.parse(storedSelection)
+                  setTemplateSelection(parsedSelection)
+                } catch (error) {
+                  console.error('Error parsing template selection:', error)
+                }
+              }
             } catch (error) {
               console.error('Error parsing demo menu:', error)
               router.push('/ux/demo/sample')
@@ -124,6 +163,17 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
             try {
               const parsedMenu = JSON.parse(storedDemoMenu)
               setDemoMenu(parsedMenu)
+              
+              // Check for demo template selection in sessionStorage
+              const storedSelection = sessionStorage.getItem(`templateSelection-${menuId}`)
+              if (storedSelection) {
+                try {
+                  const parsedSelection = JSON.parse(storedSelection)
+                  setTemplateSelection(parsedSelection)
+                } catch (error) {
+                  console.error('Error parsing template selection:', error)
+                }
+              }
             } catch {
               router.push('/ux/demo/sample')
             }
@@ -196,6 +246,11 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
       let endpoint = ''
       let body: any = { menuId: baseId }
       let filename = ''
+      
+      // Include templateId if a template selection exists
+      if (templateSelection?.templateId) {
+        body.templateId = templateSelection.templateId
+      }
 
       switch (option.id) {
         case 'pdf':
@@ -337,6 +392,45 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
       </UXSection>
     )
   }
+  
+  // Check if template selection is missing and guide user back
+  const hasTemplateSelection = !!templateSelection?.templateId
+  
+  if (!hasTemplateSelection) {
+    return (
+      <UXSection>
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
+            No Template Selected
+          </h1>
+          <p className="mt-2 text-white/90 text-hero-shadow-strong">
+            Please select a template before exporting your menu
+          </p>
+        </div>
+        <div className="max-w-2xl mx-auto">
+          <UXCard>
+            <div className="p-8 text-center">
+              <div className="text-5xl mb-4">🎨</div>
+              <h3 className="text-xl font-semibold text-ux-text mb-4">
+                Choose a Template First
+              </h3>
+              <p className="text-ux-text-secondary mb-6">
+                You need to select a template design before you can export your menu. 
+                Go back to the template selection page to choose a design that fits your style.
+              </p>
+              <UXButton
+                variant="primary"
+                size="lg"
+                onClick={handleBackToTemplate}
+              >
+                ← Back to Template Selection
+              </UXButton>
+            </div>
+          </UXCard>
+        </div>
+      </UXSection>
+    )
+  }
 
   return (
     <UXSection>
@@ -359,16 +453,31 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
                 <h3 className="text-lg font-semibold text-ux-text mb-2">
                   {menuForSummary?.name}
                 </h3>
-                <p className="text-ux-text-secondary">
-                  {(menuForSummary?.items?.length ?? 0)} items • {(menuForSummary as any)?.theme?.name ?? 'Modern'} template • Ready for export
+                <p className="text-ux-text-secondary mb-2">
+                  {(menuForSummary?.items?.length ?? 0)} items • Ready for export
                 </p>
+                {templateSelection && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="inline-flex items-center px-2 py-1 rounded-md bg-ux-primary/10 text-ux-primary text-xs font-medium">
+                      <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                      </svg>
+                      Template: {templateSelection.templateId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                    </span>
+                    {templateSelection.configuration?.textOnly && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-700 text-xs">
+                        Text Only
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="text-right">
                 <div className="inline-flex items-center px-3 py-1 rounded-full bg-ux-success/10 text-ux-success text-sm">
                   <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  Demo Complete
+                  Ready to Export
                 </div>
               </div>
             </div>
