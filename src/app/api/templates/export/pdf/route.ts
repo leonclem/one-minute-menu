@@ -14,10 +14,178 @@ import { logger } from '@/lib/logger'
 // Extended timeout for PDF generation
 export const maxDuration = 60
 
+/**
+ * Handle PDF export using the new template engine
+ */
+async function handleNewTemplateEngine(
+  menu: any,
+  templateId: string,
+  options: any,
+  userId: string,
+  metricsBuilder: MetricsBuilder
+) {
+  // Import new template engine modules
+  const { toEngineMenu } = await import('@/lib/templates/menu-transformer')
+  const { TEMPLATE_REGISTRY } = await import('@/lib/templates/template-definitions')
+  const { generateLayout } = await import('@/lib/templates/layout-engine')
+  const { checkCompatibility } = await import('@/lib/templates/compatibility-checker')
+  const { ServerLayoutRenderer } = await import('@/lib/templates/export/layout-renderer')
+  const { renderToString } = await import('react-dom/server')
+  const { createElement } = await import('react')
+  
+  // Validate template exists
+  const template = TEMPLATE_REGISTRY[templateId]
+  if (!template) {
+    return NextResponse.json(
+      { error: 'Invalid template ID', code: ERROR_CODES.PRESET_NOT_FOUND },
+      { status: 400 }
+    )
+  }
+  
+  // Transform menu to EngineMenu
+  metricsBuilder.markCalculationStart()
+  const engineMenu = toEngineMenu(menu)
+  
+  // Check compatibility
+  const compatibility = checkCompatibility(engineMenu, template)
+  if (compatibility.status === 'INCOMPATIBLE') {
+    return NextResponse.json(
+      { 
+        error: 'Template is incompatible with this menu',
+        code: ERROR_CODES.INVALID_INPUT,
+        details: compatibility
+      },
+      { status: 400 }
+    )
+  }
+  
+  // Load saved template selection (if exists)
+  const supabase = createServerSupabaseClient()
+  let selection: any
+  const { data: selectionData } = await supabase
+    .from('menu_template_selections')
+    .select('*')
+    .eq('menu_id', menu.id)
+    .single()
+  
+  if (selectionData) {
+    selection = {
+      id: selectionData.id,
+      menuId: selectionData.menu_id,
+      templateId: selectionData.template_id,
+      templateVersion: selectionData.template_version,
+      configuration: selectionData.configuration,
+      createdAt: new Date(selectionData.created_at),
+      updatedAt: new Date(selectionData.updated_at)
+    }
+  }
+  
+  // Generate layout
+  const layout = generateLayout({
+    menu: engineMenu,
+    template,
+    selection
+  })
+  
+  metricsBuilder.setLayoutSelection(templateId, 'print')
+  metricsBuilder.markCalculationEnd()
+  
+  // Render layout to HTML
+  metricsBuilder.markRenderStart()
+  const componentHTML = renderToString(
+    createElement(ServerLayoutRenderer, {
+      layout,
+      currency: engineMenu.metadata.currency,
+      className: 'pdf-export'
+    })
+  )
+  metricsBuilder.markRenderEnd()
+  
+  // Build complete HTML document
+  const htmlDocument = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${options.title || menu.name}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.5;
+      color: #1f2937;
+    }
+    
+    @page {
+      size: ${template.orientation === 'A4_LANDSCAPE' ? 'A4 landscape' : 'A4 portrait'};
+      margin: 0;
+    }
+    
+    @media print {
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+  ${componentHTML}
+</body>
+</html>
+  `.trim()
+  
+  // Export to PDF
+  metricsBuilder.markExportStart()
+  // Create minimal LayoutMenuData for PDF export metadata
+  const layoutData = {
+    metadata: {
+      title: menu.name,
+      currency: engineMenu.metadata.currency
+    },
+    sections: []
+  }
+  const result = await exportToPDF(htmlDocument, layoutData, {
+    ...options,
+    title: options.title || menu.name
+  })
+  metricsBuilder.markExportEnd()
+  
+  // Set export details and build metrics
+  metricsBuilder.setExportDetails('pdf', result.size)
+  const metrics = metricsBuilder.build()
+  logLayoutMetrics(metrics)
+  
+  // Validate performance
+  const performanceCheck = validatePerformance(metrics)
+  if (!performanceCheck.isValid) {
+    logger.warn('[PDFExporter] Performance warnings:', performanceCheck.warnings)
+  }
+  
+  // Return PDF with appropriate headers
+  const orientation = template.orientation === 'A4_LANDSCAPE' ? 'landscape' : 'portrait'
+  return new Response(result.pdfBytes as any, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Length': result.size.toString(),
+      'Content-Disposition': `attachment; filename="${menu.slug}-${orientation}.pdf"`,
+      'Cache-Control': 'no-cache'
+    }
+  })
+}
+
 // Request body schema
 const ExportPDFRequestSchema = z.object({
   menuId: z.string().uuid('Invalid menu ID format'),
-  presetId: z.string().optional(),
+  templateId: z.string().optional(), // New: template ID for new engine
+  presetId: z.string().optional(),   // Legacy: preset ID for old engine
   options: z.object({
     orientation: z.enum(['portrait', 'landscape']).optional(),
     title: z.string().optional(),
@@ -89,7 +257,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const { menuId, presetId, options = {} } = validation.data
+    const { menuId, templateId, presetId, options = {} } = validation.data
     
     metricsBuilder.setMenuId(menuId)
     
@@ -116,6 +284,13 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       )
     }
+    
+    // NEW TEMPLATE ENGINE PATH
+    if (templateId) {
+      return await handleNewTemplateEngine(menu, templateId, options, user.id, metricsBuilder)
+    }
+    
+    // LEGACY PATH: Continue with existing preset-based system
     
     // Get extraction data - either from extractionMetadata or reconstruct from items
     let extractionResult: any

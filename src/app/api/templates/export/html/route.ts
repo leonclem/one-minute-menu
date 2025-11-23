@@ -12,11 +12,189 @@ import { MetricsBuilder, logLayoutMetrics, validatePerformance } from '@/lib/tem
 import type { OutputContext } from '@/lib/templates/types'
 import { z } from 'zod'
 
+/**
+ * Handle HTML export using the new template engine
+ */
+async function handleNewTemplateEngine(
+  menu: any,
+  templateId: string,
+  context: OutputContext,
+  options: any,
+  userId: string,
+  metricsBuilder: MetricsBuilder
+) {
+  // Import new template engine modules
+  const { toEngineMenu } = await import('@/lib/templates/menu-transformer')
+  const { TEMPLATE_REGISTRY } = await import('@/lib/templates/template-definitions')
+  const { generateLayout } = await import('@/lib/templates/layout-engine')
+  const { checkCompatibility } = await import('@/lib/templates/compatibility-checker')
+  const { ServerLayoutRenderer } = await import('@/lib/templates/export/layout-renderer')
+  const { renderToString } = await import('react-dom/server')
+  const { createElement } = await import('react')
+  const { createServerSupabaseClient } = await import('@/lib/supabase-server')
+  
+  // Validate template exists
+  const template = TEMPLATE_REGISTRY[templateId]
+  if (!template) {
+    return NextResponse.json(
+      { error: 'Invalid template ID', code: ERROR_CODES.PRESET_NOT_FOUND },
+      { status: 400 }
+    )
+  }
+  
+  // Transform menu to EngineMenu
+  metricsBuilder.markCalculationStart()
+  const engineMenu = toEngineMenu(menu)
+  
+  // Check compatibility
+  const compatibility = checkCompatibility(engineMenu, template)
+  if (compatibility.status === 'INCOMPATIBLE') {
+    return NextResponse.json(
+      { 
+        error: 'Template is incompatible with this menu',
+        code: ERROR_CODES.INVALID_INPUT,
+        details: compatibility
+      },
+      { status: 400 }
+    )
+  }
+  
+  // Load saved template selection (if exists)
+  const supabase = createServerSupabaseClient()
+  let selection: any
+  const { data: selectionData } = await supabase
+    .from('menu_template_selections')
+    .select('*')
+    .eq('menu_id', menu.id)
+    .single()
+  
+  if (selectionData) {
+    selection = {
+      id: selectionData.id,
+      menuId: selectionData.menu_id,
+      templateId: selectionData.template_id,
+      templateVersion: selectionData.template_version,
+      configuration: selectionData.configuration,
+      createdAt: new Date(selectionData.created_at),
+      updatedAt: new Date(selectionData.updated_at)
+    }
+  }
+  
+  // Generate layout
+  const layout = generateLayout({
+    menu: engineMenu,
+    template,
+    selection
+  })
+  
+  metricsBuilder.setLayoutSelection(templateId, context)
+  metricsBuilder.markCalculationEnd()
+  
+  // Render layout to HTML
+  metricsBuilder.markRenderStart()
+  const componentHTML = renderToString(
+    createElement(ServerLayoutRenderer, {
+      layout,
+      currency: engineMenu.metadata.currency,
+      className: 'html-export',
+      themeColors: options.themeColors
+    })
+  )
+  metricsBuilder.markRenderEnd()
+  
+  // Build complete HTML document
+  const includeDoctype = options.includeDoctype !== false
+  const includeMetaTags = options.includeMetaTags !== false
+  const includeStyles = options.includeStyles !== false
+  const pageTitle = options.pageTitle || menu.name
+  
+  let htmlDocument = ''
+  
+  if (includeDoctype) {
+    htmlDocument += '<!DOCTYPE html>\n'
+  }
+  
+  htmlDocument += '<html lang="en">\n'
+  
+  if (includeMetaTags) {
+    htmlDocument += '<head>\n'
+    htmlDocument += '  <meta charset="UTF-8">\n'
+    htmlDocument += '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+    htmlDocument += `  <title>${pageTitle}</title>\n`
+  }
+  
+  if (includeStyles) {
+    htmlDocument += '  <style>\n'
+    htmlDocument += `
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.5;
+      color: #1f2937;
+      background: #f9fafb;
+      padding: 2rem;
+    }
+    
+    .html-export {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    `
+    
+    if (options.customCSS) {
+      htmlDocument += options.customCSS
+    }
+    
+    htmlDocument += '  </style>\n'
+  }
+  
+  if (includeMetaTags) {
+    htmlDocument += '</head>\n'
+  }
+  
+  htmlDocument += '<body>\n'
+  htmlDocument += componentHTML
+  htmlDocument += '\n</body>\n'
+  htmlDocument += '</html>'
+  
+  metricsBuilder.markExportStart()
+  const size = Buffer.byteLength(htmlDocument, 'utf8')
+  metricsBuilder.markExportEnd()
+  
+  // Set export details and build metrics
+  metricsBuilder.setExportDetails('html', size)
+  const metrics = metricsBuilder.build()
+  logLayoutMetrics(metrics)
+  
+  // Validate performance
+  const performanceCheck = validatePerformance(metrics)
+  if (!performanceCheck.isValid) {
+    console.warn('[HTMLExporter] Performance warnings:', performanceCheck.warnings)
+  }
+  
+  // Return HTML with appropriate headers
+  return new Response(htmlDocument, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Length': size.toString(),
+      'Content-Disposition': `attachment; filename="${menu.slug}-${context}.html"`,
+      'Cache-Control': 'no-cache'
+    }
+  })
+}
+
 // Request body schema
 const ExportHTMLRequestSchema = z.object({
   menuId: z.string().uuid('Invalid menu ID format'),
   context: z.enum(['mobile', 'tablet', 'desktop', 'print']).default('desktop'),
-  presetId: z.string().optional(),
+  templateId: z.string().optional(), // New: template ID for new engine
+  presetId: z.string().optional(),   // Legacy: preset ID for old engine
   options: z.object({
     includeDoctype: z.boolean().optional(),
     includeMetaTags: z.boolean().optional(),
@@ -93,7 +271,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const { menuId, context, presetId, options = {} } = validation.data
+    const { menuId, context, templateId, presetId, options = {} } = validation.data
     
     metricsBuilder.setMenuId(menuId)
     
@@ -120,6 +298,13 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       )
     }
+    
+    // NEW TEMPLATE ENGINE PATH
+    if (templateId) {
+      return await handleNewTemplateEngine(menu, templateId, context, options, user.id, metricsBuilder)
+    }
+    
+    // LEGACY PATH: Continue with existing preset-based system
     
     // Get extraction data - either from extractionMetadata or reconstruct from items
     let extractionResult: any
