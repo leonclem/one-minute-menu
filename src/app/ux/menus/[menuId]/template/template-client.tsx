@@ -288,9 +288,12 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       if (isDemoUser) {
         if (!demoMenu) return
         // For demo users, store template selection in sessionStorage
-        sessionStorage.setItem('demoTemplateSelection', JSON.stringify({
+        // Key format: templateSelection-{menuId} to match what export-client expects
+        sessionStorage.setItem(`templateSelection-${menuId}`, JSON.stringify({
+          menuId,
           templateId: selectedTemplate.template.id,
-          configuration: { textOnly: false }
+          templateVersion: '1.0.0',
+          configuration: { textOnly: false, useLogo: false }
         }))
         // Navigate to export for demo users
         router.push(`/ux/menus/${menuId}/export`)

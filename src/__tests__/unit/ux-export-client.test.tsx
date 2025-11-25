@@ -16,6 +16,17 @@ jest.mock('@/components/ui', () => ({
 
 import UXMenuExportClient from '@/app/ux/menus/[menuId]/export/export-client'
 
+// Template selection mock data
+const mockTemplateSelection = {
+  menuId: 'demo-xyz',
+  templateId: 'classic-grid-cards',
+  templateVersion: '1.0.0',
+  configuration: {
+    textOnly: false,
+    useLogo: false,
+  },
+}
+
 describe('UXMenuExportClient (demo flow)', () => {
   beforeEach(() => {
     // Seed demo menu in sessionStorage
@@ -27,6 +38,9 @@ describe('UXMenuExportClient (demo flow)', () => {
       imageUrl: '/test.jpg',
     }
     window.sessionStorage.setItem('demoMenu', JSON.stringify(demoMenu))
+    
+    // Seed template selection in sessionStorage (required for export page)
+    window.sessionStorage.setItem(`templateSelection-demo-xyz`, JSON.stringify(mockTemplateSelection))
 
     // Ensure no real network call is attempted in demo flow
     // @ts-ignore
@@ -59,28 +73,47 @@ describe('UXMenuExportClient (demo flow)', () => {
 
 describe('UXMenuExportClient (authenticated flow)', () => {
   afterEach(() => {
+    window.sessionStorage.clear()
     // @ts-ignore
     global.fetch = undefined
   })
 
   it('fetches menu info and renders heading for authenticated users', async () => {
-    // Mock GET /api/menus/:id
-    // @ts-ignore
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: {
-          id: '123e4567-e89b-12d3-a456-426614174000',
-          name: 'Auth Menu',
-          items: [{ id: '1', name: 'Burger' }],
-          theme: { name: 'Modern' },
-          imageUrl: '/auth.jpg',
-        },
-      }),
-    })
+    const menuId = '123e4567-e89b-12d3-a456-426614174000'
+    
+    // Mock fetch to handle multiple API calls
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (url === `/api/menus/${menuId}`) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              id: menuId,
+              name: 'Auth Menu',
+              items: [{ id: '1', name: 'Burger' }],
+              theme: { name: 'Modern' },
+              imageUrl: '/auth.jpg',
+            },
+          }),
+        })
+      }
+      if (url === `/api/menus/${menuId}/template-selection`) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              ...mockTemplateSelection,
+              menuId,
+            },
+          }),
+        })
+      }
+      return Promise.reject(new Error('Unmocked endpoint: ' + url))
+    }) as jest.Mock
 
-    render(<UXMenuExportClient menuId="123e4567-e89b-12d3-a456-426614174000" />)
+    render(<UXMenuExportClient menuId={menuId} />)
 
     await waitFor(() => {
       expect(screen.getByText(/Export Your Menu/i)).toBeInTheDocument()

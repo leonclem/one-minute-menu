@@ -41,11 +41,54 @@ import { CompatibilityError, LayoutGenerationError, MenuValidationError } from '
  * a template definition, and optional selection configuration, and produces a complete
  * layout instance ready for rendering.
  * 
+ * The function is deterministic: given the same inputs, it will always produce
+ * the same output. This ensures consistent previews and exports.
+ * 
  * @param input - Layout engine input containing menu, template, and optional selection
  * @returns Complete layout instance with positioned tiles across pages
  * @throws {MenuValidationError} If menu data is invalid
  * @throws {CompatibilityError} If template is incompatible with menu
  * @throws {LayoutGenerationError} If layout generation fails
+ * 
+ * @example
+ * ```typescript
+ * import { generateLayout } from '@/lib/templates/layout-engine'
+ * import { toEngineMenu } from '@/lib/templates/menu-transformer'
+ * import { CLASSIC_GRID_CARDS } from '@/lib/templates/template-definitions'
+ * 
+ * // Convert database menu to engine format
+ * const engineMenu = toEngineMenu(databaseMenu)
+ * 
+ * // Generate layout
+ * const layout = generateLayout({
+ *   menu: engineMenu,
+ *   template: CLASSIC_GRID_CARDS
+ * })
+ * 
+ * // Use layout for rendering
+ * console.log(`Generated ${layout.pages.length} page(s)`)
+ * layout.pages[0].tiles.forEach(tile => {
+ *   console.log(`Tile ${tile.id} at (${tile.col}, ${tile.row})`)
+ * })
+ * ```
+ * 
+ * @example
+ * ```typescript
+ * // With text-only configuration
+ * const layout = generateLayout({
+ *   menu: engineMenu,
+ *   template: CLASSIC_GRID_CARDS,
+ *   selection: {
+ *     id: 'sel-1',
+ *     menuId: engineMenu.id,
+ *     templateId: CLASSIC_GRID_CARDS.id,
+ *     templateVersion: CLASSIC_GRID_CARDS.version,
+ *     configuration: { textOnly: true, useLogo: false },
+ *     createdAt: new Date(),
+ *     updatedAt: new Date()
+ *   }
+ * })
+ * ```
  */
 export function generateLayout(input: LayoutEngineInput): LayoutInstance {
   // Step 1: Validate input

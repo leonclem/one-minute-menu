@@ -1,8 +1,20 @@
 /**
  * Template Validator
  * 
+ * @module template-validator
+ * @description
  * Validates template definitions against schemas using Zod.
  * Ensures templates are well-formed before use in the layout engine.
+ * 
+ * This module provides runtime validation for template objects,
+ * useful for validating external templates or during development.
+ * 
+ * @example
+ * ```typescript
+ * import { validateTemplate } from '@/lib/templates/template-validator'
+ * 
+ * const validTemplate = validateTemplate(untrustedTemplateObject)
+ * ```
  */
 
 import { z } from 'zod'
@@ -113,11 +125,39 @@ const MenuTemplateSchema = z.object({
 })
 
 /**
- * Validate a template definition
+ * Validate a template definition against the schema
  * 
- * @param template - Template object to validate
- * @returns Validated MenuTemplate
- * @throws TemplateValidationError if validation fails
+ * This function validates that a template object conforms to the
+ * MenuTemplate schema. It should be used to validate external or
+ * user-provided template definitions before use.
+ * 
+ * @param template - Template object to validate (can be unknown type)
+ * @returns Validated MenuTemplate with correct types
+ * @throws {TemplateValidationError} If validation fails with detailed error info
+ * 
+ * @example
+ * ```typescript
+ * import { validateTemplate } from '@/lib/templates/template-validator'
+ * 
+ * try {
+ *   const validTemplate = validateTemplate(userProvidedTemplate)
+ *   console.log(`Template "${validTemplate.name}" is valid`)
+ * } catch (error) {
+ *   if (error instanceof TemplateValidationError) {
+ *     console.error('Validation failed:', error.details?.errors)
+ *   }
+ * }
+ * ```
+ * 
+ * @example
+ * ```typescript
+ * // Validate all templates in registry
+ * import { TEMPLATE_REGISTRY } from '@/lib/templates/template-definitions'
+ * 
+ * Object.values(TEMPLATE_REGISTRY).forEach(template => {
+ *   validateTemplate(template) // Throws if invalid
+ * })
+ * ```
  */
 export function validateTemplate(template: unknown): MenuTemplate {
   try {

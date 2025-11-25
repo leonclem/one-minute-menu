@@ -195,6 +195,7 @@ export interface LayoutConfiguration {
   style: 'modern' | 'classic' | 'minimal'
   spacing: 'compact' | 'comfortable' | 'spacious'
   itemLayout: 'list' | 'grid' | 'card'
+  currency?: string
 }
 
 export interface QRCodeData {

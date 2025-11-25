@@ -1,12 +1,36 @@
 /**
  * GridMenu Template Engine - Error Types
  * 
- * This module defines custom error classes for the template engine:
- * - TemplateEngineError: Base error class
- * - TemplateValidationError: Template definition validation failures
- * - MenuValidationError: Menu data validation failures
- * - CompatibilityError: Template-menu compatibility issues
- * - LayoutGenerationError: Layout generation failures
+ * @module engine-errors
+ * @description
+ * This module defines custom error classes for the template engine.
+ * All errors extend from TemplateEngineError and include error codes
+ * and optional details for debugging.
+ * 
+ * **Error Types:**
+ * - `TemplateEngineError`: Base error class
+ * - `TemplateValidationError`: Template definition validation failures
+ * - `MenuValidationError`: Menu data validation failures
+ * - `CompatibilityError`: Template-menu compatibility issues
+ * - `LayoutGenerationError`: Layout generation failures
+ * 
+ * @example
+ * ```typescript
+ * import { 
+ *   CompatibilityError, 
+ *   MenuValidationError 
+ * } from '@/lib/templates/engine-errors'
+ * 
+ * try {
+ *   const layout = generateLayout(input)
+ * } catch (error) {
+ *   if (error instanceof CompatibilityError) {
+ *     console.log(`Template incompatible: ${error.message}`)
+ *   } else if (error instanceof MenuValidationError) {
+ *     console.log(`Invalid menu: ${error.message}`)
+ *   }
+ * }
+ * ```
  */
 
 // ============================================================================

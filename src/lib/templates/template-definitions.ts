@@ -1,9 +1,35 @@
 /**
  * Template Definitions Registry
  * 
- * This file contains all template definitions for the GridMenu Template Engine.
+ * @module template-definitions
+ * @description
+ * This module contains all template definitions for the GridMenu Template Engine.
  * Templates are declarative JSON-like structures that define grid layouts, constraints,
  * and capabilities.
+ * 
+ * **Available MVP Templates:**
+ * - `CLASSIC_GRID_CARDS`: Photo-forward 3-column grid layout
+ * - `TWO_COLUMN_TEXT`: Traditional text-focused 2-column layout (the "tank" template)
+ * - `SIMPLE_ROWS`: Mobile-friendly single-column layout
+ * 
+ * @example
+ * ```typescript
+ * import { 
+ *   CLASSIC_GRID_CARDS, 
+ *   TWO_COLUMN_TEXT, 
+ *   getMvpTemplates,
+ *   TEMPLATE_REGISTRY 
+ * } from '@/lib/templates/template-definitions'
+ * 
+ * // Use a specific template
+ * const layout = generateLayout({ menu, template: CLASSIC_GRID_CARDS })
+ * 
+ * // Get all MVP-ready templates
+ * const templates = getMvpTemplates()
+ * 
+ * // Look up a template by ID
+ * const template = TEMPLATE_REGISTRY['two-column-text']
+ * ```
  */
 
 import type { MenuTemplate, TemplateId } from './engine-types'
@@ -451,7 +477,28 @@ export const TEMPLATE_REGISTRY: Record<TemplateId, MenuTemplate> = {
 /**
  * Get only MVP-ready templates
  * 
- * Filters out templates marked with isPostMvp: true
+ * Returns all templates that are ready for production use.
+ * Templates marked with `isPostMvp: true` are excluded.
+ * 
+ * @returns Array of production-ready MenuTemplate objects
+ * 
+ * @example
+ * ```typescript
+ * import { getMvpTemplates } from '@/lib/templates/template-definitions'
+ * import { checkCompatibility } from '@/lib/templates/compatibility-checker'
+ * 
+ * // Get all templates and check compatibility
+ * const templates = getMvpTemplates()
+ * const compatibleTemplates = templates.map(template => ({
+ *   template,
+ *   compatibility: checkCompatibility(engineMenu, template)
+ * }))
+ * 
+ * // Filter to only compatible templates
+ * const usableTemplates = compatibleTemplates.filter(
+ *   t => t.compatibility.status !== 'INCOMPATIBLE'
+ * )
+ * ```
  */
 export function getMvpTemplates(): MenuTemplate[] {
   return Object.values(TEMPLATE_REGISTRY).filter(t => !t.isPostMvp)

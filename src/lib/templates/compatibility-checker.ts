@@ -19,12 +19,51 @@ import { TEMPLATE_ENGINE_CONFIG } from './engine-config'
 /**
  * Check if a template is compatible with a menu
  * 
- * This function is the single source of truth for all constraint checking.
+ * This function is the **single source of truth** for all constraint checking.
  * It evaluates section counts, item counts, image requirements, and capacity.
  * 
- * @param menu - Normalized menu data
- * @param template - Template definition
- * @returns Compatibility result with status and messages
+ * The compatibility checker returns one of three statuses:
+ * - **OK**: Template works well with the menu
+ * - **WARNING**: Template works but with caveats (e.g., missing images)
+ * - **INCOMPATIBLE**: Template cannot handle the menu (e.g., too many items)
+ * 
+ * @param menu - Normalized menu data (from toEngineMenu)
+ * @param template - Template definition to check against
+ * @returns Compatibility result with status, message, and warnings
+ * 
+ * @example
+ * ```typescript
+ * import { checkCompatibility } from '@/lib/templates/compatibility-checker'
+ * import { toEngineMenu } from '@/lib/templates/menu-transformer'
+ * import { CLASSIC_GRID_CARDS } from '@/lib/templates/template-definitions'
+ * 
+ * const engineMenu = toEngineMenu(databaseMenu)
+ * const result = checkCompatibility(engineMenu, CLASSIC_GRID_CARDS)
+ * 
+ * switch (result.status) {
+ *   case 'OK':
+ *     console.log('Template is compatible!')
+ *     break
+ *   case 'WARNING':
+ *     console.log('Template works with warnings:', result.warnings)
+ *     break
+ *   case 'INCOMPATIBLE':
+ *     console.log('Cannot use template:', result.message)
+ *     break
+ * }
+ * ```
+ * 
+ * @example
+ * ```typescript
+ * // Check all templates for a menu
+ * import { getMvpTemplates } from '@/lib/templates/template-definitions'
+ * 
+ * const templates = getMvpTemplates()
+ * const compatibleTemplates = templates.filter(template => {
+ *   const result = checkCompatibility(engineMenu, template)
+ *   return result.status !== 'INCOMPATIBLE'
+ * })
+ * ```
  */
 export function checkCompatibility(
   menu: EngineMenu,
@@ -102,8 +141,21 @@ export function checkCompatibility(
 /**
  * Calculate the comfortable and maximum capacity of a template
  * 
+ * Comfortable capacity is the base capacity plus 60% of repeat capacity.
+ * Maximum capacity is the base capacity plus full repeat capacity.
+ * 
  * @param template - Template definition
  * @returns Object with comfortable and maximum item counts
+ * 
+ * @example
+ * ```typescript
+ * import { calculateTemplateCapacity } from '@/lib/templates/compatibility-checker'
+ * import { CLASSIC_GRID_CARDS } from '@/lib/templates/template-definitions'
+ * 
+ * const capacity = calculateTemplateCapacity(CLASSIC_GRID_CARDS)
+ * console.log(`Comfortable: ${capacity.comfortable} items`)
+ * console.log(`Maximum: ${capacity.maximum} items`)
+ * ```
  */
 export function calculateTemplateCapacity(template: MenuTemplate): { 
   comfortable: number

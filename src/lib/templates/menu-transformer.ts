@@ -1,48 +1,30 @@
 /**
  * Menu Data Transformer
  * 
+ * @module menu-transformer
+ * @description
  * Transforms database Menu objects into EngineMenu format for the template engine.
  * This separation allows the engine to work with a clean, normalized data structure
  * independent of the database schema.
+ * 
+ * @example
+ * ```typescript
+ * import { toEngineMenu, isEngineMenu } from '@/lib/templates/menu-transformer'
+ * 
+ * const engineMenu = toEngineMenu(databaseMenu)
+ * if (isEngineMenu(data)) {
+ *   // Type-safe access to menu data
+ * }
+ * ```
  */
 
 import type { Menu, MenuItem, MenuCategory } from '@/types'
 
-/**
- * Normalized menu structure for the template engine
- */
-export interface EngineMenu {
-  id: string
-  name: string
-  sections: EngineSection[]
-  metadata: {
-    currency: string
-    venueName?: string
-    venueAddress?: string
-  }
-}
+// Re-export types from engine-types for convenience
+// These are the canonical type definitions with Zod schemas
+export type { EngineMenu, EngineSection, EngineItem } from './engine-types'
 
-/**
- * Normalized section (category) structure
- */
-export interface EngineSection {
-  id: string
-  name: string
-  sortOrder: number
-  items: EngineItem[]
-}
-
-/**
- * Normalized menu item structure
- */
-export interface EngineItem {
-  id: string
-  name: string
-  description?: string
-  price: number
-  imageUrl?: string
-  sortOrder: number
-}
+import type { EngineMenu, EngineSection, EngineItem } from './engine-types'
 
 /**
  * Type guard to check if a value is an EngineMenu
@@ -97,19 +79,45 @@ export function isEngineItem(value: unknown): value is EngineItem {
 /**
  * Transform database Menu to EngineMenu
  * 
- * This function:
+ * This function converts a raw database Menu object into the normalized
+ * EngineMenu format used by the template engine. It handles both
+ * categorized menus (with categories) and flat menus (items only).
+ * 
+ * **What this function does:**
  * - Groups items by category into sections (if categories exist)
  * - Creates a single implicit section "Menu" when there are no categories
  * - Ensures consistent sortOrder for sections and items
- * - Normalizes the data structure for the layout engine
+ * - Extracts metadata (currency, venue name)
+ * - Normalizes image URLs based on imageSource
  * 
  * @param menu - Database menu object
  * @returns Normalized EngineMenu for template engine
+ * 
+ * @example
+ * ```typescript
+ * import { toEngineMenu } from '@/lib/templates/menu-transformer'
+ * 
+ * // From database menu
+ * const engineMenu = toEngineMenu(databaseMenu)
+ * 
+ * console.log(`Menu: ${engineMenu.name}`)
+ * console.log(`Sections: ${engineMenu.sections.length}`)
+ * engineMenu.sections.forEach(section => {
+ *   console.log(`  ${section.name}: ${section.items.length} items`)
+ * })
+ * ```
+ * 
+ * @example
+ * ```typescript
+ * // Flat menu (no categories) becomes single section
+ * const flatMenu = { id: '1', name: 'Lunch', items: [...], categories: [] }
+ * const engineMenu = toEngineMenu(flatMenu)
+ * // engineMenu.sections = [{ id: 'implicit-section', name: 'Menu', items: [...] }]
+ * ```
  */
 export function toEngineMenu(menu: Menu): EngineMenu {
-  // Extract currency from theme or use default
-  // TODO: Add currency to Menu model or Theme configuration
-  const currency = '$'
+  // Extract currency from theme layout or use default
+  const currency = menu.theme?.layout?.currency ?? '$'
   
   // If menu has categories, use them as sections
   if (menu.categories && menu.categories.length > 0) {
