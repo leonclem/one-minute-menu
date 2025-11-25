@@ -108,7 +108,8 @@ export function isEngineItem(value: unknown): value is EngineItem {
  */
 export function toEngineMenu(menu: Menu): EngineMenu {
   // Extract currency from theme or use default
-  const currency = menu.theme?.layout?.currency || '$'
+  // TODO: Add currency to Menu model or Theme configuration
+  const currency = '$'
   
   // If menu has categories, use them as sections
   if (menu.categories && menu.categories.length > 0) {

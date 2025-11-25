@@ -67,21 +67,6 @@ function setCachedLayout(cacheKey: string, layout: any): void {
 }
 
 /**
- * Invalidate all cached layouts for a menu
- */
-export function invalidateMenuLayouts(menuId: string): void {
-  const keysToDelete: string[] = []
-  
-  layoutCache.forEach((_, key) => {
-    if (key.startsWith(`${menuId}-`)) {
-      keysToDelete.push(key)
-    }
-  })
-  
-  keysToDelete.forEach(key => layoutCache.delete(key))
-}
-
-/**
  * GET /api/menus/{menuId}/layout?templateId={templateId}
  * 
  * Generates and returns a layout instance for a menu using the specified template.
