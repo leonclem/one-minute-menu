@@ -109,6 +109,15 @@ export const userOperations = {
     const profile = await this.getProfile(userId)
     if (!profile) throw new DatabaseError('User profile not found')
     
+    // Admin users have unlimited access
+    if (profile.role === 'admin') {
+      return {
+        allowed: true,
+        current: 0,
+        limit: -1
+      }
+    }
+    
     let current = 0
     
     switch (resource) {

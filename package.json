@@ -17,13 +17,13 @@
     "test:edge-cases": "jest --testPathPattern=edge-cases",
     "test:coverage": "jest --coverage",
     "test:all": "jest --coverage --verbose",
-    
     "setup-db": "node scripts/setup-database.js",
     "deploy-check": "node scripts/deploy-check.js",
     "deploy:vercel": "vercel --prod",
     "scan:secrets": "node scripts/scan-secrets.js"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^126.0.0",
     "@supabase/auth-helpers-nextjs": "^0.8.7",
     "@supabase/auth-helpers-react": "^0.5.0",
     "@supabase/ssr": "^0.7.0",
@@ -37,10 +37,10 @@
     "next": "^14.2.32",
     "openai": "^5.23.1",
     "pdf-lib": "^1.17.1",
-    "@sparticuz/chromium": "^126.0.0",
-    "puppeteer-core": "^24.5.0",
+    "pg": "^8.16.3",
     "postcss": "^8.4.32",
     "puppeteer": "^24.26.1",
+    "puppeteer-core": "^24.5.0",
     "qrcode": "^1.5.3",
     "react": "^18",
     "react-dom": "^18",

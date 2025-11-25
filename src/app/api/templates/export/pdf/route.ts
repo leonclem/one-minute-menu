@@ -45,6 +45,28 @@ async function handleNewTemplateEngine(
   // Transform menu to EngineMenu
   metricsBuilder.markCalculationStart()
   const engineMenu = toEngineMenu(menu)
+
+  // Calculate menu characteristics for metrics
+  const sectionCount = engineMenu.sections.length
+  const totalItems = engineMenu.sections.reduce((sum, section) => sum + section.items.length, 0)
+  const itemsWithImages = engineMenu.sections.reduce((sum, section) => 
+    sum + section.items.filter(item => !!item.imageUrl).length, 0)
+  const imageRatio = totalItems > 0 ? (itemsWithImages / totalItems) * 100 : 0
+  
+  const totalNameLength = engineMenu.sections.reduce((sum, section) => 
+    sum + section.items.reduce((s, i) => s + i.name.length, 0), 0)
+  const avgNameLength = totalItems > 0 ? totalNameLength / totalItems : 0
+  
+  const hasDescriptions = engineMenu.sections.some(section => 
+    section.items.some(item => !!item.description && item.description.length > 0))
+
+  metricsBuilder.setMenuCharacteristics({
+    sectionCount,
+    totalItems,
+    imageRatio,
+    avgNameLength,
+    hasDescriptions
+  })
   
   // Check compatibility
   const compatibility = checkCompatibility(engineMenu, template)

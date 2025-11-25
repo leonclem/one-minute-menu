@@ -259,8 +259,120 @@ export function LayoutRenderer({
   className = '',
   themeColors
 }: LayoutRendererProps) {
+  // Generate CSS as a string for server-side rendering
+  const styles = `
+    .tile {
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      background: white;
+    }
+    
+    .tile-menu-item {
+      border: none;
+    }
+    
+    .menu-item-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      background: white;
+      height: 100%;
+    }
+    
+    .tile-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    
+    .tile-section-header {
+      display: flex;
+      align-items: center;
+      padding: 1rem;
+      background: #f9fafb;
+    }
+    
+    .tile-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    
+    .logo-placeholder {
+      width: 100px;
+      height: 100px;
+      border: 2px dashed #d1d5db;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+    }
+    
+    .tile-text-block {
+      padding: 1rem;
+    }
+    
+    .tile-qr {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    
+    .qr-placeholder {
+      width: 150px;
+      height: 150px;
+      border: 2px dashed #d1d5db;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+    }
+    
+    .tile-decoration {
+      border: none;
+    }
+    
+    .decoration-placeholder {
+      width: 100%;
+      height: 100%;
+      min-height: 100px;
+    }
+    
+    .tile-spacer {
+      border: none;
+    }
+    
+    .text-left {
+      text-align: left;
+    }
+    
+    .text-centre {
+      text-align: center;
+    }
+    
+    .text-right {
+      text-align: right;
+    }
+    
+    @media print {
+      .page {
+        page-break-after: always;
+      }
+      
+      .page:last-child {
+        page-break-after: auto;
+      }
+    }
+  `
+  
   return (
     <div className={`layout-renderer ${className}`}>
+      <style dangerouslySetInnerHTML={{ __html: styles }} />
       {layout.pages.map((page, index) => (
         <PageRenderer 
           key={`page-${index}`} 
@@ -269,116 +381,6 @@ export function LayoutRenderer({
           currency={currency} 
         />
       ))}
-      
-      <style jsx>{`
-        .tile {
-          border: 1px solid #e5e7eb;
-          border-radius: 0.5rem;
-          background: white;
-        }
-        
-        .tile-menu-item {
-          border: none;
-        }
-        
-        .menu-item-card {
-          border: 1px solid #e5e7eb;
-          border-radius: 0.5rem;
-          overflow: hidden;
-          background: white;
-          height: 100%;
-        }
-        
-        .tile-title {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 1rem;
-        }
-        
-        .tile-section-header {
-          display: flex;
-          align-items: center;
-          padding: 1rem;
-          background: #f9fafb;
-        }
-        
-        .tile-logo {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 1rem;
-        }
-        
-        .logo-placeholder {
-          width: 100px;
-          height: 100px;
-          border: 2px dashed #d1d5db;
-          border-radius: 0.5rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #9ca3af;
-        }
-        
-        .tile-text-block {
-          padding: 1rem;
-        }
-        
-        .tile-qr {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 1rem;
-        }
-        
-        .qr-placeholder {
-          width: 150px;
-          height: 150px;
-          border: 2px dashed #d1d5db;
-          border-radius: 0.5rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #9ca3af;
-        }
-        
-        .tile-decoration {
-          border: none;
-        }
-        
-        .decoration-placeholder {
-          width: 100%;
-          height: 100%;
-          min-height: 100px;
-        }
-        
-        .tile-spacer {
-          border: none;
-        }
-        
-        .text-left {
-          text-align: left;
-        }
-        
-        .text-centre {
-          text-align: center;
-        }
-        
-        .text-right {
-          text-align: right;
-        }
-        
-        @media print {
-          .page {
-            page-break-after: always;
-          }
-          
-          .page:last-child {
-            page-break-after: auto;
-          }
-        }
-      `}</style>
     </div>
   )
 }

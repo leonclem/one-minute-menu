@@ -66,7 +66,7 @@ export default function NewMenuPage() {
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) },
         { retries: 2, baseDelayMs: 250, maxDelayMs: 1000 }
       )
-      router.push(`/dashboard/menus/${result.data.id}`)
+      router.push(`/menus/${result.data.id}/upload`)
     } catch (error) {
       if (error instanceof HttpError) {
         const body: any = error.body || {}

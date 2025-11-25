@@ -132,19 +132,44 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   useEffect(() => {
     const fetchTemplates = async () => {
       if (!menuId) return
+      
+      // Wait for menu data to load
+      const menu = isDemoUser ? demoMenu : authMenu
+      if (!menu) return
 
       setTemplatesLoading(true)
       setTemplatesError(null)
 
       try {
-        const resp = await fetch(`/api/templates/available?menuId=${menuId}`)
+        let resp
+        
+        if (isDemoUser) {
+          // For demo menus, use POST with menu data in body
+          resp = await fetch('/api/templates/available', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ menu })
+          })
+        } else {
+          // For real menus, use GET with menuId
+          resp = await fetch(`/api/templates/available?menuId=${menuId}`)
+        }
+        
         const data = await resp.json()
 
         if (!resp.ok) {
           throw new Error(data?.error || 'Failed to fetch templates')
         }
 
-        setAvailableTemplates(data.data || [])
+        // Transform API response to match component interface
+        const templates = (data.data || []).map((item: any) => ({
+          template: item.template,
+          status: item.compatibility?.status || 'OK',
+          message: item.compatibility?.message,
+          warnings: item.compatibility?.warnings || []
+        }))
+
+        setAvailableTemplates(templates)
       } catch (e) {
         console.error('Error fetching templates:', e)
         setTemplatesError(e instanceof Error ? e.message : 'Failed to load templates')
@@ -154,7 +179,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     }
 
     fetchTemplates()
-  }, [menuId])
+  }, [menuId, isDemoUser, demoMenu, authMenu])
 
   // Fetch layout preview when template is selected
   useEffect(() => {
@@ -175,9 +200,29 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       setPreviewError(null)
 
       try {
-        const resp = await fetch(
-          `/api/menus/${menuId}/layout?templateId=${selectedTemplate.template.id}`
-        )
+        // Get menu data
+        const menu = isDemoUser ? demoMenu : authMenu
+        if (!menu) return
+
+        let resp
+        
+        if (isDemoUser) {
+          // For demo menus, use POST with menu data in body
+          resp = await fetch(`/api/menus/${menuId}/layout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              menu,
+              templateId: selectedTemplate.template.id
+            })
+          })
+        } else {
+          // For real menus, use GET with query params
+          resp = await fetch(
+            `/api/menus/${menuId}/layout?templateId=${selectedTemplate.template.id}`
+          )
+        }
+        
         const data = await resp.json()
 
         if (!resp.ok) {
