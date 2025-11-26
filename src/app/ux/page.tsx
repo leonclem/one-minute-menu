@@ -1,23 +1,28 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { UXButton } from '@/components/ux'
 import { getABVariant, trackConversionEvent } from '@/lib/conversion-tracking'
 
 export default function UXHomePage() {
-  const ctaVariant = useMemo(() => getABVariant('ux_home_primary_cta', ['A', 'B']), [])
+  // Start with 'A' to match server-side rendering, then update on client
+  const [ctaVariant, setCtaVariant] = useState<string>('A')
 
   useEffect(() => {
-    // Track landing page view for conversion funnel
+    // Get the actual variant on client-side only (after hydration)
+    const variant = getABVariant('ux_home_primary_cta', ['A', 'B'])
+    setCtaVariant(variant)
+
+    // Track landing page view with the correct variant
     trackConversionEvent({
       event: 'landing_view',
       metadata: {
         path: '/ux',
-        ctaVariant,
+        ctaVariant: variant,
       },
     })
-  }, [ctaVariant])
+  }, [])
 
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || 'https://gridmenu.app'
