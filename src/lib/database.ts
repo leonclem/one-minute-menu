@@ -280,7 +280,7 @@ export const menuVersionOperations = {
       version: newVersionNumber,
     })
     
-    return transformMenuFromDB(updatedMenu)
+    return await transformMenuFromDB(updatedMenu)
   }
 }
 
@@ -324,7 +324,7 @@ export const menuOperations = {
       throw new DatabaseError(`Failed to create menu: ${error.message}`, error.code)
     }
     
-    return transformMenuFromDB(data)
+    return await transformMenuFromDB(data)
   },
 
   async getMenu(menuId: string, userId?: string): Promise<Menu | null> {
@@ -346,7 +346,7 @@ export const menuOperations = {
       throw new DatabaseError(`Failed to get menu: ${error.message}`, error.code)
     }
     
-    return transformMenuFromDB(data)
+    return await transformMenuFromDB(data)
   },
 
   async getPublishedMenuByUserAndSlug(userId: string, slug: string): Promise<Menu | null> {
@@ -363,7 +363,7 @@ export const menuOperations = {
       if ((error as any).code === 'PGRST116') return null
       throw new DatabaseError(`Failed to get published menu: ${error.message}`, (error as any).code)
     }
-    return transformMenuFromDB(data)
+    return await transformMenuFromDB(data)
   },
 
   async getLatestPublishedSnapshotByUserAndSlug(userId: string, slug: string): Promise<Menu | null> {
@@ -393,7 +393,7 @@ export const menuOperations = {
       throw new DatabaseError(`Failed to load published snapshot: ${verErr.message}`, (verErr as any).code)
     }
 
-    return transformMenuFromDB({
+    return await transformMenuFromDB({
       ...menuRow,
       menu_data: versionRow.menu_data,
       published_at: versionRow.published_at,
@@ -412,7 +412,7 @@ export const menuOperations = {
       if ((error as any).code === 'PGRST116') return null
       throw new DatabaseError(`Failed to get draft: ${error.message}`, (error as any).code)
     }
-    return transformMenuFromDB(data)
+    return await transformMenuFromDB(data)
   },
 
   async getUserMenus(userId: string): Promise<Menu[]> {
@@ -428,7 +428,7 @@ export const menuOperations = {
       throw new DatabaseError(`Failed to get user menus: ${error.message}`, error.code)
     }
     
-    return data.map(transformMenuFromDB)
+    return await Promise.all(data.map(transformMenuFromDB))
   },
 
   async updateMenu(menuId: string, userId: string, updates: Partial<Menu>): Promise<Menu> {
@@ -469,7 +469,7 @@ export const menuOperations = {
       throw new DatabaseError(`Failed to update menu: ${error.message}`, error.code)
     }
     
-    return transformMenuFromDB(data)
+    return await transformMenuFromDB(data)
   },
 
   async deleteMenu(menuId: string, userId: string): Promise<void> {
@@ -567,7 +567,7 @@ export const menuOperations = {
       throw new DatabaseError(`Failed to update menu from extraction: ${error.message}`, error.code)
     }
     
-    return transformMenuFromDB(data)
+    return await transformMenuFromDB(data)
   },
 
   async publishMenu(menuId: string, userId: string): Promise<Menu> {
@@ -617,7 +617,7 @@ export const menuOperations = {
       version: newVersionNumber,
     })
     
-    return transformMenuFromDB(data)
+    return await transformMenuFromDB(data)
   }
 }
 
@@ -767,7 +767,7 @@ export const menuItemOperations = {
 }
 
 // Helper functions
-function transformMenuFromDB(dbMenu: any): Menu {
+async function transformMenuFromDB(dbMenu: any): Promise<Menu> {
   const menuData = dbMenu.menu_data || {}
   
   const menu: Menu = {
@@ -792,8 +792,91 @@ function transformMenuFromDB(dbMenu: any): Menu {
     updatedAt: new Date(dbMenu.updated_at),
   }
   
+  // Enrich menu items with AI image URLs
+  await enrichMenuItemsWithImageUrls(menu)
+  
   // Ensure backward compatibility between items and categories
   return ensureBackwardCompatibility(menu)
+}
+
+/**
+ * Enriches menu items with AI-generated image URLs by fetching from ai_generated_images table
+ */
+async function enrichMenuItemsWithImageUrls(menu: Menu): Promise<void> {
+  const supabase = createServerSupabaseClient()
+  
+  // Collect all aiImageIds from items and categories
+  const aiImageIds: string[] = []
+  
+  // From flat items array
+  if (menu.items) {
+    menu.items.forEach(item => {
+      if (item.aiImageId && item.imageSource === 'ai') {
+        aiImageIds.push(item.aiImageId)
+      }
+    })
+  }
+  
+  // From categories
+  if (menu.categories) {
+    menu.categories.forEach(category => {
+      category.items.forEach(item => {
+        if (item.aiImageId && item.imageSource === 'ai') {
+          aiImageIds.push(item.aiImageId)
+        }
+      })
+    })
+  }
+  
+  // If no AI images to fetch, return early
+  if (aiImageIds.length === 0) {
+    return
+  }
+  
+  // Fetch all AI image URLs in one query
+  const { data: aiImages, error } = await supabase
+    .from('ai_generated_images')
+    .select('id, desktop_url')
+    .in('id', aiImageIds)
+  
+  if (error) {
+    console.error('Error fetching AI image URLs:', error)
+    return // Non-fatal: continue without images
+  }
+  
+  // Create a lookup map
+  const imageUrlMap = new Map<string, string>()
+  aiImages?.forEach(img => {
+    if (img.desktop_url) {
+      imageUrlMap.set(img.id, img.desktop_url)
+    }
+  })
+  
+  // Update items with image URLs
+  if (menu.items) {
+    menu.items.forEach(item => {
+      if (item.aiImageId && item.imageSource === 'ai') {
+        const url = imageUrlMap.get(item.aiImageId)
+        if (url) {
+          item.customImageUrl = url
+        }
+      }
+    })
+  }
+  
+  // Update category items with image URLs
+  if (menu.categories) {
+    menu.categories.forEach(category => {
+      category.items.forEach(item => {
+        if (item.aiImageId && item.imageSource === 'ai') {
+          const url = imageUrlMap.get(item.aiImageId)
+          if (url) {
+            item.customImageUrl = url
+          }
+        }
+      })
+    })
+  }
 }
 
 function getDefaultTheme(): MenuTheme {
@@ -905,7 +988,7 @@ export const imageOperations = {
       throw new DatabaseError(`Failed to update menu image: ${error.message}`, error.code)
     }
     
-    return transformMenuFromDB(data)
+    return await transformMenuFromDB(data)
   }
 }
 

@@ -246,9 +246,8 @@ function transformItemWithImageLookup(
  */
 function getItemImageUrl(item: MenuItem): string | undefined {
   if (item.imageSource === 'ai') {
-    // AI-generated images - not yet implemented for template engine
-    // TODO: Implement AI image URL resolution when ready
-    return undefined
+    // AI-generated images - URL is populated in customImageUrl by enrichMenuItemsWithImageUrls
+    return item.customImageUrl
   }
   
   if (item.imageSource === 'custom' && item.customImageUrl) {
