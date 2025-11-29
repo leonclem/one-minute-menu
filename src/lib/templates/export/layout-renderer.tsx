@@ -13,7 +13,10 @@ import type {
   StaticTileInstance,
   SectionHeaderTileInstance,
   MenuItemTileInstance,
-  SpacerTileInstance
+  SpacerTileInstance,
+  MenuTemplate,
+  TemplateColorPalette,
+  TemplateStyle
 } from '../engine-types'
 import { PAGE_SIZES } from '../engine-config'
 
@@ -23,8 +26,13 @@ import { PAGE_SIZES } from '../engine-config'
 
 export interface LayoutRendererProps {
   layout: LayoutInstance
+  /** The template definition with styles */
+  template?: MenuTemplate
+  /** Optional override color palette ID */
+  paletteId?: string
   currency?: string
   className?: string
+  /** Legacy themeColors support - used if template not provided */
   themeColors?: {
     primary?: string
     secondary?: string
@@ -32,6 +40,19 @@ export interface LayoutRendererProps {
     background?: string
     text?: string
   }
+}
+
+// ============================================================================
+// Style Helpers
+// ============================================================================
+
+/**
+ * Get the active color palette based on paletteId or use default
+ */
+function getActivePalette(style: TemplateStyle, paletteId?: string): TemplateColorPalette {
+  if (!paletteId) return style.colors
+  const alternate = style.alternatePalettes?.find(p => p.id === paletteId)
+  return alternate || style.colors
 }
 
 // ============================================================================
@@ -115,6 +136,29 @@ function SectionHeaderTile({ tile }: { tile: SectionHeaderTileInstance }) {
   )
 }
 
+/**
+ * Generate a fallback placeholder for items without images
+ */
+function ItemImagePlaceholder({ accentColor }: { accentColor: string }) {
+  return (
+    <div 
+      className="menu-item-image-fallback"
+      style={{
+        width: '100%',
+        height: '150px',
+        backgroundColor: `${accentColor}15`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '2.5rem',
+        opacity: 0.6
+      }}
+    >
+      🍽️
+    </div>
+  )
+}
+
 function MenuItemTile({ 
   tile, 
   currency 
@@ -123,14 +167,17 @@ function MenuItemTile({
   currency: string 
 }) {
   const styles = getTileStyles(tile)
-  const showImage = tile.showImage && tile.imageUrl
+  // Template supports images for this tile
+  const templateSupportsImage = tile.showImage
+  // Tile actually has an image
+  const hasImage = !!tile.imageUrl
   const showDescription = tile.options?.showDescription !== false && tile.description
   const emphasisePrice = tile.options?.emphasisePrice
   
   return (
     <div style={styles} className="tile tile-menu-item">
       <div className="menu-item-card">
-        {showImage && (
+        {templateSupportsImage && hasImage && (
           <div className="menu-item-image">
             <img 
               src={tile.imageUrl} 
@@ -138,6 +185,9 @@ function MenuItemTile({
               className="w-full h-48 object-cover rounded-t-lg"
             />
           </div>
+        )}
+        {templateSupportsImage && !hasImage && (
+          <ItemImagePlaceholder accentColor="#c9a227" />
         )}
         <div className="menu-item-content p-4">
           <div className="flex justify-between items-start">
@@ -255,21 +305,254 @@ function PageRenderer({
 
 export function LayoutRenderer({
   layout,
+  template,
+  paletteId,
   currency = '$',
   className = '',
   themeColors
 }: LayoutRendererProps) {
+  // Get template styles if available
+  const templateStyle = template?.style
+  const palette = templateStyle ? getActivePalette(templateStyle, paletteId) : null
+  
   // Generate CSS as a string for server-side rendering
-  const styles = `
+  // Note: @import must be at the very top for fonts to load correctly
+  const styles = templateStyle && palette ? `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@400;700&family=Cormorant+Garamond:wght@400;600;700&family=Source+Sans+Pro:wght@400;600;700&family=Inter:wght@400;600;700&display=swap');
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: ${templateStyle.pageBackground || palette.background};
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      color-adjust: exact;
+    }
+    
+    .layout-renderer {
+      font-family: ${templateStyle.fonts.body};
+      background: ${templateStyle.pageBackground || palette.background};
+      color: ${palette.text};
+      min-height: 100vh;
+      width: 100%;
+    }
+    
+    .tile {
+      border-radius: ${templateStyle.itemCard.borderRadius};
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    
+    .tile-menu-item {
+      background: ${palette.cardBackground};
+      border-radius: ${templateStyle.itemCard.borderRadius};
+      box-shadow: ${templateStyle.itemCard.shadow};
+      overflow: hidden;
+    }
+    
+    .menu-item-card {
+      background: ${palette.cardBackground};
+      border-radius: ${templateStyle.itemCard.borderRadius};
+      overflow: hidden;
+      height: 100%;
+    }
+    
+    .menu-item-image {
+      ${templateStyle.itemCard.imagePosition === 'circle' ? `
+        display: flex;
+        justify-content: center;
+        padding: 1rem;
+      ` : ''}
+    }
+    
+    .menu-item-image img {
+      ${templateStyle.itemCard.imagePosition === 'circle' ? `
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 3px solid ${palette.accent};
+        object-fit: cover;
+      ` : `
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-radius: ${templateStyle.itemCard.imageBorderRadius || '0'};
+      `}
+    }
+    
+    .menu-item-content {
+      padding: 1rem;
+    }
+    
+    .menu-item-name {
+      font-family: ${templateStyle.fonts.body};
+      font-size: 1rem;
+      font-weight: 600;
+      color: ${palette.text};
+    }
+    
+    .menu-item-price {
+      font-family: ${templateStyle.fonts.body};
+      font-size: 1rem;
+      font-weight: 700;
+      color: ${palette.price};
+    }
+    
+    .menu-item-description {
+      font-family: ${templateStyle.fonts.body};
+      font-size: 0.875rem;
+      color: ${palette.text};
+      opacity: 0.7;
+      margin-top: 0.5rem;
+      line-height: 1.4;
+    }
+    
+    .tile-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    
+    .tile-title h1 {
+      font-family: ${templateStyle.fonts.heading};
+      font-size: 2.25rem;
+      font-weight: 700;
+      color: ${palette.heading};
+      letter-spacing: 0.025em;
+    }
+    
+    .tile-section-header {
+      display: flex;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 2px solid ${palette.accent};
+    }
+    
+    .tile-section-header h2 {
+      font-family: ${templateStyle.fonts.heading};
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: ${palette.heading};
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    
+    .tile-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    
+    .logo-placeholder {
+      width: 80px;
+      height: 80px;
+      border: 2px dashed ${palette.accent};
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: ${palette.accent};
+      font-family: ${templateStyle.fonts.body};
+      font-size: 0.75rem;
+    }
+    
+    .tile-text-block {
+      padding: 1rem;
+    }
+    
+    .tile-text-block p {
+      font-family: ${templateStyle.fonts.body};
+      font-size: 0.875rem;
+      color: ${palette.text};
+      opacity: 0.8;
+    }
+    
+    .tile-qr {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    
+    .qr-placeholder {
+      width: 100px;
+      height: 100px;
+      border: 2px dashed ${palette.accent};
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: ${palette.accent};
+      font-family: ${templateStyle.fonts.body};
+      font-size: 0.75rem;
+    }
+    
+    .tile-decoration {
+      background: ${palette.accent}10;
+      border-radius: 0.5rem;
+    }
+    
+    .tile-spacer {
+      border-radius: 0.5rem;
+    }
+    
+    .leader-dots {
+      flex: 1;
+      border-bottom: 1px dotted ${palette.text}40;
+      margin: 0 0.5rem 0.25rem;
+    }
+    
+    .text-left { text-align: left; }
+    .text-centre { text-align: center; }
+    .text-right { text-align: right; }
+    
+    .tile {
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    
+    @media print {
+      html, body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        color-adjust: exact;
+      }
+      .page { page-break-after: always; }
+      .page:last-child { page-break-after: auto; }
+    }
+  ` : `
+    * {
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #f9fafb;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      color-adjust: exact;
+    }
+    
+    .layout-renderer {
+      min-height: 100vh;
+      width: 100%;
+    }
+    
     .tile {
       border: 1px solid #e5e7eb;
       border-radius: 0.5rem;
       background: white;
+      overflow: hidden;
+      box-sizing: border-box;
     }
     
-    .tile-menu-item {
-      border: none;
-    }
+    .tile-menu-item { border: none; }
     
     .menu-item-card {
       border: 1px solid #e5e7eb;
@@ -311,9 +594,7 @@ export function LayoutRenderer({
       color: #9ca3af;
     }
     
-    .tile-text-block {
-      padding: 1rem;
-    }
+    .tile-text-block { padding: 1rem; }
     
     .tile-qr {
       display: flex;
@@ -333,40 +614,25 @@ export function LayoutRenderer({
       color: #9ca3af;
     }
     
-    .tile-decoration {
-      border: none;
-    }
-    
+    .tile-decoration { border: none; }
     .decoration-placeholder {
       width: 100%;
       height: 100%;
       min-height: 100px;
     }
-    
-    .tile-spacer {
-      border: none;
-    }
-    
-    .text-left {
-      text-align: left;
-    }
-    
-    .text-centre {
-      text-align: center;
-    }
-    
-    .text-right {
-      text-align: right;
-    }
+    .tile-spacer { border: none; }
+    .text-left { text-align: left; }
+    .text-centre { text-align: center; }
+    .text-right { text-align: right; }
     
     @media print {
-      .page {
-        page-break-after: always;
+      html, body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        color-adjust: exact;
       }
-      
-      .page:last-child {
-        page-break-after: auto;
-      }
+      .page { page-break-after: always; }
+      .page:last-child { page-break-after: auto; }
     }
   `
   
@@ -391,4 +657,339 @@ export function LayoutRenderer({
  */
 export function ServerLayoutRenderer(props: LayoutRendererProps) {
   return <LayoutRenderer {...props} />
+}
+
+/**
+ * Generate CSS string for a template with styling
+ * This can be used to embed styles in a document <head>
+ */
+export function generateTemplateCSS(
+  template?: MenuTemplate,
+  paletteId?: string
+): string {
+  if (!template?.style) {
+    return getDefaultCSS()
+  }
+  
+  const palette = getActivePalette(template.style, paletteId)
+  return getTemplateCSS(template.style, palette)
+}
+
+/**
+ * Get default CSS when no template is provided
+ */
+function getDefaultCSS(): string {
+  return `
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #f9fafb;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      color-adjust: exact;
+    }
+    
+    .layout-renderer {
+      min-height: 100vh;
+      width: 100%;
+    }
+    
+    .tile {
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      background: white;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    
+    .tile-menu-item { border: none; }
+    
+    .menu-item-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      background: white;
+      height: 100%;
+    }
+    
+    .tile-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    
+    .tile-section-header {
+      display: flex;
+      align-items: center;
+      padding: 1rem;
+      background: #f9fafb;
+    }
+    
+    .tile-logo, .tile-qr {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    
+    .logo-placeholder, .qr-placeholder {
+      border: 2px dashed #d1d5db;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+    }
+    
+    .logo-placeholder { width: 100px; height: 100px; }
+    .qr-placeholder { width: 150px; height: 150px; }
+    
+    .tile-text-block { padding: 1rem; }
+    .tile-decoration { border: none; }
+    .decoration-placeholder { width: 100%; height: 100%; min-height: 100px; }
+    .tile-spacer { border: none; }
+    
+    .text-left { text-align: left; }
+    .text-centre { text-align: center; }
+    .text-right { text-align: right; }
+    
+    @media print {
+      html, body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        color-adjust: exact;
+      }
+      .page { page-break-after: always; }
+      .page:last-child { page-break-after: auto; }
+    }
+  `
+}
+
+/**
+ * Get template-specific CSS with full styling
+ */
+function getTemplateCSS(style: TemplateStyle, palette: TemplateColorPalette): string {
+  return `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@400;700&family=Cormorant+Garamond:wght@400;600;700&family=Source+Sans+Pro:wght@400;600;700&family=Inter:wght@400;600;700&display=swap');
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: ${style.pageBackground || palette.background};
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      color-adjust: exact;
+    }
+    
+    .layout-renderer {
+      font-family: ${style.fonts.body};
+      background: ${style.pageBackground || palette.background};
+      color: ${palette.text};
+      min-height: 100vh;
+      width: 100%;
+    }
+    
+    .tile {
+      border-radius: ${style.itemCard.borderRadius};
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    
+    .tile-menu-item {
+      background: ${palette.cardBackground};
+      border-radius: ${style.itemCard.borderRadius};
+      box-shadow: ${style.itemCard.shadow};
+      overflow: hidden;
+    }
+    
+    .menu-item-card {
+      background: ${palette.cardBackground};
+      border-radius: ${style.itemCard.borderRadius};
+      overflow: hidden;
+      height: 100%;
+    }
+    
+    .menu-item-image {
+      ${style.itemCard.imagePosition === 'circle' ? `
+        display: flex;
+        justify-content: center;
+        padding: 1rem;
+      ` : ''}
+    }
+    
+    .menu-item-image img {
+      ${style.itemCard.imagePosition === 'circle' ? `
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 3px solid ${palette.accent};
+        object-fit: cover;
+      ` : `
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-radius: ${style.itemCard.imageBorderRadius || '0'};
+      `}
+    }
+    
+    .menu-item-content {
+      padding: 1rem;
+    }
+    
+    .menu-item-name {
+      font-family: ${style.fonts.body};
+      font-size: 1rem;
+      font-weight: 600;
+      color: ${palette.text};
+    }
+    
+    .menu-item-price {
+      font-family: ${style.fonts.body};
+      font-size: 1rem;
+      font-weight: 700;
+      color: ${palette.price};
+    }
+    
+    .menu-item-description {
+      font-family: ${style.fonts.body};
+      font-size: 0.875rem;
+      color: ${palette.text};
+      opacity: 0.7;
+      margin-top: 0.5rem;
+      line-height: 1.4;
+    }
+    
+    .menu-item-image-fallback {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: ${palette.accent}15;
+    }
+    
+    .tile-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    
+    .tile-title h1 {
+      font-family: ${style.fonts.heading};
+      font-size: 2.25rem;
+      font-weight: 700;
+      color: ${palette.heading};
+      letter-spacing: 0.025em;
+    }
+    
+    .tile-section-header {
+      display: flex;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 2px solid ${palette.accent};
+    }
+    
+    .tile-section-header h2 {
+      font-family: ${style.fonts.heading};
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: ${palette.heading};
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    
+    .tile-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    
+    .logo-placeholder {
+      width: 80px;
+      height: 80px;
+      border: 2px dashed ${palette.accent};
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: ${palette.accent};
+      font-family: ${style.fonts.body};
+      font-size: 0.75rem;
+    }
+    
+    .tile-text-block {
+      padding: 1rem;
+    }
+    
+    .tile-text-block p {
+      font-family: ${style.fonts.body};
+      font-size: 0.875rem;
+      color: ${palette.text};
+      opacity: 0.8;
+    }
+    
+    .tile-qr {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    
+    .qr-placeholder {
+      width: 100px;
+      height: 100px;
+      border: 2px dashed ${palette.accent};
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: ${palette.accent};
+      font-family: ${style.fonts.body};
+      font-size: 0.75rem;
+    }
+    
+    .tile-decoration {
+      background: ${palette.accent}10;
+      border-radius: 0.5rem;
+    }
+    
+    .tile-spacer {
+      border-radius: 0.5rem;
+    }
+    
+    .leader-dots {
+      flex: 1;
+      border-bottom: 1px dotted ${palette.text}40;
+      margin: 0 0.5rem 0.25rem;
+    }
+    
+    .text-left { text-align: left; }
+    .text-centre { text-align: center; }
+    .text-right { text-align: right; }
+    
+    .tile {
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    
+    @media print {
+      html, body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        color-adjust: exact;
+      }
+      .page { page-break-after: always; }
+      .page:last-child { page-break-after: auto; }
+    }
+  `
 }

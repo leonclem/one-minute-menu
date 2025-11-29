@@ -112,18 +112,24 @@ async function handleNewTemplateEngine(
   metricsBuilder.setLayoutSelection(templateId, 'print')
   metricsBuilder.markCalculationEnd()
   
-  // Render layout to HTML
+  // Render layout to HTML (without the inline style tags)
   metricsBuilder.markRenderStart()
   const componentHTML = renderToString(
     createElement(ServerLayoutRenderer, {
       layout,
+      template,
+      paletteId: selection?.configuration?.colourPaletteId,
       currency: engineMenu.metadata.currency,
       className: 'pdf-export'
     })
   )
   metricsBuilder.markRenderEnd()
   
-  // Build complete HTML document
+  // Generate template CSS for the document head
+  const { generateTemplateCSS } = await import('@/lib/templates/export/layout-renderer')
+  const templateCSS = generateTemplateCSS(template, selection?.configuration?.colourPaletteId)
+  
+  // Build complete HTML document with styles properly in <head>
   const htmlDocument = `
 <!DOCTYPE html>
 <html lang="en">
@@ -132,28 +138,11 @@ async function handleNewTemplateEngine(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${options.title || menu.name}</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      line-height: 1.5;
-      color: #1f2937;
-    }
+    ${templateCSS}
     
     @page {
       size: ${template.orientation === 'A4_LANDSCAPE' ? 'A4 landscape' : 'A4 portrait'};
       margin: 0;
-    }
-    
-    @media print {
-      body {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
     }
   </style>
 </head>

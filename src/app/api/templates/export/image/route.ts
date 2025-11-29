@@ -15,11 +15,191 @@ import { logger } from '@/lib/logger'
 // Extended timeout for image generation
 export const maxDuration = 60
 
+/**
+ * Handle image export using the new template engine
+ */
+async function handleNewTemplateEngine(
+  menu: any,
+  templateId: string,
+  context: OutputContext,
+  imageOptions: any,
+  userId: string,
+  metricsBuilder: MetricsBuilder
+) {
+  // Import new template engine modules
+  const { toEngineMenu } = await import('@/lib/templates/menu-transformer')
+  const { TEMPLATE_REGISTRY } = await import('@/lib/templates/template-definitions')
+  const { generateLayout } = await import('@/lib/templates/layout-engine')
+  const { checkCompatibility } = await import('@/lib/templates/compatibility-checker')
+  const { ServerLayoutRenderer } = await import('@/lib/templates/export/layout-renderer')
+  const { renderToString } = await import('react-dom/server')
+  const { createElement } = await import('react')
+  
+  // Validate template exists
+  const template = TEMPLATE_REGISTRY[templateId]
+  if (!template) {
+    return NextResponse.json(
+      { error: 'Invalid template ID', code: ERROR_CODES.PRESET_NOT_FOUND },
+      { status: 400 }
+    )
+  }
+  
+  // Transform menu to EngineMenu
+  metricsBuilder.markCalculationStart()
+  const engineMenu = toEngineMenu(menu)
+
+  // Calculate menu characteristics for metrics
+  const sectionCount = engineMenu.sections.length
+  const totalItems = engineMenu.sections.reduce((sum, section) => sum + section.items.length, 0)
+  const itemsWithImages = engineMenu.sections.reduce((sum, section) => 
+    sum + section.items.filter(item => !!item.imageUrl).length, 0)
+  const imageRatio = totalItems > 0 ? (itemsWithImages / totalItems) * 100 : 0
+  
+  const totalNameLength = engineMenu.sections.reduce((sum, section) => 
+    sum + section.items.reduce((s, i) => s + i.name.length, 0), 0)
+  const avgNameLength = totalItems > 0 ? totalNameLength / totalItems : 0
+  
+  const hasDescriptions = engineMenu.sections.some(section => 
+    section.items.some(item => !!item.description && item.description.length > 0))
+
+  metricsBuilder.setMenuCharacteristics({
+    sectionCount,
+    totalItems,
+    imageRatio,
+    avgNameLength,
+    hasDescriptions
+  })
+  
+  // Check compatibility
+  const compatibility = checkCompatibility(engineMenu, template)
+  if (compatibility.status === 'INCOMPATIBLE') {
+    return NextResponse.json(
+      { 
+        error: 'Template is incompatible with this menu',
+        code: ERROR_CODES.INVALID_INPUT,
+        details: compatibility
+      },
+      { status: 400 }
+    )
+  }
+  
+  // Load saved template selection (if exists)
+  const supabase = createServerSupabaseClient()
+  let selection: any
+  const { data: selectionData } = await supabase
+    .from('menu_template_selections')
+    .select('*')
+    .eq('menu_id', menu.id)
+    .single()
+  
+  if (selectionData) {
+    selection = {
+      id: selectionData.id,
+      menuId: selectionData.menu_id,
+      templateId: selectionData.template_id,
+      templateVersion: selectionData.template_version,
+      configuration: selectionData.configuration,
+      createdAt: new Date(selectionData.created_at),
+      updatedAt: new Date(selectionData.updated_at)
+    }
+  }
+  
+  // Generate layout
+  const layout = generateLayout({
+    menu: engineMenu,
+    template,
+    selection
+  })
+  
+  metricsBuilder.setLayoutSelection(templateId, context)
+  metricsBuilder.markCalculationEnd()
+  
+  // Render layout to HTML using the styled renderer
+  metricsBuilder.markRenderStart()
+  const componentHTML = renderToString(
+    createElement(ServerLayoutRenderer, {
+      layout,
+      template,
+      paletteId: selection?.configuration?.colourPaletteId,
+      currency: engineMenu.metadata.currency,
+      className: 'image-export'
+    })
+  )
+  metricsBuilder.markRenderEnd()
+  
+  // Generate template CSS for the document
+  const { generateTemplateCSS } = await import('@/lib/templates/export/layout-renderer')
+  const templateCSS = generateTemplateCSS(template, selection?.configuration?.colourPaletteId)
+  
+  // Create complete HTML document with proper styling
+  const styledHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${menu.name}</title>
+  <style>
+    ${templateCSS}
+    
+    .image-export {
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  ${componentHTML}
+</body>
+</html>
+  `.trim()
+  
+  // Create minimal LayoutMenuData for image export metadata
+  const layoutData = {
+    metadata: {
+      title: menu.name,
+      currency: engineMenu.metadata.currency
+    },
+    sections: []
+  }
+  
+  // Export to image using the styled HTML
+  metricsBuilder.markExportStart()
+  const result = await exportToImage(styledHTML, layoutData, context, imageOptions)
+  metricsBuilder.markExportEnd()
+  
+  // Set export details and build metrics
+  const exportFormat = imageOptions.format || 'png'
+  metricsBuilder.setExportDetails(exportFormat, result.size)
+  const metrics = metricsBuilder.build()
+  logLayoutMetrics(metrics)
+  
+  // Validate performance
+  const performanceCheck = validatePerformance(metrics)
+  if (!performanceCheck.isValid) {
+    logger.warn('[ImageExporter] Performance warnings:', performanceCheck.warnings)
+  }
+  
+  // Return image with appropriate headers
+  const mimeType = exportFormat === 'png' ? 'image/png' : 'image/jpeg'
+  const extension = exportFormat === 'png' ? 'png' : 'jpg'
+  
+  return new Response(result.imageBuffer as any, {
+    status: 200,
+    headers: {
+      'Content-Type': mimeType,
+      'Content-Length': result.size.toString(),
+      'Content-Disposition': `attachment; filename="${menu.slug}-${context}.${extension}"`,
+      'Cache-Control': 'no-cache'
+    }
+  })
+}
+
 // Request body schema
 const ExportImageRequestSchema = z.object({
   menuId: z.string().uuid('Invalid menu ID format'),
   context: z.enum(['mobile', 'tablet', 'desktop', 'print']).default('desktop'),
-  presetId: z.string().optional(),
+  templateId: z.string().optional(), // New: template ID for new engine
+  presetId: z.string().optional(),   // Legacy: preset ID for old engine
   options: z.object({
     format: z.enum(['png', 'jpg']).optional(),
     width: z.number().int().positive().optional(),
@@ -103,7 +283,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const { menuId, context, presetId, options = {} } = validation.data
+    const { menuId, context, templateId, presetId, options = {} } = validation.data
     
     metricsBuilder.setMenuId(menuId)
     
@@ -136,6 +316,13 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       )
     }
+    
+    // NEW TEMPLATE ENGINE PATH
+    if (templateId) {
+      return await handleNewTemplateEngine(menu, templateId, context, imageOptions, user.id, metricsBuilder)
+    }
+    
+    // LEGACY PATH: Continue with existing preset-based system
     
     // Get extraction data - either from extractionMetadata or reconstruct from items
     let extractionResult: any

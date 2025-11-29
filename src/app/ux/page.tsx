@@ -79,34 +79,32 @@ export default function UXHomePage() {
   }
 
   return (
-    <div className="w-full h-full">
-      <section className="relative w-full h-full">
-        <div className="relative container-ux mx-auto max-w-4xl px-6 py-6 md:py-8 space-y-4 md:space-y-5 grid place-items-center text-center">
-          <div className="max-h-[55vh]">
-            {/* JSON-LD structured data specific to the UX landing */}
-            <script
-              type="application/ld+json"
-              suppressHydrationWarning
-              dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-            />
-            <h1 className="text-4xl md:text-6xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
-              Ready to create your new beautiful menu in under 5 minutes?
-            </h1>
-            <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto text-hero-shadow mt-3">
-              Transform your menu into a print- and mobile-friendly, flexible digital menu. Instant price changes, 86&apos;ing and much more.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-4">
-              <Link href="/ux/register" className="w-full sm:w-auto" onClick={handlePrimaryClick}>
-                <UXButton variant="primary" size="lg" className="w-full sm:w-auto min-w-[240px]">
-                  {primaryCtaLabel}
-                </UXButton>
-              </Link>
-              <Link href="/ux/demo/sample" className="w-full sm:w-auto" onClick={handleSecondaryClick}>
-                <UXButton variant="warning" size="lg" className="w-full sm:w-auto min-w-[240px]">
-                  Try a Demo Menu
-                </UXButton>
-              </Link>
-            </div>
+    <div className="w-full h-full flex items-center justify-center">
+      <section className="relative w-full">
+        <div className="container-ux mx-auto max-w-4xl px-6 py-8 md:py-12 text-center">
+          {/* JSON-LD structured data specific to the UX landing */}
+          <script
+            type="application/ld+json"
+            suppressHydrationWarning
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          />
+          <h1 className="text-4xl md:text-6xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
+            Ready to create your new beautiful menu in under 5 minutes?
+          </h1>
+          <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto text-hero-shadow mt-4 md:mt-6">
+            Transform your menu into a print- and mobile-friendly, flexible digital menu. Instant price changes, 86&apos;ing and much more.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-6 md:mt-8">
+            <Link href="/ux/register" className="w-full sm:w-auto" onClick={handlePrimaryClick}>
+              <UXButton variant="primary" size="lg" className="w-full sm:w-auto min-w-[240px]">
+                {primaryCtaLabel}
+              </UXButton>
+            </Link>
+            <Link href="/ux/demo/sample" className="w-full sm:w-auto" onClick={handleSecondaryClick}>
+              <UXButton variant="warning" size="lg" className="w-full sm:w-auto min-w-[240px]">
+                Try a Demo Menu
+              </UXButton>
+            </Link>
           </div>
         </div>
       </section>

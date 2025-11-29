@@ -495,20 +495,27 @@ function assignItemsToRepeatPattern(
 
 /**
  * Create a menu item tile instance from a tile definition and item
+ * 
+ * Note: `showImage` indicates whether the tile SUPPORTS images (based on template/config),
+ * not whether an image is actually available. This allows renderers to show fallback
+ * visuals when the template expects images but the item doesn't have one.
  */
 function createMenuItemTile(
   tileDef: TileDefinition,
   item: EngineItem,
   textOnly: boolean
 ): MenuItemTileInstance {
-  const shouldShowImage = !textOnly && 
-                          tileDef.type === 'ITEM' && 
-                          tileDef.options?.showImage !== false &&
-                          !!item.imageUrl
+  // Tile supports images if: not text-only mode, tile type is ITEM, and showImage option is not disabled
+  const tileSupportsImages = !textOnly && 
+                              tileDef.type === 'ITEM' && 
+                              tileDef.options?.showImage !== false
+  
+  // Tile has an actual image available
+  const hasImage = tileSupportsImages && !!item.imageUrl
   
   return {
     id: `${tileDef.id}-${item.id}`,
-    type: shouldShowImage ? 'ITEM' : 'ITEM_TEXT_ONLY',
+    type: hasImage ? 'ITEM' : 'ITEM_TEXT_ONLY',
     col: tileDef.col,
     row: tileDef.row,
     colSpan: tileDef.colSpan,
@@ -517,8 +524,8 @@ function createMenuItemTile(
     name: item.name,
     description: item.description,
     price: item.price,
-    imageUrl: shouldShowImage ? item.imageUrl : undefined,
-    showImage: shouldShowImage,
+    imageUrl: item.imageUrl, // Always pass imageUrl if available
+    showImage: tileSupportsImages, // Indicates tile supports images (for fallback rendering)
     options: tileDef.options
   }
 }

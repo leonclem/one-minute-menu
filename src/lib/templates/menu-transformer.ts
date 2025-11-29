@@ -119,13 +119,24 @@ export function toEngineMenu(menu: Menu): EngineMenu {
   // Extract currency from theme layout or use default
   const currency = menu.theme?.layout?.currency ?? '$'
   
+  // Create a lookup map from flat items array for image data
+  // This ensures we use the most up-to-date image information even if categories haven't been synced
+  const itemsImageLookup = new Map<string, MenuItem>()
+  if (menu.items) {
+    menu.items.forEach(item => {
+      if (item.imageSource !== 'none' || item.aiImageId || item.customImageUrl) {
+        itemsImageLookup.set(item.id, item)
+      }
+    })
+  }
+  
   // If menu has categories, use them as sections
   if (menu.categories && menu.categories.length > 0) {
     return {
       id: menu.id,
       name: menu.name,
       sections: menu.categories
-        .map((cat, idx) => transformCategory(cat, idx))
+        .map((cat, idx) => transformCategoryWithImageLookup(cat, idx, itemsImageLookup))
         .sort((a, b) => a.sortOrder - b.sortOrder),
       metadata: {
         currency,
@@ -170,6 +181,25 @@ function transformCategory(category: MenuCategory, fallbackOrder: number): Engin
 }
 
 /**
+ * Transform MenuCategory to EngineSection with image lookup from flat items
+ * This ensures image data is used even if categories haven't been synced
+ */
+function transformCategoryWithImageLookup(
+  category: MenuCategory, 
+  fallbackOrder: number,
+  itemsImageLookup: Map<string, MenuItem>
+): EngineSection {
+  return {
+    id: category.id,
+    name: category.name,
+    sortOrder: category.order ?? fallbackOrder,
+    items: category.items
+      .map((item, idx) => transformItemWithImageLookup(item, idx, itemsImageLookup))
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+  }
+}
+
+/**
  * Transform MenuItem to EngineItem
  */
 function transformItem(item: MenuItem, fallbackOrder: number): EngineItem {
@@ -184,12 +214,40 @@ function transformItem(item: MenuItem, fallbackOrder: number): EngineItem {
 }
 
 /**
+ * Transform MenuItem to EngineItem with image lookup from flat items
+ * Falls back to the flat items array for image data if the category item doesn't have it
+ */
+function transformItemWithImageLookup(
+  item: MenuItem, 
+  fallbackOrder: number,
+  itemsImageLookup: Map<string, MenuItem>
+): EngineItem {
+  // First try to get image from the category item itself
+  let imageUrl = getItemImageUrl(item)
+  
+  // If no image URL, check the flat items lookup for updated image data
+  if (!imageUrl && itemsImageLookup.has(item.id)) {
+    const lookupItem = itemsImageLookup.get(item.id)!
+    imageUrl = getItemImageUrl(lookupItem)
+  }
+  
+  return {
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    imageUrl,
+    sortOrder: item.order ?? fallbackOrder
+  }
+}
+
+/**
  * Get the image URL for a menu item based on its imageSource
  */
 function getItemImageUrl(item: MenuItem): string | undefined {
-  if (item.imageSource === 'ai' && item.aiImageId) {
-    // TODO: Resolve AI image URL from storage
-    // For now, return undefined until AI image resolution is implemented
+  if (item.imageSource === 'ai') {
+    // AI-generated images - not yet implemented for template engine
+    // TODO: Implement AI image URL resolution when ready
     return undefined
   }
   

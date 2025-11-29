@@ -5,12 +5,114 @@
  * @description
  * This module contains all template definitions for the GridMenu Template Engine.
  * Templates are declarative JSON-like structures that define grid layouts, constraints,
- * and capabilities.
+ * styling, and capabilities.
  * 
  * **Available MVP Templates:**
- * - `CLASSIC_GRID_CARDS`: Photo-forward 3-column grid layout
- * - `TWO_COLUMN_TEXT`: Traditional text-focused 2-column layout (the "tank" template)
- * - `SIMPLE_ROWS`: Mobile-friendly single-column layout
+ * - `CLASSIC_GRID_CARDS` ("Elegant Dark"): Photo-forward 3-column grid with circular images
+ * - `TWO_COLUMN_TEXT` ("Classic Italian"): Text-focused 2-column layout with leader dots
+ * - `SIMPLE_ROWS`: Clean single-column layout with side thumbnails
+ * 
+ * ---
+ * 
+ * ## HOW TO ADD A NEW TEMPLATE
+ * 
+ * Adding a new template is a 4-step process:
+ * 
+ * ### Step 1: Define Color Palette(s)
+ * Create at least one `TemplateColorPalette` with required colors:
+ * ```typescript
+ * const MY_PALETTE: TemplateColorPalette = {
+ *   id: 'my-palette',
+ *   name: 'My Palette',
+ *   background: '#ffffff',    // Page background
+ *   text: '#333333',          // Body text color
+ *   heading: '#111111',       // Section headers
+ *   price: '#059669',         // Price text
+ *   accent: '#059669',        // Borders, decorations
+ *   cardBackground: '#f9fafb' // Item card background
+ * }
+ * ```
+ * 
+ * ### Step 2: Define Template Style
+ * Create a `TemplateStyle` object:
+ * ```typescript
+ * const MY_STYLE: TemplateStyle = {
+ *   colors: MY_PALETTE,
+ *   alternatePalettes: [ALTERNATE_PALETTE], // Optional swappable palettes
+ *   fonts: {
+ *     heading: "'Playfair Display', serif",
+ *     body: "'Lato', sans-serif"
+ *   },
+ *   itemCard: {
+ *     borderRadius: '8px',
+ *     shadow: '0 2px 8px rgba(0,0,0,0.1)',
+ *     imagePosition: 'top',  // 'top' | 'left' | 'circle' | 'background' | 'none'
+ *     imageBorderRadius: '8px',
+ *     showLeaderDots: false  // true for text-only menus
+ *   },
+ *   pageBackground: '#ffffff', // or gradient
+ *   fillerTileStyle: 'icon'   // 'icon' | 'pattern' | 'color'
+ * }
+ * ```
+ * 
+ * ### Step 3: Define the Template
+ * Create a `MenuTemplate` object with:
+ * - **layout**: Grid structure with tile positions
+ * - **constraints**: Menu size limits
+ * - **capabilities**: Feature flags
+ * - **style**: The style object from Step 2
+ * 
+ * ```typescript
+ * export const MY_TEMPLATE: MenuTemplate = {
+ *   id: 'my-template',
+ *   name: 'My Template',
+ *   description: 'Description for UI display',
+ *   thumbnailUrl: '/templates/previews/my-template.jpg',
+ *   aspectRatio: 'A4_PORTRAIT',
+ *   orientation: 'A4_PORTRAIT',
+ *   layout: {
+ *     baseCols: 3,
+ *     baseRows: 4,
+ *     tiles: [
+ *       { id: 'title-1', type: 'TITLE', col: 0, row: 0, colSpan: 3, rowSpan: 1 },
+ *       { id: 'item-1', type: 'ITEM', col: 0, row: 1, colSpan: 1, rowSpan: 1 },
+ *       // ... more tiles
+ *     ],
+ *     repeatPattern: { // Optional for scaling
+ *       fromRow: 4,
+ *       rowsPerRepeat: 1,
+ *       repeatItemTileIds: ['item-10', 'item-11', 'item-12'],
+ *       maxRepeats: 10
+ *     }
+ *   },
+ *   constraints: { minSections: 1, maxSections: 'unbounded', minItems: 1 },
+ *   capabilities: {
+ *     supportsImages: true,
+ *     supportsColourPalettes: true,
+ *     supportsTextOnlyMode: true,
+ *     supportsResponsiveWeb: true,
+ *     supportsLogoPlaceholder: false,
+ *     autoFillerTiles: true
+ *   },
+ *   configurationSchema: { allowColourPalette: true, allowImageToggle: true },
+ *   style: MY_STYLE,
+ *   version: '1.0.0'
+ * }
+ * ```
+ * 
+ * ### Step 4: Register the Template
+ * Add to `TEMPLATE_REGISTRY`:
+ * ```typescript
+ * export const TEMPLATE_REGISTRY: Record<TemplateId, MenuTemplate> = {
+ *   // ... existing templates
+ *   'my-template': MY_TEMPLATE
+ * }
+ * ```
+ * 
+ * That's it! The template will appear in the template selection UI and work
+ * with all export formats (PDF, HTML, preview).
+ * 
+ * ---
  * 
  * @example
  * ```typescript
@@ -32,7 +134,171 @@
  * ```
  */
 
-import type { MenuTemplate, TemplateId } from './engine-types'
+import type { MenuTemplate, TemplateId, TemplateStyle, TemplateColorPalette } from './engine-types'
+
+// ============================================================================
+// Color Palette Definitions
+// ============================================================================
+
+/**
+ * Elegant Dark color palettes - inspired by Ravada design
+ */
+const ELEGANT_DARK_PALETTE: TemplateColorPalette = {
+  id: 'elegant-dark',
+  name: 'Elegant Dark',
+  background: '#1a1f2e',
+  text: '#ffffff',
+  heading: '#c9a227',
+  price: '#c9a227',
+  accent: '#c9a227',
+  cardBackground: '#252a3a'
+}
+
+const ELEGANT_DARK_LIGHT_PALETTE: TemplateColorPalette = {
+  id: 'elegant-light',
+  name: 'Elegant Light',
+  background: '#faf9f7',
+  text: '#1a1f2e',
+  heading: '#8b6914',
+  price: '#8b6914',
+  accent: '#c9a227',
+  cardBackground: '#ffffff'
+}
+
+const ELEGANT_DARK_WARM_PALETTE: TemplateColorPalette = {
+  id: 'elegant-warm',
+  name: 'Elegant Warm',
+  background: '#2d1f1a',
+  text: '#fff8f0',
+  heading: '#d4a574',
+  price: '#d4a574',
+  accent: '#d4a574',
+  cardBackground: '#3d2f2a'
+}
+
+/**
+ * Classic Italian color palettes - inspired by Porta-Porta design
+ */
+const CLASSIC_CREAM_PALETTE: TemplateColorPalette = {
+  id: 'classic-cream',
+  name: 'Classic Cream',
+  background: '#faf8f5',
+  text: '#2d2d2d',
+  heading: '#1a1a1a',
+  price: '#1a1a1a',
+  accent: '#8b7355',
+  cardBackground: '#ffffff'
+}
+
+const CLASSIC_IVORY_PALETTE: TemplateColorPalette = {
+  id: 'classic-ivory',
+  name: 'Classic Ivory',
+  background: '#fffff8',
+  text: '#333333',
+  heading: '#4a4a4a',
+  price: '#4a4a4a',
+  accent: '#6b8e23',
+  cardBackground: '#fefefe'
+}
+
+const CLASSIC_SAGE_PALETTE: TemplateColorPalette = {
+  id: 'classic-sage',
+  name: 'Classic Sage',
+  background: '#f5f7f4',
+  text: '#2d3a2d',
+  heading: '#3d4d3d',
+  price: '#3d4d3d',
+  accent: '#7a9a7a',
+  cardBackground: '#ffffff'
+}
+
+/**
+ * Simple modern color palettes
+ */
+const SIMPLE_CLEAN_PALETTE: TemplateColorPalette = {
+  id: 'simple-clean',
+  name: 'Clean White',
+  background: '#ffffff',
+  text: '#333333',
+  heading: '#111111',
+  price: '#059669',
+  accent: '#059669',
+  cardBackground: '#f9fafb'
+}
+
+const SIMPLE_DARK_PALETTE: TemplateColorPalette = {
+  id: 'simple-dark',
+  name: 'Dark Mode',
+  background: '#111827',
+  text: '#f3f4f6',
+  heading: '#ffffff',
+  price: '#10b981',
+  accent: '#10b981',
+  cardBackground: '#1f2937'
+}
+
+// ============================================================================
+// Style Definitions
+// ============================================================================
+
+/**
+ * Elegant Dark style - Photo-forward with circular images and gold accents
+ */
+const ELEGANT_DARK_STYLE: TemplateStyle = {
+  colors: ELEGANT_DARK_PALETTE,
+  alternatePalettes: [ELEGANT_DARK_LIGHT_PALETTE, ELEGANT_DARK_WARM_PALETTE],
+  fonts: {
+    heading: "'Playfair Display', Georgia, serif",
+    body: "'Lato', 'Helvetica Neue', sans-serif"
+  },
+  itemCard: {
+    borderRadius: '12px',
+    shadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+    imagePosition: 'circle',
+    imageBorderRadius: '50%'
+  },
+  pageBackground: 'linear-gradient(180deg, #1a1f2e 0%, #0f1218 100%)',
+  fillerTileStyle: 'icon'
+}
+
+/**
+ * Classic Italian style - Text-focused with serif fonts and leader dots
+ */
+const CLASSIC_ITALIAN_STYLE: TemplateStyle = {
+  colors: CLASSIC_CREAM_PALETTE,
+  alternatePalettes: [CLASSIC_IVORY_PALETTE, CLASSIC_SAGE_PALETTE],
+  fonts: {
+    heading: "'Cormorant Garamond', 'Times New Roman', serif",
+    body: "'Source Sans Pro', 'Helvetica Neue', sans-serif"
+  },
+  itemCard: {
+    borderRadius: '0',
+    shadow: 'none',
+    imagePosition: 'none',
+    showLeaderDots: true
+  },
+  pageBackground: '#faf8f5',
+  fillerTileStyle: 'pattern'
+}
+
+/**
+ * Simple Rows style - Clean and modern with small thumbnails
+ */
+const SIMPLE_ROWS_STYLE: TemplateStyle = {
+  colors: SIMPLE_CLEAN_PALETTE,
+  alternatePalettes: [SIMPLE_DARK_PALETTE],
+  fonts: {
+    heading: "'Inter', 'Helvetica Neue', sans-serif",
+    body: "'Inter', 'Helvetica Neue', sans-serif"
+  },
+  itemCard: {
+    borderRadius: '8px',
+    shadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    imagePosition: 'left',
+    imageBorderRadius: '6px'
+  },
+  fillerTileStyle: 'color'
+}
 
 /**
  * Classic Grid Cards Template
@@ -44,7 +310,7 @@ import type { MenuTemplate, TemplateId } from './engine-types'
 export const CLASSIC_GRID_CARDS: MenuTemplate = {
   id: 'classic-grid-cards',
   name: 'Classic Grid Cards',
-  description: 'Photo-forward 3-column grid layout with item cards',
+  description: 'Photo-forward 3-column grid with circular images and gold accents',
   thumbnailUrl: '/templates/previews/classic-grid-cards.jpg',
   aspectRatio: 'A4_PORTRAIT',
   orientation: 'A4_PORTRAIT',
@@ -164,16 +430,17 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
   capabilities: {
     supportsImages: true,
     supportsLogoPlaceholder: false,
-    supportsColourPalettes: false,
+    supportsColourPalettes: true,
     supportsTextOnlyMode: true,
     supportsResponsiveWeb: true,
-    autoFillerTiles: false
+    autoFillerTiles: true
   },
   configurationSchema: {
-    allowColourPalette: false,
+    allowColourPalette: true,
     allowLogoUpload: false,
     allowImageToggle: true
   },
+  style: ELEGANT_DARK_STYLE,
   version: '1.0.0'
 }
 
@@ -187,7 +454,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
 export const TWO_COLUMN_TEXT: MenuTemplate = {
   id: 'two-column-text',
   name: 'Two-Column Text',
-  description: 'Traditional text-focused layout with 2 columns',
+  description: 'Elegant text-focused 2-column layout with serif fonts and leader dots',
   thumbnailUrl: '/templates/previews/two-column-text.jpg',
   aspectRatio: 'A4_PORTRAIT',
   orientation: 'A4_PORTRAIT',
@@ -307,16 +574,17 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
   capabilities: {
     supportsImages: false,
     supportsLogoPlaceholder: false,
-    supportsColourPalettes: false,
+    supportsColourPalettes: true,
     supportsTextOnlyMode: true,
     supportsResponsiveWeb: true,
     autoFillerTiles: false
   },
   configurationSchema: {
-    allowColourPalette: false,
+    allowColourPalette: true,
     allowLogoUpload: false,
     allowImageToggle: false
   },
+  style: CLASSIC_ITALIAN_STYLE,
   version: '1.0.0'
 }
 
@@ -330,7 +598,7 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
 export const SIMPLE_ROWS: MenuTemplate = {
   id: 'simple-rows',
   name: 'Simple Rows',
-  description: 'Mobile-friendly single-column layout with optional thumbnails',
+  description: 'Clean, modern single-column layout with small thumbnails',
   thumbnailUrl: '/templates/previews/simple-rows.jpg',
   aspectRatio: 'A4_PORTRAIT',
   orientation: 'A4_PORTRAIT',
@@ -449,16 +717,17 @@ export const SIMPLE_ROWS: MenuTemplate = {
   capabilities: {
     supportsImages: true,
     supportsLogoPlaceholder: false,
-    supportsColourPalettes: false,
+    supportsColourPalettes: true,
     supportsTextOnlyMode: true,
     supportsResponsiveWeb: true,
     autoFillerTiles: false
   },
   configurationSchema: {
-    allowColourPalette: false,
+    allowColourPalette: true,
     allowLogoUpload: false,
     allowImageToggle: true
   },
+  style: SIMPLE_ROWS_STYLE,
   version: '1.0.0'
 }
 

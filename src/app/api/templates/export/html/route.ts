@@ -113,11 +113,13 @@ async function handleNewTemplateEngine(
   metricsBuilder.setLayoutSelection(templateId, context)
   metricsBuilder.markCalculationEnd()
   
-  // Render layout to HTML
+  // Render layout to HTML (without the inline style tags)
   metricsBuilder.markRenderStart()
   const componentHTML = renderToString(
     createElement(ServerLayoutRenderer, {
       layout,
+      template,
+      paletteId: selection?.configuration?.colourPaletteId,
       currency: engineMenu.metadata.currency,
       className: 'html-export',
       themeColors: options.themeColors
@@ -125,7 +127,11 @@ async function handleNewTemplateEngine(
   )
   metricsBuilder.markRenderEnd()
   
-  // Build complete HTML document
+  // Generate template CSS for the document head
+  const { generateTemplateCSS } = await import('@/lib/templates/export/layout-renderer')
+  const templateCSS = generateTemplateCSS(template, selection?.configuration?.colourPaletteId)
+  
+  // Build complete HTML document with styles properly in <head>
   const includeDoctype = options.includeDoctype !== false
   const includeMetaTags = options.includeMetaTags !== false
   const includeStyles = options.includeStyles !== false
@@ -148,20 +154,8 @@ async function handleNewTemplateEngine(
   
   if (includeStyles) {
     htmlDocument += '  <style>\n'
+    htmlDocument += templateCSS
     htmlDocument += `
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      line-height: 1.5;
-      color: #1f2937;
-      background: #f9fafb;
-      padding: 2rem;
-    }
     
     .html-export {
       max-width: 1200px;

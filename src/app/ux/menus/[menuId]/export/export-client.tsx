@@ -1,12 +1,219 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { UXSection, UXButton, UXCard } from '@/components/ux'
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
+import { TemplateLayoutRenderer } from '@/components/templates'
+import { TEMPLATE_REGISTRY } from '@/lib/templates/template-definitions'
+import { toEngineMenu } from '@/lib/templates/menu-transformer'
+import { generateLayout } from '@/lib/templates/layout-engine'
+import type { LayoutInstance, MenuTemplate, TemplateColorPalette } from '@/lib/templates/engine-types'
+
+/**
+ * Generate complete HTML document with embedded styles for demo export
+ */
+function generateStyledHtml(
+  menu: Menu,
+  layout: LayoutInstance,
+  template: MenuTemplate,
+  palette: TemplateColorPalette
+): string {
+  const { style } = template
+  const currency = menu.theme?.layout?.currency || '$'
+  
+  // Generate CSS for the template style
+  const css = `
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@400;700&family=Cormorant+Garamond:wght@400;600;700&family=Source+Sans+Pro:wght@400;600;700&family=Inter:wght@400;600;700&display=swap');
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: ${style.fonts.body};
+      background: ${style.pageBackground || palette.background};
+      color: ${palette.text};
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    
+    .menu-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    .menu-title {
+      font-family: ${style.fonts.heading};
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: ${palette.heading};
+      text-align: center;
+      margin-bottom: 2rem;
+      letter-spacing: 0.025em;
+    }
+    
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(${template.layout.baseCols}, 1fr);
+      gap: 1.5rem;
+    }
+    
+    .section-header {
+      grid-column: 1 / -1;
+      font-family: ${style.fonts.heading};
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: ${palette.heading};
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 0.5rem 0;
+      border-bottom: 2px solid ${palette.accent};
+      margin-top: 1rem;
+    }
+    
+    .menu-item {
+      background: ${palette.cardBackground};
+      border-radius: ${style.itemCard.borderRadius};
+      box-shadow: ${style.itemCard.shadow};
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .menu-item.text-only {
+      background: transparent;
+      box-shadow: none;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid ${palette.accent}20;
+    }
+    
+    .item-image {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      border-radius: ${style.itemCard.imageBorderRadius || '8px'};
+      margin-bottom: 0.75rem;
+    }
+    
+    .item-image.circle {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      margin: 0 auto 0.75rem;
+      border: 3px solid ${palette.accent};
+    }
+    
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+    
+    .item-name {
+      font-family: ${style.fonts.body};
+      font-size: 1rem;
+      font-weight: 600;
+      color: ${palette.text};
+    }
+    
+    .item-price {
+      font-family: ${style.fonts.body};
+      font-size: 1rem;
+      font-weight: 700;
+      color: ${palette.price};
+    }
+    
+    .item-description {
+      font-family: ${style.fonts.body};
+      font-size: 0.875rem;
+      color: ${palette.text};
+      opacity: 0.7;
+      margin-top: 0.5rem;
+      line-height: 1.4;
+    }
+    
+    .leader-dots {
+      flex: 1;
+      border-bottom: 1px dotted ${palette.text}40;
+      margin-bottom: 0.25rem;
+    }
+    
+    @media print {
+      body { padding: 1rem; }
+    }
+  `
+  
+  // Generate HTML for tiles
+  let tilesHtml = ''
+  for (const page of layout.pages) {
+    for (const tile of page.tiles) {
+      if (tile.type === 'TITLE' && 'content' in tile) {
+        tilesHtml += `<h1 class="menu-title">${escapeHtml(tile.content)}</h1>`
+      } else if (tile.type === 'SECTION_HEADER' && 'label' in tile) {
+        tilesHtml += `<h2 class="section-header">${escapeHtml(tile.label)}</h2>`
+      } else if ((tile.type === 'ITEM' || tile.type === 'ITEM_TEXT_ONLY') && 'name' in tile) {
+        const isTextOnly = tile.type === 'ITEM_TEXT_ONLY' || !tile.showImage || !tile.imageUrl
+        const showLeaderDots = style.itemCard.showLeaderDots && isTextOnly
+        
+        tilesHtml += `
+          <div class="menu-item${isTextOnly ? ' text-only' : ''}">
+            ${tile.showImage && tile.imageUrl ? `
+              <img 
+                src="${escapeHtml(tile.imageUrl)}" 
+                alt="${escapeHtml(tile.name)}"
+                class="item-image${style.itemCard.imagePosition === 'circle' ? ' circle' : ''}"
+              />
+            ` : ''}
+            <div class="item-header">
+              <span class="item-name">${escapeHtml(tile.name)}</span>
+              ${showLeaderDots ? '<span class="leader-dots"></span>' : ''}
+              <span class="item-price">${currency}${tile.price.toFixed(2)}</span>
+            </div>
+            ${tile.description ? `
+              <p class="item-description">${escapeHtml(tile.description)}</p>
+            ` : ''}
+          </div>
+        `
+      }
+    }
+  }
+  
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(menu.name)} - Menu</title>
+  <style>${css}</style>
+</head>
+<body>
+  <div class="menu-container">
+    <div class="menu-grid">
+      ${tilesHtml}
+    </div>
+  </div>
+  <footer style="text-align: center; margin-top: 3rem; padding: 1rem; opacity: 0.6; font-size: 0.875rem;">
+    Created with GridMenu
+  </footer>
+</body>
+</html>`
+}
+
+/**
+ * Escape HTML special characters
+ */
+function escapeHtml(text: string): string {
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
+}
 
 interface UXMenuExportClientProps {
   menuId: string
@@ -187,6 +394,66 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
     })()
   }, [menuId, router, showToast])
 
+  /**
+   * Generate styled HTML export for demo users
+   * Creates a complete HTML document with embedded styles
+   */
+  const handleDemoHtmlExport = useCallback(async (
+    menu: Menu,
+    template: MenuTemplate,
+    selection: TemplateSelection
+  ) => {
+    try {
+      // Transform menu to engine format
+      const engineMenu = toEngineMenu(menu)
+      
+      // Generate layout
+      const layout = generateLayout({
+        menu: engineMenu,
+        template,
+        selection: {
+          id: 'demo',
+          menuId: menu.id,
+          templateId: template.id,
+          templateVersion: template.version,
+          configuration: selection.configuration,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      })
+      
+      // Generate HTML with embedded styles
+      const { style } = template
+      const palette = style.colors
+      
+      const htmlContent = generateStyledHtml(menu, layout, template, palette)
+      
+      // Download HTML file
+      const blob = new Blob([htmlContent], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${menu.name.replace(/\s+/g, '-').toLowerCase()}-menu.html`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      showToast({
+        type: 'success',
+        title: 'HTML Menu exported',
+        description: 'Your styled menu HTML has been downloaded successfully'
+      })
+    } catch (error) {
+      console.error('Error generating demo HTML export:', error)
+      showToast({
+        type: 'error',
+        title: 'Export failed',
+        description: 'Failed to generate HTML export. Please try again.'
+      })
+    }
+  }, [showToast])
+
   const handleExport = async (option: ExportOption) => {
     const baseId = menuId.startsWith('demo-') ? menuId.slice(5) : menuId
     const isDemo = !authMenu
@@ -204,36 +471,61 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
 
     try {
       if (isDemo) {
-        if (!demoMenu) return
-        // Simulate export process for demo
-        await new Promise(resolve => setTimeout(resolve, 1200))
+        if (!demoMenu || !templateSelection) return
+        
+        // Generate styled export for demo users
+        const template = TEMPLATE_REGISTRY[templateSelection.templateId]
+        if (!template) {
+          showToast({
+            type: 'error',
+            title: 'Template not found',
+            description: 'Please go back and select a template first.'
+          })
+          return
+        }
 
-        setCompletedExports(prev => new Set(Array.from(prev).concat(option.id)))
+        // For HTML export, generate real styled HTML
+        if (option.format === 'html') {
+          await handleDemoHtmlExport(demoMenu, template, templateSelection)
+          setCompletedExports(prev => new Set(Array.from(prev).concat(option.id)))
+          
+          trackConversionEvent({
+            event: 'export_completed',
+            metadata: {
+              path: `/ux/menus/${menuId}/export`,
+              format: option.format,
+              isDemo: true,
+            },
+          })
+          return
+        }
+
+        // For PDF and image exports, show upgrade prompt for demo users
+        if (option.format === 'pdf' || option.format === 'image') {
+          showToast({
+            type: 'info',
+            title: 'Sign up for PDF & image exports',
+            description: 'Create a free account to download professional PDF and image exports of your menu.'
+          })
+          
+          trackConversionEvent({
+            event: 'cta_click_primary',
+            metadata: {
+              path: `/ux/menus/${menuId}/export`,
+              format: option.format,
+              isDemo: true,
+              action: 'export_upgrade_prompt',
+            },
+          })
+          return
+        }
+
+        // For other formats, show coming soon
         showToast({
-          type: 'success',
-          title: `${option.name} exported`,
-          description: `Your ${option.name.toLowerCase()} has been generated successfully`
+          type: 'info',
+          title: 'Coming soon',
+          description: `${option.name} export will be available soon.`
         })
-
-        trackConversionEvent({
-          event: 'export_completed',
-          metadata: {
-            path: `/ux/menus/${menuId}/export`,
-            format: option.format,
-            isDemo: true,
-          },
-        })
-
-        // Simulate download (placeholder file for demo only)
-        const blob = new Blob([`Demo ${option.name} for ${demoMenu.name}`], { type: 'text/plain' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${demoMenu.name.replace(/\s+/g, '-').toLowerCase()}-${option.format}.txt`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
         return
       }
 

@@ -356,6 +356,145 @@ export const TemplateConfigurationSchemaSchema = z.object({
 })
 
 // ============================================================================
+// Template Style (Visual Styling)
+// ============================================================================
+
+/**
+ * Color palette for a template
+ * 
+ * Defines all colors used in a template's visual appearance.
+ * Templates can have multiple palettes that users can swap between.
+ * 
+ * @example
+ * ```typescript
+ * const darkPalette: TemplateColorPalette = {
+ *   id: 'elegant-dark',
+ *   name: 'Elegant Dark',
+ *   background: '#1a1f2e',
+ *   text: '#ffffff',
+ *   heading: '#c9a227',
+ *   price: '#c9a227',
+ *   accent: '#c9a227',
+ *   cardBackground: '#252a3a'
+ * }
+ * ```
+ */
+export interface TemplateColorPalette {
+  /** Unique identifier for this palette */
+  id: string
+  /** Display name for palette selection UI */
+  name: string
+  /** Page/container background color */
+  background: string
+  /** Primary text color */
+  text: string
+  /** Section header text color */
+  heading: string
+  /** Price text color */
+  price: string
+  /** Accent color for decorations, borders, highlights */
+  accent: string
+  /** Background color for item cards */
+  cardBackground: string
+}
+
+/** Zod schema for TemplateColorPalette */
+export const TemplateColorPaletteSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  background: z.string(),
+  text: z.string(),
+  heading: z.string(),
+  price: z.string(),
+  accent: z.string(),
+  cardBackground: z.string()
+})
+
+/**
+ * Item card styling configuration
+ * 
+ * Defines how menu item cards are visually presented.
+ */
+export interface TemplateItemCardStyle {
+  /** Border radius for cards (e.g., '0', '8px', '50%' for circular) */
+  borderRadius: string
+  /** Box shadow for cards (CSS box-shadow value) */
+  shadow: string
+  /** Position of item image relative to content */
+  imagePosition: 'top' | 'left' | 'circle' | 'background' | 'none'
+  /** Border radius for images (e.g., '0', '8px', '50%') */
+  imageBorderRadius?: string
+  /** Whether to show leader dots between name and price (text-only templates) */
+  showLeaderDots?: boolean
+}
+
+/** Zod schema for TemplateItemCardStyle */
+export const TemplateItemCardStyleSchema = z.object({
+  borderRadius: z.string(),
+  shadow: z.string(),
+  imagePosition: z.enum(['top', 'left', 'circle', 'background', 'none']),
+  imageBorderRadius: z.string().optional(),
+  showLeaderDots: z.boolean().optional()
+})
+
+/**
+ * Complete visual style definition for a template
+ * 
+ * Contains all styling information needed to render a template,
+ * including colors, fonts, item card treatments, and background.
+ * 
+ * @example
+ * ```typescript
+ * const elegantDarkStyle: TemplateStyle = {
+ *   colors: darkPalette,
+ *   alternatePalettes: [lightPalette, warmPalette],
+ *   fonts: {
+ *     heading: 'Playfair Display, serif',
+ *     body: 'Lato, sans-serif'
+ *   },
+ *   itemCard: {
+ *     borderRadius: '8px',
+ *     shadow: '0 2px 8px rgba(0,0,0,0.15)',
+ *     imagePosition: 'circle'
+ *   },
+ *   fillerTileStyle: 'icon'
+ * }
+ * ```
+ */
+export interface TemplateStyle {
+  /** Default color palette for this template */
+  colors: TemplateColorPalette
+  /** Additional palettes users can switch to */
+  alternatePalettes?: TemplateColorPalette[]
+  /** Font families for headings and body text */
+  fonts: {
+    /** Font for section headers and titles (e.g., 'Playfair Display, serif') */
+    heading: string
+    /** Font for item names, descriptions, prices (e.g., 'Lato, sans-serif') */
+    body: string
+  }
+  /** Visual styling for menu item cards */
+  itemCard: TemplateItemCardStyle
+  /** Optional background (color, gradient, or image URL) */
+  pageBackground?: string
+  /** Style for auto-generated filler tiles */
+  fillerTileStyle?: 'icon' | 'pattern' | 'color'
+}
+
+/** Zod schema for TemplateStyle */
+export const TemplateStyleSchema = z.object({
+  colors: TemplateColorPaletteSchema,
+  alternatePalettes: z.array(TemplateColorPaletteSchema).optional(),
+  fonts: z.object({
+    heading: z.string(),
+    body: z.string()
+  }),
+  itemCard: TemplateItemCardStyleSchema,
+  pageBackground: z.string().optional(),
+  fillerTileStyle: z.enum(['icon', 'pattern', 'color']).optional()
+})
+
+// ============================================================================
 // Menu Template
 // ============================================================================
 
@@ -405,6 +544,8 @@ export interface MenuTemplate {
   capabilities: TemplateCapabilities
   /** Configuration options available to users */
   configurationSchema: TemplateConfigurationSchema
+  /** Visual styling (colors, fonts, card treatments) */
+  style: TemplateStyle
   /** Semantic version string (e.g., '1.0.0') */
   version: string
   /** If true, template is hidden from /available endpoint (development only) */
@@ -422,6 +563,7 @@ export const MenuTemplateSchema = z.object({
   constraints: TemplateConstraintsSchema,
   capabilities: TemplateCapabilitiesSchema,
   configurationSchema: TemplateConfigurationSchemaSchema.optional(),
+  style: TemplateStyleSchema,
   version: z.string(),
   isPostMvp: z.boolean().optional()
 })

@@ -107,6 +107,46 @@ const TemplateConfigurationSchemaSchema = z.object({
 }).optional()
 
 /**
+ * Zod schema for TemplateColorPalette
+ */
+const TemplateColorPaletteSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  background: z.string(),
+  text: z.string(),
+  heading: z.string(),
+  price: z.string(),
+  accent: z.string(),
+  cardBackground: z.string()
+})
+
+/**
+ * Zod schema for TemplateItemCardStyle
+ */
+const TemplateItemCardStyleSchema = z.object({
+  borderRadius: z.string(),
+  shadow: z.string(),
+  imagePosition: z.enum(['top', 'left', 'circle', 'background', 'none']),
+  imageBorderRadius: z.string().optional(),
+  showLeaderDots: z.boolean().optional()
+})
+
+/**
+ * Zod schema for TemplateStyle
+ */
+const TemplateStyleSchema = z.object({
+  colors: TemplateColorPaletteSchema,
+  alternatePalettes: z.array(TemplateColorPaletteSchema).optional(),
+  fonts: z.object({
+    heading: z.string(),
+    body: z.string()
+  }),
+  itemCard: TemplateItemCardStyleSchema,
+  pageBackground: z.string().optional(),
+  fillerTileStyle: z.enum(['icon', 'pattern', 'color']).optional()
+})
+
+/**
  * Zod schema for MenuTemplate
  */
 const MenuTemplateSchema = z.object({
@@ -120,6 +160,7 @@ const MenuTemplateSchema = z.object({
   constraints: TemplateConstraintsSchema,
   capabilities: TemplateCapabilitiesSchema,
   configurationSchema: TemplateConfigurationSchemaSchema,
+  style: TemplateStyleSchema,
   isPostMvp: z.boolean().optional(),
   version: z.string()
 })

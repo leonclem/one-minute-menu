@@ -653,11 +653,29 @@ export const menuItemOperations = {
     const menu = await menuOperations.getMenu(menuId, userId)
     if (!menu) throw new DatabaseError('Menu not found')
     
+    // Update in flat items array
     const updatedItems = menu.items.map(item => 
       item.id === itemId ? { ...item, ...updates } : item
     )
     
-    return menuOperations.updateMenu(menuId, userId, { items: updatedItems })
+    // Also update in categories to keep data in sync
+    let updatedCategories = menu.categories
+    if (updatedCategories && updatedCategories.length > 0) {
+      const updateItemInCategories = (categories: any[]): any[] => {
+        return categories.map(category => ({
+          ...category,
+          items: category.items.map((item: any) =>
+            item.id === itemId ? { ...item, ...updates } : item
+          ),
+          subcategories: category.subcategories
+            ? updateItemInCategories(category.subcategories)
+            : undefined,
+        }))
+      }
+      updatedCategories = updateItemInCategories(updatedCategories)
+    }
+    
+    return menuOperations.updateMenu(menuId, userId, { items: updatedItems, categories: updatedCategories })
   },
 
   async deleteItem(menuId: string, userId: string, itemId: string): Promise<Menu> {
@@ -674,7 +692,22 @@ export const menuItemOperations = {
     console.log('[DELETE ITEM] Items after filter:', updatedItems.map(i => ({ id: i.id, name: i.name })))
     console.log('[DELETE ITEM] Deleted count:', menu.items.length - updatedItems.length)
     
-    return menuOperations.updateMenu(menuId, userId, { items: updatedItems })
+    // Also delete from categories to keep data in sync
+    let updatedCategories = menu.categories
+    if (updatedCategories && updatedCategories.length > 0) {
+      const deleteItemInCategories = (categories: any[]): any[] => {
+        return categories.map(category => ({
+          ...category,
+          items: category.items.filter((item: any) => item.id !== itemId),
+          subcategories: category.subcategories
+            ? deleteItemInCategories(category.subcategories)
+            : undefined,
+        }))
+      }
+      updatedCategories = deleteItemInCategories(updatedCategories)
+    }
+    
+    return menuOperations.updateMenu(menuId, userId, { items: updatedItems, categories: updatedCategories })
   },
 
   async deleteMultipleItems(menuId: string, userId: string, itemIds: string[]): Promise<Menu> {
@@ -692,7 +725,22 @@ export const menuItemOperations = {
     console.log('[DELETE MULTIPLE] Items after filter:', updatedItems.map(i => ({ id: i.id, name: i.name })))
     console.log('[DELETE MULTIPLE] Deleted count:', menu.items.length - updatedItems.length)
     
-    return menuOperations.updateMenu(menuId, userId, { items: updatedItems })
+    // Also delete from categories to keep data in sync
+    let updatedCategories = menu.categories
+    if (updatedCategories && updatedCategories.length > 0) {
+      const deleteItemsInCategories = (categories: any[]): any[] => {
+        return categories.map(category => ({
+          ...category,
+          items: category.items.filter((item: any) => !itemIdsSet.has(item.id)),
+          subcategories: category.subcategories
+            ? deleteItemsInCategories(category.subcategories)
+            : undefined,
+        }))
+      }
+      updatedCategories = deleteItemsInCategories(updatedCategories)
+    }
+    
+    return menuOperations.updateMenu(menuId, userId, { items: updatedItems, categories: updatedCategories })
   },
 
   async clearItems(menuId: string, userId: string): Promise<Menu> {

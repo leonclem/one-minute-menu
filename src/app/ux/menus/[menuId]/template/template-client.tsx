@@ -6,8 +6,9 @@ import { UXSection, UXButton, UXCard } from '@/components/ux'
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
-import { CompatibilityBadge } from '@/components/templates'
-import type { LayoutInstance, TileContentInstance } from '@/lib/templates/engine-types'
+import { CompatibilityBadge, TemplateLayoutRenderer } from '@/components/templates'
+import type { LayoutInstance } from '@/lib/templates/engine-types'
+import { TEMPLATE_REGISTRY } from '@/lib/templates/template-definitions'
 
 interface UXMenuTemplateClientProps {
   menuId: string
@@ -266,8 +267,6 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   }
 
   const handleSelectTemplate = async () => {
-    // Only allow selecting when the design is centered
-    if (activeIndex !== 1) return
     if (availableTemplates.length === 0) return
 
     const selectedTemplate = availableTemplates[selectedTemplateIndex]
@@ -422,6 +421,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 <div className="relative h-[420px] overflow-visible">
                   {[0, 1, 2].map((i) => {
                     const rel = (i - activeIndex + 3) % 3 // 0 center, 1 right, 2 left
+                    const isCenter = rel === 0
                     const translate =
                       rel === 0 ? '0%' : rel === 1 ? '110%' : '-110%'
                     const scale = rel === 0 ? 1 : 0.92
@@ -437,9 +437,9 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                           opacity,
                           zIndex: z,
                         }}
-                        aria-hidden={i !== 1}
+                        aria-hidden={!isCenter}
                       >
-                        {i === 1 && selectedTemplate ? (
+                        {isCenter && selectedTemplate ? (
                           <div className="w-full h-full bg-white overflow-auto">
                             {previewLoading && (
                               <div className="flex items-center justify-center h-full">
@@ -451,10 +451,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                                 {previewError}
                               </div>
                             )}
-                            {!previewLoading && !previewError && layoutInstance && (
-                              <LayoutInstanceRenderer
+                            {!previewLoading && !previewError && layoutInstance && selectedTemplate && (
+                              <TemplateLayoutRenderer
                                 layout={layoutInstance}
-                                menuName={(demoMenu || authMenu)?.name || 'Menu'}
+                                template={TEMPLATE_REGISTRY[selectedTemplate.template.id]}
+                                currency={(demoMenu || authMenu)?.theme?.layout?.currency || '$'}
                               />
                             )}
                             {!previewLoading && !previewError && !layoutInstance && (
@@ -571,13 +572,12 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
             loading={loading}
             disabled={
               loading || 
-              activeIndex !== 1 || 
               !selectedTemplate || 
               selectedTemplate.status === 'INCOMPATIBLE' ||
               (!layoutInstance && !isDemoUser)
             }
           >
-            {isDemoUser ? 'Select and Export' : 'Select and Export'}
+            Select and Export
           </UXButton>
         </div>
 
@@ -597,51 +597,3 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   )
 }
 
-// Simple Layout Instance Renderer
-// This is a minimal renderer for LayoutInstance preview
-// TODO: Create a proper LayoutInstanceRenderer component
-function LayoutInstanceRenderer({ layout, menuName }: { layout: LayoutInstance; menuName: string }) {
-  const renderTile = (tile: TileContentInstance) => {
-    if (tile.type === 'ITEM' && 'item' in tile) {
-      const item = tile.item as { name: string; description?: string; price: number }
-      return (
-        <div>
-          <div className="font-medium">{item.name}</div>
-          {item.description && (
-            <div className="text-sm text-gray-600">{item.description}</div>
-          )}
-          <div className="text-sm font-semibold">${item.price.toFixed(2)}</div>
-        </div>
-      )
-    }
-    
-    if (tile.type === 'SECTION_HEADER' && 'label' in tile) {
-      return <div className="font-semibold text-lg">{String(tile.label)}</div>
-    }
-    
-    if (tile.type === 'TITLE' && 'text' in tile) {
-      return <div className="font-bold text-xl">{String(tile.text)}</div>
-    }
-    
-    return null
-  }
-
-  return (
-    <div className="p-4 bg-white">
-      <h1 className="text-2xl font-bold mb-4">{menuName}</h1>
-      {layout.pages.map((page, pageIndex) => (
-        <div key={pageIndex} className="mb-8">
-          <div className="text-sm text-gray-500 mb-2">Page {pageIndex + 1}</div>
-          <div className="space-y-4">
-            {page.tiles.map((tile: TileContentInstance, tileIndex: number) => (
-              <div key={tileIndex} className="p-2 border border-gray-200 rounded">
-                <div className="text-xs text-gray-500">{tile.type}</div>
-                {renderTile(tile)}
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
