@@ -2,11 +2,11 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { userOperations, menuOperations } from '@/lib/database'
-import EditableMenuTitle from './EditableMenuTitle'
 import Link from 'next/link'
 import nextDynamic from 'next/dynamic'
 import { getCurrentUser } from '@/lib/auth-utils'
 import { UXHeader, UXFooter, UXCard, UXButton } from '@/components/ux'
+import { MenuCard } from '@/components/dashboard'
 const QuotaUsageDashboard = nextDynamic(() => import('@/components/QuotaUsageDashboard'), { ssr: false })
 
 export default async function DashboardPage() {
@@ -128,68 +128,7 @@ export default async function DashboardPage() {
                   </div>
                 </Link>
                 {menus.map((menu) => (
-                  <UXCard key={menu.id}>
-                    <div className="p-6">
-                      <h3 className="text-lg font-semibold text-ux-text mb-2">
-                        <EditableMenuTitle id={menu.id} name={menu.name} />
-                      </h3>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-ux-text">Status:</span>
-                          <span className={`capitalize px-2 py-1 rounded-full text-xs ${
-                            menu.status === 'published' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {menu.status}
-                            {menu.status === 'published' && menu.publishedAt && (
-                              <span className="ml-1 text-xs opacity-75">
-                                ({new Date(menu.publishedAt).toLocaleDateString()})
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-ux-text">Items:</span>
-                          <span className="text-ux-text">{menu.items?.length || 0}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-ux-text">Version:</span>
-                          <span className="text-ux-text">v{menu.version}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-ux-text">Last updated:</span>
-                          <span className="text-ux-text">
-                            {menu.updatedAt ? new Date(menu.updatedAt as any).toLocaleDateString() : '—'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-ux-text">Published:</span>
-                          <span className="text-ux-text">
-                            {menu.status === 'published' && menu.publishedAt
-                              ? new Date(menu.publishedAt as any).toLocaleDateString()
-                              : 'Not yet published'}
-                          </span>
-                        </div>
-                        <div className="pt-3 flex justify-center">
-                          <Link
-                            href={
-                              !menu.imageUrl
-                                ? `/menus/${menu.id}/upload`
-                                : ((menu.items?.length ?? 0) > 0 || (menu.categories?.length ?? 0) > 0 || menu.extractionMetadata)
-                                  ? `/ux/menus/${menu.id}/extracted`
-                                  : `/ux/menus/${menu.id}/extract`
-                            }
-                            className="inline-block w-full sm:w-auto"
-                          >
-                            <span className="inline-flex items-center justify-center font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ux-primary focus:ring-offset-2 btn-ux-primary px-5 py-2.5 text-sm rounded-full text-soft-shadow w-full sm:w-auto">
-                              Edit menu
-                            </span>
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </UXCard>
+                  <MenuCard key={menu.id} menu={menu} />
                 ))}
               </div>
             ) : (

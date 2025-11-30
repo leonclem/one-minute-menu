@@ -19,7 +19,7 @@ jest.mock('@/lib/supabase-server', () => {
   const nextResetDate = new Date(mockNow.getFullYear(), mockNow.getMonth() + 1, 1)
 
   const generationQuotasApi = {
-    // select('*').eq('user_id', userId).single() -> simulate not found
+    // select('*').eq('user_id', userId).single() -> simulate not found initially
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     single: jest.fn().mockResolvedValue({
@@ -45,7 +45,25 @@ jest.mock('@/lib/supabase-server', () => {
         }),
       })),
     })),
-    update: jest.fn().mockReturnThis(),
+    // update({...}).eq().select().single() -> return updated row
+    update: jest.fn(() => ({
+      eq: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: {
+          id: 'quota-1',
+          user_id: 'user-123',
+          plan: 'free',
+          monthly_limit: PLAN_CONFIGS.free.aiImageGenerations,
+          current_usage: 0,
+          reset_date: nextResetDate.toISOString().split('T')[0],
+          last_generation_at: null,
+          created_at: mockNow.toISOString(),
+          updated_at: mockNow.toISOString(),
+        },
+        error: null,
+      }),
+    })),
     gte: jest.fn().mockReturnThis(),
     lt: jest.fn().mockReturnThis(),
   }

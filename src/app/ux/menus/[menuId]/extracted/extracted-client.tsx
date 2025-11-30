@@ -83,101 +83,127 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         router.push('/ux/demo/sample')
       }
     } else {
-      // Handle authenticated user menu by reading the job id and fetching results
-      const jobId = sessionStorage.getItem(`extractionJob:${menuId}`)
-      if (!jobId) {
-        showToast({
-          type: 'error',
-          title: 'No extraction found',
-          description: 'Please extract items first.'
-        })
-        router.push(`/ux/menus/${menuId}/extract`)
-        return
-      }
-
+      // Handle authenticated user menu
+      // First, try to load the menu from the database to check if it has extracted data
       let cancelled = false
 
-      const fetchStatus = async () => {
-        try {
-          const resp = await fetch(`/api/extraction/status/${jobId}`)
-          const json = await resp.json()
-          if (!resp.ok) {
-            throw new Error(json?.error || 'Failed to get extraction status')
+      ;(async () => {
+        const loadMenuFromDatabase = async () => {
+          try {
+            const menuResp = await fetch(`/api/menus/${menuId}`)
+            const menuJson = await menuResp.json()
+            
+            if (!menuResp.ok) {
+              throw new Error(menuJson?.error || 'Failed to load menu')
+            }
+            
+            const loadedMenu = menuJson.data as Menu
+            
+            // Check if menu has extracted data (items or extractionMetadata)
+            if ((loadedMenu.items && loadedMenu.items.length > 0) || loadedMenu.extractionMetadata) {
+              // Menu already has extracted data, use it directly
+              setAuthMenu(loadedMenu)
+              setThumbnailUrl(loadedMenu.imageUrl ?? null)
+              return true
+            }
+            
+            return false
+          } catch (err) {
+            console.error('Failed to load menu from database:', err)
+            return false
           }
-          const status = json?.data?.status
-          if (status === 'completed' && json?.data?.result) {
-            if (!cancelled) {
-              setAuthResult(json.data.result as Stage1ExtractionResult | Stage2ExtractionResult)
+        }
 
-              // Apply extraction results to the menu once and get the updated menu items
-              if (!appliedRef.current) {
-                appliedRef.current = true
-                try {
-                  const applyResp = await fetch(`/api/menus/${menuId}/apply-extraction`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      result: json.data.result,
-                      schemaVersion: (json.data.schemaVersion || 'stage2') as 'stage1' | 'stage2',
-                      promptVersion: json.data.promptVersion,
-                      jobId,
-                    }),
-                  })
-                  const applyJson = await applyResp.json()
-                  if (!applyResp.ok) {
-                    throw new Error(applyJson?.error || 'Failed to save extracted items to menu')
+        // Try loading from database first
+        const hasExistingData = await loadMenuFromDatabase()
+        
+        if (hasExistingData) {
+          // Menu already has data, no need to check extraction job
+          return
+        }
+
+        // If no existing data, check for active extraction job in sessionStorage
+        const jobId = sessionStorage.getItem(`extractionJob:${menuId}`)
+        if (!jobId) {
+          // No extraction job and no existing data - redirect to extract
+          showToast({
+            type: 'info',
+            title: 'No menu items found',
+            description: 'Please extract items from your menu image first.'
+          })
+          router.push(`/ux/menus/${menuId}/extract`)
+          return
+        }
+
+        const fetchStatus = async () => {
+          try {
+            const resp = await fetch(`/api/extraction/status/${jobId}`)
+            const json = await resp.json()
+            if (!resp.ok) {
+              throw new Error(json?.error || 'Failed to get extraction status')
+            }
+            const status = json?.data?.status
+            if (status === 'completed' && json?.data?.result) {
+              if (!cancelled) {
+                setAuthResult(json.data.result as Stage1ExtractionResult | Stage2ExtractionResult)
+
+                // Apply extraction results to the menu once and get the updated menu items
+                if (!appliedRef.current) {
+                  appliedRef.current = true
+                  try {
+                    const applyResp = await fetch(`/api/menus/${menuId}/apply-extraction`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        result: json.data.result,
+                        schemaVersion: (json.data.schemaVersion || 'stage2') as 'stage1' | 'stage2',
+                        promptVersion: json.data.promptVersion,
+                        jobId,
+                      }),
+                    })
+                    const applyJson = await applyResp.json()
+                    if (!applyResp.ok) {
+                      throw new Error(applyJson?.error || 'Failed to save extracted items to menu')
+                    }
+                    setAuthMenu(applyJson.data as Menu)
+                    setThumbnailUrl(applyJson.data?.imageUrl ?? null)
+                  } catch (err) {
+                    console.error('Failed to apply extraction to menu', err)
+                    showToast({
+                      type: 'error',
+                      title: 'Could not save items',
+                      description: 'Please try again from the extraction step.',
+                    })
+                    router.push(`/ux/menus/${menuId}/extract`)
+                    return true
                   }
-                  setAuthMenu(applyJson.data as Menu)
-                  setThumbnailUrl(applyJson.data?.imageUrl ?? null)
-                } catch (err) {
-                  console.error('Failed to apply extraction to menu', err)
-                  showToast({
-                    type: 'error',
-                    title: 'Could not save items',
-                    description: 'Please try again from the extraction step.',
-                  })
-                  router.push(`/ux/menus/${menuId}/extract`)
-                  return true
                 }
               }
+              return true
             }
-            return true
-          }
-          if (status === 'failed') {
+            if (status === 'failed') {
+              showToast({
+                type: 'error',
+                title: 'Extraction failed',
+                description: json?.data?.error || 'Please try again.'
+              })
+              router.push(`/ux/menus/${menuId}/extract`)
+              return true
+            }
+            return false
+          } catch (e) {
+            console.error('Failed to fetch extraction status', e)
             showToast({
               type: 'error',
-              title: 'Extraction failed',
-              description: json?.data?.error || 'Please try again.'
+              title: 'Could not load results',
+              description: 'Please try again from the extraction step.'
             })
             router.push(`/ux/menus/${menuId}/extract`)
             return true
           }
-          return false
-        } catch (e) {
-          console.error('Failed to fetch extraction status', e)
-          showToast({
-            type: 'error',
-            title: 'Could not load results',
-            description: 'Please try again from the extraction step.'
-          })
-          router.push(`/ux/menus/${menuId}/extract`)
-          return true
         }
-      }
 
-      // Also, fetch menu once (for thumbnail / reloads where extraction was already applied)
-      ;(async () => {
-        try {
-          const resp = await fetch(`/api/menus/${menuId}`)
-          if (!resp.ok) return
-          const json = await resp.json()
-          setThumbnailUrl(json?.data?.imageUrl ?? null)
-          setAuthMenu(json?.data as Menu)
-        } catch {}
-      })()
-
-      // Poll for completion if needed
-      ;(async () => {
+        // Poll for completion if needed
         const maxAttempts = 20
         const delayMs = 2000
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
