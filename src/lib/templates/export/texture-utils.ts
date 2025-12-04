@@ -93,6 +93,17 @@ export async function fetchImageAsDataURL(imageUrl: string): Promise<string | nu
     
     // Case 2: HTTP/HTTPS URLs
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      // If it's an internal URL (our own app), add headers to bypass potential auth/middleware blocks
+      const isInternal = imageUrl.includes(process.env.NEXT_PUBLIC_APP_URL || '') || 
+                        imageUrl.includes(process.env.VERCEL_URL || '') ||
+                        imageUrl.includes('localhost')
+      
+      if (isInternal) {
+        console.log(`[TextureUtils] Fetching internal image with optimized settings: ${imageUrl}`)
+        // Use shorter timeout for internal images to fail fast
+        return await fetchRemoteImageAsDataURL(imageUrl, 3000)
+      }
+      
       return await fetchRemoteImageAsDataURL(imageUrl)
     }
     

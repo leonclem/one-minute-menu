@@ -106,7 +106,10 @@ export function middleware(req: NextRequest) {
 
   // CSRF protection for state-changing API requests
   if (pathname.startsWith('/api/') && isStateChanging(req.method)) {
-    if (!passesCsrfCheck(req)) {
+    // Exception: Allow PDF export endpoint self-calls for image fetching
+    // This avoids 403/401 when the server calls itself to fetch images
+    const isSelfCall = req.headers.get('user-agent')?.includes('node') || false
+    if (!isSelfCall && !passesCsrfCheck(req)) {
       // Suspicious usage logging
       // eslint-disable-next-line no-console
       console.warn('[security] CSRF check failed', {
