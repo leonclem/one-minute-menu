@@ -99,6 +99,7 @@ beforeAll(() => {
   const mockPage = {
     setViewport: jest.fn(async (vp: any) => { pageState.viewport = vp }),
     setContent: jest.fn(async (html: string) => { pageState.html = html }),
+    evaluateHandle: jest.fn(async () => Promise.resolve()),
     screenshot: jest.fn(async () => Buffer.from([1, 2, 3])),
     pdf: jest.fn(async (opts: any) => {
       const { landscape } = opts || {}
