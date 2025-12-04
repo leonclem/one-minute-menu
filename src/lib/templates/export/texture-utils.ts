@@ -13,9 +13,9 @@ import http from 'http'
  * Convert texture image to base64 data URL
  * This allows the texture to be embedded in PDF exports where file:// URLs don't work
  */
-export async function getTextureDataURL(textureName: string): Promise<string | null> {
+export async function getTextureDataURL(textureName: string, headers?: Record<string, string>): Promise<string | null> {
   try {
-    return await fetchImageAsDataURL(`/textures/${textureName}`)
+    return await fetchImageAsDataURL(`/textures/${textureName}`, headers)
   } catch (error) {
     console.error(`[TextureUtils] Error loading texture ${textureName}:`, error)
     return null
@@ -26,8 +26,8 @@ export async function getTextureDataURL(textureName: string): Promise<string | n
  * Get CSS background for elegant dark template
  * Uses base64-encoded texture for PDF export compatibility
  */
-export async function getElegantDarkBackground(): Promise<string> {
-  const textureDataURL = await getTextureDataURL('dark-paper.png')
+export async function getElegantDarkBackground(headers?: Record<string, string>): Promise<string> {
+  const textureDataURL = await getTextureDataURL('dark-paper.png', headers)
   
   if (textureDataURL) {
     return `
@@ -55,7 +55,7 @@ export async function getElegantDarkBackground(): Promise<string> {
  * Fetch image from URL and convert to base64 data URL
  * Supports both HTTP/HTTPS URLs and local file paths (via FS or HTTP fallback)
  */
-export async function fetchImageAsDataURL(imageUrl: string): Promise<string | null> {
+export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<string, string>): Promise<string | null> {
   try {
     // Case 1: Local file path (starts with /)
     if (imageUrl.startsWith('/')) {
@@ -75,6 +75,15 @@ export async function fetchImageAsDataURL(imageUrl: string): Promise<string | nu
         } catch (e) {
           console.warn(`[TextureUtils] Failed to read local file ${imagePath}, trying fallback...`)
         }
+      } else {
+        // Debug logging for Vercel file system
+        if (process.env.NODE_ENV === 'production') {
+          console.warn(`[TextureUtils] File not found at ${imagePath}. CWD: ${process.cwd()}`)
+          // Uncomment to inspect directory structure in logs if needed
+          // try {
+          //   console.log('[TextureUtils] CWD contents:', fs.readdirSync(process.cwd()).slice(0, 10))
+          // } catch (e) {}
+        }
       }
       
       // Fallback: Try to fetch via HTTP (essential for Vercel where public files aren't always in FS)
@@ -88,7 +97,7 @@ export async function fetchImageAsDataURL(imageUrl: string): Promise<string | nu
       
       const absoluteUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
       console.log(`[TextureUtils] Fetching local image via HTTP: ${absoluteUrl}`)
-      return await fetchRemoteImageAsDataURL(absoluteUrl)
+      return await fetchRemoteImageAsDataURL(absoluteUrl, 3000, headers)
     }
     
     // Case 2: HTTP/HTTPS URLs
@@ -101,10 +110,10 @@ export async function fetchImageAsDataURL(imageUrl: string): Promise<string | nu
       if (isInternal) {
         console.log(`[TextureUtils] Fetching internal image with optimized settings: ${imageUrl}`)
         // Use shorter timeout for internal images to fail fast
-        return await fetchRemoteImageAsDataURL(imageUrl, 3000)
+        return await fetchRemoteImageAsDataURL(imageUrl, 3000, headers)
       }
       
-      return await fetchRemoteImageAsDataURL(imageUrl)
+      return await fetchRemoteImageAsDataURL(imageUrl, 5000, headers)
     }
     
     console.warn(`[TextureUtils] Unsupported image URL format: ${imageUrl}`)
@@ -118,17 +127,29 @@ export async function fetchImageAsDataURL(imageUrl: string): Promise<string | nu
 /**
  * Fetch remote image and convert to base64 with timeout
  */
-async function fetchRemoteImageAsDataURL(url: string, timeoutMs: number = 5000): Promise<string | null> {
+async function fetchRemoteImageAsDataURL(url: string, timeoutMs: number = 5000, headers?: Record<string, string>): Promise<string | null> {
   return new Promise((resolve) => {
     const protocol = url.startsWith('https://') ? https : http
+    const urlObj = new URL(url)
     
+    const options = {
+      method: 'GET',
+      hostname: urlObj.hostname,
+      port: urlObj.port,
+      path: urlObj.pathname + urlObj.search,
+      headers: {
+        ...(headers || {}),
+        'User-Agent': 'Kiro-PDF-Exporter/1.0 (Node.js)'
+      }
+    }
+
     // Set timeout
     const timeout = setTimeout(() => {
       console.warn(`[TextureUtils] Timeout fetching image: ${url}`)
       resolve(null)
     }, timeoutMs)
     
-    const request = protocol.get(url, (response) => {
+    const request = protocol.request(options, (response) => {
       clearTimeout(timeout)
       
       if (response.statusCode !== 200) {
@@ -181,6 +202,8 @@ async function fetchRemoteImageAsDataURL(url: string, timeoutMs: number = 5000):
       console.warn(`[TextureUtils] Request timeout for image: ${url}`)
       resolve(null)
     })
+    
+    request.end()
   })
 }
 
@@ -217,9 +240,10 @@ export async function convertLayoutImagesToDataURLs(
     concurrency?: number
     timeout?: number
     maxImages?: number
+    headers?: Record<string, string>
   } = {}
 ): Promise<any> {
-  const { concurrency = 3, timeout = 5000, maxImages = 20 } = options
+  const { concurrency = 3, timeout = 5000, maxImages = 20, headers } = options
   
   const convertedLayout = JSON.parse(JSON.stringify(layout)) // Deep clone
   
@@ -247,7 +271,7 @@ export async function convertLayoutImagesToDataURLs(
     tilesWithImages,
     async ({ tile }) => {
       try {
-        const dataURL = await fetchImageAsDataURL(tile.imageUrl)
+        const dataURL = await fetchImageAsDataURL(tile.imageUrl, headers)
         if (dataURL) {
           tile.imageUrl = dataURL
         } else {

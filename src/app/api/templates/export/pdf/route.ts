@@ -22,7 +22,8 @@ async function handleNewTemplateEngine(
   templateId: string,
   options: any,
   userId: string,
-  metricsBuilder: MetricsBuilder
+  metricsBuilder: MetricsBuilder,
+  headers?: Record<string, string>
 ) {
   // Import new template engine modules
   const { toEngineMenu } = await import('@/lib/templates/menu-transformer')
@@ -123,7 +124,8 @@ async function handleNewTemplateEngine(
       layout = await convertLayoutImagesToDataURLs(layout, {
         concurrency: 3,
         timeout: 5000,
-        maxImages: 20
+        maxImages: 20,
+        headers
       })
       logger.info('[PDFExporter] Image conversion complete')
     } catch (error) {
@@ -150,7 +152,7 @@ async function handleNewTemplateEngine(
   
   // Generate template CSS for the document head
   const { generateTemplateCSS } = await import('@/lib/templates/export/layout-renderer')
-  const templateCSS = await generateTemplateCSS(template, selection?.configuration?.colourPaletteId)
+  const templateCSS = await generateTemplateCSS(template, selection?.configuration?.colourPaletteId, headers)
   
   // Build complete HTML document with styles properly in <head>
   const htmlDocument = `<!DOCTYPE html>
@@ -370,7 +372,11 @@ export async function POST(request: NextRequest) {
 
     // NEW TEMPLATE ENGINE PATH
     if (effectiveTemplateId) {
-      return await handleNewTemplateEngine(menu, effectiveTemplateId, options, user?.id || 'demo-user', metricsBuilder)
+      const headers = {
+        cookie: request.headers.get('cookie') || '',
+        authorization: request.headers.get('authorization') || ''
+      }
+      return await handleNewTemplateEngine(menu, effectiveTemplateId, options, user?.id || 'demo-user', metricsBuilder, headers)
     }
     
     // LEGACY PATH: Continue with existing preset-based system

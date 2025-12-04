@@ -701,14 +701,15 @@ export function ServerLayoutRenderer(props: LayoutRendererProps) {
  */
 export async function generateTemplateCSS(
   template?: MenuTemplate,
-  paletteId?: string
+  paletteId?: string,
+  headers?: Record<string, string>
 ): Promise<string> {
   if (!template?.style) {
     return getDefaultCSS()
   }
   
   const palette = getActivePalette(template.style, paletteId)
-  return await getTemplateCSS(template.style, palette)
+  return await getTemplateCSS(template.style, palette, headers)
 }
 
 /**
@@ -833,13 +834,13 @@ function getDefaultCSS(): string {
 /**
  * Get template-specific CSS with full styling
  */
-async function getTemplateCSS(style: TemplateStyle, palette: TemplateColorPalette): Promise<string> {
+async function getTemplateCSS(style: TemplateStyle, palette: TemplateColorPalette, headers?: Record<string, string>): Promise<string> {
   // Import texture utility for elegant dark background
   let elegantDarkBg = ''
   if (palette.id === 'elegant-dark') {
     try {
       const { getElegantDarkBackground } = await import('./texture-utils')
-      elegantDarkBg = await getElegantDarkBackground()
+      elegantDarkBg = await getElegantDarkBackground(headers)
     } catch (error) {
       console.warn('[LayoutRenderer] Could not load texture utility, using fallback')
       elegantDarkBg = `
