@@ -103,7 +103,7 @@ async function handleNewTemplateEngine(
   }
   
   // Generate layout
-  const layout = generateLayout({
+  let layout = generateLayout({
     menu: engineMenu,
     template,
     selection
@@ -111,6 +111,28 @@ async function handleNewTemplateEngine(
   
   metricsBuilder.setLayoutSelection(templateId, 'print')
   metricsBuilder.markCalculationEnd()
+  
+  // Convert all image URLs to base64 data URLs for PDF compatibility
+  // This can be disabled via environment variable if it causes timeouts
+  const enableImageConversion = process.env.PDF_ENABLE_IMAGES !== 'false'
+  
+  if (enableImageConversion) {
+    try {
+      const { convertLayoutImagesToDataURLs } = await import('@/lib/templates/export/texture-utils')
+      logger.info('[PDFExporter] Converting images to base64...')
+      layout = await convertLayoutImagesToDataURLs(layout, {
+        concurrency: 3,
+        timeout: 5000,
+        maxImages: 20
+      })
+      logger.info('[PDFExporter] Image conversion complete')
+    } catch (error) {
+      logger.error('[PDFExporter] Image conversion failed, using fallbacks:', error)
+      // Continue with original layout (will show fallback icons)
+    }
+  } else {
+    logger.info('[PDFExporter] Image conversion disabled, using fallback icons')
+  }
   
   // Render layout to HTML (without the inline style tags)
   metricsBuilder.markRenderStart()
@@ -120,7 +142,8 @@ async function handleNewTemplateEngine(
       template,
       paletteId: selection?.configuration?.colourPaletteId,
       currency: engineMenu.metadata.currency,
-      className: 'pdf-export'
+      className: 'pdf-export',
+      skipInlineStyles: true
     })
   )
   metricsBuilder.markRenderEnd()
@@ -130,27 +153,28 @@ async function handleNewTemplateEngine(
   const templateCSS = generateTemplateCSS(template, selection?.configuration?.colourPaletteId)
   
   // Build complete HTML document with styles properly in <head>
-  const htmlDocument = `
-<!DOCTYPE html>
+  const htmlDocument = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${options.title || menu.name}</title>
   <style>
-    ${templateCSS}
-    
-    @page {
-      size: ${template.orientation === 'A4_LANDSCAPE' ? 'A4 landscape' : 'A4 portrait'};
-      margin: 0;
-    }
+${templateCSS}
+
+@page {
+  size: ${template.orientation === 'A4_LANDSCAPE' ? 'A4 landscape' : 'A4 portrait'};
+  margin: 0;
+}
   </style>
 </head>
 <body>
-  ${componentHTML}
+${componentHTML}
 </body>
-</html>
-  `.trim()
+</html>`.trim()
+  
+  // Debug: Log first 500 chars of HTML to verify structure
+  logger.info('[PDFExporter] HTML preview:', htmlDocument.substring(0, 500))
   
   // Export to PDF
   metricsBuilder.markExportStart()
@@ -194,7 +218,8 @@ async function handleNewTemplateEngine(
 
 // Request body schema
 const ExportPDFRequestSchema = z.object({
-  menuId: z.string().uuid('Invalid menu ID format'),
+  menuId: z.string().uuid('Invalid menu ID format').optional(), // Optional for demo users
+  menu: z.any().optional(), // Demo users send menu data directly
   templateId: z.string().optional(), // New: template ID for new engine
   presetId: z.string().optional(),   // Legacy: preset ID for old engine
   options: z.object({
@@ -228,33 +253,7 @@ export async function POST(request: NextRequest) {
   const metricsBuilder = new MetricsBuilder()
   
   try {
-    // Authenticate user
-    const supabase = createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    metricsBuilder.setUserId(user.id)
-    
-    // Apply rate limiting
-    const rateLimit = applyRateLimit(pdfExportLimiter, user.id)
-    if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { 
-          error: 'Rate limit exceeded',
-          code: ERROR_CODES.CONCURRENCY_LIMIT,
-          retryAfter: rateLimit.retryAfter
-        },
-        { 
-          status: 429,
-          headers: rateLimit.headers
-        }
-      )
-    }
-    
-    // Parse and validate request body
+    // Parse and validate request body first
     const body = await request.json()
     const validation = ExportPDFRequestSchema.safeParse(body)
     
@@ -268,9 +267,45 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const { menuId, templateId, presetId, options = {} } = validation.data
+    const { menuId, menu: demoMenu, templateId, presetId, options = {} } = validation.data
     
-    metricsBuilder.setMenuId(menuId)
+    // Check if this is a demo export (menu data provided instead of menuId)
+    const isDemo = !!demoMenu && !menuId
+    
+    // Authenticate user (not required for demo exports)
+    let user: any = null
+    if (!isDemo) {
+      const supabase = createServerSupabaseClient()
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !authUser) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      
+      user = authUser
+      metricsBuilder.setUserId(user.id)
+      
+      // Apply rate limiting for authenticated users
+      const rateLimit = applyRateLimit(pdfExportLimiter, user.id)
+      if (!rateLimit.allowed) {
+        return NextResponse.json(
+          { 
+            error: 'Rate limit exceeded',
+            code: ERROR_CODES.CONCURRENCY_LIMIT,
+            retryAfter: rateLimit.retryAfter
+          },
+          { 
+            status: 429,
+            headers: rateLimit.headers
+          }
+        )
+      }
+    } else {
+      // Demo export - use a demo user ID for metrics
+      metricsBuilder.setUserId('demo-user')
+    }
+    
+    metricsBuilder.setMenuId(menuId || 'demo-menu')
     
     // Validate PDF export options
     if (options) {
@@ -286,19 +321,32 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Fetch menu data
-    const menu = await menuOperations.getMenu(menuId, user.id)
-    
-    if (!menu) {
-      return NextResponse.json(
-        { error: 'Menu not found' },
-        { status: 404 }
-      )
+    // Fetch menu data (or use provided demo menu)
+    let menu: any
+    if (isDemo) {
+      // Demo export - use provided menu data
+      menu = demoMenu
+      if (!menu) {
+        return NextResponse.json(
+          { error: 'Menu data required for demo export' },
+          { status: 400 }
+        )
+      }
+    } else {
+      // Authenticated export - fetch from database
+      menu = await menuOperations.getMenu(menuId!, user.id)
+      
+      if (!menu) {
+        return NextResponse.json(
+          { error: 'Menu not found' },
+          { status: 404 }
+        )
+      }
     }
     
     // NEW TEMPLATE ENGINE PATH
     if (templateId) {
-      return await handleNewTemplateEngine(menu, templateId, options, user.id, metricsBuilder)
+      return await handleNewTemplateEngine(menu, templateId, options, user?.id || 'demo-user', metricsBuilder)
     }
     
     // LEGACY PATH: Continue with existing preset-based system

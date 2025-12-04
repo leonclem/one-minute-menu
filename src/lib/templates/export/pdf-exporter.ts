@@ -99,11 +99,14 @@ export async function exportToPDF(
       (page as any).setDefaultNavigationTimeout(60000)
     }
 
-    // Set HTML content (avoid networkidle which can hang on external assets)
+    // Set HTML content and wait for network to be idle to ensure fonts and styles load
     await page.setContent(htmlContent, {
-      waitUntil: 'domcontentloaded',
+      waitUntil: ['domcontentloaded', 'networkidle0'],
       timeout: 60000
     })
+    
+    // Give additional time for fonts to load and render
+    await page.evaluateHandle('document.fonts.ready')
 
     // Generate PDF
     const pdfBytes = await page.pdf({

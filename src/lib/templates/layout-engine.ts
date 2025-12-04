@@ -277,6 +277,10 @@ function assignItemsToTiles(
     return a.col - b.col
   })
   
+  // Determine if template uses text-only tiles by checking base layout
+  const templateUsesTextOnly = baseItemTiles.length > 0 && 
+                                baseItemTiles.every(t => t.type === 'ITEM_TEXT_ONLY')
+  
   // Check if template uses section slots
   // A template uses section slots if it has multiple distinct section slots defined
   const sectionSlots = new Set(
@@ -288,10 +292,10 @@ function assignItemsToTiles(
   
   if (usesSectionSlots) {
     // Handle templates with section slots
-    tiles.push(...assignItemsWithSectionSlots(menu, template, baseItemTiles, textOnly, capacity))
+    tiles.push(...assignItemsWithSectionSlots(menu, template, baseItemTiles, textOnly, templateUsesTextOnly, capacity))
   } else {
     // Handle templates without section slots (flat assignment)
-    tiles.push(...assignItemsFlat(menu, template, baseItemTiles, textOnly, capacity))
+    tiles.push(...assignItemsFlat(menu, template, baseItemTiles, textOnly, templateUsesTextOnly, capacity))
   }
   
   return tiles
@@ -305,6 +309,7 @@ function assignItemsWithSectionSlots(
   template: MenuTemplate,
   baseItemTiles: TileDefinition[],
   textOnly: boolean,
+  templateUsesTextOnly: boolean,
   capacity: CapacityInfo
 ): TileContentInstance[] {
   const tiles: TileContentInstance[] = []
@@ -370,6 +375,7 @@ function assignItemsFlat(
   template: MenuTemplate,
   baseItemTiles: TileDefinition[],
   textOnly: boolean,
+  templateUsesTextOnly: boolean,
   capacity: CapacityInfo
 ): TileContentInstance[] {
   const tiles: TileContentInstance[] = []
@@ -429,6 +435,7 @@ function assignItemsFlat(
       remainingItems,
       template,
       textOnly,
+      templateUsesTextOnly,
       capacity
     ))
   }
@@ -443,6 +450,7 @@ function assignItemsToRepeatPattern(
   items: Array<{ section: any, item: any }>,
   template: MenuTemplate,
   textOnly: boolean,
+  templateUsesTextOnly: boolean,
   capacity: CapacityInfo
 ): TileContentInstance[] {
   const tiles: TileContentInstance[] = []
@@ -474,14 +482,16 @@ function assignItemsToRepeatPattern(
       const rowOffset = repeatPattern.fromRow + (repeatIndex * repeatPattern.rowsPerRepeat)
       
       // Create a virtual tile definition for this repeat tile
+      // Use ITEM_TEXT_ONLY if template uses text-only tiles OR if textOnly config is set
+      const shouldBeTextOnly = templateUsesTextOnly || textOnly
       const virtualTileDef: TileDefinition = {
         id: `${repeatPattern.repeatItemTileIds[tileIndex]}-repeat-${repeatIndex}`,
-        type: textOnly ? 'ITEM_TEXT_ONLY' : 'ITEM',
+        type: shouldBeTextOnly ? 'ITEM_TEXT_ONLY' : 'ITEM',
         col: colInRepeat,
         row: rowOffset + rowInRepeat,
         colSpan: 1,
         rowSpan: 1,
-        options: { showImage: !textOnly, showDescription: true }
+        options: { showImage: !shouldBeTextOnly, showDescription: true }
       }
       
       tiles.push(createMenuItemTile(virtualTileDef, item, textOnly))
@@ -505,6 +515,25 @@ function createMenuItemTile(
   item: EngineItem,
   textOnly: boolean
 ): MenuItemTileInstance {
+  // If template definition specifies ITEM_TEXT_ONLY, respect that
+  if (tileDef.type === 'ITEM_TEXT_ONLY') {
+    return {
+      id: `${tileDef.id}-${item.id}`,
+      type: 'ITEM_TEXT_ONLY',
+      col: tileDef.col,
+      row: tileDef.row,
+      colSpan: tileDef.colSpan,
+      rowSpan: tileDef.rowSpan,
+      itemId: item.id,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      imageUrl: undefined, // Never pass imageUrl for ITEM_TEXT_ONLY
+      showImage: false, // Never show images for ITEM_TEXT_ONLY
+      options: tileDef.options
+    }
+  }
+  
   // Tile supports images if: not text-only mode, tile type is ITEM, and showImage option is not disabled
   const tileSupportsImages = !textOnly && 
                               tileDef.type === 'ITEM' && 

@@ -484,28 +484,72 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           return
         }
 
-        // For HTML export, generate real styled HTML
-        if (option.format === 'html') {
-          await handleDemoHtmlExport(demoMenu, template, templateSelection)
-          setCompletedExports(prev => new Set(Array.from(prev).concat(option.id)))
-          
-          trackConversionEvent({
-            event: 'export_completed',
-            metadata: {
-              path: `/ux/menus/${menuId}/export`,
-              format: option.format,
-              isDemo: true,
-            },
-          })
+        // For PDF export, allow demo users to generate via API
+        if (option.format === 'pdf') {
+          // Demo users can export PDF - use the same API as authenticated users
+          // but send menu data in the request body
+          try {
+            const resp = await fetch('/api/templates/export/pdf', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                menu: demoMenu,
+                templateId: templateSelection.templateId,
+                options: {
+                  orientation: 'portrait',
+                  includePageNumbers: true,
+                  title: demoMenu.name
+                }
+              })
+            })
+
+            if (!resp.ok) {
+              const errText = await resp.text().catch(() => 'Export failed')
+              throw new Error(errText)
+            }
+
+            const blob = await resp.blob()
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `${demoMenu.name.replace(/\s+/g, '-').toLowerCase()}-menu.pdf`
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+            URL.revokeObjectURL(url)
+
+            setCompletedExports(prev => new Set(Array.from(prev).concat(option.id)))
+            showToast({
+              type: 'success',
+              title: 'PDF Menu exported',
+              description: 'Your PDF has been downloaded successfully'
+            })
+            
+            trackConversionEvent({
+              event: 'export_completed',
+              metadata: {
+                path: `/ux/menus/${menuId}/export`,
+                format: option.format,
+                isDemo: true,
+              },
+            })
+          } catch (error) {
+            console.error('Error exporting PDF:', error)
+            showToast({
+              type: 'error',
+              title: 'Export failed',
+              description: 'Failed to generate PDF export. Please try again.'
+            })
+          }
           return
         }
 
-        // For PDF and image exports, show upgrade prompt for demo users
-        if (option.format === 'pdf' || option.format === 'image') {
+        // For HTML and image exports, show upgrade prompt for demo users
+        if (option.format === 'html' || option.format === 'image') {
           showToast({
             type: 'info',
-            title: 'Sign up for PDF & image exports',
-            description: 'Create a free account to download professional PDF and image exports of your menu.'
+            title: 'Sign up for HTML & image exports',
+            description: 'Create a free account to download HTML and image exports of your menu.'
           })
           
           trackConversionEvent({

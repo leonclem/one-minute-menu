@@ -122,6 +122,7 @@ async function handleNewTemplateEngine(
       paletteId: selection?.configuration?.colourPaletteId,
       currency: engineMenu.metadata.currency,
       className: 'html-export',
+      skipInlineStyles: true,
       themeColors: options.themeColors
     })
   )

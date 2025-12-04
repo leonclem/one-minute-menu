@@ -114,12 +114,15 @@ function TitleTile({
       }}
     >
       <h1 
+        className="menu-title"
         style={{ 
-          fontSize: '2.25rem',
-          fontWeight: 700,
-          color: palette.heading,
+          fontFamily: "'Playfair Display', 'Times New Roman', serif",
+          fontSize: '36px',
+          fontWeight: 600,
+          color: '#c8a562',
           margin: 0,
-          letterSpacing: '0.025em'
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase'
         }}
       >
         {tile.content}
@@ -146,19 +149,19 @@ function SectionHeaderTile({
         display: 'flex',
         alignItems: 'center',
         justifyContent: align === 'centre' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start',
-        padding: '1rem',
-        borderBottom: `2px solid ${palette.accent}`,
+        padding: '1.5rem 1rem',
+        borderBottom: `1px solid rgba(255, 255, 255, 0.1)`,
         fontFamily: style.fonts.heading
       }}
     >
       <h2 
         style={{ 
-          fontSize: '1.5rem',
-          fontWeight: 600,
+          fontSize: '36px',
+          fontWeight: 400,
           color: palette.heading,
           margin: 0,
           textTransform: 'uppercase',
-          letterSpacing: '0.1em'
+          letterSpacing: '0.05em'
         }}
       >
         {tile.label}
@@ -193,15 +196,16 @@ function MenuItemTile({
   if (itemCard.imagePosition === 'circle') {
     return (
       <div
+        className="elegant-dark-card"
         style={{
           ...gridStyles,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          padding: '1rem',
-          backgroundColor: palette.cardBackground,
-          borderRadius: itemCard.borderRadius,
-          boxShadow: itemCard.shadow
+          padding: 0,
+          backgroundColor: 'transparent',
+          borderRadius: '0',
+          boxShadow: 'none'
         }}
       >
         {/* Circular image or fallback */}
@@ -209,42 +213,54 @@ function MenuItemTile({
           hasImage ? (
             <div 
               style={{
-                width: '120px',
-                height: '120px',
+                width: '75px',
+                height: '75px',
                 borderRadius: '50%',
                 overflow: 'hidden',
-                marginBottom: '0.75rem',
-                border: `3px solid ${palette.accent}`,
+                marginBottom: '12px',
+                border: `2px solid ${palette.accent}`,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.25)',
                 flexShrink: 0
               }}
             >
               <Image
                 src={tile.imageUrl!}
                 alt={tile.name}
-                width={120}
-                height={120}
+                width={75}
+                height={75}
                 style={{ objectFit: 'cover', width: '100%', height: '100%' }}
               />
             </div>
           ) : (
-            <ItemImageFallback
-              accentColor={palette.accent}
-              backgroundColor={palette.cardBackground}
-              shape="circle"
-              size={{ width: 120, height: 120 }}
-            />
+            <div style={{ marginBottom: '12px' }}>
+              <ItemImageFallback
+                accentColor={palette.accent}
+                backgroundColor={palette.cardBackground}
+                shape="circle"
+                size={{ width: 75, height: 75 }}
+              />
+            </div>
           )
         )}
         
         {/* Item name */}
         <h3 
+          className="menu-item-title"
           style={{ 
-            fontFamily: style.fonts.body,
-            fontSize: '1rem',
-            fontWeight: 600,
-            color: palette.text,
-            margin: '0 0 0.25rem 0',
-            textAlign: 'center'
+            fontFamily: "'Nanum Myeongjo', 'Habibi', 'Times New Roman', serif",
+            fontSize: '9.5px',
+            fontWeight: 400,
+            color: '#f8f5f0',
+            margin: '0 0 3px 0',
+            textAlign: 'center',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            height: '28px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            lineHeight: 1.3,
+            overflow: 'hidden'
           }}
         >
           {tile.name}
@@ -252,11 +268,16 @@ function MenuItemTile({
         
         {/* Price */}
         <span 
+          className="menu-item-price"
           style={{ 
-            fontFamily: style.fonts.body,
-            fontSize: '0.875rem',
-            fontWeight: 700,
-            color: palette.price
+            fontFamily: "'Lato', system-ui, sans-serif",
+            fontSize: '12px',
+            fontWeight: 500,
+            color: '#c8a562',
+            marginBottom: showDescription ? '4px' : '0',
+            display: 'block',
+            height: '16px',
+            lineHeight: '16px'
           }}
         >
           {formatPrice(tile.price, currency)}
@@ -265,14 +286,17 @@ function MenuItemTile({
         {/* Description */}
         {showDescription && (
           <p 
+            className="menu-item-description"
             style={{ 
-              fontFamily: style.fonts.body,
-              fontSize: '0.75rem',
-              color: palette.text,
-              opacity: 0.8,
-              margin: '0.5rem 0 0 0',
+              fontFamily: "'Lato', system-ui, sans-serif",
+              fontSize: '8px',
+              fontWeight: 400,
+              color: '#d4d2ce',
+              margin: 0,
               textAlign: 'center',
-              lineHeight: 1.4
+              lineHeight: 1.35,
+              paddingBottom: 0,
+              textTransform: 'lowercase'
             }}
           >
             {tile.description}
@@ -298,7 +322,8 @@ function MenuItemTile({
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'baseline',
-            gap: '0.5rem'
+            gap: '1rem',
+            minHeight: '1.5rem'
           }}
         >
           <h3 
@@ -308,7 +333,9 @@ function MenuItemTile({
               fontWeight: 600,
               color: palette.text,
               margin: 0,
-              flexShrink: 0
+              flex: 1,
+              minWidth: 0,
+              wordBreak: 'break-word'
             }}
           >
             {tile.name}
@@ -317,7 +344,8 @@ function MenuItemTile({
           {showLeaderDots && (
             <span 
               style={{ 
-                flex: 1,
+                flex: '0 1 auto',
+                minWidth: '2rem',
                 borderBottom: `1px dotted ${palette.text}40`,
                 marginBottom: '0.25rem'
               }} 
@@ -330,7 +358,9 @@ function MenuItemTile({
               fontSize: '1rem',
               fontWeight: 700,
               color: palette.price,
-              flexShrink: 0
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+              marginLeft: 'auto'
             }}
           >
             {formatPrice(tile.price, currency)}
@@ -721,13 +751,16 @@ export function TemplateLayoutRenderer({
   // Get page size for full-page rendering
   const pageSize = fullPageSize ? PAGE_SIZES[layout.orientation] : undefined
   
+  // Check if this is the Elegant Dark template to apply texture
+  const isElegantDark = template.id === 'classic-grid-cards' && palette.id === 'elegant-dark'
+  
   return (
     <div 
-      className={`template-layout-renderer ${className}`}
+      className={`template-layout-renderer ${isElegantDark ? 'template-bg-elegant-dark' : ''} ${className}`}
       style={{
         fontFamily: style.fonts.body,
         backgroundColor: palette.background,
-        background: style.pageBackground || palette.background,
+        background: isElegantDark ? undefined : (style.pageBackground || palette.background),
         color: palette.text
       }}
     >
@@ -739,17 +772,20 @@ export function TemplateLayoutRenderer({
         return (
           <div 
             key={`page-${pageIndex}`}
-            className="template-page"
+            className={`template-page ${isElegantDark ? 'elegant-dark-grid' : ''}`}
             style={{
               display: 'grid',
               gridTemplateColumns,
               gridTemplateRows,
-              gap: '1rem',
+              gap: '12px',
+              columnGap: '24px', // Increased column gap for two-column layouts
               padding: '2rem',
               minHeight: fullPageSize ? pageSize?.height : 'auto',
               width: fullPageSize ? pageSize?.width : '100%',
               boxSizing: 'border-box',
-              pageBreakAfter: pageIndex < layout.pages.length - 1 ? 'always' : 'auto'
+              pageBreakAfter: pageIndex < layout.pages.length - 1 ? 'always' : 'auto',
+              position: 'relative',
+              zIndex: 1
             }}
           >
             {page.tiles.map((tile, tileIndex) => (

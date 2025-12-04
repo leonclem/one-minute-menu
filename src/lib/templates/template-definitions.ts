@@ -146,12 +146,12 @@ import type { MenuTemplate, TemplateId, TemplateStyle, TemplateColorPalette } fr
 const ELEGANT_DARK_PALETTE: TemplateColorPalette = {
   id: 'elegant-dark',
   name: 'Elegant Dark',
-  background: '#1a1f2e',
-  text: '#ffffff',
-  heading: '#c9a227',
-  price: '#c9a227',
-  accent: '#c9a227',
-  cardBackground: '#252a3a'
+  background: '#0b0d11',
+  text: '#f8f5f0',
+  heading: '#c8a562',
+  price: '#c8a562',
+  accent: '#c8a562',
+  cardBackground: 'transparent'
 }
 
 const ELEGANT_DARK_LIGHT_PALETTE: TemplateColorPalette = {
@@ -249,15 +249,15 @@ const ELEGANT_DARK_STYLE: TemplateStyle = {
   alternatePalettes: [ELEGANT_DARK_LIGHT_PALETTE, ELEGANT_DARK_WARM_PALETTE],
   fonts: {
     heading: "'Playfair Display', Georgia, serif",
-    body: "'Lato', 'Helvetica Neue', sans-serif"
+    body: "'Inter', 'Lato', 'Helvetica Neue', sans-serif"
   },
   itemCard: {
-    borderRadius: '12px',
-    shadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+    borderRadius: '0',
+    shadow: 'none',
     imagePosition: 'circle',
     imageBorderRadius: '50%'
   },
-  pageBackground: 'linear-gradient(180deg, #1a1f2e 0%, #0f1218 100%)',
+  pageBackground: '#0b0d11',
   fillerTileStyle: 'icon'
 }
 
@@ -310,12 +310,12 @@ const SIMPLE_ROWS_STYLE: TemplateStyle = {
 export const CLASSIC_GRID_CARDS: MenuTemplate = {
   id: 'classic-grid-cards',
   name: 'Classic Grid Cards',
-  description: 'Photo-forward 3-column grid with circular images and gold accents',
+  description: 'Photo-forward 4-column grid with circular images and gold accents',
   thumbnailUrl: '/templates/previews/classic-grid-cards.jpg',
   aspectRatio: 'A4_PORTRAIT',
   orientation: 'A4_PORTRAIT',
   layout: {
-    baseCols: 3,
+    baseCols: 4,
     baseRows: 4,
     tiles: [
       // Title tile at top
@@ -324,11 +324,11 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         type: 'TITLE',
         col: 0,
         row: 0,
-        colSpan: 3,
+        colSpan: 4,
         rowSpan: 1,
         options: { align: 'centre' }
       },
-      // First row of items (3 items)
+      // First row of items (4 items)
       {
         id: 'item-1',
         type: 'ITEM',
@@ -356,20 +356,20 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
       },
-      // Second row of items (3 items)
       {
         id: 'item-4',
         type: 'ITEM',
-        col: 0,
-        row: 2,
+        col: 3,
+        row: 1,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
       },
+      // Second row of items (4 items)
       {
         id: 'item-5',
         type: 'ITEM',
-        col: 1,
+        col: 0,
         row: 2,
         colSpan: 1,
         rowSpan: 1,
@@ -378,15 +378,33 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
       {
         id: 'item-6',
         type: 'ITEM',
+        col: 1,
+        row: 2,
+        colSpan: 1,
+        rowSpan: 1,
+        options: { showImage: true, showDescription: true }
+      },
+      {
+        id: 'item-7',
+        type: 'ITEM',
         col: 2,
         row: 2,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
       },
-      // Third row of items (3 items)
       {
-        id: 'item-7',
+        id: 'item-8',
+        type: 'ITEM',
+        col: 3,
+        row: 2,
+        colSpan: 1,
+        rowSpan: 1,
+        options: { showImage: true, showDescription: true }
+      },
+      // Third row of items (4 items)
+      {
+        id: 'item-9',
         type: 'ITEM',
         col: 0,
         row: 3,
@@ -395,7 +413,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         options: { showImage: true, showDescription: true }
       },
       {
-        id: 'item-8',
+        id: 'item-10',
         type: 'ITEM',
         col: 1,
         row: 3,
@@ -404,9 +422,18 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         options: { showImage: true, showDescription: true }
       },
       {
-        id: 'item-9',
+        id: 'item-11',
         type: 'ITEM',
         col: 2,
+        row: 3,
+        colSpan: 1,
+        rowSpan: 1,
+        options: { showImage: true, showDescription: true }
+      },
+      {
+        id: 'item-12',
+        type: 'ITEM',
+        col: 3,
         row: 3,
         colSpan: 1,
         rowSpan: 1,
@@ -416,7 +443,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
     repeatPattern: {
       fromRow: 4,
       rowsPerRepeat: 1,
-      repeatItemTileIds: ['item-10', 'item-11', 'item-12'],
+      repeatItemTileIds: ['item-13', 'item-14', 'item-15', 'item-16'],
       maxRepeats: 10,
       newPagePerRepeat: false
     }

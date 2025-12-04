@@ -23,7 +23,7 @@ describe('Template Definitions', () => {
     it('should have correct structure', () => {
       expect(CLASSIC_GRID_CARDS.id).toBe('classic-grid-cards')
       expect(CLASSIC_GRID_CARDS.name).toBe('Classic Grid Cards')
-      expect(CLASSIC_GRID_CARDS.layout.baseCols).toBe(3)
+      expect(CLASSIC_GRID_CARDS.layout.baseCols).toBe(4)
       expect(CLASSIC_GRID_CARDS.layout.tiles.length).toBeGreaterThan(0)
     })
 

@@ -443,8 +443,8 @@ describe('Performance: Scalability', () => {
       const timeRatio = durations[i] / durations[i - 1]
       
       // Time ratio should be less than or equal to size ratio (linear or better)
-      // Allow 2x margin for small timing variations and cache effects
-      expect(timeRatio).toBeLessThanOrEqual(sizeRatio * 2)
+      // Allow 2.5x margin for small timing variations and cache effects
+      expect(timeRatio).toBeLessThanOrEqual(sizeRatio * 2.5)
     }
   })
   

@@ -122,7 +122,8 @@ async function handleNewTemplateEngine(
       template,
       paletteId: selection?.configuration?.colourPaletteId,
       currency: engineMenu.metadata.currency,
-      className: 'image-export'
+      className: 'image-export',
+      skipInlineStyles: true
     })
   )
   metricsBuilder.markRenderEnd()
