@@ -13,25 +13,9 @@ import http from 'http'
  * Convert texture image to base64 data URL
  * This allows the texture to be embedded in PDF exports where file:// URLs don't work
  */
-export function getTextureDataURL(textureName: string): string | null {
+export async function getTextureDataURL(textureName: string): Promise<string | null> {
   try {
-    const texturePath = path.join(process.cwd(), 'public', 'textures', textureName)
-    
-    // Check if file exists
-    if (!fs.existsSync(texturePath)) {
-      console.warn(`[TextureUtils] Texture not found: ${texturePath}`)
-      return null
-    }
-    
-    // Read file and convert to base64
-    const imageBuffer = fs.readFileSync(texturePath)
-    const base64Image = imageBuffer.toString('base64')
-    
-    // Determine MIME type from extension
-    const ext = path.extname(textureName).toLowerCase()
-    const mimeType = ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png'
-    
-    return `data:${mimeType};base64,${base64Image}`
+    return await fetchImageAsDataURL(`/textures/${textureName}`)
   } catch (error) {
     console.error(`[TextureUtils] Error loading texture ${textureName}:`, error)
     return null
@@ -42,8 +26,8 @@ export function getTextureDataURL(textureName: string): string | null {
  * Get CSS background for elegant dark template
  * Uses base64-encoded texture for PDF export compatibility
  */
-export function getElegantDarkBackground(): string {
-  const textureDataURL = getTextureDataURL('dark-paper.png')
+export async function getElegantDarkBackground(): Promise<string> {
+  const textureDataURL = await getTextureDataURL('dark-paper.png')
   
   if (textureDataURL) {
     return `
@@ -82,7 +66,11 @@ export async function fetchImageAsDataURL(imageUrl: string): Promise<string | nu
           const imageBuffer = fs.readFileSync(imagePath)
           const base64Image = imageBuffer.toString('base64')
           const ext = path.extname(imagePath).toLowerCase()
-          const mimeType = ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png'
+          // Handle webp and other formats
+          let mimeType = 'image/png'
+          if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg'
+          else if (ext === '.webp') mimeType = 'image/webp'
+          
           return `data:${mimeType};base64,${base64Image}`
         } catch (e) {
           console.warn(`[TextureUtils] Failed to read local file ${imagePath}, trying fallback...`)

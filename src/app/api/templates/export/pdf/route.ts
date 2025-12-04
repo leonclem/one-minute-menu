@@ -150,7 +150,7 @@ async function handleNewTemplateEngine(
   
   // Generate template CSS for the document head
   const { generateTemplateCSS } = await import('@/lib/templates/export/layout-renderer')
-  const templateCSS = generateTemplateCSS(template, selection?.configuration?.colourPaletteId)
+  const templateCSS = await generateTemplateCSS(template, selection?.configuration?.colourPaletteId)
   
   // Build complete HTML document with styles properly in <head>
   const htmlDocument = `<!DOCTYPE html>
@@ -344,9 +344,33 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // Determine which engine to use
+    let effectiveTemplateId = templateId
+
+    // If no template ID provided but we have a menu ID (authenticated),
+    // check if the user has a saved template selection
+    if (!effectiveTemplateId && menuId && !isDemo) {
+      try {
+        const supabase = createServerSupabaseClient()
+        const { data: selectionData } = await supabase
+          .from('menu_template_selections')
+          .select('template_id')
+          .eq('menu_id', menuId)
+          .single()
+          
+        if (selectionData && selectionData.template_id) {
+          effectiveTemplateId = selectionData.template_id
+          logger.info(`[PDFExporter] Found saved template selection: ${effectiveTemplateId}`)
+        }
+      } catch (err) {
+        // Ignore error, fallback to legacy
+        console.warn('[PDFExporter] Error checking template selection:', err)
+      }
+    }
+
     // NEW TEMPLATE ENGINE PATH
-    if (templateId) {
-      return await handleNewTemplateEngine(menu, templateId, options, user?.id || 'demo-user', metricsBuilder)
+    if (effectiveTemplateId) {
+      return await handleNewTemplateEngine(menu, effectiveTemplateId, options, user?.id || 'demo-user', metricsBuilder)
     }
     
     // LEGACY PATH: Continue with existing preset-based system

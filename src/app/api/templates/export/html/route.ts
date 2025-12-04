@@ -130,7 +130,7 @@ async function handleNewTemplateEngine(
   
   // Generate template CSS for the document head
   const { generateTemplateCSS } = await import('@/lib/templates/export/layout-renderer')
-  const templateCSS = generateTemplateCSS(template, selection?.configuration?.colourPaletteId)
+  const templateCSS = await generateTemplateCSS(template, selection?.configuration?.colourPaletteId)
   
   // Build complete HTML document with styles properly in <head>
   const includeDoctype = options.includeDoctype !== false

@@ -699,16 +699,16 @@ export function ServerLayoutRenderer(props: LayoutRendererProps) {
  * Generate CSS string for a template with styling
  * This can be used to embed styles in a document <head>
  */
-export function generateTemplateCSS(
+export async function generateTemplateCSS(
   template?: MenuTemplate,
   paletteId?: string
-): string {
+): Promise<string> {
   if (!template?.style) {
     return getDefaultCSS()
   }
   
   const palette = getActivePalette(template.style, paletteId)
-  return getTemplateCSS(template.style, palette)
+  return await getTemplateCSS(template.style, palette)
 }
 
 /**
@@ -833,13 +833,13 @@ function getDefaultCSS(): string {
 /**
  * Get template-specific CSS with full styling
  */
-function getTemplateCSS(style: TemplateStyle, palette: TemplateColorPalette): string {
+async function getTemplateCSS(style: TemplateStyle, palette: TemplateColorPalette): Promise<string> {
   // Import texture utility for elegant dark background
   let elegantDarkBg = ''
   if (palette.id === 'elegant-dark') {
     try {
-      const { getElegantDarkBackground } = require('./texture-utils')
-      elegantDarkBg = getElegantDarkBackground()
+      const { getElegantDarkBackground } = await import('./texture-utils')
+      elegantDarkBg = await getElegantDarkBackground()
     } catch (error) {
       console.warn('[LayoutRenderer] Could not load texture utility, using fallback')
       elegantDarkBg = `
