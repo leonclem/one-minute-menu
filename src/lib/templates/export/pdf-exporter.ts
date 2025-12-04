@@ -100,8 +100,9 @@ export async function exportToPDF(
     }
 
     // Set HTML content and wait for network to be idle to ensure fonts and styles load
+    // Note: 'networkidle0' removed as we now inline images as base64, and waiting for network can cause timeouts
     await page.setContent(htmlContent, {
-      waitUntil: ['domcontentloaded', 'networkidle0'],
+      waitUntil: ['domcontentloaded'],
       timeout: 60000
     })
     

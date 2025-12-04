@@ -21,6 +21,13 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
+    // validate UUID format
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.menuId)
+    if (!isUuid) {
+      // If it's not a UUID, it might be a demo ID or invalid
+      return NextResponse.json({ error: 'Invalid menu ID' }, { status: 400 })
+    }
+
     const menu = await menuOperations.getMenu(params.menuId, user.id)
     
     if (!menu) {

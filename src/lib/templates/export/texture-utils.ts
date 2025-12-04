@@ -69,23 +69,41 @@ export function getElegantDarkBackground(): string {
 
 /**
  * Fetch image from URL and convert to base64 data URL
- * Supports both HTTP/HTTPS URLs and local file paths
+ * Supports both HTTP/HTTPS URLs and local file paths (via FS or HTTP fallback)
  */
 export async function fetchImageAsDataURL(imageUrl: string): Promise<string | null> {
   try {
-    // Check if it's a local file path (starts with /)
+    // Case 1: Local file path (starts with /)
     if (imageUrl.startsWith('/')) {
+      // Try FS first (works locally and if files are included in build)
       const imagePath = path.join(process.cwd(), 'public', imageUrl)
       if (fs.existsSync(imagePath)) {
-        const imageBuffer = fs.readFileSync(imagePath)
-        const base64Image = imageBuffer.toString('base64')
-        const ext = path.extname(imagePath).toLowerCase()
-        const mimeType = ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png'
-        return `data:${mimeType};base64,${base64Image}`
+        try {
+          const imageBuffer = fs.readFileSync(imagePath)
+          const base64Image = imageBuffer.toString('base64')
+          const ext = path.extname(imagePath).toLowerCase()
+          const mimeType = ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png'
+          return `data:${mimeType};base64,${base64Image}`
+        } catch (e) {
+          console.warn(`[TextureUtils] Failed to read local file ${imagePath}, trying fallback...`)
+        }
       }
+      
+      // Fallback: Try to fetch via HTTP (essential for Vercel where public files aren't always in FS)
+      // Construct absolute URL
+      let baseUrl = 'http://localhost:3000'
+      if (process.env.NEXT_PUBLIC_APP_URL) {
+        baseUrl = process.env.NEXT_PUBLIC_APP_URL
+      } else if (process.env.VERCEL_URL) {
+        baseUrl = `https://${process.env.VERCEL_URL}`
+      }
+      
+      const absoluteUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
+      console.log(`[TextureUtils] Fetching local image via HTTP: ${absoluteUrl}`)
+      return await fetchRemoteImageAsDataURL(absoluteUrl)
     }
     
-    // Handle HTTP/HTTPS URLs
+    // Case 2: HTTP/HTTPS URLs
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return await fetchRemoteImageAsDataURL(imageUrl)
     }
