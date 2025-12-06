@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { UXSection, UXButton, UXCard } from '@/components/ux'
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
-import { CompatibilityBadge, TemplateLayoutRenderer } from '@/components/templates'
+import { CompatibilityBadge } from '@/components/templates'
+import { LayoutRenderer } from '@/lib/templates/export/layout-renderer'
 import type { LayoutInstance } from '@/lib/templates/engine-types'
 import { TEMPLATE_REGISTRY } from '@/lib/templates/template-definitions'
 
@@ -452,10 +454,12 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                               </div>
                             )}
                             {!previewLoading && !previewError && layoutInstance && selectedTemplate && (
-                              <TemplateLayoutRenderer
+                              <LayoutRenderer
                                 layout={layoutInstance}
                                 template={TEMPLATE_REGISTRY[selectedTemplate.template.id]}
                                 currency={(demoMenu || authMenu)?.theme?.layout?.currency || '$'}
+                                ImageComponent={Image}
+                                fixedPageSize={false}
                               />
                             )}
                             {!previewLoading && !previewError && !layoutInstance && (
@@ -596,4 +600,3 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     </UXSection>
   )
 }
-

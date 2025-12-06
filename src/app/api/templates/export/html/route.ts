@@ -21,7 +21,8 @@ async function handleNewTemplateEngine(
   context: OutputContext,
   options: any,
   userId: string,
-  metricsBuilder: MetricsBuilder
+  metricsBuilder: MetricsBuilder,
+  headers?: Record<string, string>
 ) {
   // Import new template engine modules
   const { toEngineMenu } = await import('@/lib/templates/menu-transformer')
@@ -129,8 +130,8 @@ async function handleNewTemplateEngine(
   metricsBuilder.markRenderEnd()
   
   // Generate template CSS for the document head
-  const { generateTemplateCSS } = await import('@/lib/templates/export/layout-renderer')
-  const templateCSS = await generateTemplateCSS(template, selection?.configuration?.colourPaletteId)
+  const { generateTemplateCSS } = await import('@/lib/templates/server-style-generator')
+  const templateCSS = await generateTemplateCSS(template, selection?.configuration?.colourPaletteId, 'inline', headers)
   
   // Build complete HTML document with styles properly in <head>
   const includeDoctype = options.includeDoctype !== false
@@ -319,7 +320,11 @@ export async function POST(request: NextRequest) {
     
     // NEW TEMPLATE ENGINE PATH
     if (templateId) {
-      return await handleNewTemplateEngine(menu, templateId, context, options, user.id, metricsBuilder)
+      const headers = {
+        cookie: request.headers.get('cookie') || '',
+        authorization: request.headers.get('authorization') || ''
+      }
+      return await handleNewTemplateEngine(menu, templateId, context, options, user.id, metricsBuilder, headers)
     }
     
     // LEGACY PATH: Continue with existing preset-based system

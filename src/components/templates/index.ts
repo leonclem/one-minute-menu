@@ -22,8 +22,5 @@ export type { TextOnlyLayoutProps, CompactTextOnlyLayoutProps, TwoColumnTextOnly
 export { default as CompatibilityBadge } from './CompatibilityBadge'
 export type { CompatibilityBadgeProps } from './CompatibilityBadge'
 
-export { default as TemplateLayoutRenderer } from './TemplateLayoutRenderer'
-export type { TemplateLayoutRendererProps } from './TemplateLayoutRenderer'
-
 export { default as ItemImageFallback } from './ItemImageFallback'
 export type { ItemImageFallbackProps } from './ItemImageFallback'

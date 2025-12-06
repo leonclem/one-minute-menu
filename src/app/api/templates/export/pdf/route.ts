@@ -151,8 +151,8 @@ async function handleNewTemplateEngine(
   metricsBuilder.markRenderEnd()
   
   // Generate template CSS for the document head
-  const { generateTemplateCSS } = await import('@/lib/templates/export/layout-renderer')
-  const templateCSS = await generateTemplateCSS(template, selection?.configuration?.colourPaletteId, headers)
+  const { generateTemplateCSS } = await import('@/lib/templates/server-style-generator')
+  const templateCSS = await generateTemplateCSS(template, selection?.configuration?.colourPaletteId, 'inline', headers)
   
   // Build complete HTML document with styles properly in <head>
   const htmlDocument = `<!DOCTYPE html>
