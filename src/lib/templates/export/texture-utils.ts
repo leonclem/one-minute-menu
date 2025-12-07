@@ -87,12 +87,27 @@ export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<str
       }
       
       // Fallback: Try to fetch via HTTP (essential for Vercel where public files aren't always in FS)
-      // Construct absolute URL
-      let baseUrl = 'http://localhost:3000'
-      if (process.env.NEXT_PUBLIC_APP_URL) {
-        baseUrl = process.env.NEXT_PUBLIC_APP_URL
-      } else if (process.env.VERCEL_URL) {
-        baseUrl = `https://${process.env.VERCEL_URL}`
+      // Construct absolute URL based on request headers or environment
+      let baseUrl: string | undefined
+
+      // Prefer deriving the base URL from incoming request headers when available.
+      // This keeps behaviour consistent across environments without requiring config.
+      const hostHeader = headers?.host || headers?.['x-forwarded-host']
+      const protoHeader = headers?.['x-forwarded-proto']
+      if (hostHeader) {
+        const protocol = protoHeader || 'https'
+        baseUrl = `${protocol}://${hostHeader}`
+      }
+
+      // Fall back to explicit app URL configuration if headers are not available.
+      if (!baseUrl) {
+        if (process.env.NEXT_PUBLIC_APP_URL) {
+          baseUrl = process.env.NEXT_PUBLIC_APP_URL
+        } else if (process.env.VERCEL_URL) {
+          baseUrl = `https://${process.env.VERCEL_URL}`
+        } else {
+          baseUrl = 'http://localhost:3000'
+        }
       }
       
       const absoluteUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`

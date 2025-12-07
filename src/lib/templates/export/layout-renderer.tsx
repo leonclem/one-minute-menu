@@ -142,8 +142,6 @@ function ItemImagePlaceholder({
   isCircle?: boolean 
 }) {
   const size = isCircle ? '75px' : '150px'
-  const fontSize = isCircle ? '1.5rem' : '2.5rem'
-  
   return (
     <div 
       className="menu-item-image-fallback"
@@ -156,13 +154,46 @@ function ItemImagePlaceholder({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize,
-        opacity: 0.85,
+        opacity: 0.9,
         flexShrink: 0,
         boxShadow: isCircle ? '0 2px 6px rgba(0, 0, 0, 0.25)' : 'none'
       }}
     >
-      🍽️
+      {/* Subtle GridMenu logo as inline SVG (uses existing logo geometry, scaled and centered) */}
+      <svg
+        viewBox="0 0 1727 1723"
+        aria-hidden="true"
+        focusable="false"
+        style={{
+          width: isCircle ? '46px' : '80px',
+          height: isCircle ? '46px' : '80px',
+          opacity: 0.18
+        }}
+      >
+        <defs>
+          <clipPath id="gridMenuLogoClip">
+            <rect x="1052" y="328" width="1727" height="1723" />
+          </clipPath>
+        </defs>
+        <g clipPath="url(#gridMenuLogoClip)" transform="translate(-1052 -328)">
+          {/* Monochrome (white) version of the GridMenu logo for subtle placeholders */}
+          <rect x="1054" y="328" width="738" height="739" fill="#FFFFFF" />
+          <rect x="1054" y="1312" width="738" height="739" fill="#FFFFFF" />
+          <rect x="2041" y="1312" width="738" height="739" fill="#FFFFFF" />
+          <rect x="2039" y="328" width="738" height="739" fill="#FFFFFF" />
+          <rect x="1795" y="1067" width="245" height="245" fill="#FFFFFF" />
+          <rect x="1054" y="1312" width="738" height="739" fill="#FFFFFF" />
+          <rect x="2041" y="1312" width="738" height="739" fill="#FFFFFF" />
+          <rect x="2039" y="328" width="738" height="739" fill="#FFFFFF" />
+          <rect x="1052" y="328" width="248" height="739" fill="#FFFFFF" />
+          <rect x="1299" y="822" width="246" height="490" fill="#FFFFFF" />
+          <rect x="1544" y="328" width="248" height="739" fill="#FFFFFF" />
+          <rect x="1299" y="1312" width="246" height="739" fill="#FFFFFF" />
+          <rect x="2039" y="328" width="247" height="739" fill="#FFFFFF" />
+          <rect x="2286" y="328" width="246" height="984" fill="#FFFFFF" />
+          <rect x="2288" y="1312" width="246" height="739" fill="#FFFFFF" />
+        </g>
+      </svg>
     </div>
   )
 }
@@ -177,9 +208,9 @@ function MenuItemTile({
   ImageComponent?: React.ComponentType<any> | string
 }) {
   const styles = getTileStyles(tile)
-  // Template supports images for this tile (ITEM_TEXT_ONLY should never show images)
-  const templateSupportsImage = tile.showImage && tile.type !== 'ITEM_TEXT_ONLY'
-  // Tile actually has an image
+  // Template supports images for this tile (based on layout engine flags)
+  const templateSupportsImage = !!tile.showImage
+  // Tile actually has an image URL available
   const hasImage = !!tile.imageUrl
   const showDescription = tile.options?.showDescription !== false && tile.description
   const emphasisePrice = tile.options?.emphasisePrice
