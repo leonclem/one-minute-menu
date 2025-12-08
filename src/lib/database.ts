@@ -782,6 +782,7 @@ async function transformMenuFromDB(dbMenu: any): Promise<Menu> {
     status: dbMenu.status,
     publishedAt: dbMenu.published_at ? new Date(dbMenu.published_at) : undefined,
     imageUrl: dbMenu.image_url || undefined,
+    logoUrl: dbMenu.logo_url || undefined,
     paymentInfo: menuData.paymentInfo || undefined,
     extractionMetadata: menuData.extractionMetadata ? {
       ...menuData.extractionMetadata,
@@ -988,6 +989,37 @@ export const imageOperations = {
       throw new DatabaseError(`Failed to update menu image: ${error.message}`, error.code)
     }
     
+    return await transformMenuFromDB(data)
+  },
+
+  async updateMenuLogo(menuId: string, userId: string, logoUrl: string): Promise<Menu> {
+    const supabase = createServerSupabaseClient()
+
+    // Get current menu to check for existing logo
+    const currentMenu = await menuOperations.getMenu(menuId, userId)
+    if (!currentMenu) throw new DatabaseError('Menu not found')
+
+    // Delete old logo if exists (stored in same bucket as menu images)
+    if (currentMenu.logoUrl) {
+      await this.deleteMenuImage(currentMenu.logoUrl)
+    }
+
+    // Update menu with new logo URL (empty string treated as null)
+    const { data, error } = await supabase
+      .from('menus')
+      .update({
+        logo_url: logoUrl || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', menuId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+
+    if (error) {
+      throw new DatabaseError(`Failed to update menu logo: ${error.message}`, error.code)
+    }
+
     return await transformMenuFromDB(data)
   }
 }

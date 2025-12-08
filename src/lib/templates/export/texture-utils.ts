@@ -267,7 +267,12 @@ export async function convertLayoutImagesToDataURLs(
   
   convertedLayout.pages.forEach((page: any, pageIndex: number) => {
     page.tiles.forEach((tile: any, tileIndex: number) => {
+      // Convert images for menu items
       if ((tile.type === 'ITEM' || tile.type === 'ITEM_TEXT_ONLY') && tile.imageUrl) {
+        tilesWithImages.push({ tile, pageIndex, tileIndex })
+      }
+      // Convert logo images
+      if (tile.type === 'LOGO' && tile.logoUrl) {
         tilesWithImages.push({ tile, pageIndex, tileIndex })
       }
     })
@@ -286,16 +291,33 @@ export async function convertLayoutImagesToDataURLs(
     tilesWithImages,
     async ({ tile }) => {
       try {
-        const dataURL = await fetchImageAsDataURL(tile.imageUrl, headers)
-        if (dataURL) {
-          tile.imageUrl = dataURL
-        } else {
-          console.warn(`[TextureUtils] Failed to convert image for tile: ${tile.name}`)
-          tile.imageUrl = null
+        // Handle LOGO tiles with logoUrl
+        if (tile.type === 'LOGO' && tile.logoUrl) {
+          const dataURL = await fetchImageAsDataURL(tile.logoUrl, headers)
+          if (dataURL) {
+            tile.logoUrl = dataURL
+          } else {
+            console.warn(`[TextureUtils] Failed to convert logo for tile: ${tile.id}`)
+            tile.logoUrl = null
+          }
+        }
+        // Handle ITEM tiles with imageUrl
+        else if (tile.imageUrl) {
+          const dataURL = await fetchImageAsDataURL(tile.imageUrl, headers)
+          if (dataURL) {
+            tile.imageUrl = dataURL
+          } else {
+            console.warn(`[TextureUtils] Failed to convert image for tile: ${tile.name}`)
+            tile.imageUrl = null
+          }
         }
       } catch (error) {
-        console.error(`[TextureUtils] Error converting image for tile ${tile.name}:`, error)
-        tile.imageUrl = null
+        console.error(`[TextureUtils] Error converting image for tile ${tile.name || tile.id}:`, error)
+        if (tile.type === 'LOGO') {
+          tile.logoUrl = null
+        } else {
+          tile.imageUrl = null
+        }
       }
     },
     concurrency

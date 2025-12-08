@@ -11,6 +11,21 @@ jest.mock('next/navigation', () => ({
 const mockShowToast = jest.fn()
 jest.mock('../../components/ui', () => ({
   useToast: () => ({ showToast: mockShowToast }),
+  Button: ({ children, onClick, disabled, variant, ...props }: any) => (
+    <button onClick={onClick} disabled={disabled} data-variant={variant} {...props}>
+      {children}
+    </button>
+  ),
+  Card: ({ children, className, ...props }: any) => (
+    <div className={className} {...props}>
+      {children}
+    </div>
+  ),
+  CardContent: ({ children, className, ...props }: any) => (
+    <div className={className} {...props}>
+      {children}
+    </div>
+  ),
 }))
 
 describe('UX Extracted Page', () => {
@@ -120,6 +135,46 @@ describe('UX Extracted Page', () => {
       expect(screen.getByText('Starters')).toBeInTheDocument()
       expect(screen.getByText('Soup')).toBeInTheDocument()
       expect(screen.getByText(/Menu control panel/i)).toBeInTheDocument()
+    })
+
+    unmount()
+  })
+
+  it('shows logo upload control for authenticated menus', async () => {
+    // Simulate a menu with extracted data and existing logo
+    const menuResponse = {
+      success: true,
+      data: {
+        id: 'menu-1',
+        name: 'Logo Test Menu',
+        items: [{ id: '1', name: 'Soup', price: 5.0, description: 'Tomato', category: 'Starters' }],
+        imageUrl: '/menu.jpg',
+        logoUrl: '/logo.png',
+      },
+    }
+
+    // First fetch: GET /api/menus/menu-1
+    // Subsequent fetches in this test can just return menuResponse again
+    // @ts-ignore
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => menuResponse,
+    })
+
+    const { unmount } = render(<UXMenuExtractedClient menuId="menu-1" />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Menu control panel/i)).toBeInTheDocument()
+    })
+
+    // Upload logo button should be present
+    const uploadLogoButton = screen.getByRole('button', { name: /Upload logo/i })
+    expect(uploadLogoButton).toBeInTheDocument()
+
+    // Clicking should open the modal
+    uploadLogoButton.click()
+    await waitFor(() => {
+      expect(screen.getByText(/Upload a small JPEG or PNG logo/i)).toBeInTheDocument()
     })
 
     unmount()

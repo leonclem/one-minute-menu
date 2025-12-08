@@ -316,14 +316,24 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
   orientation: 'A4_PORTRAIT',
   layout: {
     baseCols: 4,
-    baseRows: 4,
+    baseRows: 5,
     tiles: [
-      // Title tile at top
+      // Logo centered at top
+      {
+        id: 'logo-1',
+        type: 'LOGO',
+        col: 0,
+        row: 0,
+        colSpan: 4,
+        rowSpan: 1,
+        options: { align: 'centre' }
+      },
+      // Title below logo
       {
         id: 'title-1',
         type: 'TITLE',
         col: 0,
-        row: 0,
+        row: 1,
         colSpan: 4,
         rowSpan: 1,
         options: { align: 'centre' }
@@ -333,7 +343,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-1',
         type: 'ITEM',
         col: 0,
-        row: 1,
+        row: 2,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -342,7 +352,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-2',
         type: 'ITEM',
         col: 1,
-        row: 1,
+        row: 2,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -351,7 +361,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-3',
         type: 'ITEM',
         col: 2,
-        row: 1,
+        row: 2,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -360,7 +370,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-4',
         type: 'ITEM',
         col: 3,
-        row: 1,
+        row: 2,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -370,7 +380,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-5',
         type: 'ITEM',
         col: 0,
-        row: 2,
+        row: 3,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -379,7 +389,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-6',
         type: 'ITEM',
         col: 1,
-        row: 2,
+        row: 3,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -388,7 +398,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-7',
         type: 'ITEM',
         col: 2,
-        row: 2,
+        row: 3,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -397,7 +407,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-8',
         type: 'ITEM',
         col: 3,
-        row: 2,
+        row: 3,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -407,7 +417,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-9',
         type: 'ITEM',
         col: 0,
-        row: 3,
+        row: 4,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -416,7 +426,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-10',
         type: 'ITEM',
         col: 1,
-        row: 3,
+        row: 4,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -425,7 +435,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-11',
         type: 'ITEM',
         col: 2,
-        row: 3,
+        row: 4,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -434,14 +444,14 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-12',
         type: 'ITEM',
         col: 3,
-        row: 3,
+        row: 4,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
       }
     ],
     repeatPattern: {
-      fromRow: 4,
+      fromRow: 5,
       rowsPerRepeat: 1,
       repeatItemTileIds: ['item-13', 'item-14', 'item-15', 'item-16'],
       maxRepeats: 10,
@@ -456,7 +466,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
   },
   capabilities: {
     supportsImages: true,
-    supportsLogoPlaceholder: false,
+    supportsLogoPlaceholder: true,
     supportsColourPalettes: true,
     supportsTextOnlyMode: true,
     supportsResponsiveWeb: true,
@@ -464,7 +474,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
   },
   configurationSchema: {
     allowColourPalette: true,
-    allowLogoUpload: false,
+    allowLogoUpload: true,
     allowImageToggle: true
   },
   style: ELEGANT_DARK_STYLE,
@@ -487,14 +497,24 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
   orientation: 'A4_PORTRAIT',
   layout: {
     baseCols: 2,
-    baseRows: 10,
+    baseRows: 11,
     tiles: [
-      // Title tile at top
+      // Logo centered at top
+      {
+        id: 'logo-1',
+        type: 'LOGO',
+        col: 0,
+        row: 0,
+        colSpan: 2,
+        rowSpan: 1,
+        options: { align: 'centre' }
+      },
+      // Title below logo
       {
         id: 'title-1',
         type: 'TITLE',
         col: 0,
-        row: 0,
+        row: 1,
         colSpan: 2,
         rowSpan: 1,
         options: { align: 'centre' }
@@ -504,7 +524,7 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
         id: 'section-header-1',
         type: 'SECTION_HEADER',
         col: 0,
-        row: 1,
+        row: 2,
         colSpan: 1,
         rowSpan: 1,
         sectionSlot: 0
@@ -514,7 +534,7 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
         id: 'item-1',
         type: 'ITEM_TEXT_ONLY',
         col: 0,
-        row: 2,
+        row: 3,
         colSpan: 1,
         rowSpan: 1,
         options: { showDescription: true }
@@ -523,7 +543,7 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
         id: 'item-2',
         type: 'ITEM_TEXT_ONLY',
         col: 0,
-        row: 3,
+        row: 4,
         colSpan: 1,
         rowSpan: 1,
         options: { showDescription: true }
@@ -532,7 +552,7 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
         id: 'item-3',
         type: 'ITEM_TEXT_ONLY',
         col: 0,
-        row: 4,
+        row: 5,
         colSpan: 1,
         rowSpan: 1,
         options: { showDescription: true }
@@ -541,7 +561,7 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
         id: 'item-4',
         type: 'ITEM_TEXT_ONLY',
         col: 0,
-        row: 5,
+        row: 6,
         colSpan: 1,
         rowSpan: 1,
         options: { showDescription: true }
@@ -551,7 +571,7 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
         id: 'item-5',
         type: 'ITEM_TEXT_ONLY',
         col: 1,
-        row: 2,
+        row: 3,
         colSpan: 1,
         rowSpan: 1,
         options: { showDescription: true }
@@ -560,7 +580,7 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
         id: 'item-6',
         type: 'ITEM_TEXT_ONLY',
         col: 1,
-        row: 3,
+        row: 4,
         colSpan: 1,
         rowSpan: 1,
         options: { showDescription: true }
@@ -569,7 +589,7 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
         id: 'item-7',
         type: 'ITEM_TEXT_ONLY',
         col: 1,
-        row: 4,
+        row: 5,
         colSpan: 1,
         rowSpan: 1,
         options: { showDescription: true }
@@ -578,14 +598,14 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
         id: 'item-8',
         type: 'ITEM_TEXT_ONLY',
         col: 1,
-        row: 5,
+        row: 6,
         colSpan: 1,
         rowSpan: 1,
         options: { showDescription: true }
       }
     ],
     repeatPattern: {
-      fromRow: 6,
+      fromRow: 7,
       rowsPerRepeat: 4,
       repeatItemTileIds: ['item-9', 'item-10', 'item-11', 'item-12', 'item-13', 'item-14', 'item-15', 'item-16'],
       maxRepeats: 10,
@@ -600,7 +620,7 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
   },
   capabilities: {
     supportsImages: false,
-    supportsLogoPlaceholder: false,
+    supportsLogoPlaceholder: true,
     supportsColourPalettes: true,
     supportsTextOnlyMode: true,
     supportsResponsiveWeb: true,
@@ -608,7 +628,7 @@ export const TWO_COLUMN_TEXT: MenuTemplate = {
   },
   configurationSchema: {
     allowColourPalette: true,
-    allowLogoUpload: false,
+    allowLogoUpload: true,
     allowImageToggle: false
   },
   style: CLASSIC_ITALIAN_STYLE,
@@ -631,14 +651,24 @@ export const SIMPLE_ROWS: MenuTemplate = {
   orientation: 'A4_PORTRAIT',
   layout: {
     baseCols: 1,
-    baseRows: 10,
+    baseRows: 11,
     tiles: [
-      // Title tile at top
+      // Logo centered at top
+      {
+        id: 'logo-1',
+        type: 'LOGO',
+        col: 0,
+        row: 0,
+        colSpan: 1,
+        rowSpan: 1,
+        options: { align: 'centre' }
+      },
+      // Title below logo
       {
         id: 'title-1',
         type: 'TITLE',
         col: 0,
-        row: 0,
+        row: 1,
         colSpan: 1,
         rowSpan: 1,
         options: { align: 'centre' }
@@ -648,7 +678,7 @@ export const SIMPLE_ROWS: MenuTemplate = {
         id: 'section-header-1',
         type: 'SECTION_HEADER',
         col: 0,
-        row: 1,
+        row: 2,
         colSpan: 1,
         rowSpan: 1,
         sectionSlot: 0
@@ -658,7 +688,7 @@ export const SIMPLE_ROWS: MenuTemplate = {
         id: 'item-1',
         type: 'ITEM',
         col: 0,
-        row: 2,
+        row: 3,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -667,7 +697,7 @@ export const SIMPLE_ROWS: MenuTemplate = {
         id: 'item-2',
         type: 'ITEM',
         col: 0,
-        row: 3,
+        row: 4,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -676,7 +706,7 @@ export const SIMPLE_ROWS: MenuTemplate = {
         id: 'item-3',
         type: 'ITEM',
         col: 0,
-        row: 4,
+        row: 5,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -685,7 +715,7 @@ export const SIMPLE_ROWS: MenuTemplate = {
         id: 'item-4',
         type: 'ITEM',
         col: 0,
-        row: 5,
+        row: 6,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -694,7 +724,7 @@ export const SIMPLE_ROWS: MenuTemplate = {
         id: 'item-5',
         type: 'ITEM',
         col: 0,
-        row: 6,
+        row: 7,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -703,7 +733,7 @@ export const SIMPLE_ROWS: MenuTemplate = {
         id: 'item-6',
         type: 'ITEM',
         col: 0,
-        row: 7,
+        row: 8,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -712,7 +742,7 @@ export const SIMPLE_ROWS: MenuTemplate = {
         id: 'item-7',
         type: 'ITEM',
         col: 0,
-        row: 8,
+        row: 9,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -721,14 +751,14 @@ export const SIMPLE_ROWS: MenuTemplate = {
         id: 'item-8',
         type: 'ITEM',
         col: 0,
-        row: 9,
+        row: 10,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
       }
     ],
     repeatPattern: {
-      fromRow: 10,
+      fromRow: 11,
       rowsPerRepeat: 8,
       repeatItemTileIds: ['item-9', 'item-10', 'item-11', 'item-12', 'item-13', 'item-14', 'item-15', 'item-16'],
       maxRepeats: 10,
@@ -743,7 +773,7 @@ export const SIMPLE_ROWS: MenuTemplate = {
   },
   capabilities: {
     supportsImages: true,
-    supportsLogoPlaceholder: false,
+    supportsLogoPlaceholder: true,
     supportsColourPalettes: true,
     supportsTextOnlyMode: true,
     supportsResponsiveWeb: true,
@@ -751,7 +781,7 @@ export const SIMPLE_ROWS: MenuTemplate = {
   },
   configurationSchema: {
     allowColourPalette: true,
-    allowLogoUpload: false,
+    allowLogoUpload: true,
     allowImageToggle: true
   },
   style: SIMPLE_ROWS_STYLE,

@@ -588,6 +588,7 @@ function fillStaticTiles(
   // Create static tile instances
   staticTileDefs.forEach(tileDef => {
     let content = ''
+    let logoUrl: string | undefined
     
     switch (tileDef.type) {
       case 'TITLE':
@@ -595,9 +596,9 @@ function fillStaticTiles(
         break
         
       case 'LOGO':
-        // MVP: Placeholder text/icon
-        // Future: menu.metadata.logoUrl
+        // Use venue/menu name as fallback text and pass through logo URL when available
         content = menu.metadata.venueName || menu.name
+        logoUrl = menu.metadata.logoUrl
         break
         
       case 'TEXT_BLOCK':
@@ -626,6 +627,7 @@ function fillStaticTiles(
       colSpan: tileDef.colSpan,
       rowSpan: tileDef.rowSpan,
       content,
+      ...(logoUrl ? { logoUrl } : {}),
       options: tileDef.options
     })
   })

@@ -69,6 +69,8 @@ export interface Menu {
   status: 'draft' | 'published'
   publishedAt?: Date
   imageUrl?: string
+  /** Optional branding logo shown in templates and exports */
+  logoUrl?: string
   qrCode?: QRCodeData
   paymentInfo?: PaymentInfo
   extractionMetadata?: ExtractionMetadata

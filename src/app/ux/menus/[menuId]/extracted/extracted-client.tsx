@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { UXSection, UXButton, UXCard } from '@/components/ux'
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
@@ -9,11 +10,12 @@ import { formatCurrency } from '@/lib/utils'
 import type { Menu, MenuItem } from '@/types'
 import type { ExtractionResultType as Stage1ExtractionResult } from '@/lib/extraction/schema-stage1'
 import type { ExtractionResultV2Type as Stage2ExtractionResult } from '@/lib/extraction/schema-stage2'
-import { ImageUp, Sparkles, QrCode } from 'lucide-react'
+import { ImageUp, Sparkles, QrCode, Pencil } from 'lucide-react'
 import AIImageGeneration from '@/components/AIImageGeneration'
 import BatchAIImageGeneration from '@/components/BatchAIImageGeneration'
 import ImageVariationsManager from '@/components/ImageVariationsManager'
 import ZoomableImageModal from '@/components/ZoomableImageModal'
+import ImageUpload from '@/components/ImageUpload'
 
 interface UXMenuExtractedClientProps {
   menuId: string
@@ -25,6 +27,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const [authMenu, setAuthMenu] = useState<Menu | null>(null)
   const [loading, setLoading] = useState(false)
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(new Set())
   const [controlPanelOpen, setControlPanelOpen] = useState(true)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
@@ -34,9 +37,21 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const [showBatchGeneration, setShowBatchGeneration] = useState(false)
   const [demoGenerating, setDemoGenerating] = useState(false)
   const [previewImage, setPreviewImage] = useState<{ url: string; alt: string } | null>(null)
+  const [editingMenuName, setEditingMenuName] = useState(false)
+  const [menuNameDraft, setMenuNameDraft] = useState('')
+  const [showLogoUpload, setShowLogoUpload] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [logoUploadError, setLogoUploadError] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const { showToast } = useToast()
   const appliedRef = useRef(false)
+  
+  // Client-side mount detection for portal
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
 
   // Demo image assets
   const DEMO_IMAGES = {
@@ -74,6 +89,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           const parsedMenu = JSON.parse(storedDemoMenu)
           setDemoMenu(parsedMenu)
           setThumbnailUrl(parsedMenu?.imageUrl ?? null)
+          setLogoUrl(parsedMenu?.logoUrl ?? null)
         } catch (error) {
           console.error('Error parsing demo menu:', error)
           router.push('/ux/demo/sample')
@@ -104,6 +120,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
               // Menu already has extracted data, use it directly
               setAuthMenu(loadedMenu)
               setThumbnailUrl(loadedMenu.imageUrl ?? null)
+              setLogoUrl(loadedMenu.logoUrl ?? null)
               return true
             }
             
@@ -167,6 +184,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                     }
                     setAuthMenu(applyJson.data as Menu)
                     setThumbnailUrl(applyJson.data?.imageUrl ?? null)
+                    setLogoUrl((applyJson.data as Menu)?.logoUrl ?? null)
                   } catch (err) {
                     console.error('Failed to apply extraction to menu', err)
                     showToast({
@@ -287,8 +305,94 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       const json = await resp.json()
       setAuthMenu(json?.data as Menu)
       setThumbnailUrl(json?.data?.imageUrl ?? null)
+      setLogoUrl(json?.data?.logoUrl ?? null)
     } catch {
       // best-effort refresh
+    }
+  }
+
+  const handleUpdateMenuName = async () => {
+    const newName = menuNameDraft.trim()
+    if (!newName || newName === baseMenu?.name) {
+      setEditingMenuName(false)
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/menus/${menuId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json?.error || 'Failed to update menu name')
+      }
+      setAuthMenu(json.data as Menu)
+      setEditingMenuName(false)
+      showToast({
+        type: 'success',
+        title: 'Menu renamed',
+        description: undefined,
+      })
+    } catch (error) {
+      console.error('Error updating menu name:', error)
+      showToast({
+        type: 'error',
+        title: 'Update failed',
+        description: 'Please try again.',
+      })
+      setEditingMenuName(false)
+    }
+  }
+
+  const handleLogoImageSelected = async (file: File, _preview: string) => {
+    setUploadingLogo(true)
+    setLogoUploadError(null)
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+
+      const response = await fetch(`/api/menus/${menuId}/logo`, {
+        method: 'POST',
+        body: formData,
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        const message =
+          json?.error ||
+          (json?.code === 'PLAN_LIMIT_EXCEEDED'
+            ? 'You have reached your monthly upload limit.'
+            : 'Failed to upload logo. Please try again.')
+        setLogoUploadError(message)
+        showToast({
+          type: json?.code === 'PLAN_LIMIT_EXCEEDED' ? 'info' : 'error',
+          title: 'Logo upload failed',
+          description: message,
+        })
+        return
+      }
+
+      const updatedMenu = (json?.data?.menu || json?.data) as Menu
+      setAuthMenu(updatedMenu)
+      setLogoUrl(updatedMenu.logoUrl ?? json?.data?.logoUrl ?? null)
+      showToast({
+        type: 'success',
+        title: 'Logo added',
+        description: 'Your logo will appear on compatible templates.',
+      })
+      setShowLogoUpload(false)
+    } catch (error) {
+      console.error('Error uploading logo from extracted page:', error)
+      const message = 'Network error while uploading logo. Please try again.'
+      setLogoUploadError(message)
+      showToast({
+        type: 'error',
+        title: 'Logo upload failed',
+        description: message,
+      })
+    } finally {
+      setUploadingLogo(false)
     }
   }
 
@@ -471,7 +575,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           Review Extracted Items
         </h1>
         <p className="mt-2 text-white/90 text-hero-shadow-strong">
-          We found {totalItems} items across {categories.length} categories
+          We found {totalItems} items across {categories.length} {categories.length === 1 ? 'category' : 'categories'}
         </p>
       </div>
       <div className="max-w-4xl mx-auto space-y-6">
@@ -480,9 +584,44 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           <MenuThumbnailBadge imageUrl={thumbnailUrl} position="right" />
           <div className="p-6 relative z-10">
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-ux-text">
-                {isDemo ? (demoMenu as Menu).name : 'Extracted Menu'}
-              </h3>
+              {editingMenuName && !isDemo ? (
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="text"
+                    className="flex-1 px-3 py-1.5 text-lg font-semibold bg-ux-background border border-ux-border rounded-lg text-ux-text focus:outline-none focus:ring-2 focus:ring-ux-primary"
+                    value={menuNameDraft}
+                    onChange={(e) => setMenuNameDraft(e.target.value)}
+                    onBlur={handleUpdateMenuName}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleUpdateMenuName()
+                      if (e.key === 'Escape') {
+                        setEditingMenuName(false)
+                        setMenuNameDraft(baseMenu?.name || '')
+                      }
+                    }}
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                <div className="group inline-flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-semibold text-ux-text">
+                    {baseMenu?.name || 'Extracted Menu'}
+                  </h3>
+                  {!isDemo && (
+                    <button
+                      type="button"
+                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-ux-text-secondary hover:text-ux-primary p-1 rounded"
+                      onClick={() => {
+                        setMenuNameDraft(baseMenu?.name || '')
+                        setEditingMenuName(true)
+                      }}
+                      aria-label="Edit menu name"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-ux-text-secondary">
                 <span>{totalItems} items</span>
                 <span>{categories.length} {categories.length === 1 ? 'category' : 'categories'}</span>
@@ -597,47 +736,73 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                           </div>
                         </div>
                       ) : (
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <UXButton
-                        variant="warning"
-                        size="md"
-                        onClick={() => router.push(`/menus/${menuId}/upload`)}
-                        disabled={loading}
-                      >
-                        <ImageUp className="hidden sm:inline-block h-4 w-4 mr-2" />
-                        Upload a menu image
-                      </UXButton>
-                      <UXButton
-                        variant="warning"
-                        size="md"
-                        onClick={() => {
-                          if (!authMenu) return
-                          const selected = authMenu.items.filter(item => selectedItemKeys.has(item.id))
-                          if (selected.length === 0) {
-                            showToast({
-                              type: 'info',
-                              title: 'Select items first',
-                              description: 'Choose one or more items to create photos for.',
-                            })
-                            return
-                          }
-                          setShowBatchGeneration(true)
-                        }}
-                        disabled={loading}
-                      >
-                        <Sparkles className="hidden sm:inline-block h-4 w-4 mr-2" />
-                        Batch Create Photos
-                      </UXButton>
-                      <UXButton
-                        variant="warning"
-                        size="md"
-                        onClick={() => router.push(`/dashboard/menus/${menuId}`)}
-                        disabled={loading}
-                      >
-                        <QrCode className="hidden sm:inline-block h-4 w-4 mr-2" />
-                        Add QR / manage items
-                      </UXButton>
-                    </div>
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <UXButton
+                          variant="warning"
+                          size="md"
+                          onClick={() => router.push(`/menus/${menuId}/upload`)}
+                          disabled={loading}
+                        >
+                          <ImageUp className="hidden sm:inline-block h-4 w-4 mr-2" />
+                          Upload a menu image
+                        </UXButton>
+                        {!isDemo && (
+                          <UXButton
+                            variant="warning"
+                            size="md"
+                            onClick={() => setShowLogoUpload(true)}
+                            disabled={loading}
+                          >
+                            <ImageUp className="hidden sm:inline-block h-4 w-4 mr-2" />
+                            Upload logo
+                          </UXButton>
+                        )}
+                        <UXButton
+                          variant="warning"
+                          size="md"
+                          onClick={() => {
+                            if (!authMenu) return
+                            const selected = authMenu.items.filter(item => selectedItemKeys.has(item.id))
+                            if (selected.length === 0) {
+                              showToast({
+                                type: 'info',
+                                title: 'Select items first',
+                                description: 'Choose one or more items to create photos for.',
+                              })
+                              return
+                            }
+                            setShowBatchGeneration(true)
+                          }}
+                          disabled={loading}
+                        >
+                          <Sparkles className="hidden sm:inline-block h-4 w-4 mr-2" />
+                          Batch Create Photos
+                        </UXButton>
+                        <UXButton
+                          variant="warning"
+                          size="md"
+                          onClick={() => router.push(`/dashboard/menus/${menuId}`)}
+                          disabled={loading}
+                        >
+                          <QrCode className="hidden sm:inline-block h-4 w-4 mr-2" />
+                          Add QR / manage items
+                        </UXButton>
+                      </div>
+                      {!isDemo && logoUrl && (
+                        <div className="mt-3 flex items-center gap-2 text-xs text-ux-text-secondary">
+                          <span>Current logo:</span>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={logoUrl}
+                            alt={baseMenu?.name || 'Restaurant logo'}
+                            className="h-8 w-8 rounded-full border border-ux-border object-cover bg-white"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
                   {!isDemo && thumbnailUrl && (
                     <p className="text-xs text-ux-text-secondary">
@@ -917,6 +1082,69 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           url={previewImage.url}
           alt={previewImage.alt}
         />
+      )}
+
+      {/* Logo upload modal (authenticated menus only) */}
+      {!isDemo && showLogoUpload && mounted && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <UXCard>
+              <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-ux-border/60">
+                <h3 className="text-sm font-semibold text-ux-text">
+                  Upload logo
+                </h3>
+                <button
+                  type="button"
+                  className="h-7 w-7 flex items-center justify-center rounded-full text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-primary transition-colors"
+                  onClick={() => !uploadingLogo && setShowLogoUpload(false)}
+                  aria-label="Close logo upload"
+                  disabled={uploadingLogo}
+                >
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-4 pt-3 space-y-3">
+                {logoUploadError && (
+                  <div className="p-2 rounded-md bg-red-50 border border-red-200 text-xs text-red-800">
+                    {logoUploadError}
+                  </div>
+                )}
+                <p className="text-xs text-ux-text-secondary">
+                  Upload a small JPEG or PNG logo (up to 8MB). For best results, use a square logo with a transparent or solid background.
+                </p>
+                <ImageUpload
+                  onImageSelected={handleLogoImageSelected}
+                  onCancel={() => !uploadingLogo && setShowLogoUpload(false)}
+                  noWrapper={true}
+                />
+                {logoUrl && (
+                  <div className="flex items-center gap-3 pt-2 border-t border-dashed border-ux-border/60">
+                    <span className="text-xs text-ux-text-secondary">
+                      Current logo preview:
+                    </span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={logoUrl}
+                      alt={baseMenu?.name || 'Restaurant logo'}
+                      className="h-9 w-9 rounded-full border border-ux-border object-cover bg-white"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                )}
+              </div>
+            </UXCard>
+          </div>
+        </div>,
+        document.body
       )}
     </UXSection>
   )

@@ -652,6 +652,8 @@ export interface StaticTileInstance extends BaseTileInstance {
   type: 'TITLE' | 'LOGO' | 'TEXT_BLOCK' | 'IMAGE_DECORATION' | 'QR_CODE'
   /** Text content to display */
   content: string
+  /** Optional logo URL for LOGO tiles */
+  logoUrl?: string
   /** Presentation options */
   options?: TileDefinition['options']
 }
@@ -831,6 +833,8 @@ export interface EngineMenu {
     venueName?: string
     /** Venue address */
     venueAddress?: string
+    /** Optional logo URL for branding */
+    logoUrl?: string
   }
 }
 
@@ -894,6 +898,7 @@ export const EngineMenuSchema = z.object({
   metadata: z.object({
     currency: z.string(),
     venueName: z.string().optional(),
-    venueAddress: z.string().optional()
+    venueAddress: z.string().optional(),
+    logoUrl: z.string().optional()
   })
 })

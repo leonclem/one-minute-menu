@@ -84,7 +84,16 @@ function StaticTile({ tile }: { tile: StaticTileInstance }) {
     return (
       <div style={styles} className={`tile tile-logo text-${align}`}>
         <div className="logo-placeholder">
-          {tile.content || 'Logo'}
+          {tile.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={tile.logoUrl}
+              alt={tile.content || 'Logo'}
+              className="h-full w-full object-contain"
+              loading="lazy"
+              decoding="async"
+            />
+          )}
         </div>
       </div>
     )

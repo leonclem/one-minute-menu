@@ -433,26 +433,64 @@ export function getTemplateCSSString(
     
     .tile-title {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 1.5rem;
+      position: relative;
     }
     
     .tile-title h1, .menu-title {
-      font-family: 'Playfair Display', 'Times New Roman', serif !important;
+      font-family: ${style.fonts.heading} !important;
       font-size: 36px !important;
       font-weight: 600 !important;
-      color: #c8a562 !important;
+      color: ${palette.heading} !important;
       letter-spacing: 0.08em !important;
       text-transform: uppercase !important;
-      margin: 0 !important;
+      margin: 0 0 0.5rem 0 !important;
+      ${palette.id === 'elegant-dark' || palette.id === 'elegant-light' || palette.id === 'elegant-warm' ? `
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 -1px 1px rgba(255, 255, 255, 0.1) !important;
+      ` : ''}
     }
+    
+    ${palette.id === 'elegant-dark' || palette.id === 'elegant-light' || palette.id === 'elegant-warm' ? `
+    .tile-title::after {
+      content: '';
+      display: block;
+      width: 180px;
+      height: 1px;
+      background: linear-gradient(to right, 
+        transparent 0%, 
+        ${palette.accent}40 20%, 
+        ${palette.accent} 45%, 
+        ${palette.accent} 55%, 
+        ${palette.accent}40 80%, 
+        transparent 100%);
+      position: relative;
+      margin-top: 0.25rem;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    
+    .tile-title::before {
+      content: '◆';
+      display: block;
+      position: absolute;
+      bottom: 0.15rem;
+      color: ${palette.accent};
+      font-size: 10px;
+      opacity: 0.9;
+      z-index: 1;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 -1px 0 rgba(255, 255, 255, 0.15);
+    }
+    ` : ''}
     
     .tile-section-header {
       display: flex;
+      flex-direction: column;
       align-items: center;
       padding: 1.5rem 1rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: none;
+      position: relative;
     }
     
     .tile-section-header h2 {
@@ -462,27 +500,64 @@ export function getTemplateCSSString(
       color: ${palette.heading} !important;
       text-transform: uppercase !important;
       letter-spacing: 0.05em !important;
-      margin: 0 !important;
+      margin: 0 0 0.5rem 0 !important;
+      ${palette.id === 'elegant-dark' || palette.id === 'elegant-light' || palette.id === 'elegant-warm' ? `
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 -1px 1px rgba(255, 255, 255, 0.1) !important;
+      ` : ''}
     }
+    
+    ${palette.id === 'elegant-dark' || palette.id === 'elegant-light' || palette.id === 'elegant-warm' ? `
+    .tile-section-header::after {
+      content: '';
+      display: block;
+      width: 180px;
+      height: 1px;
+      background: linear-gradient(to right, 
+        transparent 0%, 
+        ${palette.accent}40 20%, 
+        ${palette.accent} 45%, 
+        ${palette.accent} 55%, 
+        ${palette.accent}40 80%, 
+        transparent 100%);
+      position: relative;
+      margin-top: 0.25rem;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    
+    .tile-section-header::before {
+      content: '◆';
+      display: block;
+      position: absolute;
+      bottom: 0.15rem;
+      color: ${palette.accent};
+      font-size: 10px;
+      opacity: 0.9;
+      z-index: 1;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 -1px 0 rgba(255, 255, 255, 0.15);
+    }
+    ` : ''}
     
     .tile-logo {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1rem;
+      padding: 0.25rem 0.5rem 0.4rem;
     }
     
     .logo-placeholder {
-      width: 80px;
-      height: 80px;
-      border: 2px dashed ${palette.accent};
-      border-radius: 0.5rem;
+      width: 60px;
+      height: 60px;
+      border: none;
+      border-radius: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: ${palette.accent};
-      font-family: ${style.fonts.body};
-      font-size: 0.75rem;
+    }
+    
+    .logo-placeholder img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
     
     .tile-text-block {

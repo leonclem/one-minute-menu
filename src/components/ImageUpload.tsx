@@ -11,13 +11,15 @@ interface ImageUploadProps {
   onCancel?: () => void
   maxSize?: number
   className?: string
+  noWrapper?: boolean
 }
 
 export default function ImageUpload({ 
   onImageSelected, 
   onCancel, 
   maxSize = 8 * 1024 * 1024, // 8MB
-  className = '' 
+  className = '',
+  noWrapper = false
 }: ImageUploadProps) {
   const [mode, setMode] = useState<'select' | 'camera' | 'preview'>('select')
   const [dragActive, setDragActive] = useState(false)
@@ -172,9 +174,9 @@ export default function ImageUpload({
   }
 
   if (mode === 'preview' && previewImage && selectedFile) {
-    return (
-      <Card className={className}>
-        <CardContent className="p-6">
+    const content = (
+      <div className={noWrapper ? className : ''}>
+        <div className={noWrapper ? 'p-6' : ''}>
           <div className="relative text-center">
             {/* Close button */}
             {onCancel && (
@@ -248,14 +250,22 @@ export default function ImageUpload({
               </Button>
             </div>
           </div>
+        </div>
+      </div>
+    )
+    
+    return noWrapper ? content : (
+      <Card className={className}>
+        <CardContent className="p-6">
+          {content}
         </CardContent>
       </Card>
     )
   }
 
-  return (
-    <Card className={className}>
-      <CardContent className="p-6">
+  const uploadContent = (
+    <div className={noWrapper ? className : ''}>
+      <div className={noWrapper ? 'p-6' : ''}>
         <div className="text-center">
 
           {/* Error message */}
@@ -375,6 +385,14 @@ export default function ImageUpload({
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+  
+  return noWrapper ? uploadContent : (
+    <Card className={className}>
+      <CardContent className="p-6">
+        {uploadContent}
       </CardContent>
     </Card>
   )

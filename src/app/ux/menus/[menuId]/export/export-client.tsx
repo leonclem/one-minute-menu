@@ -609,42 +609,44 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           </div>
         </div>
 
-        {/* Conversion Incentives (improved contrast) */}
-        <div className="bg-gradient-to-br from-ux-primary/30 to-ux-primary/40 rounded-md p-8 border border-ux-primary/40 text-white">
-          <div className="text-center mb-8">
-            <h4 className="text-2xl font-bold text-white text-hero-shadow mb-4">
-              Want to unlock more features?
-            </h4>
-            <p className="text-white/90 text-lg text-hero-shadow-strong">
-              Sign up to get access to advanced features and create your own custom menus
-            </p>
-          </div>
+        {/* Conversion Incentives (improved contrast) - Only show for demo users */}
+        {isDemo && (
+          <div className="bg-gradient-to-br from-ux-primary/30 to-ux-primary/40 rounded-md p-8 border border-ux-primary/40 text-white">
+            <div className="text-center mb-8">
+              <h4 className="text-2xl font-bold text-white text-hero-shadow mb-4">
+                Want to unlock more features?
+              </h4>
+              <p className="text-white/90 text-lg text-hero-shadow-strong">
+                Sign up to get access to advanced features and create your own custom menus
+              </p>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {CONVERSION_INCENTIVES.map((incentive, index) => (
-              <div key={index} className="text-center">
-                <div className="text-3xl mb-3">{incentive.icon}</div>
-                <h5 className="font-semibold text-white mb-2">
-                  {incentive.title}
-                </h5>
-                <p className="text-sm text-white/90">
-                  {incentive.description}
-                </p>
-              </div>
-            ))}
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {CONVERSION_INCENTIVES.map((incentive, index) => (
+                <div key={index} className="text-center">
+                  <div className="text-3xl mb-3">{incentive.icon}</div>
+                  <h5 className="font-semibold text-white mb-2">
+                    {incentive.title}
+                  </h5>
+                  <p className="text-sm text-white/90">
+                    {incentive.description}
+                  </p>
+                </div>
+              ))}
+            </div>
 
-          <div className="text-center">
-            <UXButton
-              variant="primary"
-              size="lg"
-              onClick={handleTryOwnMenu}
-              className="px-8"
-            >
-              Try it with your own menu →
-            </UXButton>
+            <div className="text-center">
+              <UXButton
+                variant="primary"
+                size="lg"
+                onClick={handleTryOwnMenu}
+                className="px-8"
+              >
+                Try it with your own menu →
+              </UXButton>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Navigation */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -658,26 +660,31 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
             ← Back to Template
           </UXButton>
           
-          <UXButton
-            variant="outline"
-            size="lg"
-            className="bg-white/20 border-white/40 text-white hover:bg-white/30"
-            onClick={() => router.push('/ux')}
-            disabled={exportingFormat !== null}
-          >
-            Start Over
-          </UXButton>
+          {/* Start Over button - Only show for demo users */}
+          {isDemo && (
+            <UXButton
+              variant="outline"
+              size="lg"
+              className="bg-white/20 border-white/40 text-white hover:bg-white/30"
+              onClick={() => router.push('/ux')}
+              disabled={exportingFormat !== null}
+            >
+              Start Over
+            </UXButton>
+          )}
         </div>
 
-        {/* Demo Notice */}
-        <div className="text-center">
-          <div className="inline-flex items-center px-4 py-2 rounded-lg bg-ux-primary/10 text-ux-primary text-sm">
-            <svg className="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            This is a demo export. Sign up to get real menu files and advanced features!
+        {/* Demo Notice - Only show for demo users */}
+        {isDemo && (
+          <div className="text-center">
+            <div className="inline-flex items-center px-4 py-2 rounded-lg bg-ux-primary/10 text-ux-primary text-sm">
+              <svg className="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              This is a demo export. Sign up to get real menu files and advanced features!
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </UXSection>
   )

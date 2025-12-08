@@ -141,7 +141,8 @@ export function toEngineMenu(menu: Menu): EngineMenu {
       metadata: {
         currency,
         venueName: menu.name,
-        venueAddress: undefined // TODO: Add to Menu model
+        venueAddress: undefined, // TODO: Add to Menu model
+        logoUrl: menu.logoUrl
       }
     }
   }
@@ -161,7 +162,8 @@ export function toEngineMenu(menu: Menu): EngineMenu {
     metadata: {
       currency,
       venueName: menu.name,
-      venueAddress: undefined
+      venueAddress: undefined,
+      logoUrl: menu.logoUrl
     }
   }
 }

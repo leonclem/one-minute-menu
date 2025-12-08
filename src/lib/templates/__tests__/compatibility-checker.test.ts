@@ -119,7 +119,7 @@ function createTestTemplate(overrides?: Partial<MenuTemplate>): MenuTemplate {
     },
     capabilities: {
       supportsImages: true,
-      supportsLogoPlaceholder: false,
+      supportsLogoPlaceholder: true,
       supportsColourPalettes: false,
       supportsTextOnlyMode: true,
       supportsResponsiveWeb: true,
