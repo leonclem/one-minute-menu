@@ -374,7 +374,10 @@ export async function POST(request: NextRequest) {
     if (effectiveTemplateId) {
       const headers = {
         cookie: request.headers.get('cookie') || '',
-        authorization: request.headers.get('authorization') || ''
+        authorization: request.headers.get('authorization') || '',
+        host: request.headers.get('host') || '',
+        'x-forwarded-host': request.headers.get('x-forwarded-host') || '',
+        'x-forwarded-proto': request.headers.get('x-forwarded-proto') || ''
       }
       return await handleNewTemplateEngine(menu, effectiveTemplateId, options, user?.id || 'demo-user', metricsBuilder, headers)
     }

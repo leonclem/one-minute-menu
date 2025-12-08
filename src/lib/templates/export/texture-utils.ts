@@ -12,10 +12,12 @@ import http from 'http'
 /**
  * Convert texture image to base64 data URL
  * This allows the texture to be embedded in PDF exports where file:// URLs don't work
+ * Uses a very short timeout (1s) since textures should fail fast and use CSS fallback
  */
 export async function getTextureDataURL(textureName: string, headers?: Record<string, string>): Promise<string | null> {
   try {
-    return await fetchImageAsDataURL(`/textures/${textureName}`, headers)
+    // Use a very short timeout for textures - they should be fast or fail to CSS fallback
+    return await fetchImageAsDataURL(`/textures/${textureName}`, headers, 1000)
   } catch (error) {
     console.error(`[TextureUtils] Error loading texture ${textureName}:`, error)
     return null
@@ -55,7 +57,7 @@ export async function getElegantDarkBackground(headers?: Record<string, string>)
  * Fetch image from URL and convert to base64 data URL
  * Supports both HTTP/HTTPS URLs and local file paths (via FS or HTTP fallback)
  */
-export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<string, string>): Promise<string | null> {
+export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<string, string>, timeoutMs: number = 5000): Promise<string | null> {
   try {
     // Case 1: Local file path (starts with /)
     if (imageUrl.startsWith('/')) {
@@ -110,9 +112,16 @@ export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<str
         }
       }
       
+      // Skip HTTP fallback for textures if we can't construct a valid URL
+      // This prevents circular dependencies and timeouts in serverless environments
+      if (!baseUrl || baseUrl === 'http://localhost:3000') {
+        console.warn(`[TextureUtils] Cannot construct valid URL for ${imageUrl}, skipping HTTP fallback`)
+        return null
+      }
+      
       const absoluteUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
       console.log(`[TextureUtils] Fetching local image via HTTP: ${absoluteUrl}`)
-      return await fetchRemoteImageAsDataURL(absoluteUrl, 3000, headers)
+      return await fetchRemoteImageAsDataURL(absoluteUrl, timeoutMs, headers)
     }
     
     // Case 2: HTTP/HTTPS URLs
@@ -124,11 +133,11 @@ export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<str
       
       if (isInternal) {
         console.log(`[TextureUtils] Fetching internal image with optimized settings: ${imageUrl}`)
-        // Use shorter timeout for internal images to fail fast
-        return await fetchRemoteImageAsDataURL(imageUrl, 3000, headers)
+        // Use the provided timeout for internal images
+        return await fetchRemoteImageAsDataURL(imageUrl, timeoutMs, headers)
       }
       
-      return await fetchRemoteImageAsDataURL(imageUrl, 5000, headers)
+      return await fetchRemoteImageAsDataURL(imageUrl, timeoutMs, headers)
     }
     
     console.warn(`[TextureUtils] Unsupported image URL format: ${imageUrl}`)
