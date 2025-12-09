@@ -42,6 +42,20 @@ export async function POST(
       )
     }
 
+    console.log('[Apply Extraction] Request body:', {
+      menuId: params.menuId,
+      schemaVersion: body.schemaVersion,
+      promptVersion: body.promptVersion,
+      jobId: body.jobId,
+      resultStructure: {
+        hasMenu: !!body.result?.menu,
+        hasCategories: !!body.result?.menu?.categories,
+        categoriesCount: body.result?.menu?.categories?.length || 0,
+        firstCategory: body.result?.menu?.categories?.[0]?.name,
+        firstCategoryItemCount: body.result?.menu?.categories?.[0]?.items?.length || 0
+      }
+    })
+
     const menu = await applyExtractionToMenu(
       params.menuId,
       user.id,
@@ -50,6 +64,13 @@ export async function POST(
       body.promptVersion || 'unknown',
       body.jobId
     )
+
+    console.log('[Apply Extraction] Result menu:', {
+      menuId: menu.id,
+      itemsCount: menu.items?.length || 0,
+      categoriesCount: menu.categories?.length || 0,
+      hasExtractionMetadata: !!menu.extractionMetadata
+    })
 
     return NextResponse.json({ success: true, data: menu })
   } catch (error) {

@@ -116,8 +116,16 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             const loadedMenu = menuJson.data as Menu
             
             // Check if menu has extracted data (items or extractionMetadata)
+            console.log('[Extracted Page] Loaded menu from database:', {
+              menuId: loadedMenu.id,
+              itemsCount: loadedMenu.items?.length || 0,
+              hasExtractionMetadata: !!loadedMenu.extractionMetadata,
+              items: loadedMenu.items
+            })
+            
             if ((loadedMenu.items && loadedMenu.items.length > 0) || loadedMenu.extractionMetadata) {
               // Menu already has extracted data, use it directly
+              console.log('[Extracted Page] Menu has existing data, using it')
               setAuthMenu(loadedMenu)
               setThumbnailUrl(loadedMenu.imageUrl ?? null)
               setLogoUrl(loadedMenu.logoUrl ?? null)
@@ -182,6 +190,11 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                     if (!applyResp.ok) {
                       throw new Error(applyJson?.error || 'Failed to save extracted items to menu')
                     }
+                    console.log('[Extracted Page] Applied extraction to menu:', {
+                      menuId: applyJson.data?.id,
+                      itemsCount: applyJson.data?.items?.length || 0,
+                      items: applyJson.data?.items
+                    })
                     setAuthMenu(applyJson.data as Menu)
                     setThumbnailUrl(applyJson.data?.imageUrl ?? null)
                     setLogoUrl((applyJson.data as Menu)?.logoUrl ?? null)
@@ -510,6 +523,20 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
 
   const categories = Object.keys(itemsByCategory)
   const totalItems = categories.reduce((sum, c) => sum + (itemsByCategory[c]?.length || 0), 0)
+  
+  // Debug logging
+  console.log('[Extracted Page Debug]', {
+    isDemo,
+    hasAuthMenu: !!authMenu,
+    hasAuthResult: !!authResult,
+    authMenuItems: authMenu?.items?.length || 0,
+    categories: categories.length,
+    totalItems,
+    itemsByCategory: Object.keys(itemsByCategory).map(cat => ({
+      category: cat,
+      itemCount: itemsByCategory[cat]?.length || 0
+    }))
+  })
 
   // Compute an overall confidence indicator based on per-item confidences,
   // using the same default (0.95) we show in the item list when confidence is missing.

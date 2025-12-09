@@ -31,7 +31,7 @@ export const PROMPT_SCHEMA_VERSION_V2 = 'stage2' as const
 
 const SYSTEM_ROLE_V2 = `You are an expert data extraction assistant specializing in food and beverage menus. Convert menu images into clean, hierarchical JSON that matches the provided Stage 2 schema with high accuracy and confidence scoring.
 
-CRITICAL: Every menu item MUST include pricing information (either a price field, variants with prices, or be part of a set menu with a price). Items without any pricing should be added to uncertainItems instead.`
+CRITICAL: Extract ALL menu items, even if pricing is not visible. If a price cannot be determined, set price to 0 and set confidence lower. Only add items to uncertainItems if the item name itself is unclear or illegible.`
 
 // ============================================================================
 // Core Instructions (Stage 2)
@@ -43,7 +43,7 @@ const CORE_INSTRUCTIONS_V2 = `Your task is to extract structured menu data from 
 - If an item has a visible price, include it in the "price" field
 - If an item has multiple size/price options, include them in "variants"
 - If an item is part of a set menu, include the set menu price
-- If you cannot find ANY price for an item, do NOT include it in the items array - add it to uncertainItems instead with reason "price not visible"
+- If you cannot find a price for an item, set price to 0 and lower the confidence score (e.g., 0.7-0.8)
 
 CRITICAL RULES:
 1. Return ONLY valid JSON - no commentary, no markdown, no explanations
@@ -62,11 +62,12 @@ EXTRACTION GUIDELINES (Stage 2):
 
 **Menu Items (Base):**
 - Extract item name and description (if present)
-- CRITICAL: Every menu item MUST have pricing information - either a base price, variants with prices, or be part of a set menu
+- CRITICAL: Extract ALL menu items, even if pricing is not clearly visible
 - If an item shows a single price, set it in the price field
 - If multiple sizes/prices are shown, use variants (see below)
-- If you cannot find a price for an item, add it to uncertainItems instead with reason "price not visible"
+- If you cannot find a price for an item, set price to 0 and lower confidence (e.g., 0.7-0.8)
 - Item confidence should reflect text clarity and completeness
+- Only add items to uncertainItems if the item NAME itself is unclear or illegible, not just because price is missing
 
 **Variants (sizes/prices/attributes):**
 - Detect size/price pairs (e.g., Small 9" $12, Large 12" $18) and create variants
@@ -76,7 +77,7 @@ EXTRACTION GUIDELINES (Stage 2):
 - If no explicit label but multiple prices exist, infer labels like "Regular", "Large" based on ordering
 - If price is shown as a range (e.g., $12–$18), create separate variants for min and max or use attributes to encode range
 - Include variant.confidence based on clarity of the size/price pairing
-- If a size is visible but price is not clear, do NOT create a variant - instead note in uncertainItems
+- If a size is visible but price is not clear, create the variant with price: 0 and lower confidence
 
 **Modifier Groups (toppings/add-ons/options):**
 - Detect groups such as "Add-ons", "Toppings", "Extras", "Choice of"

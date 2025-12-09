@@ -104,10 +104,12 @@ EXTRACTION GUIDELINES:
 - Confidence reflects categorization certainty
 
 **Items:**
+- Extract ALL items, even if price is not visible
 - Extract name, price, description (if present)
 - Strip currency symbols - numeric values only
 - For multiple sizes/prices, use first/smallest
-- Confidence reflects text clarity
+- If price not visible, set to 0 and lower confidence (0.7-0.8)
+- Only use uncertainItems if item NAME is unclear, not just price
 
 **Confidence Scores:**
 - 0.9-1.0: Clear and complete

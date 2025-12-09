@@ -26,7 +26,16 @@ export async function applyExtractionToMenu(
 ): Promise<Menu> {
   // If we already applied this job's extraction to the menu, return existing menu
   const existing = await menuOperations.getMenu(menuId, userId)
+  console.log('[Apply Extraction] Checking if already applied:', {
+    menuId,
+    jobId,
+    existingJobId: existing?.extractionMetadata?.jobId,
+    existingItemsCount: existing?.items?.length || 0,
+    willSkip: !!(existing && jobId && existing.extractionMetadata?.jobId === jobId)
+  })
+  
   if (existing && jobId && existing.extractionMetadata?.jobId === jobId) {
+    console.log('[Apply Extraction] Skipping - already applied this job to menu')
     return existing
   }
 
@@ -42,11 +51,25 @@ export async function applyExtractionToMenu(
     jobId
   )
 
+  console.log('[Menu Integration] Converted extraction to menu updates:', {
+    itemsCount: menuUpdates.items?.length || 0,
+    categoriesCount: menuUpdates.categories?.length || 0,
+    hasExtractionMetadata: !!menuUpdates.extractionMetadata,
+    firstItem: menuUpdates.items?.[0]?.name,
+    firstCategory: menuUpdates.categories?.[0]?.name
+  })
+
   // Update the menu in database and return the updated menu
   const updated = await menuOperations.updateMenuFromExtraction(menuId, userId, {
     items: menuUpdates.items || [],
     categories: menuUpdates.categories,
     extractionMetadata: menuUpdates.extractionMetadata,
+  })
+
+  console.log('[Menu Integration] Updated menu in database:', {
+    menuId: updated.id,
+    itemsCount: updated.items?.length || 0,
+    categoriesCount: updated.categories?.length || 0
   })
 
   return updated

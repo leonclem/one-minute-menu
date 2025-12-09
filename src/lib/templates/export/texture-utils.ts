@@ -8,6 +8,7 @@ import fs from 'fs'
 import path from 'path'
 import https from 'https'
 import http from 'http'
+import sharp from 'sharp'
 
 /**
  * Convert texture image to base64 data URL
@@ -17,7 +18,8 @@ import http from 'http'
 export async function getTextureDataURL(textureName: string, headers?: Record<string, string>): Promise<string | null> {
   try {
     // Use a very short timeout for textures - they should be fast or fail to CSS fallback
-    return await fetchImageAsDataURL(`/textures/${textureName}`, headers, 1000)
+    // Don't compress textures as they're already optimized and small
+    return await fetchImageAsDataURL(`/textures/${textureName}`, headers, 1000, false)
   } catch (error) {
     console.error(`[TextureUtils] Error loading texture ${textureName}:`, error)
     return null
@@ -57,7 +59,7 @@ export async function getElegantDarkBackground(headers?: Record<string, string>)
  * Fetch image from URL and convert to base64 data URL
  * Supports both HTTP/HTTPS URLs and local file paths (via FS or HTTP fallback)
  */
-export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<string, string>, timeoutMs: number = 5000): Promise<string | null> {
+export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<string, string>, timeoutMs: number = 5000, compress: boolean = true): Promise<string | null> {
   try {
     // Case 1: Local file path (starts with /)
     if (imageUrl.startsWith('/')) {
@@ -65,13 +67,27 @@ export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<str
       const imagePath = path.join(process.cwd(), 'public', imageUrl)
       if (fs.existsSync(imagePath)) {
         try {
-          const imageBuffer = fs.readFileSync(imagePath)
+          let imageBuffer: Buffer = fs.readFileSync(imagePath)
+          const originalSize = imageBuffer.length
+          
+          // Compress image if requested
+          if (compress) {
+            try {
+              imageBuffer = await compressImageBuffer(imageBuffer, 800, 80) as Buffer
+              console.log(`[TextureUtils] Compressed local image: ${imagePath} (${originalSize} -> ${imageBuffer.length} bytes, ${((1 - imageBuffer.length / originalSize) * 100).toFixed(1)}% reduction)`)
+            } catch (error) {
+              console.warn(`[TextureUtils] Compression failed for ${imagePath}, using original:`, error)
+            }
+          }
+          
           const base64Image = imageBuffer.toString('base64')
-          const ext = path.extname(imagePath).toLowerCase()
-          // Handle webp and other formats
-          let mimeType = 'image/png'
-          if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg'
-          else if (ext === '.webp') mimeType = 'image/webp'
+          // Always use jpeg after compression
+          const mimeType = compress ? 'image/jpeg' : (() => {
+            const ext = path.extname(imagePath).toLowerCase()
+            if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg'
+            if (ext === '.webp') return 'image/webp'
+            return 'image/png'
+          })()
           
           return `data:${mimeType};base64,${base64Image}`
         } catch (e) {
@@ -121,7 +137,7 @@ export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<str
       
       const absoluteUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
       console.log(`[TextureUtils] Fetching local image via HTTP: ${absoluteUrl}`)
-      return await fetchRemoteImageAsDataURL(absoluteUrl, timeoutMs, headers)
+      return await fetchRemoteImageAsDataURL(absoluteUrl, timeoutMs, headers, compress)
     }
     
     // Case 2: HTTP/HTTPS URLs
@@ -134,10 +150,10 @@ export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<str
       if (isInternal) {
         console.log(`[TextureUtils] Fetching internal image with optimized settings: ${imageUrl}`)
         // Use the provided timeout for internal images
-        return await fetchRemoteImageAsDataURL(imageUrl, timeoutMs, headers)
+        return await fetchRemoteImageAsDataURL(imageUrl, timeoutMs, headers, compress)
       }
       
-      return await fetchRemoteImageAsDataURL(imageUrl, timeoutMs, headers)
+      return await fetchRemoteImageAsDataURL(imageUrl, timeoutMs, headers, compress)
     }
     
     console.warn(`[TextureUtils] Unsupported image URL format: ${imageUrl}`)
@@ -149,9 +165,41 @@ export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<str
 }
 
 /**
+ * Compress and resize image buffer for PDF embedding
+ * Reduces file size dramatically while maintaining visual quality
+ */
+async function compressImageBuffer(buffer: Buffer, maxWidth: number = 800, quality: number = 80): Promise<Buffer> {
+  try {
+    const image = sharp(buffer as any)
+    const metadata = await image.metadata()
+    
+    // Only resize if image is larger than maxWidth
+    if (metadata.width && metadata.width > maxWidth) {
+      const compressed = await image
+        .resize(maxWidth, null, { 
+          fit: 'inside',
+          withoutEnlargement: true 
+        })
+        .jpeg({ quality, mozjpeg: true })
+        .toBuffer()
+      return compressed as Buffer
+    }
+    
+    // Just compress without resizing
+    const compressed = await image
+      .jpeg({ quality, mozjpeg: true })
+      .toBuffer()
+    return compressed as Buffer
+  } catch (error) {
+    console.warn('[TextureUtils] Image compression failed, using original:', error)
+    return buffer
+  }
+}
+
+/**
  * Fetch remote image and convert to base64 with timeout
  */
-async function fetchRemoteImageAsDataURL(url: string, timeoutMs: number = 5000, headers?: Record<string, string>): Promise<string | null> {
+async function fetchRemoteImageAsDataURL(url: string, timeoutMs: number = 5000, headers?: Record<string, string>, compress: boolean = true): Promise<string | null> {
   return new Promise((resolve) => {
     const protocol = url.startsWith('https://') ? https : http
     const urlObj = new URL(url)
@@ -177,10 +225,12 @@ async function fetchRemoteImageAsDataURL(url: string, timeoutMs: number = 5000, 
       clearTimeout(timeout)
       
       if (response.statusCode !== 200) {
-        console.warn(`[TextureUtils] Failed to fetch image: ${url} (status: ${response.statusCode})`)
+        console.warn(`[TextureUtils] Failed to fetch image: ${url} (status: ${response.statusCode}, message: ${response.statusMessage})`)
         resolve(null)
         return
       }
+      
+      console.log(`[TextureUtils] Successfully fetched image: ${url} (${response.headers['content-length'] || 'unknown'} bytes)`)
       
       const chunks: Buffer[] = []
       let totalSize = 0
@@ -197,14 +247,26 @@ async function fetchRemoteImageAsDataURL(url: string, timeoutMs: number = 5000, 
         chunks.push(chunk)
       })
       
-      response.on('end', () => {
-        const buffer = Buffer.concat(chunks)
+      response.on('end', async () => {
+        let buffer: Buffer = Buffer.concat(chunks)
+        const originalSize = buffer.length
+        
+        // Compress image if requested (for PDF embedding)
+        if (compress) {
+          try {
+            buffer = await compressImageBuffer(buffer, 800, 80) as Buffer
+            console.log(`[TextureUtils] Compressed image: ${url} (${originalSize} -> ${buffer.length} bytes, ${((1 - buffer.length / originalSize) * 100).toFixed(1)}% reduction)`)
+          } catch (error) {
+            console.warn(`[TextureUtils] Compression failed for ${url}, using original:`, error)
+          }
+        }
+        
         const base64Image = buffer.toString('base64')
         
-        // Determine MIME type from content-type header or URL extension
-        const contentType = response.headers['content-type'] || 'image/png'
-        const mimeType = contentType.split(';')[0].trim()
+        // Determine MIME type - always use jpeg after compression
+        const mimeType = compress ? 'image/jpeg' : (response.headers['content-type'] || 'image/png').split(';')[0].trim()
         
+        console.log(`[TextureUtils] Converted image to base64: ${url} (${buffer.length} bytes, ${mimeType})`)
         resolve(`data:${mimeType};base64,${base64Image}`)
       })
       
@@ -267,7 +329,7 @@ export async function convertLayoutImagesToDataURLs(
     headers?: Record<string, string>
   } = {}
 ): Promise<any> {
-  const { concurrency = 3, timeout = 5000, maxImages = 20, headers } = options
+  const { concurrency = 3, timeout = 10000, maxImages = 20, headers } = options
   
   const convertedLayout = JSON.parse(JSON.stringify(layout)) // Deep clone
   
@@ -295,6 +357,9 @@ export async function convertLayoutImagesToDataURLs(
   
   console.log(`[TextureUtils] Converting ${tilesWithImages.length} images with concurrency ${concurrency}`)
   
+  let successCount = 0
+  let failCount = 0
+  
   // Convert images in batches
   await processBatch(
     tilesWithImages,
@@ -302,22 +367,26 @@ export async function convertLayoutImagesToDataURLs(
       try {
         // Handle LOGO tiles with logoUrl
         if (tile.type === 'LOGO' && tile.logoUrl) {
-          const dataURL = await fetchImageAsDataURL(tile.logoUrl, headers)
+          const dataURL = await fetchImageAsDataURL(tile.logoUrl, headers, timeout, true)
           if (dataURL) {
             tile.logoUrl = dataURL
+            successCount++
           } else {
             console.warn(`[TextureUtils] Failed to convert logo for tile: ${tile.id}`)
             tile.logoUrl = null
+            failCount++
           }
         }
         // Handle ITEM tiles with imageUrl
         else if (tile.imageUrl) {
-          const dataURL = await fetchImageAsDataURL(tile.imageUrl, headers)
+          const dataURL = await fetchImageAsDataURL(tile.imageUrl, headers, timeout, true)
           if (dataURL) {
             tile.imageUrl = dataURL
+            successCount++
           } else {
             console.warn(`[TextureUtils] Failed to convert image for tile: ${tile.name}`)
             tile.imageUrl = null
+            failCount++
           }
         }
       } catch (error) {
@@ -331,6 +400,8 @@ export async function convertLayoutImagesToDataURLs(
     },
     concurrency
   )
+  
+  console.log(`[TextureUtils] Image conversion complete: ${successCount} succeeded, ${failCount} failed`)
   
   return convertedLayout
 }

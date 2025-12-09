@@ -320,6 +320,15 @@ export class MenuExtractionService {
 
     // Stage 2 normalization (variants, modifier price deltas)
     if (promptPackage?.schemaVersion === 'stage2') {
+      console.log('Before normalization - full structure:', JSON.stringify({
+        hasMenu: !!rawData?.menu,
+        categoriesCount: rawData?.menu?.categories?.length || 0,
+        categories: rawData?.menu?.categories?.map((cat: any) => ({
+          name: cat.name,
+          itemsCount: cat.items?.length || 0,
+          items: cat.items
+        }))
+      }, null, 2))
       console.log('Before normalization - sample item:', JSON.stringify(rawData?.menu?.categories?.[0]?.items?.[0], null, 2))
       rawData = this.normalizeStage2Extraction(rawData)
       console.log('After normalization - sample item:', JSON.stringify(rawData?.menu?.categories?.[0]?.items?.[0], null, 2))

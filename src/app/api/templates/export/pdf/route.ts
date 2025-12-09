@@ -123,7 +123,7 @@ async function handleNewTemplateEngine(
       logger.info('[PDFExporter] Converting images to base64...')
       layout = await convertLayoutImagesToDataURLs(layout, {
         concurrency: 3,
-        timeout: 5000,
+        timeout: 15000, // Increased timeout for Supabase storage images
         maxImages: 20,
         headers
       })
