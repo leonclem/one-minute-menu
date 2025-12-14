@@ -794,7 +794,21 @@ async function transformMenuFromDB(dbMenu: any): Promise<Menu> {
   }
   
   // Enrich menu items with AI image URLs
+  console.log('🖼️ [Transform Menu] Before enriching with image URLs:', menu.items?.map(item => ({
+    id: item.id,
+    name: item.name,
+    aiImageId: item.aiImageId,
+    imageSource: item.imageSource,
+    customImageUrl: item.customImageUrl
+  })))
   await enrichMenuItemsWithImageUrls(menu)
+  console.log('🖼️ [Transform Menu] After enriching with image URLs:', menu.items?.map(item => ({
+    id: item.id,
+    name: item.name,
+    aiImageId: item.aiImageId,
+    imageSource: item.imageSource,
+    customImageUrl: item.customImageUrl
+  })))
   
   // Ensure backward compatibility between items and categories
   return ensureBackwardCompatibility(menu)
@@ -831,8 +845,11 @@ async function enrichMenuItemsWithImageUrls(menu: Menu): Promise<void> {
   
   // If no AI images to fetch, return early
   if (aiImageIds.length === 0) {
+    console.log('🖼️ [Enrich Images] No AI image IDs found to fetch')
     return
   }
+  
+  console.log('🖼️ [Enrich Images] Fetching AI images for IDs:', aiImageIds)
   
   // Fetch all AI image URLs in one query
   const { data: aiImages, error } = await supabase
@@ -841,9 +858,11 @@ async function enrichMenuItemsWithImageUrls(menu: Menu): Promise<void> {
     .in('id', aiImageIds)
   
   if (error) {
-    console.error('Error fetching AI image URLs:', error)
+    console.error('🖼️ [Enrich Images] Error fetching AI image URLs:', error)
     return // Non-fatal: continue without images
   }
+  
+  console.log('🖼️ [Enrich Images] Fetched AI images:', aiImages)
   
   // Create a lookup map
   const imageUrlMap = new Map<string, string>()
@@ -858,8 +877,17 @@ async function enrichMenuItemsWithImageUrls(menu: Menu): Promise<void> {
     menu.items.forEach(item => {
       if (item.aiImageId && item.imageSource === 'ai') {
         const url = imageUrlMap.get(item.aiImageId)
+        console.log('🖼️ [Enrich Images] Processing item:', {
+          itemId: item.id,
+          itemName: item.name,
+          aiImageId: item.aiImageId,
+          imageSource: item.imageSource,
+          foundUrl: url,
+          mapSize: imageUrlMap.size
+        })
         if (url) {
           item.customImageUrl = url
+          console.log('🖼️ [Enrich Images] Set customImageUrl for', item.name, ':', url)
         }
       }
     })

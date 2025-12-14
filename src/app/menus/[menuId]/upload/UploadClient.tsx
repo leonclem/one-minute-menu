@@ -84,7 +84,7 @@ export default function UploadClient({ menuId, menuName }: UploadClientProps) {
             Prefer to build everything by hand instead?
           </p>
           <div className="flex justify-center items-center">
-            <Link href={`/dashboard/menus/${menuId}`} aria-label="Enter items manually in the dashboard">
+            <Link href={`/ux/menus/${menuId}/extracted`} aria-label="Enter items manually in the extracted page">
               <UXButton variant="warning" size="md" noShadow className="min-w-[220px] py-2">
                 Enter items manually
               </UXButton>

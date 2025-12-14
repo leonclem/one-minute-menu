@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { UXSection, UXButton, UXCard } from '@/components/ux'
@@ -13,9 +13,19 @@ import type { ExtractionResultV2Type as Stage2ExtractionResult } from '@/lib/ext
 import { ImageUp, Sparkles, QrCode, Pencil } from 'lucide-react'
 import AIImageGeneration from '@/components/AIImageGeneration'
 import BatchAIImageGeneration from '@/components/BatchAIImageGeneration'
-import ImageVariationsManager from '@/components/ImageVariationsManager'
+import ItemManagementModal from '@/components/ItemManagementModal'
 import ZoomableImageModal from '@/components/ZoomableImageModal'
 import ImageUpload from '@/components/ImageUpload'
+import MenuItemActionsModal from '@/components/MenuItemActionsModal'
+import BulkDeleteModal from '@/components/BulkDeleteModal'
+
+// Constants for category management
+const DEFAULT_CATEGORY = 'Uncategorized'
+
+// Helper function to normalize category names
+const normalizeCategory = (category: string | null | undefined): string => {
+  return category && category.trim() ? category.trim() : DEFAULT_CATEGORY
+}
 
 interface UXMenuExtractedClientProps {
   menuId: string
@@ -43,6 +53,25 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoUploadError, setLogoUploadError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  
+  // Category management states
+  const [showAddCategory, setShowAddCategory] = useState(false)
+  const [showAddItem, setShowAddItem] = useState<string | null>(null) // category name
+  const [editingCategory, setEditingCategory] = useState<string | null>(null)
+  const [categoryNameDraft, setCategoryNameDraft] = useState('')
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [emptyCategories, setEmptyCategories] = useState<Set<string>>(() => new Set())
+  const [deletingCategory, setDeletingCategory] = useState<string | null>(null) // category name to delete
+  const [newItemData, setNewItemData] = useState({
+    name: '',
+    description: '',
+    price: '',
+    available: true
+  })
+  
+  // Menu item actions states
+  const [activeMenuItem, setActiveMenuItem] = useState<MenuItem | null>(null)
+  const [showBulkDelete, setShowBulkDelete] = useState(false)
   const router = useRouter()
   const { showToast } = useToast()
   const appliedRef = useRef(false)
@@ -313,14 +342,24 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
 
   const refreshMenu = async () => {
     try {
+      console.log('Refreshing menu data...')
       const resp = await fetch(`/api/menus/${menuId}`)
       if (!resp.ok) return
       const json = await resp.json()
+      console.log('Menu refresh response:', json?.data)
+      console.log('Menu items with images:', json?.data?.items?.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        customImageUrl: item.customImageUrl,
+        imageUrl: item.imageUrl,
+        aiImageId: item.aiImageId,
+        imageSource: item.imageSource
+      })))
       setAuthMenu(json?.data as Menu)
       setThumbnailUrl(json?.data?.imageUrl ?? null)
       setLogoUrl(json?.data?.logoUrl ?? null)
-    } catch {
-      // best-effort refresh
+    } catch (error) {
+      console.error('Error refreshing menu:', error)
     }
   }
 
@@ -356,6 +395,288 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         description: 'Please try again.',
       })
       setEditingMenuName(false)
+    }
+  }
+
+  const handleAddCategory = () => {
+    const normalizedCategoryName = normalizeCategory(newCategoryName)
+    if (normalizedCategoryName === DEFAULT_CATEGORY) {
+      showToast({
+        type: 'error',
+        title: 'Invalid category name',
+        description: 'Please enter a valid category name.',
+      })
+      return
+    }
+
+    try {
+      // Check if category already exists
+      const currentCategories = Object.keys(itemsByCategory || {})
+      const existingEmptyCategories = Array.from(emptyCategories || new Set())
+      
+      if (currentCategories.includes(normalizedCategoryName) || existingEmptyCategories.includes(normalizedCategoryName)) {
+        showToast({
+          type: 'error',
+          title: 'Category exists',
+          description: `Category "${normalizedCategoryName}" already exists.`,
+        })
+        return
+      }
+
+      // Close modal and clear input
+      setNewCategoryName('')
+      setShowAddCategory(false)
+      
+      // Add to empty categories using a simple state update
+      setEmptyCategories(prevSet => {
+        if (prevSet.has(normalizedCategoryName)) return prevSet // Already exists
+        const newSet = new Set(prevSet)
+        newSet.add(normalizedCategoryName)
+        return newSet
+      })
+      
+      // Show success message
+      setTimeout(() => {
+        showToast({
+          type: 'success',
+          title: 'Category created',
+          description: `"${normalizedCategoryName}" category has been created.`,
+        })
+      }, 100)
+      
+    } catch (error) {
+      console.error('Error adding category:', error)
+      showToast({
+        type: 'error',
+        title: 'Failed to create category',
+        description: 'Please try again.',
+      })
+    }
+  }
+
+  const handleEditCategoryName = async (oldName: string, newName: string) => {
+    const normalizedNewName = normalizeCategory(newName)
+    
+    if (normalizedNewName === oldName) {
+      setEditingCategory(null)
+      return
+    }
+
+    // Prevent renaming to the default category if it already exists
+    if (normalizedNewName === DEFAULT_CATEGORY && oldName !== DEFAULT_CATEGORY) {
+      const hasUncategorizedItems = categories.includes(DEFAULT_CATEGORY)
+      if (hasUncategorizedItems) {
+        showToast({
+          type: 'error',
+          title: 'Category name conflict',
+          description: `Cannot rename to "${DEFAULT_CATEGORY}" as it already exists.`,
+        })
+        setEditingCategory(null)
+        return
+      }
+    }
+
+    try {
+      // Update all items in this category to use the new category name
+      // Find items that belong to this category (including those with empty/null categories if oldName is DEFAULT_CATEGORY)
+      const itemsInCategory = authMenu?.items.filter(item => {
+        const normalizedItemCategory = normalizeCategory(item.category)
+        return normalizedItemCategory === oldName
+      }) || []
+      
+      console.log('Renaming category:', { oldName, newName, itemsCount: itemsInCategory.length })
+      
+      if (itemsInCategory.length === 0) {
+        // Handle empty category rename
+        setEmptyCategories(prev => {
+          const newSet = new Set(Array.from(prev))
+          newSet.delete(oldName)
+          newSet.add(normalizeCategory(newName))
+          return newSet
+        })
+        setEditingCategory(null)
+        showToast({
+          type: 'success',
+          title: 'Category renamed',
+          description: `Category renamed from "${oldName}" to "${normalizedNewName}".`,
+        })
+        return
+      }
+      
+      for (const item of itemsInCategory) {
+        console.log('Updating item:', item.id, 'from category:', oldName, 'to:', newName.trim())
+        const response = await fetch(`/api/menus/${menuId}/items/${item.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category: normalizeCategory(newName) }),
+        })
+        
+        if (!response.ok) {
+          const error = await response.json()
+          console.error('API Error:', error)
+          throw new Error(error.error || 'Failed to update category name')
+        }
+        
+        const result = await response.json()
+        console.log('Update result:', result)
+      }
+
+      await refreshMenu()
+      setEditingCategory(null)
+      
+      showToast({
+        type: 'success',
+        title: 'Category renamed',
+        description: `Category renamed from "${oldName}" to "${normalizedNewName}".`,
+      })
+    } catch (error) {
+      console.error('Error renaming category:', error)
+      showToast({
+        type: 'error',
+        title: 'Failed to rename category',
+        description: error instanceof Error ? error.message : 'Please try again.',
+      })
+      setEditingCategory(null)
+    }
+  }
+
+  const handleDeleteCategory = async (categoryName: string) => {
+    if (!categoryName || categoryName === DEFAULT_CATEGORY) {
+      showToast({
+        type: 'error',
+        title: 'Cannot delete category',
+        description: `The "${DEFAULT_CATEGORY}" category cannot be deleted.`,
+      })
+      return
+    }
+
+    try {
+      // Find items that belong to this category
+      const itemsInCategory = authMenu?.items.filter(item => {
+        const normalizedItemCategory = normalizeCategory(item.category)
+        return normalizedItemCategory === categoryName
+      }) || []
+
+      console.log('Deleting category:', { categoryName, itemsCount: itemsInCategory.length })
+
+      if (itemsInCategory.length === 0) {
+        // Handle empty category deletion - just remove from emptyCategories
+        setEmptyCategories(prev => {
+          const newSet = new Set(Array.from(prev))
+          newSet.delete(categoryName)
+          return newSet
+        })
+        setDeletingCategory(null)
+        showToast({
+          type: 'success',
+          title: 'Category deleted',
+          description: `"${categoryName}" category has been deleted.`,
+        })
+        return
+      }
+
+      // Delete all items in this category
+      for (const item of itemsInCategory) {
+        console.log('Deleting item:', item.id, item.name)
+        const response = await fetch(`/api/menus/${menuId}/items/${item.id}`, {
+          method: 'DELETE',
+        })
+        
+        if (!response.ok) {
+          const error = await response.json()
+          console.error('API Error deleting item:', error)
+          throw new Error(error.error || `Failed to delete item "${item.name}"`)
+        }
+      }
+
+      await refreshMenu()
+      setDeletingCategory(null)
+      
+      showToast({
+        type: 'success',
+        title: 'Category deleted',
+        description: `"${categoryName}" and ${itemsInCategory.length} item${itemsInCategory.length === 1 ? '' : 's'} deleted.`,
+      })
+    } catch (error) {
+      console.error('Error deleting category:', error)
+      showToast({
+        type: 'error',
+        title: 'Failed to delete category',
+        description: error instanceof Error ? error.message : 'Please try again.',
+      })
+      setDeletingCategory(null)
+    }
+  }
+
+  const handleAddItemToCategory = async (categoryName: string) => {
+    const { name, description, price, available } = newItemData
+    
+    if (!name.trim()) {
+      showToast({
+        type: 'error',
+        title: 'Item name required',
+        description: 'Please enter a name for the menu item.',
+      })
+      return
+    }
+
+    const priceNum = parseFloat(price)
+    if (isNaN(priceNum) || priceNum < 0) {
+      showToast({
+        type: 'error',
+        title: 'Invalid price',
+        description: 'Please enter a valid price.',
+      })
+      return
+    }
+
+    try {
+      const itemData = {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        price: priceNum,
+        category: normalizeCategory(categoryName),
+        available,
+        imageSource: 'none' as const
+      }
+
+      const response = await fetch(`/api/menus/${menuId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(itemData),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to add item')
+      }
+
+      const result = await response.json()
+      const newItem = result.data?.items?.[result.data.items.length - 1] // Get the newly created item
+      
+      // Remove from empty categories if it was there
+      setEmptyCategories(prev => {
+        const newSet = new Set(Array.from(prev))
+        newSet.delete(categoryName)
+        return newSet
+      })
+      
+      await refreshMenu()
+      setNewItemData({ name: '', description: '', price: '', available: true })
+      setShowAddItem(null)
+      
+      showToast({
+        type: 'success',
+        title: 'Item added',
+        description: `"${name}" has been added to ${categoryName}.`,
+      })
+    } catch (error) {
+      console.error('Error adding item:', error)
+      showToast({
+        type: 'error',
+        title: 'Failed to add item',
+        description: error instanceof Error ? error.message : 'Please try again.',
+      })
     }
   }
 
@@ -444,12 +765,18 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       ? ((menu as any).items as MenuItem[])
       : []
 
-    return items.reduce((acc, item) => {
-      const category = (item as MenuItem).category || 'Uncategorized'
+    const grouped = items.reduce((acc, item) => {
+      // Normalize category: empty string, null, or undefined becomes DEFAULT_CATEGORY
+      const rawCategory = (item as MenuItem).category
+      const category = rawCategory && rawCategory.trim() ? rawCategory.trim() : DEFAULT_CATEGORY
       if (!acc[category]) acc[category] = []
       acc[category].push(item as MenuItem)
       return acc
     }, {} as Record<string, MenuItem[]>)
+
+    // Ensure empty categories are preserved (categories that exist but have no items)
+    // This can happen after deleting all items from a category or creating a new empty category
+    return grouped
   }
 
   // Helper: traverse stage1/stage2 categories into map of category -> items
@@ -485,6 +812,52 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     return map
   }
 
+  // Compute grouping and totals depending on flow
+  const isDemo = !!demoMenu
+  const baseMenu: Menu | null = isDemo ? (demoMenu as Menu) : authMenu
+
+  // Compute categories and totals with useMemo to prevent re-computation
+  const { itemsByCategory, categories, totalItems } = useMemo(() => {
+    try {
+      let itemsGrouped: Record<string, AnyItem[] | MenuItem[]> = {}
+
+      if (isDemo && baseMenu) {
+        itemsGrouped = groupDemoItemsByCategory(baseMenu)
+      } else if (!isDemo) {
+        if (authMenu && Array.isArray((authMenu as any).items) && (authMenu as any).items.length > 0) {
+          itemsGrouped = groupDemoItemsByCategory(authMenu as Menu)
+        } else if (authResult) {
+          // Fallback: derive items directly from extraction result if menu items are not yet available
+          itemsGrouped = groupExtractedItemsByCategory(authResult)
+        }
+      }
+
+      // Combine categories with items and empty categories, preserving a stable order
+      const categoriesWithItems = Object.keys(itemsGrouped || {})
+      const emptyArray = Array.from(emptyCategories)
+      
+      // Create a stable order by sorting category names alphabetically
+      // This ensures consistent ordering across refreshes
+      const allCategoriesSet = new Set([...categoriesWithItems, ...emptyArray])
+      const allCategories = Array.from(allCategoriesSet).sort()
+      
+      const total = categoriesWithItems.reduce((sum, c) => sum + ((itemsGrouped[c] || []).length), 0)
+      
+      return {
+        itemsByCategory: itemsGrouped,
+        categories: allCategories,
+        totalItems: total
+      }
+    } catch (error) {
+      console.error('Error computing categories:', error)
+      return {
+        itemsByCategory: {},
+        categories: [],
+        totalItems: 0
+      }
+    }
+  }, [isDemo, baseMenu, authMenu, authResult, emptyCategories])
+
   // Loading state if neither demo nor authenticated menu are present
   if (!demoMenu && !authMenu) {
     return (
@@ -503,26 +876,6 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       </UXSection>
     )
   }
-
-  // Compute grouping and totals depending on flow
-  const isDemo = !!demoMenu
-  const baseMenu: Menu | null = isDemo ? (demoMenu as Menu) : authMenu
-
-  let itemsByCategory: Record<string, AnyItem[] | MenuItem[]> = {}
-
-  if (isDemo && baseMenu) {
-    itemsByCategory = groupDemoItemsByCategory(baseMenu)
-  } else if (!isDemo) {
-    if (authMenu && Array.isArray((authMenu as any).items) && (authMenu as any).items.length > 0) {
-      itemsByCategory = groupDemoItemsByCategory(authMenu as Menu)
-    } else if (authResult) {
-      // Fallback: derive items directly from extraction result if menu items are not yet available
-      itemsByCategory = groupExtractedItemsByCategory(authResult)
-    }
-  }
-
-  const categories = Object.keys(itemsByCategory)
-  const totalItems = categories.reduce((sum, c) => sum + (itemsByCategory[c]?.length || 0), 0)
   
   // Debug logging
   console.log('[Extracted Page Debug]', {
@@ -530,12 +883,18 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     hasAuthMenu: !!authMenu,
     hasAuthResult: !!authResult,
     authMenuItems: authMenu?.items?.length || 0,
+    authMenuHasCategories: !!(authMenu?.categories?.length),
     categories: categories.length,
     totalItems,
     itemsByCategory: Object.keys(itemsByCategory).map(cat => ({
       category: cat,
       itemCount: itemsByCategory[cat]?.length || 0
-    }))
+    })),
+    authMenuItemsWithCategories: authMenu?.items?.map(item => ({
+      id: item.id,
+      name: item.name,
+      category: item.category
+    })) || []
   })
 
   // Compute an overall confidence indicator based on per-item confidences,
@@ -543,11 +902,14 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   let confidenceTotal = 0
   let confidenceCount = 0
   for (const category of categories) {
-    for (const item of itemsByCategory[category] as AnyItem[] | MenuItem[]) {
-      const conf = (item as any).confidence as number | undefined
-      const value = typeof conf === 'number' && isFinite(conf) ? conf : 0.95
-      confidenceTotal += value
-      confidenceCount += 1
+    const items = itemsByCategory[category] as AnyItem[] | MenuItem[]
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        const conf = (item as any).confidence as number | undefined
+        const value = typeof conf === 'number' && isFinite(conf) ? conf : 0.95
+        confidenceTotal += value
+        confidenceCount += 1
+      }
     }
   }
   const overallConfidence = confidenceCount > 0
@@ -559,6 +921,11 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const makeItemKey = (category: string, item: AnyItem | MenuItem, index: number) => {
     const rawId = (item as any).id as string | undefined
     const name = (item as any).name as string | undefined
+    // For authenticated menus, always use the item ID if available
+    if (!isDemo && rawId) {
+      return rawId
+    }
+    // For demo or items without IDs, use composite key
     return rawId || `${category}:${name || 'item'}:${index}`
   }
 
@@ -809,12 +1176,41 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                         <UXButton
                           variant="warning"
                           size="md"
+                          onClick={() => setShowAddCategory(true)}
+                          disabled={loading}
+                        >
+                          <svg className="hidden sm:inline-block h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          Add Category
+                        </UXButton>
+                        <UXButton
+                          variant="warning"
+                          size="md"
                           onClick={() => router.push(`/dashboard/menus/${menuId}`)}
                           disabled={loading}
                         >
                           <QrCode className="hidden sm:inline-block h-4 w-4 mr-2" />
                           Add QR / manage items
                         </UXButton>
+                      </div>
+                      {selectedCount > 0 && (
+                        <div className="flex justify-end">
+                          <UXButton
+                            variant="outline"
+                            size="md"
+                            onClick={() => setShowBulkDelete(true)}
+                            disabled={loading}
+                            className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                          >
+                            <svg className="hidden sm:inline-block h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete Selected ({selectedCount})
+                          </UXButton>
+                        </div>
+                      )}
+                      <div className="hidden">{/* Close the grid div properly */}
                       </div>
                       {!isDemo && logoUrl && (
                         <div className="mt-3 flex items-center gap-2 text-xs text-ux-text-secondary">
@@ -844,8 +1240,9 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
 
         {/* Extracted Items by Category */}
         <div className="space-y-6">
-          {categories.map((category) => {
-            const items = itemsByCategory[category] as (AnyItem | MenuItem)[]
+          {(categories || []).map((category) => {
+            if (!category) return null
+            const items = (itemsByCategory[category] as (AnyItem | MenuItem)[]) || []
             const selectedInCategory = items.reduce((count, item, index) => {
               const key = makeItemKey(category, item, index)
               return count + (selectedItemKeys.has(key) ? 1 : 0)
@@ -855,10 +1252,68 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
               <UXCard key={category}>
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4 border-b-2 border-ux-border pb-2 gap-3">
-                    <h4 className="text-lg font-semibold text-ux-text">
-                      {category}
-                    </h4>
+                    <div className="flex items-center gap-2 flex-1">
+                      {editingCategory === category && !isDemo ? (
+                        <input
+                          type="text"
+                          className="flex-1 px-2 py-1 text-lg font-semibold bg-ux-background border border-ux-border rounded text-ux-text focus:outline-none focus:ring-2 focus:ring-ux-primary"
+                          value={categoryNameDraft}
+                          onChange={(e) => setCategoryNameDraft(e.target.value)}
+                          onBlur={() => handleEditCategoryName(category, categoryNameDraft)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleEditCategoryName(category, categoryNameDraft)
+                            if (e.key === 'Escape') {
+                              setEditingCategory(null)
+                              setCategoryNameDraft('')
+                            }
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        <div className="group inline-flex items-center gap-2 flex-1">
+                          <h4 className="text-lg font-semibold text-ux-text">
+                            {category}
+                          </h4>
+                          {!isDemo && (
+                            <>
+                              <button
+                                type="button"
+                                className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-ux-text-secondary hover:text-ux-primary p-1 rounded"
+                                onClick={() => {
+                                  setCategoryNameDraft(category)
+                                  setEditingCategory(category)
+                                }}
+                                aria-label="Edit category name"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              {category !== DEFAULT_CATEGORY && (
+                                <button
+                                  type="button"
+                                  className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-ux-text-secondary hover:text-red-600 p-1 rounded"
+                                  onClick={() => setDeletingCategory(category)}
+                                  aria-label="Delete category"
+                                >
+                                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
+                      {!isDemo && (
+                        <button
+                          type="button"
+                          className="px-2 py-1 text-xs font-medium text-ux-primary hover:text-ux-primary/80 hover:bg-ux-primary/10 rounded transition-colors"
+                          onClick={() => setShowAddItem(category)}
+                        >
+                          + Add Item
+                        </button>
+                      )}
                       {items.length > 0 && (
                         <span className="inline-flex items-center px-3 py-1 rounded-lg bg-ux-primary text-white text-xs font-semibold shadow-sm whitespace-nowrap">
                           {items.length} {items.length === 1 ? 'item' : 'items'}
@@ -893,8 +1348,23 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                       </button>
                     </div>
                   </div>
-                  <div className={isCollapsed ? 'hidden' : 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}>
-                    {items.map((item, index) => {
+                  <div className={isCollapsed ? 'hidden' : 'space-y-4'}>
+                    {items.length === 0 ? (
+                      <div className="text-center py-8 text-ux-text-secondary">
+                        <p className="text-sm">No items in this category yet.</p>
+                        {!isDemo && (
+                          <button
+                            type="button"
+                            className="mt-2 px-3 py-1 text-sm font-medium text-ux-primary hover:text-ux-primary/80 hover:bg-ux-primary/10 rounded transition-colors"
+                            onClick={() => setShowAddItem(category)}
+                          >
+                            + Add First Item
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                        {items.map((item, index) => {
                       const key = makeItemKey(category, item, index)
                       const selected = selectedItemKeys.has(key)
                       const raw = item as any
@@ -913,10 +1383,62 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                       return (
                         <div
                           key={key}
-                          className={`relative flex flex-col justify-between gap-3 p-3 bg-ux-background rounded-lg border border-ux-border transition-shadow h-full ${
-                            selected ? 'ring-2 ring-ux-primary/60 shadow-md' : ''
-                          }`}
+                          className={`relative flex flex-col justify-between gap-3 p-3 bg-ux-background rounded-lg border border-ux-border transition-all h-full ${
+                            isDemo ? 'cursor-default' : 'cursor-pointer hover:shadow-md'
+                          } ${selected ? 'ring-2 ring-ux-primary/60 shadow-md' : ''}`}
+                          onClick={() => {
+                            if (isDemo) {
+                              // For demo, show image preview if available
+                              if (hasImage && typeof imageSrc === 'string') {
+                                setPreviewImage({
+                                  url: imageSrc,
+                                  alt: (raw.name as string) || 'Menu item photo',
+                                })
+                              }
+                              return
+                            }
+                            if (!authMenu) return
+                            const menuItem = authMenu.items.find(i => i.id === (raw as MenuItem).id)
+                            if (menuItem) {
+                              // If item is out of stock, show quick toggle option
+                              if (!menuItem.available) {
+                                // Quick toggle to make available
+                                const toggleAvailability = async () => {
+                                  try {
+                                    const response = await fetch(`/api/menus/${menuId}/items/${menuItem.id}`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ available: true }),
+                                    })
+                                    
+                                    if (response.ok) {
+                                      await refreshMenu()
+                                      showToast({
+                                        type: 'success',
+                                        title: 'Item marked available',
+                                        description: `"${menuItem.name}" is now available.`,
+                                      })
+                                    }
+                                  } catch (error) {
+                                    console.error('Error updating availability:', error)
+                                  }
+                                }
+                                toggleAvailability()
+                                return
+                              }
+                              setActiveMenuItem(menuItem)
+                            }
+                          }}
                         >
+                          {/* Out of stock overlay */}
+                          {!isDemo && authMenu && !(raw as MenuItem).available && (
+                            <div className="absolute inset-0 bg-black/60 rounded-lg flex items-center justify-center z-10">
+                              <div className="text-center text-white">
+                                <div className="text-sm font-semibold">Out of Stock</div>
+                                <div className="text-xs opacity-90 mt-1">Tap to make available</div>
+                              </div>
+                            </div>
+                          )}
                           <div className="flex flex-col gap-2">
                             <div className="flex items-start gap-2">
                               <button
@@ -924,8 +1446,11 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                                 role="checkbox"
                                 aria-checked={selected}
                                 aria-label={`Select ${raw.name || 'item'}`}
-                                onClick={() => toggleItemSelected(key, !selected)}
-                                className="mt-1 h-4 w-4 min-h-[1rem] min-w-[1rem] p-0 rounded border border-ux-border flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ux-primary transition-colors shrink-0"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleItemSelected(key, !selected)
+                                }}
+                                className="relative z-20 h-4 w-4 min-h-[1rem] min-w-[1rem] p-0 rounded border border-ux-border flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ux-primary transition-colors shrink-0 mt-0.5"
                                 style={{
                                   backgroundColor: selected ? 'rgb(var(--ux-primary) / 1)' : 'transparent',
                                 }}
@@ -946,81 +1471,68 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                                   </svg>
                                 )}
                               </button>
-                              <h5 className="font-medium text-ux-text leading-tight pt-0.5">
-                                {raw.name}
-                              </h5>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-ux-text leading-tight">
+                                  {raw.name}
+                                </h4>
+                              </div>
                             </div>
                             {raw.description && (
-                              <p className="text-xs text-ux-text-secondary leading-relaxed line-clamp-3">
+                              <p className="text-xs text-ux-text-secondary leading-relaxed line-clamp-3 mt-1 pl-6">
                                 {raw.description}
                               </p>
                             )}
                           </div>
 
                           <div className="flex items-end gap-3 mt-auto pt-2">
-                            <button
-                              type="button"
-                              className="h-16 w-16 rounded-md border border-dashed border-ux-border bg-ux-background-secondary overflow-hidden flex items-center justify-center text-[11px] text-ux-text-secondary focus:outline-none focus:ring-2 focus:ring-ux-primary"
-                              onClick={() => {
-                                if (isDemo) {
-                                  if (hasImage && typeof imageSrc === 'string') {
-                                    setPreviewImage({
-                                      url: imageSrc,
-                                      alt: (raw.name as string) || 'Menu item photo',
-                                    })
-                                  }
-                                  return
-                                }
-                                if (!authMenu) return
-                                const id = (raw as MenuItem).id
-                                if (!id) return
-                                setActiveImageItemId(id)
-                                setActiveImageItemName(raw.name as string | undefined)
-                                setActiveImageMode(hasImage ? 'manage' : 'generate')
-                              }}
-                              aria-label={hasImage ? `Manage photos for ${raw.name}` : `Create photo for ${raw.name}`}
-                              disabled={(!isDemo && !authMenu) || (isDemo && !hasImage)}
-                            >
+                            <div className="h-16 w-16 rounded-md border border-dashed border-ux-border bg-ux-background-secondary overflow-hidden flex items-center justify-center text-[11px] text-ux-text-secondary">
                               {hasImage ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={imageSrc}
-                                alt={raw.name || 'Menu item photo'}
-                                className="h-full w-full object-cover"
-                                loading="lazy"
-                                decoding="async"
-                              />
-                            ) : (
-                              demoGenerating ? (
-                                <div className="flex items-center justify-center w-full h-full bg-ux-background-secondary">
-                                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-ux-primary"></div>
-                                </div>
+                                <button
+                                  type="button"
+                                  className="h-full w-full focus:outline-none focus:ring-2 focus:ring-ux-primary rounded-md"
+                                  aria-label={`Photos for ${raw.name || 'item'}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (isDemo && typeof imageSrc === 'string') {
+                                      setPreviewImage({
+                                        url: imageSrc,
+                                        alt: (raw.name as string) || 'Menu item photo',
+                                      })
+                                    }
+                                  }}
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={imageSrc}
+                                    alt={raw.name || 'Menu item photo'}
+                                    className="h-full w-full object-cover"
+                                    loading="lazy"
+                                    decoding="async"
+                                  />
+                                </button>
                               ) : (
-                                <span>No photo</span>
-                              )
-                            )}
-                            </button>
+                                demoGenerating ? (
+                                  <div className="flex items-center justify-center w-full h-full bg-ux-background-secondary pointer-events-none">
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-ux-primary"></div>
+                                  </div>
+                                ) : (
+                                  <span className="pointer-events-none">No photo</span>
+                                )
+                              )}
+                            </div>
                             <div className="flex-1 flex flex-col items-end text-right gap-1">
                               <div className="font-semibold text-ux-text">
                                 {typeof price === 'number' ? formatCurrency(price) : '—'}
                               </div>
-                              <div className="text-xs text-ux-text-secondary">
-                                {confidence}% confidence
-                              </div>
                             </div>
                           </div>
 
-                          {/* Action row reserved for future wiring (manage photos, stock, delete) */}
-                          {!isDemo && (
-                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-dashed border-ux-border/60 mt-1">
-                              <span className="text-[11px] text-ux-text-secondary">
-                                Bulk tools will use your current selection.
-                              </span>
-                            </div>
-                          )}
+
                         </div>
                       )
                     })}
+                      </div>
+                    )}
                   </div>
                 </div>
               </UXCard>
@@ -1074,14 +1586,27 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         />
       )}
 
-      {/* Single-item image variations manager */}
-      {!isDemo && activeImageItemId && activeImageMode === 'manage' && (
-        <ImageVariationsManager
+      {/* Single-item management modal */}
+      {!isDemo && activeImageItemId && authMenu && (
+        <ItemManagementModal
           itemId={activeImageItemId}
-          itemName={activeImageItemName}
-          onClose={async () => {
-            setActiveImageItemId(null)
+          menuId={menuId}
+          itemName={authMenu.items.find(i => i.id === activeImageItemId)?.name}
+          itemDescription={authMenu.items.find(i => i.id === activeImageItemId)?.description}
+          onImageSelected={async (itemId, imageUrl) => {
+            console.log('🖼️ [Extracted Page] Image selected callback:', { itemId, imageUrl })
+            // Immediately refresh the menu to show the new thumbnail
+            await new Promise(resolve => setTimeout(resolve, 200))
             await refreshMenu()
+            console.log('🖼️ [Extracted Page] Menu refreshed after image selection')
+          }}
+          onClose={async () => {
+            console.log('ItemManagementModal closing, refreshing menu...')
+            setActiveImageItemId(null)
+            // Small delay to ensure database updates and sync are complete
+            await new Promise(resolve => setTimeout(resolve, 500))
+            await refreshMenu()
+            console.log('Menu refreshed after modal close')
           }}
         />
       )}
@@ -1167,6 +1692,303 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                     />
                   </div>
                 )}
+              </div>
+            </UXCard>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Add Category Modal */}
+      {!isDemo && showAddCategory && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md">
+            <UXCard>
+              <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-ux-border/60">
+                <h3 className="text-sm font-semibold text-ux-text">
+                  Add New Category
+                </h3>
+                <button
+                  type="button"
+                  className="h-7 w-7 flex items-center justify-center rounded-full text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-primary transition-colors"
+                  onClick={() => {
+                    setShowAddCategory(false)
+                    setNewCategoryName('')
+                  }}
+                  aria-label="Close add category modal"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-ux-text mb-2">
+                    Category Name
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-ux-border rounded-lg text-ux-text bg-ux-background focus:outline-none focus:ring-2 focus:ring-ux-primary"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleAddCategory()
+                      if (e.key === 'Escape') {
+                        setShowAddCategory(false)
+                        setNewCategoryName('')
+                      }
+                    }}
+                    placeholder="e.g., Appetizers, Main Courses, Desserts"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <UXButton
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowAddCategory(false)
+                      setNewCategoryName('')
+                    }}
+                  >
+                    Cancel
+                  </UXButton>
+                  <UXButton
+                    variant="primary"
+                    size="sm"
+                    onClick={handleAddCategory}
+                    disabled={!newCategoryName.trim()}
+                  >
+                    Add Category
+                  </UXButton>
+                </div>
+              </div>
+            </UXCard>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Delete Category Confirmation Modal */}
+      {!isDemo && deletingCategory && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md">
+            <UXCard>
+              <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-ux-border/60">
+                <h3 className="text-sm font-semibold text-ux-text">
+                  Delete Category
+                </h3>
+                <button
+                  type="button"
+                  className="h-7 w-7 flex items-center justify-center rounded-full text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-primary transition-colors"
+                  onClick={() => setDeletingCategory(null)}
+                  aria-label="Close delete category modal"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                {(() => {
+                  const itemsInCategory = authMenu?.items.filter(item => {
+                    const normalizedItemCategory = normalizeCategory(item.category)
+                    return normalizedItemCategory === deletingCategory
+                  }) || []
+                  
+                  return (
+                    <>
+                      <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium text-red-800">
+                            Warning: This action cannot be undone
+                          </h4>
+                          <p className="text-sm text-red-700 mt-1">
+                            {itemsInCategory.length === 0 
+                              ? `The "${deletingCategory}" category will be permanently deleted.`
+                              : `Deleting "${deletingCategory}" will permanently delete ${itemsInCategory.length} menu item${itemsInCategory.length === 1 ? '' : 's'}:`
+                            }
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {itemsInCategory.length > 0 && (
+                        <div className="max-h-32 overflow-y-auto bg-ux-background-secondary rounded-lg p-3">
+                          <ul className="space-y-1">
+                            {itemsInCategory.map((item, index) => (
+                              <li key={item.id || index} className="text-sm text-ux-text-secondary">
+                                • {item.name}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-2 justify-end">
+                        <UXButton
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeletingCategory(null)}
+                        >
+                          Cancel
+                        </UXButton>
+                        <UXButton
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleDeleteCategory(deletingCategory)}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          Delete {itemsInCategory.length > 0 ? `${itemsInCategory.length} Item${itemsInCategory.length === 1 ? '' : 's'}` : 'Category'}
+                        </UXButton>
+                      </div>
+                    </>
+                  )
+                })()}
+              </div>
+            </UXCard>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Menu Item Actions Modal */}
+      {!isDemo && activeMenuItem && authMenu && (
+        <MenuItemActionsModal
+          item={activeMenuItem}
+          menuId={menuId}
+          availableCategories={categories}
+          onClose={() => setActiveMenuItem(null)}
+          onItemUpdated={async () => {
+            await refreshMenu()
+            setSelectedItemKeys(new Set()) // Clear selections after update
+          }}
+          onManageImages={() => {
+            setActiveImageItemId(activeMenuItem.id)
+            setActiveImageItemName(activeMenuItem.name)
+            setActiveImageMode('manage')
+            setActiveMenuItem(null)
+          }}
+        />
+      )}
+
+      {/* Bulk Delete Modal */}
+      {!isDemo && showBulkDelete && authMenu && (
+        <BulkDeleteModal
+          itemCount={selectedCount}
+          menuId={menuId}
+          selectedItemIds={Array.from(selectedItemKeys).filter(key => {
+            // For authenticated menus, keys should be item IDs directly
+            return authMenu.items.some(item => item.id === key)
+          })}
+          onClose={() => setShowBulkDelete(false)}
+          onItemsDeleted={async () => {
+            await refreshMenu()
+            setSelectedItemKeys(new Set()) // Clear selections after deletion
+          }}
+        />
+      )}
+
+      {/* Add Item Modal */}
+      {!isDemo && showAddItem && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md">
+            <UXCard>
+              <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-ux-border/60">
+                <h3 className="text-sm font-semibold text-ux-text">
+                  Add Item to {showAddItem}
+                </h3>
+                <button
+                  type="button"
+                  className="h-7 w-7 flex items-center justify-center rounded-full text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-primary transition-colors"
+                  onClick={() => {
+                    setShowAddItem(null)
+                    setNewItemData({ name: '', description: '', price: '', available: true })
+                  }}
+                  aria-label="Close add item modal"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-ux-text mb-2">
+                    Item Name *
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-ux-border rounded-lg text-ux-text bg-ux-background focus:outline-none focus:ring-2 focus:ring-ux-primary"
+                    value={newItemData.name}
+                    onChange={(e) => setNewItemData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g., Caesar Salad"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-ux-text mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-ux-border rounded-lg text-ux-text bg-ux-background focus:outline-none focus:ring-2 focus:ring-ux-primary resize-none"
+                    rows={2}
+                    value={newItemData.description}
+                    onChange={(e) => setNewItemData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Brief description of the item"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-ux-text mb-2">
+                    Price *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="w-full px-3 py-2 border border-ux-border rounded-lg text-ux-text bg-ux-background focus:outline-none focus:ring-2 focus:ring-ux-primary"
+                    value={newItemData.price}
+                    onChange={(e) => setNewItemData(prev => ({ ...prev, price: e.target.value }))}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="available"
+                    className="h-4 w-4 text-ux-primary focus:ring-ux-primary border-ux-border rounded"
+                    checked={newItemData.available}
+                    onChange={(e) => setNewItemData(prev => ({ ...prev, available: e.target.checked }))}
+                  />
+                  <label htmlFor="available" className="text-sm text-ux-text">
+                    Available for ordering
+                  </label>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <UXButton
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowAddItem(null)
+                      setNewItemData({ name: '', description: '', price: '', available: true })
+                    }}
+                  >
+                    Cancel
+                  </UXButton>
+                  <UXButton
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleAddItemToCategory(showAddItem)}
+                    disabled={!newItemData.name.trim() || !newItemData.price}
+                  >
+                    Add Item
+                  </UXButton>
+                </div>
               </div>
             </UXCard>
           </div>

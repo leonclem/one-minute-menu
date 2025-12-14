@@ -178,9 +178,24 @@ describe('menu-transformer', () => {
       it('should preserve sortOrder for sections', () => {
         const menu = createTestMenu({
           categories: [
-            createTestCategory({ id: 'cat-1', name: 'Desserts', order: 2 }),
-            createTestCategory({ id: 'cat-2', name: 'Appetizers', order: 0 }),
-            createTestCategory({ id: 'cat-3', name: 'Main Courses', order: 1 })
+            createTestCategory({ 
+              id: 'cat-1', 
+              name: 'Desserts', 
+              order: 2,
+              items: [createTestItem({ id: 'item-1', name: 'Ice Cream' })]
+            }),
+            createTestCategory({ 
+              id: 'cat-2', 
+              name: 'Appetizers', 
+              order: 0,
+              items: [createTestItem({ id: 'item-2', name: 'Soup' })]
+            }),
+            createTestCategory({ 
+              id: 'cat-3', 
+              name: 'Main Courses', 
+              order: 1,
+              items: [createTestItem({ id: 'item-3', name: 'Steak' })]
+            })
           ]
         })
         
@@ -431,8 +446,18 @@ describe('menu-transformer', () => {
       it('should handle categories with missing order field', () => {
         const menu = createTestMenu({
           categories: [
-            createTestCategory({ id: 'cat-1', name: 'Cat 1', order: undefined as any }),
-            createTestCategory({ id: 'cat-2', name: 'Cat 2', order: undefined as any })
+            createTestCategory({ 
+              id: 'cat-1', 
+              name: 'Cat 1', 
+              order: undefined as any,
+              items: [createTestItem({ id: 'item-1', name: 'Item 1' })]
+            }),
+            createTestCategory({ 
+              id: 'cat-2', 
+              name: 'Cat 2', 
+              order: undefined as any,
+              items: [createTestItem({ id: 'item-2', name: 'Item 2' })]
+            })
           ]
         })
         

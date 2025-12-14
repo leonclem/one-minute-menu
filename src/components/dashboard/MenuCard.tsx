@@ -31,22 +31,19 @@ export function MenuCard({ menu }: MenuCardProps) {
 
   // Smart routing logic based on menu state (Requirements: 22.2, 22.3, 22.4, 22.5)
   const getEditUrl = () => {
+    // Check if menu has items or categories (actual menu content) - prioritize this check
+    const hasMenuItems = (menu.items?.length ?? 0) > 0 || (menu.categories?.length ?? 0) > 0
+    
+    if (hasMenuItems) {
+      return `/ux/menus/${menu.id}/extracted`
+    }
+    
+    // If no menu items exist, check if there's a source image to extract from
     if (!menu.imageUrl) {
       return `/menus/${menu.id}/upload`
     }
     
-    // Check if menu has extracted data:
-    // 1. Has items or categories (actual menu content)
-    // 2. Has valid extractionMetadata (indicates extraction was completed)
-    const hasExtractedData = 
-      (menu.items?.length ?? 0) > 0 || 
-      (menu.categories?.length ?? 0) > 0 || 
-      (menu.extractionMetadata?.schemaVersion && menu.extractionMetadata?.extractedAt)
-    
-    if (hasExtractedData) {
-      return `/ux/menus/${menu.id}/extracted`
-    }
-    
+    // Has image but no items - go to extract page
     return `/ux/menus/${menu.id}/extract`
   }
 

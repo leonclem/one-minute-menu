@@ -119,6 +119,15 @@ export function toEngineMenu(menu: Menu): EngineMenu {
   // Extract currency from theme layout or use default
   const currency = menu.theme?.layout?.currency ?? '$'
   
+  console.log('🔄 [Menu Transformer] Input menu:', {
+    id: menu.id,
+    name: menu.name,
+    itemsCount: menu.items?.length || 0,
+    categoriesCount: menu.categories?.length || 0,
+    hasItems: !!(menu.items && menu.items.length > 0),
+    hasCategories: !!(menu.categories && menu.categories.length > 0)
+  })
+  
   // Create a lookup map from flat items array for image data
   // This ensures we use the most up-to-date image information even if categories haven't been synced
   const itemsImageLookup = new Map<string, MenuItem>()
@@ -130,14 +139,42 @@ export function toEngineMenu(menu: Menu): EngineMenu {
     })
   }
   
-  // If menu has categories, use them as sections
-  if (menu.categories && menu.categories.length > 0) {
+  // Determine which data source to use with better fallback logic
+  const hasValidCategories = menu.categories && menu.categories.length > 0 && 
+    menu.categories.some(cat => cat.items && cat.items.length > 0)
+  const hasValidItems = menu.items && menu.items.length > 0
+  
+  // Check for data inconsistency between categories and flat items
+  const categoryItemCount = menu.categories ? 
+    menu.categories.reduce((sum, cat) => sum + (cat.items?.length || 0), 0) : 0
+  const flatItemCount = menu.items?.length || 0
+  
+  const hasDataInconsistency = hasValidCategories && hasValidItems && 
+    categoryItemCount !== flatItemCount
+  
+  console.log('🔄 [Menu Transformer] Data source decision:', {
+    hasValidCategories,
+    hasValidItems,
+    categoryItemCount,
+    flatItemCount,
+    hasDataInconsistency,
+    willUseCategories: hasValidCategories && !hasDataInconsistency,
+    willUseFlatItems: hasValidItems && (!hasValidCategories || hasDataInconsistency)
+  })
+  
+  // If menu has valid categories with items AND no data inconsistency, use them as sections
+  if (hasValidCategories && !hasDataInconsistency) {
+    const sections = menu.categories!
+      .filter(cat => cat.items && cat.items.length > 0) // Only include categories with items
+      .map((cat, idx) => transformCategoryWithImageLookup(cat, idx, itemsImageLookup))
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+    
+    console.log('🔄 [Menu Transformer] Using categories, created sections:', sections.length)
+    
     return {
       id: menu.id,
       name: menu.name,
-      sections: menu.categories
-        .map((cat, idx) => transformCategoryWithImageLookup(cat, idx, itemsImageLookup))
-        .sort((a, b) => a.sortOrder - b.sortOrder),
+      sections,
       metadata: {
         currency,
         venueName: menu.name,
@@ -147,17 +184,60 @@ export function toEngineMenu(menu: Menu): EngineMenu {
     }
   }
   
-  // Otherwise, create implicit "Menu" section from flat items
+  // Otherwise, create sections from flat items grouped by category
+  // This handles both cases: no categories, or categories that are out of sync with items
+  if (hasValidItems) {
+    // Group items by category
+    const categoryGroups = new Map<string, MenuItem[]>()
+    
+    menu.items!.forEach(item => {
+      const categoryName = item.category && item.category.trim() ? item.category.trim() : 'Menu'
+      if (!categoryGroups.has(categoryName)) {
+        categoryGroups.set(categoryName, [])
+      }
+      categoryGroups.get(categoryName)!.push(item)
+    })
+    
+    // Convert groups to sections
+    const sections = Array.from(categoryGroups.entries()).map(([categoryName, items], idx) => {
+      // Use special ID for implicit single section when all items are uncategorized
+      const isImplicitSection = categoryGroups.size === 1 && categoryName === 'Menu'
+      
+      return {
+        id: isImplicitSection ? 'implicit-section' : `section-${idx}`,
+        name: categoryName,
+        sortOrder: idx,
+        items: items
+          .map((item, itemIdx) => transformItem(item, itemIdx))
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+      }
+    })
+    
+    console.log('🔄 [Menu Transformer] Using flat items, created sections:', sections.length)
+    
+    return {
+      id: menu.id,
+      name: menu.name,
+      sections,
+      metadata: {
+        currency,
+        venueName: menu.name,
+        venueAddress: undefined,
+        logoUrl: menu.logoUrl
+      }
+    }
+  }
+  
+  // Fallback: empty menu with single empty section
+  console.warn('🔄 [Menu Transformer] No valid data found, creating empty menu')
   return {
     id: menu.id,
     name: menu.name,
     sections: [{
-      id: 'implicit-section',
+      id: 'empty-section',
       name: 'Menu',
       sortOrder: 0,
-      items: menu.items
-        .map((item, idx) => transformItem(item, idx))
-        .sort((a, b) => a.sortOrder - b.sortOrder)
+      items: []
     }],
     metadata: {
       currency,
