@@ -6,8 +6,7 @@
 
 import fs from 'fs'
 import path from 'path'
-import https from 'https'
-import http from 'http'
+// Removed unused imports - now using fetch() API instead
 import sharp from 'sharp'
 
 /**
@@ -73,7 +72,8 @@ export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<str
           // Compress image if requested
           if (compress) {
             try {
-              imageBuffer = await compressImageBuffer(imageBuffer, 800, 80) as Buffer
+              const compressedBuffer = await compressImageBuffer(imageBuffer, 800, 80)
+              imageBuffer = Buffer.from(compressedBuffer)
               console.log(`[TextureUtils] Compressed local image: ${imagePath} (${originalSize} -> ${imageBuffer.length} bytes, ${((1 - imageBuffer.length / originalSize) * 100).toFixed(1)}% reduction)`)
             } catch (error) {
               console.warn(`[TextureUtils] Compression failed for ${imagePath}, using original:`, error)
@@ -182,14 +182,14 @@ async function compressImageBuffer(buffer: Buffer, maxWidth: number = 800, quali
         })
         .jpeg({ quality, mozjpeg: true })
         .toBuffer()
-      return compressed as Buffer
+      return Buffer.from(compressed)
     }
     
     // Just compress without resizing
     const compressed = await image
       .jpeg({ quality, mozjpeg: true })
       .toBuffer()
-    return compressed as Buffer
+    return Buffer.from(compressed)
   } catch (error) {
     console.warn('[TextureUtils] Image compression failed, using original:', error)
     return buffer
@@ -265,7 +265,8 @@ async function fetchRemoteImageAsDataURL(url: string, timeoutMs: number = 5000, 
     // Compress image if requested (for PDF embedding)
     if (compress) {
       try {
-        buffer = await compressImageBuffer(buffer, 800, 80) as Buffer
+        const compressedBuffer = await compressImageBuffer(buffer, 800, 80)
+        buffer = Buffer.from(compressedBuffer)
         console.log(`[TextureUtils] Compressed image: ${url} (${originalSize} -> ${buffer.length} bytes, ${((1 - buffer.length / originalSize) * 100).toFixed(1)}% reduction)`)
       } catch (error) {
         console.warn(`[TextureUtils] Compression failed for ${url}, using original:`, error)
