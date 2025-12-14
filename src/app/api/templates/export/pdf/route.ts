@@ -122,8 +122,8 @@ async function handleNewTemplateEngine(
       const { convertLayoutImagesToDataURLs } = await import('@/lib/templates/export/texture-utils')
       logger.info('[PDFExporter] Converting images to base64...')
       layout = await convertLayoutImagesToDataURLs(layout, {
-        concurrency: 3,
-        timeout: 15000, // Increased timeout for Supabase storage images
+        concurrency: 2, // Reduced concurrency to avoid overwhelming SSL connections
+        timeout: 8000,  // Reduced timeout to fail faster on SSL issues
         maxImages: 20,
         headers
       })
