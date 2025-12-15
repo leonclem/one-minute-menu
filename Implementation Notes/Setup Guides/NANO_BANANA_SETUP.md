@@ -13,17 +13,12 @@ The following models support image generation:
    - Method: `generateContent`
    - Status: ✅ Available (requires quota)
 
-2. **gemini-2.5-flash-image-preview**
-   - Display Name: "Nano Banana"  
-   - Method: `generateContent`
-   - Status: ✅ Available (requires quota)
-
-3. **imagen-3.0-generate-002**
+2. **imagen-3.0-generate-002**
    - Display Name: "Imagen 3.0"
    - Method: `predict`
    - Status: ⚠️ Requires billing enabled
 
-4. **imagen-4.0-generate-preview-06-06**
+3. **imagen-4.0-generate-preview-06-06**
    - Display Name: "Imagen 4 (Preview)"
    - Method: `predict`
    - Status: ⚠️ Requires billing enabled

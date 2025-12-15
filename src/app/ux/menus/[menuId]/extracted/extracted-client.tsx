@@ -1498,6 +1498,38 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                                         url: imageSrc,
                                         alt: (raw.name as string) || 'Menu item photo',
                                       })
+                                    } else if (!isDemo && authMenu) {
+                                      // For non-demo menus, clicking the thumbnail should also open the context menu
+                                      const menuItem = authMenu.items.find(i => i.id === (raw as MenuItem).id)
+                                      if (menuItem) {
+                                        // If item is out of stock, show quick toggle option
+                                        if (!menuItem.available) {
+                                          // Quick toggle to make available
+                                          const toggleAvailability = async () => {
+                                            try {
+                                              const response = await fetch(`/api/menus/${menuId}/items/${menuItem.id}`, {
+                                                method: 'PUT',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ available: true }),
+                                              })
+                                              
+                                              if (response.ok) {
+                                                await refreshMenu()
+                                                showToast({
+                                                  type: 'success',
+                                                  title: 'Item marked available',
+                                                  description: `"${menuItem.name}" is now available.`,
+                                                })
+                                              }
+                                            } catch (error) {
+                                              console.error('Error updating availability:', error)
+                                            }
+                                          }
+                                          toggleAvailability()
+                                          return
+                                        }
+                                        setActiveMenuItem(menuItem)
+                                      }
                                     }
                                   }}
                                 >

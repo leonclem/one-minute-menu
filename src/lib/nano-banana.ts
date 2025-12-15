@@ -1,5 +1,7 @@
 import { fetchJsonWithRetry, HttpError } from './retry'
 import type { NanoBananaParams, GenerationError } from '@/types'
+import { logger } from '@/lib/logger'
+import { createHash } from 'crypto'
 
 // Nano Banana API response types
 interface NanoBananaResponse {
@@ -132,12 +134,60 @@ export class NanoBananaClient {
     this.validateParams(requestParams)
 
     try {
-      console.log('🎨 [Nano Banana] Generating image with prompt:', requestParams.prompt.substring(0, 100))
+      const promptPreview = requestParams.prompt.substring(0, 120)
+      const promptHash = createHash('sha256').update(requestParams.prompt).digest('hex')
+      const hasRef = !!(requestParams.reference_images && requestParams.reference_images.length > 0)
+      const refMeta = hasRef
+        ? requestParams.reference_images!.map((img) => ({ mimeType: img.mimeType, bytes: Buffer.from(img.data, 'base64').length }))
+        : []
+
+      // Important: never log reference image bytes; prompts can be logged for learning.
+      logger.info('🎨 [Nano Banana] Outbound request', {
+        model: 'gemini-2.5-flash-image',
+        candidateCount: Math.min(Math.max(requestParams.number_of_images || 1, 1), 4),
+        aspectRatio: requestParams.aspect_ratio,
+        hasReferenceImages: hasRef,
+        referenceMode: requestParams.reference_mode || null,
+        referenceImages: refMeta,
+        promptHash,
+        promptPreview,
+        promptLength: requestParams.prompt.length,
+      })
       
       // Translate our simplified params into Gemini generateContent request
       const candidateCount = Math.min(Math.max(requestParams.number_of_images || 1, 1), 4)
 
       let promptText = requestParams.prompt
+
+      // If reference images are provided, guide the model with an explicit instruction.
+      // (This is best-effort prompting; the actual image conditioning is via inlineData parts below.)
+      if (requestParams.reference_images && requestParams.reference_images.length > 0) {
+        const mode = requestParams.reference_mode || 'style_match'
+        const roleLines: string[] = []
+        for (let i = 0; i < requestParams.reference_images.length; i++) {
+          const r = requestParams.reference_images[i]
+          const role = r.role || 'other'
+          roleLines.push(`Reference image ${i + 1}: role=${role}`)
+        }
+
+        if (mode === 'composite') {
+          promptText =
+            `Use the provided reference images as context to COMPOSE a new image.\n` +
+            (roleLines.length ? `${roleLines.join('\n')}\n` : '') +
+            `- If a reference image is role=dish, use it as the primary dish/food.\n` +
+            `- If a reference image is role=scene, use it as the table/background context.\n` +
+            `- If a reference image is role=style, match its lighting/color grading.\n` +
+            `Keep the reference scene/style consistent, and integrate the described food naturally.\n\n` +
+            promptText
+        } else {
+          promptText =
+            `Use the provided reference images as STYLE references.\n` +
+            (roleLines.length ? `${roleLines.join('\n')}\n` : '') +
+            `Match lighting, color grading, lens/photography style, and overall aesthetic.\n\n` +
+            promptText
+        }
+      }
+
       if (requestParams.negative_prompt) {
         promptText += `\nExclude: ${requestParams.negative_prompt}`
       }
@@ -151,20 +201,39 @@ export class NanoBananaClient {
         promptText += `\nContent safety: ${requestParams.safety_filter_level}`
       }
 
+      const parts: any[] = [{ text: `Generate an image of: ${promptText}` }]
+
+      // Add reference image(s) as inlineData parts (base64, no data URL prefix).
+      if (requestParams.reference_images && requestParams.reference_images.length > 0) {
+        for (const img of requestParams.reference_images.slice(0, 3)) {
+          parts.push({
+            inlineData: {
+              mimeType: img.mimeType,
+              data: img.data,
+            },
+          })
+        }
+      }
+
       const requestBody: any = {
-        contents: [{
-          role: 'user',
-          parts: [{ text: `Generate an image of: ${promptText}` }]
-        }],
+        contents: [
+          {
+            role: 'user',
+            parts,
+          },
+        ],
         generationConfig: {
           responseModalities: ['image'],
-          candidateCount
-        }
+          candidateCount,
+        },
       }
 
       // Build URL with API key as query param per Gemini requirements
       const url = new URL(this.baseUrl)
       url.searchParams.set('key', this.apiKey)
+
+      // Log the exact URL being called for debugging
+      console.log('🔍 [Nano Banana] Making request to:', url.toString().replace(/key=[^&]+/, 'key=***'))
 
       // Make the API request
       const apiResponse = await fetchJsonWithRetry<any>(
@@ -204,6 +273,12 @@ export class NanoBananaClient {
           'NO_IMAGES_RETURNED'
         )
       }
+
+      logger.info('✅ [Nano Banana] Response received', {
+        modelVersion: apiResponse?.metadata?.model_version || 'gemini-2.5-flash-image',
+        imageCount: images.length,
+        processingTimeMs: apiResponse?.metadata?.processing_time_ms || 0,
+      })
 
       return {
         images,
@@ -283,6 +358,32 @@ export class NanoBananaClient {
         `Invalid person generation setting. Must be one of: ${validPersonGeneration.join(', ')}`,
         'INVALID_PARAMS'
       )
+    }
+
+    if (params.reference_images && params.reference_images.length > 0) {
+      if (params.reference_images.length > 3) {
+        throw new NanoBananaError('Too many reference images (max 3)', 'INVALID_PARAMS')
+      }
+      for (const img of params.reference_images) {
+        const validTypes = ['image/png', 'image/jpeg', 'image/webp']
+        if (!validTypes.includes(img.mimeType)) {
+          throw new NanoBananaError(
+            `Invalid reference image type. Must be one of: ${validTypes.join(', ')}`,
+            'INVALID_PARAMS',
+          )
+        }
+        if (!img.data || img.data.trim().length === 0) {
+          throw new NanoBananaError('Reference image data is required', 'INVALID_PARAMS')
+        }
+      }
+
+      const validModes = ['style_match', 'composite']
+      if (params.reference_mode && !validModes.includes(params.reference_mode)) {
+        throw new NanoBananaError(
+          `Invalid reference mode. Must be one of: ${validModes.join(', ')}`,
+          'INVALID_PARAMS',
+        )
+      }
     }
   }
 

@@ -490,6 +490,24 @@ export interface NanoBananaParams {
   number_of_images?: number
   safety_filter_level?: 'block_none' | 'block_some' | 'block_most'
   person_generation?: 'allow' | 'dont_allow'
+  /**
+   * Optional reference image(s) for style transfer / composition (text+image -> image).
+   * `data` must be base64 (no data URL prefix).
+   */
+  reference_images?: Array<{
+    mimeType: 'image/png' | 'image/jpeg' | 'image/webp'
+    data: string
+    /**
+     * Optional app-level hint describing what this reference image represents.
+     * Used only for prompting (e.g., "dish", "scene", "style").
+     */
+    role?: 'dish' | 'scene' | 'style' | 'other'
+  }>
+  /**
+   * Optional hint to guide prompting for reference image workflows.
+   * This is an application-level concept (not a strict model parameter).
+   */
+  reference_mode?: 'style_match' | 'composite'
 }
 
 export interface GenerationQuota {

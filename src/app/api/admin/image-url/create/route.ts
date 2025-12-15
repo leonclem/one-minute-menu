@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminApi } from '@/lib/admin-api-auth'
 
 // Import shared storage (in production, use Redis or similar)
 declare global {
@@ -10,6 +11,9 @@ globalThis.__IMAGE_STORE__ = imageStore;
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await requireAdminApi()
+    if (!admin.ok) return admin.response
+
     const { imageData } = await request.json();
     
     if (!imageData) {

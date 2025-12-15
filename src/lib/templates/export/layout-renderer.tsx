@@ -343,7 +343,7 @@ function PageRenderer({
   const gridTemplateRows = `repeat(${maxRow}, auto)`
   
   // Get page size
-  const pageSize = PAGE_SIZES[layout.orientation]
+  const pageSize = PAGE_SIZES[layout.orientation as keyof typeof PAGE_SIZES] || PAGE_SIZES.A4_PORTRAIT
   
   return (
     <div 
@@ -351,7 +351,8 @@ function PageRenderer({
       style={{
         width: fixedPageSize ? pageSize.width : '100%',
         height: fixedPageSize ? pageSize.height : 'auto',
-        minHeight: fixedPageSize ? undefined : pageSize.height, // Ensure minimal height matches page size in fluid mode
+        // Ensure minimal height matches page size in fluid mode (guard if orientation is missing/invalid)
+        minHeight: fixedPageSize ? undefined : (pageSize?.height || undefined),
         padding: '20mm',
         pageBreakAfter: 'always',
         position: 'relative',

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminApi } from '@/lib/admin-api-auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await requireAdminApi()
+    if (!admin.ok) return admin.response
+
     const { prompt, aspectRatio = '1:1', imageSize = '2K', numberOfImages = 1 } = await request.json();
 
     if (!prompt) {

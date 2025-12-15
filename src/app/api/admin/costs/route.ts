@@ -13,33 +13,14 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createMetricsCollector } from '@/lib/extraction/metrics-collector'
 import { createCostMonitor } from '@/lib/extraction/cost-monitor'
 import { logger } from '@/lib/logger'
+import { requireAdminApi } from '@/lib/admin-api-auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const admin = await requireAdminApi()
+    if (!admin.ok) return admin.response
+
     const supabase = createServerSupabaseClient()
-
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    // Check admin role
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      )
-    }
 
     // Create services
     const metricsCollector = createMetricsCollector(supabase)
@@ -67,30 +48,10 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const admin = await requireAdminApi()
+    if (!admin.ok) return admin.response
+
     const supabase = createServerSupabaseClient()
-
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    // Check admin role
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      )
-    }
 
     // Parse request body
     const body = await request.json()

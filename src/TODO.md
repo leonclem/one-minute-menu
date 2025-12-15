@@ -4,12 +4,12 @@
 - [x] Remove "95% confidence" and "Bulk tools will use your current selection." from menu items
 
 ### Menu editing
-- [x] *NEXT* Edit category title
+- [x] Edit category title
 - [x] Add category
 - [x] Delete category
 - [ ] Ability to delete logo from /extracted page
 
-### *NEXT* Menu item Management
+### Menu item Management
 - [x] Pencil icon rather than click image
 - [x] Delete menu item
 - [x] Mark item as out of stock
@@ -17,7 +17,7 @@
 - [x] Send Menu item to other category
 
 ## Image Generation Test Harness
-- [ ] *NEXT* Update from Gemini 2.5 to 3
+- [ ] *NEXT* Update from Gemini 2.5 Flash Image Preview to Gemini 2.5 Flash Image
 - [ ] Reference image
 - [ ] Test with OMG Donuts
 
@@ -52,13 +52,8 @@
 - [ ] Throttles
 - [ ] Logging
 - [ ] Admin dashboard enhancements
+- [ ] Understand what new sign-ups have access to (i.e. Generation limits, Admin dashboard, etc.)
 - [ ] Back up image generator model (Seedream, Sora)
-
-## Deployment
-- [ ] Purchase domain
-- [ ] Determine UAT requirements
-- [ ] Determine if database backup strategy exists (Supabase / Vercel)
-- [ ] Upgrade Vercel package
 
 ## Back office
 - [ ] *NEXT* Complete bank account application
@@ -70,6 +65,12 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> GO TO PILOT >>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+## Deployment
+- [x] Purchase domain
+- [ ] Determine UAT requirements
+- [ ] Determine if database backup strategy exists (Supabase / Vercel)
+- [ ] Upgrade Vercel package
 
 ## Email templates
 - [ ] Determine and document all emails sent
@@ -104,6 +105,8 @@
 - [ ] QA
 
 ## Unclassified
+- [ ] Check Railway implementation status
+- [ ] Check Railway billing status
 - [ ] Integrate Posthog
 - [ ] Crop for large menus text extraction
 - [ ] Determine UAT requirements

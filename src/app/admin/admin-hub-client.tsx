@@ -66,6 +66,12 @@ export function AdminHubClient() {
                 Imagen 4.0 Generator
               </a>
               <a
+                href="/admin/gemini-image-generator"
+                className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Gemini 2.5 Flash Image
+              </a>
+              <a
                 href="/dashboard"
                 className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
               >

@@ -22,7 +22,6 @@ const requestBody = {
 
 const models = [
   'gemini-2.5-flash-image',
-  'gemini-2.5-flash-image-preview',
   'gemini-2.0-flash-exp-image-generation'
 ];
 
