@@ -316,7 +316,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
   orientation: 'A4_PORTRAIT',
   layout: {
     baseCols: 4,
-    baseRows: 5,
+    baseRows: 10,
     tiles: [
       // Logo centered at top
       {
@@ -325,7 +325,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         col: 0,
         row: 0,
         colSpan: 4,
-        rowSpan: 1,
+        rowSpan: 2,
         options: { align: 'centre' }
       },
       // Title below logo
@@ -333,7 +333,22 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'title-1',
         type: 'TITLE',
         col: 0,
-        row: 1,
+        row: 2,
+        colSpan: 4,
+        rowSpan: 1,
+        options: { 
+          align: 'centre',
+          visibility: {
+            showOn: ['FIRST', 'SINGLE']
+          }
+        }
+      },
+      // Section Header (Dynamic)
+      {
+        id: 'section-header-base',
+        type: 'SECTION_HEADER',
+        col: 0,
+        row: 3,
         colSpan: 4,
         rowSpan: 1,
         options: { align: 'centre' }
@@ -343,7 +358,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-1',
         type: 'ITEM',
         col: 0,
-        row: 2,
+        row: 4,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -352,7 +367,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-2',
         type: 'ITEM',
         col: 1,
-        row: 2,
+        row: 4,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -361,7 +376,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-3',
         type: 'ITEM',
         col: 2,
-        row: 2,
+        row: 4,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -370,7 +385,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-4',
         type: 'ITEM',
         col: 3,
-        row: 2,
+        row: 4,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -380,7 +395,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-5',
         type: 'ITEM',
         col: 0,
-        row: 3,
+        row: 5,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -389,7 +404,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-6',
         type: 'ITEM',
         col: 1,
-        row: 3,
+        row: 5,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -398,7 +413,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-7',
         type: 'ITEM',
         col: 2,
-        row: 3,
+        row: 5,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -407,7 +422,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-8',
         type: 'ITEM',
         col: 3,
-        row: 3,
+        row: 5,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -417,7 +432,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-9',
         type: 'ITEM',
         col: 0,
-        row: 4,
+        row: 6,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -426,7 +441,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-10',
         type: 'ITEM',
         col: 1,
-        row: 4,
+        row: 6,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -435,7 +450,7 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-11',
         type: 'ITEM',
         col: 2,
-        row: 4,
+        row: 6,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
@@ -444,18 +459,41 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
         id: 'item-12',
         type: 'ITEM',
         col: 3,
-        row: 4,
+        row: 6,
         colSpan: 1,
         rowSpan: 1,
         options: { showImage: true, showDescription: true }
+      },
+      // Footer at bottom
+      {
+        id: 'footer-1',
+        type: 'TEXT_BLOCK',
+        col: 0,
+        row: 9,
+        colSpan: 4,
+        rowSpan: 1,
+        options: { 
+          align: 'centre',
+          visibility: {
+            showOn: ['FINAL', 'SINGLE']
+          }
+        }
       }
     ],
     repeatPattern: {
-      fromRow: 5,
-      rowsPerRepeat: 1,
-      repeatItemTileIds: ['item-13', 'item-14', 'item-15', 'item-16'],
+      fromRow: 12, // Offset 2: Physical Row 2 for header, 3 for items
+      rowsPerRepeat: 10, // Match baseRows for consistent stride
+      repeatItemTileIds: [
+        'item-repeat-1', 'item-repeat-2', 'item-repeat-3', 'item-repeat-4',
+        'item-repeat-5', 'item-repeat-6', 'item-repeat-7', 'item-repeat-8',
+        'item-repeat-9', 'item-repeat-10', 'item-repeat-11', 'item-repeat-12',
+        'item-repeat-13', 'item-repeat-14', 'item-repeat-15', 'item-repeat-16',
+        'item-repeat-17', 'item-repeat-18', 'item-repeat-19', 'item-repeat-20',
+        'item-repeat-21', 'item-repeat-22', 'item-repeat-23', 'item-repeat-24'
+      ],
+      repeatSectionHeaderTileId: 'section-header-repeat',
       maxRepeats: 10,
-      newPagePerRepeat: false
+      newPagePerRepeat: true
     }
   },
   constraints: {
@@ -478,7 +516,8 @@ export const CLASSIC_GRID_CARDS: MenuTemplate = {
     allowImageToggle: true
   },
   style: ELEGANT_DARK_STYLE,
-  version: '1.0.0'
+  balancingStrategy: 'center',
+  version: '1.2.0'
 }
 
 /**

@@ -27,7 +27,8 @@ import type {
   EngineItem,
   MenuTemplate,
   MenuTemplateSelection,
-  CompatibilityResult
+  CompatibilityResult,
+  PageType
 } from './engine-types'
 import { EngineMenuSchema } from './engine-types'
 import { TEMPLATE_ENGINE_CONFIG } from './engine-config'
@@ -195,9 +196,28 @@ function evaluateConstraints(
 interface CapacityInfo {
   baseItemTileCount: number
   repeatItemTileCount: number
+  capacityFirstPage: number
+  capacityContinuationPage: number
   totalCapacity: number
   requiredRepeats: number
   totalPages: number
+}
+
+/**
+ * Check if a tile is visible on a specific page type
+ */
+function isTileVisible(tileDef: TileDefinition, pageType: PageType): boolean {
+  if (!tileDef.options?.visibility) return true
+  
+  const { showOn, hideOn } = tileDef.options.visibility
+  
+  // strict allow list
+  if (showOn && !showOn.includes(pageType)) return false
+  
+  // strict deny list
+  if (hideOn && hideOn.includes(pageType)) return false
+  
+  return true
 }
 
 function calculateCapacity(
@@ -210,39 +230,64 @@ function calculateCapacity(
     0
   )
   
-  // Count ITEM/ITEM_TEXT_ONLY tiles in base layout
+  // Count ITEM/ITEM_TEXT_ONLY tiles in base layout (First/Single Page)
+  // These are tiles that are effectively visible on the first page
   const baseItemTiles = template.layout.tiles.filter(
-    tile => tile.type === 'ITEM' || tile.type === 'ITEM_TEXT_ONLY'
+    tile => (tile.type === 'ITEM' || tile.type === 'ITEM_TEXT_ONLY') && 
+            isTileVisible(tile, 'FIRST') // Check against 'FIRST' for base capacity
   )
   const baseItemTileCount = baseItemTiles.length
   
   // Count ITEM tiles in repeat pattern
+  // Repeat items are typically for continuation pages
   const repeatItemTileCount = template.layout.repeatPattern
     ? template.layout.repeatPattern.repeatItemTileIds.length
     : 0
   
+  const capacityFirstPage = baseItemTileCount
+  const capacityContinuationPage = repeatItemTileCount
+  
   // Calculate required repeats
+  // If we fit in first page, repeats = 0
+  // Else, we fill first page, then fill continuation pages
   let requiredRepeats = 0
-  if (repeatItemTileCount > 0 && totalItems > baseItemTileCount) {
-    const remainingItems = totalItems - baseItemTileCount
-    requiredRepeats = Math.ceil(remainingItems / repeatItemTileCount)
-    
-    // Enforce maxRepeats limit
-    const maxRepeats = template.layout.repeatPattern?.maxRepeats || 
-                       TEMPLATE_ENGINE_CONFIG.maxRepeatsDefault
-    requiredRepeats = Math.min(requiredRepeats, maxRepeats)
+  if (totalItems > capacityFirstPage) {
+    if (capacityContinuationPage > 0) {
+      const remainingItems = totalItems - capacityFirstPage
+      requiredRepeats = Math.ceil(remainingItems / capacityContinuationPage)
+      
+      // Enforce maxRepeats limit
+      const maxRepeats = template.layout.repeatPattern?.maxRepeats || 
+                         TEMPLATE_ENGINE_CONFIG.maxRepeatsDefault
+      requiredRepeats = Math.min(requiredRepeats, maxRepeats)
+    } else {
+      // No capacity for extra items? 
+      // Current behavior: they just don't get rendered if we have no repeats
+      // or if logic falls back to extending without repeats?
+      // Assuming 0 if no continuation capacity
+      requiredRepeats = 0
+    }
   }
   
   // Calculate total capacity
-  const totalCapacity = baseItemTileCount + (requiredRepeats * repeatItemTileCount)
+  const totalCapacity = capacityFirstPage + (requiredRepeats * capacityContinuationPage)
   
   // Calculate total pages
+  // If newPagePerRepeat is true, each repeat is a page + the first page
+  // If false, it's effectively 1 long page (or just 1 page if we treat it as SINGLE)
+  // For the purpose of "PageType", if newPagePerRepeat is false, we might still want to
+  // know if we are in "Single" or "Extended" mode.
+  // But strictly, totalPages for pagination:
   const newPagePerRepeat = template.layout.repeatPattern?.newPagePerRepeat || false
-  const totalPages = newPagePerRepeat ? requiredRepeats + 1 : 1
+  const totalPages = newPagePerRepeat 
+    ? (requiredRepeats > 0 ? requiredRepeats + 1 : 1) 
+    : 1
   
   return {
     baseItemTileCount,
     repeatItemTileCount,
+    capacityFirstPage,
+    capacityContinuationPage,
     totalCapacity,
     requiredRepeats,
     totalPages
@@ -269,8 +314,10 @@ function assignItemsToTiles(
   const textOnly = selection?.configuration?.textOnly || false
   
   // Get all ITEM/ITEM_TEXT_ONLY tiles from base layout
+  // Filter by visibility (must be visible on FIRST page to be considered a base slot)
   const baseItemTiles = template.layout.tiles.filter(
-    tile => tile.type === 'ITEM' || tile.type === 'ITEM_TEXT_ONLY'
+    tile => (tile.type === 'ITEM' || tile.type === 'ITEM_TEXT_ONLY') &&
+            isTileVisible(tile, 'FIRST')
   ).sort((a, b) => {
     // Sort by row first, then column (reading order)
     if (a.row !== b.row) return a.row - b.row
@@ -339,7 +386,9 @@ function assignItemsWithSectionSlots(
     
     // Add section header if defined
     const sectionHeaderTile = template.layout.tiles.find(
-      tile => tile.type === 'SECTION_HEADER' && tile.sectionSlot === sectionIndex
+      tile => tile.type === 'SECTION_HEADER' && 
+              tile.sectionSlot === sectionIndex &&
+              isTileVisible(tile, 'FIRST')
     )
     if (sectionHeaderTile) {
       tiles.push({
@@ -359,7 +408,7 @@ function assignItemsWithSectionSlots(
     section.items.forEach((item, itemIndex) => {
       if (itemIndex < slotTiles.length) {
         const tileDef = slotTiles[itemIndex]
-        tiles.push(createMenuItemTile(tileDef, item, textOnly))
+        tiles.push(createMenuItemTile(tileDef, item, section.id, textOnly))
       }
     })
   })
@@ -367,6 +416,9 @@ function assignItemsWithSectionSlots(
   return tiles
 }
 
+/**
+ * Assign items for templates without section slots (flat assignment)
+ */
 /**
  * Assign items for templates without section slots (flat assignment)
  */
@@ -379,127 +431,141 @@ function assignItemsFlat(
   capacity: CapacityInfo
 ): TileContentInstance[] {
   const tiles: TileContentInstance[] = []
+  const baseCols = template.layout.baseCols
+  const repeatPattern = template.layout.repeatPattern
+  const baseRows = template.layout.baseRows
+  const rowsPerRepeat = repeatPattern?.rowsPerRepeat ?? baseRows
   
-  // Flatten all items from all sections
-  const allItems: Array<{ section: typeof menu.sections[0], item: typeof menu.sections[0]['items'][0] }> = []
+  // Find template for headers and items
+  const headerTemplate = template.layout.tiles.find(t => t.type === 'SECTION_HEADER' && isTileVisible(t, 'FIRST'))
+  const firstItemTile = baseItemTiles[0]
+  if (!firstItemTile) return []
+
+  // Check if template has a footer that might occupy the bottom row
+  const hasFooter = template.layout.tiles.some(t => t.type === 'TEXT_BLOCK' && t.id.includes('footer'))
+
+  let currentPageIndex = 0
+  let localCol = 0
+  // Start items/headers at the template's defined header row, or where items start
+  let localRow = headerTemplate ? headerTemplate.row : firstItemTile.row
+
+  // Helper to calculate virtual row
+  const getVirtualRow = (pIdx: number, lRow: number) => {
+    if (pIdx === 0) return lRow
+    return baseRows + (pIdx - 1) * rowsPerRepeat + lRow
+  }
+
+  // Calculate the vertical offset for continuation pages
+  const repeatStartOffset = (repeatPattern?.fromRow ?? baseRows) - baseRows
+
+  // Helper to advance to next page
+  const advancePage = () => {
+    currentPageIndex++
+    localCol = 0
+    localRow = 0 // Continuation pages start items at local row 0
+  }
+
+  // Track the absolute last virtual row used to prevent any overlaps
+  let lastUsedVirtualRow = -1
+
+  // Iterate by section to ensure all categories are captured in order
   menu.sections.forEach(section => {
+    // 1. Move to next row if we were mid-row from previous section
+    if (localCol > 0) {
+      localCol = 0
+      localRow++
+    }
+
+    // 2. Check for page overflow before placing header
+    // Continuation pages have less available rows due to the repeatStartOffset (cloned logo space)
+    // and we reserve the last row for the footer if it exists.
+    const rowLimit = (currentPageIndex === 0) 
+      ? baseRows 
+      : (baseRows - repeatStartOffset)
+    
+    // Reserve 1 row for footer at the bottom of the page budget
+    const effectiveRowLimit = hasFooter ? rowLimit - 1 : rowLimit
+
+    if (localRow >= effectiveRowLimit) { 
+      advancePage()
+    }
+
+    // 3. Place Section Header
+    if (headerTemplate) {
+      const vRow = getVirtualRow(currentPageIndex, localRow)
+      
+      // Safety check: ensure we don't overlap with previous tiles
+      if (vRow <= lastUsedVirtualRow) {
+        localRow++
+        // Re-check overflow after increment
+        const currentLimit = (currentPageIndex === 0) ? baseRows : (baseRows - repeatStartOffset)
+        const currentEffectiveLimit = hasFooter ? currentLimit - 1 : currentLimit
+        if (localRow >= currentEffectiveLimit) {
+          advancePage()
+        }
+      }
+
+      const finalVRow = getVirtualRow(currentPageIndex, localRow)
+      tiles.push({
+        id: `${headerTemplate.id}-${section.id}-p${currentPageIndex}`,
+        type: 'SECTION_HEADER',
+        col: 0,
+        row: finalVRow,
+        colSpan: baseCols,
+        rowSpan: 1,
+        label: section.name,
+        sectionId: section.id,
+        options: headerTemplate.options
+      })
+      lastUsedVirtualRow = finalVRow
+      localRow++
+    }
+
+    // 4. Place Items
     section.items.forEach(item => {
-      allItems.push({ section, item })
+      // Check for page overflow before placing item
+      const currentLimit = (currentPageIndex === 0) ? baseRows : (baseRows - repeatStartOffset)
+      const currentEffectiveLimit = hasFooter ? currentLimit - 1 : currentLimit
+      
+      if (localRow >= currentEffectiveLimit) {
+        advancePage()
+        // If we overflow mid-section, repeat the header
+        if (headerTemplate) {
+          const vRow = getVirtualRow(currentPageIndex, localRow)
+          tiles.push({
+            id: `${headerTemplate.id}-${section.id}-cont-p${currentPageIndex}`,
+            type: 'SECTION_HEADER',
+            col: 0,
+            row: vRow,
+            colSpan: baseCols,
+            rowSpan: 1,
+            label: section.name, 
+            sectionId: section.id,
+            options: headerTemplate.options
+          })
+          lastUsedVirtualRow = vRow
+          localRow++
+        }
+      }
+
+      const itemVRow = getVirtualRow(currentPageIndex, localRow)
+      tiles.push({
+        ...createMenuItemTile(firstItemTile, item, section.id, textOnly),
+        col: localCol,
+        row: itemVRow,
+        colSpan: firstItemTile.colSpan,
+        rowSpan: firstItemTile.rowSpan
+      })
+      lastUsedVirtualRow = Math.max(lastUsedVirtualRow, itemVRow)
+
+      localCol += firstItemTile.colSpan
+      if (localCol >= baseCols) {
+        localCol = 0
+        localRow += firstItemTile.rowSpan
+      }
     })
   })
-  
-  // Track current section for header insertion
-  let currentSectionId: string | null = null
-  let tileIndex = 0
-  
-  // Assign items to base tiles
-  for (let i = 0; i < allItems.length && tileIndex < baseItemTiles.length; i++) {
-    const { section, item } = allItems[i]
-    
-    // Insert section header if we're starting a new section
-    if (section.id !== currentSectionId) {
-      currentSectionId = section.id
-      
-      // Find if there's a section header tile at this position
-      const sectionHeaderTile = template.layout.tiles.find(
-        tile => tile.type === 'SECTION_HEADER' && 
-                tile.row === baseItemTiles[tileIndex].row &&
-                tile.col < baseItemTiles[tileIndex].col
-      )
-      
-      if (sectionHeaderTile) {
-        tiles.push({
-          id: `${sectionHeaderTile.id}-${section.id}`,
-          type: 'SECTION_HEADER',
-          col: sectionHeaderTile.col,
-          row: sectionHeaderTile.row,
-          colSpan: sectionHeaderTile.colSpan,
-          rowSpan: sectionHeaderTile.rowSpan,
-          label: section.name,
-          sectionId: section.id,
-          options: sectionHeaderTile.options
-        })
-      }
-    }
-    
-    // Assign item to tile
-    const tileDef = baseItemTiles[tileIndex]
-    tiles.push(createMenuItemTile(tileDef, item, textOnly))
-    tileIndex++
-  }
-  
-  // Handle repeat pattern if needed
-  if (capacity.requiredRepeats > 0 && template.layout.repeatPattern) {
-    const remainingItems = allItems.slice(tileIndex)
-    tiles.push(...assignItemsToRepeatPattern(
-      remainingItems,
-      template,
-      textOnly,
-      templateUsesTextOnly,
-      capacity
-    ))
-  }
-  
-  return tiles
-}
 
-/**
- * Assign items to repeat pattern tiles
- */
-function assignItemsToRepeatPattern(
-  items: Array<{ section: any, item: any }>,
-  template: MenuTemplate,
-  textOnly: boolean,
-  templateUsesTextOnly: boolean,
-  capacity: CapacityInfo
-): TileContentInstance[] {
-  const tiles: TileContentInstance[] = []
-  const repeatPattern = template.layout.repeatPattern!
-  
-  // For repeat patterns, we need to create virtual tile definitions
-  // based on the pattern structure. The repeatItemTileIds are just IDs,
-  // not actual tiles in the base layout.
-  
-  // Calculate how many tiles per repeat based on the pattern
-  const tilesPerRepeat = repeatPattern.repeatItemTileIds.length
-  
-  // Determine the grid structure for repeat tiles
-  // For now, assume they follow the same column structure as the base layout
-  const baseCols = template.layout.baseCols
-  const tilesPerRow = Math.min(baseCols, tilesPerRepeat)
-  
-  // Assign items to repeat tiles
-  let itemIndex = 0
-  for (let repeatIndex = 0; repeatIndex < capacity.requiredRepeats; repeatIndex++) {
-    for (let tileIndex = 0; tileIndex < tilesPerRepeat; tileIndex++) {
-      if (itemIndex >= items.length) break
-      
-      const { item } = items[itemIndex]
-      
-      // Calculate position in repeat
-      const rowInRepeat = Math.floor(tileIndex / tilesPerRow)
-      const colInRepeat = tileIndex % tilesPerRow
-      const rowOffset = repeatPattern.fromRow + (repeatIndex * repeatPattern.rowsPerRepeat)
-      
-      // Create a virtual tile definition for this repeat tile
-      // Use ITEM_TEXT_ONLY if template uses text-only tiles OR if textOnly config is set
-      const shouldBeTextOnly = templateUsesTextOnly || textOnly
-      const virtualTileDef: TileDefinition = {
-        id: `${repeatPattern.repeatItemTileIds[tileIndex]}-repeat-${repeatIndex}`,
-        type: shouldBeTextOnly ? 'ITEM_TEXT_ONLY' : 'ITEM',
-        col: colInRepeat,
-        row: rowOffset + rowInRepeat,
-        colSpan: 1,
-        rowSpan: 1,
-        options: { showImage: !shouldBeTextOnly, showDescription: true }
-      }
-      
-      tiles.push(createMenuItemTile(virtualTileDef, item, textOnly))
-      
-      itemIndex++
-    }
-  }
-  
   return tiles
 }
 
@@ -513,6 +579,7 @@ function assignItemsToRepeatPattern(
 function createMenuItemTile(
   tileDef: TileDefinition,
   item: EngineItem,
+  sectionId: string,
   textOnly: boolean
 ): MenuItemTileInstance {
   // If template definition specifies ITEM_TEXT_ONLY, respect that
@@ -525,6 +592,7 @@ function createMenuItemTile(
       colSpan: tileDef.colSpan,
       rowSpan: tileDef.rowSpan,
       itemId: item.id,
+      sectionId,
       name: item.name,
       description: item.description,
       price: item.price,
@@ -550,6 +618,7 @@ function createMenuItemTile(
     colSpan: tileDef.colSpan,
     rowSpan: tileDef.rowSpan,
     itemId: item.id,
+    sectionId,
     name: item.name,
     description: item.description,
     price: item.price,
@@ -651,12 +720,71 @@ function insertFillerTiles(
 }
 
 /**
+ * Balance items on the last row of a page
+ */
+function balancePageLayout(
+  page: PageLayout,
+  template: MenuTemplate
+): void {
+  // Only balance if strategy is set
+  if (!template.balancingStrategy || template.balancingStrategy === 'left') {
+    return
+  }
+  
+  // Find all ITEM tiles on this page
+  const itemTiles = page.tiles.filter(
+    t => t.type === 'ITEM' || t.type === 'ITEM_TEXT_ONLY'
+  )
+  
+  if (itemTiles.length === 0) return
+  
+  // Group by row to find the last row
+  const rows = new Map<number, TileContentInstance[]>()
+  itemTiles.forEach(tile => {
+    if (!rows.has(tile.row)) {
+      rows.set(tile.row, [])
+    }
+    rows.get(tile.row)!.push(tile)
+  })
+  
+  // Find max row index
+  const maxRow = Math.max(...Array.from(rows.keys()))
+  const lastRowTiles = rows.get(maxRow) || []
+  
+  // Calculate grid capacity
+  // Assuming standard grid where 1 col = 1 unit
+  // We need to know the 'width' of the grid. 
+  // template.layout.baseCols tells us total columns.
+  const gridCols = template.layout.baseCols
+  
+  // Calculate width occupied by items in last row
+  const occupiedWidth = lastRowTiles.reduce((sum, t) => sum + t.colSpan, 0)
+  
+  // If row is full, nothing to balance
+  if (occupiedWidth >= gridCols) return
+  
+  // Calculate offset to center
+  // floor((Total - Occupied) / 2)
+  const offset = Math.floor((gridCols - occupiedWidth) / 2)
+  
+  if (offset <= 0) return
+  
+  // Apply offset
+  lastRowTiles.forEach(tile => {
+    tile.col += offset
+  })
+}
+
+/**
  * Generate pages from tiles
  * 
  * This function:
  * - Creates single page or multiple pages based on newPagePerRepeat
  * - Groups tiles by page based on row positions
- * - Returns complete PageLayout objects with positioned tiles
+ * - Assigns PageTypes (FIRST, CONTINUATION, FINAL, SINGLE)
+ * - Filters tiles based on visibility rules
+ * - Normalizes row coordinates for multi-page layouts
+ * - Balances the last row of items
  */
 function generatePages(
   tiles: TileContentInstance[],
@@ -668,47 +796,115 @@ function generatePages(
   // Check if template uses multiple pages
   const newPagePerRepeat = template.layout.repeatPattern?.newPagePerRepeat || false
   
-  if (!newPagePerRepeat || capacity.requiredRepeats === 0) {
-    // Single page layout
-    pages.push({
-      pageIndex: 0,
-      tiles: tiles
-    })
-  } else {
-    // Multiple page layout
-    const repeatPattern = template.layout.repeatPattern!
-    const baseRows = repeatPattern.fromRow
-    const rowsPerRepeat = repeatPattern.rowsPerRepeat
+  // 1. Group tiles by initial page assignment (based on row)
+  const tilesByPageIndex = new Map<number, TileContentInstance[]>()
+  const repeatPattern = template.layout.repeatPattern
+  const repeatStartRow = repeatPattern?.fromRow ?? template.layout.baseRows
+  const rowsPerRepeat = repeatPattern?.rowsPerRepeat ?? 1
+  const baseRows = template.layout.baseRows
+  
+  tiles.forEach(tile => {
+    let pageIndex = 0
     
-    // Group tiles by page
-    const tilesByPage = new Map<number, TileContentInstance[]>()
-    
-    tiles.forEach(tile => {
-      let pageIndex = 0
-      
+    // Determine page index based on row
+    if (newPagePerRepeat && repeatPattern) {
       if (tile.row < baseRows) {
-        // Base layout tiles go on first page
         pageIndex = 0
       } else {
-        // Repeat tiles are distributed across pages
-        const rowInRepeat = tile.row - baseRows
-        pageIndex = Math.floor(rowInRepeat / rowsPerRepeat) + 1
+        const rowInPage = tile.row - baseRows
+        pageIndex = Math.floor(rowInPage / rowsPerRepeat) + 1
       }
+    } else {
+      // Single page or continuous flow
+      pageIndex = 0
+    }
+    
+    if (!tilesByPageIndex.has(pageIndex)) {
+      tilesByPageIndex.set(pageIndex, [])
+    }
+    tilesByPageIndex.get(pageIndex)!.push(tile)
+  })
+  
+  // 2. Determine total pages
+  // Use capacity info if available, otherwise max index found
+  const maxIndex = Math.max(0, ...Array.from(tilesByPageIndex.keys()))
+  const calculatedTotalPages = Math.max(capacity.totalPages, maxIndex + 1)
+  
+  // 3. Construct pages
+  for (let i = 0; i < calculatedTotalPages; i++) {
+    // Determine PageType
+    let pageType: PageType = 'CONTINUATION'
+    if (calculatedTotalPages === 1) {
+      pageType = 'SINGLE'
+    } else if (i === 0) {
+      pageType = 'FIRST'
+    } else if (i === calculatedTotalPages - 1) {
+      pageType = 'FINAL'
+    }
+    
+    // Get tiles initially assigned to this page
+    let pageTiles = tilesByPageIndex.get(i) || []
+    
+    // 4. Handle Static Tiles (Clone/Move)
+    // If this is a continuation/final page, we might need to copy static tiles from Page 0
+    if (i > 0) {
+      // Find static tiles on Page 0 that should be shown on this page type
+      const pageZeroTiles = tilesByPageIndex.get(0) || []
+      const staticTilesToClone = pageZeroTiles.filter(t => 
+        t.type !== 'ITEM' && 
+        t.type !== 'ITEM_TEXT_ONLY' &&
+        t.type !== 'SECTION_HEADER' && // Section headers usually stay with their items
+        isTileVisible(template.layout.tiles.find(def => def.id === t.id)!, pageType)
+      )
       
-      if (!tilesByPage.has(pageIndex)) {
-        tilesByPage.set(pageIndex, [])
-      }
-      tilesByPage.get(pageIndex)!.push(tile)
+      // Clone them
+      const clonedTiles = staticTilesToClone.map(t => ({...t, id: `${t.id}-p${i}`}))
+      pageTiles = [...pageTiles, ...clonedTiles]
+    }
+    
+    // 5. Filter tiles by visibility
+    // (Remove tiles that are assigned here but hidden on this page type)
+    pageTiles = pageTiles.filter(t => {
+      // Find definition to check options
+      // For items, the ID might be composite (tileId-itemId), so we need to find the base tile def
+      // But we passed TileContentInstance. 
+      // We can use the 'options' on the instance which were copied from definition!
+      
+      // Re-implement check using instance options
+      if (!t.options?.visibility) return true
+      const { showOn, hideOn } = t.options.visibility
+      if (showOn && !showOn.includes(pageType)) return false
+      if (hideOn && hideOn.includes(pageType)) return false
+      return true
     })
     
-    // Create page layouts
-    const pageIndices = Array.from(tilesByPage.keys()).sort((a, b) => a - b)
-    pageIndices.forEach(pageIndex => {
-      pages.push({
-        pageIndex,
-        tiles: tilesByPage.get(pageIndex) || []
+    // 6. Normalize Rows
+    // Shift rows so they start at 0 (or appropriate top margin) for the page
+    if (i > 0 && newPagePerRepeat) {
+      const pageStartRow = template.layout.baseRows + ((i - 1) * rowsPerRepeat)
+      // Calculate the offset for continuation pages
+      // This is the difference between where repeats start (fromRow) and the base layout height (baseRows)
+      const repeatStartOffset = (repeatPattern?.fromRow ?? template.layout.baseRows) - template.layout.baseRows
+      
+      pageTiles.forEach(t => {
+        // Only shift if it was originally after the base layout
+        if (t.row >= template.layout.baseRows) {
+           t.row = (t.row - pageStartRow) + repeatStartOffset
+        }
+        // Static tiles cloned from Page 0 already have low row numbers, so don't shift them
       })
-    })
+    }
+    
+    const pageLayout: PageLayout = {
+      pageIndex: i,
+      type: pageType,
+      tiles: pageTiles
+    }
+    
+    // 7. Balance Layout
+    balancePageLayout(pageLayout, template)
+    
+    pages.push(pageLayout)
   }
   
   return pages

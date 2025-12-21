@@ -56,6 +56,15 @@ export type PageOrientation = 'A4_PORTRAIT' | 'A4_LANDSCAPE'
 export type AspectRatioHint = 'A4_PORTRAIT' | 'A4_LANDSCAPE' | 'SQUARE_1080' | 'WEB_FULL'
 
 /**
+ * Page type for layout logic
+ * - FIRST: The very first page (index 0) of a multi-page menu
+ * - CONTINUATION: Middle pages in a multi-page menu
+ * - FINAL: The last page of a multi-page menu
+ * - SINGLE: The only page of a single-page menu
+ */
+export type PageType = 'FIRST' | 'CONTINUATION' | 'FINAL' | 'SINGLE'
+
+/**
  * Types of tiles that can appear in a grid layout
  * 
  * Content tiles:
@@ -145,6 +154,13 @@ export interface TileDefinition {
     decorativeVariant?: string
     /** Whether to style as a hero/featured item */
     emphasiseAsHero?: boolean
+    /** Conditional visibility rules */
+    visibility?: {
+      /** Only show on these page types */
+      showOn?: PageType[]
+      /** Hide on these page types */
+      hideOn?: PageType[]
+    }
   }
 }
 
@@ -163,7 +179,11 @@ export const TileDefinitionSchema = z.object({
     emphasisePrice: z.boolean().optional(),
     align: z.enum(['left', 'centre', 'right']).optional(),
     decorativeVariant: z.string().optional(),
-    emphasiseAsHero: z.boolean().optional()
+    emphasiseAsHero: z.boolean().optional(),
+    visibility: z.object({
+      showOn: z.array(z.enum(['FIRST', 'CONTINUATION', 'FINAL', 'SINGLE'])).optional(),
+      hideOn: z.array(z.enum(['FIRST', 'CONTINUATION', 'FINAL', 'SINGLE'])).optional()
+    }).optional()
   }).optional()
 })
 
@@ -196,6 +216,8 @@ export interface RepeatPatternConfig {
   rowsPerRepeat: number
   /** IDs of ITEM tiles in each repeat block */
   repeatItemTileIds: string[]
+  /** Optional ID of a SECTION_HEADER tile in the repeat block */
+  repeatSectionHeaderTileId?: string
   /** Maximum number of repeats (safety limit) */
   maxRepeats: number
   /** If true, each repeat starts a new page */
@@ -207,6 +229,7 @@ export const RepeatPatternConfigSchema = z.object({
   fromRow: z.number().int().nonnegative(),
   rowsPerRepeat: z.number().int().positive(),
   repeatItemTileIds: z.array(z.string()),
+  repeatSectionHeaderTileId: z.string().optional(),
   maxRepeats: z.number().int().positive(),
   newPagePerRepeat: z.boolean().optional()
 })
@@ -546,6 +569,8 @@ export interface MenuTemplate {
   configurationSchema: TemplateConfigurationSchema
   /** Visual styling (colors, fonts, card treatments) */
   style: TemplateStyle
+  /** Strategy for balancing orphan items on the last row */
+  balancingStrategy?: 'left' | 'center' | 'center-balanced'
   /** Semantic version string (e.g., '1.0.0') */
   version: string
   /** If true, template is hidden from /available endpoint (development only) */
@@ -564,6 +589,7 @@ export const MenuTemplateSchema = z.object({
   capabilities: TemplateCapabilitiesSchema,
   configurationSchema: TemplateConfigurationSchemaSchema.optional(),
   style: TemplateStyleSchema,
+  balancingStrategy: z.enum(['left', 'center', 'center-balanced']).optional(),
   version: z.string(),
   isPostMvp: z.boolean().optional()
 })
@@ -606,6 +632,8 @@ export interface LayoutInstance {
 export interface PageLayout {
   /** Zero-based page index */
   pageIndex: number
+  /** Type of page in the sequence */
+  type: PageType
   /** Array of tiles positioned on this page */
   tiles: TileContentInstance[]
 }
@@ -683,6 +711,8 @@ export interface MenuItemTileInstance extends BaseTileInstance {
   type: 'ITEM' | 'ITEM_TEXT_ONLY'
   /** ID of the menu item */
   itemId: string
+  /** ID of the section this item belongs to */
+  sectionId: string
   /** Item name/title */
   name: string
   /** Item description (optional) */

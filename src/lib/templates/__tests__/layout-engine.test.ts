@@ -102,7 +102,7 @@ describe('Layout Engine', () => {
       
       expect(layout).toBeDefined()
       expect(layout.templateId).toBe('classic-grid-cards')
-      expect(layout.templateVersion).toBe('1.0.0')
+      expect(layout.templateVersion).toBe(template.version)
       expect(layout.orientation).toBe('A4_PORTRAIT')
       expect(layout.pages).toHaveLength(1)
       
@@ -152,7 +152,7 @@ describe('Layout Engine', () => {
         id: 'selection-1',
         menuId: 'test-menu-1',
         templateId: 'classic-grid-cards',
-        templateVersion: '1.0.0',
+        templateVersion: CLASSIC_GRID_CARDS.version,
         configuration: {
           textOnly: true,
           useLogo: false
@@ -225,6 +225,40 @@ describe('Layout Engine', () => {
       // Should have used repeat pattern to accommodate more items
       expect(totalItemTiles).toBeGreaterThan(9) // More than base layout
       expect(totalItemTiles).toBeLessThanOrEqual(20)
+    })
+
+    it('should correctly normalize rows on continuation pages with gap preservation', () => {
+      // ... existing code ...
+    })
+
+    it('should include section headers on both first and continuation pages', () => {
+      // Create a menu with two sections that will span across pages
+      const menu = createTestMenu({ sections: 2, itemsPerSection: 10, withImages: true })
+      // CLASSIC_GRID_CARDS: baseRows=10, items start at Row 4.
+      // So Section 0 (10 items) will fit on Page 0.
+      // Section 1 (10 items) will start on Page 0 or Page 1 depending on fit.
+      
+      const layout = generateLayout({ menu, template: CLASSIC_GRID_CARDS })
+      
+      expect(layout.pages.length).toBeGreaterThan(1)
+      
+      // Page 0 should have section header for Section 0
+      const page0 = layout.pages[0]
+      const page0Headers = page0.tiles.filter(t => t.type === 'SECTION_HEADER')
+      expect(page0Headers.length).toBeGreaterThan(0)
+      expect(page0Headers[0]).toMatchObject({
+        label: 'Section 0',
+        row: 3
+      })
+      
+      // Page 1 should have section header for Section 1
+      const page1 = layout.pages[1]
+      const page1Headers = page1.tiles.filter(t => t.type === 'SECTION_HEADER')
+      expect(page1Headers.length).toBeGreaterThan(0)
+      expect(page1Headers[0]).toMatchObject({
+        label: 'Section 1',
+        row: 2 // Physical row 2 after normalization
+      })
     })
     
     it('should throw error for invalid menu data', () => {

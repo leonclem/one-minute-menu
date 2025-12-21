@@ -47,6 +47,8 @@ export interface LayoutRendererProps {
   ImageComponent?: React.ComponentType<any> | string
   /** Whether to force fixed page dimensions (e.g. A4) or allow fluid width. Defaults to true (for PDF). */
   fixedPageSize?: boolean
+  /** Whether to only render the first page (for previews) */
+  singlePage?: boolean
 }
 
 // ============================================================================
@@ -396,7 +398,8 @@ export function LayoutRenderer({
   skipInlineStyles = false,
   themeColors,
   ImageComponent = 'img',
-  fixedPageSize = true
+  fixedPageSize = true,
+  singlePage = false
 }: LayoutRendererProps) {
   // Generate CSS for inline styles if needed (Client/Preview usage)
   // For PDF export, skipInlineStyles is true, and styles are injected into <head> separately
@@ -405,10 +408,12 @@ export function LayoutRenderer({
     styles = generateStaticTemplateCSS(template, paletteId)
   }
   
+  const pagesToRender = singlePage ? layout.pages.slice(0, 1) : layout.pages
+
   return (
     <div className={`layout-renderer ${className}`}>
       {!skipInlineStyles && <style dangerouslySetInnerHTML={{ __html: styles }} />}
-      {layout.pages.map((page, index) => (
+      {pagesToRender.map((page, index) => (
         <PageRenderer 
           key={`page-${index}`} 
           page={page} 

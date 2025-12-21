@@ -460,6 +460,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                                 currency={(demoMenu || authMenu)?.theme?.layout?.currency || '$'}
                                 ImageComponent={Image}
                                 fixedPageSize={false}
+                                singlePage={true}
                               />
                             )}
                             {!previewLoading && !previewError && !layoutInstance && (
