@@ -1,0 +1,122 @@
+id: test-template
+version: "1.0.0"
+name: Test Template
+
+page:
+  size: A4_PORTRAIT
+  margins:
+    top: 56.69
+    right: 42.52
+    bottom: 56.69
+    left: 42.52
+
+regions:
+  header:
+    height: 60
+  title:
+    height: 40
+  footer:
+    height: 30
+
+body:
+  container:
+    type: GRID
+    cols: 4
+    rowHeight: 70
+    gapX: 8
+    gapY: 8
+
+tiles:
+  LOGO:
+    region: header
+    contentBudget:
+      nameLines: 0
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 50
+      paddingTop: 5
+      paddingBottom: 5
+      totalHeight: 60
+
+  TITLE:
+    region: title
+    contentBudget:
+      nameLines: 1
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 8
+      paddingBottom: 8
+      totalHeight: 40
+
+  SECTION_HEADER:
+    region: body
+    colSpan: 4
+    contentBudget:
+      nameLines: 1
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 8
+      paddingBottom: 4
+      totalHeight: 32
+
+  ITEM_CARD:
+    region: body
+    rowSpan: 2
+    contentBudget:
+      nameLines: 2
+      descLines: 2
+      indicatorAreaHeight: 16
+      imageBoxHeight: 70
+      paddingTop: 8
+      paddingBottom: 8
+      totalHeight: 148
+
+  ITEM_TEXT_ROW:
+    region: body
+    rowSpan: 1
+    contentBudget:
+      nameLines: 2
+      descLines: 2
+      indicatorAreaHeight: 16
+      imageBoxHeight: 0
+      paddingTop: 8
+      paddingBottom: 8
+      totalHeight: 70
+
+policies:
+  lastRowBalancing: CENTER
+  showLogoOnPages: [FIRST, SINGLE]
+  repeatSectionHeaderOnContinuation: true
+  sectionHeaderKeepWithNextItems: 1
+
+filler:
+  enabled: false
+  safeZones:
+    - startRow: LAST
+      endRow: LAST
+      startCol: 0
+      endCol: 3
+  tiles:
+    - id: filler-icon-1
+      style: icon
+      content: utensils
+  policy: SEQUENTIAL
+
+itemIndicators:
+  mode: INLINE
+  maxCount: 3
+  style:
+    badgeSize: 14
+    iconSet: emoji
+  spiceScale:
+    1: "🌶"
+    2: "🌶🌶"
+    3: "🌶🌶🌶"
+  letterFallback:
+    vegetarian: "V"
+    vegan: "VG"
+    halal: "H"
+    kosher: "K"
+    gluten-free: "GF"

@@ -249,28 +249,12 @@ function MenuItemTile({
           </div>
         )}
         <div className="menu-item-content">
-          {tile.type === 'ITEM_TEXT_ONLY' ? (
-            <>
-              <div>
-                <h3 className="item-name">{tile.name}</h3>
-                <span className="item-price">
-                  {formatPrice(tile.price, currency)}
-                </span>
-              </div>
-              {showDescription && (
-                <p className="menu-item-description">{tile.description}</p>
-              )}
-            </>
-          ) : (
-            <>
-              <h3 className="item-name">{tile.name}</h3>
-              <span className="item-price">
-                  {formatPrice(tile.price, currency)}
-              </span>
-              {showDescription && (
-                <p className="menu-item-description">{tile.description}</p>
-              )}
-            </>
+          <h3 className="item-name" style={{ minHeight: '2.8em', marginBottom: '0.25rem' }}>{tile.name}</h3>
+          <span className="item-price">
+            {formatPrice(tile.price, currency)}
+          </span>
+          {showDescription && (
+            <p className="menu-item-description">{tile.description}</p>
           )}
         </div>
       </div>

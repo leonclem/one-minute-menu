@@ -129,22 +129,31 @@ function ServerMenuTile({ item, preset, currency, themeColors }: ServerMenuTileP
   const formattedPrice = formatPrice(item.price, currency)
 
   return (
-    <article className={`menu-tile ${tileConfig.padding} ${tileConfig.borderRadius} bg-white`}>
-      {/* Image */}
-      {item.imageRef && (
-        <div className="tile-image mb-3 overflow-hidden rounded-lg">
+    <article className={`menu-tile ${tileConfig.padding} ${tileConfig.borderRadius} bg-white flex flex-col h-full`}>
+      {/* Image Container - Always rendered to preserve grid effect */}
+      <div className="tile-image mb-3 overflow-hidden rounded-lg bg-gray-100 flex-shrink-0" style={{ height: '120px' }}>
+        {item.imageRef ? (
           <img src={item.imageRef} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
-        </div>
-      )}
+        ) : (
+          <div className="w-full h-full flex items-center justify-center opacity-20">
+            {getIconJSX('plate')}
+          </div>
+        )}
+      </div>
 
       {/* Content */}
-      <div className="tile-content">
-        <div className="flex justify-between items-baseline gap-2 mb-1">
-          <h3 className={`${tileConfig.textSize.name} font-semibold text-gray-900 flex-1`}>{item.name}</h3>
-          <span className={`${tileConfig.textSize.price} font-bold text-gray-900 whitespace-nowrap`}>{formattedPrice}</span>
-        </div>
+      <div className="tile-content flex-1 flex flex-col">
+        {/* Reserve space for name to allow 2 lines and prevent overlap */}
+        <h3 className={`${tileConfig.textSize.name} font-semibold text-gray-900 mb-1 line-clamp-2 min-h-[2.8em]`}>
+          {item.name}
+        </h3>
+        <span className={`${tileConfig.textSize.price} font-bold text-gray-900 mb-2`}>{formattedPrice}</span>
 
-        {item.description && <p className={`${tileConfig.textSize.description} text-gray-600 mt-1`}>{item.description}</p>}
+        {item.description && (
+          <p className={`${tileConfig.textSize.description} text-gray-600 mt-auto line-clamp-3`}>
+            {item.description}
+          </p>
+        )}
       </div>
     </article>
   )

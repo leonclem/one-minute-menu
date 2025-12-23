@@ -1,0 +1,803 @@
+{
+  "id": "fixture-large",
+  "name": "Grand Hotel Restaurant Menu",
+  "sections": [
+    {
+      "id": "sec-1",
+      "name": "Cold Appetizers",
+      "sortOrder": 0,
+      "items": [
+        {
+          "id": "item-1",
+          "name": "Oysters Rockefeller",
+          "description": "Fresh oysters with spinach and herbs",
+          "price": 14.99,
+          "imageUrl": "https://placehold.co/400x300?text=Large",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["shellfish", "dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-2",
+          "name": "Smoked Salmon Platter",
+          "description": "Norwegian salmon with capers and cream cheese",
+          "price": 16.50,
+          "imageUrl": "https://placehold.co/400x300?text=Foodsalmon-platter.jpg",
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["fish", "dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-3",
+          "name": "Antipasto Board",
+          "description": "Selection of cured meats, cheeses, and olives",
+          "price": 18.99,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-4",
+          "name": "Tuna Tartare",
+          "description": "Fresh tuna with avocado and sesame",
+          "price": 15.99,
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["fish", "sesame"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-5",
+          "name": "Burrata Caprese",
+          "description": "Creamy burrata with tomatoes and basil",
+          "price": 13.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodburrata.jpg",
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-6",
+          "name": "Beef Carpaccio",
+          "description": "Thinly sliced raw beef with arugula and parmesan",
+          "price": 17.50,
+          "sortOrder": 5,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-7",
+          "name": "Shrimp Cocktail",
+          "description": "Chilled jumbo shrimp with cocktail sauce",
+          "price": 12.99,
+          "sortOrder": 6,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["shellfish"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-8",
+          "name": "Foie Gras Terrine",
+          "description": "Duck liver terrine with brioche toast",
+          "price": 22.99,
+          "sortOrder": 7,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["gluten", "dairy"],
+            "spiceLevel": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-2",
+      "name": "Hot Appetizers",
+      "sortOrder": 1,
+      "items": [
+        {
+          "id": "item-9",
+          "name": "Escargot",
+          "description": "Burgundy snails in garlic herb butter",
+          "price": 11.99,
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-10",
+          "name": "Lobster Bisque",
+          "description": "Rich cream soup with cognac",
+          "price": 9.99,
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["shellfish", "dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-11",
+          "name": "Duck Confit Spring Rolls",
+          "description": "Crispy rolls with hoisin dipping sauce",
+          "price": 13.50,
+          "imageUrl": "https://placehold.co/400x300?text=Foodduck-rolls.jpg",
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["gluten", "soy"],
+            "spiceLevel": 1
+          }
+        },
+        {
+          "id": "item-12",
+          "name": "Seared Scallops",
+          "description": "Pan-seared scallops with cauliflower puree",
+          "price": 16.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodscallops.jpg",
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["shellfish", "dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-13",
+          "name": "Truffle Arancini",
+          "description": "Risotto balls with truffle oil and parmesan",
+          "price": 14.50,
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy", "gluten"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-14",
+          "name": "Beef Short Rib Sliders",
+          "description": "Mini burgers with caramelized onions",
+          "price": 15.99,
+          "sortOrder": 5,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["gluten", "dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-15",
+          "name": "Tempura Vegetables",
+          "description": "Light battered seasonal vegetables",
+          "price": 10.99,
+          "sortOrder": 6,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["gluten"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-16",
+          "name": "Chorizo Stuffed Dates",
+          "description": "Medjool dates with Spanish chorizo and almonds",
+          "price": 12.50,
+          "sortOrder": 7,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["nuts"],
+            "spiceLevel": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-3",
+      "name": "Soups & Salads",
+      "sortOrder": 2,
+      "items": [
+        {
+          "id": "item-17",
+          "name": "French Onion Soup",
+          "description": "Classic soup with gruyere cheese crouton",
+          "price": 8.99,
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy", "gluten"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-18",
+          "name": "Butternut Squash Soup",
+          "description": "Roasted squash with coconut cream",
+          "price": 7.99,
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": ["vegetarian", "vegan"],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-19",
+          "name": "Caesar Salad",
+          "description": "Romaine lettuce with parmesan and croutons",
+          "price": 9.50,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy", "gluten", "eggs"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-20",
+          "name": "Arugula Salad",
+          "description": "Baby arugula with pear and walnuts",
+          "price": 11.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodarugula-salad.jpg",
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["nuts", "dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-21",
+          "name": "Quinoa Power Bowl",
+          "description": "Quinoa with roasted vegetables and tahini",
+          "price": 13.50,
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": ["vegetarian", "vegan", "gluten-free"],
+            "allergens": ["sesame"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-22",
+          "name": "Nicoise Salad",
+          "description": "Tuna, olives, eggs, and anchovies",
+          "price": 14.99,
+          "sortOrder": 5,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["fish", "eggs"],
+            "spiceLevel": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-4",
+      "name": "Seafood",
+      "sortOrder": 3,
+      "items": [
+        {
+          "id": "item-23",
+          "name": "Grilled Branzino",
+          "description": "Whole Mediterranean sea bass with lemon",
+          "price": 26.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodbranzino.jpg",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["fish"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-24",
+          "name": "Lobster Thermidor",
+          "description": "Baked lobster with cognac cream sauce",
+          "price": 38.99,
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["shellfish", "dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-25",
+          "name": "Pan-Seared Halibut",
+          "description": "Alaskan halibut with herb crust",
+          "price": 28.50,
+          "imageUrl": "https://placehold.co/400x300?text=Foodhalibut.jpg",
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["fish", "gluten"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-26",
+          "name": "Cioppino",
+          "description": "San Francisco seafood stew",
+          "price": 24.99,
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["shellfish", "fish"],
+            "spiceLevel": 1
+          }
+        },
+        {
+          "id": "item-27",
+          "name": "Blackened Red Snapper",
+          "description": "Cajun spiced snapper with dirty rice",
+          "price": 23.99,
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["fish"],
+            "spiceLevel": 3
+          }
+        },
+        {
+          "id": "item-28",
+          "name": "Seafood Paella",
+          "description": "Traditional Spanish rice with mixed seafood",
+          "price": 32.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodpaella.jpg",
+          "sortOrder": 5,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["shellfish", "fish"],
+            "spiceLevel": 1
+          }
+        },
+        {
+          "id": "item-29",
+          "name": "Miso Glazed Cod",
+          "description": "Black cod with sweet miso glaze",
+          "price": 29.99,
+          "sortOrder": 6,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["fish", "soy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-30",
+          "name": "Grilled Octopus",
+          "description": "Charred octopus with chickpea salad",
+          "price": 21.99,
+          "sortOrder": 7,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["shellfish"],
+            "spiceLevel": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-5",
+      "name": "Meat & Poultry",
+      "sortOrder": 4,
+      "items": [
+        {
+          "id": "item-31",
+          "name": "Wagyu Beef Tenderloin",
+          "description": "8oz Japanese wagyu with truffle sauce",
+          "price": 65.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodwagyu.jpg",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-32",
+          "name": "Rack of Lamb",
+          "description": "Herb crusted lamb with mint jelly",
+          "price": 34.99,
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": ["halal"],
+            "allergens": ["gluten"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-33",
+          "name": "Duck Breast",
+          "description": "Roasted duck with cherry gastrique",
+          "price": 28.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodduck-breast.jpg",
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": [],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-34",
+          "name": "Osso Buco",
+          "description": "Braised veal shanks with risotto milanese",
+          "price": 31.99,
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-35",
+          "name": "Coq au Vin",
+          "description": "Chicken braised in red wine",
+          "price": 24.50,
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": [],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-36",
+          "name": "Pork Belly",
+          "description": "Slow roasted pork belly with apple compote",
+          "price": 22.99,
+          "sortOrder": 5,
+          "indicators": {
+            "dietary": [],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-37",
+          "name": "Venison Medallions",
+          "description": "Wild venison with juniper berry sauce",
+          "price": 36.99,
+          "sortOrder": 6,
+          "indicators": {
+            "dietary": [],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-38",
+          "name": "Chicken Cordon Bleu",
+          "description": "Stuffed chicken with ham and swiss cheese",
+          "price": 19.99,
+          "sortOrder": 7,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["dairy", "gluten"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-39",
+          "name": "Beef Wellington",
+          "description": "Beef tenderloin wrapped in puff pastry",
+          "price": 42.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodwellington.jpg",
+          "sortOrder": 8,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["gluten", "eggs"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-40",
+          "name": "Lamb Tagine",
+          "description": "Moroccan spiced lamb with apricots",
+          "price": 26.50,
+          "sortOrder": 9,
+          "indicators": {
+            "dietary": ["halal"],
+            "allergens": [],
+            "spiceLevel": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-6",
+      "name": "Vegetarian Mains",
+      "sortOrder": 5,
+      "items": [
+        {
+          "id": "item-41",
+          "name": "Eggplant Parmesan",
+          "description": "Breaded eggplant with marinara and mozzarella",
+          "price": 17.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodeggplant-parm.jpg",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["gluten", "dairy", "eggs"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-42",
+          "name": "Stuffed Portobello",
+          "description": "Mushroom caps with quinoa and goat cheese",
+          "price": 16.50,
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-43",
+          "name": "Vegetable Curry",
+          "description": "Mixed vegetables in coconut curry sauce",
+          "price": 15.99,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": ["vegetarian", "vegan"],
+            "allergens": [],
+            "spiceLevel": 2
+          }
+        },
+        {
+          "id": "item-44",
+          "name": "Ratatouille",
+          "description": "Traditional French vegetable stew",
+          "price": 14.99,
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": ["vegetarian", "vegan"],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-45",
+          "name": "Cauliflower Steak",
+          "description": "Roasted cauliflower with tahini sauce",
+          "price": 16.99,
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": ["vegetarian", "vegan"],
+            "allergens": ["sesame"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-46",
+          "name": "Mushroom Wellington",
+          "description": "Mixed mushrooms in puff pastry",
+          "price": 18.50,
+          "sortOrder": 5,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["gluten"],
+            "spiceLevel": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-7",
+      "name": "Pasta & Risotto",
+      "sortOrder": 6,
+      "items": [
+        {
+          "id": "item-47",
+          "name": "Lobster Ravioli",
+          "description": "House-made pasta with lobster filling",
+          "price": 24.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodlobster-ravioli.jpg",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["shellfish", "gluten", "eggs", "dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-48",
+          "name": "Truffle Risotto",
+          "description": "Arborio rice with black truffle and parmesan",
+          "price": 22.50,
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-49",
+          "name": "Linguine alle Vongole",
+          "description": "Pasta with clams in white wine sauce",
+          "price": 19.99,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["shellfish", "gluten"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-50",
+          "name": "Gnocchi Gorgonzola",
+          "description": "Potato dumplings with blue cheese sauce",
+          "price": 17.50,
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["gluten", "dairy", "eggs"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-51",
+          "name": "Seafood Risotto",
+          "description": "Mixed seafood with saffron risotto",
+          "price": 26.99,
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["shellfish", "fish", "dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-52",
+          "name": "Pappardelle Bolognese",
+          "description": "Wide ribbon pasta with meat sauce",
+          "price": 18.99,
+          "sortOrder": 5,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["gluten", "dairy"],
+            "spiceLevel": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-8",
+      "name": "Desserts",
+      "sortOrder": 7,
+      "items": [
+        {
+          "id": "item-53",
+          "name": "Crème Brûlée",
+          "description": "Vanilla custard with caramelized sugar",
+          "price": 8.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodcreme-brulee.jpg",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy", "eggs"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-54",
+          "name": "Chocolate Soufflé",
+          "description": "Warm chocolate soufflé with raspberry coulis",
+          "price": 9.99,
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy", "eggs", "gluten"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-55",
+          "name": "Tiramisu",
+          "description": "Classic Italian dessert with mascarpone",
+          "price": 7.99,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy", "eggs", "gluten"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-56",
+          "name": "Lemon Tart",
+          "description": "Tart lemon curd with meringue",
+          "price": 6.99,
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["gluten", "dairy", "eggs"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-57",
+          "name": "Panna Cotta",
+          "description": "Vanilla panna cotta with berry compote",
+          "price": 7.50,
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-58",
+          "name": "Chocolate Tasting Plate",
+          "description": "Selection of artisan chocolates",
+          "price": 12.99,
+          "sortOrder": 5,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy", "nuts"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-59",
+          "name": "Seasonal Fruit Tart",
+          "description": "Fresh seasonal fruits on pastry cream",
+          "price": 8.50,
+          "sortOrder": 6,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["gluten", "dairy", "eggs"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-60",
+          "name": "Gelato Selection",
+          "description": "Three scoops of artisan gelato",
+          "price": 6.50,
+          "sortOrder": 7,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "currency": "$",
+    "venueName": "Grand Hotel Restaurant",
+    "venueAddress": "789 Luxury Boulevard, Metropolitan City",
+    "logoUrl": "https://placehold.co/400x300?text=Foodgrand-hotel-logo.png"
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "id": "fixture-images",
+  "name": "Image Test Menu",
+  "sections": [
+    {
+      "id": "sec-1",
+      "name": "Appetizers",
+      "sortOrder": 0,
+      "items": [
+        {
+          "id": "item-1",
+          "name": "Oysters Rockefeller",
+          "description": "Fresh oysters with spinach and herbs",
+          "price": 14.99,
+          "imageUrl": "https://placehold.co/400x300?text=Oysters",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["shellfish"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-2",
+          "name": "Smoked Salmon Platter",
+          "description": "Norwegian salmon with capers and cream cheese",
+          "price": 16.50,
+          "imageUrl": "https://placehold.co/400x300?text=Salmon",
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": ["gluten-free"],
+            "allergens": ["fish"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-3",
+          "name": "Antipasto Board",
+          "description": "Selection of cured meats, cheeses, and olives",
+          "price": 18.99,
+          "imageUrl": "https://placehold.co/400x300?text=Antipasto",
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-2",
+      "name": "Main Courses",
+      "sortOrder": 1,
+      "items": [
+        {
+          "id": "item-4",
+          "name": "Grilled Sea Bass",
+          "description": "Whole sea bass with roasted vegetables and lemon butter sauce",
+          "price": 24.99,
+          "imageUrl": "https://placehold.co/400x300?text=Sea+Bass",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": ["gluten-free"],
+            "allergens": ["fish", "dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-5",
+          "name": "Ribeye Steak",
+          "description": "10oz grass-fed ribeye with triple cooked chips and peppercorn sauce",
+          "price": 32.50,
+          "imageUrl": "https://placehold.co/400x300?text=Steak",
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["dairy"],
+            "spiceLevel": 0
+          }
+        },
+        {
+          "id": "item-6",
+          "name": "Spicy Thai Green Curry",
+          "description": "Authentic Thai green curry with coconut milk, bamboo shoots, and basil",
+          "price": 19.99,
+          "imageUrl": "https://placehold.co/400x300?text=Curry",
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": ["vegan", "gluten-free"],
+            "allergens": [],
+            "spiceLevel": 3
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "currency": "£",
+    "venueName": "Grand Hotel Restaurant",
+    "venueAddress": "456 Luxury Lane"
+  }
+}
+

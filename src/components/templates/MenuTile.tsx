@@ -82,16 +82,16 @@ export default function MenuTile({
 
   return (
     <article
-      className={`menu-tile relative overflow-hidden ${tileConfig.borderRadius} bg-gray-100 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2`}
+      className={`menu-tile relative overflow-hidden ${tileConfig.borderRadius} bg-white flex flex-col focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2`}
       style={{
         aspectRatio: tileConfig.aspectRatio
       }}
       tabIndex={0}
       aria-label={`${item.name}, ${formattedPrice}${item.description ? `, ${item.description}` : ''}`}
     >
-      {/* Image or Fallback */}
-      {hasImage ? (
-        <div className="relative w-full h-full bg-gray-200">
+      {/* Image Container - Always allocated to preserve grid effect */}
+      <div className="relative w-full flex-shrink-0 bg-gray-100 overflow-hidden" style={{ height: '60%' }}>
+        {hasImage ? (
           <Image
             src={item.imageRef!}
             alt={item.name}
@@ -108,39 +108,36 @@ export default function MenuTile({
               e.currentTarget.classList.add('opacity-100')
             }}
           />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center opacity-20">
+            <FoodIcon />
+          </div>
+        )}
 
-          {/* Metadata Overlay (if overlay mode) */}
-          {metadataMode === 'overlay' && (
-            <MetadataOverlay
-              name={item.name}
-              price={formattedPrice}
-              description={item.description}
-              textSize={tileConfig.textSize}
-              themeColors={themeColors}
-            />
-          )}
-        </div>
-      ) : (
-        <ImageFallback
-          name={item.name}
-          price={formattedPrice}
-          description={item.description}
-          tileConfig={tileConfig}
-          themeColors={themeColors}
-        />
-      )}
+        {/* Metadata Overlay (if overlay mode) */}
+        {metadataMode === 'overlay' && (
+          <MetadataOverlay
+            name={item.name}
+            price={formattedPrice}
+            description={item.description}
+            textSize={tileConfig.textSize}
+            themeColors={themeColors}
+          />
+        )}
+      </div>
 
-      {/* Adjacent Metadata (if adjacent mode and has image) */}
-      {metadataMode === 'adjacent' && hasImage && (
-        <div className={`${tileConfig.padding} bg-white`}>
-          <h3 className={`${tileConfig.textSize.name} font-semibold text-gray-900`}>
+      {/* Adjacent Metadata (if adjacent mode) */}
+      {metadataMode === 'adjacent' && (
+        <div className={`${tileConfig.padding} flex-1 flex flex-col min-h-0`}>
+          {/* Reserve space for name to allow 2 lines and prevent overlap */}
+          <h3 className={`${tileConfig.textSize.name} font-semibold text-gray-900 line-clamp-2 min-h-[2.8em]`}>
             {item.name}
           </h3>
           <p className={`${tileConfig.textSize.price} font-bold text-gray-700 mt-1`}>
             {formattedPrice}
           </p>
           {item.description && (
-            <p className={`${tileConfig.textSize.description} text-gray-600 mt-1`}>
+            <p className={`${tileConfig.textSize.description} text-gray-600 mt-auto line-clamp-2 italic`}>
               {item.description}
             </p>
           )}

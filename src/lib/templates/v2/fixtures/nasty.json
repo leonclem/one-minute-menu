@@ -1,0 +1,365 @@
+{
+  "id": "fixture-nasty",
+  "name": "Edge Case Testing Menu with Extremely Long Name That Should Test Text Wrapping and Truncation Behavior in Various Layout Scenarios",
+  "sections": [
+    {
+      "id": "sec-1",
+      "name": "Appetizers with Extraordinarily Long Section Names That Will Test Header Wrapping and Layout Edge Cases",
+      "sortOrder": 0,
+      "items": [
+        {
+          "id": "item-1",
+          "name": "Artisanal Hand-Crafted Organic Free-Range Locally-Sourced Sustainable Farm-to-Table Heirloom Tomato Bruschetta with Extra Virgin Cold-Pressed Olive Oil and Aged Balsamic Reduction",
+          "description": "This is an extremely long description that should test the text clamping and ellipsis functionality of the layout engine. It contains multiple sentences with detailed information about ingredients, preparation methods, and serving suggestions. The description goes on and on to ensure we test the maximum line limits and truncation behavior properly. Additional text to make it even longer and test edge cases in text rendering and layout calculations.",
+          "price": 999.99,
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": ["vegetarian", "vegan", "gluten-free", "kosher", "halal"],
+            "allergens": ["gluten", "dairy", "nuts", "soy", "eggs", "fish", "shellfish", "sesame"],
+            "spiceLevel": 3
+          }
+        },
+        {
+          "id": "item-2",
+          "name": "A",
+          "price": 0.01,
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": [],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-3",
+          "name": "Item with Missing Description and Image",
+          "price": 12.50,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy", "gluten", "nuts", "soy", "eggs"],
+            "spiceLevel": 2
+          }
+        },
+        {
+          "id": "item-4",
+          "name": "🍕🍔🍟🌮🍣🍜🍰🍷 Unicode Emoji Test Item with Special Characters & Symbols @#$%^&*()_+-={}[]|\\:;\"'<>?,./",
+          "description": "Testing unicode characters: àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞŸ αβγδεζηθικλμνξοπρστυφχψω ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ 中文测试 日本語テスト 한국어 테스트 العربية тест русский",
+          "price": 15.75,
+          "imageUrl": "https://placehold.co/400x300?text=Nasty",
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": ["vegetarian", "vegan"],
+            "allergens": ["gluten", "dairy", "nuts", "soy", "eggs", "fish", "shellfish", "sesame", "sulfites", "mustard"],
+            "spiceLevel": 1
+          }
+        },
+        {
+          "id": "item-5",
+          "name": "Zero Price Item",
+          "description": "Free item to test zero price handling",
+          "price": 0,
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": [],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-2",
+      "name": "Mains",
+      "sortOrder": 1,
+      "items": [
+        {
+          "id": "item-6",
+          "name": "The Ultimate Supreme Deluxe Premium Gourmet Artisanal Chef's Special Signature Dish with Multiple Exotic Ingredients",
+          "description": "Another extremely long description to test text handling. This dish features ingredients from around the world, prepared using traditional techniques passed down through generations. The complex preparation involves multiple cooking methods and takes several hours to complete. Served with a variety of accompaniments and garnishes that complement the main ingredients perfectly.",
+          "price": 1234.56,
+          "imageUrl": "https://placehold.co/400x300?text=Foodultimate-dish.jpg",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": ["halal", "kosher"],
+            "allergens": ["dairy", "gluten", "nuts", "soy", "eggs", "fish", "shellfish"],
+            "spiceLevel": 3
+          }
+        },
+        {
+          "id": "item-7",
+          "name": "Item with Broken Image URL",
+          "description": "This item has an invalid image URL to test error handling",
+          "price": 18.99,
+          "imageUrl": "not-a-valid-url",
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-8",
+          "name": "Maximum Spice Level Test",
+          "description": "Testing maximum spice level indicator",
+          "price": 16.50,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["dairy", "gluten"],
+            "spiceLevel": 3
+          }
+        },
+        {
+          "id": "item-9",
+          "name": "All Dietary Indicators Test",
+          "description": "Item with all possible dietary indicators to test rendering limits",
+          "price": 22.99,
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": ["vegetarian", "vegan", "gluten-free", "halal", "kosher"],
+            "allergens": ["nuts", "soy", "sesame"],
+            "spiceLevel": 2
+          }
+        },
+        {
+          "id": "item-10",
+          "name": "Excessive Allergen List Test Item",
+          "description": "Testing rendering with many allergens",
+          "price": 19.75,
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["gluten", "dairy", "nuts", "peanuts", "tree nuts", "soy", "eggs", "fish", "shellfish", "sesame", "sulfites", "mustard", "celery", "lupin", "molluscs"],
+            "spiceLevel": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-3",
+      "name": "Desserts & Edge Cases",
+      "sortOrder": 2,
+      "items": [
+        {
+          "id": "item-11",
+          "name": "Dessert with No Allergens or Dietary Info",
+          "price": 8.50,
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": [],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-12",
+          "name": "Very Expensive Test Item",
+          "description": "Testing high price formatting",
+          "price": 99999.99,
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy", "eggs"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-13",
+          "name": "Item with Decimal Price Edge Case",
+          "description": "Testing unusual decimal prices",
+          "price": 7.333,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": ["vegan"],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-14",
+          "name": "Single Character Name X",
+          "description": "Y",
+          "price": 1.11,
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": ["vegetarian", "vegan", "gluten-free"],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-15",
+          "name": "Item Testing Line Breaks\nAnd Special\tCharacters",
+          "description": "Description with\nnewlines and\ttabs to test text handling",
+          "price": 13.13,
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["gluten"],
+            "spiceLevel": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-4",
+      "name": "Empty Section Test",
+      "sortOrder": 3,
+      "items": []
+    },
+    {
+      "id": "sec-5",
+      "name": "Single Item Section",
+      "sortOrder": 4,
+      "items": [
+        {
+          "id": "item-16",
+          "name": "Lonely Item",
+          "description": "The only item in this section",
+          "price": 14.99,
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-6",
+      "name": "Section with Many Items for Pagination Testing",
+      "sortOrder": 5,
+      "items": [
+        {
+          "id": "item-17",
+          "name": "Pagination Test Item 1",
+          "description": "First item in pagination test section",
+          "price": 10.00,
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": [],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-18",
+          "name": "Pagination Test Item 2",
+          "description": "Second item in pagination test section",
+          "price": 11.00,
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-19",
+          "name": "Pagination Test Item 3",
+          "description": "Third item in pagination test section",
+          "price": 12.00,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": ["vegan"],
+            "allergens": [],
+            "spiceLevel": 1
+          }
+        },
+        {
+          "id": "item-20",
+          "name": "Pagination Test Item 4",
+          "description": "Fourth item in pagination test section",
+          "price": 13.00,
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": ["gluten-free"],
+            "allergens": ["nuts"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-21",
+          "name": "Pagination Test Item 5",
+          "description": "Fifth item in pagination test section",
+          "price": 14.00,
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": ["halal"],
+            "allergens": [],
+            "spiceLevel": 2
+          }
+        },
+        {
+          "id": "item-22",
+          "name": "Pagination Test Item 6",
+          "description": "Sixth item in pagination test section",
+          "price": 15.00,
+          "sortOrder": 5,
+          "indicators": {
+            "dietary": ["kosher"],
+            "allergens": ["soy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-23",
+          "name": "Pagination Test Item 7",
+          "description": "Seventh item in pagination test section",
+          "price": 16.00,
+          "sortOrder": 6,
+          "indicators": {
+            "dietary": ["vegetarian", "gluten-free"],
+            "allergens": ["dairy", "eggs"],
+            "spiceLevel": 3
+          }
+        },
+        {
+          "id": "item-24",
+          "name": "Pagination Test Item 8",
+          "description": "Eighth item in pagination test section",
+          "price": 17.00,
+          "sortOrder": 7,
+          "indicators": {
+            "dietary": ["vegan", "gluten-free"],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-25",
+          "name": "Pagination Test Item 9",
+          "description": "Ninth item in pagination test section",
+          "price": 18.00,
+          "sortOrder": 8,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["fish", "shellfish"],
+            "spiceLevel": 1
+          }
+        },
+        {
+          "id": "item-26",
+          "name": "Pagination Test Item 10",
+          "description": "Tenth item in pagination test section",
+          "price": 19.00,
+          "sortOrder": 9,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["nuts", "dairy"],
+            "spiceLevel": 2
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "currency": "€",
+    "venueName": "Edge Case Testing Restaurant with an Extremely Long Name That Should Test Various Layout Scenarios and Text Wrapping Behaviors",
+    "venueAddress": "123 Unicode Street with Special Characters: àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ, Test City 12345-6789",
+    "logoUrl": "https://placehold.co/400x300?text=Foodedge-case-logo-with-very-long-filename-that-might-cause-issues.png"
+  }
+}

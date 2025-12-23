@@ -1,0 +1,265 @@
+{
+  "id": "fixture-medium",
+  "name": "Medium Restaurant Menu",
+  "sections": [
+    {
+      "id": "sec-1",
+      "name": "Appetizers",
+      "sortOrder": 0,
+      "items": [
+        {
+          "id": "item-1",
+          "name": "Calamari Rings",
+          "description": "Crispy fried squid with marinara sauce",
+          "price": 8.99,
+          "imageUrl": "https://placehold.co/400x300?text=Food",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["seafood", "gluten"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-2",
+          "name": "Hummus Platter",
+          "description": "Traditional hummus with pita bread and vegetables",
+          "price": 7.50,
+          "imageUrl": "https://placehold.co/400x300?text=Food",
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": ["vegetarian", "vegan"],
+            "allergens": ["sesame"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-3",
+          "name": "Buffalo Wings",
+          "description": "Spicy chicken wings with blue cheese dip",
+          "price": 9.99,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["dairy"],
+            "spiceLevel": 2
+          }
+        },
+        {
+          "id": "item-4",
+          "name": "Spinach Artichoke Dip",
+          "description": "Creamy dip served with tortilla chips",
+          "price": 8.50,
+          "imageUrl": "https://placehold.co/400x300?text=Foodspinach-dip.jpg",
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-5",
+          "name": "Stuffed Mushrooms",
+          "description": "Button mushrooms filled with herbs and breadcrumbs",
+          "price": 7.99,
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["gluten", "dairy"],
+            "spiceLevel": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-2",
+      "name": "Main Courses",
+      "sortOrder": 1,
+      "items": [
+        {
+          "id": "item-6",
+          "name": "Grilled Salmon",
+          "description": "Atlantic salmon with lemon herb butter and seasonal vegetables",
+          "price": 18.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodsalmon.jpg",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["fish"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-7",
+          "name": "Chicken Tikka Masala",
+          "description": "Tender chicken in creamy tomato curry sauce with basmati rice",
+          "price": 16.50,
+          "imageUrl": "https://placehold.co/400x300?text=Foodtikka-masala.jpg",
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["dairy"],
+            "spiceLevel": 2
+          }
+        },
+        {
+          "id": "item-8",
+          "name": "Vegetable Stir Fry",
+          "description": "Fresh seasonal vegetables in garlic ginger sauce",
+          "price": 14.99,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": ["vegetarian", "vegan"],
+            "allergens": ["soy"],
+            "spiceLevel": 1
+          }
+        },
+        {
+          "id": "item-9",
+          "name": "Beef Ribeye Steak",
+          "description": "12oz ribeye with garlic mashed potatoes and asparagus",
+          "price": 24.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodribeye.jpg",
+          "sortOrder": 3,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-10",
+          "name": "Mushroom Risotto",
+          "description": "Creamy arborio rice with wild mushrooms and parmesan",
+          "price": 15.99,
+          "sortOrder": 4,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["dairy"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-11",
+          "name": "Fish and Chips",
+          "description": "Beer battered cod with hand-cut fries and mushy peas",
+          "price": 17.50,
+          "imageUrl": "https://placehold.co/400x300?text=Foodfish-chips.jpg",
+          "sortOrder": 5,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["fish", "gluten"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-12",
+          "name": "Lamb Tagine",
+          "description": "Slow-cooked lamb with apricots and Moroccan spices",
+          "price": 19.99,
+          "sortOrder": 6,
+          "indicators": {
+            "dietary": ["halal"],
+            "allergens": [],
+            "spiceLevel": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-3",
+      "name": "Pasta",
+      "sortOrder": 2,
+      "items": [
+        {
+          "id": "item-13",
+          "name": "Spaghetti Carbonara",
+          "description": "Classic Roman pasta with pancetta, eggs, and parmesan",
+          "price": 13.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodcarbonara.jpg",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": [],
+            "allergens": ["gluten", "dairy", "eggs"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-14",
+          "name": "Penne Arrabbiata",
+          "description": "Spicy tomato sauce with garlic and red chilies",
+          "price": 12.50,
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": ["vegetarian", "vegan"],
+            "allergens": ["gluten"],
+            "spiceLevel": 3
+          }
+        },
+        {
+          "id": "item-15",
+          "name": "Fettuccine Alfredo",
+          "description": "Rich cream sauce with butter and parmesan cheese",
+          "price": 13.50,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["gluten", "dairy"],
+            "spiceLevel": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "sec-4",
+      "name": "Desserts",
+      "sortOrder": 3,
+      "items": [
+        {
+          "id": "item-16",
+          "name": "Chocolate Lava Cake",
+          "description": "Warm chocolate cake with molten center and vanilla ice cream",
+          "price": 6.99,
+          "imageUrl": "https://placehold.co/400x300?text=Foodlava-cake.jpg",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["gluten", "dairy", "eggs"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-17",
+          "name": "Tiramisu",
+          "description": "Classic Italian dessert with coffee and mascarpone",
+          "price": 5.99,
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["gluten", "dairy", "eggs"],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-18",
+          "name": "Fresh Fruit Salad",
+          "description": "Seasonal fruits with mint and honey drizzle",
+          "price": 4.99,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": ["vegetarian", "vegan", "gluten-free"],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "currency": "£",
+    "venueName": "The Garden Restaurant",
+    "venueAddress": "456 Oak Avenue, Foodtown",
+    "logoUrl": "https://placehold.co/400x300?text=Foodlogo.png"
+  }
+}

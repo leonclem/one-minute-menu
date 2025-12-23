@@ -1,0 +1,532 @@
+/**
+ * V2 PDF Renderer - PDF Export for LayoutDocumentV2
+ * 
+ * This module provides PDF export functionality for LayoutDocumentV2 outputs
+ * using the existing Puppeteer infrastructure. Maintains consistency with web preview.
+ * 
+ * Key Design Decisions:
+ * - Uses same positioning logic as web renderer (absolute, margins applied once)
+ * - Font embedding with fallback stack
+ * - Matches existing PDF export infrastructure patterns
+ * - Returns PDF buffer for download/storage
+ */
+
+import { getSharedBrowser } from '../export/puppeteer-shared'
+import { createElement } from 'react'
+import LayoutPreviewV2 from './renderer-web-v2'
+import { logger } from '../../logger'
+import type { 
+  LayoutDocumentV2,
+  PageSpecV2 
+} from './engine-types-v2'
+import { 
+  getDefaultScale,
+  TYPOGRAPHY_TOKENS_V2,
+  COLOR_TOKENS_V2,
+  type RenderOptionsV2 
+} from './renderer-v2'
+
+// ============================================================================
+// PDF Export Options
+// ============================================================================
+
+export interface PDFExportOptionsV2 {
+  /** Custom page title for PDF metadata */
+  title?: string
+  /** Include page numbers in footer */
+  includePageNumbers?: boolean
+  /** Custom margins (overrides document pageSpec margins) */
+  margins?: {
+    top?: string
+    right?: string
+    bottom?: string
+    left?: string
+  }
+  /** Print background graphics */
+  printBackground?: boolean
+  /** Additional CSS to inject */
+  customCSS?: string
+  /** Show region boundary rectangles (debug) */
+  showRegionBounds?: boolean
+}
+
+export interface PDFExportResultV2 {
+  /** PDF document as Uint8Array */
+  pdfBytes: Uint8Array
+  /** Size in bytes */
+  size: number
+  /** Number of pages generated */
+  pageCount: number
+  /** Generation timestamp */
+  timestamp: Date
+  /** Generation duration in milliseconds */
+  duration: number
+  /** Template and engine info */
+  metadata: {
+    templateId: string
+    templateVersion: string
+    engineVersion: string
+  }
+}
+
+// ============================================================================
+// Main PDF Export Function
+// ============================================================================
+
+/**
+ * Export LayoutDocumentV2 as PDF document using Puppeteer
+ * 
+ * Uses the same React components as web preview to ensure consistency.
+ * Applies the same positioning logic (absolute, margins applied once).
+ */
+export async function renderToPdf(
+  document: LayoutDocumentV2,
+  options: PDFExportOptionsV2 = {}
+): Promise<PDFExportResultV2> {
+  const startTime = Date.now()
+
+    const {
+    title = `Menu Layout - ${document.templateId}`,
+    includePageNumbers = true,
+    margins,
+    printBackground = true,
+    customCSS = '',
+    showRegionBounds = false
+  } = options
+
+  let page
+  try {
+    // Use shared browser instance (matches existing infrastructure)
+    const browser = await getSharedBrowser()
+    page = await browser.newPage()
+
+    // Set viewport for consistent rendering
+    // Use A4 dimensions in pixels at 96 DPI
+    const isLandscape = document.pageSpec.width > document.pageSpec.height
+    await page.setViewport({
+      width: isLandscape ? 1123 : 794,
+      height: isLandscape ? 794 : 1123,
+      deviceScaleFactor: 2 // High DPI for better rendering
+    })
+
+    // Increase timeouts for complex layouts
+    if (typeof (page as any).setDefaultTimeout === 'function') {
+      (page as any).setDefaultTimeout(60000)
+    }
+    if (typeof (page as any).setDefaultNavigationTimeout === 'function') {
+      (page as any).setDefaultNavigationTimeout(60000)
+    }
+
+    // Generate HTML content using React renderer
+    const htmlContent = await generatePDFHTML(document, customCSS, { showRegionBounds })
+
+    // Set HTML content and wait for fonts and images to load
+    await page.setContent(htmlContent, {
+      waitUntil: ['domcontentloaded', 'networkidle0'],
+      timeout: 60000
+    })
+    
+    // Wait for fonts to be ready
+    await page.evaluateHandle('document.fonts.ready')
+
+    // Generate PDF with same dimensions as document pageSpec
+    // DESIGN DECISION: We set margins to 0 here because our React renderer
+    // already applies margins via absolute positioning of the content-box.
+    // This ensures consistency between preview and PDF.
+    const pdfBytes = await page.pdf({
+      width: `${(document.pageSpec.width / 72).toFixed(4)}in`,
+      height: `${(document.pageSpec.height / 72).toFixed(4)}in`,
+      printBackground,
+      margin: { top: 0, right: 0, bottom: 0, left: 0 },
+      displayHeaderFooter: includePageNumbers,
+      headerTemplate: '<div></div>',
+      footerTemplate: includePageNumbers
+        ? '<div style="font-size: 10px; text-align: center; width: 100%; color: #6B7280;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
+        : '<div></div>',
+      preferCSSPageSize: false // Use our explicit dimensions
+    })
+
+    await page.close()
+
+    const endTime = Date.now()
+    const duration = Math.max(1, endTime - startTime)
+
+    // Get actual page count from PDF
+    let pageCount = document.pages.length
+    try {
+      const { PDFDocument } = await import('pdf-lib')
+      const pdfDoc = await PDFDocument.load(pdfBytes)
+      pageCount = pdfDoc.getPageCount()
+    } catch {
+      // Fallback to document page count if parsing fails
+      pageCount = document.pages.length
+    }
+
+    logger.info(`[PDFRendererV2] Generated PDF in ${duration}ms (${pdfBytes.length} bytes, ${pageCount} pages)`)
+
+    return {
+      pdfBytes,
+      size: pdfBytes.length,
+      pageCount,
+      timestamp: new Date(),
+      duration,
+      metadata: {
+        templateId: document.templateId,
+        templateVersion: document.templateVersion,
+        engineVersion: document.debug?.engineVersion || 'v2'
+      }
+    }
+  } catch (error) {
+    if (page) {
+      await page.close().catch(() => {})
+    }
+    throw error
+  }
+}
+
+// ============================================================================
+// HTML Generation for PDF
+// ============================================================================
+
+/**
+ * Generate complete HTML document for PDF rendering
+ * Uses React server-side rendering with the same components as web preview
+ */
+async function generatePDFHTML(
+  document: LayoutDocumentV2, 
+  customCSS: string = '',
+  options: { showRegionBounds?: boolean } = {}
+): Promise<string> {
+  // Use dynamic import to avoid Next.js static analysis issues with react-dom/server
+  // in Route Handlers and Server Components.
+  const { renderToString } = await import('react-dom/server')
+
+  // Render options optimized for PDF
+  const renderOptions: RenderOptionsV2 = {
+    scale: 96 / 72, // Convert points to CSS pixels (96 DPI)
+    showGridOverlay: false,
+    showRegionBounds: options.showRegionBounds || false,
+    showTileIds: false,
+    showDebugInfo: false,
+    isExport: true
+  }
+
+  // Render React component to HTML string
+  const componentHTML = renderToString(
+    createElement(LayoutPreviewV2, {
+      document,
+      options: renderOptions
+    })
+  )
+
+  // Generate complete HTML document
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${document.templateId} - Layout V2</title>
+  <style>
+    ${generatePDFCSS()}
+    ${customCSS}
+  </style>
+</head>
+<body>
+  ${componentHTML}
+</body>
+</html>`
+}
+
+/**
+ * Generate CSS optimized for PDF rendering
+ * Includes font loading, print styles, and layout fixes
+ */
+function generatePDFCSS(): string {
+  return `
+    /* CSS Reset for PDF */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: white;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Font Loading */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    /* Body and Document Styles */
+    body {
+      font-family: ${TYPOGRAPHY_TOKENS_V2.fontFamily.primary};
+      font-size: ${TYPOGRAPHY_TOKENS_V2.fontSize.base}px;
+      line-height: ${TYPOGRAPHY_TOKENS_V2.lineHeight.normal};
+      color: ${COLOR_TOKENS_V2.text.primary};
+      background: ${COLOR_TOKENS_V2.background.white};
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* Layout Document Container */
+    .layout-document-v2 {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Page Container */
+    .page-container-v2 {
+      page-break-after: always;
+      page-break-inside: avoid;
+      overflow: hidden;
+    }
+
+    .page-container-v2:last-child {
+      page-break-after: auto;
+    }
+
+    /* Content Box */
+    .content-box-v2 {
+      position: relative;
+    }
+
+    /* Region Styles */
+    .region-v2 {
+      position: relative;
+    }
+
+    /* Tile Styles */
+    .tile-v2 {
+      position: absolute;
+      overflow: hidden;
+    }
+
+    /* Tile Type Specific Styles */
+    .tile-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tile-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .tile-section_header {
+      display: flex;
+      align-items: center;
+      padding-left: 8px;
+      border-bottom: 2px solid ${COLOR_TOKENS_V2.border.light};
+    }
+
+    .tile-item_card,
+    .tile-item_text_row {
+      background: ${COLOR_TOKENS_V2.background.white};
+      border: 1px solid ${COLOR_TOKENS_V2.border.light};
+      border-radius: 4px;
+      padding: 8px;
+    }
+
+    .tile-filler {
+      border-radius: 4px;
+    }
+
+    /* Image Styles */
+    img {
+      max-width: 100%;
+      height: auto;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+
+    /* Text Styles */
+    .tile-v2 h1,
+    .tile-v2 h2,
+    .tile-v2 h3 {
+      font-weight: ${TYPOGRAPHY_TOKENS_V2.fontWeight.bold};
+      line-height: ${TYPOGRAPHY_TOKENS_V2.lineHeight.tight};
+    }
+
+    /* Print Optimizations */
+    @media print {
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      
+      .page-container-v2 {
+        box-shadow: none;
+        margin-bottom: 0;
+      }
+      
+      .page-info {
+        display: none;
+      }
+    }
+
+    /* Font Fallbacks */
+    @font-face {
+      font-family: 'Inter-fallback';
+      src: local('Arial'), local('Helvetica'), local('sans-serif');
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    /* Ensure text is selectable and copyable */
+    .tile-v2 {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    /* Prevent text overflow */
+    .tile-v2 div {
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+  `
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Normalize margins to Puppeteer-supported units (converting pt to in)
+ */
+function normalizeMargins(margins: {
+  top?: string
+  right?: string
+  bottom?: string
+  left?: string
+}): {
+  top?: string
+  right?: string
+  bottom?: string
+  left?: string
+} {
+  const normalized: Record<string, string | undefined> = {}
+  
+  for (const [key, value] of Object.entries(margins)) {
+    if (value && value.endsWith('pt')) {
+      const points = parseFloat(value)
+      normalized[key] = `${(points / 72).toFixed(4)}in`
+    } else {
+      normalized[key] = value
+    }
+  }
+  
+  return normalized as any
+}
+
+/**
+ * Convert PageSpecV2 margins to Puppeteer margin format
+ */
+function convertPageSpecMargins(pageSpec: PageSpecV2): {
+  top: string
+  right: string
+  bottom: string
+  left: string
+} {
+  return {
+    top: `${(pageSpec.margins.top / 72).toFixed(4)}in`,
+    right: `${(pageSpec.margins.right / 72).toFixed(4)}in`,
+    bottom: `${(pageSpec.margins.bottom / 72).toFixed(4)}in`,
+    left: `${(pageSpec.margins.left / 72).toFixed(4)}in`
+  }
+}
+
+/**
+ * Validate PDF export options
+ */
+export function validatePDFExportOptionsV2(options: PDFExportOptionsV2): {
+  valid: boolean
+  errors: string[]
+} {
+  const errors: string[] = []
+
+  if (options.title && options.title.length > 200) {
+    errors.push('Title exceeds maximum length (200 characters)')
+  }
+
+  if (options.margins) {
+    const marginKeys = ['top', 'right', 'bottom', 'left'] as const
+    for (const key of marginKeys) {
+      const value = options.margins[key]
+      if (value && !value.match(/^\d+(\.\d+)?(pt|mm|in|px)$/)) {
+        errors.push(`Invalid ${key} margin format. Use format like "20pt", "15mm", "1in"`)
+      }
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  }
+}
+
+// ============================================================================
+// Export Utilities (matching existing infrastructure)
+// ============================================================================
+
+/**
+ * Save PDF to file (Node.js environment only)
+ */
+export async function savePDFToFileV2(
+  pdfBytes: Uint8Array,
+  filepath: string
+): Promise<void> {
+  if (typeof window !== 'undefined') {
+    throw new Error('savePDFToFileV2 can only be used in Node.js environment')
+  }
+
+  const fs = await import('fs/promises')
+  await fs.writeFile(filepath, pdfBytes)
+}
+
+/**
+ * Create downloadable PDF blob (browser environment only)
+ */
+export function createPDFBlobV2(pdfBytes: Uint8Array): Blob {
+  return new Blob([pdfBytes as any], { type: 'application/pdf' })
+}
+
+/**
+ * Generate data URL for PDF content
+ */
+export function createPDFDataURLV2(pdfBytes: Uint8Array): string {
+  const base64 = Buffer.from(pdfBytes).toString('base64')
+  return `data:application/pdf;base64,${base64}`
+}
+
+// ============================================================================
+// Integration with Existing Infrastructure
+// ============================================================================
+
+/**
+ * Export function that matches existing PDF exporter interface
+ * for easier integration with existing API routes
+ */
+export async function exportLayoutDocumentToPDF(
+  document: LayoutDocumentV2,
+  options: PDFExportOptionsV2 = {}
+): Promise<{
+  pdfBytes: Uint8Array
+  size: number
+  pageCount: number
+  duration: number
+}> {
+  const result = await renderToPdf(document, options)
+  
+  return {
+    pdfBytes: result.pdfBytes,
+    size: result.size,
+    pageCount: result.pageCount,
+    duration: result.duration
+  }
+}

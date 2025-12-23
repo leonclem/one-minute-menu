@@ -1,0 +1,54 @@
+{
+  "id": "fixture-tiny",
+  "name": "Tiny Menu",
+  "sections": [
+    {
+      "id": "sec-1",
+      "name": "Starters",
+      "sortOrder": 0,
+      "items": [
+        {
+          "id": "item-1",
+          "name": "Soup of the Day",
+          "description": "Fresh seasonal soup",
+          "price": 5.99,
+          "imageUrl": "https://placehold.co/400x300?text=Soup",
+          "sortOrder": 0,
+          "indicators": {
+            "dietary": [],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-2",
+          "name": "Garden Salad",
+          "description": "Mixed greens with vinaigrette",
+          "price": 6.99,
+          "sortOrder": 1,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": [],
+            "spiceLevel": null
+          }
+        },
+        {
+          "id": "item-3",
+          "name": "Bruschetta",
+          "price": 7.50,
+          "sortOrder": 2,
+          "indicators": {
+            "dietary": ["vegetarian"],
+            "allergens": ["gluten"],
+            "spiceLevel": null
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "currency": "£",
+    "venueName": "Test Cafe",
+    "venueAddress": "123 Test Street"
+  }
+}

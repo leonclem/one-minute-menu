@@ -21,24 +21,35 @@ export interface AuthUser {
 export async function isAdmin(): Promise<boolean> {
   const supabase = createServerSupabaseClient()
   
-  const { data: { user }, error } = await supabase.auth.getUser()
-  
-  if (error || !user) {
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    
+    if (error || !user) {
+      return false
+    }
+    
+    // Query the profiles table to check role
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    
+    if (profileError || !profile) {
+      return false
+    }
+    
+    return profile.role === 'admin'
+  } catch (e) {
+    if (e && typeof e === 'object' && 'digest' in e && typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) {
+      throw e
+    }
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Supabase connection failed in isAdmin (dev mode):', e)
+      return true // Allow access in dev if Supabase is down
+    }
     return false
   }
-  
-  // Query the profiles table to check role
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  
-  if (profileError || !profile) {
-    return false
-  }
-  
-  return profile.role === 'admin'
 }
 
 /**
@@ -49,21 +60,48 @@ export async function isAdmin(): Promise<boolean> {
 export async function requireAdmin(redirectUrl: string = '/dashboard'): Promise<void> {
   const supabase = createServerSupabaseClient()
   
-  const { data: { user }, error } = await supabase.auth.getUser()
+  let user;
+  let error;
+  
+  try {
+    const result = await supabase.auth.getUser()
+    user = result.data.user
+    error = result.error
+  } catch (e) {
+    if (e && typeof e === 'object' && 'digest' in e && typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) {
+      throw e
+    }
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Supabase connection failed in requireAdmin. Bypassing auth in development mode.')
+      return;
+    }
+    throw e;
+  }
   
   if (error || !user) {
     redirect('/auth/signin')
   }
   
   // Query the profiles table to check role
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  
-  if (profileError || !profile || profile.role !== 'admin') {
-    redirect(redirectUrl)
+  try {
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    
+    if (profileError || !profile || profile.role !== 'admin') {
+      redirect(redirectUrl)
+    }
+  } catch (e) {
+    if (e && typeof e === 'object' && 'digest' in e && typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) {
+      throw e
+    }
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Supabase profile check failed. Bypassing in development mode.')
+      return;
+    }
+    throw e;
   }
 }
 
@@ -74,26 +112,37 @@ export async function requireAdmin(redirectUrl: string = '/dashboard'): Promise<
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const supabase = createServerSupabaseClient()
   
-  const { data: { user }, error } = await supabase.auth.getUser()
-  
-  if (error || !user) {
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    
+    if (error || !user) {
+      return null
+    }
+    
+    // Query the profiles table to get role
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    
+    if (profileError || !profile) {
+      return null
+    }
+    
+    return {
+      id: user.id,
+      email: user.email || '',
+      role: profile.role as 'user' | 'admin'
+    }
+  } catch (e) {
+    if (e && typeof e === 'object' && 'digest' in e && typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) {
+      throw e
+    }
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Supabase connection failed in getCurrentUser (dev mode).')
+      return null
+    }
     return null
-  }
-  
-  // Query the profiles table to get role
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  
-  if (profileError || !profile) {
-    return null
-  }
-  
-  return {
-    id: user.id,
-    email: user.email || '',
-    role: profile.role as 'user' | 'admin'
   }
 }
