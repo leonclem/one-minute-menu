@@ -9,6 +9,24 @@ export async function GET(req: NextRequest) {
   const code = url.searchParams.get('code')
   const next = url.searchParams.get('next') || '/dashboard'
 
+  // If we have a preferred site URL configured and we're currently on the Vercel domain
+  // (or any other domain that isn't the primary one), redirect to the primary domain
+  // while keeping the code and other params. This ensures the session is established
+  // on the correct domain (e.g., gridmenu.ai instead of one-minute-menu.vercel.app).
+  const preferredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  if (preferredSiteUrl && process.env.NODE_ENV === 'production') {
+    try {
+      const preferredOrigin = new URL(preferredSiteUrl).origin
+      if (url.origin !== preferredOrigin) {
+        console.log(`[auth] Domain mismatch detected. Redirecting from ${url.origin} to ${preferredOrigin}`)
+        const redirectUrl = new URL(url.pathname + url.search, preferredOrigin)
+        return NextResponse.redirect(redirectUrl)
+      }
+    } catch (e) {
+      console.error('[auth] Invalid NEXT_PUBLIC_SITE_URL:', preferredSiteUrl)
+    }
+  }
+
   const res = NextResponse.redirect(new URL(next, url.origin))
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {

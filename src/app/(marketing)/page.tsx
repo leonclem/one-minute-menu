@@ -25,7 +25,7 @@ export default function HomePage() {
   }, [])
 
   const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || 'https://gridmenu.app'
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://gridmenu.ai'
 
   const jsonLd = {
     '@context': 'https://schema.org',
