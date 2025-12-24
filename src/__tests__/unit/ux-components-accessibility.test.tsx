@@ -10,7 +10,7 @@ jest.mock('next/navigation', () => ({
     replace: jest.fn(),
     prefetch: jest.fn(),
   }),
-  usePathname: () => '/ux/menus/demo-menu/upload',
+  usePathname: () => '/menus/demo-menu/upload',
 }))
 
 import { UXInput } from '@/components/ux/UXInput'
@@ -99,7 +99,7 @@ describe('UXHeader accessibility', () => {
     const nav = screen.getByRole('navigation', { name: /primary navigation/i })
     expect(nav).toBeInTheDocument()
 
-    expect(screen.getByRole('link', { name: /pricing/i })).toHaveAttribute('href', '/ux/pricing')
+    expect(screen.getByRole('link', { name: /pricing/i })).toHaveAttribute('href', '/pricing')
     expect(screen.getByRole('link', { name: /support/i })).toHaveAttribute('href', '/support')
     expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/auth/signin')
   })

@@ -31,7 +31,7 @@ describe('conversion tracking utilities', () => {
 
     await trackConversionEvent({
       event: 'landing_view',
-      metadata: { path: '/ux' },
+      metadata: { path: '/' },
     })
 
     expect(global.fetch).toHaveBeenCalledTimes(1)

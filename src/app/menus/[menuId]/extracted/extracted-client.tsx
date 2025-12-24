@@ -85,27 +85,27 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   // Demo image assets
   const DEMO_IMAGES = {
     breakfast: {
-      'Breakfast Sandwich': '/ux/sample-menus/generated/breakfast/breakfast-sandwich.webp',
-      'Country Tartine': '/ux/sample-menus/generated/breakfast/country-tartine.webp',
-      'Eggs Benedict': '/ux/sample-menus/generated/breakfast/eggs-benedict.webp',
-      'French Toast': '/ux/sample-menus/generated/breakfast/french-toast.webp',
-      'Le Parfait': '/ux/sample-menus/generated/breakfast/le-parfait.webp',
-      'Morning Tartine': '/ux/sample-menus/generated/breakfast/morning-tartine.webp',
-      'Parisian Omelette': '/ux/sample-menus/generated/breakfast/parisian-omelette.webp',
-      'Provençal Eggs': '/ux/sample-menus/generated/breakfast/provencal-eggs.webp',
-      'Three Organic Eggs Your Way!': '/ux/sample-menus/generated/breakfast/three-organic-eggs-your-way.webp',
-      'Two Soft-Boiled Eggs & \'Mouillettes\'': '/ux/sample-menus/generated/breakfast/two-soft-boiled-eggs-mouillettes.webp'
+      'Breakfast Sandwich': '/sample-menus/generated/breakfast/breakfast-sandwich.webp',
+      'Country Tartine': '/sample-menus/generated/breakfast/country-tartine.webp',
+      'Eggs Benedict': '/sample-menus/generated/breakfast/eggs-benedict.webp',
+      'French Toast': '/sample-menus/generated/breakfast/french-toast.webp',
+      'Le Parfait': '/sample-menus/generated/breakfast/le-parfait.webp',
+      'Morning Tartine': '/sample-menus/generated/breakfast/morning-tartine.webp',
+      'Parisian Omelette': '/sample-menus/generated/breakfast/parisian-omelette.webp',
+      'Provençal Eggs': '/sample-menus/generated/breakfast/provencal-eggs.webp',
+      'Three Organic Eggs Your Way!': '/sample-menus/generated/breakfast/three-organic-eggs-your-way.webp',
+      'Two Soft-Boiled Eggs & \'Mouillettes\'': '/sample-menus/generated/breakfast/two-soft-boiled-eggs-mouillettes.webp'
     },
     fine_dining: {
-      'Crispy Duck in Port Cherry Sauce': '/ux/sample-menus/generated/fine-dining/crispy-duck-in-port-cherry-sauce.webp',
-      'Grilled Faroe Island Salmon': '/ux/sample-menus/generated/fine-dining/grilled-faroe-island-salmon.webp',
-      'House Made Ice Cream': '/ux/sample-menus/generated/fine-dining/house-made-ice-cream.webp',
-      'Key Lime Pudding': '/ux/sample-menus/generated/fine-dining/key-lime-pudding.webp',
-      'Marinated Local Oyster Mushroom Salad': '/ux/sample-menus/generated/fine-dining/marinated-local-oyster-mushroom-salad.webp',
-      'Pan Roasted Duck Breast': '/ux/sample-menus/generated/fine-dining/pan-roasted-duck-breast.webp',
-      'Rutabaga and Toasted Hazelnut Soup': '/ux/sample-menus/generated/fine-dining/rutabaga-and-toasted-hazelnut-soup.webp',
-      'Tenderloin of Beef Wellington': '/ux/sample-menus/generated/fine-dining/tenderloin-of-beef-wellington.webp',
-      'Tres Leches Cake': '/ux/sample-menus/generated/fine-dining/tres-leches-cake.webp'
+      'Crispy Duck in Port Cherry Sauce': '/sample-menus/generated/fine-dining/crispy-duck-in-port-cherry-sauce.webp',
+      'Grilled Faroe Island Salmon': '/sample-menus/generated/fine-dining/grilled-faroe-island-salmon.webp',
+      'House Made Ice Cream': '/sample-menus/generated/fine-dining/house-made-ice-cream.webp',
+      'Key Lime Pudding': '/sample-menus/generated/fine-dining/key-lime-pudding.webp',
+      'Marinated Local Oyster Mushroom Salad': '/sample-menus/generated/fine-dining/marinated-local-oyster-mushroom-salad.webp',
+      'Pan Roasted Duck Breast': '/sample-menus/generated/fine-dining/pan-roasted-duck-breast.webp',
+      'Rutabaga and Toasted Hazelnut Soup': '/sample-menus/generated/fine-dining/rutabaga-and-toasted-hazelnut-soup.webp',
+      'Tenderloin of Beef Wellington': '/sample-menus/generated/fine-dining/tenderloin-of-beef-wellington.webp',
+      'Tres Leches Cake': '/sample-menus/generated/fine-dining/tres-leches-cake.webp'
     }
   }
 
@@ -121,11 +121,11 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           setLogoUrl(parsedMenu?.logoUrl ?? null)
         } catch (error) {
           console.error('Error parsing demo menu:', error)
-          router.push('/ux/demo/sample')
+          router.push('/demo/sample')
         }
       } else {
         // No demo menu data found, redirect back to sample selection
-        router.push('/ux/demo/sample')
+        router.push('/demo/sample')
       }
     } else {
       // Handle authenticated user menu
@@ -185,7 +185,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             title: 'No menu items found',
             description: 'Please extract items from your menu image first.'
           })
-          router.push(`/ux/menus/${menuId}/extract`)
+          router.push(`/menus/${menuId}/extract`)
           return
         }
 
@@ -234,7 +234,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                       title: 'Could not save items',
                       description: 'Please try again from the extraction step.',
                     })
-                    router.push(`/ux/menus/${menuId}/extract`)
+                    router.push(`/menus/${menuId}/extract`)
                     return true
                   }
                 }
@@ -247,7 +247,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                 title: 'Extraction failed',
                 description: json?.data?.error || 'Please try again.'
               })
-              router.push(`/ux/menus/${menuId}/extract`)
+              router.push(`/menus/${menuId}/extract`)
               return true
             }
             return false
@@ -258,7 +258,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
               title: 'Could not load results',
               description: 'Please try again from the extraction step.'
             })
-            router.push(`/ux/menus/${menuId}/extract`)
+            router.push(`/menus/${menuId}/extract`)
             return true
           }
         }
@@ -333,11 +333,11 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     setLoading(true)
     
     // Navigate to template selection
-    router.push(`/ux/menus/${menuId}/template`)
+    router.push(`/menus/${menuId}/template`)
   }
 
   const handleBackToExtraction = () => {
-    router.push(`/ux/menus/${menuId}/extract`)
+    router.push(`/menus/${menuId}/extract`)
   }
 
   const refreshMenu = async () => {

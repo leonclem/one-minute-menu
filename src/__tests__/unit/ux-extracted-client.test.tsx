@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import UXMenuExtractedClient from '../../app/ux/menus/[menuId]/extracted/extracted-client'
+import UXMenuExtractedClient from '../../app/menus/[menuId]/extracted/extracted-client'
 
 const mockRouter = { push: jest.fn() }
 jest.mock('next/navigation', () => ({
@@ -79,7 +79,7 @@ describe('UX Extracted Page', () => {
           price: 7.5,
           description: 'Tomato soup',
           category: 'Starters',
-          customImageUrl: '/ux/sample-menus/generated/test/zoom-soup.webp',
+          customImageUrl: '/sample-menus/generated/test/zoom-soup.webp',
         },
       ],
     }

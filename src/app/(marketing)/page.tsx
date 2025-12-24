@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { UXButton } from '@/components/ux'
 import { getABVariant, trackConversionEvent } from '@/lib/conversion-tracking'
 
-export default function UXHomePage() {
+export default function HomePage() {
   // Start with 'A' to match server-side rendering, then update on client
   const [ctaVariant, setCtaVariant] = useState<string>('A')
 
@@ -18,7 +18,7 @@ export default function UXHomePage() {
     trackConversionEvent({
       event: 'landing_view',
       metadata: {
-        path: '/ux',
+        path: '/',
         ctaVariant: variant,
       },
     })
@@ -30,10 +30,10 @@ export default function UXHomePage() {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'GridMenu UX',
-    url: `${siteUrl}/ux`,
+    name: 'GridMenu',
+    url: siteUrl,
     description:
-      'Try GridMenu’s new UX flow to transform your restaurant menu into a mobile-friendly QR code menu. Upload your menu or start with a demo.',
+      'Transform your restaurant menu into a mobile-friendly QR code menu in under 5 minutes. No tech skills required.',
   }
 
   const primaryCtaLabel =
@@ -43,15 +43,15 @@ export default function UXHomePage() {
     trackConversionEvent({
       event: 'cta_click_primary',
       metadata: {
-        path: '/ux',
+        path: '/',
         ctaVariant,
-        destination: '/ux/register',
+        destination: '/register',
       },
     })
     trackConversionEvent({
       event: 'registration_start',
       metadata: {
-        path: '/ux',
+        path: '/',
         ctaVariant,
         source: 'hero_primary',
       },
@@ -62,16 +62,16 @@ export default function UXHomePage() {
     trackConversionEvent({
       event: 'cta_click_secondary',
       metadata: {
-        path: '/ux',
+        path: '/',
         ctaVariant,
-        destination: '/ux/demo/sample',
+        destination: '/demo/sample',
         source: 'hero_secondary',
       },
     })
     trackConversionEvent({
       event: 'demo_start',
       metadata: {
-        path: '/ux',
+        path: '/',
         ctaVariant,
         source: 'hero_secondary',
       },
@@ -82,7 +82,7 @@ export default function UXHomePage() {
     <div className="w-full h-full flex items-center justify-center">
       <section className="relative w-full">
         <div className="container-ux mx-auto max-w-4xl px-6 py-8 md:py-12 text-center">
-          {/* JSON-LD structured data specific to the UX landing */}
+          {/* JSON-LD structured data specific to the landing */}
           <script
             type="application/ld+json"
             suppressHydrationWarning
@@ -95,12 +95,12 @@ export default function UXHomePage() {
             Transform your menu into a print- and mobile-friendly, flexible digital menu. Instant price changes, 86&apos;ing and much more.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-6 md:mt-8">
-            <Link href="/ux/register" className="w-full sm:w-auto" onClick={handlePrimaryClick}>
+            <Link href="/register" className="w-full sm:w-auto" onClick={handlePrimaryClick}>
               <UXButton variant="primary" size="lg" className="w-full sm:w-auto min-w-[240px]">
                 {primaryCtaLabel}
               </UXButton>
             </Link>
-            <Link href="/ux/demo/sample" className="w-full sm:w-auto" onClick={handleSecondaryClick}>
+            <Link href="/demo/sample" className="w-full sm:w-auto" onClick={handleSecondaryClick}>
               <UXButton variant="warning" size="lg" className="w-full sm:w-auto min-w-[240px]">
                 Try a Demo Menu
               </UXButton>

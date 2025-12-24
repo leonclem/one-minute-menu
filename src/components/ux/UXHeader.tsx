@@ -17,11 +17,11 @@ export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
     ? [
         { href: '/dashboard', label: 'Dashboard' },
         ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
-        { href: '/ux/pricing', label: 'Pricing' },
+        { href: '/pricing', label: 'Pricing' },
         { href: '/support', label: 'Support' },
       ]
     : [
-        { href: '/ux/pricing', label: 'Pricing' },
+        { href: '/pricing', label: 'Pricing' },
         { href: '/support', label: 'Support' },
         { href: '/auth/signin', label: 'Sign In' },
       ]
@@ -31,7 +31,7 @@ export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
       <div className="container-ux">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/ux" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+          <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <Image src="/logos/logo.svg" alt="GridMenu" width={24} height={24} priority className="logo-drop-shadow" />
             <span className="font-semibold text-white text-[21px] leading-none text-soft-shadow pl-[2px] pt-[4px]">
               GridMenu

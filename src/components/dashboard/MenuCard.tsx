@@ -35,7 +35,7 @@ export function MenuCard({ menu }: MenuCardProps) {
     const hasMenuItems = (menu.items?.length ?? 0) > 0 || (menu.categories?.length ?? 0) > 0
     
     if (hasMenuItems) {
-      return `/ux/menus/${menu.id}/extracted`
+      return `/menus/${menu.id}/extracted`
     }
     
     // If no menu items exist, check if there's a source image to extract from
@@ -44,7 +44,7 @@ export function MenuCard({ menu }: MenuCardProps) {
     }
     
     // Has image but no items - go to extract page
-    return `/ux/menus/${menu.id}/extract`
+    return `/menus/${menu.id}/extract`
   }
 
   const handleDeleteClick = () => {

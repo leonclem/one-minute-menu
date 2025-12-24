@@ -14,7 +14,7 @@ jest.mock('@/components/ui', () => ({
   useToast: () => ({ showToast: jest.fn() }),
 }))
 
-import UXMenuExportClient from '@/app/ux/menus/[menuId]/export/export-client'
+import UXMenuExportClient from '@/app/menus/[menuId]/export/export-client'
 
 // Template selection mock data
 const mockTemplateSelection = {

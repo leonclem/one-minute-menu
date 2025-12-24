@@ -32,11 +32,11 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
           setDemoMenu(parsedMenu)
         } catch (error) {
           console.error('Error parsing demo menu:', error)
-          router.push('/ux/demo/sample')
+          router.push('/demo/sample')
         }
       } else {
         // No demo menu data found, redirect back to sample selection
-        router.push('/ux/demo/sample')
+        router.push('/demo/sample')
       }
     } else {
       // Authenticated user menu extraction flow: load menu (to get imageUrl)
@@ -123,7 +123,7 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
       })
 
       // Navigate directly to results for a seamless experience
-      router.push(`/ux/menus/${menuId}/extracted`)
+      router.push(`/menus/${menuId}/extracted`)
 
     } catch (error) {
       console.error('Error during extraction:', error)
@@ -208,7 +208,7 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
             title: 'Extraction complete',
             description: 'Your items are ready to review.'
           })
-          router.push(`/ux/menus/${menuId}/extracted`)
+          router.push(`/menus/${menuId}/extracted`)
           return
         }
         if (status === 'failed') {
@@ -278,7 +278,7 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
   }
 
   const handleProceedToResults = () => {
-    router.push(`/ux/menus/${menuId}/extracted`)
+    router.push(`/menus/${menuId}/extracted`)
   }
 
   const isDemo = menuId.startsWith('demo-')
@@ -368,7 +368,7 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
               variant="outline"
               size="md"
               className="bg-white/20 border-white/40 text-white hover:bg-white/30"
-              onClick={() => router.push('/ux/demo/sample')}
+              onClick={() => router.push('/demo/sample')}
               disabled={extracting}
             >
               ← Back to Sample Selection

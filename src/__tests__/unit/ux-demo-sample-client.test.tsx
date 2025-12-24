@@ -23,7 +23,7 @@ jest.mock('@/lib/conversion-tracking', () => ({
 }))
 
 // Import the demo sample client component
-import DemoSampleClient from '@/app/ux/demo/sample/demo-sample-client'
+import DemoSampleClient from '@/app/(marketing)/demo/sample/demo-sample-client'
 
 describe('DemoSampleClient (sample demo flow)', () => {
   beforeEach(() => {
@@ -60,7 +60,7 @@ describe('DemoSampleClient (sample demo flow)', () => {
       expect.objectContaining({
         event: 'demo_start',
         metadata: expect.objectContaining({
-          path: '/ux/demo/sample',
+          path: '/demo/sample',
         }),
       }),
     )
@@ -72,7 +72,7 @@ describe('DemoSampleClient (sample demo flow)', () => {
           type: 'success',
         }),
       )
-      expect(mockPush).toHaveBeenCalledWith('/ux/menus/menu-demo-1/extract')
+      expect(mockPush).toHaveBeenCalledWith('/menus/menu-demo-1/extract')
     })
 
     // demo_completed should also be tracked with menuId

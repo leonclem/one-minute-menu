@@ -69,11 +69,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
             setThumbnailUrl(parsedMenu?.imageUrl ?? null)
           } catch (error) {
             console.error('Error parsing demo menu:', error)
-            router.push('/ux/demo/sample')
+            router.push('/demo/sample')
           }
         } else {
           // No demo menu data found, redirect back to sample selection
-          router.push('/ux/demo/sample')
+          router.push('/demo/sample')
         }
       } else {
         // Authenticated user: load menu
@@ -114,7 +114,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               title: 'Extraction required',
               description: 'Please extract items before selecting a template.'
             })
-            router.push(`/ux/menus/${menuId}/extract`)
+            router.push(`/menus/${menuId}/extract`)
             return
           }
         } catch (e) {
@@ -297,7 +297,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           configuration: { textOnly: false, useLogo: false }
         }))
         // Navigate to export for demo users
-        router.push(`/ux/menus/${menuId}/export`)
+        router.push(`/menus/${menuId}/export`)
       } else {
         // Authenticated users: save template selection via API
         const resp = await fetch(`/api/menus/${menuId}/template-selection`, {
@@ -315,7 +315,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         }
 
         // Navigate to export page
-        router.push(`/ux/menus/${menuId}/export`)
+        router.push(`/menus/${menuId}/export`)
       }
     } catch (error) {
       console.error('Error applying template:', error)
@@ -330,7 +330,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   }
 
   const handleBackToExtracted = () => {
-    router.push(`/ux/menus/${menuId}/extracted`)
+    router.push(`/menus/${menuId}/extracted`)
   }
 
   if ((!demoMenu && isDemoUser) || templatesLoading) {
@@ -363,7 +363,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           </p>
         </div>
         <div className="flex justify-center">
-          <UXButton onClick={() => router.push(`/ux/menus/${menuId}/extracted`)}>
+          <UXButton onClick={() => router.push(`/menus/${menuId}/extracted`)}>
             ← Back to Items
           </UXButton>
         </div>

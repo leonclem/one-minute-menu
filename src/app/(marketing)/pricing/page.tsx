@@ -187,12 +187,12 @@ export default function UXPricingPage() {
             Design free. Pay only when you export. No credit card required to start.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/ux">
+            <Link href="/">
               <UXButton variant="primary" size="lg">
                 Try Free Now
               </UXButton>
             </Link>
-            <Link href="/ux/register">
+            <Link href="/register">
               <UXButton variant="warning" size="lg">
                 Create Account
               </UXButton>

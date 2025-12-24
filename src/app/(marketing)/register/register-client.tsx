@@ -161,7 +161,7 @@ export default function UXRegisterClient() {
         </p>
 
         <Link 
-          href="/ux" 
+          href="/" 
           className="inline-flex items-center text-sm rounded-full bg-white/20 border border-white/40 text-white hover:bg-white/30 px-4 py-2 transition-colors"
         >
           <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

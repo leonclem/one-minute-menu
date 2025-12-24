@@ -33,7 +33,7 @@ export default function UXDemoSampleError({
             variant="outline"
             size="md"
             className="bg-white/20 border-white/40 text-white hover:bg-white/30"
-            onClick={() => router.push('/ux')}
+            onClick={() => router.push('/')}
           >
             ← Back to UX home
           </UXButton>

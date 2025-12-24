@@ -30,7 +30,7 @@ export function UXProgressSteps({ currentStep, menuId, clickable = true }: UXPro
   const handleNavigate = (id: StepId, index: number) => {
     if (!clickable) return
     if (index > activeIndex) return
-    router.push(`/ux/menus/${menuId}/${id}`)
+    router.push(`/menus/${menuId}/${id}`)
   }
 
   return (

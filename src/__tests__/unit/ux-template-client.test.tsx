@@ -14,7 +14,7 @@ jest.mock('@/components/ui', () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }))
 
-import UXMenuTemplateClient from '@/app/ux/menus/[menuId]/template/template-client'
+import UXMenuTemplateClient from '@/app/menus/[menuId]/template/template-client'
 
 // Mock template response matching the API format
 const mockTemplatesResponse = {

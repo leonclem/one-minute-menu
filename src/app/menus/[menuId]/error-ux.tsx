@@ -24,7 +24,7 @@ export default function UXMenuFlowError({
     : 'An unexpected error occurred while processing your menu. You can retry this step or go back and restart the flow.'
 
   const handleStartOver = () => {
-    router.push('/ux')
+    router.push('/')
   }
 
   return (

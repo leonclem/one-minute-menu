@@ -65,7 +65,7 @@ describe('analytics tracking and consent', () => {
     // Then a demo_start conversion should go to /api/analytics/conversion
     await trackConversionEvent({
       event: 'demo_start',
-      metadata: { path: '/ux/demo/sample', menuId: 'menu-ux-demo' },
+      metadata: { path: '/demo/sample', menuId: 'menu-ux-demo' },
     })
 
     const endpoints = (global.fetch as jest.Mock).mock.calls.map((call) => call[0])
@@ -76,7 +76,7 @@ describe('analytics tracking and consent', () => {
   it('still allows conversion events when analytics consent is not granted', async () => {
     await trackConversionEvent({
       event: 'demo_start',
-      metadata: { path: '/ux/demo/sample', sampleId: 'sample-breakfast' },
+      metadata: { path: '/demo/sample', sampleId: 'sample-breakfast' },
     })
 
     expect(global.fetch).toHaveBeenCalledTimes(1)

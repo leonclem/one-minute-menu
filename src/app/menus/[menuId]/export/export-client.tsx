@@ -153,10 +153,10 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
               }
             } catch (error) {
               console.error('Error parsing demo menu:', error)
-              router.push('/ux/demo/sample')
+              router.push('/demo/sample')
             }
           } else {
-            router.push('/ux/demo/sample')
+            router.push('/demo/sample')
           }
         } else if (resp.status === 401) {
           showToast({
@@ -185,10 +185,10 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
                 }
               }
             } catch {
-              router.push('/ux/demo/sample')
+              router.push('/demo/sample')
             }
           } else {
-            router.push('/ux/demo/sample')
+            router.push('/demo/sample')
           }
         } else {
           console.error('Failed to load menu info:', err)
@@ -206,7 +206,7 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
     trackConversionEvent({
       event: 'export_start',
       metadata: {
-        path: `/ux/menus/${menuId}/export`,
+        path: `/menus/${menuId}/export`,
         format: option.format,
         isDemo,
       },
@@ -271,7 +271,7 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
             trackConversionEvent({
               event: 'export_completed',
               metadata: {
-                path: `/ux/menus/${menuId}/export`,
+                path: `/menus/${menuId}/export`,
                 format: option.format,
                 isDemo: true,
               },
@@ -298,7 +298,7 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           trackConversionEvent({
             event: 'cta_click_primary',
             metadata: {
-              path: `/ux/menus/${menuId}/export`,
+              path: `/menus/${menuId}/export`,
               format: option.format,
               isDemo: true,
               action: 'export_upgrade_prompt',
@@ -374,7 +374,7 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
             title: 'Sign in required',
             description: 'Create an account to export your real menu.'
           })
-          router.push('/ux/register')
+          router.push('/register')
           return
         }
         const errText = await resp.text().catch(() => 'Export failed')
@@ -400,7 +400,7 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
       trackConversionEvent({
         event: 'export_completed',
         metadata: {
-          path: `/ux/menus/${menuId}/export`,
+          path: `/menus/${menuId}/export`,
           format: option.format,
           isDemo: false,
         },
@@ -418,7 +418,7 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
       trackConversionEvent({
         event: 'ux_error',
         metadata: {
-          path: `/ux/menus/${menuId}/export`,
+          path: `/menus/${menuId}/export`,
           format: option.format,
           isDemo,
         },
@@ -432,22 +432,22 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
     trackConversionEvent({
       event: 'cta_click_try_own_menu',
       metadata: {
-        path: `/ux/menus/${menuId}/export`,
+        path: `/menus/${menuId}/export`,
         isDemo: menuId.startsWith('demo-'),
       },
     })
     trackConversionEvent({
       event: 'registration_start',
       metadata: {
-        path: `/ux/menus/${menuId}/export`,
+        path: `/menus/${menuId}/export`,
         source: 'export_conversion_panel',
       },
     })
-    router.push('/ux/register')
+    router.push('/register')
   }
 
   const handleBackToTemplate = () => {
-    router.push(`/ux/menus/${menuId}/template`)
+    router.push(`/menus/${menuId}/template`)
   }
 
   const isDemo = menuId.startsWith('demo-')
@@ -666,7 +666,7 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
               variant="outline"
               size="lg"
               className="bg-white/20 border-white/40 text-white hover:bg-white/30"
-              onClick={() => router.push('/ux')}
+              onClick={() => router.push('/')}
               disabled={exportingFormat !== null}
             >
               Start Over

@@ -15,7 +15,7 @@ jest.mock('@/components/ux', () => {
 })
 
 // Mock usePathname to simulate different steps
-let mockPathname = '/ux/menus/test-menu/upload'
+let mockPathname = '/menus/test-menu/upload'
 jest.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
 }))
@@ -30,17 +30,17 @@ jest.mock('@/lib/ux-progress', () => {
   }
 })
 
-import ClientFlowShell from '@/app/ux/menus/[menuId]/ClientFlowShell'
+import ClientFlowShell from '@/app/menus/[menuId]/ClientFlowShell'
 
 describe('ClientFlowShell (single-page workflow shell)', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockPathname = '/ux/menus/test-menu/upload'
+    mockPathname = '/menus/test-menu/upload'
     window.scrollTo = jest.fn()
   })
 
   it('derives current step from pathname and renders UXProgressSteps', () => {
-    mockPathname = '/ux/menus/test-menu/extract'
+    mockPathname = '/menus/test-menu/extract'
 
     render(
       <ClientFlowShell menuId="test-menu">
@@ -59,7 +59,7 @@ describe('ClientFlowShell (single-page workflow shell)', () => {
   })
 
   it('falls back to upload step for unknown path segment', () => {
-    mockPathname = '/ux/menus/test-menu/unknown-step'
+    mockPathname = '/menus/test-menu/unknown-step'
 
     render(
       <ClientFlowShell menuId="test-menu">

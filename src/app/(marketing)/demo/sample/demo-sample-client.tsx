@@ -22,7 +22,7 @@ const SAMPLE_MENUS: SampleMenu[] = [
     id: 'sample-breakfast',
     name: 'Breakfast menu',
     description: 'Classic breakfast board with omelettes, eggs benedict, and more',
-    imageUrl: '/ux/sample-menus/breakfast.jpg',
+    imageUrl: '/sample-menus/breakfast.jpg',
     category: 'cafe',
     extractedText: `
 BREAKFAST
@@ -62,7 +62,7 @@ With maple syrup, homemade jam & whipped cream
     id: 'sample-fine-dining',
     name: 'Fine Dining',
     description: 'Elegant multi-course selections including appetizers, mains, and desserts',
-    imageUrl: '/ux/sample-menus/fine-dining.jpg',
+    imageUrl: '/sample-menus/fine-dining.jpg',
     category: 'restaurant',
     extractedText: `
 TODAY'S MENU
@@ -117,7 +117,7 @@ export default function DemoSampleClient() {
     trackConversionEvent({
       event: 'demo_start',
       metadata: {
-        path: '/ux/demo/sample',
+        path: '/demo/sample',
         sampleId: sampleMenu.id,
         category: sampleMenu.category,
       },
@@ -154,7 +154,7 @@ export default function DemoSampleClient() {
       trackConversionEvent({
         event: 'demo_completed',
         metadata: {
-          path: '/ux/demo/sample',
+          path: '/demo/sample',
           sampleId: sampleMenu.id,
           menuId: menu.id,
         },
@@ -168,7 +168,7 @@ export default function DemoSampleClient() {
       })
 
       // Navigate directly to extraction since we have sample text
-      router.push(`/ux/menus/${menu.id}/extract`)
+      router.push(`/menus/${menu.id}/extract`)
       
     } catch (error) {
       console.error('Error creating demo menu:', error)
@@ -280,7 +280,7 @@ export default function DemoSampleClient() {
             variant="outline"
             size="sm"
             className="bg-white/20 border-white/40 text-white hover:bg-white/30"
-            onClick={() => router.push('/ux')}
+            onClick={() => router.push('/')}
             disabled={loading}
           >
             ← Back to Home

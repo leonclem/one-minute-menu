@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     title: 'Create Your Digital Menu | GridMenu',
     description: 'Transform your restaurant menu into a mobile-friendly QR code menu in minutes.',
     type: 'website',
-    url: '/ux',
+    url: '/',
     images: [
       {
         url: '/logos/social-1200x630.png',
         width: 1200,
         height: 630,
-        alt: 'GridMenu UX marketing preview',
+        alt: 'GridMenu marketing preview',
       },
     ],
   },
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function UXLayout({
+export default async function MarketingLayout({
   children,
 }: {
   children: React.ReactNode
@@ -43,7 +43,7 @@ export default async function UXLayout({
         aria-hidden
         className="fixed inset-0 -z-10"
         style={{
-          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.45)), url(/ux/backgrounds/kung-pao-chicken.png)`,
+          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.45)), url(/backgrounds/kung-pao-chicken.png)`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center 30%'
