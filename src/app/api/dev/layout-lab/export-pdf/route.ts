@@ -12,6 +12,8 @@ import { transformMenuToV2, isEngineMenuV2 } from '@/lib/templates/v2/menu-trans
 import { renderToPdf } from '@/lib/templates/v2/renderer-pdf-v2'
 import type { LayoutDocumentV2 } from '@/lib/templates/v2/engine-types-v2'
 import { toEngineMenu, isEngineMenu } from '@/lib/templates/menu-transformer'
+import { menuOperations } from '@/lib/database'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { readFile } from 'fs/promises'
 import path from 'path'
 
@@ -64,34 +66,67 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Load fixture menu
-    const fixturePath = path.join(
-      process.cwd(),
-      'src/lib/templates/v2/fixtures',
-      `${fixtureId}.json`
-    )
+    // Load menu data (fixture or real menu)
+    let menuData
     
-    let fixtureData
-    try {
-      const fixtureContent = await readFile(fixturePath, 'utf-8')
-      fixtureData = JSON.parse(fixtureContent)
-    } catch (error) {
-      return NextResponse.json(
-        { error: `Fixture not found: ${fixtureId}` },
-        { status: 404 }
+    if (fixtureId.startsWith('menu-')) {
+      // Real menu - extract menu ID and load from database
+      const menuId = fixtureId.replace('menu-', '')
+      
+      // Get current user for authorization
+      const supabase = createServerSupabaseClient()
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !user) {
+        return NextResponse.json(
+          { error: 'Unauthorized - cannot access real menu data' },
+          { status: 401 }
+        )
+      }
+      
+      try {
+        menuData = await menuOperations.getMenu(menuId, user.id)
+        if (!menuData) {
+          return NextResponse.json(
+            { error: `Menu not found or access denied: ${menuId}` },
+            { status: 404 }
+          )
+        }
+      } catch (error) {
+        return NextResponse.json(
+          { error: `Failed to load menu: ${menuId}` },
+          { status: 500 }
+        )
+      }
+    } else {
+      // Fixture data - load from file
+      const fixturePath = path.join(
+        process.cwd(),
+        'src/lib/templates/v2/fixtures',
+        `${fixtureId}.json`
       )
+      
+      try {
+        const fixtureContent = await readFile(fixturePath, 'utf-8')
+        menuData = JSON.parse(fixtureContent)
+      } catch (error) {
+        return NextResponse.json(
+          { error: `Fixture not found: ${fixtureId}` },
+          { status: 404 }
+        )
+      }
     }
     
     // Generate layout based on engine version
     if (engineVersion === 'v2') {
-      // Check if fixture data is already in V2 format
+      // Check if menu data is already in V2 format
       let menuV2
-      if (isEngineMenuV2(fixtureData)) {
-        // Fixture is already in V2 format, use directly
-        menuV2 = fixtureData
+      if (isEngineMenuV2(menuData)) {
+        // Data is already in V2 format, use directly
+        menuV2 = menuData
       } else {
         // Transform database format to V2 format
-        menuV2 = transformMenuToV2(fixtureData)
+        menuV2 = transformMenuToV2(menuData)
       }
       
       const layoutDocument = await generateLayoutWithVersion({
@@ -139,10 +174,10 @@ export async function POST(request: NextRequest) {
       }
 
       let menuV1
-      if (isEngineMenu(fixtureData)) {
-        menuV1 = fixtureData
+      if (isEngineMenu(menuData)) {
+        menuV1 = menuData
       } else {
-        menuV1 = toEngineMenu(fixtureData)
+        menuV1 = toEngineMenu(menuData)
       }
 
       const layout = await generateLayoutWithVersion({

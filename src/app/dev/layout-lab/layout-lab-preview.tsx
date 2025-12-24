@@ -33,7 +33,8 @@ export function LayoutLabPreview({
   showTileIds
 }: LayoutLabPreviewProps) {
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
-  const [zoom, setZoom] = useState(0.75) // Default to 75% for desktop
+  const [zoom, setZoom] = useState(0.9) // Default to 90%
+  const [layoutInfoCollapsed, setLayoutInfoCollapsed] = useState(true) // Default collapsed
   
   if (isGenerating) {
     return (
@@ -87,33 +88,43 @@ export function LayoutLabPreview({
     return (
       <div className="space-y-4">
         <Card>
-          <CardHeader>
-            <CardTitle>V1 Layout Information</CardTitle>
+          <CardHeader 
+            className="cursor-pointer select-none"
+            onClick={() => setLayoutInfoCollapsed(!layoutInfoCollapsed)}
+          >
+            <CardTitle className="flex items-center justify-between">
+              V1 Layout Information
+              <span className="text-sm text-gray-500">
+                {layoutInfoCollapsed ? '▶' : '▼'}
+              </span>
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-medium">Template:</span> {v1Layout.templateId}
+          {!layoutInfoCollapsed && (
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Template:</span> {v1Layout.templateId}
+                </div>
+                <div>
+                  <span className="font-medium">Version:</span> {v1Layout.templateVersion}
+                </div>
+                <div>
+                  <span className="font-medium">Orientation:</span> {v1Layout.orientation}
+                </div>
+                <div>
+                  <span className="font-medium">Total Pages:</span> {totalPages}
+                </div>
               </div>
-              <div>
-                <span className="font-medium">Version:</span> {v1Layout.templateVersion}
-              </div>
-              <div>
-                <span className="font-medium">Orientation:</span> {v1Layout.orientation}
-              </div>
-              <div>
-                <span className="font-medium">Total Pages:</span> {totalPages}
-              </div>
-            </div>
-          </CardContent>
+            </CardContent>
+          )}
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle>V1 Preview</CardTitle>
           </CardHeader>
-          <CardContent className="overflow-auto max-h-[800px] bg-gray-100 p-8 flex justify-center">
-            <div className="shadow-2xl scale-75 origin-top">
+          <CardContent className="overflow-auto bg-gray-100 flex justify-center" style={{ height: '800px', width: '100%' }}>
+            <div className="shadow-2xl scale-90 origin-top mt-5">
               <LayoutRenderer 
                 layout={v1Layout}
                 template={template}
@@ -134,31 +145,41 @@ export function LayoutLabPreview({
     <div className="space-y-4">
       {/* Layout Info */}
       <Card>
-        <CardHeader>
-          <CardTitle>Layout Information</CardTitle>
+        <CardHeader 
+          className="cursor-pointer select-none"
+          onClick={() => setLayoutInfoCollapsed(!layoutInfoCollapsed)}
+        >
+          <CardTitle className="flex items-center justify-between">
+            Layout Information
+            <span className="text-sm text-gray-500">
+              {layoutInfoCollapsed ? '▶' : '▼'}
+            </span>
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium">Template:</span> {v2Layout.templateId}
+        {!layoutInfoCollapsed && (
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium">Template:</span> {v2Layout.templateId}
+              </div>
+              <div>
+                <span className="font-medium">Version:</span> {v2Layout.templateVersion}
+              </div>
+              <div>
+                <span className="font-medium">Page Size:</span> {v2Layout.pageSpec.width}×{v2Layout.pageSpec.height}pt
+              </div>
+              <div>
+                <span className="font-medium">Total Pages:</span> {totalPages}
+              </div>
+              <div>
+                <span className="font-medium">Current Page:</span> {currentPage.pageType}
+              </div>
+              <div>
+                <span className="font-medium">Tiles on Page:</span> {currentPage.tiles.length}
+              </div>
             </div>
-            <div>
-              <span className="font-medium">Version:</span> {v2Layout.templateVersion}
-            </div>
-            <div>
-              <span className="font-medium">Page Size:</span> {v2Layout.pageSpec.width}×{v2Layout.pageSpec.height}pt
-            </div>
-            <div>
-              <span className="font-medium">Total Pages:</span> {totalPages}
-            </div>
-            <div>
-              <span className="font-medium">Current Page:</span> {currentPage.pageType}
-            </div>
-            <div>
-              <span className="font-medium">Tiles on Page:</span> {currentPage.tiles.length}
-            </div>
-          </div>
-        </CardContent>
+          </CardContent>
+        )}
       </Card>
       
       {/* Page Preview */}
@@ -195,14 +216,14 @@ export function LayoutLabPreview({
           )}
         </CardHeader>
         <CardContent>
-          <div className="relative bg-white border rounded-lg overflow-auto max-h-[1200px] p-8 bg-gray-50 flex justify-center">
+          <div className="relative bg-white border rounded-lg overflow-auto bg-gray-50 flex justify-center" style={{ height: '800px', width: '100%' }}>
             <div
               className="origin-top transition-transform duration-200"
               style={{
                 width: v2Layout.pageSpec.width,
                 height: v2Layout.pageSpec.height,
                 transform: `scale(${zoom})`,
-                marginBottom: `${(v2Layout.pageSpec.height * (zoom - 1)) / 2}px`,
+                marginTop: '20px',
               }}
             >
               <PageRenderer
@@ -258,7 +279,7 @@ export function LayoutLabPreview({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setZoom(0.75)}
+              onClick={() => setZoom(0.9)}
               className="text-xs"
             >
               Reset
@@ -270,8 +291,36 @@ export function LayoutLabPreview({
       {/* Debug Information */}
       {v2Layout.debug && (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle>Debug Information</CardTitle>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const debugInfo = {
+                    engineVersion: v2Layout.debug?.engineVersion,
+                    generatedAt: v2Layout.debug?.generatedAt,
+                    inputHash: v2Layout.debug?.inputHash,
+                    placementLog: v2Layout.debug?.placementLog
+                  }
+                  navigator.clipboard.writeText(JSON.stringify(debugInfo, null, 2))
+                }}
+                className="text-xs"
+              >
+                Copy Debug Info
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(JSON.stringify(v2Layout, null, 2))
+                }}
+                className="text-xs"
+              >
+                Copy Full Config
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-sm space-y-2">

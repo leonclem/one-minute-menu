@@ -79,6 +79,7 @@ export type FillerPattern = typeof FILLER_PATTERNS[number]
  * 
  * This function analyzes the grid layout and inserts filler tiles into empty cells
  * at the end of sections. It maintains grid alignment and respects section boundaries.
+ * Uses collision detection to prevent overlapping with multi-row items.
  * 
  * @param layout - Grid layout to process
  * @returns New grid layout with filler tiles inserted
@@ -94,14 +95,15 @@ export function insertFillerTiles(layout: GridLayout): GridLayout {
   const sectionsWithFillers: GridSection[] = []
   
   for (const section of layout.sections) {
-    const itemCount = section.tiles.filter(t => t.type === 'item').length
+    // Build occupancy grid to check for empty cells
+    const occupancyGrid = buildSectionOccupancyGrid(section, columns)
+    const emptyCellPositions = findEmptyCellsInSection(occupancyGrid, section.startRow, columns)
     
-    // Check if the last row is incomplete
-    if (hasIncompleteLastRow(itemCount, columns)) {
-      const emptyCells = calculateEmptyCells(itemCount, columns)
+    // Only add fillers if there are empty cells
+    if (emptyCellPositions.length > 0) {
       const fillerTiles = generateFillerTilesForSection(
         section,
-        emptyCells,
+        emptyCellPositions.length, // Pass actual empty cell count
         columns,
         layout.preset,
         layout.context
@@ -113,7 +115,7 @@ export function insertFillerTiles(layout: GridLayout): GridLayout {
         tiles: [...section.tiles, ...fillerTiles]
       })
     } else {
-      // No filler needed, keep section as is
+      // No empty cells, keep section as is
       sectionsWithFillers.push(section)
     }
   }
@@ -129,10 +131,14 @@ export function insertFillerTiles(layout: GridLayout): GridLayout {
 }
 
 /**
- * Generate filler tiles for a section's incomplete last row
+ * Generate filler tiles for a section's empty cells
+ * 
+ * This function builds an occupancy grid to track which cells are actually occupied
+ * by existing tiles (including their spans), then places filler tiles only in
+ * genuinely empty cells. This prevents collisions with multi-row items.
  * 
  * @param section - Grid section
- * @param emptyCells - Number of empty cells to fill
+ * @param emptyCells - Number of empty cells to fill (legacy parameter, recalculated)
  * @param columns - Total number of columns in the grid
  * @param preset - Layout preset
  * @param context - Output context
@@ -145,25 +151,96 @@ function generateFillerTilesForSection(
   preset: LayoutPreset,
   context: OutputContext
 ): FillerTile[] {
+  // Build occupancy grid to track which cells are actually occupied
+  const occupancyGrid = buildSectionOccupancyGrid(section, columns)
+  
+  // Find all truly empty cells in the grid
+  const emptyCellPositions = findEmptyCellsInSection(occupancyGrid, section.startRow, columns)
+  
+  // Generate filler tiles for empty cells
   const fillerTiles: FillerTile[] = []
-  const itemCount = section.tiles.filter(t => t.type === 'item').length
-  
-  // Calculate the row and starting column for filler tiles
-  const lastItemIndex = itemCount - 1
-  const lastItemColumn = lastItemIndex % columns
-  const lastItemRow = section.startRow + Math.floor(lastItemIndex / columns)
-  
-  // Starting column for first filler tile
-  let startColumn = lastItemColumn + 1
-  
-  // Generate filler tiles for each empty cell
-  for (let i = 0; i < emptyCells; i++) {
-    const column = startColumn + i
-    const fillerTile = createFillerTile(column, lastItemRow, i, preset, context)
+  for (let i = 0; i < emptyCellPositions.length; i++) {
+    const { column, row } = emptyCellPositions[i]
+    const fillerTile = createFillerTile(column, row, i, preset, context)
     fillerTiles.push(fillerTile)
   }
   
   return fillerTiles
+}
+
+/**
+ * Build an occupancy grid for a section showing which cells are occupied
+ * 
+ * @param section - Grid section
+ * @param columns - Number of columns in the grid
+ * @returns 2D boolean array where true = occupied, false = empty
+ */
+function buildSectionOccupancyGrid(
+  section: GridSection,
+  columns: number
+): boolean[][] {
+  // Calculate the maximum row needed for this section
+  let maxRow = section.startRow
+  for (const tile of section.tiles) {
+    if (tile.type === 'item') {
+      const tileEndRow = tile.row + tile.span.rows - 1
+      maxRow = Math.max(maxRow, tileEndRow)
+    }
+  }
+  
+  const rows = maxRow - section.startRow + 1
+  
+  // Initialize grid with all cells empty
+  const grid: boolean[][] = Array(rows)
+    .fill(null)
+    .map(() => Array(columns).fill(false))
+  
+  // Mark occupied cells for each tile
+  for (const tile of section.tiles) {
+    if (tile.type === 'item') {
+      for (let r = 0; r < tile.span.rows; r++) {
+        for (let c = 0; c < tile.span.columns; c++) {
+          const gridRow = tile.row - section.startRow + r
+          const gridCol = tile.column + c
+          
+          if (gridRow >= 0 && gridRow < rows && gridCol >= 0 && gridCol < columns) {
+            grid[gridRow][gridCol] = true
+          }
+        }
+      }
+    }
+  }
+  
+  return grid
+}
+
+/**
+ * Find all empty cells in a section's occupancy grid
+ * 
+ * @param occupancyGrid - 2D boolean array where true = occupied
+ * @param sectionStartRow - Starting row of the section
+ * @param columns - Number of columns in the grid
+ * @returns Array of empty cell positions
+ */
+function findEmptyCellsInSection(
+  occupancyGrid: boolean[][],
+  sectionStartRow: number,
+  columns: number
+): Array<{ column: number; row: number }> {
+  const emptyCells: Array<{ column: number; row: number }> = []
+  
+  for (let gridRow = 0; gridRow < occupancyGrid.length; gridRow++) {
+    for (let gridCol = 0; gridCol < columns; gridCol++) {
+      if (!occupancyGrid[gridRow][gridCol]) {
+        emptyCells.push({
+          column: gridCol,
+          row: sectionStartRow + gridRow
+        })
+      }
+    }
+  }
+  
+  return emptyCells
 }
 
 /**
@@ -329,7 +406,7 @@ export function removeFillerTiles(layout: GridLayout): GridLayout {
 
 /**
  * Validate that filler tiles are correctly placed
- * Checks that fillers only appear at the end of sections and don't disrupt layout
+ * Checks that fillers only appear in empty cells and don't overlap with content tiles
  * 
  * @param layout - Grid layout to validate
  * @returns Array of validation error messages (empty if valid)
@@ -346,32 +423,47 @@ export function validateFillerTiles(layout: GridLayout): string[] {
       continue // No fillers to validate
     }
     
-    // Check that fillers are only in the last row
-    const itemCount = itemTiles.length
-    const lastItemRow = section.startRow + Math.floor((itemCount - 1) / columns)
-    
-    for (const filler of fillerTiles) {
-      if (filler.row !== lastItemRow) {
-        errors.push(
-          `Filler tile in section "${section.name}" is not in the last row (row ${filler.row}, expected ${lastItemRow})`
-        )
-      }
-    }
-    
-    // Check that the number of fillers matches the expected empty cells
-    const expectedFillers = calculateEmptyCells(itemCount, columns)
-    if (fillerTiles.length !== expectedFillers) {
-      errors.push(
-        `Section "${section.name}" has ${fillerTiles.length} filler tiles, expected ${expectedFillers}`
-      )
-    }
-    
     // Check that fillers don't overlap with items
     for (const filler of fillerTiles) {
       for (const item of itemTiles) {
-        if (filler.row === item.row && filler.column === item.column) {
+        // Check for overlap using span-aware collision detection
+        const itemEndCol = item.column + item.span.columns
+        const itemEndRow = item.row + item.span.rows
+        const fillerEndCol = filler.column + filler.span.columns
+        const fillerEndRow = filler.row + filler.span.rows
+
+        const overlaps = !(
+          filler.column >= itemEndCol ||
+          fillerEndCol <= item.column ||
+          filler.row >= itemEndRow ||
+          fillerEndRow <= item.row
+        )
+
+        if (overlaps) {
           errors.push(
             `Filler tile overlaps with item tile at position (${filler.column}, ${filler.row}) in section "${section.name}"`
+          )
+        }
+      }
+    }
+    
+    // Verify that fillers are only placed in genuinely empty cells
+    const occupancyGrid = buildSectionOccupancyGrid(section, columns)
+    for (const filler of fillerTiles) {
+      const gridRow = filler.row - section.startRow
+      const gridCol = filler.column
+      
+      // Check if the filler position was actually empty before filler insertion
+      if (gridRow >= 0 && gridRow < occupancyGrid.length && 
+          gridCol >= 0 && gridCol < columns) {
+        // Build occupancy grid without fillers to check if position was originally empty
+        const itemOnlyTiles = section.tiles.filter(t => t.type === 'item')
+        const itemOnlySection = { ...section, tiles: itemOnlyTiles }
+        const itemOnlyGrid = buildSectionOccupancyGrid(itemOnlySection, columns)
+        
+        if (gridRow < itemOnlyGrid.length && itemOnlyGrid[gridRow][gridCol]) {
+          errors.push(
+            `Filler tile placed in occupied cell at position (${filler.column}, ${filler.row}) in section "${section.name}"`
           )
         }
       }

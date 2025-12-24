@@ -1,5 +1,10 @@
 # Roadmap
 
+## Demo
+- [ ] More clarity on demo input menu as it stands before implementing changes
+- [ ] Lloyd feedback: input menu is confusing, looks like output
+- [ ] Lloyd feedback: Give an option to email the PDF menu or send to printers (order x amount)
+
 ## General functionality
 - [x] Remove "95% confidence" and "Bulk tools will use your current selection." from menu items
 

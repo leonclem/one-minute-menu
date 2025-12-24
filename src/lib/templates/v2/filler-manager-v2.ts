@@ -195,9 +195,9 @@ function markAreaOccupied(
 /**
  * Build 2D occupancy grid marking cells occupied by tiles.
  *
- * DESIGN DECISION: Use tile.gridRow/gridCol (stored at placement time)
- * instead of deriving from x/y coordinates. This avoids floating-point
- * rounding issues and works reliably with any template configuration.
+ * DESIGN DECISION: For tiles moved by last row balancing, we need to handle
+ * fractional grid positions properly since CENTER balancing can place items
+ * between grid cells.
  *
  * @param page - Page with placed tiles
  * @param template - Template configuration
@@ -216,18 +216,50 @@ export function buildOccupancyGrid(
     Array(cols).fill(false)
   )
 
-  // Mark occupied cells using stored grid coordinates
+  const bodyRegion = page.regions.find(r => r.id === 'body')!
+  const { gapX, gapY, rowHeight } = template.body.container
+  const cellWidth = calculateCellWidth(bodyRegion.width, cols, gapX)
+
+  // Mark occupied cells using stored grid coordinates or derived coordinates
   for (const tile of page.tiles) {
     if (tile.regionId !== 'body') continue
 
-    // Use gridRow/gridCol stored at placement time (not derived from x/y)
-    const startRow = tile.gridRow
-    const startCol = tile.gridCol
+    let startRow = tile.gridRow
+    let startCol = tile.gridCol
+    let endCol = startCol + tile.colSpan - 1
+
+    // For tiles that might have been moved by last row balancing,
+    // derive grid position from actual coordinates to ensure accuracy
+    if (template.policies?.lastRowBalancing !== 'LEFT' && 
+        (tile.type === 'ITEM_CARD' || tile.type === 'ITEM_TEXT_ROW')) {
+      
+      // Check if this tile's x position differs significantly from expected grid position
+      const expectedX = startCol * (cellWidth + gapX)
+      const actualX = tile.x
+      const tolerance = 5 // Increased tolerance for floating point precision and rounding
+      
+      if (Math.abs(actualX - expectedX) > tolerance) {
+        // Tile has been moved, derive grid position from actual coordinates
+        // For fractional positions, we need to mark all cells that the tile overlaps
+        const startColFloat = actualX / (cellWidth + gapX)
+        const endColFloat = (actualX + tile.width) / (cellWidth + gapX)
+        
+        startCol = Math.floor(startColFloat)
+        endCol = Math.floor(endColFloat)
+        
+        // If the tile spans across a cell boundary, include the next cell
+        if (endColFloat > Math.floor(endColFloat)) {
+          endCol = Math.floor(endColFloat)
+        }
+      }
+    }
 
     // Mark all cells covered by this tile's span
     for (let r = startRow; r < startRow + tile.rowSpan && r < maxRows; r++) {
-      for (let c = startCol; c < startCol + tile.colSpan && c < cols; c++) {
-        grid[r][c] = true
+      for (let c = startCol; c <= endCol && c < cols; c++) {
+        if (r >= 0 && c >= 0) {
+          grid[r][c] = true
+        }
       }
     }
   }

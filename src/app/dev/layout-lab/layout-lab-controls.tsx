@@ -6,9 +6,11 @@
  * Provides the control panel for selecting fixtures, templates, and rendering options.
  */
 
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import type { LayoutLabState } from './layout-lab-client'
+import type { Menu } from '@/types'
 
 interface LayoutLabControlsProps {
   state: LayoutLabState
@@ -20,7 +22,6 @@ interface LayoutLabControlsProps {
 
 const FIXTURES = [
   { id: 'tiny', name: 'Tiny (1-3 items)', description: 'Minimal data for basic testing' },
-  { id: 'images', name: 'Images (placeholder)', description: 'Tests image layout and wrapping' },
   { id: 'medium', name: 'Medium (20-40 items)', description: 'Mixed sections with images' },
   { id: 'large', name: 'Large (100+ items)', description: 'Tests pagination behavior' },
   { id: 'nasty', name: 'Nasty (edge cases)', description: 'Long text, missing data, many indicators' }
@@ -48,7 +49,29 @@ export function LayoutLabControls({
   onExportPdf,
   onDownloadJson
 }: LayoutLabControlsProps) {
+  const [userMenus, setUserMenus] = useState<Menu[]>([])
+  const [loadingMenus, setLoadingMenus] = useState(false)
   const templates = state.engineVersion === 'v1' ? V1_TEMPLATES : V2_TEMPLATES
+
+  // Load user menus on component mount
+  useEffect(() => {
+    const loadUserMenus = async () => {
+      setLoadingMenus(true)
+      try {
+        const response = await fetch('/api/menus')
+        if (response.ok) {
+          const result = await response.json()
+          setUserMenus(result.data || [])
+        }
+      } catch (error) {
+        console.error('Failed to load user menus:', error)
+      } finally {
+        setLoadingMenus(false)
+      }
+    }
+    
+    loadUserMenus()
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -57,23 +80,59 @@ export function LayoutLabControls({
         <CardHeader>
           <CardTitle>Test Data</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {FIXTURES.map(fixture => (
-            <label key={fixture.id} className="flex items-start space-x-3 cursor-pointer">
-              <input
-                type="radio"
-                name="fixture"
-                value={fixture.id}
-                checked={state.fixtureId === fixture.id}
-                onChange={(e) => onStateChange({ fixtureId: e.target.value })}
-                className="mt-1"
-              />
-              <div>
-                <div className="font-medium text-sm">{fixture.name}</div>
-                <div className="text-xs text-gray-500">{fixture.description}</div>
+        <CardContent className="space-y-4">
+          {/* Fixture Data Options */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-gray-700">Fixture Data</h4>
+            {FIXTURES.map(fixture => (
+              <label key={fixture.id} className="flex items-start space-x-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="dataSource"
+                  value={fixture.id}
+                  checked={state.fixtureId === fixture.id}
+                  onChange={(e) => onStateChange({ fixtureId: e.target.value })}
+                  className="mt-1"
+                />
+                <div>
+                  <div className="font-medium text-sm">{fixture.name}</div>
+                  <div className="text-xs text-gray-500">{fixture.description}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+          
+          {/* Real Menu Options */}
+          {userMenus.length > 0 && (
+            <div className="space-y-3 border-t pt-4">
+              <h4 className="text-sm font-medium text-gray-700">Real Menus</h4>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Select Menu
+                </label>
+                <select
+                  value={state.fixtureId.startsWith('menu-') ? state.fixtureId : ''}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      onStateChange({ fixtureId: e.target.value })
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={loadingMenus}
+                >
+                  <option value="">Choose a real menu...</option>
+                  {userMenus.map(menu => (
+                    <option key={menu.id} value={`menu-${menu.id}`}>
+                      {menu.name} ({menu.items.length} items)
+                    </option>
+                  ))}
+                </select>
+                {loadingMenus && (
+                  <p className="text-xs text-gray-500">Loading menus...</p>
+                )}
               </div>
-            </label>
-          ))}
+            </div>
+          )}
         </CardContent>
       </Card>
       
