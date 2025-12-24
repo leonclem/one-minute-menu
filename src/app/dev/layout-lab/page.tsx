@@ -12,14 +12,6 @@ import { LayoutLabClient } from './layout-lab-client'
 export const dynamic = 'force-dynamic'
 
 export default async function LayoutLabPage() {
-  // Check environment flag
-  const isEnabled = process.env.NEXT_PUBLIC_LAYOUT_LAB_ENABLED === 'true'
-  
-  if (!isEnabled) {
-    // In production or when disabled, redirect to admin dashboard
-    redirect('/admin')
-  }
-
   // Check admin authentication
   try {
     await requireAdmin()

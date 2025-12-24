@@ -32,15 +32,6 @@ interface ExportPdfRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check environment flag
-    const isEnabled = process.env.NEXT_PUBLIC_LAYOUT_LAB_ENABLED === 'true'
-    if (!isEnabled) {
-      return NextResponse.json(
-        { error: 'Layout Lab is not enabled' },
-        { status: 403 }
-      )
-    }
-
     // Check admin authentication
     try {
       await requireAdmin()

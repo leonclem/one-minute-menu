@@ -20,31 +20,39 @@ import {
   MenuMetricsTab,
   ImageGenerationTab,
   AnalyticsTab,
+  DeveloperTab,
 } from '@/components/admin'
 
-type TabId = 'overview' | 'menu-metrics' | 'costs' | 'metrics' | 'image-generation' | 'feedback' | 'analytics'
+type TabId = 'overview' | 'menu-metrics' | 'costs' | 'metrics' | 'image-generation' | 'feedback' | 'analytics' | 'developer'
 
-const tabs: { id: TabId; label: string; description: string }[] = [
+const tabs: { id: TabId; label: string; description: string; hidden?: boolean }[] = [
   { id: 'overview', label: 'Overview', description: 'Quick stats and alerts' },
   { id: 'menu-metrics', label: 'Menu Metrics', description: 'Platform menu statistics' },
   { id: 'costs', label: 'Cost Monitoring', description: 'Spending and controls' },
   { id: 'metrics', label: 'Extraction Metrics', description: 'Performance and quality' },
-  { id: 'image-generation', label: 'Image Generation', description: 'AI image generation stats' },
   { id: 'analytics', label: 'Platform Analytics', description: 'Conversion and platform analytics' },
+  { id: 'image-generation', label: 'AI Usage Stats', description: 'AI image generation stats' },
   { id: 'feedback', label: 'User Feedback', description: 'Extraction feedback' },
+  { 
+    id: 'developer', 
+    label: 'Developer', 
+    description: 'Internal tools and utilities',
+  },
 ]
 
 export function AdminHubClient() {
   const [activeTab, setActiveTab] = useState<TabId>('overview')
 
+  const visibleTabs = tabs
+
   // Check URL params for initial tab
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const tab = params.get('tab') as TabId
-    if (tab && tabs.some(t => t.id === tab)) {
+    if (tab && visibleTabs.some(t => t.id === tab)) {
       setActiveTab(tab)
     }
-  }, [])
+  }, [visibleTabs])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -59,18 +67,39 @@ export function AdminHubClient() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <a
-                href="/admin/image-generator"
-                className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                Imagen 4.0 Generator
-              </a>
-              <a
-                href="/admin/gemini-image-generator"
-                className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                Gemini 2.5 Flash Image
-              </a>
+                <a
+                  href="/dev/layout-lab"
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3.104v1.244c0 .408-.114.807-.327 1.154L4.855 12.58a3.75 3.75 0 003.235 5.67h7.82a3.75 3.75 0 003.235-5.67l-4.568-7.078a1.996 1.996 0 01-.327-1.154V3.104c0-1.104-.896-2-2-2h-1c-1.104 0-2 .896-2 2z" />
+                  </svg>
+                  Layout Lab
+                </a>
+              <div className="relative group">
+                <button
+                  className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                  AI Image Tools
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block border border-gray-200">
+                  <a
+                    href="/admin/image-generator"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Imagen 4.0 (2K/HQ)
+                  </a>
+                  <a
+                    href="/admin/gemini-image-generator"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Gemini 2.5 (Fast)
+                  </a>
+                </div>
+              </div>
               <a
                 href="/dashboard"
                 className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
@@ -82,7 +111,7 @@ export function AdminHubClient() {
 
           {/* Tabs */}
           <nav className="flex space-x-8 -mb-px">
-            {tabs.map((tab) => (
+            {visibleTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -111,6 +140,7 @@ export function AdminHubClient() {
         {activeTab === 'image-generation' && <ImageGenerationTab />}
         {activeTab === 'analytics' && <AnalyticsTab />}
         {activeTab === 'feedback' && <FeedbackTab />}
+        {activeTab === 'developer' && <DeveloperTab />}
       </main>
     </div>
   )

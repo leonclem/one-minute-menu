@@ -320,6 +320,68 @@ export function OverviewTab() {
         </Card>
       </div>
 
+      {/* Tools & Utilities */}
+      <div className="mt-12">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Tools & Utilities</h2>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <Card 
+            className="hover:border-primary-300 transition-colors cursor-pointer group" 
+            onClick={() => window.location.href = '/admin/image-generator'}
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-900">Imagen 4.0 Generator</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-gray-500 mb-4">
+                Generate high-quality 2K restaurant images for templates and menus.
+              </p>
+              <div className="text-primary-600 text-xs font-medium group-hover:underline">
+                Open Tool →
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="hover:border-primary-300 transition-colors cursor-pointer group" 
+            onClick={() => window.location.href = '/admin/gemini-image-generator'}
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-900">Gemini 2.5 Image</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-gray-500 mb-4">
+                Fast, optimized image generation for menu items using Gemini 2.5 Flash.
+              </p>
+              <div className="text-primary-600 text-xs font-medium group-hover:underline">
+                Open Tool →
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="hover:border-primary-300 transition-colors cursor-pointer group" 
+            onClick={() => window.location.href = '/dev/layout-lab'}
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3.104v1.244c0 .408-.114.807-.327 1.154L4.855 12.58a3.75 3.75 0 003.235 5.67h7.82a3.75 3.75 0 003.235-5.67l-4.568-7.078a1.996 1.996 0 01-.327-1.154V3.104c0-1.104-.896-2-2-2h-1c-1.104 0-2 .896-2 2z" />
+                </svg>
+                Layout Lab
+                <span className="bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold">Lab</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-gray-500 mb-4">
+                Developer test harness for the V2 layout engine. Validate template behavior and PDF generation.
+              </p>
+              <div className="text-primary-600 text-xs font-medium group-hover:underline">
+                Launch Lab →
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

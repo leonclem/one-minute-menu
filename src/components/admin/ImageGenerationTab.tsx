@@ -86,10 +86,27 @@ export function ImageGenerationTab() {
   return (
     <div className="space-y-6">
       {/* Overview */}
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          AI Image Generation - Last 30 Days
-        </h2>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">
+            AI Image Generation Stats
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">Usage and performance metrics for the last 30 days</p>
+        </div>
+        <div className="flex gap-3">
+          <a
+            href="/admin/image-generator"
+            className="text-xs bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded-md font-medium transition-colors"
+          >
+            Launch Imagen 4.0
+          </a>
+          <a
+            href="/admin/gemini-image-generator"
+            className="text-xs bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded-md font-medium transition-colors"
+          >
+            Launch Gemini 2.5
+          </a>
+        </div>
       </div>
 
       {/* Summary Cards */}
