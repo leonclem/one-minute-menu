@@ -14,11 +14,13 @@ import { LayoutRenderer } from '@/lib/templates/export/layout-renderer'
 import { TEMPLATE_REGISTRY } from '@/lib/templates/template-definitions'
 import type { LayoutInstance } from '@/lib/templates/engine-types'
 import { PageRenderer } from '@/lib/templates/v2/renderer-web-v2'
+import { PALETTES_V2 } from '@/lib/templates/v2/renderer-v2'
 
 interface LayoutLabPreviewProps {
   layoutDocument: (LayoutDocumentV2 | LayoutInstance) | null
   isGenerating: boolean
   error: string | null
+  paletteId: string
   showGridOverlay: boolean
   showRegionBounds: boolean
   showTileIds: boolean
@@ -28,6 +30,7 @@ export function LayoutLabPreview({
   layoutDocument,
   isGenerating,
   error,
+  paletteId,
   showGridOverlay,
   showRegionBounds,
   showTileIds
@@ -35,6 +38,8 @@ export function LayoutLabPreview({
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
   const [zoom, setZoom] = useState(0.9) // Default to 90%
   const [layoutInfoCollapsed, setLayoutInfoCollapsed] = useState(true) // Default collapsed
+  
+  const palette = PALETTES_V2.find(p => p.id === paletteId) || PALETTES_V2[0]
   
   if (isGenerating) {
     return (
@@ -231,6 +236,7 @@ export function LayoutLabPreview({
                 pageSpec={v2Layout.pageSpec}
                 options={{
                   scale: 1.0,
+                  palette,
                   showGridOverlay,
                   showRegionBounds,
                   showTileIds,

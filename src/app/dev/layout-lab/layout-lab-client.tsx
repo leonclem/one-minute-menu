@@ -17,6 +17,7 @@ export interface LayoutLabState {
   // Selection
   fixtureId: string
   templateId: string
+  paletteId: string
   engineVersion: EngineVersion
   
   // Options
@@ -34,6 +35,7 @@ export interface LayoutLabState {
 const initialState: LayoutLabState = {
   fixtureId: 'tiny',
   templateId: 'classic-cards-v2',
+  paletteId: 'clean-modern',
   engineVersion: 'v2',
   showGridOverlay: false,
   showRegionBounds: false,
@@ -98,6 +100,7 @@ export function LayoutLabClient() {
         body: JSON.stringify({
           fixtureId: state.fixtureId,
           templateId: state.templateId,
+          paletteId: state.paletteId,
           engineVersion: state.engineVersion,
           options: {
             fillersEnabled: state.fillersEnabled,
@@ -160,6 +163,7 @@ export function LayoutLabClient() {
           layoutDocument={state.layoutDocument}
           isGenerating={state.isGenerating}
           error={state.error}
+          paletteId={state.paletteId}
           showGridOverlay={state.showGridOverlay}
           showRegionBounds={state.showRegionBounds}
           showTileIds={state.showTileIds}

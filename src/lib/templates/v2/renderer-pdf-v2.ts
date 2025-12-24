@@ -23,6 +23,7 @@ import {
   getDefaultScale,
   TYPOGRAPHY_TOKENS_V2,
   COLOR_TOKENS_V2,
+  PALETTES_V2,
   type RenderOptionsV2 
 } from './renderer-v2'
 
@@ -33,6 +34,8 @@ import {
 export interface PDFExportOptionsV2 {
   /** Custom page title for PDF metadata */
   title?: string
+  /** Color palette ID to use */
+  paletteId?: string
   /** Include page numbers in footer */
   includePageNumbers?: boolean
   /** Custom margins (overrides document pageSpec margins) */
@@ -118,7 +121,10 @@ export async function renderToPdf(
     }
 
     // Generate HTML content using React renderer
-    const htmlContent = await generatePDFHTML(document, customCSS, { showRegionBounds })
+    const htmlContent = await generatePDFHTML(document, customCSS, { 
+      showRegionBounds,
+      paletteId: options.paletteId 
+    })
 
     // Set HTML content and wait for fonts and images to load
     await page.setContent(htmlContent, {
@@ -195,15 +201,18 @@ export async function renderToPdf(
 async function generatePDFHTML(
   document: LayoutDocumentV2, 
   customCSS: string = '',
-  options: { showRegionBounds?: boolean } = {}
+  options: { showRegionBounds?: boolean; paletteId?: string } = {}
 ): Promise<string> {
   // Use dynamic import to avoid Next.js static analysis issues with react-dom/server
   // in Route Handlers and Server Components.
   const { renderToString } = await import('react-dom/server')
 
+  const palette = PALETTES_V2.find(p => p.id === options.paletteId) || PALETTES_V2[0]
+
   // Render options optimized for PDF
   const renderOptions: RenderOptionsV2 = {
     scale: 96 / 72, // Convert points to CSS pixels (96 DPI)
+    palette,
     showGridOverlay: false,
     showRegionBounds: options.showRegionBounds || false,
     showTileIds: false,
@@ -227,7 +236,7 @@ async function generatePDFHTML(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${document.templateId} - Layout V2</title>
   <style>
-    ${generatePDFCSS()}
+    ${generatePDFCSS(options.paletteId)}
     ${customCSS}
   </style>
 </head>
@@ -241,7 +250,9 @@ async function generatePDFHTML(
  * Generate CSS optimized for PDF rendering
  * Includes font loading, print styles, and layout fixes
  */
-function generatePDFCSS(): string {
+function generatePDFCSS(paletteId?: string): string {
+  const palette = PALETTES_V2.find(p => p.id === paletteId) || PALETTES_V2[0]
+
   return `
     /* CSS Reset for PDF */
     html, body {
@@ -249,7 +260,7 @@ function generatePDFCSS(): string {
       padding: 0;
       width: 100%;
       height: 100%;
-      background: white;
+      background: ${palette.colors.background};
     }
     * {
       margin: 0;
@@ -265,8 +276,8 @@ function generatePDFCSS(): string {
       font-family: ${TYPOGRAPHY_TOKENS_V2.fontFamily.primary};
       font-size: ${TYPOGRAPHY_TOKENS_V2.fontSize.base}px;
       line-height: ${TYPOGRAPHY_TOKENS_V2.lineHeight.normal};
-      color: ${COLOR_TOKENS_V2.text.primary};
-      background: ${COLOR_TOKENS_V2.background.white};
+      color: ${palette.colors.itemTitle};
+      background: ${palette.colors.background};
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -282,6 +293,7 @@ function generatePDFCSS(): string {
       page-break-after: always;
       page-break-inside: avoid;
       overflow: hidden;
+      background-color: ${palette.colors.background};
     }
 
     .page-container-v2:last-child {
@@ -322,14 +334,11 @@ function generatePDFCSS(): string {
       display: flex;
       align-items: center;
       padding-left: 8px;
-      border-bottom: 2px solid ${COLOR_TOKENS_V2.border.light};
     }
 
     .tile-item_card,
     .tile-item_text_row {
-      background: ${COLOR_TOKENS_V2.background.white};
-      border: 1px solid ${COLOR_TOKENS_V2.border.light};
-      border-radius: 4px;
+      background: transparent;
       padding: 8px;
     }
 

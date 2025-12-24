@@ -77,7 +77,10 @@ export interface PageRendererProps {
 }
 
 export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
-  const { scale, isExport } = options
+  const { scale, isExport, palette } = options
+  const bgColor = palette?.colors.background || COLOR_TOKENS_V2.background.white
+  const mutedTextColor = palette?.colors.textMuted || COLOR_TOKENS_V2.text.muted
+  const borderColor = palette?.colors.border.light || COLOR_TOKENS_V2.border.light
   
   return (
     <div 
@@ -86,7 +89,7 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
         width: pageSpec.width * scale,
         height: pageSpec.height * scale,
         position: 'relative',
-        backgroundColor: COLOR_TOKENS_V2.background.white,
+        backgroundColor: bgColor,
         marginBottom: isExport ? 0 : 20 * scale,
         boxShadow: isExport ? 'none' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
         borderRadius: isExport ? 0 : 4,
@@ -133,11 +136,11 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
             top: 4,
             right: 8,
             fontSize: 10,
-            color: COLOR_TOKENS_V2.text.muted,
-            backgroundColor: COLOR_TOKENS_V2.background.white,
+            color: mutedTextColor,
+            backgroundColor: bgColor,
             padding: '2px 6px',
             borderRadius: 2,
-            border: `1px solid ${COLOR_TOKENS_V2.border.light}`
+            border: `1px solid ${borderColor}`
           }}
         >
           Page {page.pageIndex + 1} ({page.pageType})

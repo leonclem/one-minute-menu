@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import type { LayoutLabState } from './layout-lab-client'
 import type { Menu } from '@/types'
+import { PALETTES_V2 } from '@/lib/templates/v2/renderer-v2'
 
 interface LayoutLabControlsProps {
   state: LayoutLabState
@@ -155,6 +156,47 @@ export function LayoutLabControls({
               <div>
                 <div className="font-medium text-sm">{template.name}</div>
                 <div className="text-xs text-gray-500">{template.description}</div>
+              </div>
+            </label>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Color Palette Selection */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Color Palette</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {PALETTES_V2.map(palette => (
+            <label key={palette.id} className="flex items-start space-x-3 cursor-pointer">
+              <input
+                type="radio"
+                name="palette"
+                value={palette.id}
+                checked={state.paletteId === palette.id}
+                onChange={(e) => onStateChange({ paletteId: e.target.value })}
+                className="mt-1"
+              />
+              <div className="flex-1">
+                <div className="font-medium text-sm">{palette.name}</div>
+                <div className="flex space-x-1 mt-1">
+                  <div 
+                    className="w-4 h-4 rounded-full border border-gray-200" 
+                    style={{ backgroundColor: palette.colors.background }}
+                    title="Background"
+                  />
+                  <div 
+                    className="w-4 h-4 rounded-full border border-gray-200" 
+                    style={{ backgroundColor: palette.colors.menuTitle }}
+                    title="Title"
+                  />
+                  <div 
+                    className="w-4 h-4 rounded-full border border-gray-200" 
+                    style={{ backgroundColor: palette.colors.itemPrice }}
+                    title="Accent/Price"
+                  />
+                </div>
               </div>
             </label>
           ))}

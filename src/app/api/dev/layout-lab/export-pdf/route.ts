@@ -22,6 +22,7 @@ export const dynamic = 'force-dynamic'
 interface ExportPdfRequest {
   fixtureId: string
   templateId: string
+  paletteId: string
   engineVersion: 'v1' | 'v2'
   options?: {
     fillersEnabled?: boolean
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
     
     const body: ExportPdfRequest = await request.json()
-    const { fixtureId, templateId, engineVersion, options = {} } = body
+    const { fixtureId, templateId, paletteId, engineVersion, options = {} } = body
     
     // Validate inputs
     if (!fixtureId || !templateId || !engineVersion) {
@@ -133,6 +134,7 @@ export async function POST(request: NextRequest) {
       // Render to PDF (only works with V2 for now)
       const pdfResult = await renderToPdf(layoutDocument, {
         title: `Layout Lab - ${fixtureId}`,
+        paletteId,
         includePageNumbers: true,
         printBackground: true,
         showRegionBounds: options.showRegionBounds || false

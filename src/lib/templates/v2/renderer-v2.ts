@@ -30,6 +30,8 @@ import type {
 export interface RenderOptionsV2 {
   /** Scale factor from points to pixels (e.g., 1.0 = 1pt = 1px) */
   scale: number
+  /** Color palette to use */
+  palette?: ColorPaletteV2
   /** Show grid overlay for debugging */
   showGridOverlay: boolean
   /** Show region boundary rectangles */
@@ -78,9 +80,35 @@ export const TYPOGRAPHY_TOKENS_V2 = {
 } as const
 
 // ============================================================================
-// Color Tokens (Shared between Web and PDF)
+// Color Tokens and Palettes (Shared between Web and PDF)
 // ============================================================================
 
+/** Color palette definition for V2 */
+export interface ColorPaletteV2 {
+  id: string
+  name: string
+  colors: {
+    background: string
+    menuTitle: string
+    sectionHeader: {
+      text: string
+      background: string
+    }
+    itemTitle: string
+    itemPrice: string
+    itemDescription: string
+    itemIndicators: {
+      background: string
+    }
+    border: {
+      light: string
+      medium: string
+    }
+    textMuted: string
+  }
+}
+
+/** Standard Color Tokens (Legacy/Default) */
 export const COLOR_TOKENS_V2 = {
   text: {
     primary: '#111827',    // gray-900
@@ -106,9 +134,89 @@ export const COLOR_TOKENS_V2 = {
   }
 } as const
 
+/** Predefined Color Palettes */
+export const PALETTES_V2: ColorPaletteV2[] = [
+  {
+    id: 'clean-modern',
+    name: 'Clean Modern',
+    colors: {
+      background: '#FFFFFF',
+      menuTitle: '#111827',
+      sectionHeader: {
+        text: '#111827',
+        background: '#F9FAFB'
+      },
+      itemTitle: '#111827',
+      itemPrice: '#111827',
+      itemDescription: '#6B7280',
+      itemIndicators: {
+        background: '#FFFFFF'
+      },
+      border: {
+        light: '#E5E7EB',
+        medium: '#D1D5DB'
+      },
+      textMuted: '#9CA3AF'
+    }
+  },
+  {
+    id: 'elegant-cream',
+    name: 'Elegant Cream',
+    colors: {
+      background: '#FDFCF0', // Warm cream
+      menuTitle: '#2C2C2C',
+      sectionHeader: {
+        text: '#2C2C2C',
+        background: '#F5F2D0' // Slightly darker cream
+      },
+      itemTitle: '#2C2C2C',
+      itemPrice: '#8B6B23', // Muted gold/bronze
+      itemDescription: '#555555',
+      itemIndicators: {
+        background: '#FDFCF0'
+      },
+      border: {
+        light: '#E8E4C9',
+        medium: '#D4CFA3'
+      },
+      textMuted: '#8E8E8E'
+    }
+  },
+  {
+    id: 'midnight-gold',
+    name: 'Midnight Gold',
+    colors: {
+      background: '#1A1A1A', // Dark charcoal
+      menuTitle: '#D4AF37', // Gold
+      sectionHeader: {
+        text: '#D4AF37',
+        background: '#2A2A2A'
+      },
+      itemTitle: '#FFFFFF',
+      itemPrice: '#D4AF37',
+      itemDescription: '#A0A0A0',
+      itemIndicators: {
+        background: '#1A1A1A'
+      },
+      border: {
+        light: '#333333',
+        medium: '#444444'
+      },
+      textMuted: '#666666'
+    }
+  }
+]
+
+export const DEFAULT_PALETTE_V2 = PALETTES_V2[0]
+
 // ============================================================================
 // Shared Rendering Primitives
 // ============================================================================
+
+/** Get active color palette from options or default */
+function getPalette(options: RenderOptionsV2): ColorPaletteV2 {
+  return options.palette || DEFAULT_PALETTE_V2
+}
 
 /**
  * Render tile content based on tile type and content
@@ -190,6 +298,7 @@ function renderLogoContent(
   options: RenderOptionsV2
 ): TileRenderData {
   const elements: RenderElement[] = []
+  const palette = getPalette(options)
 
   if (content.imageUrl) {
     elements.push({
@@ -200,7 +309,7 @@ function renderLogoContent(
       height: tile.height,
       content: content.imageUrl,
       style: {
-        backgroundColor: COLOR_TOKENS_V2.background.white
+        backgroundColor: palette.colors.background
       }
     })
   } else {
@@ -215,7 +324,7 @@ function renderLogoContent(
       style: {
         fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xl,
         fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
-        color: COLOR_TOKENS_V2.text.primary,
+        color: palette.colors.menuTitle,
         textAlign: 'center'
       }
     })
@@ -229,6 +338,7 @@ function renderTitleContent(
   tile: TileInstanceV2,
   options: RenderOptionsV2
 ): TileRenderData {
+  const palette = getPalette(options)
   const elements: RenderElement[] = [
     {
       type: 'text',
@@ -240,7 +350,7 @@ function renderTitleContent(
       style: {
         fontSize: TYPOGRAPHY_TOKENS_V2.fontSize['3xl'],
         fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
-        color: COLOR_TOKENS_V2.text.primary,
+        color: palette.colors.menuTitle,
         textAlign: 'center'
       }
     }
@@ -254,6 +364,7 @@ function renderSectionHeaderContent(
   tile: TileInstanceV2,
   options: RenderOptionsV2
 ): TileRenderData {
+  const palette = getPalette(options)
   const elements: RenderElement[] = [
     // Background frame
     {
@@ -264,7 +375,7 @@ function renderSectionHeaderContent(
       height: tile.height,
       content: '',
       style: {
-        backgroundColor: COLOR_TOKENS_V2.background.gray50,
+        backgroundColor: palette.colors.sectionHeader.background,
         borderRadius: 4
       }
     },
@@ -276,7 +387,7 @@ function renderSectionHeaderContent(
       style: {
         fontSize: TYPOGRAPHY_TOKENS_V2.fontSize['2xl'],
         fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
-        color: COLOR_TOKENS_V2.text.primary,
+        color: palette.colors.sectionHeader.text,
         textAlign: 'left'
       }
     }
@@ -291,6 +402,7 @@ function renderItemContent(
   options: RenderOptionsV2
 ): TileRenderData {
   const elements: RenderElement[] = []
+  const palette = getPalette(options)
   const padding = 8
   let currentY = padding
 
@@ -322,7 +434,7 @@ function renderItemContent(
         height: imageHeight,
         content: '',
         style: {
-          backgroundColor: COLOR_TOKENS_V2.background.gray100,
+          backgroundColor: palette.colors.border.light,
           borderRadius: 4
         }
       })
@@ -334,7 +446,8 @@ function renderItemContent(
         content.indicators,
         padding + 4,
         currentY + 4,
-        tile.width - (padding * 2) - 8
+        tile.width - (padding * 2) - 8,
+        palette
       )
       elements.push(...indicatorElements)
     }
@@ -360,7 +473,7 @@ function renderItemContent(
       fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
       lineHeight: baseLineHeight,
       maxLines: nameMaxLines,
-      color: COLOR_TOKENS_V2.text.primary,
+      color: palette.colors.itemTitle,
       textAlign: 'left'
     }
   })
@@ -384,7 +497,7 @@ function renderItemContent(
       fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
       lineHeight: baseLineHeight,
       maxLines: 1,
-      color: COLOR_TOKENS_V2.text.primary,
+      color: palette.colors.itemPrice,
       textAlign: 'left'
     }
   })
@@ -408,7 +521,7 @@ function renderItemContent(
         fontSize: descFontSize,
         lineHeight: descLineHeight,
         maxLines: descMaxLines,
-        color: COLOR_TOKENS_V2.text.secondary,
+        color: palette.colors.itemDescription,
         textAlign: 'left'
       }
     })
@@ -421,7 +534,8 @@ function renderItemContent(
       content.indicators,
       padding,
       currentY,
-      tile.width - (padding * 2)
+      tile.width - (padding * 2),
+      palette
     )
     elements.push(...indicatorElements)
   }
@@ -435,6 +549,7 @@ function renderFillerContent(
   options: RenderOptionsV2
 ): TileRenderData {
   const elements: RenderElement[] = []
+  const palette = getPalette(options)
 
   // Simple background filler for MVP
   elements.push({
@@ -445,7 +560,7 @@ function renderFillerContent(
     height: tile.height,
     content: '',
     style: {
-      backgroundColor: COLOR_TOKENS_V2.background.gray100,
+      backgroundColor: palette.colors.border.light,
       opacity: 0.7,
       borderRadius: 4
     }
@@ -460,7 +575,7 @@ function renderFillerContent(
       content: getFillerIcon(content.content),
       style: {
         fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xl,
-        color: COLOR_TOKENS_V2.text.muted,
+        color: palette.colors.textMuted,
         textAlign: 'center',
         opacity: 0.5
       }
@@ -475,6 +590,7 @@ function renderTextBlockContent(
   tile: TileInstanceV2,
   options: RenderOptionsV2
 ): TileRenderData {
+  const palette = getPalette(options)
   // Placeholder for future TEXT_BLOCK implementation
   return {
     elements: [{
@@ -484,7 +600,7 @@ function renderTextBlockContent(
       content: content.text || 'Text Block',
       style: {
         fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.base,
-        color: COLOR_TOKENS_V2.text.primary,
+        color: palette.colors.itemTitle,
         textAlign: 'left'
       }
     }]
@@ -499,7 +615,8 @@ function renderIndicators(
   indicators: ItemIndicatorsV2,
   x: number,
   y: number,
-  maxWidth: number
+  maxWidth: number,
+  palette: ColorPaletteV2
 ): RenderElement[] {
   const elements: RenderElement[] = []
   let currentX = x
@@ -521,7 +638,7 @@ function renderIndicators(
         fontSize: indicatorSize,
         maxLines: 1,
         color: getDietaryColor(dietary),
-        backgroundColor: COLOR_TOKENS_V2.background.white,
+        backgroundColor: palette.colors.itemIndicators.background,
         borderRadius: 2
       }
     })
