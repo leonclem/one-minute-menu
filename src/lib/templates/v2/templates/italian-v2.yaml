@@ -1,0 +1,116 @@
+id: italian-v2
+version: "2.0.0"
+name: Italian Classic V2
+
+page:
+  size: A4_PORTRAIT
+  margins:
+    top: 36
+    right: 36
+    bottom: 36
+    left: 36
+
+regions:
+  header:
+    height: 80
+  title:
+    height: 40
+  footer:
+    height: 40
+
+body:
+  container:
+    type: GRID
+    cols: 2
+    rowHeight: 90      # Increased row height for more text lines since no images
+    gapX: 20
+    gapY: 10
+
+tiles:
+  LOGO:
+    region: header
+    contentBudget:
+      nameLines: 0
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 60
+      paddingTop: 10
+      paddingBottom: 10
+      totalHeight: 80
+
+  TITLE:
+    region: title
+    contentBudget:
+      nameLines: 1
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 8
+      paddingBottom: 8
+      totalHeight: 40
+
+  SECTION_HEADER:
+    region: body
+    colSpan: 2
+    contentBudget:
+      nameLines: 1
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 12
+      paddingBottom: 6
+      totalHeight: 40
+
+  ITEM_CARD:
+    region: body
+    rowSpan: 1         # Single row for text-focused items
+    contentBudget:
+      nameLines: 2
+      descLines: 3     # More description lines for text menu
+      indicatorAreaHeight: 20
+      imageBoxHeight: 0
+      paddingTop: 10
+      paddingBottom: 10
+      totalHeight: 90
+
+  ITEM_TEXT_ROW:
+    region: body
+    rowSpan: 1
+    contentBudget:
+      nameLines: 2
+      descLines: 3
+      indicatorAreaHeight: 20
+      imageBoxHeight: 0
+      paddingTop: 10
+      paddingBottom: 10
+      totalHeight: 90
+
+policies:
+  lastRowBalancing: LEFT
+  showLogoOnPages: [FIRST, SINGLE]
+  repeatSectionHeaderOnContinuation: true
+  sectionHeaderKeepWithNextItems: 1
+
+filler:
+  enabled: false
+  safeZones: []
+  tiles: []
+  policy: SEQUENTIAL
+
+itemIndicators:
+  mode: INLINE
+  maxCount: 3
+  style:
+    badgeSize: 14
+    iconSet: emoji
+  spiceScale:
+    1: "🌶"
+    2: "🌶🌶"
+    3: "🌶🌶🌶"
+  letterFallback:
+    vegetarian: "V"
+    vegan: "VG"
+    halal: "H"
+    kosher: "K"
+    gluten-free: "GF"
+

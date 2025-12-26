@@ -39,6 +39,7 @@ export interface AdminImageGeneratorClientProps {
   defaultImageSize?: string
   allowedAspectRatios?: Array<'1:1' | '4:3' | '3:4' | '16:9' | '9:16'>
   supportsReferenceImage?: boolean
+  context?: 'food' | 'general'
 }
 
 export function AdminImageGeneratorClient({
@@ -52,6 +53,7 @@ export function AdminImageGeneratorClient({
   defaultImageSize = '2K',
   allowedAspectRatios = ['1:1', '4:3', '3:4', '16:9', '9:16'],
   supportsReferenceImage = false,
+  context = 'food',
 }: AdminImageGeneratorClientProps) {
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -65,9 +67,37 @@ export function AdminImageGeneratorClient({
     id: string
     dataUrl: string
     name: string
-    role: 'dish' | 'scene' | 'style' | 'other'
+    role: string
   }>>([])
   const [scenarioId, setScenarioId] = useState<string | null>(null)
+
+  // Define role options based on context
+  const roleOptions = useMemo(() => {
+    if (context === 'general') {
+      return [
+        { value: 'subject', label: 'Subject (use this as the main focus)' },
+        { value: 'background', label: 'Background (use this as the environment)' },
+        { value: 'style', label: 'Style (match lighting/grading)' },
+        { value: 'other', label: 'Other' },
+      ]
+    } else {
+      return [
+        { value: 'dish', label: 'Dish (use this as the food)' },
+        { value: 'scene', label: 'Scene (use this as the table/background)' },
+        { value: 'style', label: 'Style (match lighting/grading)' },
+        { value: 'other', label: 'Other' },
+      ]
+    }
+  }, [context])
+
+  // Get default role for new images based on context
+  const getDefaultRole = (index: number) => {
+    if (context === 'general') {
+      return index === 0 ? 'subject' : index === 1 ? 'background' : 'style'
+    } else {
+      return index === 0 ? 'dish' : index === 1 ? 'scene' : 'style'
+    }
+  }
 
   const estimateDataUrlBytes = (dataUrl: string): number => {
     const idx = dataUrl.indexOf('base64,')
@@ -180,7 +210,19 @@ export function AdminImageGeneratorClient({
 
       if (!response.ok) {
         const err = (await response.json().catch(() => null)) as any
-        throw new Error(err?.error || 'Failed to generate image')
+        console.log('🔍 [Frontend] API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData: err
+        })
+        
+        // Handle structured error responses from our API
+        if (err?.code && err?.suggestions) {
+          const errorMessage = `${err.error}\n\nSuggestions:\n${err.suggestions.map((s: string) => `• ${s}`).join('\n')}`
+          throw new Error(errorMessage)
+        }
+        
+        throw new Error(err?.error || `Request failed with status ${response.status}`)
       }
 
       const data = (await response.json()) as ApiResponse
@@ -231,7 +273,7 @@ export function AdminImageGeneratorClient({
           <CardTitle>Generate New Image</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {supportsReferenceImage && (
+          {supportsReferenceImage && context === 'food' && (
             <div className="rounded-md border border-gray-200 bg-white p-4">
               <PromptHelperPanel
                 mode={referenceMode}
@@ -241,6 +283,16 @@ export function AdminImageGeneratorClient({
                 onAppend={(text) => setPrompt((p) => (p ? `${p}\n\n${text}` : text))}
                 onReplace={(text) => setPrompt(text)}
               />
+            </div>
+          )}
+
+          {supportsReferenceImage && context === 'general' && (
+            <div className="rounded-md border border-blue-200 bg-blue-50 p-4">
+              <h3 className="font-semibold text-blue-900 mb-2">General Purpose Image Generation</h3>
+              <p className="text-sm text-blue-800">
+                This is a clean, general-purpose image generator for creating web assets, graphics, and other non-restaurant content. 
+                Simply write your prompt below and optionally add reference images for style matching or composition guidance.
+              </p>
             </div>
           )}
 
@@ -333,7 +385,7 @@ export function AdminImageGeneratorClient({
                                 id: `ref_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
                                 dataUrl: result,
                                 name: file.name,
-                                role: prev.length === 0 ? 'dish' : prev.length === 1 ? 'scene' : 'style',
+                                role: getDefaultRole(prev.length),
                               },
                             ])
                             resolve()
@@ -382,10 +434,11 @@ export function AdminImageGeneratorClient({
                               }}
                               className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
                             >
-                              <option value="dish">Dish (use this as the food)</option>
-                              <option value="scene">Scene (use this as the table/background)</option>
-                              <option value="style">Style (match lighting/grading)</option>
-                              <option value="other">Other</option>
+                              {roleOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
                             </select>
                           </div>
                           <div className="flex items-end">

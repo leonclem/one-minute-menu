@@ -499,15 +499,21 @@ export interface NanoBananaParams {
     data: string
     /**
      * Optional app-level hint describing what this reference image represents.
-     * Used only for prompting (e.g., "dish", "scene", "style").
+     * For food context: "dish", "scene", "style", "other"
+     * For general context: "subject", "background", "style", "other"
      */
-    role?: 'dish' | 'scene' | 'style' | 'other'
+    role?: string
   }>
   /**
    * Optional hint to guide prompting for reference image workflows.
    * This is an application-level concept (not a strict model parameter).
    */
   reference_mode?: 'style_match' | 'composite'
+  /**
+   * Optional context hint for reference image role interpretation.
+   * Affects how roles are described in prompts.
+   */
+  context?: 'food' | 'general'
 }
 
 export interface GenerationQuota {

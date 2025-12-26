@@ -32,6 +32,8 @@ export interface RenderOptionsV2 {
   scale: number
   /** Color palette to use */
   palette?: ColorPaletteV2
+  /** Enable textured backgrounds for supported palettes */
+  texturesEnabled?: boolean
   /** Show grid overlay for debugging */
   showGridOverlay: boolean
   /** Show region boundary rectangles */
@@ -286,6 +288,8 @@ export interface RenderStyle {
   textAlign?: 'left' | 'center' | 'right'
   opacity?: number
   borderRadius?: number
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down'
+  objectPosition?: string
 }
 
 // ============================================================================
@@ -309,7 +313,9 @@ function renderLogoContent(
       height: tile.height,
       content: content.imageUrl,
       style: {
-        backgroundColor: palette.colors.background
+        backgroundColor: palette.colors.background,
+        objectFit: 'contain',
+        objectPosition: 'center'
       }
     })
   } else {
@@ -421,7 +427,8 @@ function renderItemContent(
         height: imageHeight,
         content: content.imageUrl,
         style: {
-          borderRadius: 4
+          borderRadius: 4,
+          objectFit: 'cover'
         }
       })
     } else {

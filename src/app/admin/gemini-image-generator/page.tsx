@@ -23,6 +23,7 @@ export default async function GeminiImageGeneratorPage() {
       defaultAspectRatio="1:1"
       allowedAspectRatios={['1:1']}
       supportsReferenceImage
+      context="food"
     />
   )
 }

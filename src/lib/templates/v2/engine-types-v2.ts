@@ -351,6 +351,8 @@ export interface SelectionConfigV2 {
   textOnly?: boolean
   /** Override filler enabled state */
   fillersEnabled?: boolean
+  /** Enable textured backgrounds for supported palettes */
+  texturesEnabled?: boolean
 }
 
 

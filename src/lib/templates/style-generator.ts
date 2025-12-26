@@ -34,19 +34,31 @@ export function generateStaticTemplateCSS(
   
   const palette = getActivePalette(template.style, paletteId)
   
-  let elegantDarkBg = ''
+  let texturedBackground = ''
   if (palette.id === 'elegant-dark') {
     // Static URL reference (fast, sync)
-    elegantDarkBg = `
+    texturedBackground = `
       background-color: #0b0d11;
       background-image: url('/textures/dark-paper.png');
       background-size: cover;
       background-repeat: no-repeat;
       background-position: center;
     `
+  } else if (palette.id === 'midnight-gold') {
+    // Static URL reference with gold overlay for Midnight Gold
+    texturedBackground = `
+      background-color: #1A1A1A;
+      background-image: 
+        linear-gradient(135deg, rgba(212, 175, 55, 0.03) 0%, transparent 50%, rgba(212, 175, 55, 0.02) 100%),
+        url('/textures/dark-paper-2.png');
+      background-size: 100% 100%, cover;
+      background-repeat: no-repeat, no-repeat;
+      background-position: center, center;
+      background-blend-mode: overlay, normal;
+    `
   }
   
-  return getTemplateCSSString(template.style, palette, elegantDarkBg)
+  return getTemplateCSSString(template.style, palette, texturedBackground)
 }
 
 /**
@@ -174,7 +186,7 @@ export function getDefaultCSS(): string {
 export function getTemplateCSSString(
   style: TemplateStyle, 
   palette: TemplateColorPalette, 
-  elegantDarkBg: string
+  texturedBackground: string
 ): string {
   return `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@400;700&family=Cormorant+Garamond:wght@400;600;700&family=Source+Sans+Pro:wght@400;600;700&family=Inter:wght@400;600;700&family=Nanum+Myeongjo:wght@400;700&family=Habibi&display=swap');
     
@@ -204,7 +216,7 @@ export function getTemplateCSSString(
     .layout-renderer {
       position: relative;
       font-family: ${style.fonts.body};
-      ${palette.id === 'elegant-dark' ? elegantDarkBg : `
+      ${(palette.id === 'elegant-dark' || palette.id === 'midnight-gold') ? texturedBackground : `
       background-color: ${palette.background};
       background: ${style.pageBackground || palette.background};
       `}

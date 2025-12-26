@@ -276,7 +276,8 @@ export async function POST(request: NextRequest) {
       aspect_ratio: generationRequest.styleParams.aspectRatio || '1:1',
       number_of_images: requestedVariations,
       safety_filter_level: 'block_some',
-      person_generation: 'dont_allow'
+      person_generation: 'dont_allow',
+      context: 'food'
     }
 
     // Create a job record to track this attempt (synchronous path)

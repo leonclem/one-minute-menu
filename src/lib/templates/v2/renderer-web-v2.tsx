@@ -77,10 +77,37 @@ export interface PageRendererProps {
 }
 
 export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
-  const { scale, isExport, palette } = options
+  const { scale, isExport, palette, texturesEnabled } = options
   const bgColor = palette?.colors.background || COLOR_TOKENS_V2.background.white
   const mutedTextColor = palette?.colors.textMuted || COLOR_TOKENS_V2.text.muted
   const borderColor = palette?.colors.border.light || COLOR_TOKENS_V2.border.light
+  
+  // Apply textured background if enabled and palette supports it
+  let backgroundStyle: React.CSSProperties = {
+    backgroundColor: bgColor
+  }
+  
+  if (texturesEnabled && palette?.id === 'midnight-gold') {
+    backgroundStyle = {
+      backgroundColor: '#1A1A1A',
+      backgroundImage: `
+        linear-gradient(135deg, rgba(212, 175, 55, 0.03) 0%, transparent 50%, rgba(212, 175, 55, 0.02) 100%),
+        url('/textures/dark-paper-2.png')
+      `,
+      backgroundSize: '100% 100%, cover',
+      backgroundRepeat: 'no-repeat, no-repeat',
+      backgroundPosition: 'center, center',
+      backgroundBlendMode: 'overlay, normal'
+    }
+  } else if (texturesEnabled && palette?.id === 'elegant-dark') {
+    backgroundStyle = {
+      backgroundColor: '#0b0d11',
+      backgroundImage: `url('/textures/dark-paper.png')`,
+      backgroundSize: 'cover',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center'
+    }
+  }
   
   return (
     <div 
@@ -89,7 +116,7 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
         width: pageSpec.width * scale,
         height: pageSpec.height * scale,
         position: 'relative',
-        backgroundColor: bgColor,
+        ...backgroundStyle,
         marginBottom: isExport ? 0 : 20 * scale,
         boxShadow: isExport ? 'none' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
         borderRadius: isExport ? 0 : 4,
@@ -297,7 +324,8 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
           alt=""
           style={{
             ...baseStyle,
-            objectFit: 'cover',
+            objectFit: element.style.objectFit || 'cover',
+            objectPosition: element.style.objectPosition || 'center',
             borderRadius: element.style.borderRadius ? element.style.borderRadius * scale : undefined
           }}
         />

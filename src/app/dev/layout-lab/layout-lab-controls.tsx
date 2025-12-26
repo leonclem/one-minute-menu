@@ -35,7 +35,8 @@ const V1_TEMPLATES = [
 ]
 
 const V2_TEMPLATES = [
-  { id: 'classic-cards-v2', name: 'Classic Cards V2', description: '4-column grid layout' }
+  { id: 'classic-cards-v2', name: 'Classic Cards V2', description: '4-column grid layout' },
+  { id: 'italian-v2', name: 'Italian Classic V2', description: '2-column text-focused layout' }
 ]
 
 const ENGINE_VERSIONS = [
@@ -150,7 +151,17 @@ export function LayoutLabControls({
                 name="template"
                 value={template.id}
                 checked={state.templateId === template.id}
-                onChange={(e) => onStateChange({ templateId: e.target.value })}
+                onChange={(e) => {
+                  const newTemplateId = e.target.value
+                  const updates: any = { templateId: newTemplateId }
+                  
+                  // Auto-enable textOnly for Italian template
+                  if (newTemplateId === 'italian-v2') {
+                    updates.textOnly = true
+                  }
+                  
+                  onStateChange(updates)
+                }}
                 className="mt-1"
               />
               <div>
@@ -276,6 +287,27 @@ export function LayoutLabControls({
             />
             <span className="text-sm">Fillers on/off</span>
           </label>
+          
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.textOnly}
+              onChange={(e) => onStateChange({ textOnly: e.target.checked })}
+            />
+            <span className="text-sm">Text only (no images)</span>
+          </label>
+          
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.texturesEnabled}
+              onChange={(e) => onStateChange({ texturesEnabled: e.target.checked })}
+            />
+            <span className="text-sm">Textured backgrounds</span>
+          </label>
+          <p className="text-xs text-gray-500 ml-6">
+            Applies paper textures to Midnight Gold and Elegant Dark palettes
+          </p>
         </CardContent>
       </Card>
       
@@ -288,10 +320,14 @@ export function LayoutLabControls({
           <Button
             onClick={onGenerate}
             disabled={state.isGenerating}
+            variant="outline"
             className="w-full"
           >
-            {state.isGenerating ? 'Generating...' : 'Generate Layout'}
+            {state.isGenerating ? 'Generating...' : 'Regenerate Now'}
           </Button>
+          <p className="text-xs text-gray-500 text-center">
+            Layout updates automatically when controls change
+          </p>
           
           <Button
             onClick={onExportPdf}

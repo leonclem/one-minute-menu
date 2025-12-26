@@ -55,6 +55,39 @@ export async function getElegantDarkBackground(headers?: Record<string, string>)
 }
 
 /**
+ * Get CSS background for midnight gold template with textured background
+ * Uses base64-encoded texture for PDF export compatibility
+ */
+export async function getMidnightGoldBackground(headers?: Record<string, string>): Promise<string> {
+  const textureDataURL = await getTextureDataURL('dark-paper-2.png', headers)
+  
+  if (textureDataURL) {
+    return `
+      background-color: #1A1A1A;
+      background-image: 
+        linear-gradient(135deg, rgba(212, 175, 55, 0.03) 0%, transparent 50%, rgba(212, 175, 55, 0.02) 100%),
+        url('${textureDataURL}');
+      background-size: 100% 100%, cover;
+      background-repeat: no-repeat, no-repeat;
+      background-position: center, center;
+      background-blend-mode: overlay, normal;
+    `
+  }
+  
+  // Fallback to CSS-generated texture with gold accents if image not available
+  return `
+    background-color: #1A1A1A;
+    background-image: 
+      linear-gradient(135deg, rgba(212, 175, 55, 0.04) 0%, transparent 30%, rgba(212, 175, 55, 0.02) 70%, transparent 100%),
+      repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(212, 175, 55, 0.008) 3px, rgba(212, 175, 55, 0.008) 6px),
+      repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(255, 255, 255, 0.005) 3px, rgba(255, 255, 255, 0.005) 6px),
+      radial-gradient(ellipse at 25% 25%, rgba(212, 175, 55, 0.015) 0%, transparent 60%),
+      radial-gradient(ellipse at 75% 75%, rgba(212, 175, 55, 0.01) 0%, transparent 60%);
+    background-size: 100% 100%, 12px 12px, 12px 12px, 100% 100%, 100% 100%;
+  `
+}
+
+/**
  * Fetch image from URL and convert to base64 data URL
  * Supports both HTTP/HTTPS URLs and local file paths (via FS or HTTP fallback)
  */

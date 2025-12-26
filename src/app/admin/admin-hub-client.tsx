@@ -85,7 +85,9 @@ export function AdminHubClient() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block border border-gray-200">
+                {/* Invisible bridge to prevent dropdown from disappearing */}
+                <div className="absolute right-0 top-full w-56 h-2 z-10 hidden group-hover:block"></div>
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block border border-gray-200">
                   <a
                     href="/admin/image-generator"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -93,10 +95,16 @@ export function AdminHubClient() {
                     Imagen 4.0 (2K/HQ)
                   </a>
                   <a
+                    href="/admin/general-image-generator"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    General Purpose (Backup)
+                  </a>
+                  <a
                     href="/admin/gemini-image-generator"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
-                    Gemini 2.5 (Fast)
+                    Gemini 2.5 (Restaurant)
                   </a>
                 </div>
               </div>

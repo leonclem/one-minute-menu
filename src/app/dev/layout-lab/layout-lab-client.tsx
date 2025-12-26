@@ -7,7 +7,7 @@
  * Manages state for fixture selection, template selection, and rendering options.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { LayoutLabControls } from './layout-lab-controls'
 import { LayoutLabPreview } from './layout-lab-preview'
 import type { LayoutDocumentV2 } from '@/lib/templates/v2/engine-types-v2'
@@ -25,10 +25,13 @@ export interface LayoutLabState {
   showRegionBounds: boolean
   showTileIds: boolean
   fillersEnabled: boolean
+  textOnly: boolean
+  texturesEnabled: boolean
   
   // Data
   layoutDocument: LayoutDocumentV2 | null
   isGenerating: boolean
+  isAutoGenerating: boolean
   error: string | null
 }
 
@@ -41,20 +44,25 @@ const initialState: LayoutLabState = {
   showRegionBounds: false,
   showTileIds: false,
   fillersEnabled: false,
+  textOnly: false,
+  texturesEnabled: true, // Enable textures by default to showcase the feature
   layoutDocument: null,
   isGenerating: false,
+  isAutoGenerating: false,
   error: null
 }
 
 export function LayoutLabClient() {
   const [state, setState] = useState<LayoutLabState>(initialState)
+  const isInitialMount = useRef(true)
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
   
   const updateState = useCallback((updates: Partial<LayoutLabState>) => {
     setState(prev => ({ ...prev, ...updates }))
   }, [])
   
-  const generateLayout = useCallback(async () => {
-    updateState({ isGenerating: true, error: null })
+  const generateLayoutWithCurrentState = useCallback(async (isAuto = false, currentState = state) => {
+    setState(prev => ({ ...prev, isGenerating: true, isAutoGenerating: isAuto, error: null }))
     
     try {
       const response = await fetch('/api/dev/layout-lab/generate', {
@@ -63,12 +71,15 @@ export function LayoutLabClient() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          fixtureId: state.fixtureId,
-          templateId: state.templateId,
-          engineVersion: state.engineVersion,
+          fixtureId: currentState.fixtureId,
+          templateId: currentState.templateId,
+          paletteId: currentState.paletteId,
+          engineVersion: currentState.engineVersion,
           options: {
-            fillersEnabled: state.fillersEnabled,
-            showRegionBounds: state.showRegionBounds
+            fillersEnabled: currentState.fillersEnabled,
+            textOnly: currentState.textOnly,
+            texturesEnabled: currentState.texturesEnabled,
+            showRegionBounds: currentState.showRegionBounds
           }
         })
       })
@@ -79,14 +90,69 @@ export function LayoutLabClient() {
       }
       
       const layoutDocument = await response.json()
-      updateState({ layoutDocument, isGenerating: false })
+      setState(prev => ({ ...prev, layoutDocument, isGenerating: false, isAutoGenerating: false }))
     } catch (error) {
-      updateState({ 
+      setState(prev => ({ 
+        ...prev,
         error: error instanceof Error ? error.message : 'Unknown error',
-        isGenerating: false 
-      })
+        isGenerating: false,
+        isAutoGenerating: false
+      }))
     }
-  }, [state.fixtureId, state.templateId, state.engineVersion, state.fillersEnabled, updateState])
+  }, []) // No dependencies - we pass state as parameter
+  
+  // Manual generation function
+  const generateLayoutManual = useCallback(() => {
+    generateLayoutWithCurrentState(false, state)
+  }, [generateLayoutWithCurrentState, state])
+  
+  // Auto-generate layout when key controls change
+  useEffect(() => {
+    // Don't auto-generate if already generating
+    if (state.isGenerating) return
+    
+    // Handle initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      generateLayoutWithCurrentState(true, state)
+      return
+    }
+    
+    // Clear existing timeout
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current)
+    }
+    
+    // Create a debounced version to avoid excessive API calls
+    debounceTimeout.current = setTimeout(() => {
+      generateLayoutWithCurrentState(true, state)
+    }, 500) // 500ms debounce
+    
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current)
+      }
+    }
+  }, [
+    // Only trigger on changes that affect layout generation, not display options
+    state.fixtureId, 
+    state.templateId, 
+    state.engineVersion, 
+    state.fillersEnabled, 
+    state.textOnly, 
+    state.texturesEnabled,
+    state.paletteId
+    // Removed state.isGenerating from dependencies to prevent loops
+  ])
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current)
+      }
+    }
+  }, [])
   
   const exportPdf = useCallback(async () => {
     if (!state.layoutDocument) return
@@ -104,6 +170,7 @@ export function LayoutLabClient() {
           engineVersion: state.engineVersion,
           options: {
             fillersEnabled: state.fillersEnabled,
+            textOnly: state.textOnly,
             showRegionBounds: state.showRegionBounds
           }
         })
@@ -127,7 +194,7 @@ export function LayoutLabClient() {
         error: error instanceof Error ? error.message : 'Failed to export PDF'
       })
     }
-  }, [state.layoutDocument, state.fixtureId, state.templateId, state.engineVersion, state.fillersEnabled, updateState])
+  }, [state.layoutDocument, state.fixtureId, state.templateId, state.engineVersion, state.fillersEnabled, state.textOnly, updateState])
   
   const downloadJson = useCallback(() => {
     if (!state.layoutDocument) return
@@ -151,7 +218,7 @@ export function LayoutLabClient() {
         <LayoutLabControls
           state={state}
           onStateChange={updateState}
-          onGenerate={generateLayout}
+          onGenerate={generateLayoutManual}
           onExportPdf={exportPdf}
           onDownloadJson={downloadJson}
         />
@@ -162,11 +229,13 @@ export function LayoutLabClient() {
         <LayoutLabPreview
           layoutDocument={state.layoutDocument}
           isGenerating={state.isGenerating}
+          isAutoGenerating={state.isAutoGenerating}
           error={state.error}
           paletteId={state.paletteId}
           showGridOverlay={state.showGridOverlay}
           showRegionBounds={state.showRegionBounds}
           showTileIds={state.showTileIds}
+          texturesEnabled={state.texturesEnabled}
         />
       </div>
     </div>

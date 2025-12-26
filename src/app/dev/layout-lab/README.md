@@ -28,6 +28,8 @@ The Layout Lab is a developer-only interface for testing and validating the V2 l
 - **Region rectangles**: Highlights header, title, body, footer regions
 - **Tile IDs and coordinates**: Shows tile positioning information
 - **Fillers on/off**: Toggle filler tile insertion
+- **Text only**: Disable images for text-only layouts
+- **Textured backgrounds**: Enable paper textures for Midnight Gold and Elegant Dark palettes
 
 ### Export Options
 - **Generate Layout**: Creates layout and shows preview

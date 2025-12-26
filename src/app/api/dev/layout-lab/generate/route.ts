@@ -22,10 +22,12 @@ export const dynamic = 'force-dynamic'
 interface GenerateRequest {
   fixtureId: string
   templateId: string
+  paletteId?: string
   engineVersion: 'v1' | 'v2'
   options?: {
     fillersEnabled?: boolean
     textOnly?: boolean
+    texturesEnabled?: boolean
   }
 }
 
@@ -126,7 +128,8 @@ export async function POST(request: NextRequest) {
         templateId,
         selection: {
           textOnly: options.textOnly || false,
-          fillersEnabled: options.fillersEnabled
+          fillersEnabled: options.fillersEnabled,
+          texturesEnabled: options.texturesEnabled
         },
         debug: true // Enable debug info for Layout Lab
       }, 'v2')

@@ -24,6 +24,8 @@ interface LayoutLabPreviewProps {
   showGridOverlay: boolean
   showRegionBounds: boolean
   showTileIds: boolean
+  texturesEnabled: boolean
+  isAutoGenerating?: boolean
 }
 
 export function LayoutLabPreview({
@@ -33,7 +35,9 @@ export function LayoutLabPreview({
   paletteId,
   showGridOverlay,
   showRegionBounds,
-  showTileIds
+  showTileIds,
+  texturesEnabled,
+  isAutoGenerating = false
 }: LayoutLabPreviewProps) {
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
   const [zoom, setZoom] = useState(0.9) // Default to 90%
@@ -47,7 +51,9 @@ export function LayoutLabPreview({
         <CardContent className="flex items-center justify-center h-96">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Generating layout...</p>
+            <p className="text-gray-600">
+              {isAutoGenerating ? 'Auto-updating layout...' : 'Generating layout...'}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -190,7 +196,15 @@ export function LayoutLabPreview({
       {/* Page Preview */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-          <CardTitle>Page Preview</CardTitle>
+          <div className="flex items-center space-x-2">
+            <CardTitle>Page Preview</CardTitle>
+            {!isGenerating && (
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-xs text-green-600">Live</span>
+              </div>
+            )}
+          </div>
           {totalPages > 1 && (
             <div className="flex items-center space-x-3">
               <Button
@@ -237,6 +251,7 @@ export function LayoutLabPreview({
                 options={{
                   scale: 1.0,
                   palette,
+                  texturesEnabled,
                   showGridOverlay,
                   showRegionBounds,
                   showTileIds,

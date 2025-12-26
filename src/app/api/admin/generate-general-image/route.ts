@@ -21,7 +21,6 @@ export async function POST(request: NextRequest) {
       negativePrompt = '',
       referenceMode = 'style_match',
       referenceImages = [],
-      scenarioId = null,
     } =
       (await request.json()) as {
         prompt?: string
@@ -29,8 +28,7 @@ export async function POST(request: NextRequest) {
         numberOfImages?: number
         negativePrompt?: string
         referenceMode?: 'style_match' | 'composite'
-        referenceImages?: Array<{ dataUrl: string; role?: 'dish' | 'scene' | 'style' | 'other'; name?: string }>
-        scenarioId?: string | null
+        referenceImages?: Array<{ dataUrl: string; role?: 'subject' | 'background' | 'style' | 'other'; name?: string }>
       }
 
     if (!process.env.NANO_BANANA_API_KEY) {
@@ -56,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     let reference_images:
-      | Array<{ mimeType: 'image/png' | 'image/jpeg' | 'image/webp'; data: string; role?: 'dish' | 'scene' | 'style' | 'other' }>
+      | Array<{ mimeType: 'image/png' | 'image/jpeg' | 'image/webp'; data: string; role?: 'subject' | 'background' | 'style' | 'other' }>
       | undefined
     const referenceImageMeta: Array<{ mimeType: string; bytes: number; role?: string; name?: string }> = []
 
@@ -87,9 +85,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    logger.info('🧪 [Admin Gemini Image] Request', {
+    logger.info('🎨 [Admin General Image] Request', {
       userId: admin.user.id,
-      scenarioId,
       aspectRatio,
       numberOfImages: count,
       referenceMode: normalizedRefs.length > 0 ? referenceMode : null,
@@ -97,6 +94,17 @@ export async function POST(request: NextRequest) {
       referenceImages: referenceImageMeta,
       promptLength: (prompt || '').length,
       negativePromptLength: (negativePrompt || '').length,
+    })
+
+    console.log('🔍 [Debug] About to call generateImage with params:', {
+      prompt: prompt.trim(),
+      aspect_ratio: aspectRatio,
+      number_of_images: count,
+      safety_filter_level: 'block_some',
+      person_generation: 'allow',
+      referenceMode: normalizedRefs.length > 0 ? referenceMode : null,
+      referenceImageCount: normalizedRefs.length,
+      hasNegativePrompt: !!(negativePrompt?.trim())
     })
 
     const result = await getNanoBananaClient().generateImage({
@@ -108,7 +116,7 @@ export async function POST(request: NextRequest) {
       person_generation: 'dont_allow',
       reference_images,
       reference_mode: normalizedRefs.length > 0 ? referenceMode : undefined,
-      context: 'food',
+      context: 'general',
     })
 
     // Gemini returns inline image data (base64). Wrap as a data URL for browser usage.
@@ -121,16 +129,33 @@ export async function POST(request: NextRequest) {
       aspectRatio,
       model: 'gemini-2.5-flash-image',
       referenceMode: normalizedRefs.length > 0 ? referenceMode : undefined,
-      scenarioId,
     })
-  } catch (error) {
+  } catch (error: any) {
+    console.log('🔍 [API Route] Caught error:', {
+      type: error?.constructor?.name,
+      isNanoBananaError: error instanceof NanoBananaError,
+      message: error?.message,
+      code: error?.code,
+      status: error?.status
+    })
+
     if (error instanceof NanoBananaError) {
+      console.log('🔍 [API Route] Processing NanoBananaError:', {
+        code: error.code,
+        message: error.message,
+        suggestions: error.suggestions,
+        filterReason: error.filterReason
+      })
+
       const status =
         error.code === 'AUTHENTICATION_ERROR' ? 401 :
         error.code === 'CONTENT_POLICY_VIOLATION' ? 403 :
         error.code === 'RATE_LIMIT_EXCEEDED' ? 429 :
         error.code === 'SERVICE_UNAVAILABLE' ? 503 :
         400
+      
+      console.log('🔍 [API Route] Returning error response with status:', status)
+      
       return NextResponse.json(
         {
           error: error.message,
@@ -143,10 +168,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // eslint-disable-next-line no-console
-    console.error('Error generating Gemini image:', error)
+    console.error('Error generating general image:', error)
+    
+    // Log the full error details for debugging
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        ...(error as any)
+      })
+    }
+    
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
-

@@ -52,15 +52,19 @@ export class NanoBananaError extends Error {
   private generateSuggestions(code: string, filterReason?: string): string[] {
     const suggestions: Record<string, string[]> = {
       'CONTENT_POLICY_VIOLATION': [
+        'Try using more descriptive, neutral language',
+        'Focus on visual elements like colors, textures, and composition',
+        'Avoid potentially sensitive or controversial topics',
+        'Be more specific about the style and appearance you want',
         'Add more details about the dish ingredients',
-        'Specify the plating style (e.g., "on a white plate")',
-        'Use the negative prompt to exclude unwanted elements'
+        'Specify the plating style (e.g., "on a white plate")'
       ],
       'SAFETY_FILTER_BLOCKED': {
         'person_detected': [
           'Set "No people" in generation settings',
-          'Focus description on the food only',
-          'Use negative prompt: "people, person, human"'
+          'Focus description on objects, landscapes, or abstract concepts',
+          'Use negative prompt: "people, person, human"',
+          'Focus description on the food only'
         ],
         'text_detected': [
           'Remove any text references from description',
@@ -68,11 +72,26 @@ export class NanoBananaError extends Error {
         ],
         'inappropriate_content': [
           'Use more neutral, descriptive language',
-          'Focus on food presentation and ingredients'
+          'Focus on visual aesthetics and composition'
+        ],
+        'content_filtered': [
+          'Try rephrasing your prompt with different words',
+          'Focus on visual elements like colors, shapes, and textures',
+          'Avoid potentially sensitive terms or concepts'
+        ],
+        'safety_filtered': [
+          'Modify your prompt to avoid potentially harmful content',
+          'Use more neutral, descriptive language',
+          'Focus on safe, general visual concepts'
         ]
       }[filterReason || ''] || [
         'Try simplifying your description',
-        'Focus on the food and presentation only'
+        'Focus on visual elements and composition only'
+      ],
+      'GENERATION_FAILED': [
+        'Try a different prompt with clearer visual descriptions',
+        'Simplify your request and focus on key visual elements',
+        'Check that your prompt describes something that can be visualized'
       ],
       'RATE_LIMIT_EXCEEDED': [
         'Wait a moment and try again',
@@ -81,7 +100,7 @@ export class NanoBananaError extends Error {
       'PROMPT_TOO_LONG': [
         'Shorten your description',
         'Remove unnecessary details',
-        'Focus on the most important aspects of the dish'
+        'Focus on the most important visual aspects'
       ]
     }
 
@@ -171,14 +190,28 @@ export class NanoBananaClient {
         }
 
         if (mode === 'composite') {
-          promptText =
-            `Use the provided reference images as context to COMPOSE a new image.\n` +
-            (roleLines.length ? `${roleLines.join('\n')}\n` : '') +
-            `- If a reference image is role=dish, use it as the primary dish/food.\n` +
-            `- If a reference image is role=scene, use it as the table/background context.\n` +
-            `- If a reference image is role=style, match its lighting/color grading.\n` +
-            `Keep the reference scene/style consistent, and integrate the described food naturally.\n\n` +
-            promptText
+          const context = requestParams.context || 'food' // Default to food for backward compatibility
+          
+          if (context === 'general') {
+            promptText =
+              `Use the provided reference images as context to COMPOSE a new image.\n` +
+              (roleLines.length ? `${roleLines.join('\n')}\n` : '') +
+              `- If a reference image is role=subject, use it as the primary subject/focus.\n` +
+              `- If a reference image is role=background, use it as the background/environment context.\n` +
+              `- If a reference image is role=style, match its lighting/color grading.\n` +
+              `Keep the reference background/style consistent, and integrate the described subject naturally.\n\n` +
+              promptText
+          } else {
+            // Food context (original behavior)
+            promptText =
+              `Use the provided reference images as context to COMPOSE a new image.\n` +
+              (roleLines.length ? `${roleLines.join('\n')}\n` : '') +
+              `- If a reference image is role=dish, use it as the primary dish/food.\n` +
+              `- If a reference image is role=scene, use it as the table/background context.\n` +
+              `- If a reference image is role=style, match its lighting/color grading.\n` +
+              `Keep the reference scene/style consistent, and integrate the described food naturally.\n\n` +
+              promptText
+          }
         } else {
           promptText =
             `Use the provided reference images as STYLE references.\n` +
@@ -234,6 +267,9 @@ export class NanoBananaClient {
 
       // Log the exact URL being called for debugging
       console.log('🔍 [Nano Banana] Making request to:', url.toString().replace(/key=[^&]+/, 'key=***'))
+      console.log('🔍 [Nano Banana] Request body:', JSON.stringify(requestBody, null, 2))
+      console.log('🔍 [Nano Banana] API Key (first 10 chars):', this.apiKey.substring(0, 10) + '...')
+      console.log('🔍 [Nano Banana] Base URL:', this.baseUrl)
 
       // Make the API request
       const apiResponse = await fetchJsonWithRetry<any>(
@@ -257,7 +293,51 @@ export class NanoBananaClient {
       // Parse Gemini response → base64 images array
       const images: string[] = []
       const candidates = apiResponse?.candidates || []
+      
+      console.log('🔍 [Nano Banana] Processing API response:', {
+        candidateCount: candidates.length,
+        candidates: candidates.map((c: any) => ({ finishReason: c.finishReason, index: c.index }))
+      })
+      
+      // Check for content filtering or other issues
       for (const cand of candidates) {
+        console.log('🔍 [Nano Banana] Processing candidate:', {
+          finishReason: cand.finishReason,
+          index: cand.index,
+          hasContent: !!(cand.content?.parts?.length)
+        })
+        
+        if (cand.finishReason === 'NO_IMAGE') {
+          console.log('🚫 [Nano Banana] NO_IMAGE detected - throwing CONTENT_POLICY_VIOLATION')
+          throw new NanoBananaError(
+            'Image generation was blocked by content filters. Try modifying your prompt to be more specific about the visual elements you want, avoid potentially sensitive content, or use different wording.',
+            'CONTENT_POLICY_VIOLATION',
+            undefined,
+            undefined,
+            'content_filtered'
+          )
+        }
+        if (cand.finishReason === 'SAFETY') {
+          console.log('🚫 [Nano Banana] SAFETY detected - throwing SAFETY_FILTER_BLOCKED')
+          throw new NanoBananaError(
+            'Image generation was blocked by safety filters. Please modify your prompt to avoid potentially harmful content.',
+            'SAFETY_FILTER_BLOCKED',
+            undefined,
+            undefined,
+            'safety_filtered'
+          )
+        }
+        if (cand.finishReason && cand.finishReason !== 'STOP') {
+          console.log('🚫 [Nano Banana] Unexpected finishReason - throwing GENERATION_FAILED')
+          throw new NanoBananaError(
+            `Image generation failed: ${cand.finishReason}. Please try a different prompt.`,
+            'GENERATION_FAILED',
+            undefined,
+            undefined,
+            cand.finishReason.toLowerCase()
+          )
+        }
+        
         const parts = cand?.content?.parts || []
         for (const part of parts) {
           const inline = part?.inlineData
@@ -267,7 +347,10 @@ export class NanoBananaClient {
         }
       }
 
+      console.log('🔍 [Nano Banana] Final image count:', images.length)
+
       if (images.length === 0) {
+        console.log('🚫 [Nano Banana] No images found - throwing NO_IMAGES_RETURNED')
         throw new NanoBananaError(
           'No images returned from API',
           'NO_IMAGES_RETURNED'
@@ -409,6 +492,19 @@ export class NanoBananaClient {
    * Handle HTTP errors and convert to appropriate NanoBananaError
    */
   private handleHttpError(error: HttpError): NanoBananaError {
+    // Log the full error details for debugging
+    console.log('🔍 [Nano Banana] HTTP Error Details:', {
+      status: error.status,
+      message: error.message,
+      body: error.body,
+      code: error.code
+    })
+
+    // If it's a 400 error, log the full response body to understand what's wrong
+    if (error.status === 400) {
+      console.log('🔍 [Nano Banana] 400 Error - Full response body:', JSON.stringify(error.body, null, 2))
+    }
+
     switch (error.status) {
       case 400:
         return new NanoBananaError(
