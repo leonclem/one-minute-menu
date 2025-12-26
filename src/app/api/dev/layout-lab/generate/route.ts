@@ -28,6 +28,7 @@ interface GenerateRequest {
     fillersEnabled?: boolean
     textOnly?: boolean
     texturesEnabled?: boolean
+    showMenuTitle?: boolean
   }
 }
 
@@ -129,7 +130,8 @@ export async function POST(request: NextRequest) {
         selection: {
           textOnly: options.textOnly || false,
           fillersEnabled: options.fillersEnabled,
-          texturesEnabled: options.texturesEnabled
+          texturesEnabled: options.texturesEnabled,
+          showMenuTitle: options.showMenuTitle
         },
         debug: true // Enable debug info for Layout Lab
       }, 'v2')

@@ -353,6 +353,8 @@ export interface SelectionConfigV2 {
   fillersEnabled?: boolean
   /** Enable textured backgrounds for supported palettes */
   texturesEnabled?: boolean
+  /** Show menu title in title region */
+  showMenuTitle?: boolean
 }
 
 

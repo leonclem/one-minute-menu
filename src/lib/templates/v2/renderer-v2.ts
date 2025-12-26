@@ -92,10 +92,7 @@ export interface ColorPaletteV2 {
   colors: {
     background: string
     menuTitle: string
-    sectionHeader: {
-      text: string
-      background: string
-    }
+    sectionHeader: string
     itemTitle: string
     itemPrice: string
     itemDescription: string
@@ -144,10 +141,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
     colors: {
       background: '#FFFFFF',
       menuTitle: '#111827',
-      sectionHeader: {
-        text: '#111827',
-        background: '#F9FAFB'
-      },
+      sectionHeader: '#111827',
       itemTitle: '#111827',
       itemPrice: '#111827',
       itemDescription: '#6B7280',
@@ -167,10 +161,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
     colors: {
       background: '#FDFCF0', // Warm cream
       menuTitle: '#2C2C2C',
-      sectionHeader: {
-        text: '#2C2C2C',
-        background: '#F5F2D0' // Slightly darker cream
-      },
+      sectionHeader: '#2C2C2C',
       itemTitle: '#2C2C2C',
       itemPrice: '#8B6B23', // Muted gold/bronze
       itemDescription: '#555555',
@@ -190,10 +181,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
     colors: {
       background: '#1A1A1A', // Dark charcoal
       menuTitle: '#D4AF37', // Gold
-      sectionHeader: {
-        text: '#D4AF37',
-        background: '#2A2A2A'
-      },
+      sectionHeader: '#D4AF37',
       itemTitle: '#FFFFFF',
       itemPrice: '#D4AF37',
       itemDescription: '#A0A0A0',
@@ -313,7 +301,6 @@ function renderLogoContent(
       height: tile.height,
       content: content.imageUrl,
       style: {
-        backgroundColor: palette.colors.background,
         objectFit: 'contain',
         objectPosition: 'center'
       }
@@ -372,19 +359,6 @@ function renderSectionHeaderContent(
 ): TileRenderData {
   const palette = getPalette(options)
   const elements: RenderElement[] = [
-    // Background frame
-    {
-      type: 'background',
-      x: 0,
-      y: 0,
-      width: tile.width,
-      height: tile.height,
-      content: '',
-      style: {
-        backgroundColor: palette.colors.sectionHeader.background,
-        borderRadius: 4
-      }
-    },
     {
       type: 'text',
       x: 8, // Left padding
@@ -393,7 +367,7 @@ function renderSectionHeaderContent(
       style: {
         fontSize: TYPOGRAPHY_TOKENS_V2.fontSize['2xl'],
         fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
-        color: palette.colors.sectionHeader.text,
+        color: palette.colors.sectionHeader,
         textAlign: 'left'
       }
     }

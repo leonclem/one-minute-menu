@@ -308,6 +308,18 @@ export function LayoutLabControls({
           <p className="text-xs text-gray-500 ml-6">
             Applies paper textures to Midnight Gold and Elegant Dark palettes
           </p>
+          
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.showMenuTitle}
+              onChange={(e) => onStateChange({ showMenuTitle: e.target.checked })}
+            />
+            <span className="text-sm">Show menu title</span>
+          </label>
+          <p className="text-xs text-gray-500 ml-6">
+            Display the menu name in the title region. When disabled, space is redistributed to menu items.
+          </p>
         </CardContent>
       </Card>
       

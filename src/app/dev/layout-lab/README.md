@@ -30,6 +30,7 @@ The Layout Lab is a developer-only interface for testing and validating the V2 l
 - **Fillers on/off**: Toggle filler tile insertion
 - **Text only**: Disable images for text-only layouts
 - **Textured backgrounds**: Enable paper textures for Midnight Gold and Elegant Dark palettes
+- **Show menu title**: Display the menu name in the title region. When disabled, space is redistributed to menu items for better layout efficiency
 
 ### Export Options
 - **Generate Layout**: Creates layout and shows preview

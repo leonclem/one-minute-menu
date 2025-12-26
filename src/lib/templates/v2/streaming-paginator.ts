@@ -79,7 +79,8 @@ export function initContext(
   pageSpec: PageSpecV2,
   selection?: SelectionConfigV2
 ): StreamingContext {
-  const regions = calculateRegions(pageSpec, template)
+  const showMenuTitle = selection?.showMenuTitle !== false // Default to true
+  const regions = calculateRegions(pageSpec, template, showMenuTitle)
   
   const initialPage: PageLayoutV2 = {
     pageIndex: 0,
@@ -182,7 +183,8 @@ export function finalizePage(ctx: StreamingContext): void {
  * @param pageType - Type of the new page
  */
 export function startNewPage(ctx: StreamingContext, pageType: PageTypeV2): void {
-  const regions = calculateRegions(ctx.pageSpec, ctx.template)
+  const showMenuTitle = ctx.selection?.showMenuTitle !== false // Default to true
+  const regions = calculateRegions(ctx.pageSpec, ctx.template, showMenuTitle)
   
   const newPage: PageLayoutV2 = {
     pageIndex: ctx.pages.length,
@@ -240,22 +242,25 @@ export function placeStaticTiles(
     logPlacement(ctx, 'placed', placedLogo.id, 'Static logo tile')
   }
   
-  // Always place title tile
-  const titleTile = createTitleTile(menu, ctx.template)
-  const titleRegion = ctx.currentPage.regions.find(r => r.id === 'title')!
-  
-  const placedTitle = placeTile(
-    ctx,
-    ctx.currentPage,
-    {
-      ...titleTile,
-      width: titleRegion.width, // Title spans full title region width
-    },
-    titleRegion,
-    ctx.template
-  )
-  
-  logPlacement(ctx, 'placed', placedTitle.id, 'Static title tile')
+  // Place title tile only if showMenuTitle is enabled
+  const showMenuTitle = ctx.selection?.showMenuTitle !== false // Default to true
+  if (showMenuTitle) {
+    const titleTile = createTitleTile(menu, ctx.template)
+    const titleRegion = ctx.currentPage.regions.find(r => r.id === 'title')!
+    
+    const placedTitle = placeTile(
+      ctx,
+      ctx.currentPage,
+      {
+        ...titleTile,
+        width: titleRegion.width, // Title spans full title region width
+      },
+      titleRegion,
+      ctx.template
+    )
+    
+    logPlacement(ctx, 'placed', placedTitle.id, 'Static title tile')
+  }
 }
 
 // =============================================================================

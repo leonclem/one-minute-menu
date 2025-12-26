@@ -27,6 +27,7 @@ export interface LayoutLabState {
   fillersEnabled: boolean
   textOnly: boolean
   texturesEnabled: boolean
+  showMenuTitle: boolean
   
   // Data
   layoutDocument: LayoutDocumentV2 | null
@@ -46,6 +47,7 @@ const initialState: LayoutLabState = {
   fillersEnabled: false,
   textOnly: false,
   texturesEnabled: true, // Enable textures by default to showcase the feature
+  showMenuTitle: true, // Show menu title by default
   layoutDocument: null,
   isGenerating: false,
   isAutoGenerating: false,
@@ -79,7 +81,8 @@ export function LayoutLabClient() {
             fillersEnabled: currentState.fillersEnabled,
             textOnly: currentState.textOnly,
             texturesEnabled: currentState.texturesEnabled,
-            showRegionBounds: currentState.showRegionBounds
+            showRegionBounds: currentState.showRegionBounds,
+            showMenuTitle: currentState.showMenuTitle
           }
         })
       })
@@ -141,7 +144,8 @@ export function LayoutLabClient() {
     state.fillersEnabled, 
     state.textOnly, 
     state.texturesEnabled,
-    state.paletteId
+    state.paletteId,
+    state.showMenuTitle
     // Removed state.isGenerating from dependencies to prevent loops
   ])
   
@@ -171,7 +175,8 @@ export function LayoutLabClient() {
           options: {
             fillersEnabled: state.fillersEnabled,
             textOnly: state.textOnly,
-            showRegionBounds: state.showRegionBounds
+            showRegionBounds: state.showRegionBounds,
+            showMenuTitle: state.showMenuTitle
           }
         })
       })

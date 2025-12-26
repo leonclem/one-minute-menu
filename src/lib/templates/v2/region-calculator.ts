@@ -28,11 +28,13 @@ import type { PageSpecV2, RegionV2, TemplateV2 } from './engine-types-v2'
  *
  * @param pageSpec - Page specification with dimensions and margins
  * @param template - Template configuration with region heights
+ * @param showMenuTitle - Whether to show the menu title (affects region sizing)
  * @returns Array of RegionV2 objects with content-box relative coordinates
  */
 export function calculateRegions(
   pageSpec: PageSpecV2,
-  template: TemplateV2
+  template: TemplateV2,
+  showMenuTitle: boolean = true
 ): RegionV2[] {
   // Calculate content box dimensions (after margins)
   const contentWidth = pageSpec.width - pageSpec.margins.left - pageSpec.margins.right
@@ -40,7 +42,7 @@ export function calculateRegions(
 
   // Extract region heights from template
   const headerHeight = template.regions.header.height
-  const titleHeight = template.regions.title.height
+  const titleHeight = showMenuTitle ? template.regions.title.height : 0
   const footerHeight = template.regions.footer.height
 
   // Body height is computed as remaining space
@@ -69,12 +71,12 @@ export function calculateRegions(
       x: 0,
       y: headerHeight, // stacked below header
       width: contentWidth,
-      height: titleHeight,
+      height: titleHeight, // Will be 0 if showMenuTitle is false
     },
     {
       id: 'body',
       x: 0,
-      y: headerHeight + titleHeight, // stacked below title
+      y: headerHeight + titleHeight, // stacked below title (or header if title is hidden)
       width: contentWidth,
       height: bodyHeight,
     },
@@ -112,14 +114,25 @@ export function getBodyRegion(regions: RegionV2[]): RegionV2 {
  *
  * @param regions - Array of regions to validate
  * @param contentHeight - Total content height for validation
+ * @param allowZeroHeightTitle - Whether to allow title region with height 0
  * @throws Error if validation fails
  */
-export function validateRegions(regions: RegionV2[], contentHeight: number): void {
+export function validateRegions(
+  regions: RegionV2[], 
+  contentHeight: number, 
+  allowZeroHeightTitle: boolean = false
+): void {
   // Check that all required regions exist
   const requiredRegions: RegionV2['id'][] = ['header', 'title', 'body', 'footer']
   for (const regionId of requiredRegions) {
-    if (!regions.find(r => r.id === regionId)) {
+    const region = regions.find(r => r.id === regionId)
+    if (!region) {
       throw new Error(`Missing required region: ${regionId}`)
+    }
+    
+    // Special case: title region can have height 0 when menu title is hidden
+    if (regionId === 'title' && region.height === 0 && !allowZeroHeightTitle) {
+      throw new Error('Title region has height 0 but allowZeroHeightTitle is false')
     }
   }
 
