@@ -20,7 +20,8 @@ import type {
   TitleContentV2,
   FillerContentV2,
   ItemIndicatorsV2,
-  DietaryIndicator
+  DietaryIndicator,
+  TileStyleV2
 } from './engine-types-v2'
 
 // ============================================================================
@@ -44,6 +45,77 @@ export interface RenderOptionsV2 {
   showDebugInfo?: boolean
   /** Whether we are rendering for export (PDF/Image) */
   isExport?: boolean
+}
+
+// ============================================================================
+// Font Sets for Template Styling
+// ============================================================================
+
+/** Font set definition for template styling */
+export interface FontSetV2 {
+  id: string
+  name: string
+  primary: string
+  fallback: string
+  googleFonts: string
+  description: string
+}
+
+/** Predefined font sets for menu design */
+export const FONT_SETS_V2: FontSetV2[] = [
+  {
+    id: 'modern-sans',
+    name: 'Modern Sans',
+    primary: 'Inter',
+    fallback: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    googleFonts: 'Inter:wght@400;500;600;700',
+    description: 'Clean, modern, highly readable - perfect for contemporary dining'
+  },
+  {
+    id: 'elegant-serif',
+    name: 'Elegant Serif',
+    primary: 'Playfair Display',
+    fallback: 'Georgia, "Times New Roman", serif',
+    googleFonts: 'Playfair+Display:wght@400;500;600;700',
+    description: 'Sophisticated, upscale, editorial - ideal for fine dining'
+  },
+  {
+    id: 'friendly-rounded',
+    name: 'Friendly Rounded',
+    primary: 'Nunito Sans',
+    fallback: 'system-ui, -apple-system, sans-serif',
+    googleFonts: 'Nunito+Sans:wght@400;500;600;700',
+    description: 'Approachable, warm, friendly - great for cafes and family restaurants'
+  },
+  {
+    id: 'classic-professional',
+    name: 'Classic Professional',
+    primary: 'Source Sans Pro',
+    fallback: 'system-ui, -apple-system, sans-serif',
+    googleFonts: 'Source+Sans+Pro:wght@400;500;600;700',
+    description: 'Professional, trustworthy, versatile - perfect for business dining'
+  },
+  {
+    id: 'distinctive-sans',
+    name: 'Distinctive Sans',
+    primary: 'Poppins',
+    fallback: 'system-ui, -apple-system, sans-serif',
+    googleFonts: 'Poppins:wght@400;500;600;700',
+    description: 'Modern, geometric, distinctive - ideal for trendy establishments'
+  }
+]
+
+export const DEFAULT_FONT_SET_V2 = FONT_SETS_V2[0] // modern-sans
+
+/** Get font set by ID */
+export function getFontSet(fontSetId: string): FontSetV2 {
+  return FONT_SETS_V2.find(set => set.id === fontSetId) || DEFAULT_FONT_SET_V2
+}
+
+/** Get font family string for a font set */
+export function getFontFamily(fontSetId: string): string {
+  const fontSet = getFontSet(fontSetId)
+  return `"${fontSet.primary}", ${fontSet.fallback}`
 }
 
 // ============================================================================
@@ -80,6 +152,18 @@ export const TYPOGRAPHY_TOKENS_V2 = {
     relaxed: 1.6
   }
 } as const
+
+/** Font size type for template styling */
+export type FontSizeV2 = keyof typeof TYPOGRAPHY_TOKENS_V2.fontSize
+
+/** Font weight type for template styling */
+export type FontWeightV2 = keyof typeof TYPOGRAPHY_TOKENS_V2.fontWeight
+
+/** Text alignment type for template styling */
+export type TextAlignV2 = 'left' | 'center' | 'right'
+
+/** Line height type for template styling */
+export type LineHeightV2 = keyof typeof TYPOGRAPHY_TOKENS_V2.lineHeight
 
 // ============================================================================
 // Color Tokens and Palettes (Shared between Web and PDF)
@@ -269,6 +353,7 @@ export interface RenderElement {
 export interface RenderStyle {
   fontSize?: number
   fontWeight?: number
+  fontFamily?: string
   lineHeight?: number
   maxLines?: number
   color?: string
@@ -358,20 +443,121 @@ function renderSectionHeaderContent(
   options: RenderOptionsV2
 ): TileRenderData {
   const palette = getPalette(options)
-  const elements: RenderElement[] = [
-    {
-      type: 'text',
-      x: 8, // Left padding
-      y: tile.height / 2,
-      content: content.label,
+  const elements: RenderElement[] = []
+  
+  // Get tile styling from template (passed through tile.style)
+  const tileStyle = (tile as any).style as TileStyleV2 | undefined
+  
+  // Apply typography styling
+  const fontSet = tileStyle?.typography?.fontSet || 'modern-sans'
+  const fontSize = tileStyle?.typography?.fontSize || '2xl'
+  const fontWeight = tileStyle?.typography?.fontWeight || 'semibold'
+  const textAlign = tileStyle?.typography?.textAlign || 'left'
+  const lineHeight = tileStyle?.typography?.lineHeight || 'normal'
+  
+  // Apply spacing styling
+  const paddingLeft = tileStyle?.spacing?.paddingLeft || 8
+  const paddingTop = tileStyle?.spacing?.paddingTop || 0
+  
+  // Get font family from font set
+  const fontFamily = getFontFamily(fontSet)
+  
+  // Add background if specified
+  if (tileStyle?.background?.color) {
+    elements.push({
+      type: 'background',
+      x: 0,
+      y: 0,
+      width: tile.width,
+      height: tile.height,
+      content: '',
       style: {
-        fontSize: TYPOGRAPHY_TOKENS_V2.fontSize['2xl'],
-        fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
-        color: palette.colors.sectionHeader,
-        textAlign: 'left'
+        backgroundColor: tileStyle.background.color,
+        borderRadius: tileStyle.background.borderRadius || 0
       }
+    })
+  }
+  
+  // Add borders if specified
+  if (tileStyle?.border?.width && tileStyle?.border?.color) {
+    const borderWidth = tileStyle.border.width
+    const borderColor = tileStyle.border.color
+    const borderStyle = tileStyle.border.style || 'solid'
+    const sides = tileStyle.border.sides || ['top', 'bottom', 'left', 'right']
+    
+    // Create border elements for each specified side
+    sides.forEach((side: string) => {
+      let borderElement: RenderElement
+      
+      switch (side) {
+        case 'top':
+          borderElement = {
+            type: 'background',
+            x: 0,
+            y: 0,
+            width: tile.width,
+            height: borderWidth,
+            content: '',
+            style: { backgroundColor: borderColor }
+          }
+          break
+        case 'bottom':
+          borderElement = {
+            type: 'background',
+            x: 0,
+            y: tile.height - borderWidth,
+            width: tile.width,
+            height: borderWidth,
+            content: '',
+            style: { backgroundColor: borderColor }
+          }
+          break
+        case 'left':
+          borderElement = {
+            type: 'background',
+            x: 0,
+            y: 0,
+            width: borderWidth,
+            height: tile.height,
+            content: '',
+            style: { backgroundColor: borderColor }
+          }
+          break
+        case 'right':
+          borderElement = {
+            type: 'background',
+            x: tile.width - borderWidth,
+            y: 0,
+            width: borderWidth,
+            height: tile.height,
+            content: '',
+            style: { backgroundColor: borderColor }
+          }
+          break
+        default:
+          // Skip unknown sides
+          return
+      }
+      
+      elements.push(borderElement)
+    })
+  }
+  
+  // Add text element
+  elements.push({
+    type: 'text',
+    x: paddingLeft,
+    y: paddingTop || tile.height / 2,
+    content: content.label,
+    style: {
+      fontSize: TYPOGRAPHY_TOKENS_V2.fontSize[fontSize as FontSizeV2] || TYPOGRAPHY_TOKENS_V2.fontSize['2xl'],
+      fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight[fontWeight as FontWeightV2] || TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
+      lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight[lineHeight as LineHeightV2] || TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
+      color: palette.colors.sectionHeader,
+      textAlign: textAlign as TextAlignV2,
+      fontFamily
     }
-  ]
+  })
 
   return { elements }
 }
@@ -460,30 +646,8 @@ function renderItemContent(
   })
 
   // Increment Y by 2.0 lines of name height to reserve space for multi-line titles 
-  // and prevent overlap with the price row below.
+  // and prevent overlap with the description row below.
   currentY += (nameLineHeight * 2.0)
-
-  // Price (on its own row below name)
-  const priceText = `£${content.price.toFixed(2)}`
-  const priceFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xxxs // 6pt (50% reduction from 12pt)
-  elements.push({
-    type: 'text',
-    x: padding,
-    y: currentY,
-    width: 60,
-    height: priceFontSize * baseLineHeight,
-    content: priceText,
-    style: {
-      fontSize: priceFontSize,
-      fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
-      lineHeight: baseLineHeight,
-      maxLines: 1,
-      color: palette.colors.itemPrice,
-      textAlign: 'left'
-    }
-  })
-
-  currentY += (priceFontSize * baseLineHeight) + 4
 
   // Description
   if (content.description) {
@@ -506,8 +670,31 @@ function renderItemContent(
         textAlign: 'left'
       }
     })
-    currentY += (descFontSize * descLineHeight * 2) + 4
+    // Reserve space for the full description height (3 lines) plus spacing
+    currentY += descHeight + 4
   }
+
+  // Price (positioned after description)
+  const priceText = `£${content.price.toFixed(2)}`
+  const priceFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xxxs // 6pt (50% reduction from 12pt)
+  elements.push({
+    type: 'text',
+    x: padding,
+    y: currentY,
+    width: tile.width - (padding * 2),
+    height: priceFontSize * baseLineHeight,
+    content: priceText,
+    style: {
+      fontSize: priceFontSize,
+      fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
+      lineHeight: baseLineHeight,
+      maxLines: 1,
+      color: palette.colors.itemPrice,
+      textAlign: 'left'
+    }
+  })
+
+  currentY += (priceFontSize * baseLineHeight) + 4
 
   // Indicators fallback (if not already rendered overlayed on image)
   if (content.indicators && !(content.type === 'ITEM_CARD' && content.showImage)) {

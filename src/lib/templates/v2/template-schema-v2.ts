@@ -8,6 +8,59 @@
 import { z } from 'zod'
 
 // =============================================================================
+// Styling Schemas
+// =============================================================================
+
+/**
+ * Schema for typography styling
+ */
+export const TypographyStyleSchemaV2 = z.object({
+  fontSet: z.string().optional(),
+  fontSize: z.string().optional(),
+  fontWeight: z.string().optional(),
+  textAlign: z.enum(['left', 'center', 'right']).optional(),
+  lineHeight: z.string().optional()
+})
+
+/**
+ * Schema for spacing styling
+ */
+export const SpacingStyleSchemaV2 = z.object({
+  paddingTop: z.number().min(0).optional(),
+  paddingBottom: z.number().min(0).optional(),
+  paddingLeft: z.number().min(0).optional(),
+  paddingRight: z.number().min(0).optional()
+})
+
+/**
+ * Schema for border styling
+ */
+export const BorderStyleSchemaV2 = z.object({
+  width: z.number().min(0).optional(),
+  color: z.string().optional(),
+  style: z.enum(['solid', 'dashed', 'dotted']).optional(),
+  sides: z.array(z.enum(['top', 'bottom', 'left', 'right'])).optional()
+})
+
+/**
+ * Schema for background styling
+ */
+export const BackgroundStyleSchemaV2 = z.object({
+  color: z.string().optional(),
+  borderRadius: z.number().min(0).optional()
+})
+
+/**
+ * Schema for complete tile styling
+ */
+export const TileStyleSchemaV2 = z.object({
+  typography: TypographyStyleSchemaV2.optional(),
+  spacing: SpacingStyleSchemaV2.optional(),
+  border: BorderStyleSchemaV2.optional(),
+  background: BackgroundStyleSchemaV2.optional()
+})
+
+// =============================================================================
 // Content Budget Schema
 // =============================================================================
 
@@ -52,13 +105,14 @@ export const RegionIdSchema = z.enum(['header', 'title', 'body', 'footer'])
 // =============================================================================
 
 /**
- * Schema for TileVariantDefV2 - validates region enum, colSpan, rowSpan.
+ * Schema for TileVariantDefV2 - validates region enum, colSpan, rowSpan, and styling.
  */
 export const TileVariantSchemaV2 = z.object({
   region: RegionIdSchema,
   contentBudget: ContentBudgetSchemaV2,
   colSpan: z.number().int().min(1).optional(),
-  rowSpan: z.number().int().min(1).optional()
+  rowSpan: z.number().int().min(1).optional(),
+  style: TileStyleSchemaV2.optional()
 })
 
 // =============================================================================

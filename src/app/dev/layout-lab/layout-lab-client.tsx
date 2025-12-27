@@ -47,7 +47,7 @@ const initialState: LayoutLabState = {
   fillersEnabled: false,
   textOnly: false,
   texturesEnabled: true, // Enable textures by default to showcase the feature
-  showMenuTitle: true, // Show menu title by default
+  showMenuTitle: false, // Hide menu title by default
   layoutDocument: null,
   isGenerating: false,
   isAutoGenerating: false,

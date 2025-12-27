@@ -409,12 +409,76 @@ export interface TemplateBodyConfigV2 {
   }
 }
 
+// =============================================================================
+// Styling Types
+// =============================================================================
+
+/** Typography styling configuration */
+export interface TypographyStyleV2 {
+  /** Font set ID (e.g., 'modern-sans', 'elegant-serif') */
+  fontSet?: string
+  /** Font size token (e.g., 'xl', '2xl') */
+  fontSize?: string
+  /** Font weight token (e.g., 'normal', 'semibold', 'bold') */
+  fontWeight?: string
+  /** Text alignment */
+  textAlign?: 'left' | 'center' | 'right'
+  /** Line height token (e.g., 'tight', 'normal', 'relaxed') */
+  lineHeight?: string
+}
+
+/** Spacing styling configuration */
+export interface SpacingStyleV2 {
+  /** Padding top in points */
+  paddingTop?: number
+  /** Padding bottom in points */
+  paddingBottom?: number
+  /** Padding left in points */
+  paddingLeft?: number
+  /** Padding right in points */
+  paddingRight?: number
+}
+
+/** Border styling configuration */
+export interface BorderStyleV2 {
+  /** Border width in points */
+  width?: number
+  /** Border color (hex, rgb, etc.) */
+  color?: string
+  /** Border style */
+  style?: 'solid' | 'dashed' | 'dotted'
+  /** Which sides to apply border to */
+  sides?: ('top' | 'bottom' | 'left' | 'right')[]
+}
+
+/** Background styling configuration */
+export interface BackgroundStyleV2 {
+  /** Background color (hex, rgb, etc.) */
+  color?: string
+  /** Border radius in points */
+  borderRadius?: number
+}
+
+/** Complete tile styling configuration */
+export interface TileStyleV2 {
+  /** Typography styling */
+  typography?: TypographyStyleV2
+  /** Spacing styling */
+  spacing?: SpacingStyleV2
+  /** Border styling */
+  border?: BorderStyleV2
+  /** Background styling */
+  background?: BackgroundStyleV2
+}
+
 /** Single tile variant definition */
 export interface TileVariantDefV2 {
   region: RegionIdV2
   contentBudget: ContentBudgetV2
   colSpan?: number
   rowSpan?: number
+  /** Optional styling configuration */
+  style?: TileStyleV2
 }
 
 /** Tile variant definitions */

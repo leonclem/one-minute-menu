@@ -25,9 +25,63 @@ import {
   getDefaultScale,
   TYPOGRAPHY_TOKENS_V2,
   COLOR_TOKENS_V2,
+  getFontSet,
+  FONT_SETS_V2,
   type RenderOptionsV2,
   type RenderElement 
 } from './renderer-v2'
+
+// ============================================================================
+// Font Loading Utilities
+// ============================================================================
+
+/**
+ * Extract font sets used in a layout document
+ */
+function extractUsedFontSets(document: LayoutDocumentV2): string[] {
+  const fontSets = new Set<string>()
+  
+  // Add default font set
+  fontSets.add('modern-sans')
+  
+  // Extract font sets from tiles
+  document.pages.forEach(page => {
+    page.tiles.forEach(tile => {
+      const tileStyle = (tile as any).style
+      if (tileStyle?.typography?.fontSet) {
+        fontSets.add(tileStyle.typography.fontSet)
+      }
+    })
+  })
+  
+  return Array.from(fontSets)
+}
+
+/**
+ * Load Google Fonts dynamically
+ */
+function loadGoogleFonts(fontSetIds: string[]): void {
+  // Check if we're in browser environment
+  if (typeof window === 'undefined') return
+  
+  const fontSets = fontSetIds.map(id => getFontSet(id))
+  const googleFontsParams = fontSets
+    .map(set => set.googleFonts)
+    .filter(Boolean)
+    .join('&family=')
+  
+  const fontUrl = `https://fonts.googleapis.com/css2?family=${googleFontsParams}&display=swap`
+  
+  // Check if this font URL is already loaded
+  const existingLink = document.querySelector(`link[href="${fontUrl}"]`)
+  if (existingLink) return
+  
+  // Create and append font link
+  const link = document.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = fontUrl
+  document.head.appendChild(link)
+}
 
 // ============================================================================
 // Web Render Function
@@ -48,6 +102,10 @@ export function renderToWeb(
     showTileIds: false
   }
 ): React.ReactElement {
+  // Load fonts dynamically based on document usage (non-blocking)
+  const usedFontSets = extractUsedFontSets(document)
+  loadGoogleFonts(usedFontSets)
+
   return (
     <div className="layout-document-v2" style={{ fontFamily: TYPOGRAPHY_TOKENS_V2.fontFamily.primary }}>
       {document.pages.map((page, pageIndex) => (
@@ -58,10 +116,6 @@ export function renderToWeb(
           options={options}
         />
       ))}
-      
-      {options.showDebugInfo && (
-        <DebugInfoPanel document={document} />
-      )}
     </div>
   )
 }
@@ -294,6 +348,7 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
     height: element.height ? element.height * scale : undefined,
     fontSize: element.style.fontSize ? element.style.fontSize * scale : undefined,
     fontWeight: element.style.fontWeight,
+    fontFamily: element.style.fontFamily,
     lineHeight: element.style.lineHeight,
     color: element.style.color,
     backgroundColor: element.style.backgroundColor,

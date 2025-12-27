@@ -24,6 +24,7 @@ import {
   TYPOGRAPHY_TOKENS_V2,
   COLOR_TOKENS_V2,
   PALETTES_V2,
+  getFontSet,
   type RenderOptionsV2 
 } from './renderer-v2'
 
@@ -236,7 +237,7 @@ async function generatePDFHTML(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${document.templateId} - Layout V2</title>
   <style>
-    ${generatePDFCSS(options.paletteId)}
+    ${generatePDFCSS(document, options.paletteId)}
     ${customCSS}
   </style>
 </head>
@@ -247,11 +248,48 @@ async function generatePDFHTML(
 }
 
 /**
+ * Extract font sets used in a layout document
+ */
+function extractUsedFontSets(document: LayoutDocumentV2): string[] {
+  const fontSets = new Set<string>()
+  
+  // Add default font set
+  fontSets.add('modern-sans')
+  
+  // Extract font sets from tiles
+  document.pages.forEach(page => {
+    page.tiles.forEach(tile => {
+      const tileStyle = (tile as any).style
+      if (tileStyle?.typography?.fontSet) {
+        fontSets.add(tileStyle.typography.fontSet)
+      }
+    })
+  })
+  
+  return Array.from(fontSets)
+}
+
+/**
+ * Generate Google Fonts import URL for multiple font sets
+ */
+function generateGoogleFontsURL(fontSetIds: string[]): string {
+  const fontSets = fontSetIds.map(id => getFontSet(id))
+  const googleFontsParams = fontSets
+    .map(set => set.googleFonts)
+    .filter(Boolean)
+    .join('&family=')
+  
+  return `https://fonts.googleapis.com/css2?family=${googleFontsParams}&display=swap`
+}
+
+/**
  * Generate CSS optimized for PDF rendering
  * Includes font loading, print styles, and layout fixes
  */
-function generatePDFCSS(paletteId?: string): string {
+function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string {
   const palette = PALETTES_V2.find(p => p.id === paletteId) || PALETTES_V2[0]
+  const usedFontSets = extractUsedFontSets(document)
+  const googleFontsURL = generateGoogleFontsURL(usedFontSets)
 
   return `
     /* CSS Reset for PDF */
@@ -269,7 +307,7 @@ function generatePDFCSS(paletteId?: string): string {
     }
 
     /* Font Loading */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('${googleFontsURL}');
 
     /* Body and Document Styles */
     body {

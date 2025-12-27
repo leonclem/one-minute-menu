@@ -100,7 +100,9 @@ export function createSectionHeaderTile(
       label: section.name,
       isContinuation,
     },
-  }
+    // Pass style information from template
+    style: variant.style,
+  } as any // Type assertion needed due to style not being in TileInstanceV2 interface yet
 }
 
 /**
