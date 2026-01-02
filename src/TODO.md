@@ -1,14 +1,13 @@
 # Roadmap
 
 ## General functionality
-- [x] Remove "95% confidence" and "Bulk tools will use your current selection." from menu items
 
-### Menu editing
+### Menu editing (/extracted)
+- [x] Remove "Bulk tools will use your current selection." from menu items
 - [x] Edit category title
 - [x] Add category
 - [x] Delete category
-- [ ] Add establishment details to "profile", e.g. establishment name, type, address, etc.
-- [ ] Select all in category on /extracted page
+- [x] Add establishment details to "profile", e.g. establishment name, type, address, etc.
 
 ### Menu item Management
 - [x] Pencil icon rather than click image
@@ -16,18 +15,14 @@
 - [x] Mark item as out of stock
 - [x] Generate another image
 - [x] Send Menu item to other category
+- [ ] Can't view existing photo full size for menu item
+- [ ] Can't edit title, description, price, etc. for menu item
 
 ## Image Generation Test Harness
 - [ ] Update from Gemini 2.5 Flash Image Preview to Gemini 2.5 Flash Image
 - [x] Reference image
 - [x] Test with OMG Donuts
-
-## Review Pricing
-- [ ] Review pricing strategy
-- [ ] Clarify "unlock elements" on /export page
-- [ ] Determine pricing tiers
-- [ ] Implement changes in pricing page
-- [ ] QA to ensure pricing matches reality
+- [ ] Reference photo(s) for inclusion in image generation for general users
 
 ## Menu templates
 
@@ -53,6 +48,7 @@
 - [x] Capability to modify category styling
 - [x] Prices should be right-justified to avoid clashing with menu item titles
 - [ ] Production deployment and V2 tech as default for general use
+- [ ] Verify "print ready"
 
 ### PDF Improvements
 - [x] Resolution (V2 uses points-based system for consistent PDF output)
@@ -62,25 +58,30 @@
 - [x] Needs to be at the top and smaller
 - [x] Remove dotted line
 - [x] Option for if no logo was provided
-- [ ] Consistent across template and exports
-
-## Site stability
-- [ ] Waitlist
-- [ ] Throttles
-- [ ] Logging
-- [ ] Admin dashboard enhancements
-- [ ] Understand what new sign-ups have access to (i.e. Generation limits, Admin dashboard, etc.)
-- [ ] Back up image generator model (Seedream, Sora)
+- [x] Consistent across template and exports
 
 ## SendGrid
 - [x] Set up account (add domain gridmenu.ai)
 - [x] Get the SMTP credentials provided
 - [x] Toggle "Enable Custom SMTP" to ON in Supabase prod and paste SMTP credentials in
 
+## Review Pricing
+- [ ] Review pricing strategy
+- [ ] Clarify "unlock elements" on /export page
+- [ ] Determine pricing tiers
+- [ ] Implement changes in pricing page
+- [ ] QA to ensure pricing matches reality
+
+## Site stability
+- [ ] Waitlist (for MVP, email goes to me for confirmation)
+- [ ] Throttles (review what hourly and daily limits have been set per account level)
+- [ ] Understand what new sign-ups have access to (i.e. Generation limits, Admin dashboard, etc.)
+
 ## Back office
 - [x] Complete bank account application
+- [ ] Finalise Aspire bank account setup
 - [ ] Implement Stripe payment system
-- [ ] Privacy Policy
+- [ ] Privacy Policy - consider data use (particularly at scale, benchmarking, etc.)
 - [ ] Terms of Service
 - [ ] Contact Us
 
@@ -104,6 +105,9 @@
 - [ ] Additional template families (two-, three-, four-column)
 - [ ] Multi-cell filler tiles / Mosaic layouts (currently 1x1 only), e.g. design-inspiration-5.jpg
 - [ ] Flourishes / section dividers (e.g. design-inspiration-7.png)
+
+### Payment QR
+- [ ] Add capability to add a payment QR code via the /extracted page
 
 ### Allergens / Spice level / etc
 - [x] Determine list (V2 supports dietary indicators: vegetarian, vegan, halal, kosher, gluten-free)
@@ -154,6 +158,12 @@
 - [ ] Power user, i.e. "login as user X" (support)
 - [ ] App
 - [ ] Generate descriptions
+- [ ] Advanced menu options: Currency selection
+- [ ] Advanced menu options: Edit order of categories
+- [ ] Logging
+- [ ] Admin dashboard enhancements
+- [ ] Select all in category on /extracted page
+- [ ] Remove confidence tag at top of page
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>
