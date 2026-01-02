@@ -142,11 +142,12 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
   }
   
   if (texturesEnabled && palette?.id === 'midnight-gold') {
+    const textureUrl = options.textureDataURL || '/textures/dark-paper-2.png'
     backgroundStyle = {
       backgroundColor: '#1A1A1A',
       backgroundImage: `
         linear-gradient(135deg, rgba(212, 175, 55, 0.03) 0%, transparent 50%, rgba(212, 175, 55, 0.02) 100%),
-        url('/textures/dark-paper-2.png')
+        url('${textureUrl}')
       `,
       backgroundSize: '100% 100%, cover',
       backgroundRepeat: 'no-repeat, no-repeat',
@@ -154,9 +155,10 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
       backgroundBlendMode: 'overlay, normal'
     }
   } else if (texturesEnabled && palette?.id === 'elegant-dark') {
+    const textureUrl = options.textureDataURL || '/textures/dark-paper.png'
     backgroundStyle = {
       backgroundColor: '#0b0d11',
-      backgroundImage: `url('/textures/dark-paper.png')`,
+      backgroundImage: `url('${textureUrl}')`,
       backgroundSize: 'cover',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center'

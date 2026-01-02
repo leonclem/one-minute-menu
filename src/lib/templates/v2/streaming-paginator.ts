@@ -31,6 +31,7 @@ import {
   createItemTile,
   createLogoTile,
   createTitleTile,
+  createFooterInfoTile,
   selectItemVariant,
   placeTile,
   advancePosition,
@@ -261,6 +262,31 @@ export function placeStaticTiles(
     
     logPlacement(ctx, 'placed', placedTitle.id, 'Static title tile')
   }
+
+  // Place footer info if present
+  if (menu.metadata.venueInfo && (
+    menu.metadata.venueInfo.address || 
+    menu.metadata.venueInfo.phone || 
+    menu.metadata.venueInfo.email ||
+    menu.metadata.venueInfo.socialMedia?.instagram ||
+    menu.metadata.venueInfo.socialMedia?.facebook ||
+    menu.metadata.venueInfo.socialMedia?.x ||
+    menu.metadata.venueInfo.socialMedia?.website
+  )) {
+    const footerTile = createFooterInfoTile(menu, ctx.template)
+    const footerRegion = ctx.currentPage.regions.find(r => r.id === 'footer')
+    
+    if (footerRegion) {
+      const placedFooter = placeTile(
+        ctx,
+        ctx.currentPage,
+        footerTile,
+        footerRegion,
+        ctx.template
+      )
+      logPlacement(ctx, 'placed', placedFooter.id, 'Static footer info tile')
+    }
+  }
 }
 
 // =============================================================================
@@ -423,7 +449,7 @@ export function streamingPaginate(
     // Process items in this section in sortOrder
     const sortedItems = [...section.items].sort((a, b) => a.sortOrder - b.sortOrder)
     for (const item of sortedItems) {
-      const itemTile = createItemTile(item, section.id, template, selection)
+      const itemTile = createItemTile(item, section.id, template, menu.metadata.currency, selection)
       
       // Check if item fits on current page (passing colSpan for accurate wrap prediction)
       if (!fitsInCurrentPage(ctx, itemTile.height, itemTile.colSpan)) {

@@ -12,6 +12,7 @@
  */
 
 import { getSharedBrowser } from '../export/puppeteer-shared'
+import { getTextureDataURL } from '../export/texture-utils'
 import { createElement } from 'react'
 import LayoutPreviewV2 from './renderer-web-v2'
 import { logger } from '../../logger'
@@ -52,6 +53,8 @@ export interface PDFExportOptionsV2 {
   customCSS?: string
   /** Show region boundary rectangles (debug) */
   showRegionBounds?: boolean
+  /** Enable textured backgrounds for supported palettes */
+  texturesEnabled?: boolean
 }
 
 export interface PDFExportResultV2 {
@@ -124,7 +127,8 @@ export async function renderToPdf(
     // Generate HTML content using React renderer
     const htmlContent = await generatePDFHTML(document, customCSS, { 
       showRegionBounds,
-      paletteId: options.paletteId 
+      paletteId: options.paletteId,
+      texturesEnabled: options.texturesEnabled
     })
 
     // Set HTML content and wait for fonts and images to load
@@ -202,7 +206,7 @@ export async function renderToPdf(
 async function generatePDFHTML(
   document: LayoutDocumentV2, 
   customCSS: string = '',
-  options: { showRegionBounds?: boolean; paletteId?: string } = {}
+  options: { showRegionBounds?: boolean; paletteId?: string; texturesEnabled?: boolean } = {}
 ): Promise<string> {
   // Use dynamic import to avoid Next.js static analysis issues with react-dom/server
   // in Route Handlers and Server Components.
@@ -210,10 +214,22 @@ async function generatePDFHTML(
 
   const palette = PALETTES_V2.find(p => p.id === options.paletteId) || PALETTES_V2[0]
 
+  // Pre-fetch texture data URL if enabled
+  let textureDataURL: string | undefined = undefined
+  if (options.texturesEnabled) {
+    if (palette.id === 'midnight-gold') {
+      textureDataURL = await getTextureDataURL('dark-paper-2.png') || undefined
+    } else if (palette.id === 'elegant-dark') {
+      textureDataURL = await getTextureDataURL('dark-paper.png') || undefined
+    }
+  }
+
   // Render options optimized for PDF
   const renderOptions: RenderOptionsV2 = {
     scale: 96 / 72, // Convert points to CSS pixels (96 DPI)
     palette,
+    texturesEnabled: options.texturesEnabled,
+    textureDataURL,
     showGridOverlay: false,
     showRegionBounds: options.showRegionBounds || false,
     showTileIds: false,

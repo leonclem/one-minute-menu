@@ -513,8 +513,8 @@ describe('V2 Layout Engine Property Tests', () => {
             templateId: FIXED_TEMPLATE_ID 
           })
 
-          // For classic-cards-v2, logo should appear on FIRST and SINGLE pages only
-          const expectedLogoPages = ['FIRST', 'SINGLE']
+          // For classic-cards-v2, logo should appear on all pages
+          const expectedLogoPages = ['FIRST', 'CONTINUATION', 'FINAL', 'SINGLE']
 
           for (const page of result.pages) {
             const logoTiles = page.tiles.filter(t => t.type === 'LOGO')

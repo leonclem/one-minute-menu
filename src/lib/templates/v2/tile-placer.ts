@@ -102,7 +102,8 @@ export function createSectionHeaderTile(
     },
     // Pass style information from template
     style: variant.style,
-  } as any // Type assertion needed due to style not being in TileInstanceV2 interface yet
+    contentBudget: variant.contentBudget,
+  }
 }
 
 /**
@@ -111,6 +112,7 @@ export function createSectionHeaderTile(
  * @param item - Item data
  * @param sectionId - Parent section ID
  * @param template - Template configuration
+ * @param currency - Currency symbol
  * @param selection - User selection config (e.g., textOnly mode)
  * @returns Item tile instance (without position - set during placement)
  */
@@ -118,6 +120,7 @@ export function createItemTile(
   item: EngineItemV2,
   sectionId: string,
   template: TemplateV2,
+  currency: string,
   selection?: SelectionConfigV2
 ): Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'> {
   // Select variant based on config and item properties
@@ -156,8 +159,11 @@ export function createItemTile(
       price: item.price,
       imageUrl: item.imageUrl,
       showImage,
+      currency: currency || '$',
       indicators: item.indicators,
     },
+    style: variant.style,
+    contentBudget: variant.contentBudget,
   }
 }
 
@@ -188,6 +194,8 @@ export function createLogoTile(
       imageUrl: menu.metadata.logoUrl,
       venueName: menu.metadata.venueName,
     },
+    style: variant.style,
+    contentBudget: variant.contentBudget,
   }
 }
 
@@ -217,6 +225,41 @@ export function createTitleTile(
       type: 'TITLE',
       menuName: menu.name,
       venueName: menu.metadata.venueName,
+    },
+    style: variant.style,
+    contentBudget: variant.contentBudget,
+  }
+}
+
+/**
+ * Create a footer info tile.
+ *
+ * @param menu - Menu data
+ * @param template - Template configuration
+ * @returns Footer info tile instance (without position - set during placement)
+ */
+export function createFooterInfoTile(
+  menu: EngineMenuV2,
+  template: TemplateV2
+): Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'> {
+  // Use footer region height from template if available, otherwise default to 40
+  const height = template.regions.footer?.height || 40 
+  
+  return {
+    id: `footer-info-${menu.id}`,
+    type: 'FOOTER_INFO',
+    regionId: 'footer',
+    width: 0, // Will be set by caller based on region width
+    height,
+    colSpan: 1,
+    rowSpan: 1,
+    layer: 'content',
+    content: {
+      type: 'FOOTER_INFO',
+      address: menu.metadata.venueInfo?.address,
+      phone: menu.metadata.venueInfo?.phone,
+      email: menu.metadata.venueInfo?.email,
+      socialMedia: menu.metadata.venueInfo?.socialMedia,
     },
   }
 }

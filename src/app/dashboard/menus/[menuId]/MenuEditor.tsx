@@ -18,6 +18,7 @@ import BatchAIImageGeneration from '@/components/BatchAIImageGeneration'
 import AddPhotoDropdown from '@/components/AddPhotoDropdown'
 import ExtractionReview from '@/components/ExtractionReview'
 import type { Menu, MenuItem, MenuItemFormData } from '@/types'
+import { ESTABLISHMENT_TYPES, CUISINES } from '@/types'
 import type { Category, MenuItem as ExtractedMenuItem } from '@/lib/extraction/schema-stage1'
 
 interface MenuEditorProps {
@@ -83,6 +84,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [updatingPayment, setUpdatingPayment] = useState<boolean>(false)
   const [paymentOpen, setPaymentOpen] = useState<boolean>(true)
   const [brandingOpen, setBrandingOpen] = useState<boolean>(true)
+  const [venueOpen, setVenueOpen] = useState<boolean>(false)
   const [photoOpen, setPhotoOpen] = useState<boolean>(true)
   const [itemsOpen, setItemsOpen] = useState<boolean>(true)
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
@@ -134,6 +136,26 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       showToast({ type: 'error', title: 'Apply failed', description: 'Please try again.' })
     } finally {
       setApplyingTheme(false)
+    }
+  }
+
+  const handleUpdateVenue = async (updates: Partial<Menu>) => {
+    setLoading('venue')
+    try {
+      const res = await fetch(`/api/menus/${menu.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update venue info')
+      setMenu(data.data)
+      addOptimisticUpdate(data.data)
+      showToast({ type: 'success', title: 'Venue updated', description: 'Your restaurant details have been saved.' })
+    } catch (e) {
+      showToast({ type: 'error', title: 'Update failed', description: 'Please try again.' })
+    } finally {
+      setLoading(null)
     }
   }
 
@@ -1327,6 +1349,171 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
       {/* Main Content */}
       <main className="container-mobile py-6">
         <div className="space-y-6">
+          {/* Venue & Contact Section */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Venue & Contact</CardTitle>
+                <Button variant="outline" size="sm" onClick={() => setVenueOpen(o => !o)} aria-expanded={venueOpen} aria-controls="venue-panel">
+                  {venueOpen ? 'Hide' : 'Show'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent id="venue-panel" className={venueOpen ? '' : 'hidden'}>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-secondary-700">Establishment Type</label>
+                    <select
+                      className="w-full h-10 px-3 rounded-md border border-secondary-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      value={optimisticMenu.establishmentType || ''}
+                      onChange={(e) => handleUpdateVenue({ establishmentType: e.target.value })}
+                    >
+                      <option value="">Select a type...</option>
+                      {ESTABLISHMENT_TYPES.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-secondary-700">Primary Cuisine</label>
+                    <select
+                      className="w-full h-10 px-3 rounded-md border border-secondary-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      value={optimisticMenu.primaryCuisine || ''}
+                      onChange={(e) => handleUpdateVenue({ primaryCuisine: e.target.value })}
+                    >
+                      <option value="">Select a cuisine...</option>
+                      {CUISINES.map((cuisine) => (
+                        <option key={cuisine.id} value={cuisine.id}>
+                          {cuisine.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-secondary-700">Address</label>
+                    <textarea
+                      className="input resize-none"
+                      rows={2}
+                      placeholder="123 Restaurant St, City"
+                      value={optimisticMenu.venueInfo?.address || ''}
+                      onBlur={(e) => {
+                        if (e.target.value !== optimisticMenu.venueInfo?.address) {
+                          handleUpdateVenue({ venueInfo: { ...optimisticMenu.venueInfo, address: e.target.value } })
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-secondary-700">Email</label>
+                      <Input
+                        type="email"
+                        placeholder="hello@restaurant.com"
+                        value={optimisticMenu.venueInfo?.email || ''}
+                        onBlur={(e) => {
+                          if (e.target.value !== optimisticMenu.venueInfo?.email) {
+                            handleUpdateVenue({ venueInfo: { ...optimisticMenu.venueInfo, email: e.target.value } })
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-secondary-700">Phone</label>
+                      <Input
+                        placeholder="Telephone"
+                        value={optimisticMenu.venueInfo?.phone || ''}
+                        onBlur={(e) => {
+                          if (e.target.value !== optimisticMenu.venueInfo?.phone) {
+                            handleUpdateVenue({ venueInfo: { ...optimisticMenu.venueInfo, phone: e.target.value } })
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-secondary-700">Instagram (@handle)</label>
+                      <Input
+                        placeholder="@restaurant"
+                        value={optimisticMenu.venueInfo?.socialMedia?.instagram || ''}
+                        onBlur={(e) => {
+                          if (e.target.value !== optimisticMenu.venueInfo?.socialMedia?.instagram) {
+                            handleUpdateVenue({
+                              venueInfo: {
+                                ...optimisticMenu.venueInfo,
+                                socialMedia: { ...optimisticMenu.venueInfo?.socialMedia, instagram: e.target.value }
+                              }
+                            })
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-secondary-700">Facebook (URL or @handle)</label>
+                      <Input
+                        placeholder="facebook.com/restaurant"
+                        value={optimisticMenu.venueInfo?.socialMedia?.facebook || ''}
+                        onBlur={(e) => {
+                          if (e.target.value !== optimisticMenu.venueInfo?.socialMedia?.facebook) {
+                            handleUpdateVenue({
+                              venueInfo: {
+                                ...optimisticMenu.venueInfo,
+                                socialMedia: { ...optimisticMenu.venueInfo?.socialMedia, facebook: e.target.value }
+                              }
+                            })
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-secondary-700">X (Twitter) (@handle)</label>
+                      <Input
+                        placeholder="@restaurant"
+                        value={optimisticMenu.venueInfo?.socialMedia?.x || ''}
+                        onBlur={(e) => {
+                          if (e.target.value !== optimisticMenu.venueInfo?.socialMedia?.x) {
+                            handleUpdateVenue({
+                              venueInfo: {
+                                ...optimisticMenu.venueInfo,
+                                socialMedia: { ...optimisticMenu.venueInfo?.socialMedia, x: e.target.value }
+                              }
+                            })
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-secondary-700">Website</label>
+                      <Input
+                        placeholder="www.restaurant.com"
+                        value={optimisticMenu.venueInfo?.socialMedia?.website || ''}
+                        onBlur={(e) => {
+                          if (e.target.value !== optimisticMenu.venueInfo?.socialMedia?.website) {
+                            handleUpdateVenue({
+                              venueInfo: {
+                                ...optimisticMenu.venueInfo,
+                                socialMedia: { ...optimisticMenu.venueInfo?.socialMedia, website: e.target.value }
+                              }
+                            })
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-secondary-600 mt-4 italic">These details appear in your menu footers and are used to enhance AI image generation.</p>
+            </CardContent>
+          </Card>
+
           {/* Branding Section */}
           <Card>
             <CardHeader>

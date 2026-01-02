@@ -99,6 +99,16 @@ export function validateCreateMenu(data: Partial<CreateMenuFormData>): Validatio
       errors.push({ field: 'slug', message: 'Slug can only contain lowercase letters, numbers, and hyphens' })
     }
   }
+
+  // Validate establishmentType if provided
+  if (data.establishmentType && data.establishmentType.length > 50) {
+    errors.push({ field: 'establishmentType', message: 'Establishment type is too long' })
+  }
+
+  // Validate primaryCuisine if provided
+  if (data.primaryCuisine && data.primaryCuisine.length > 50) {
+    errors.push({ field: 'primaryCuisine', message: 'Primary cuisine is too long' })
+  }
   
   return {
     isValid: errors.length === 0,

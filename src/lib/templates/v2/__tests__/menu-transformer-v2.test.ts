@@ -46,7 +46,7 @@ describe('Menu Transformer V2', () => {
         style: 'modern',
         spacing: 'comfortable',
         itemLayout: 'list',
-        currency: '£',
+        currency: '$',
       },
       wcagCompliant: true,
       mobileOptimized: true,
@@ -67,7 +67,7 @@ describe('Menu Transformer V2', () => {
       expect(result.sections).toHaveLength(1)
       expect(result.sections[0].name).toBe('Menu')
       expect(result.sections[0].items).toHaveLength(1)
-      expect(result.metadata.currency).toBe('£')
+      expect(result.metadata.currency).toBe('$')
       expect(result.metadata.venueName).toBe('Test Menu')
     })
 
@@ -159,6 +159,37 @@ describe('Menu Transformer V2', () => {
       expect(result.metadata.venueName).toBe('Custom Venue')
       expect(result.metadata.venueAddress).toBe('123 Main St')
       expect(result.metadata.logoUrl).toBe('https://example.com/logo.png')
+    })
+
+    it('should include establishment details and venue info', () => {
+      const menuWithVenueInfo: Menu = {
+        ...mockMenu,
+        establishmentType: 'fine-dining',
+        primaryCuisine: 'japanese',
+        venueInfo: {
+          address: '456 Elite Way',
+          phone: '+1 234 567 890',
+          email: 'info@fine-dining.com',
+          socialMedia: {
+            instagram: '@finedining'
+          }
+        }
+      }
+
+      const result = transformMenuToV2(menuWithVenueInfo)
+
+      expect(result.metadata.establishmentType).toBe('fine-dining')
+      expect(result.metadata.primaryCuisine).toBe('japanese')
+      expect(result.metadata.venueInfo).toEqual({
+        address: '456 Elite Way',
+        phone: '+1 234 567 890',
+        email: 'info@fine-dining.com',
+        socialMedia: {
+          instagram: '@finedining'
+        }
+      })
+      // Should also map venueInfo.address to venueAddress for backward compatibility
+      expect(result.metadata.venueAddress).toBe('456 Elite Way')
     })
 
     it('should produce deterministic output', () => {

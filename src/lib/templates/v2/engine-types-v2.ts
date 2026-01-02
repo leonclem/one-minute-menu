@@ -116,6 +116,7 @@ export type TileTypeV2 =
   | 'ITEM_TEXT_ROW'
   | 'FILLER'
   | 'TEXT_BLOCK'
+  | 'FOOTER_INFO'
 
 /** Tile layer for z-ordering and overlap detection */
 export type TileLayerV2 = 'background' | 'content'
@@ -189,6 +190,7 @@ export interface ItemContentV2 {
   price: number
   imageUrl?: string
   showImage: boolean
+  currency: string
   indicators: ItemIndicatorsV2
 }
 
@@ -205,6 +207,20 @@ export interface TextBlockContentV2 {
   text: string
 }
 
+/** Footer info tile content */
+export interface FooterInfoContentV2 {
+  type: 'FOOTER_INFO'
+  address?: string
+  phone?: string
+  email?: string
+  socialMedia?: {
+    instagram?: string
+    facebook?: string
+    x?: string
+    website?: string
+  }
+}
+
 /** Union of all tile content types */
 export type TileContentV2 =
   | LogoContentV2
@@ -213,6 +229,7 @@ export type TileContentV2 =
   | ItemContentV2
   | FillerContentV2
   | TextBlockContentV2
+  | FooterInfoContentV2
 
 // =============================================================================
 // Tile Instance
@@ -249,6 +266,10 @@ export interface TileInstanceV2 {
   gridCol: number // grid col index at placement time (for occupancy)
   layer: TileLayerV2 // for overlap detection (backgrounds can underlay)
   content: TileContentV2
+  /** Optional styling configuration */
+  style?: TileStyleV2
+  /** Optional content budget (for text clamping and image sizing) */
+  contentBudget?: ContentBudgetV2
 }
 
 // =============================================================================
@@ -319,6 +340,20 @@ export interface EngineMenuV2 {
     venueName?: string
     venueAddress?: string
     logoUrl?: string
+    establishmentType?: string
+    primaryCuisine?: string
+    venueInfo?: {
+      address?: string
+      email?: string
+      phone?: string
+    socialMedia?: {
+      instagram?: string
+      facebook?: string
+      x?: string
+      tiktok?: string
+      website?: string
+    }
+    }
   }
 }
 

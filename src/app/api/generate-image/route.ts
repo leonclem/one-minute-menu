@@ -263,7 +263,11 @@ export async function POST(request: NextRequest) {
         order: menuItem.order ?? 0,
         imageSource: menuItem.imageSource ?? 'none'
       } as MenuItem,
-      generationRequest.styleParams
+      {
+        ...generationRequest.styleParams,
+        establishmentType: menuRow.establishment_type,
+        primaryCuisine: menuRow.primary_cuisine
+      }
     )
     
     // Estimate cost

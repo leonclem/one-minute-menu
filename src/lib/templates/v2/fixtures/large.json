@@ -710,7 +710,7 @@
         {
           "id": "item-54",
           "name": "Chocolate Soufflé",
-          "description": "Warm chocolate soufflé with raspberry coulis",
+          "description": "Warm chocolate cake with molten center and vanilla ice cream",
           "price": 9.99,
           "sortOrder": 1,
           "indicators": {
@@ -797,7 +797,16 @@
   "metadata": {
     "currency": "$",
     "venueName": "Grand Hotel Restaurant",
-    "venueAddress": "789 Luxury Boulevard, Metropolitan City",
+    "venueInfo": {
+      "address": "789 Luxury Boulevard, Metropolitan City",
+      "phone": "+1 800 555 1234",
+      "email": "dining@grandhotel.com",
+      "socialMedia": {
+        "instagram": "@grandhotel",
+        "facebook": "grandhotelcity",
+        "website": "www.grandhotel.com"
+      }
+    },
     "logoUrl": "https://placehold.co/400x300?text=Foodgrand-hotel-logo.png"
   }
 }

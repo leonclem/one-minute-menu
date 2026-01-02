@@ -286,7 +286,13 @@ export const menuVersionOperations = {
 
 // Menu Operations
 export const menuOperations = {
-  async createMenu(userId: string, menuData: { name: string; slug: string }): Promise<Menu> {
+  async createMenu(userId: string, menuData: { 
+    name: string; 
+    slug: string;
+    establishmentType?: string;
+    primaryCuisine?: string;
+    venueInfo?: any;
+  }): Promise<Menu> {
     // Check plan limits first
     const { allowed } = await userOperations.checkPlanLimits(userId, 'menus')
     if (!allowed) {
@@ -305,6 +311,9 @@ export const menuOperations = {
       user_id: userId,
       name: menuData.name,
       slug: menuData.slug,
+      establishment_type: menuData.establishmentType,
+      primary_cuisine: menuData.primaryCuisine,
+      venue_info: menuData.venueInfo || {},
       status: 'draft' as const,
       current_version: 1,
       menu_data: {
@@ -437,6 +446,10 @@ export const menuOperations = {
     const updateData: any = {}
     if (updates.name) updateData.name = updates.name
     if (updates.status) updateData.status = updates.status
+    if (updates.establishmentType !== undefined) updateData.establishment_type = updates.establishmentType
+    if (updates.primaryCuisine !== undefined) updateData.primary_cuisine = updates.primaryCuisine
+    if (updates.venueInfo !== undefined) updateData.venue_info = updates.venueInfo
+    
     if (updates.items || updates.categories || updates.theme || updates.paymentInfo || updates.extractionMetadata) {
       // Get current menu data and merge updates
       const currentMenu = await this.getMenu(menuId, userId)
@@ -775,6 +788,9 @@ async function transformMenuFromDB(dbMenu: any): Promise<Menu> {
     userId: dbMenu.user_id,
     name: dbMenu.name,
     slug: dbMenu.slug,
+    establishmentType: dbMenu.establishment_type || undefined,
+    primaryCuisine: dbMenu.primary_cuisine || undefined,
+    venueInfo: dbMenu.venue_info || undefined,
     items: menuData.items || [],
     categories: menuData.categories || undefined,
     theme: menuData.theme || getDefaultTheme(),

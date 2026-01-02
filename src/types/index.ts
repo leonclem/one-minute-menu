@@ -71,6 +71,11 @@ export interface Menu {
   imageUrl?: string
   /** Optional branding logo shown in templates and exports */
   logoUrl?: string
+  /** Establishment details for AI and branding */
+  establishmentType?: string
+  primaryCuisine?: string
+  /** Contact and location information */
+  venueInfo?: VenueInfo
   qrCode?: QRCodeData
   paymentInfo?: PaymentInfo
   extractionMetadata?: ExtractionMetadata
@@ -270,6 +275,19 @@ export interface ViewMetadata {
   // No IP addresses or personally identifiable information
 }
 
+export interface VenueInfo {
+  address?: string
+  email?: string
+  phone?: string
+  socialMedia?: {
+    instagram?: string
+    facebook?: string
+    x?: string
+    tiktok?: string
+    website?: string
+  }
+}
+
 export interface MenuAnalytics {
   menuId: string
   date: string
@@ -384,7 +402,34 @@ export interface CreateMenuFormData {
   name: string
   slug?: string
   description?: string
+  establishmentType?: string
+  primaryCuisine?: string
+  venueInfo?: VenueInfo
 }
+
+export const ESTABLISHMENT_TYPES = [
+  { id: 'bakery-dessert', label: 'Bakery & Desserts' },
+  { id: 'hawker-foodcourt', label: 'Hawker Stall / Food Court' },
+  { id: 'cafe-brunch', label: 'Cafe & Brunch' },
+  { id: 'casual-dining', label: 'Casual Dining / Bistro' },
+  { id: 'fine-dining', label: 'Fine Dining' },
+  { id: 'bar-pub', label: 'Bar & Pub' },
+  { id: 'quick-service', label: 'Quick Service / Takeaway' },
+  { id: 'other', label: 'Other' },
+] as const
+
+export const CUISINES = [
+  { id: 'local-sg', label: 'Local (SG/Malay/Chinese/Indian)' },
+  { id: 'peranakan', label: 'Peranakan / Nyonya' },
+  { id: 'japanese', label: 'Japanese' },
+  { id: 'korean', label: 'Korean' },
+  { id: 'thai-viet', label: 'Thai / Vietnamese' },
+  { id: 'chinese', label: 'Chinese' },
+  { id: 'indian', label: 'Indian' },
+  { id: 'italian', label: 'Italian' },
+  { id: 'western-fusion', label: 'Western / Fusion' },
+  { id: 'other', label: 'Other' },
+] as const
 
 // Validation schemas
 export const VALIDATION_RULES = {
@@ -441,6 +486,8 @@ export interface ImageGenerationParams {
   aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
   negativePrompt?: string
   customPromptAdditions?: string
+  establishmentType?: string
+  primaryCuisine?: string
 }
 
 export interface GeneratedImage {

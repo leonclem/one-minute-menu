@@ -68,6 +68,9 @@ export async function POST(request: NextRequest) {
     const menu = await menuOperations.createMenu(user.id, {
       name: body.name,
       slug: uniqueSlug,
+      establishmentType: body.establishmentType,
+      primaryCuisine: body.primaryCuisine,
+      venueInfo: body.venueInfo,
     })
     
     return NextResponse.json({

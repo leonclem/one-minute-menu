@@ -357,9 +357,19 @@
     }
   ],
   "metadata": {
-    "currency": "€",
+    "currency": "$",
     "venueName": "Edge Case Testing Restaurant with an Extremely Long Name That Should Test Various Layout Scenarios and Text Wrapping Behaviors",
-    "venueAddress": "123 Unicode Street with Special Characters: àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ, Test City 12345-6789",
+    "venueInfo": {
+      "address": "123 Unicode Street with Special Characters: àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ, Test City 12345-6789",
+      "phone": "+1 234 567 8901",
+      "email": "nasty@edgecase.com",
+      "socialMedia": {
+        "instagram": "@nasty_edgecase",
+        "facebook": "nastyedgecase",
+        "x": "@nasty_edge",
+        "website": "www.nastyedgecase.com"
+      }
+    },
     "logoUrl": "https://placehold.co/400x300?text=Foodedge-case-logo-with-very-long-filename-that-might-cause-issues.png"
   }
 }

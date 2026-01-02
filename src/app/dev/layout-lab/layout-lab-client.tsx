@@ -174,6 +174,7 @@ export function LayoutLabClient() {
           engineVersion: state.engineVersion,
           options: {
             fillersEnabled: state.fillersEnabled,
+            texturesEnabled: state.texturesEnabled,
             textOnly: state.textOnly,
             showRegionBounds: state.showRegionBounds,
             showMenuTitle: state.showMenuTitle

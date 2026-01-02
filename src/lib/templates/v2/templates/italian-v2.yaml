@@ -12,17 +12,17 @@ page:
 
 regions:
   header:
-    height: 80
+    height: 70
   title:
-    height: 40
+    height: 32
   footer:
-    height: 40
+    height: 32
 
 body:
   container:
     type: GRID
     cols: 2
-    rowHeight: 90      # Increased row height for more text lines since no images
+    rowHeight: 82      # Reduced from 90 to allow 3 rows of items (6 total) per page
     gapX: 20
     gapY: 10
 
@@ -33,10 +33,10 @@ tiles:
       nameLines: 0
       descLines: 0
       indicatorAreaHeight: 0
-      imageBoxHeight: 60
+      imageBoxHeight: 50
       paddingTop: 10
       paddingBottom: 10
-      totalHeight: 80
+      totalHeight: 70
 
   TITLE:
     region: title
@@ -47,7 +47,7 @@ tiles:
       imageBoxHeight: 0
       paddingTop: 8
       paddingBottom: 8
-      totalHeight: 40
+      totalHeight: 32
 
   SECTION_HEADER:
     region: body
@@ -59,35 +59,35 @@ tiles:
       imageBoxHeight: 0
       paddingTop: 12
       paddingBottom: 6
-      totalHeight: 40
+      totalHeight: 32
 
   ITEM_CARD:
     region: body
-    rowSpan: 1         # Single row for text-focused items
+    rowSpan: 2         # 2 rows = 174pt (2x82 + 10 gap)
     contentBudget:
       nameLines: 2
-      descLines: 3     # More description lines for text menu
-      indicatorAreaHeight: 20
-      imageBoxHeight: 0
-      paddingTop: 10
-      paddingBottom: 10
-      totalHeight: 90
+      descLines: 2     # Reduced from 3 to ensure comfortable fit in 174pt
+      indicatorAreaHeight: 18
+      imageBoxHeight: 75 # Reduced from 80
+      paddingTop: 8
+      paddingBottom: 8
+      totalHeight: 174
 
   ITEM_TEXT_ROW:
     region: body
-    rowSpan: 1
+    rowSpan: 1         # Single row = 82pt
     contentBudget:
       nameLines: 2
-      descLines: 3
-      indicatorAreaHeight: 20
+      descLines: 2
+      indicatorAreaHeight: 18
       imageBoxHeight: 0
-      paddingTop: 10
-      paddingBottom: 10
-      totalHeight: 90
+      paddingTop: 8
+      paddingBottom: 8
+      totalHeight: 82
 
 policies:
   lastRowBalancing: LEFT
-  showLogoOnPages: [FIRST, SINGLE]
+  showLogoOnPages: [FIRST, CONTINUATION, FINAL, SINGLE]
   repeatSectionHeaderOnContinuation: true
   sectionHeaderKeepWithNextItems: 1
 
@@ -113,4 +113,3 @@ itemIndicators:
     halal: "H"
     kosher: "K"
     gluten-free: "GF"
-

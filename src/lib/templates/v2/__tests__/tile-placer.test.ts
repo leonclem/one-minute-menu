@@ -117,7 +117,7 @@ const mockTemplate: TemplateV2 = {
   },
   policies: {
     lastRowBalancing: 'CENTER',
-    showLogoOnPages: ['FIRST', 'SINGLE'],
+    showLogoOnPages: ['FIRST', 'CONTINUATION', 'FINAL', 'SINGLE'],
     repeatSectionHeaderOnContinuation: true,
     sectionHeaderKeepWithNextItems: 1,
   },
@@ -165,7 +165,7 @@ const mockMenu: EngineMenuV2 = {
   name: 'Test Menu',
   sections: [mockSection],
   metadata: {
-    currency: '£',
+    currency: '$',
     venueName: 'Test Venue',
     logoUrl: 'https://example.com/logo.jpg',
   },
@@ -228,7 +228,7 @@ describe('Tile Placer', () => {
 
   describe('createItemTile', () => {
     it('creates item card for item with image', () => {
-      const tile = createItemTile(mockItem, 'section-1', mockTemplate)
+      const tile = createItemTile(mockItem, 'section-1', mockTemplate, '$')
       
       expect(tile.type).toBe('ITEM_CARD')
       expect(tile.regionId).toBe('body')
@@ -240,7 +240,7 @@ describe('Tile Placer', () => {
 
     it('creates item card for item without image (with placeholder)', () => {
       const itemWithoutImage = { ...mockItem, imageUrl: undefined }
-      const tile = createItemTile(itemWithoutImage, 'section-1', mockTemplate)
+      const tile = createItemTile(itemWithoutImage, 'section-1', mockTemplate, '$')
       
       expect(tile.type).toBe('ITEM_CARD')
       expect(tile.rowSpan).toBe(2)
@@ -250,7 +250,7 @@ describe('Tile Placer', () => {
     })
 
     it('creates text row when textOnly mode is enabled', () => {
-      const tile = createItemTile(mockItem, 'section-1', mockTemplate, { textOnly: true })
+      const tile = createItemTile(mockItem, 'section-1', mockTemplate, '$', { textOnly: true })
       
       expect(tile.type).toBe('ITEM_TEXT_ROW')
       expect(tile.rowSpan).toBe(1)

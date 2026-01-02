@@ -120,6 +120,58 @@ export class PromptConstructionService {
       const lightingMods = LIGHTING_MODIFIERS[params.lighting] || []
       styleElements.push(...lightingMods)
     }
+
+    // Add establishment context
+    if (params.establishmentType) {
+      switch (params.establishmentType) {
+        case 'bakery-dessert':
+          styleElements.push('bakery display style', 'soft textures', 'tempting sweet treats', 'pastel color palette', 'warm oven lighting')
+          break
+        case 'hawker-foodcourt':
+          styleElements.push('vibrant street food style', 'authentic local setting', 'casual presentation', 'bustling atmosphere', 'bright natural lighting')
+          break
+        case 'fine-dining':
+          styleElements.push('elegant presentation', 'sophisticated plating', 'premium restaurant setting', 'luxury feel')
+          break
+        case 'casual-dining':
+          styleElements.push('relaxed atmosphere', 'approachable presentation', 'casual dining setting')
+          break
+        case 'cafe-brunch':
+          styleElements.push('cafe setting', 'natural morning light', 'warm inviting atmosphere', 'cozy cafe background', 'brunch aesthetic')
+          break
+        case 'bar-pub':
+          styleElements.push('moody bar lighting', 'pub atmosphere', 'social setting')
+          break
+        case 'quick-service':
+          styleElements.push('clean presentation', 'bright lighting', 'fresh and fast')
+          break
+      }
+    }
+
+    // Add cuisine context
+    if (params.primaryCuisine) {
+      styleElements.push(`${params.primaryCuisine} cuisine style`)
+      switch (params.primaryCuisine) {
+        case 'local-sg':
+          styleElements.push('authentic singaporean presentation', 'traditional local motifs', 'vibrant spices and herbs', 'kopitiam style elements')
+          break
+        case 'peranakan':
+          styleElements.push('ornate nyonya ware', 'intricate presentation', 'vibrant traditional colors', 'peranakan cultural motifs')
+          break
+        case 'japanese':
+          styleElements.push('minimalist aesthetic', 'zen presentation', 'precise arrangement', 'authentic japanese plating')
+          break
+        case 'italian':
+          styleElements.push('rustic italian style', 'fresh Mediterranean ingredients', 'traditional presentation')
+          break
+        case 'korean':
+          styleElements.push('modern korean aesthetic', 'vibrant banchan presentation', 'k-food styling')
+          break
+        case 'thai-viet':
+          styleElements.push('southeast asian freshness', 'vibrant herbs', 'tropical plating style')
+          break
+      }
+    }
     
     // If description is very short or missing, add boosters to guide composition
     if (!normalizedDescription || normalizedDescription.length < 10) {

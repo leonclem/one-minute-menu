@@ -176,7 +176,7 @@ describe('Streaming Paginator', () => {
             }
           }))
         }],
-        metadata: { currency: '£' }
+        metadata: { currency: '$' }
       }
 
       const result = streamingPaginate(testMenu, template, pageSpec)
@@ -321,7 +321,7 @@ describe('Streaming Paginator', () => {
             }
           ]
         }],
-        metadata: { currency: '£' }
+        metadata: { currency: '$' }
       }
 
       const result = streamingPaginate(mixedMenu, template, pageSpec)

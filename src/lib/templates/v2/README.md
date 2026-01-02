@@ -142,7 +142,7 @@ tiles:
 
 policies:
   lastRowBalancing: CENTER
-  showLogoOnPages: [FIRST, SINGLE]
+  showLogoOnPages: [FIRST, CONTINUATION, FINAL, SINGLE]
   repeatSectionHeaderOnContinuation: true
   sectionHeaderKeepWithNextItems: 1
 

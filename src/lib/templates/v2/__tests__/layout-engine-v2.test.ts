@@ -99,7 +99,7 @@ describe('Layout Engine V2 - Complete Flow', () => {
       id: '',
       name: '',
       sections: [],
-      metadata: { currency: '£' }
+      metadata: { currency: '$' }
     } as EngineMenuV2
     
     const issues = validateMenuForV2(invalidMenu)
@@ -190,7 +190,7 @@ describe('Layout Engine V2 - Acceptance Scenarios', () => {
             indicators: { dietary: [], allergens: [], spiceLevel: null }
           }))
         }],
-        metadata: { currency: '£' }
+        metadata: { currency: '$' }
       }
       
       const doc = await generateLayout(menu)
@@ -221,7 +221,7 @@ describe('Layout Engine V2 - Acceptance Scenarios', () => {
             indicators: { dietary: [], allergens: [], spiceLevel: null }
           }))
         }],
-        metadata: { currency: '£' }
+        metadata: { currency: '$' }
       }
       
       const doc = await generateLayout(menu, false) // Disable debug to avoid invariant violations
@@ -379,7 +379,7 @@ describe('Layout Engine V2 - Acceptance Scenarios', () => {
             }
           }]
         }],
-        metadata: { currency: '£' }
+        metadata: { currency: '$' }
       }
       
       const doc = await generateLayout(menu)
@@ -422,7 +422,7 @@ describe('Layout Engine V2 - RowSpan Scenarios', () => {
           indicators: { dietary: [], allergens: [], spiceLevel: null }
         }))
       }],
-      metadata: { currency: '£' }
+      metadata: { currency: '$' }
     }
     
     const doc = await generateLayout(menu)
@@ -474,7 +474,7 @@ describe('Layout Engine V2 - RowSpan Scenarios', () => {
           indicators: { dietary: [], allergens: [], spiceLevel: null }
         }))
       }],
-      metadata: { currency: '£' }
+      metadata: { currency: '$' }
     }
     
     const doc = await generateLayout(menu, true)
@@ -526,7 +526,7 @@ describe('Layout Engine V2 - RowSpan Scenarios', () => {
           }
         ]
       }],
-      metadata: { currency: '£' }
+      metadata: { currency: '$' }
     }
     
     const doc = await generateLayout(menu)
@@ -589,7 +589,7 @@ describe('Layout Engine V2 - Error Cases', () => {
           indicators: { dietary: [], allergens: [], spiceLevel: null }
         }]
       }],
-      metadata: { currency: '£' }
+      metadata: { currency: '$' }
     }
     
     const doc = await generateLayout(menu)

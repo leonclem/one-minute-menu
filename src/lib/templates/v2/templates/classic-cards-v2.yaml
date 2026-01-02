@@ -16,7 +16,7 @@ regions:
   title:
     height: 32
   footer:
-    height: 30
+    height: 45
 
 body:
   container:
@@ -115,7 +115,7 @@ tiles:
 
 policies:
   lastRowBalancing: CENTER
-  showLogoOnPages: [FIRST, SINGLE]
+  showLogoOnPages: [FIRST, CONTINUATION, FINAL, SINGLE]
   repeatSectionHeaderOnContinuation: true
   sectionHeaderKeepWithNextItems: 1
 

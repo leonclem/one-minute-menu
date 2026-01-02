@@ -25,7 +25,7 @@ describe('Collision Detection Reproduction', () => {
         ]
       }
     ],
-    metadata: { currency: '£', venueName: 'Test Venue' }
+    metadata: { currency: '$', venueName: 'Test Venue' }
   }
 
   const mockTemplate: TemplateV2 = {
@@ -59,7 +59,7 @@ describe('Collision Detection Reproduction', () => {
     },
     policies: {
       lastRowBalancing: 'CENTER',
-      showLogoOnPages: ['FIRST', 'SINGLE'],
+      showLogoOnPages: ['FIRST', 'CONTINUATION', 'FINAL', 'SINGLE'],
       repeatSectionHeaderOnContinuation: true,
       sectionHeaderKeepWithNextItems: 1,
     },
@@ -107,6 +107,8 @@ describe('Collision Detection Reproduction', () => {
     }
   })
 })
+
+
 
 
 

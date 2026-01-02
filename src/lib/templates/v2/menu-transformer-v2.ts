@@ -59,7 +59,7 @@ export function transformMenuToV2(
 ): EngineMenuV2 {
   // Extract currency from options, theme, or use default
   const currency =
-    options?.currency ?? menu.theme?.layout?.currency ?? '£'
+    options?.currency ?? menu.theme?.layout?.currency ?? '$'
 
   // Determine which data source to use
   const hasValidCategories =
@@ -127,8 +127,11 @@ export function transformMenuToV2(
     metadata: {
       currency,
       venueName: options?.venueName ?? menu.name,
-      venueAddress: options?.venueAddress,
+      venueAddress: options?.venueAddress ?? menu.venueInfo?.address,
       logoUrl: options?.logoUrl ?? menu.logoUrl,
+      establishmentType: menu.establishmentType,
+      primaryCuisine: menu.primaryCuisine,
+      venueInfo: menu.venueInfo,
     },
   }
 }

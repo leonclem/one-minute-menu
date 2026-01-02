@@ -257,9 +257,19 @@
     }
   ],
   "metadata": {
-    "currency": "£",
+    "currency": "$",
     "venueName": "The Garden Restaurant",
-    "venueAddress": "456 Oak Avenue, Foodtown",
+    "venueInfo": {
+      "address": "456 Oak Avenue, Foodtown",
+      "phone": "+1 555 987 6543",
+      "email": "info@gardenrestaurant.com",
+      "socialMedia": {
+        "instagram": "@gardenrest",
+        "facebook": "thegardenrestaurant",
+        "x": "@gardenrestaurant",
+        "website": "www.gardenrestaurant.com"
+      }
+    },
     "logoUrl": "https://placehold.co/400x300?text=Foodlogo.png"
   }
 }

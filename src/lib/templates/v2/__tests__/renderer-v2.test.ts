@@ -103,6 +103,7 @@ describe('V2 Renderer', () => {
           price: 12.99,
           imageUrl: 'https://example.com/pizza.jpg',
           showImage: true,
+          currency: '$',
           indicators: {
             dietary: ['vegetarian'],
             spiceLevel: null,

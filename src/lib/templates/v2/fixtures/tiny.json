@@ -47,8 +47,17 @@
     }
   ],
   "metadata": {
-    "currency": "£",
+    "currency": "$",
     "venueName": "Test Cafe",
-    "venueAddress": "123 Test Street"
+    "venueInfo": {
+      "address": "123 Test Street, London",
+      "phone": "+44 20 7123 4567",
+      "email": "hello@testcafe.com",
+      "socialMedia": {
+        "instagram": "@testcafe",
+        "facebook": "testcafeuk",
+        "website": "www.testcafe.com"
+      }
+    }
   }
 }

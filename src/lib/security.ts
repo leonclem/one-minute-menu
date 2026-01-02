@@ -27,9 +27,34 @@ export function sanitizeMenuItemPayload<T extends { name?: string; description?:
   return out
 }
 
-export function sanitizeMenuPayload<T extends { name?: string; paymentInfo?: any }>(data: T): T {
+export function sanitizeMenuPayload<T extends { 
+  name?: string; 
+  paymentInfo?: any;
+  establishmentType?: string;
+  primaryCuisine?: string;
+  venueInfo?: any;
+}>(data: T): T {
   const out = { ...data }
   if (out.name !== undefined) out.name = sanitizeString(out.name, 100) as any
+  if (out.establishmentType !== undefined) out.establishmentType = sanitizeString(out.establishmentType, 50) as any
+  if (out.primaryCuisine !== undefined) out.primaryCuisine = sanitizeString(out.primaryCuisine, 50) as any
+  
+  if (out.venueInfo) {
+    const vi = { ...out.venueInfo }
+    if (vi.address !== undefined) vi.address = sanitizeString(vi.address, 200)
+    if (vi.email !== undefined) vi.email = sanitizeString(vi.email, 100)
+    if (vi.phone !== undefined) vi.phone = sanitizeString(vi.phone, 50)
+    if (vi.socialMedia) {
+      const sm = { ...vi.socialMedia }
+      if (sm.instagram !== undefined) sm.instagram = sanitizeString(sm.instagram, 50)
+      if (sm.facebook !== undefined) sm.facebook = sanitizeString(sm.facebook, 100)
+      if (sm.x !== undefined) sm.x = sanitizeString(sm.x, 50)
+      if (sm.website !== undefined) sm.website = sanitizeString(sm.website, 100)
+      vi.socialMedia = sm
+    }
+    out.venueInfo = vi
+  }
+
   if (out.paymentInfo) {
     const pi = { ...out.paymentInfo }
     if (pi.instructions !== undefined) pi.instructions = sanitizeString(pi.instructions, 300)

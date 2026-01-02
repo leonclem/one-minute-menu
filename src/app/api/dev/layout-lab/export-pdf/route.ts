@@ -26,6 +26,8 @@ interface ExportPdfRequest {
   engineVersion: 'v1' | 'v2'
   options?: {
     fillersEnabled?: boolean
+    texturesEnabled?: boolean
+    showMenuTitle?: boolean
     textOnly?: boolean
     showRegionBounds?: boolean
   }
@@ -126,7 +128,9 @@ export async function POST(request: NextRequest) {
         templateId,
         selection: {
           textOnly: options.textOnly || false,
-          fillersEnabled: options.fillersEnabled
+          fillersEnabled: options.fillersEnabled,
+          texturesEnabled: options.texturesEnabled,
+          showMenuTitle: options.showMenuTitle
         },
         debug: false // No debug info needed for PDF
       }, 'v2') as LayoutDocumentV2
@@ -137,6 +141,7 @@ export async function POST(request: NextRequest) {
         paletteId,
         includePageNumbers: true,
         printBackground: true,
+        texturesEnabled: options.texturesEnabled,
         showRegionBounds: options.showRegionBounds || false
       })
       

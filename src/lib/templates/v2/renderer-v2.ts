@@ -21,7 +21,9 @@ import type {
   FillerContentV2,
   ItemIndicatorsV2,
   DietaryIndicator,
-  TileStyleV2
+  TileStyleV2,
+  TextBlockContentV2,
+  FooterInfoContentV2
 } from './engine-types-v2'
 
 // ============================================================================
@@ -35,6 +37,8 @@ export interface RenderOptionsV2 {
   palette?: ColorPaletteV2
   /** Enable textured backgrounds for supported palettes */
   texturesEnabled?: boolean
+  /** Pre-fetched data URL for texture (used in export mode to avoid relative path issues) */
+  textureDataURL?: string
   /** Show grid overlay for debugging */
   showGridOverlay: boolean
   /** Show region boundary rectangles */
@@ -321,7 +325,10 @@ export function renderTileContent(
       return renderFillerContent(content as FillerContentV2, tile, options)
     
     case 'TEXT_BLOCK':
-      return renderTextBlockContent(content as any, tile, options)
+      return renderTextBlockContent(content as TextBlockContentV2, tile, options)
+    
+    case 'FOOTER_INFO':
+      return renderFooterInfoContent(content as FooterInfoContentV2, tile, options)
     
     default:
       return {
@@ -577,7 +584,7 @@ function renderItemContent(
 
   // Item image (for ITEM_CARD)
   if (content.type === 'ITEM_CARD' && content.showImage) {
-    const imageHeight = 60 // Reduced from 70 to give more space for description
+    const imageHeight = tile.contentBudget?.imageBoxHeight ?? 60
     if (content.imageUrl) {
       elements.push({
         type: 'image',
@@ -625,7 +632,7 @@ function renderItemContent(
   // Item name (now with more space)
   const nameWidth = tile.width - (padding * 2)
   const nameFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xsm // Reduced to xsm (11pt) for better fit
-  const nameMaxLines = 3 // Still allow 3 lines for very long names
+  const nameMaxLines = tile.contentBudget?.nameLines ?? 3
   const nameLineHeight = nameFontSize * baseLineHeight
 
   elements.push({
@@ -651,7 +658,7 @@ function renderItemContent(
 
   // Description
   if (content.description) {
-    const descMaxLines = 3
+    const descMaxLines = tile.contentBudget?.descLines ?? 3
     const descFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xxs // 7pt (30% reduction from 10pt)
     const descHeight = descFontSize * descLineHeight * descMaxLines
     
@@ -675,7 +682,8 @@ function renderItemContent(
   }
 
   // Price (positioned after description)
-  const priceText = `£${content.price.toFixed(2)}`
+  const currency = content.currency || '$'
+  const priceText = `${currency}${content.price.toFixed(2)}`
   const priceFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xxxs // 6pt (50% reduction from 12pt)
   elements.push({
     type: 'text',
@@ -754,25 +762,76 @@ function renderFillerContent(
 }
 
 function renderTextBlockContent(
-  content: any,
+  content: TextBlockContentV2,
   tile: TileInstanceV2,
   options: RenderOptionsV2
 ): TileRenderData {
+  const elements: RenderElement[] = []
   const palette = getPalette(options)
-  // Placeholder for future TEXT_BLOCK implementation
-  return {
-    elements: [{
+  const padding = 8
+
+  elements.push({
+    type: 'text',
+    x: padding,
+    y: padding,
+    width: tile.width - (padding * 2),
+    height: tile.height - (padding * 2),
+    content: content.text,
+    style: {
+      fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.base,
+      fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.normal,
+      color: palette.colors.itemDescription,
+      textAlign: 'left'
+    }
+  })
+
+  return { elements }
+}
+
+function renderFooterInfoContent(
+  content: FooterInfoContentV2,
+  tile: TileInstanceV2,
+  options: RenderOptionsV2
+): TileRenderData {
+  const elements: RenderElement[] = []
+  const palette = getPalette(options)
+  const padding = 8
+  const fontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xxs
+  const lineHeight = 1.4
+  let currentY = padding
+
+  const addText = (text: string, bold = false) => {
+    elements.push({
       type: 'text',
-      x: 8,
-      y: tile.height / 2,
-      content: content.text || 'Text Block',
+      x: padding,
+      y: currentY,
+      width: tile.width - (padding * 2),
+      content: text,
       style: {
-        fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.base,
-        color: palette.colors.itemTitle,
-        textAlign: 'left'
+        fontSize,
+        fontWeight: bold ? TYPOGRAPHY_TOKENS_V2.fontWeight.semibold : TYPOGRAPHY_TOKENS_V2.fontWeight.normal,
+        color: palette.colors.textMuted,
+        textAlign: 'center',
       }
-    }]
+    })
+    currentY += fontSize * lineHeight
   }
+
+  if (content.address) addText(content.address)
+  
+  let contactLine = ''
+  if (content.phone) contactLine += content.phone
+  if (content.email) contactLine += (contactLine ? ' • ' : '') + content.email
+  if (contactLine) addText(contactLine)
+
+  let socialLine = ''
+  if (content.socialMedia?.instagram) socialLine += `Instagram: ${content.socialMedia.instagram}`
+  if (content.socialMedia?.facebook) socialLine += (socialLine ? ' • ' : '') + `Facebook: ${content.socialMedia.facebook}`
+  if (content.socialMedia?.x) socialLine += (socialLine ? ' • ' : '') + `X: ${content.socialMedia.x}`
+  if (content.socialMedia?.website) socialLine += (socialLine ? ' • ' : '') + content.socialMedia.website
+  if (socialLine) addText(socialLine)
+
+  return { elements }
 }
 
 // ============================================================================

@@ -7,7 +7,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const code = url.searchParams.get('code')
-  const next = url.searchParams.get('next') || '/dashboard'
+  const next = url.searchParams.get('next') || '/onboarding'
 
   // If we have a preferred site URL configured and we're currently on the Vercel domain
   // (or any other domain that isn't the primary one), redirect to the primary domain
