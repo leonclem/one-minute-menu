@@ -10,7 +10,9 @@ import { requireAdmin } from '@/lib/auth-utils'
 import { generateLayoutWithVersion } from '@/lib/templates/engine-selector'
 import { transformMenuToV2, isEngineMenuV2 } from '@/lib/templates/v2/menu-transformer-v2'
 import { renderToPdf } from '@/lib/templates/v2/renderer-pdf-v2'
+import { optimizeLayoutDocumentImages } from '@/lib/templates/v2/image-optimizer-v2'
 import type { LayoutDocumentV2 } from '@/lib/templates/v2/engine-types-v2'
+import { pdfExportLimiter, applyRateLimit } from '@/lib/templates/rate-limiter'
 import { toEngineMenu, isEngineMenu } from '@/lib/templates/menu-transformer'
 import { menuOperations } from '@/lib/database'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
@@ -18,6 +20,7 @@ import { readFile } from 'fs/promises'
 import path from 'path'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 90 // Match Puppeteer timeout
 
 interface ExportPdfRequest {
   fixtureId: string
@@ -51,6 +54,20 @@ export async function POST(request: NextRequest) {
     
     const body: ExportPdfRequest = await request.json()
     const { fixtureId, templateId, paletteId, engineVersion, options = {} } = body
+
+    // Apply rate limiting for PDF export (CPU intensive)
+    if (process.env.NODE_ENV === 'production') {
+      const supabase = createServerSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      const identifier = user?.id || 'anonymous'
+      const rateLimit = applyRateLimit(pdfExportLimiter, identifier)
+      if (!rateLimit.allowed) {
+        return NextResponse.json(
+          { error: 'Rate limit exceeded', retryAfter: rateLimit.retryAfter },
+          { status: 429, headers: rateLimit.headers }
+        )
+      }
+    }
     
     // Validate inputs
     if (!fixtureId || !templateId || !engineVersion) {
@@ -135,8 +152,23 @@ export async function POST(request: NextRequest) {
         debug: false // No debug info needed for PDF
       }, 'v2') as LayoutDocumentV2
       
+      // Optimize images (compression and base64 embedding)
+      // This reduces PDF size and improves reliability
+      const headers = {
+        host: request.headers.get('host') || '',
+        'x-forwarded-host': request.headers.get('x-forwarded-host') || '',
+        'x-forwarded-proto': request.headers.get('x-forwarded-proto') || '',
+        cookie: request.headers.get('cookie') || ''
+      }
+      
+      const optimizedLayout = await optimizeLayoutDocumentImages(layoutDocument, {
+        maxWidth: 1200, // Higher res for PDF
+        quality: 85,
+        headers
+      })
+      
       // Render to PDF (only works with V2 for now)
-      const pdfResult = await renderToPdf(layoutDocument, {
+      const pdfResult = await renderToPdf(optimizedLayout, {
         title: `Layout Lab - ${fixtureId}`,
         paletteId,
         includePageNumbers: true,

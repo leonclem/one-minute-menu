@@ -84,7 +84,7 @@ async function testPDFGeneration() {
     
     console.log('Setting content...')
     await page.setContent(testHTML, {
-      waitUntil: ['domcontentloaded', 'networkidle0'],
+      waitUntil: ['domcontentloaded', 'networkidle2'],
       timeout: 60000
     })
     

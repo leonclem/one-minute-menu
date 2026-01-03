@@ -5,7 +5,40 @@ import fs from 'fs'
 let sharedBrowser: any = null
 let browserPromise: Promise<any> | null = null
 
-// Keep minimal: no persisted WS endpoint; production code launches a single process
+// Concurrency management
+let activePages = 0
+const MAX_CONCURRENT_PAGES = process.env.MAX_CONCURRENT_PAGES 
+  ? parseInt(process.env.MAX_CONCURRENT_PAGES) 
+  : 3
+
+/**
+ * Acquire a page from the shared browser with concurrency limiting
+ */
+export async function acquirePage() {
+  const browser = await getSharedBrowser()
+  
+  // Wait if we've reached the concurrency limit
+  while (activePages >= MAX_CONCURRENT_PAGES) {
+    await new Promise(resolve => setTimeout(resolve, 500))
+  }
+  
+  activePages++
+  try {
+    const page = await browser.newPage()
+    
+    // Add a wrapper for close to manage the count
+    const originalClose = page.close.bind(page)
+    page.close = async () => {
+      activePages--
+      return await originalClose()
+    }
+    
+    return page
+  } catch (error) {
+    activePages--
+    throw error
+  }
+}
 
 export async function getSharedBrowser() {
   if (sharedBrowser) {

@@ -13,9 +13,10 @@
  */
 
 // Browserless: mock Puppeteer to avoid launching a real Chrome in tests
-import { getSharedBrowser } from '../puppeteer-shared'
+import { getSharedBrowser, acquirePage } from '../puppeteer-shared'
 jest.mock('../puppeteer-shared', () => ({
-  getSharedBrowser: jest.fn()
+  getSharedBrowser: jest.fn(),
+  acquirePage: jest.fn()
 }))
 import {
   exportToPDF,
@@ -126,6 +127,7 @@ beforeAll(() => {
     close: jest.fn(async () => {})
   }
   ;(getSharedBrowser as unknown as jest.Mock).mockResolvedValue(mockBrowser)
+  ;(acquirePage as unknown as jest.Mock).mockResolvedValue(mockPage)
 })
 
 // ============================================================================

@@ -12,7 +12,7 @@
  * - Design token consistency for spacing and typography
  */
 
-import { getSharedBrowser } from './puppeteer-shared'
+import { getSharedBrowser, acquirePage } from './puppeteer-shared'
 import { PDFDocument, rgb } from 'pdf-lib'
 import type { PDFPage } from 'pdf-lib'
 import type { LayoutMenuData, LayoutPreset } from '../types'
@@ -81,9 +81,8 @@ export async function exportToPDF(
 
   let page
   try {
-    // Use shared browser instance
-    const browser = await getSharedBrowser()
-    page = await browser.newPage()
+    // Use shared browser instance and acquire a page with concurrency limiting
+    page = await acquirePage()
 
     // Set viewport for consistent rendering
     await page.setViewport({

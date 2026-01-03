@@ -387,12 +387,20 @@ export async function convertLayoutImagesToDataURLs(
   
   convertedLayout.pages.forEach((page: any, pageIndex: number) => {
     page.tiles.forEach((tile: any, tileIndex: number) => {
-      // Convert images for menu items
+      // Convert images for menu items (V1 structure: tile.imageUrl)
       if ((tile.type === 'ITEM' || tile.type === 'ITEM_TEXT_ONLY') && tile.imageUrl) {
         tilesWithImages.push({ tile, pageIndex, tileIndex })
       }
-      // Convert logo images
+      // Convert images for menu items (V2 structure: tile.content.imageUrl)
+      if ((tile.type === 'ITEM_CARD' || tile.type === 'ITEM_TEXT_ROW') && tile.content?.imageUrl) {
+        tilesWithImages.push({ tile, pageIndex, tileIndex })
+      }
+      // Convert logo images (V1 structure: tile.logoUrl)
       if (tile.type === 'LOGO' && tile.logoUrl) {
+        tilesWithImages.push({ tile, pageIndex, tileIndex })
+      }
+      // Convert logo images (V2 structure: tile.content.imageUrl)
+      if (tile.type === 'LOGO' && tile.content?.imageUrl) {
         tilesWithImages.push({ tile, pageIndex, tileIndex })
       }
     })
@@ -415,7 +423,17 @@ export async function convertLayoutImagesToDataURLs(
     tilesWithImages,
     async ({ tile }) => {
       try {
-        // Handle LOGO tiles with logoUrl
+        // Handle V2 structure (tile.content.imageUrl)
+        if (tile.content && 'imageUrl' in tile.content && tile.content.imageUrl) {
+          const dataURL = await fetchImageAsDataURL(tile.content.imageUrl, headers, timeout, true)
+          if (dataURL) {
+            tile.content.imageUrl = dataURL
+            successCount++
+            return
+          }
+        }
+
+        // Handle V1 structure (tile.logoUrl or tile.imageUrl)
         if (tile.type === 'LOGO' && tile.logoUrl) {
           const dataURL = await fetchImageAsDataURL(tile.logoUrl, headers, timeout, true)
           if (dataURL) {
@@ -427,7 +445,6 @@ export async function convertLayoutImagesToDataURLs(
             failCount++
           }
         }
-        // Handle ITEM tiles with imageUrl
         else if (tile.imageUrl) {
           const dataURL = await fetchImageAsDataURL(tile.imageUrl, headers, timeout, true)
           if (dataURL) {
@@ -446,8 +463,10 @@ export async function convertLayoutImagesToDataURLs(
           }
         }
       } catch (error) {
-        console.error(`[TextureUtils] Error converting image for tile ${tile.name || tile.id}:`, error)
-        if (tile.type === 'LOGO') {
+        console.error(`[TextureUtils] Error converting image for tile ${tile.name || tile.id || (tile.content && 'name' in tile.content ? tile.content.name : 'unknown')}:`, error)
+        if (tile.content && 'imageUrl' in tile.content) {
+          tile.content.imageUrl = null
+        } else if (tile.type === 'LOGO') {
           tile.logoUrl = null
         } else {
           tile.imageUrl = null

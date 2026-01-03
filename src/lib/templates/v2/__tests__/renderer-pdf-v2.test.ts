@@ -14,7 +14,8 @@ import {
 
 // Mock the heavy dependencies for unit testing
 jest.mock('../../export/puppeteer-shared', () => ({
-  getSharedBrowser: jest.fn()
+  getSharedBrowser: jest.fn(),
+  acquirePage: jest.fn()
 }))
 
 jest.mock('react-dom/server', () => ({

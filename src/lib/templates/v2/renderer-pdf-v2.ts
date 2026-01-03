@@ -11,7 +11,7 @@
  * - Returns PDF buffer for download/storage
  */
 
-import { getSharedBrowser } from '../export/puppeteer-shared'
+import { getSharedBrowser, acquirePage } from '../export/puppeteer-shared'
 import { getTextureDataURL } from '../export/texture-utils'
 import { createElement } from 'react'
 import LayoutPreviewV2 from './renderer-web-v2'
@@ -103,9 +103,8 @@ export async function renderToPdf(
 
   let page
   try {
-    // Use shared browser instance (matches existing infrastructure)
-    const browser = await getSharedBrowser()
-    page = await browser.newPage()
+    // Use shared browser instance and acquire a page with concurrency limiting
+    page = await acquirePage()
 
     // Set viewport for consistent rendering
     // Use A4 dimensions in pixels at 96 DPI
@@ -116,12 +115,13 @@ export async function renderToPdf(
       deviceScaleFactor: 2 // High DPI for better rendering
     })
 
-    // Increase timeouts for complex layouts
+    // Increase timeouts for complex layouts in Production
+    const timeout = process.env.NODE_ENV === 'production' ? 90000 : 60000
     if (typeof (page as any).setDefaultTimeout === 'function') {
-      (page as any).setDefaultTimeout(60000)
+      (page as any).setDefaultTimeout(timeout)
     }
     if (typeof (page as any).setDefaultNavigationTimeout === 'function') {
-      (page as any).setDefaultNavigationTimeout(60000)
+      (page as any).setDefaultNavigationTimeout(timeout)
     }
 
     // Generate HTML content using React renderer
@@ -131,10 +131,12 @@ export async function renderToPdf(
       texturesEnabled: options.texturesEnabled
     })
 
-    // Set HTML content and wait for fonts and images to load
+    // Set HTML content and wait for fonts and styles load
+    // Note: networkidle2 is used instead of networkidle0 to be more resilient to 
+    // many external assets (like images) that might take longer to load.
     await page.setContent(htmlContent, {
-      waitUntil: ['domcontentloaded', 'networkidle0'],
-      timeout: 60000
+      waitUntil: ['domcontentloaded', 'networkidle2'],
+      timeout: timeout
     })
     
     // Wait for fonts to be ready

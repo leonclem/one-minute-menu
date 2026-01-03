@@ -13,7 +13,7 @@
  */
 
 import sharp from 'sharp'
-import { getSharedBrowser } from './puppeteer-shared'
+import { getSharedBrowser, acquirePage } from './puppeteer-shared'
 import type { LayoutMenuData, LayoutPreset, OutputContext } from '../types'
 import { exportToHTML } from './html-exporter'
 
@@ -206,9 +206,8 @@ async function renderHTMLToImage(
 ): Promise<Buffer> {
   let page
   try {
-    // Use shared browser instance
-    const browser = await getSharedBrowser()
-    page = await browser.newPage()
+    // Use shared browser instance and acquire a page with concurrency limiting
+    page = await acquirePage()
 
     // Set viewport to match desired dimensions
     await page.setViewport({
