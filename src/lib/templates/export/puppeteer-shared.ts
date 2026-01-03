@@ -18,18 +18,25 @@ export async function acquirePage() {
   const browser = await getSharedBrowser()
   
   // Wait if we've reached the concurrency limit
-  while (activePages >= MAX_CONCURRENT_PAGES) {
-    await new Promise(resolve => setTimeout(resolve, 500))
+  if (activePages >= MAX_CONCURRENT_PAGES) {
+    console.info(`[PuppeteerShared] Concurrency limit reached (${activePages}/${MAX_CONCURRENT_PAGES}), waiting for a page...`)
+    while (activePages >= MAX_CONCURRENT_PAGES) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
   }
   
   activePages++
   try {
     const page = await browser.newPage()
     
-    // Add a wrapper for close to manage the count
+    // Add a wrapper for close to manage the count exactly once
+    let closed = false
     const originalClose = page.close.bind(page)
     page.close = async () => {
-      activePages--
+      if (!closed) {
+        closed = true
+        activePages--
+      }
       return await originalClose()
     }
     

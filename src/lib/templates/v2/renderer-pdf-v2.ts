@@ -103,9 +103,13 @@ export async function renderToPdf(
 
   let page
   try {
+    logger.info(`[PDFRendererV2] Starting PDF generation for document: ${document.templateId}`)
+    
     // Use shared browser instance and acquire a page with concurrency limiting
+    const acquireStartTime = Date.now()
     page = await acquirePage()
-
+    logger.info(`[PDFRendererV2] Page acquired in ${Date.now() - acquireStartTime}ms`)
+    
     // Set viewport for consistent rendering
     // Use A4 dimensions in pixels at 96 DPI
     const isLandscape = document.pageSpec.width > document.pageSpec.height
@@ -125,27 +129,35 @@ export async function renderToPdf(
     }
 
     // Generate HTML content using React renderer
+    const htmlStartTime = Date.now()
     const htmlContent = await generatePDFHTML(document, customCSS, { 
       showRegionBounds,
       paletteId: options.paletteId,
       texturesEnabled: options.texturesEnabled
     })
+    logger.info(`[PDFRendererV2] HTML generated in ${Date.now() - htmlStartTime}ms (HTML length: ${htmlContent.length})`)
 
     // Set HTML content and wait for fonts and styles load
-    // Note: networkidle2 is used instead of networkidle0 to be more resilient to 
-    // many external assets (like images) that might take longer to load.
+    // Note: since we optimize images to base64 before this call, 
+    // we don't need networkidle2 anymore. domcontentloaded + document.fonts.ready 
+    // is much faster and more reliable.
+    const contentStartTime = Date.now()
     await page.setContent(htmlContent, {
-      waitUntil: ['domcontentloaded', 'networkidle2'],
+      waitUntil: 'domcontentloaded',
       timeout: timeout
     })
+    logger.info(`[PDFRendererV2] Page content set in ${Date.now() - contentStartTime}ms`)
     
     // Wait for fonts to be ready
+    const fontsStartTime = Date.now()
     await page.evaluateHandle('document.fonts.ready')
+    logger.info(`[PDFRendererV2] Fonts ready in ${Date.now() - fontsStartTime}ms`)
 
     // Generate PDF with same dimensions as document pageSpec
     // DESIGN DECISION: We set margins to 0 here because our React renderer
     // already applies margins via absolute positioning of the content-box.
     // This ensures consistency between preview and PDF.
+    const pdfStartTime = Date.now()
     const pdfBytes = await page.pdf({
       width: `${(document.pageSpec.width / 72).toFixed(4)}in`,
       height: `${(document.pageSpec.height / 72).toFixed(4)}in`,
@@ -158,22 +170,16 @@ export async function renderToPdf(
         : '<div></div>',
       preferCSSPageSize: false // Use our explicit dimensions
     })
+    logger.info(`[PDFRendererV2] Puppeteer PDF generated in ${Date.now() - pdfStartTime}ms`)
 
     await page.close()
 
     const endTime = Date.now()
     const duration = Math.max(1, endTime - startTime)
 
-    // Get actual page count from PDF
-    let pageCount = document.pages.length
-    try {
-      const { PDFDocument } = await import('pdf-lib')
-      const pdfDoc = await PDFDocument.load(pdfBytes)
-      pageCount = pdfDoc.getPageCount()
-    } catch {
-      // Fallback to document page count if parsing fails
-      pageCount = document.pages.length
-    }
+    // Use document pages length as page count
+    // (Avoiding pdf-lib loading for faster performance on Vercel)
+    const pageCount = document.pages.length
 
     logger.info(`[PDFRendererV2] Generated PDF in ${duration}ms (${pdfBytes.length} bytes, ${pageCount} pages)`)
 

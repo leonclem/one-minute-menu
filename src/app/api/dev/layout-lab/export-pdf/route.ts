@@ -162,8 +162,8 @@ export async function POST(request: NextRequest) {
       }
       
       const optimizedLayout = await optimizeLayoutDocumentImages(layoutDocument, {
-        maxWidth: 1200, // Higher res for PDF
-        quality: 85,
+        maxWidth: 1000, // Reduced from 1200 to help Puppeteer
+        quality: 75,   // Reduced from 85
         headers
       })
       
