@@ -68,6 +68,13 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     price: '',
     available: true
   })
+  const [showEditItem, setShowEditItem] = useState<MenuItem | null>(null)
+  const [editItemData, setEditItemData] = useState({
+    name: '',
+    description: '',
+    price: '',
+    available: true
+  })
   
   // Menu item actions states
   const [activeMenuItem, setActiveMenuItem] = useState<MenuItem | null>(null)
@@ -675,6 +682,63 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       showToast({
         type: 'error',
         title: 'Failed to add item',
+        description: error instanceof Error ? error.message : 'Please try again.',
+      })
+    }
+  }
+
+  const handleUpdateItem = async (itemId: string) => {
+    const { name, description, price, available } = editItemData
+    
+    if (!name.trim()) {
+      showToast({
+        type: 'error',
+        title: 'Item name required',
+        description: 'Please enter a name for the menu item.',
+      })
+      return
+    }
+
+    const priceNum = parseFloat(price)
+    if (isNaN(priceNum) || priceNum < 0) {
+      showToast({
+        type: 'error',
+        title: 'Invalid price',
+        description: 'Please enter a valid price.',
+      })
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/menus/${menuId}/items/${itemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim() || null,
+          price: priceNum,
+          available
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update item')
+      }
+
+      await refreshMenu()
+      setShowEditItem(null)
+      
+      showToast({
+        type: 'success',
+        title: 'Item updated',
+        description: `"${name}" has been updated.`,
+      })
+    } catch (error) {
+      console.error('Error updating item:', error)
+      showToast({
+        type: 'error',
+        title: 'Failed to update item',
         description: error instanceof Error ? error.message : 'Please try again.',
       })
     }
@@ -1906,6 +1970,16 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             setActiveImageMode('manage')
             setActiveMenuItem(null)
           }}
+          onEditDetails={() => {
+            setEditItemData({
+              name: activeMenuItem.name,
+              description: activeMenuItem.description || '',
+              price: activeMenuItem.price?.toString() || '',
+              available: activeMenuItem.available
+            })
+            setShowEditItem(activeMenuItem)
+            setActiveMenuItem(null)
+          }}
         />
       )}
 
@@ -2019,6 +2093,102 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                     disabled={!newItemData.name.trim() || !newItemData.price}
                   >
                     Add Item
+                  </UXButton>
+                </div>
+              </div>
+            </UXCard>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Edit Item Modal */}
+      {!isDemo && showEditItem && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md">
+            <UXCard>
+              <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-ux-border/60">
+                <h3 className="text-sm font-semibold text-ux-text">
+                  Update Item Details
+                </h3>
+                <button
+                  type="button"
+                  className="h-7 w-7 flex items-center justify-center rounded-full text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-primary transition-colors"
+                  onClick={() => setShowEditItem(null)}
+                  aria-label="Close edit item modal"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-ux-text mb-2">
+                    Item Name *
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-ux-border rounded-lg text-ux-text bg-ux-background focus:outline-none focus:ring-2 focus:ring-ux-primary"
+                    value={editItemData.name}
+                    onChange={(e) => setEditItemData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g., Caesar Salad"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-ux-text mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-ux-border rounded-lg text-ux-text bg-ux-background focus:outline-none focus:ring-2 focus:ring-ux-primary resize-none"
+                    rows={2}
+                    value={editItemData.description}
+                    onChange={(e) => setEditItemData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Brief description of the item"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-ux-text mb-2">
+                    Price *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="w-full px-3 py-2 border border-ux-border rounded-lg text-ux-text bg-ux-background focus:outline-none focus:ring-2 focus:ring-ux-primary"
+                    value={editItemData.price}
+                    onChange={(e) => setEditItemData(prev => ({ ...prev, price: e.target.value }))}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="available-edit"
+                    className="h-4 w-4 text-ux-primary focus:ring-ux-primary border-ux-border rounded"
+                    checked={editItemData.available}
+                    onChange={(e) => setEditItemData(prev => ({ ...prev, available: e.target.checked }))}
+                  />
+                  <label htmlFor="available-edit" className="text-sm text-ux-text">
+                    Available for ordering
+                  </label>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <UXButton
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowEditItem(null)}
+                  >
+                    Cancel
+                  </UXButton>
+                  <UXButton
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleUpdateItem(showEditItem.id)}
+                    disabled={!editItemData.name.trim() || !editItemData.price}
+                  >
+                    Update Item
                   </UXButton>
                 </div>
               </div>

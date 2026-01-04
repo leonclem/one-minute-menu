@@ -13,6 +13,7 @@ interface MenuItemActionsModalProps {
   onClose: () => void
   onItemUpdated: () => void
   onManageImages?: () => void
+  onEditDetails?: () => void
 }
 
 export default function MenuItemActionsModal({
@@ -21,7 +22,8 @@ export default function MenuItemActionsModal({
   availableCategories,
   onClose,
   onItemUpdated,
-  onManageImages
+  onManageImages,
+  onEditDetails
 }: MenuItemActionsModalProps) {
   const [loading, setLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -223,6 +225,20 @@ export default function MenuItemActionsModal({
           </div>
           
           <div className="space-y-2">
+            {/* Edit details */}
+            {onEditDetails && (
+              <button
+                onClick={() => {
+                  onEditDetails()
+                  onClose()
+                }}
+                disabled={loading}
+                className="w-full text-left px-3 py-2 rounded-lg hover:bg-ux-background-secondary transition-colors text-ux-text disabled:opacity-50"
+              >
+                Update item details
+              </button>
+            )}
+
             {/* Manage images */}
             {onManageImages && (
               <button

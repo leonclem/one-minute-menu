@@ -15,14 +15,14 @@
 - [x] Mark item as out of stock
 - [x] Generate another image
 - [x] Send Menu item to other category
-- [ ] Can't view existing photo full size for menu item
-- [ ] Can't edit title, description, price, etc. for menu item
+- [x] Can't view existing photo full size for menu item
+- [x] Can't edit title, description, price, etc. for menu item
 
 ## Image Generation Test Harness
 - [ ] Update from Gemini 2.5 Flash Image Preview to Gemini 2.5 Flash Image
 - [x] Reference image
 - [x] Test with OMG Donuts
-- [ ] Reference photo(s) for inclusion in image generation for general users
+- [ ] *NEXT* Reference photo(s) for inclusion in image generation for general users
 
 ## Menu templates
 
@@ -47,7 +47,7 @@
 - [x] Remove unnecessary background colour fills from grid elements
 - [x] Capability to modify category styling
 - [x] Prices should be right-justified to avoid clashing with menu item titles
-- [ ] Production deployment and V2 tech as default for general use
+- [ ] *NEXT* Production deployment and V2 tech as default for general use
 - [ ] Verify "print ready"
 
 ### PDF Improvements
@@ -94,6 +94,10 @@
 - [ ] Determine UAT requirements
 - [ ] Determine if database backup strategy exists (Supabase / Vercel)
 - [ ] Upgrade Vercel package
+
+## Railway
+- [ ] Implement Railway architecture to offload PDF export from Vercel
+- [ ] Review if Railway should also be used for other heavy-lifting tasks, e.g. image export
 
 ## Email templates
 - [ ] Determine and document all emails sent

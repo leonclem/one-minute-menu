@@ -7,6 +7,7 @@ import type { GeneratedImage, MenuItem, ImageGenerationParams, ImageGenerationJo
 import { Button } from '@/components/ui'
 import { useToast } from '@/components/ui'
 import ImageUpload from '@/components/ImageUpload'
+import ZoomableImageModal from '@/components/ZoomableImageModal'
 
 interface ItemManagementModalProps {
   itemId: string
@@ -30,6 +31,7 @@ export default function ItemManagementModal({
   const [variations, setVariations] = useState<GeneratedImage[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showUpload, setShowUpload] = useState(false)
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
 
   
   // Editing states
@@ -666,9 +668,10 @@ export default function ItemManagementModal({
                           <img
                             src={v.thumbnailUrl || v.mobileUrl || v.originalUrl}
                             alt={itemName || 'Variation'}
-                            className="w-full h-24 sm:h-32 object-cover"
+                            className="w-full h-24 sm:h-32 object-cover cursor-pointer hover:opacity-90 transition-opacity"
                             loading="lazy"
                             decoding="async"
+                            onClick={() => setPreviewImageUrl(v.originalUrl)}
                           />
                         </div>
                         <div className="p-2 flex items-center gap-1">
@@ -710,6 +713,15 @@ export default function ItemManagementModal({
               />
             </div>
           </div>
+        )}
+
+        {previewImageUrl && (
+          <ZoomableImageModal
+            isOpen={!!previewImageUrl}
+            onClose={() => setPreviewImageUrl(null)}
+            url={previewImageUrl}
+            alt={itemName || 'Item preview'}
+          />
         )}
       </div>
     </div>,
