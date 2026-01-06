@@ -390,6 +390,8 @@ export interface SelectionConfigV2 {
   texturesEnabled?: boolean
   /** Show menu title in title region */
   showMenuTitle?: boolean
+  /** Optional custom colour palette ID */
+  colourPaletteId?: string
 }
 
 

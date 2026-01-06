@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuOperations } from '@/lib/database'
 import { toEngineMenu } from '@/lib/templates/menu-transformer'
+import { transformMenuToV2, isEngineMenuV2 } from '@/lib/templates/v2/menu-transformer-v2'
+import { generateLayoutWithVersion } from '@/lib/templates/engine-selector'
 import { TEMPLATE_REGISTRY } from '@/lib/templates/template-definitions'
-import { generateLayout } from '@/lib/templates/layout-engine'
-import { checkCompatibility } from '@/lib/templates/compatibility-checker'
 import type { MenuTemplateSelection } from '@/lib/templates/engine-types'
 
 /**
@@ -79,6 +79,14 @@ export async function GET(
   try {
     const { searchParams } = new URL(request.url)
     const templateId = searchParams.get('templateId')
+    const paletteId = searchParams.get('paletteId')
+    
+    // V2 Options
+    const fillersEnabled = searchParams.get('fillersEnabled') === 'true'
+    const textOnly = searchParams.get('textOnly') === 'true'
+    const texturesEnabled = searchParams.get('texturesEnabled') !== 'false' // default true
+    const showMenuTitle = searchParams.get('showMenuTitle') === 'true'
+    const engineVersion = (searchParams.get('engineVersion') as 'v1' | 'v2') || 'v2'
     
     if (!templateId) {
       return NextResponse.json(
@@ -87,13 +95,15 @@ export async function GET(
       )
     }
     
-    // Validate template exists
-    const template = TEMPLATE_REGISTRY[templateId]
-    if (!template) {
-      return NextResponse.json(
-        { error: 'Invalid templateId' },
-        { status: 400 }
-      )
+    // For V1, we still need to validate against TEMPLATE_REGISTRY
+    if (engineVersion === 'v1') {
+      const template = TEMPLATE_REGISTRY[templateId]
+      if (!template) {
+        return NextResponse.json(
+          { error: 'Invalid V1 templateId' },
+          { status: 400 }
+        )
+      }
     }
     
     const supabase = createServerSupabaseClient()
@@ -128,24 +138,14 @@ export async function GET(
       )
     }
     
-    // Load saved template selection (if exists)
-    let selection: MenuTemplateSelection | undefined
-    const { data: selectionData } = await supabase
-      .from('menu_template_selections')
-      .select('*')
-      .eq('menu_id', params.menuId)
-      .single()
-    
-    if (selectionData) {
-      selection = {
-        id: selectionData.id,
-        menuId: selectionData.menu_id,
-        templateId: selectionData.template_id,
-        templateVersion: selectionData.template_version,
-        configuration: selectionData.configuration,
-        createdAt: new Date(selectionData.created_at),
-        updatedAt: new Date(selectionData.updated_at)
-      }
+    // Configuration object for cache and engine
+    const configuration = {
+      paletteId,
+      fillersEnabled,
+      textOnly,
+      texturesEnabled,
+      showMenuTitle,
+      engineVersion
     }
     
     // Generate cache key
@@ -153,7 +153,7 @@ export async function GET(
       params.menuId,
       templateId,
       menu.updatedAt,
-      selection?.configuration
+      configuration
     )
     
     // Check cache
@@ -166,27 +166,46 @@ export async function GET(
       })
     }
     
-    // Transform to EngineMenu
-    const engineMenu = toEngineMenu(menu)
-    
-    // Check compatibility
-    const compatibility = checkCompatibility(engineMenu, template)
-    if (compatibility.status === 'INCOMPATIBLE') {
-      return NextResponse.json(
-        { 
-          error: 'Template is incompatible with this menu',
-          compatibility
+    let layout
+    if (engineVersion === 'v2') {
+      // Transform to EngineMenuV2
+      const menuV2 = transformMenuToV2(menu)
+      
+      layout = await generateLayoutWithVersion({
+        menu: menuV2,
+        templateId,
+        selection: {
+          textOnly,
+          fillersEnabled,
+          texturesEnabled,
+          showMenuTitle,
+          colourPaletteId: paletteId || undefined
         },
-        { status: 400 }
-      )
+        debug: true
+      }, 'v2')
+    } else {
+      // V1 Path
+      const template = TEMPLATE_REGISTRY[templateId]
+      const engineMenu = toEngineMenu(menu)
+      
+      layout = await generateLayoutWithVersion({
+        menu: engineMenu,
+        template,
+        selection: {
+          id: 'preview-selection',
+          menuId: params.menuId,
+          templateId,
+          templateVersion: template.version,
+          configuration: {
+            textOnly,
+            useLogo: true,
+            colourPaletteId: paletteId || undefined
+          },
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      }, 'v1')
     }
-    
-    // Generate layout
-    const layout = generateLayout({
-      menu: engineMenu,
-      template,
-      selection
-    })
     
     // Cache the layout
     setCachedLayout(cacheKey, layout)
@@ -194,23 +213,14 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: layout,
-      cached: false,
-      compatibility: compatibility.status === 'WARNING' ? compatibility : undefined
+      cached: false
     })
     
   } catch (error) {
     console.error('Error generating layout:', error)
     
-    // Check if it's a compatibility error
-    if (error instanceof Error && error.name === 'CompatibilityError') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      )
-    }
-    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     )
   }
@@ -227,7 +237,16 @@ export async function POST(
 ) {
   try {
     const body = await request.json()
-    const { menu, templateId, configuration } = body
+    const { menu, templateId, configuration = {} } = body
+    
+    const {
+      paletteId,
+      fillersEnabled = false,
+      textOnly = false,
+      texturesEnabled = true,
+      showMenuTitle = false,
+      engineVersion = 'v2'
+    } = configuration
     
     if (!menu) {
       return NextResponse.json(
@@ -243,69 +262,63 @@ export async function POST(
       )
     }
     
-    // Validate template exists
-    const template = TEMPLATE_REGISTRY[templateId]
-    if (!template) {
-      return NextResponse.json(
-        { error: 'Invalid templateId' },
-        { status: 400 }
-      )
-    }
-    
-    // Transform to EngineMenu
-    const engineMenu = toEngineMenu(menu)
-    
-    // Check compatibility
-    const compatibility = checkCompatibility(engineMenu, template)
-    if (compatibility.status === 'INCOMPATIBLE') {
-      return NextResponse.json(
-        { 
-          error: 'Template is incompatible with this menu',
-          compatibility
+    let layout
+    if (engineVersion === 'v2') {
+      // Transform to EngineMenuV2 if needed
+      const menuV2 = isEngineMenuV2(menu) ? menu : transformMenuToV2(menu)
+      
+      layout = await generateLayoutWithVersion({
+        menu: menuV2,
+        templateId,
+        selection: {
+          textOnly,
+          fillersEnabled,
+          texturesEnabled,
+          showMenuTitle,
+          colourPaletteId: paletteId
         },
-        { status: 400 }
-      )
+        debug: true
+      }, 'v2')
+    } else {
+      // V1 Path
+      const template = TEMPLATE_REGISTRY[templateId]
+      if (!template) {
+        return NextResponse.json({ error: 'Invalid V1 templateId' }, { status: 400 })
+      }
+      const engineMenu = toEngineMenu(menu)
+      
+      layout = await generateLayoutWithVersion({
+        menu: engineMenu,
+        template,
+        selection: {
+          id: 'demo-selection',
+          menuId: params.menuId,
+          templateId,
+          templateVersion: template.version,
+          configuration: {
+            textOnly,
+            useLogo: true,
+            colourPaletteId: paletteId
+          },
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      }, 'v1')
     }
-    
-    // Create selection object if configuration provided
-    const selection: MenuTemplateSelection | undefined = configuration ? {
-      id: 'demo-selection',
-      menuId: params.menuId,
-      templateId,
-      templateVersion: template.version,
-      configuration,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    } : undefined
-    
-    // Generate layout
-    const layout = generateLayout({
-      menu: engineMenu,
-      template,
-      selection
-    })
     
     return NextResponse.json({
       success: true,
       data: layout,
-      cached: false,
-      compatibility: compatibility.status === 'WARNING' ? compatibility : undefined
+      cached: false
     })
     
   } catch (error) {
     console.error('Error generating layout:', error)
     
-    // Check if it's a compatibility error
-    if (error instanceof Error && error.name === 'CompatibilityError') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      )
-    }
-    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     )
   }
 }
+

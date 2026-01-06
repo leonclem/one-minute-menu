@@ -48,10 +48,34 @@ const mockTemplatesResponse = {
 const mockLayoutResponse = {
   success: true,
   data: {
+    templateId: 'classic-grid-cards',
+    templateVersion: '1.0.0',
+    pageSpec: {
+      id: 'A4_PORTRAIT',
+      width: 595.28,
+      height: 841.89,
+      margins: { top: 36, right: 36, bottom: 36, left: 36 }
+    },
     pages: [{
       pageIndex: 0,
+      pageType: 'SINGLE',
+      regions: [],
       tiles: [
-        { id: 'title', type: 'TITLE', content: 'Demo Brunch', grid: { row: 0, col: 0, rowSpan: 1, colSpan: 3 } }
+        { 
+          id: 'title', 
+          type: 'TITLE', 
+          regionId: 'header', 
+          x: 0, 
+          y: 0, 
+          width: 523, 
+          height: 50, 
+          colSpan: 3, 
+          rowSpan: 1, 
+          gridRow: 0, 
+          gridCol: 0, 
+          layer: 'content', 
+          content: { text: 'Demo Brunch' } 
+        }
       ]
     }],
     totalPages: 1
@@ -94,9 +118,9 @@ describe('UXMenuTemplateClient (demo flow)', () => {
     global.fetch = undefined
   })
 
-  it('shows "Select and Export" for demo users', async () => {
+  it('shows "Confirm and Export" for demo users', async () => {
     const { unmount } = render(<UXMenuTemplateClient menuId="demo-123" />)
-    expect(await screen.findByText('Select and Export')).toBeInTheDocument()
+    expect(await screen.findByText(/Confirm and Export/)).toBeInTheDocument()
     unmount()
   })
 })

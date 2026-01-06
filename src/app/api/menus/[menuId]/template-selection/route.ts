@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { TEMPLATE_REGISTRY } from '@/lib/templates/template-definitions'
+import { templateExists } from '@/lib/templates/v2/template-loader-v2'
 
 /**
  * POST /api/menus/{menuId}/template-selection
@@ -36,13 +37,22 @@ export async function POST(
       )
     }
     
-    // Validate template exists
-    const template = TEMPLATE_REGISTRY[templateId]
-    if (!template) {
-      return NextResponse.json(
-        { error: 'Invalid templateId' },
-        { status: 400 }
-      )
+    // Validate template exists (check V1 registry then V2 file system)
+    let templateVersion = '1.0.0'
+    const v1Template = TEMPLATE_REGISTRY[templateId]
+    
+    if (v1Template) {
+      templateVersion = v1Template.version
+    } else {
+      // Check if it's a V2 template
+      const existsV2 = await templateExists(templateId)
+      if (!existsV2) {
+        return NextResponse.json(
+          { error: `Invalid templateId: ${templateId}` },
+          { status: 400 }
+        )
+      }
+      templateVersion = '2.0.0'
     }
     
     // For demo menus, store in sessionStorage (client-side)
@@ -53,7 +63,7 @@ export async function POST(
         data: {
           menuId: params.menuId,
           templateId,
-          templateVersion: template.version,
+          templateVersion,
           configuration: configuration || { textOnly: false, useLogo: false }
         }
       })
@@ -70,7 +80,7 @@ export async function POST(
     const selectionData = {
       menu_id: params.menuId,
       template_id: templateId,
-      template_version: template.version,
+      template_version: templateVersion,
       configuration: configuration || { textOnly: false, useLogo: false },
       updated_at: new Date().toISOString()
     }

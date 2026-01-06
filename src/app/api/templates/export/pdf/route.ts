@@ -15,7 +15,7 @@ import { logger } from '@/lib/logger'
 export const maxDuration = 60
 
 /**
- * Handle PDF export using the new template engine
+ * Handle PDF export using the new template engine (V2)
  */
 async function handleNewTemplateEngine(
   menu: any,
@@ -25,27 +25,15 @@ async function handleNewTemplateEngine(
   metricsBuilder: MetricsBuilder,
   headers?: Record<string, string>
 ) {
-  // Import new template engine modules
-  const { toEngineMenu } = await import('@/lib/templates/menu-transformer')
-  const { TEMPLATE_REGISTRY } = await import('@/lib/templates/template-definitions')
-  const { generateLayout } = await import('@/lib/templates/layout-engine')
-  const { checkCompatibility } = await import('@/lib/templates/compatibility-checker')
-  const { ServerLayoutRenderer } = await import('@/lib/templates/export/layout-renderer')
-  const { renderToString } = await import('react-dom/server')
-  const { createElement } = await import('react')
+  // Import V2 template engine modules
+  const { transformMenuToV2 } = await import('@/lib/templates/v2/menu-transformer-v2')
+  const { generateLayoutV2 } = await import('@/lib/templates/v2/layout-engine-v2')
+  const { renderToPdf } = await import('@/lib/templates/v2/renderer-pdf-v2')
+  const { optimizeLayoutDocumentImages } = await import('@/lib/templates/v2/image-optimizer-v2')
   
-  // Validate template exists
-  const template = TEMPLATE_REGISTRY[templateId]
-  if (!template) {
-    return NextResponse.json(
-      { error: 'Invalid template ID', code: ERROR_CODES.PRESET_NOT_FOUND },
-      { status: 400 }
-    )
-  }
-  
-  // Transform menu to EngineMenu
+  // Transform menu to EngineMenuV2
   metricsBuilder.markCalculationStart()
-  const engineMenu = toEngineMenu(menu)
+  const engineMenu = transformMenuToV2(menu)
 
   // Calculate menu characteristics for metrics
   const sectionCount = engineMenu.sections.length
@@ -69,154 +57,72 @@ async function handleNewTemplateEngine(
     hasDescriptions
   })
   
-  // Check compatibility
-  const compatibility = checkCompatibility(engineMenu, template)
-  if (compatibility.status === 'INCOMPATIBLE') {
-    return NextResponse.json(
-      { 
-        error: 'Template is incompatible with this menu',
-        code: ERROR_CODES.INVALID_INPUT,
-        details: compatibility
-      },
-      { status: 400 }
-    )
-  }
-  
   // Load saved template selection (if exists)
   const supabase = createServerSupabaseClient()
-  let selection: any
   const { data: selectionData } = await supabase
     .from('menu_template_selections')
     .select('*')
     .eq('menu_id', menu.id)
     .single()
   
-  if (selectionData) {
-    selection = {
-      id: selectionData.id,
-      menuId: selectionData.menu_id,
-      templateId: selectionData.template_id,
-      templateVersion: selectionData.template_version,
-      configuration: selectionData.configuration,
-      createdAt: new Date(selectionData.created_at),
-      updatedAt: new Date(selectionData.updated_at)
-    }
-  }
+  const configuration = selectionData?.configuration || {}
   
-  // Generate layout
-  let layout = generateLayout({
+  // Generate V2 layout
+  const layoutDocument = await generateLayoutV2({
     menu: engineMenu,
-    template,
-    selection
+    templateId,
+    selection: {
+      textOnly: configuration.textOnly || false,
+      fillersEnabled: configuration.fillersEnabled || false,
+      texturesEnabled: configuration.texturesEnabled !== false, // default true
+      showMenuTitle: configuration.showMenuTitle || false,
+      colourPaletteId: configuration.colourPaletteId || configuration.paletteId
+    },
+    debug: false
   })
   
   metricsBuilder.setLayoutSelection(templateId, 'print')
   metricsBuilder.markCalculationEnd()
   
-  // Convert all image URLs to base64 data URLs for PDF compatibility
-  // This can be disabled via environment variable if it causes timeouts
-  const enableImageConversion = process.env.PDF_ENABLE_IMAGES !== 'false'
-  
-  if (enableImageConversion) {
-    try {
-      const { convertLayoutImagesToDataURLs } = await import('@/lib/templates/export/texture-utils')
-      logger.info('[PDFExporter] Converting images to base64...')
-      layout = await convertLayoutImagesToDataURLs(layout, {
-        concurrency: 2, // Reduced concurrency to avoid overwhelming SSL connections
-        timeout: 8000,  // Reduced timeout to fail faster on SSL issues
-        maxImages: 20,
-        headers
-      })
-      logger.info('[PDFExporter] Image conversion complete')
-    } catch (error) {
-      logger.error('[PDFExporter] Image conversion failed, using fallbacks:', error)
-      // Continue with original layout (will show fallback icons)
-    }
-  } else {
-    logger.info('[PDFExporter] Image conversion disabled, using fallback icons')
-  }
-  
-  // Render layout to HTML (without the inline style tags)
+  // Optimize images for PDF
   metricsBuilder.markRenderStart()
-  const componentHTML = renderToString(
-    createElement(ServerLayoutRenderer, {
-      layout,
-      template,
-      paletteId: selection?.configuration?.colourPaletteId,
-      currency: engineMenu.metadata.currency,
-      className: 'pdf-export',
-      skipInlineStyles: true
-    })
-  )
+  const optimizedLayout = await optimizeLayoutDocumentImages(layoutDocument, {
+    maxWidth: 1000,
+    quality: 75,
+    headers
+  })
   metricsBuilder.markRenderEnd()
   
-  // Generate template CSS for the document head
-  const { generateTemplateCSS } = await import('@/lib/templates/server-style-generator')
-  const templateCSS = await generateTemplateCSS(template, selection?.configuration?.colourPaletteId, 'inline', headers)
-  
-  // Build complete HTML document with styles properly in <head>
-  const htmlDocument = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${options.title || menu.name}</title>
-  <style>
-${templateCSS}
-
-@page {
-  size: ${template.orientation === 'A4_LANDSCAPE' ? 'A4 landscape' : 'A4 portrait'};
-  margin: 0;
-}
-  </style>
-</head>
-<body>
-${componentHTML}
-</body>
-</html>`.trim()
-  
-  // Debug: Log first 500 chars of HTML to verify structure
-  logger.info('[PDFExporter] HTML preview:', htmlDocument.substring(0, 500))
-  
-  // Export to PDF
+  // Render to PDF using V2 renderer
   metricsBuilder.markExportStart()
-  // Create minimal LayoutMenuData for PDF export metadata
-  const layoutData = {
-    metadata: {
-      title: menu.name,
-      currency: engineMenu.metadata.currency
-    },
-    sections: []
-  }
-  const result = await exportToPDF(htmlDocument, layoutData, {
-    ...options,
-    title: options.title || menu.name
+  const pdfResult = await renderToPdf(optimizedLayout, {
+    title: options.title || menu.name,
+    paletteId: configuration.colourPaletteId || configuration.paletteId,
+    includePageNumbers: options.includePageNumbers !== false,
+    printBackground: true,
+    texturesEnabled: configuration.texturesEnabled !== false,
+    showRegionBounds: false
   })
   metricsBuilder.markExportEnd()
   
   // Set export details and build metrics
-  metricsBuilder.setExportDetails('pdf', result.size)
+  metricsBuilder.setExportDetails('pdf', pdfResult.size)
   const metrics = metricsBuilder.build()
   logLayoutMetrics(metrics)
   
-  // Validate performance
-  const performanceCheck = validatePerformance(metrics)
-  if (!performanceCheck.isValid) {
-    logger.warn('[PDFExporter] Performance warnings:', performanceCheck.warnings)
-  }
-  
-  // Return PDF with appropriate headers
-  const orientation = template.orientation === 'A4_LANDSCAPE' ? 'landscape' : 'portrait'
-  return new Response(result.pdfBytes as any, {
+  // Return PDF
+  const filename = `${menu.slug || 'menu'}-v2.pdf`
+  return new Response(pdfResult.pdfBytes as any, {
     status: 200,
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Length': result.size.toString(),
-      'Content-Disposition': `attachment; filename="${menu.slug}-${orientation}.pdf"`,
+      'Content-Length': pdfResult.size.toString(),
+      'Content-Disposition': `attachment; filename="${filename}"`,
       'Cache-Control': 'no-cache'
     }
   })
 }
+
 
 // Request body schema
 const ExportPDFRequestSchema = z.object({

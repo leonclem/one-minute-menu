@@ -47,7 +47,7 @@
 - [x] Remove unnecessary background colour fills from grid elements
 - [x] Capability to modify category styling
 - [x] Prices should be right-justified to avoid clashing with menu item titles
-- [ ] *NEXT* Production deployment and V2 tech as default for general use
+- [x] *NEXT* V2 tech as default for general use
 - [ ] Verify "print ready"
 
 ### PDF Improvements
@@ -79,8 +79,6 @@
 
 ## Back office
 - [x] Complete bank account application
-- [ ] Finalise Aspire bank account setup
-- [ ] Implement Stripe payment system
 - [ ] Privacy Policy - consider data use (particularly at scale, benchmarking, etc.)
 - [ ] Terms of Service
 - [ ] Contact Us
@@ -91,6 +89,8 @@
 
 ## Deployment
 - [x] Purchase domain
+- [ ] Finalise Aspire bank account setup
+- [ ] Implement Stripe payment system
 - [ ] Determine UAT requirements
 - [ ] Determine if database backup strategy exists (Supabase / Vercel)
 - [ ] Upgrade Vercel package

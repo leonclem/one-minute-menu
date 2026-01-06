@@ -238,6 +238,7 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
               body: JSON.stringify({
                 menu: demoMenu,
                 templateId: templateSelection.templateId,
+                configuration: templateSelection.configuration,
                 options: {
                   orientation: 'portrait',
                   includePageNumbers: true,
@@ -326,9 +327,11 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
       let body: any = { menuId: baseId }
       let filename = ''
       
-      // Include templateId if a template selection exists
+      // Include templateId and configuration if a template selection exists
       if (templateSelection?.templateId) {
         body.templateId = templateSelection.templateId
+        // Pass configuration to export API
+        body.configuration = templateSelection.configuration
       }
 
       switch (option.id) {

@@ -32,9 +32,15 @@ const templateCache = new Map<string, TemplateV2>()
  * @throws TemplateValidationError if template is invalid
  */
 export async function loadTemplateV2(templateId: string): Promise<TemplateV2> {
+  // Map legacy V1 IDs to V2 IDs for backward compatibility with saved selections
+  const effectiveId = templateId === 'classic-grid-cards' ? 'classic-cards-v2' :
+                     templateId === 'two-column-text' ? 'italian-v2' :
+                     templateId === 'simple-rows' ? 'classic-cards-v2' : 
+                     templateId;
+
   // Check cache first
-  if (templateCache.has(templateId)) {
-    return templateCache.get(templateId)!
+  if (templateCache.has(effectiveId)) {
+    return templateCache.get(effectiveId)!
   }
   
   try {
@@ -42,7 +48,7 @@ export async function loadTemplateV2(templateId: string): Promise<TemplateV2> {
     const yamlPath = path.join(
       process.cwd(), 
       'src/lib/templates/v2/templates', 
-      `${templateId}.yaml`
+      `${effectiveId}.yaml`
     )
     
     // Read and parse YAML file
@@ -53,16 +59,16 @@ export async function loadTemplateV2(templateId: string): Promise<TemplateV2> {
     const result = TemplateSchemaV2.safeParse(parsed)
     if (!result.success) {
       throw new TemplateValidationError(
-        `Invalid template ${templateId}`,
+        `Invalid template ${effectiveId}`,
         result.error.issues
       )
     }
     
     // Validate derived values (validate, don't compute)
-    const template = validateDerivedValues(result.data, templateId)
+    const template = validateDerivedValues(result.data, effectiveId)
     
     // Cache the validated template
-    templateCache.set(templateId, template)
+    templateCache.set(effectiveId, template)
     return template
     
   } catch (error) {
@@ -73,7 +79,7 @@ export async function loadTemplateV2(templateId: string): Promise<TemplateV2> {
     
     // Wrap other errors (file not found, YAML parse errors, etc.)
     throw new TemplateValidationError(
-      `Failed to load template ${templateId}: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to load template ${effectiveId}: ${error instanceof Error ? error.message : String(error)}`,
       []
     )
   }
@@ -228,11 +234,15 @@ export function getTemplateCacheStats(): { size: number; keys: string[] } {
  * @returns Promise resolving to true if template file exists
  */
 export async function templateExists(templateId: string): Promise<boolean> {
+  const effectiveId = templateId === 'classic-grid-cards' ? 'classic-cards-v2' :
+                     templateId === 'two-column-text' ? 'italian-v2' :
+                     templateId === 'simple-rows' ? 'classic-cards-v2' : 
+                     templateId;
   try {
     const yamlPath = path.join(
       process.cwd(), 
       'src/lib/templates/v2/templates', 
-      `${templateId}.yaml`
+      `${effectiveId}.yaml`
     )
     
     await readFile(yamlPath, 'utf-8')
