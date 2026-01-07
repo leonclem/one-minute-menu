@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     plan VARCHAR(20) DEFAULT 'free' CHECK (plan IN ('free', 'premium', 'enterprise')),
     plan_limits JSONB DEFAULT '{"menus": 1, "items": 20, "ocr_jobs": 5, "monthly_uploads": 10}',
     location VARCHAR(100),
+    role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -151,6 +152,10 @@ ALTER TABLE ocr_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE menu_audit ENABLE ROW LEVEL SECURITY;
 ALTER TABLE menu_analytics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE uploads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reserved_slugs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_analytics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE geographic_usage ENABLE ROW LEVEL SECURITY;
+ALTER TABLE abuse_reports ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for profiles
 DO $$ 
@@ -213,6 +218,70 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'uploads' AND policyname = 'Users can manage own uploads') THEN
         CREATE POLICY "Users can manage own uploads" ON uploads USING (auth.uid() = user_id);
+    END IF;
+END $$;
+
+-- RLS Policies for reserved_slugs
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'reserved_slugs' AND policyname = 'Public can view reserved slugs') THEN
+        CREATE POLICY "Public can view reserved slugs" ON reserved_slugs FOR SELECT USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'reserved_slugs' AND policyname = 'Admins can manage reserved slugs') THEN
+        CREATE POLICY "Admins can manage reserved slugs" ON reserved_slugs
+            FOR ALL TO authenticated
+            USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+    END IF;
+END $$;
+
+-- RLS Policies for platform_analytics
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'platform_analytics' AND policyname = 'Admins can view platform analytics') THEN
+        CREATE POLICY "Admins can view platform analytics" ON platform_analytics
+            FOR SELECT TO authenticated
+            USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'platform_analytics' AND policyname = 'Anyone can insert platform analytics') THEN
+        CREATE POLICY "Anyone can insert platform analytics" ON platform_analytics FOR INSERT WITH CHECK (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'platform_analytics' AND policyname = 'Anyone can update platform analytics') THEN
+        CREATE POLICY "Anyone can update platform analytics" ON platform_analytics FOR UPDATE USING (true) WITH CHECK (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'platform_analytics' AND policyname = 'Admins can delete platform analytics') THEN
+        CREATE POLICY "Admins can delete platform analytics" ON platform_analytics FOR DELETE TO authenticated USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+    END IF;
+END $$;
+
+-- RLS Policies for geographic_usage
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'geographic_usage' AND policyname = 'Admins can view geographic usage') THEN
+        CREATE POLICY "Admins can view geographic usage" ON geographic_usage
+            FOR SELECT TO authenticated
+            USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'geographic_usage' AND policyname = 'Anyone can insert geographic usage') THEN
+        CREATE POLICY "Anyone can insert geographic usage" ON geographic_usage FOR INSERT WITH CHECK (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'geographic_usage' AND policyname = 'Anyone can update geographic usage') THEN
+        CREATE POLICY "Anyone can update geographic usage" ON geographic_usage FOR UPDATE USING (true) WITH CHECK (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'geographic_usage' AND policyname = 'Admins can delete geographic usage') THEN
+        CREATE POLICY "Admins can delete geographic usage" ON geographic_usage FOR DELETE TO authenticated USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+    END IF;
+END $$;
+
+-- RLS Policies for abuse_reports
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'abuse_reports' AND policyname = 'Public can submit abuse reports') THEN
+        CREATE POLICY "Public can submit abuse reports" ON abuse_reports FOR INSERT WITH CHECK (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'abuse_reports' AND policyname = 'Admins can manage abuse reports') THEN
+        CREATE POLICY "Admins can manage abuse reports" ON abuse_reports
+            FOR ALL TO authenticated
+            USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
     END IF;
 END $$;
 
@@ -310,6 +379,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE ocr_jobs;
 
 -- Comments for documentation
 COMMENT ON TABLE profiles IS 'User profiles extending Supabase auth.users with plan information';
+COMMENT ON COLUMN profiles.role IS 'User role: user (default) or admin (for dashboard access)';
 COMMENT ON TABLE menus IS 'Restaurant menus with JSONB data for flexibility';
 COMMENT ON TABLE menu_versions IS 'Menu version history for rollback functionality';
 COMMENT ON TABLE ocr_jobs IS 'OCR processing job queue with LISTEN/NOTIFY support';
