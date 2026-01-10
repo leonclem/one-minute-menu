@@ -63,7 +63,9 @@ export async function POST(request: NextRequest) {
     if (normalizedRefs.length > 0) {
       reference_images = []
       for (const ref of normalizedRefs) {
-        const match = /^data:(image\/png|image\/jpeg|image\/webp);base64,([A-Za-z0-9+/=]+)$/.exec(ref.dataUrl || '')
+        const dataUrl = (ref.dataUrl || '').trim()
+        const match = dataUrl.match(/^data:(image\/png|image\/jpeg|image\/webp);base64,/)
+        
         if (!match) {
           return NextResponse.json(
             { error: 'Invalid reference image dataUrl. Must be a base64 data URL for PNG/JPEG/WebP.' },
@@ -72,7 +74,12 @@ export async function POST(request: NextRequest) {
         }
 
         const mimeType = match[1]
-        const b64 = match[2]
+        const b64 = dataUrl.substring(match[0].length).replace(/[\r\n\s]/g, '')
+        
+        if (!b64) {
+          return NextResponse.json({ error: 'Reference image has no data' }, { status: 400 })
+        }
+
         if (!VALID_MIME_TYPES.has(mimeType)) {
           return NextResponse.json({ error: 'Invalid reference image type' }, { status: 400 })
         }

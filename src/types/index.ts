@@ -481,8 +481,8 @@ export interface ValidationError extends AppError {
 
 export interface ImageGenerationParams {
   style?: 'rustic' | 'modern' | 'elegant' | 'casual'
-  presentation?: 'white_plate' | 'wooden_board' | 'overhead' | 'closeup'
-  lighting?: 'warm' | 'natural' | 'studio'
+  presentation?: 'white_plate' | 'wooden_board' | 'overhead' | 'closeup' | 'bokeh'
+  lighting?: 'warm' | 'natural' | 'studio' | 'cinematic' | 'golden_hour'
   aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
   negativePrompt?: string
   customPromptAdditions?: string
@@ -550,6 +550,11 @@ export interface NanoBananaParams {
      * For general context: "subject", "background", "style", "other"
      */
     role?: string
+    /**
+     * Optional user-provided comment/instruction for this specific reference image.
+     * e.g., "use the bowl from this photo", "remove the herbs"
+     */
+    comment?: string
   }>
   /**
    * Optional hint to guide prompting for reference image workflows.

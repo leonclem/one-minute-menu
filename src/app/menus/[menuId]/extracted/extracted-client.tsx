@@ -1683,7 +1683,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       )}
 
       {/* Single-item management modal */}
-      {!isDemo && activeImageItemId && authMenu && (
+      {!isDemo && activeImageItemId && activeImageMode === 'manage' && authMenu && (
         <ItemManagementModal
           itemId={activeImageItemId}
           menuId={menuId}
@@ -1963,6 +1963,12 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           onItemUpdated={async () => {
             await refreshMenu()
             setSelectedItemKeys(new Set()) // Clear selections after update
+          }}
+          onGenerateImage={() => {
+            setActiveImageItemId(activeMenuItem.id)
+            setActiveImageItemName(activeMenuItem.name)
+            setActiveImageMode('generate')
+            setActiveMenuItem(null)
           }}
           onManageImages={() => {
             setActiveImageItemId(activeMenuItem.id)

@@ -51,6 +51,14 @@ export default function ItemManagementModal({
     lighting: 'natural',
     presentation: 'white_plate',
   })
+  const [referenceImages, setReferenceImages] = useState<Array<{
+    id: string
+    dataUrl: string
+    name: string
+    comment: string
+    role: string
+    isPrevious?: boolean
+  }>>([])
   
   const { showToast } = useToast()
 
@@ -142,6 +150,59 @@ export default function ItemManagementModal({
       return
     }
     await updateItemField('description', newDescription)
+  }
+
+  const urlToBase64 = async (url: string): Promise<string> => {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  }
+
+  const addPreviousAsReference = async (image: GeneratedImage) => {
+    if (referenceImages.length >= 3) {
+      showToast({
+        type: 'info',
+        title: 'Maximum reference images reached',
+        description: 'You can use up to 3 reference images.'
+      })
+      return
+    }
+
+    try {
+      setGenerating(true)
+      const dataUrl = await urlToBase64(image.originalUrl)
+      setReferenceImages(prev => [
+        ...prev,
+        {
+          id: `prev_${image.id}`,
+          dataUrl,
+          name: `Previous generation ${image.id.slice(0, 4)}`,
+          comment: '',
+          role: 'dish',
+          isPrevious: true
+        }
+      ])
+      setShowAdvanced(true)
+      showToast({
+        type: 'success',
+        title: 'Image added as reference',
+        description: 'You can now provide instructions for this image in advanced options.'
+      })
+    } catch (error) {
+      console.error('Error adding previous image as reference:', error)
+      showToast({
+        type: 'error',
+        title: 'Failed to add reference',
+        description: 'Could not process the image. Please try uploading it instead.'
+      })
+    } finally {
+      setGenerating(false)
+    }
   }
 
   const selectAiImage = async (imageId: string) => {
@@ -263,6 +324,12 @@ export default function ItemManagementModal({
           itemDescription: itemDescription,
           styleParams,
           numberOfVariations: 1,
+          referenceImages: referenceImages.map(img => ({
+            dataUrl: img.dataUrl,
+            comment: img.comment,
+            name: img.name,
+            role: img.role
+          }))
         }),
       })
       
@@ -379,9 +446,9 @@ export default function ItemManagementModal({
   if (!mounted) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <div className="w-full max-w-4xl bg-white rounded-lg shadow-lg border border-secondary-200 overflow-hidden">
-        <div className="px-4 py-3 border-b flex items-start justify-between gap-3">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-start justify-center p-4">
+      <div className="relative my-4 sm:my-8 w-full max-w-4xl bg-white rounded-lg shadow-lg border border-secondary-200 overflow-hidden flex flex-col">
+        <div className="px-4 py-3 border-b flex items-start justify-between gap-3 sticky top-0 bg-white z-20">
           <div className="min-w-0 flex-1">
             {editingName ? (
               <div className="flex items-center gap-2 mb-1">
@@ -562,7 +629,7 @@ export default function ItemManagementModal({
                 
                 {showAdvanced && (
                   <div className="mt-3 space-y-3 p-3 bg-secondary-50 rounded-lg">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-secondary-700 mb-1">Lighting</label>
                         <select 
@@ -574,6 +641,8 @@ export default function ItemManagementModal({
                           <option value="natural">Natural</option>
                           <option value="warm">Warm</option>
                           <option value="studio">Studio</option>
+                          <option value="cinematic">Cinematic (Dramatic)</option>
+                          <option value="golden_hour">Golden Hour</option>
                         </select>
                       </div>
                       <div>
@@ -588,6 +657,7 @@ export default function ItemManagementModal({
                           <option value="wooden_board">Wooden board</option>
                           <option value="overhead">Overhead</option>
                           <option value="closeup">Close-up</option>
+                          <option value="bokeh">Shallow focus (Bokeh)</option>
                         </select>
                       </div>
                     </div>
@@ -624,6 +694,117 @@ export default function ItemManagementModal({
                         className="w-full px-2 py-1.5 border border-secondary-300 rounded text-sm"
                         disabled={generating}
                       />
+                    </div>
+
+                    <div className="border-t border-secondary-200 pt-3 mt-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-xs font-medium text-secondary-700">
+                          Reference Photos ({referenceImages.length}/3)
+                        </label>
+                        {referenceImages.length < 3 && (
+                          <div className="relative">
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0]
+                                if (!file) return
+                                if (file.size > 7 * 1024 * 1024) {
+                                  showToast({ type: 'error', title: 'File too large', description: 'Max size is 7MB' })
+                                  return
+                                }
+                                const reader = new FileReader()
+                                reader.onload = () => {
+                                  setReferenceImages(prev => [
+                                    ...prev,
+                                    {
+                                      id: `upload_${Date.now()}`,
+                                      dataUrl: reader.result as string,
+                                      name: file.name,
+                                      comment: '',
+                                      role: 'scene'
+                                    }
+                                  ])
+                                }
+                                reader.readAsDataURL(file)
+                              }}
+                            />
+                            <button className="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                              + Add Photo
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {referenceImages.length > 0 ? (
+                        <div className="space-y-2">
+                          {referenceImages.map((ref) => (
+                            <div key={ref.id} className="flex flex-col sm:flex-row gap-3 p-2 bg-white border border-secondary-200 rounded-lg shadow-sm">
+                              <div className="relative w-full sm:w-16 h-24 sm:h-16 flex-shrink-0">
+                                <img 
+                                  src={ref.dataUrl} 
+                                  alt={ref.name}
+                                  className="w-full h-full object-cover rounded-md border border-secondary-100" 
+                                />
+                                {ref.isPrevious && (
+                                  <div className="absolute top-1 left-1 bg-primary-500 text-white text-[7px] px-1 rounded-sm uppercase font-bold">
+                                    Previous
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 flex flex-col justify-between gap-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <select
+                                    value={ref.role}
+                                    onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, role: e.target.value } : r))}
+                                    className="text-[10px] px-1.5 py-0.5 border border-secondary-200 rounded bg-white font-medium text-secondary-700 w-full sm:w-auto"
+                                    disabled={generating}
+                                  >
+                                    <option value="dish">Dish / Subject</option>
+                                    <option value="scene">Table / Scene</option>
+                                    <option value="style">Style / Lighting</option>
+                                    <option value="layout">Plating / Layout</option>
+                                    <option value="other">Other</option>
+                                  </select>
+                                  <button
+                                    onClick={() => setReferenceImages(prev => prev.filter(r => r.id !== ref.id))}
+                                    className="text-[9px] text-red-500 hover:text-red-700 font-medium uppercase sm:hidden"
+                                    disabled={generating}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                                <div className="relative flex-1">
+                                  <textarea
+                                    placeholder="Instruction: e.g., use this bowl"
+                                    value={ref.comment}
+                                    onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, comment: e.target.value } : r))}
+                                    className="w-full text-[11px] p-1.5 border border-secondary-200 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 resize-none bg-secondary-50/50"
+                                    rows={1}
+                                    disabled={generating}
+                                  />
+                                </div>
+                                <div className="hidden sm:flex justify-end">
+                                  <button
+                                    onClick={() => setReferenceImages(prev => prev.filter(r => r.id !== ref.id))}
+                                    className="text-[9px] text-red-500 hover:text-red-700 font-medium uppercase"
+                                    disabled={generating}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 border-2 border-dashed border-secondary-200 rounded-lg">
+                          <p className="text-[10px] text-secondary-400">
+                            No reference photos added.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -680,9 +861,18 @@ export default function ItemManagementModal({
                             size="sm"
                             onClick={() => selectAiImage(v.id)}
                             disabled={loading === 'select' || v.id === selectedId}
-                            className="flex-1 text-xs"
+                            className="flex-1 text-[10px] px-1"
                           >
                             {v.id === selectedId ? '✓ Selected' : 'Use This'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addPreviousAsReference(v)}
+                            disabled={generating || referenceImages.some(r => r.id === `prev_${v.id}`)}
+                            className="flex-1 text-[10px] px-1"
+                          >
+                            {referenceImages.some(r => r.id === `prev_${v.id}`) ? 'Added' : '+ Ref'}
                           </Button>
                           <Button
                             variant="outline"

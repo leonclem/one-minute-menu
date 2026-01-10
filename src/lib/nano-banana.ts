@@ -178,47 +178,35 @@ export class NanoBananaClient {
 
       let promptText = requestParams.prompt
 
-      // If reference images are provided, guide the model with an explicit instruction.
-      // (This is best-effort prompting; the actual image conditioning is via inlineData parts below.)
+      // If reference images are provided, guide the model with explicit instructions.
+      // We use the "Image A/B/C" syntax recommended for Nano Banana Pro.
       if (requestParams.reference_images && requestParams.reference_images.length > 0) {
-        const mode = requestParams.reference_mode || 'style_match'
-        const roleLines: string[] = []
+        const alphabet = ['A', 'B', 'C']
+        const roleInstructions: string[] = []
+        
         for (let i = 0; i < requestParams.reference_images.length; i++) {
           const r = requestParams.reference_images[i]
+          const label = alphabet[i]
           const role = r.role || 'other'
-          roleLines.push(`Reference image ${i + 1}: role=${role}`)
+          const comment = r.comment ? `. Instruction: ${r.comment}` : ''
+          
+          let roleDesc = ''
+          if (role === 'dish') roleDesc = 'the primary subject/dish'
+          else if (role === 'scene') roleDesc = 'the background environment and context'
+          else if (role === 'style') roleDesc = 'the art style, lighting, and color palette'
+          else if (role === 'layout') roleDesc = 'the plating structure and composition layout'
+          else roleDesc = 'general visual context'
+
+          roleInstructions.push(`Use Image ${label} for ${roleDesc}${comment}.`)
         }
 
-        if (mode === 'composite') {
-          const context = requestParams.context || 'food' // Default to food for backward compatibility
-          
-          if (context === 'general') {
-            promptText =
-              `Use the provided reference images as context to COMPOSE a new image.\n` +
-              (roleLines.length ? `${roleLines.join('\n')}\n` : '') +
-              `- If a reference image is role=subject, use it as the primary subject/focus.\n` +
-              `- If a reference image is role=background, use it as the background/environment context.\n` +
-              `- If a reference image is role=style, match its lighting/color grading.\n` +
-              `Keep the reference background/style consistent, and integrate the described subject naturally.\n\n` +
-              promptText
-          } else {
-            // Food context (original behavior)
-            promptText =
-              `Use the provided reference images as context to COMPOSE a new image.\n` +
-              (roleLines.length ? `${roleLines.join('\n')}\n` : '') +
-              `- If a reference image is role=dish, use it as the primary dish/food.\n` +
-              `- If a reference image is role=scene, use it as the table/background context.\n` +
-              `- If a reference image is role=style, match its lighting/color grading.\n` +
-              `Keep the reference scene/style consistent, and integrate the described food naturally.\n\n` +
-              promptText
-          }
-        } else {
-          promptText =
-            `Use the provided reference images as STYLE references.\n` +
-            (roleLines.length ? `${roleLines.join('\n')}\n` : '') +
-            `Match lighting, color grading, lens/photography style, and overall aesthetic.\n\n` +
-            promptText
-        }
+        // We use a unified composition prompt as recommended by Nano Banana Pro tips.
+        // The specific roles (dish, scene, style, etc.) guide how the images are used.
+        promptText =
+          `Compose a new image using the provided reference inputs:\n` +
+          roleInstructions.join('\n') +
+          ` \nIntegrate the subject naturally into the environment while maintaining the requested style and layout.\n\n` +
+          promptText
       }
 
       if (requestParams.negative_prompt) {

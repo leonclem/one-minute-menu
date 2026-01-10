@@ -13,6 +13,7 @@ interface MenuItemActionsModalProps {
   onClose: () => void
   onItemUpdated: () => void
   onManageImages?: () => void
+  onGenerateImage?: () => void
   onEditDetails?: () => void
 }
 
@@ -23,6 +24,7 @@ export default function MenuItemActionsModal({
   onClose,
   onItemUpdated,
   onManageImages,
+  onGenerateImage,
   onEditDetails
 }: MenuItemActionsModalProps) {
   const [loading, setLoading] = useState(false)
@@ -236,6 +238,21 @@ export default function MenuItemActionsModal({
                 className="w-full text-left px-3 py-2 rounded-lg hover:bg-ux-background-secondary transition-colors text-ux-text disabled:opacity-50"
               >
                 Update item details
+              </button>
+            )}
+
+            {/* Create AI Photo */}
+            {onGenerateImage && (
+              <button
+                onClick={() => {
+                  onGenerateImage()
+                  onClose()
+                }}
+                disabled={loading}
+                className="w-full text-left px-3 py-2 rounded-lg hover:bg-ux-background-secondary transition-colors text-ux-text disabled:opacity-50 flex items-center justify-between"
+              >
+                <span>Create AI Photo</span>
+                <span className="text-[10px] bg-ux-primary/10 text-ux-primary px-1.5 py-0.5 rounded uppercase font-bold tracking-tight">New</span>
               </button>
             )}
 

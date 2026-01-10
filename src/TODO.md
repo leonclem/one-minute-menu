@@ -22,7 +22,7 @@
 - [ ] Update from Gemini 2.5 Flash Image Preview to Gemini 2.5 Flash Image
 - [x] Reference image
 - [x] Test with OMG Donuts
-- [ ] *NEXT* Reference photo(s) for inclusion in image generation for general users
+- [x] Reference photo(s) for inclusion in image generation for general users
 
 ## Menu templates
 
@@ -47,7 +47,7 @@
 - [x] Remove unnecessary background colour fills from grid elements
 - [x] Capability to modify category styling
 - [x] Prices should be right-justified to avoid clashing with menu item titles
-- [x] *NEXT* V2 tech as default for general use
+- [x] V2 tech as default for general use
 - [ ] Verify "print ready"
 
 ### PDF Improvements
@@ -83,12 +83,16 @@
 - [ ] Terms of Service
 - [ ] Contact Us
 
+## Sign up
+- [ ] Capture name and optional profile information
+
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> GO TO PILOT >>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Deployment
 - [x] Purchase domain
+- [ ] Set up gridmenu.ai emails
 - [ ] Finalise Aspire bank account setup
 - [ ] Implement Stripe payment system
 - [ ] Determine UAT requirements

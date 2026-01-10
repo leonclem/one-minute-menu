@@ -74,14 +74,17 @@ const PRESENTATION_MODIFIERS: Record<string, string[]> = {
   white_plate: ['served on a clean white plate', 'white ceramic dishware'],
   wooden_board: ['presented on a rustic wooden board', 'natural wood serving surface'],
   overhead: ['overhead view', 'top-down perspective', 'flat lay style'],
-  closeup: ['close-up shot', 'detailed view', 'macro photography style']
+  closeup: ['close-up shot', 'detailed view', 'macro photography style'],
+  bokeh: ['shallow depth of field', 'bokeh background', 'blurred background', 'focus on the foreground']
 }
 
 // Lighting style modifiers
 const LIGHTING_MODIFIERS: Record<string, string[]> = {
   warm: ['warm golden lighting', 'cozy ambient light'],
   natural: ['natural daylight', 'soft window light'],
-  studio: ['professional studio lighting', 'controlled lighting setup']
+  studio: ['professional studio lighting', 'controlled lighting setup'],
+  cinematic: ['cinematic color grading', 'moody atmosphere', 'dramatic lighting', 'film aesthetic'],
+  golden_hour: ['golden hour lighting', 'warm backlighting', 'long soft shadows', 'sunset atmosphere']
 }
 
 // Common negative prompt elements for food photography

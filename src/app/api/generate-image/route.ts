@@ -59,12 +59,16 @@ export async function POST(request: NextRequest) {
       styleParams?: ImageGenerationRequest['styleParams']
       numberOfVariations?: number
       generationNotes?: string
+      referenceImages?: Array<{ dataUrl: string; comment?: string; role?: string; name?: string }>
+      referenceMode?: 'style_match' | 'composite'
     }
     
     logger.debug('📝 [Generate Image] Request:', { 
       menuItemId: body.menuItemId, 
       styleParams: body.styleParams,
-      numberOfVariations: body.numberOfVariations 
+      numberOfVariations: body.numberOfVariations,
+      referenceImageCount: body.referenceImages?.length || 0,
+      referenceMode: body.referenceMode
     })
     
     if (!body.menuItemId || !body.menuId) {
@@ -250,6 +254,40 @@ export async function POST(request: NextRequest) {
       styleParams: body.styleParams || {},
       numberOfVariations: requestedVariations
     }
+
+    // Process reference images if provided
+    let reference_images: NanoBananaParams['reference_images'] = undefined
+    if (body.referenceImages && Array.isArray(body.referenceImages) && body.referenceImages.length > 0) {
+      logger.info(`📸 [Generate Image] Processing ${body.referenceImages.length} reference images`)
+      reference_images = []
+      for (let i = 0; i < body.referenceImages.length; i++) {
+        const ref = body.referenceImages[i]
+        if (i >= 3) break // Limit to 3
+
+        // Use a more robust regex that allows for optional whitespace/newlines and doesn't require anchors if we split
+        const dataUrl = (ref.dataUrl || '').trim()
+        const match = dataUrl.match(/^data:(image\/png|image\/jpeg|image\/webp);base64,/)
+        
+        if (match) {
+          const mimeType = match[1] as any
+          const data = dataUrl.substring(match[0].length).replace(/[\r\n\s]/g, '')
+          
+          if (data) {
+            logger.debug(`🖼️ [Generate Image] Reference ${i + 1}: type=${mimeType}, dataLen=${data.length}, comment="${ref.comment || ''}"`)
+            reference_images.push({
+              mimeType,
+              data,
+              role: ref.role || 'other',
+              comment: ref.comment
+            })
+          } else {
+            logger.warn(`⚠️ [Generate Image] Reference ${i + 1}: No data after header`)
+          }
+        } else {
+          logger.warn(`⚠️ [Generate Image] Reference ${i + 1}: Invalid dataUrl format (starts with ${dataUrl.substring(0, 30)}...)`)
+        }
+      }
+    }
     
     // Build prompt using prompt construction service
     const promptConstructionService = getPromptConstructionService()
@@ -281,7 +319,9 @@ export async function POST(request: NextRequest) {
       number_of_images: requestedVariations,
       safety_filter_level: 'block_some',
       person_generation: 'dont_allow',
-      context: 'food'
+      context: 'food',
+      reference_images,
+      reference_mode: body.referenceMode || (reference_images ? 'composite' : undefined)
     }
 
     // Create a job record to track this attempt (synchronous path)

@@ -165,6 +165,8 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
                       <option value="natural">Natural</option>
                       <option value="warm">Warm</option>
                       <option value="studio">Studio</option>
+                      <option value="cinematic">Cinematic (Dramatic)</option>
+                      <option value="golden_hour">Golden Hour</option>
                     </select>
                   </div>
                   <div>
@@ -174,6 +176,7 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
                       <option value="wooden_board">Wooden board</option>
                       <option value="overhead">Overhead</option>
                       <option value="closeup">Close-up</option>
+                      <option value="bokeh">Shallow focus (Bokeh)</option>
                     </select>
                   </div>
                 </div>

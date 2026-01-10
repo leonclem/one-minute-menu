@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Button, useToast } from '@/components/ui'
+import { useToast } from '@/components/ui'
+import { UXButton, UXCard } from '@/components/ux'
 import type { MenuItem, ImageGenerationParams, ImageGenerationJob, GeneratedImage } from '@/types'
 
 interface AIImageGenerationProps {
@@ -35,7 +36,18 @@ export default function AIImageGeneration({
   const [advancedParams, setAdvancedParams] = useState<Partial<ImageGenerationParams>>({
     negativePrompt: '',
     customPromptAdditions: '',
+    lighting: 'natural',
+    presentation: 'white_plate',
   })
+  const [referenceImages, setReferenceImages] = useState<Array<{
+    id: string
+    dataUrl: string
+    name: string
+    comment: string
+    role: string
+    isPrevious?: boolean
+  }>>([])
+  
   const [lastError, setLastError] = useState<{ code?: string; message?: string; suggestions?: string[]; retryAfter?: number; filterReason?: string } | null>(null)
 
   const stableItemId = menuItem?.id
@@ -95,6 +107,12 @@ export default function AIImageGeneration({
           itemDescription: menuItem.description,
           styleParams,
           numberOfVariations: 1,
+          referenceImages: referenceImages.map(img => ({
+            dataUrl: img.dataUrl,
+            comment: img.comment,
+            name: img.name,
+            role: img.role
+          }))
         }),
       })
 
@@ -230,11 +248,64 @@ export default function AIImageGeneration({
     }
   }
 
+  const urlToBase64 = async (url: string): Promise<string> => {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  }
+
+  const addPreviousAsReference = async (image: GeneratedImage) => {
+    if (referenceImages.length >= 3) {
+      showToast({
+        type: 'info',
+        title: 'Maximum reference images reached',
+        description: 'You can use up to 3 reference images.'
+      })
+      return
+    }
+
+    try {
+      setGenerating(true)
+      const dataUrl = await urlToBase64(image.originalUrl)
+      setReferenceImages(prev => [
+        ...prev,
+        {
+          id: `prev_${image.id}`,
+          dataUrl,
+          name: `Previous generation ${image.id.slice(0, 4)}`,
+          comment: '',
+          role: 'dish',
+          isPrevious: true
+        }
+      ])
+      setShowAdvanced(true)
+      showToast({
+        type: 'success',
+        title: 'Image added as reference',
+        description: 'You can now provide instructions for this image in advanced options.'
+      })
+    } catch (error) {
+      console.error('Error adding previous image as reference:', error)
+      showToast({
+        type: 'error',
+        title: 'Failed to add reference',
+        description: 'Could not process the image. Please try uploading it instead.'
+      })
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   return createPortal(
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-start justify-center p-4">
+      <div className="relative my-4 sm:my-8 bg-white rounded-lg shadow-xl max-w-2xl w-full flex flex-col">
         <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 sticky top-0 bg-white z-20 pb-2">
             <h2 className="text-xl font-semibold text-gray-900">
               Create Photo for "{menuItem.name}"
             </h2>
@@ -297,6 +368,43 @@ export default function AIImageGeneration({
                   <div className="mt-3 space-y-4 p-4 bg-gray-50 rounded-lg">
                     {/* Aspect ratio removed until API reliably honors it */}
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Lighting
+                        </label>
+                        <select 
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white" 
+                          value={advancedParams.lighting || 'natural'} 
+                          onChange={(e) => setAdvancedParams(prev => ({ ...prev, lighting: e.target.value as any }))} 
+                          disabled={generating}
+                        >
+                          <option value="natural">Natural</option>
+                          <option value="warm">Warm</option>
+                          <option value="studio">Studio</option>
+                          <option value="cinematic">Cinematic (Dramatic)</option>
+                          <option value="golden_hour">Golden Hour</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Presentation
+                        </label>
+                        <select 
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white" 
+                          value={advancedParams.presentation || 'white_plate'} 
+                          onChange={(e) => setAdvancedParams(prev => ({ ...prev, presentation: e.target.value as any }))} 
+                          disabled={generating}
+                        >
+                          <option value="white_plate">White plate</option>
+                          <option value="wooden_board">Wooden board</option>
+                          <option value="overhead">Overhead</option>
+                          <option value="closeup">Close-up</option>
+                          <option value="bokeh">Shallow focus (Bokeh)</option>
+                        </select>
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Exclude from image (negative prompt)
@@ -336,6 +444,120 @@ export default function AIImageGeneration({
                         Add specific details about presentation
                       </p>
                     </div>
+
+                    <div className="border-t border-gray-200 pt-4 mt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Reference Photos ({referenceImages.length}/3)
+                        </label>
+                        {referenceImages.length < 3 && (
+                          <div className="relative">
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0]
+                                if (!file) return
+                                if (file.size > 7 * 1024 * 1024) {
+                                  showToast({ type: 'error', title: 'File too large', description: 'Max size is 7MB' })
+                                  return
+                                }
+                                const reader = new FileReader()
+                                reader.onload = () => {
+                                  setReferenceImages(prev => [
+                                    ...prev,
+                                    {
+                                      id: `upload_${Date.now()}`,
+                                      dataUrl: reader.result as string,
+                                      name: file.name,
+                                      comment: '',
+                                      role: 'scene'
+                                    }
+                                  ])
+                                }
+                                reader.readAsDataURL(file)
+                              }}
+                            />
+                            <UXButton variant="outline" size="sm" className="text-xs">
+                              Add Photo
+                            </UXButton>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {referenceImages.length > 0 ? (
+                        <div className="space-y-3">
+                          {referenceImages.map((ref) => (
+                            <UXCard key={ref.id} className="p-3 bg-white/50 backdrop-blur-sm border-ux-border/40">
+                              <div className="flex flex-col sm:flex-row gap-3">
+                                <div className="relative w-full sm:w-16 h-24 sm:h-16 flex-shrink-0">
+                                  <img 
+                                    src={ref.dataUrl} 
+                                    alt={ref.name}
+                                    className="w-full h-full object-cover rounded-md border border-gray-100" 
+                                  />
+                                  {ref.isPrevious && (
+                                    <div className="absolute top-1 left-1 bg-ux-primary text-white text-[8px] px-1 rounded-sm uppercase font-bold">
+                                      Previous
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 flex flex-col justify-between gap-2">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <select
+                                      value={ref.role}
+                                      onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, role: e.target.value } : r))}
+                                      className="text-[10px] px-2 py-1 border border-gray-200 rounded bg-white font-medium text-gray-700 w-full sm:w-auto"
+                                      disabled={generating}
+                                    >
+                                      <option value="dish">Dish / Subject</option>
+                                      <option value="scene">Table / Scene</option>
+                                      <option value="style">Style / Lighting</option>
+                                      <option value="layout">Plating / Layout</option>
+                                      <option value="other">Other</option>
+                                    </select>
+                                    <button
+                                      onClick={() => setReferenceImages(prev => prev.filter(r => r.id !== ref.id))}
+                                      className="text-[10px] text-red-500 hover:text-red-700 font-medium uppercase sm:hidden"
+                                      disabled={generating}
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                  <div className="relative flex-1">
+                                    <textarea
+                                      placeholder="e.g., use this plate, match the lighting, remove herbs"
+                                      value={ref.comment}
+                                      onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, comment: e.target.value } : r))}
+                                      className="w-full text-xs p-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-ux-primary focus:border-ux-primary resize-none bg-white/80"
+                                      rows={1}
+                                      disabled={generating}
+                                    />
+                                  </div>
+                                  <div className="hidden sm:flex justify-end">
+                                    <button
+                                      onClick={() => setReferenceImages(prev => prev.filter(r => r.id !== ref.id))}
+                                      className="text-[10px] text-red-500 hover:text-red-700 font-medium uppercase tracking-wider transition-colors"
+                                      disabled={generating}
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </UXCard>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6 border-2 border-dashed border-gray-200 rounded-lg">
+                          <p className="text-xs text-gray-400">
+                            No reference photos added.<br/>
+                            Upload one or use a previous generation.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -367,13 +589,14 @@ export default function AIImageGeneration({
                     </ul>
                   )}
                   <div className="mt-3 flex gap-2">
-                    <Button
+                    <UXButton
                       variant="primary"
+                      size="sm"
                       onClick={handleGenerateImage}
                       disabled={generating}
                     >
                       Retry Now
-                    </Button>
+                    </UXButton>
                     {typeof lastError.retryAfter === 'number' && lastError.retryAfter > 0 && (
                       <span className="text-xs text-red-700 self-center">Try again in ~{Math.ceil(lastError.retryAfter)}s</span>
                     )}
@@ -383,21 +606,23 @@ export default function AIImageGeneration({
 
               {/* Action Buttons */}
               <div className="flex gap-3">
-                <Button
+                <UXButton
                   variant="outline"
                   onClick={onCancel}
                   disabled={generating}
+                  className="flex-1"
                 >
                   Cancel
-                </Button>
-                <Button
+                </UXButton>
+                <UXButton
                   variant="primary"
                   onClick={handleGenerateImage}
                   loading={generating}
                   disabled={generating}
+                  className="flex-1"
                 >
                   {generating ? 'Creating...' : 'Create Photo'}
-                </Button>
+                </UXButton>
               </div>
             </div>
           ) : (
@@ -423,14 +648,14 @@ export default function AIImageGeneration({
                     decoding="async"
                   />
                   <div className="p-4 flex gap-3">
-                    <Button
+                    <UXButton
                       variant="primary"
                       onClick={() => handleSelectImage(image)}
                       className="flex-1"
                     >
                       Use This Photo
-                    </Button>
-                    <Button
+                    </UXButton>
+                    <UXButton
                       variant="outline"
                       onClick={() => {
                         // Preserve current images for comparison and allow regeneration
@@ -442,9 +667,10 @@ export default function AIImageGeneration({
                         setGeneratedImages([])
                         setGenerationJob(null)
                       }}
+                      className="flex-1"
                     >
                       Try Again
-                    </Button>
+                    </UXButton>
                   </div>
                 </div>
               ))}
@@ -464,14 +690,24 @@ export default function AIImageGeneration({
                           loading="lazy"
                           decoding="async"
                         />
-                        <div className="p-3">
-                          <Button
-                            variant="outline"
+                        <div className="p-3 space-y-2">
+                          <UXButton
+                            variant="primary"
+                            size="sm"
                             onClick={() => handleSelectImage(image)}
                             className="w-full"
                           >
                             Use This Photo
-                          </Button>
+                          </UXButton>
+                          <UXButton
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addPreviousAsReference(image)}
+                            className="w-full text-xs"
+                            disabled={generating || referenceImages.some(r => r.id === `prev_${image.id}`)}
+                          >
+                            {referenceImages.some(r => r.id === `prev_${image.id}`) ? 'Added to References' : 'Add as Reference'}
+                          </UXButton>
                         </div>
                       </div>
                     ))}
