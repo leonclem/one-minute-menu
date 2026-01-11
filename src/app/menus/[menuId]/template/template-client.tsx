@@ -9,6 +9,7 @@ import type { Menu } from '@/types'
 import { PageRenderer } from '@/lib/templates/v2/renderer-web-v2'
 import { PALETTES_V2 } from '@/lib/templates/v2/renderer-v2'
 import type { LayoutDocumentV2 } from '@/lib/templates/v2/engine-types-v2'
+import { trackConversionEvent } from '@/lib/conversion-tracking'
 
 interface UXMenuTemplateClientProps {
   menuId: string
@@ -40,6 +41,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [zoom, setZoom] = useState(0.8)
   
   const [isSaving, setIsSaving] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const router = useRouter()
   const { showToast } = useToast()
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
@@ -244,6 +246,97 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       })
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleExportPDF = async () => {
+    if (!menu || !layoutDocument) return
+
+    setIsExporting(true)
+    
+    // Track export start
+    trackConversionEvent({
+      event: 'export_start',
+      metadata: {
+        path: `/menus/${menuId}/template`,
+        format: 'pdf',
+        isDemo: isDemoUser,
+      },
+    })
+
+    try {
+      const configuration = {
+        textOnly,
+        fillersEnabled,
+        texturesEnabled,
+        showMenuTitle,
+        colourPaletteId: paletteId
+      }
+
+      const body: any = isDemoUser 
+        ? { menu, templateId, configuration }
+        : { menuId, templateId, configuration }
+      
+      body.options = {
+        orientation: 'portrait',
+        includePageNumbers: true,
+        title: menu.name
+      }
+
+      const resp = await fetch('/api/templates/export/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => 'Export failed')
+        throw new Error(errText)
+      }
+
+      const blob = await resp.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const menuSlug = menu.name.replace(/\s+/g, '-').toLowerCase()
+      a.download = `${menuSlug}-menu.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      showToast({
+        type: 'success',
+        title: 'PDF exported successfully',
+        description: 'Your menu has been downloaded.'
+      })
+
+      trackConversionEvent({
+        event: 'export_completed',
+        metadata: {
+          path: `/menus/${menuId}/template`,
+          format: 'pdf',
+          isDemo: isDemoUser,
+        },
+      })
+    } catch (error) {
+      console.error('Error exporting PDF:', error)
+      showToast({
+        type: 'error',
+        title: 'Export failed',
+        description: 'Failed to generate PDF. Please try again.'
+      })
+      
+      trackConversionEvent({
+        event: 'ux_error',
+        metadata: {
+          path: `/menus/${menuId}/template`,
+          format: 'pdf',
+          isDemo: isDemoUser,
+        },
+      })
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -485,16 +578,34 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           size="lg"
           className="bg-white/20 border-white/40 text-white hover:bg-white/30 w-full sm:w-auto min-w-[200px]"
           onClick={() => router.push(`/menus/${menuId}/extracted`)}
+          disabled={isSaving || isExporting}
         >
           ← Back to Items
         </UXButton>
+
         <UXButton
           variant="primary"
           size="lg"
-          className="w-full sm:w-auto min-w-[240px] shadow-lg"
+          className="w-full sm:w-auto min-w-[200px] shadow-lg bg-white text-ux-primary hover:bg-white/90 border-none"
+          onClick={handleExportPDF}
+          loading={isExporting}
+          disabled={!layoutDocument || !!previewError || isSaving}
+        >
+          <span className="flex items-center gap-2">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Export PDF
+          </span>
+        </UXButton>
+
+        <UXButton
+          variant="primary"
+          size="lg"
+          className="w-full sm:w-auto min-w-[200px] shadow-lg"
           onClick={handleSelectTemplate}
           loading={isSaving}
-          disabled={!layoutDocument || !!previewError}
+          disabled={!layoutDocument || !!previewError || isExporting}
         >
           {isDemoUser ? 'Confirm and Export →' : 'Confirm'}
         </UXButton>
