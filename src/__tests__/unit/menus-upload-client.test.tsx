@@ -12,7 +12,7 @@ describe('UploadClient', () => {
     render(<UploadClient menuId="abc123" />)
     const link = screen.getByRole('link', { name: /enter items manually/i }) as HTMLAnchorElement
     expect(link).toBeInTheDocument()
-    expect(link.getAttribute('href')).toBe('/menus/abc123/extracted')
+    expect(link.getAttribute('href')).toBe('/menus/abc123/extracted?manual=true')
   })
 })
 

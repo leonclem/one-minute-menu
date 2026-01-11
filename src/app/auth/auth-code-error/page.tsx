@@ -51,7 +51,7 @@ function AuthCodeErrorContent() {
           </Link>
           
           <Link
-            href="/auth/signup"
+            href="/register"
             className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             Create new account

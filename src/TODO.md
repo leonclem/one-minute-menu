@@ -89,7 +89,7 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 /upload
-- [ ] "Enter items manually" button not working.
+- [x] "Enter items manually" button not working.
 
 /extracted
 - [ ] Need capability to delete a section
@@ -178,7 +178,7 @@
 - [ ] Advanced menu options: Edit order of categories
 - [ ] Logging
 - [ ] Admin dashboard enhancements
-- [ ] Select all in category on /extracted page
+- [ ] Review "select all" in category on /extracted page
 - [x] Remove confidence tag at top of page
 - [ ] Watermark images in Creator Pack
 - [ ] QA to ensure pricing matches reality
@@ -186,6 +186,7 @@
 - [ ] Higher resolution images (up to 4K) for Grid+Premium (and include mention on pricing page)
 - [ ] Reminder email for credits expiry
 - [ ] Multi-user access to accounts (Premium tier)
+- [ ] Display user information (e.g. email address of logged in user)
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>

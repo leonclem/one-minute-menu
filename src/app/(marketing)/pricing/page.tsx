@@ -205,7 +205,7 @@ export default function UXPricingPage() {
             Join thousands of restaurants using GridMenu to create beautiful, photo-perfect menus.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth/signup">
+            <Link href="/register">
               <UXButton variant="primary" size="lg" className="px-8">
                 Start for Free
               </UXButton>

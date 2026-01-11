@@ -26,14 +26,14 @@ jest.mock('next/link', () => {
   return MockLink
 })
 
-import SignUpClient from '@/app/auth/signup/signup-client'
+import UXRegisterClient from '@/app/(marketing)/register/register-client'
 
-describe('SignUpClient UX auth page', () => {
+describe('UXRegisterClient UX auth page', () => {
   it('renders heading and email input', () => {
-    render(<SignUpClient />)
+    render(<UXRegisterClient />)
 
     expect(
-      screen.getByRole('heading', { name: /get started free/i }),
+      screen.getByRole('heading', { name: /sign up with email/i }),
     ).toBeInTheDocument()
 
     const emailInput = screen.getByLabelText(/email address/i)
@@ -41,7 +41,7 @@ describe('SignUpClient UX auth page', () => {
   })
 
   it('shows validation error when submitting empty form', async () => {
-    render(<SignUpClient />)
+    render(<UXRegisterClient />)
 
     const button = screen.getByRole('button', { name: /send magic link/i })
     fireEvent.click(button)
@@ -55,7 +55,7 @@ describe('SignUpClient UX auth page', () => {
     }
     supabase.auth.signInWithOtp.mockResolvedValueOnce({ error: null })
 
-    render(<SignUpClient />)
+    render(<UXRegisterClient />)
 
     const emailInput = screen.getByLabelText(/email address/i)
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } })

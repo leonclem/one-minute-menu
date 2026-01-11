@@ -13,7 +13,7 @@ export default function PrivacyPage() {
               GridMenu
             </Link>
             <Link 
-              href="/auth/signup" 
+              href="/register" 
               className="bg-ux-primary text-white px-6 py-2 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
             >
               Get Started

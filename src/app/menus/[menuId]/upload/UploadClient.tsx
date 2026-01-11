@@ -98,7 +98,7 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
             Prefer to build everything by hand instead?
           </p>
           <div className="flex justify-center items-center">
-            <Link href={`/menus/${menuId}/extracted`} aria-label="Enter items manually in the extracted page">
+            <Link href={`/menus/${menuId}/extracted?manual=true`} aria-label="Enter items manually in the extracted page">
               <UXButton variant="warning" size="md" noShadow className="min-w-[220px] py-2">
                 Enter items manually
               </UXButton>

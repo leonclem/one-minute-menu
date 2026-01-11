@@ -63,7 +63,7 @@ async function setupDatabase() {
         console.log('\n🎉 Database setup complete!')
         console.log('\nNext steps:')
         console.log('1. Run: npm run dev')
-        console.log('2. Visit: http://localhost:3001/auth/signup')
+        console.log('2. Visit: http://localhost:3001/register')
         console.log('3. Create your first account!')
 
     } catch (error) {

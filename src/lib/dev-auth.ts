@@ -25,7 +25,7 @@ export async function createDevUser(email: string) {
       email,
       password: 'dev-password-123',
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
         data: {
           dev_user: true // Mark as dev user
         }

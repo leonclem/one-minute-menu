@@ -469,24 +469,35 @@ export const menuOperations = {
     const profile = await userOperations.getProfile(userId)
     if (!profile) throw new DatabaseError('User profile not found')
 
-    // Monthly subscribers have unlimited edits
+    // Get current menu to check ownership and creation date (grace period)
+    const currentMenu = await this.getMenu(menuId, userId)
+    if (!currentMenu) throw new DatabaseError('Menu not found')
+
+    // Monthly subscribers and admins have unlimited edits
     const isSubscriber = ['grid_plus', 'grid_plus_premium', 'premium', 'enterprise'].includes(profile.plan)
     const isAdmin = profile.role === 'admin'
 
     if (!isSubscriber && !isAdmin) {
-      // Check for active edit window from creator packs
-      const { data: activeWindows } = await supabase
-        .from('user_packs')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('pack_type', 'creator_pack')
-        .gt('edit_window_end', new Date().toISOString())
-      
-      if (!activeWindows || activeWindows.length === 0) {
-        throw new DatabaseError(
-          'Your edit window has expired. Please purchase a new Creator Pack or subscribe to Grid+ for unlimited edits.',
-          'EDIT_WINDOW_EXPIRED'
-        )
+      // Grace period: allow edits for the first 24 hours after menu creation
+      // This ensures a smooth onboarding for new users even if pack triggers are delayed
+      const gracePeriodMs = 24 * 60 * 60 * 1000
+      const isWithinGracePeriod = (Date.now() - currentMenu.createdAt.getTime()) < gracePeriodMs
+
+      if (!isWithinGracePeriod) {
+        // Check for active edit window from creator packs
+        const { data: activeWindows } = await supabase
+          .from('user_packs')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('pack_type', 'creator_pack')
+          .gt('edit_window_end', new Date().toISOString())
+        
+        if (!activeWindows || activeWindows.length === 0) {
+          throw new DatabaseError(
+            'Your edit window has expired. Please purchase a new Creator Pack or subscribe to Grid+ for unlimited edits.',
+            'EDIT_WINDOW_EXPIRED'
+          )
+        }
       }
     }
 
@@ -498,10 +509,7 @@ export const menuOperations = {
     if (updates.venueInfo !== undefined) updateData.venue_info = updates.venueInfo
     
     if (updates.items || updates.categories || updates.theme || updates.paymentInfo || updates.extractionMetadata) {
-      // Get current menu data and merge updates
-      const currentMenu = await this.getMenu(menuId, userId)
-      if (!currentMenu) throw new DatabaseError('Menu not found')
-      
+      // Use currentMenu fetched above to merge updates
       updateData.menu_data = {
         items: updates.items !== undefined ? updates.items : currentMenu.items,
         categories: updates.categories !== undefined ? updates.categories : currentMenu.categories,

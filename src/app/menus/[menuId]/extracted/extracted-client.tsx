@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { UXSection, UXButton, UXCard } from '@/components/ux'
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
@@ -81,6 +81,8 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const [activeMenuItem, setActiveMenuItem] = useState<MenuItem | null>(null)
   const [showBulkDelete, setShowBulkDelete] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isManualEntry = searchParams.get('manual') === 'true'
   const { showToast } = useToast()
   const appliedRef = useRef(false)
   
@@ -152,6 +154,11 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             
             const loadedMenu = menuJson.data as Menu
             
+            // Always set authMenu if we successfully loaded it from the database
+            setAuthMenu(loadedMenu)
+            setThumbnailUrl(loadedMenu.imageUrl ?? null)
+            setLogoUrl(loadedMenu.logoUrl ?? null)
+            
             // Check if menu has extracted data (items or extractionMetadata)
             console.log('[Extracted Page] Loaded menu from database:', {
               menuId: loadedMenu.id,
@@ -163,9 +170,6 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             if ((loadedMenu.items && loadedMenu.items.length > 0) || loadedMenu.extractionMetadata) {
               // Menu already has extracted data, use it directly
               console.log('[Extracted Page] Menu has existing data, using it')
-              setAuthMenu(loadedMenu)
-              setThumbnailUrl(loadedMenu.imageUrl ?? null)
-              setLogoUrl(loadedMenu.logoUrl ?? null)
               return true
             }
             
@@ -187,6 +191,12 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         // If no existing data, check for active extraction job in sessionStorage
         const jobId = sessionStorage.getItem(`extractionJob:${menuId}`)
         if (!jobId) {
+          // If we're intentionally entering items manually, don't redirect
+          if (isManualEntry) {
+            console.log('[Extracted Page] Manual entry mode - staying on page despite no items')
+            return
+          }
+
           // No extraction job and no existing data - redirect to extract
           showToast({
             type: 'info',
@@ -286,7 +296,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         cancelled = true
       }
     }
-  }, [menuId, router, showToast])
+  }, [menuId, router, showToast, isManualEntry])
 
   const handleDemoGenerateImages = async () => {
     if (!demoMenu) return

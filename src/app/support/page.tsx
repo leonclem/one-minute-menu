@@ -80,7 +80,7 @@ export default function SupportPage() {
             <p className="text-white/80 text-hero-shadow-strong mb-6 max-w-lg mx-auto">
               Create your digital menu in under 5 minutes with our simple setup process.
             </p>
-            <Link href="/auth/signup">
+            <Link href="/register">
               <UXButton variant="primary" size="lg" className="px-8 shadow-lg">
                 Create Your Menu
               </UXButton>

@@ -4,8 +4,10 @@ import '@testing-library/jest-dom'
 import UXMenuExtractedClient from '../../app/menus/[menuId]/extracted/extracted-client'
 
 const mockRouter = { push: jest.fn() }
+const mockSearchParams = { get: jest.fn().mockReturnValue(null) }
 jest.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
+  useSearchParams: () => mockSearchParams,
 }))
 
 const mockShowToast = jest.fn()
