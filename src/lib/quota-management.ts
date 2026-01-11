@@ -31,10 +31,30 @@ export class QuotaManagementService {
     const profile = await userOperations.getProfile(userId)
     const plan = (profile?.plan ?? 'free') as User['plan']
     
+    // Get the effective limit including any active Creator Packs
+    const { limit: effectiveLimit } = await userOperations.checkPlanLimits(userId, 'aiImageGenerations', profile || undefined)
+    
     // Get or create quota record
     let quotaRecord = await this.getQuotaRecord(userId)
     if (!quotaRecord) {
       quotaRecord = await this.createQuotaRecord(userId, plan)
+    }
+    
+    // If the monthly_limit in the record doesn't match the effective limit (e.g. after a pack purchase), update it
+    if (quotaRecord.monthlyLimit !== effectiveLimit) {
+      const { data: updatedQuota, error: updateError } = await supabase
+        .from('generation_quotas')
+        .update({
+          monthly_limit: effectiveLimit,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId)
+        .select()
+        .single()
+      
+      if (!updateError && updatedQuota) {
+        quotaRecord = this.transformQuotaFromDB(updatedQuota)
+      }
     }
     
     // Check if quota needs reset (new month)
@@ -188,10 +208,12 @@ export class QuotaManagementService {
   async resetMonthlyQuota(userId: string): Promise<GenerationQuota> {
     const supabase = createServerSupabaseClient()
     
-    // Get user plan to determine new limit (default to 'free' if not found)
+    // Get user plan to determine profile (default to 'free' if not found)
     const profile = await userOperations.getProfile(userId)
     const plan = (profile?.plan ?? 'free') as User['plan']
-    const newLimit = PLAN_CONFIGS[plan].aiImageGenerations
+    
+    // Get the effective limit including any active Creator Packs
+    const { limit: effectiveLimit } = await userOperations.checkPlanLimits(userId, 'aiImageGenerations', profile || undefined)
     
     // Calculate next reset date (first day of next month)
     const now = new Date()
@@ -201,7 +223,7 @@ export class QuotaManagementService {
       .from('generation_quotas')
       .update({
         plan,
-        monthly_limit: newLimit,
+        monthly_limit: effectiveLimit,
         current_usage: 0,
         reset_date: nextResetDate.toISOString().split('T')[0], // Date only
         updated_at: new Date().toISOString()
@@ -272,7 +294,11 @@ export class QuotaManagementService {
   private async createQuotaRecord(userId: string, plan: User['plan']): Promise<GenerationQuota> {
     const supabase = createServerSupabaseClient()
     
-    const monthlyLimit = PLAN_CONFIGS[plan].aiImageGenerations
+    // Get user profile to determine plan (default to 'free' if not found)
+    const profile = await userOperations.getProfile(userId)
+    
+    // Get the effective limit including any active Creator Packs
+    const { limit: effectiveLimit } = await userOperations.checkPlanLimits(userId, 'aiImageGenerations', profile || undefined)
     
     // Calculate next reset date (first day of next month)
     const now = new Date()
@@ -283,7 +309,7 @@ export class QuotaManagementService {
       .insert({
         user_id: userId,
         plan,
-        monthly_limit: monthlyLimit,
+        monthly_limit: effectiveLimit,
         current_usage: 0,
         reset_date: nextResetDate.toISOString().split('T')[0], // Date only
       })

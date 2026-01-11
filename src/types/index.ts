@@ -26,7 +26,7 @@ export const PLAN_CONFIGS: Record<User['plan'], PlanLimits> = {
     menus: 0, // Free trial doesn't get a menu until Pack is used
     menuItems: 20,
     monthlyUploads: 5,
-    aiImageGenerations: 5,
+    aiImageGenerations: 100,
   },
   grid_plus: {
     menus: 5,

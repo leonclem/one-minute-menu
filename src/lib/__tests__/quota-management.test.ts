@@ -74,6 +74,11 @@ jest.mock('@/lib/supabase-server', () => {
       return {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        gt: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        lte: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({
           data: null,
           error: { code: 'PGRST116', message: 'No rows' },

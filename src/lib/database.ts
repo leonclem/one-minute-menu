@@ -105,12 +105,11 @@ export const userOperations = {
     }
   },
 
-  async checkPlanLimits(userId: string, resource: keyof PlanLimits): Promise<{ allowed: boolean; current: number; limit: number }> {
-    const profile = await this.getProfile(userId)
-    if (!profile) throw new DatabaseError('User profile not found')
+  async checkPlanLimits(userId: string, resource: keyof PlanLimits, profile?: User): Promise<{ allowed: boolean; current: number; limit: number }> {
+    const userProfile = profile || await this.getProfile(userId)
     
     // Admin users have unlimited access
-    if (profile.role === 'admin') {
+    if (userProfile?.role === 'admin') {
       return {
         allowed: true,
         current: 0,
@@ -160,9 +159,9 @@ export const userOperations = {
     }
     
     // Calculate effective limit (subscription base + active creator packs)
-    let limit = profile.limits[resource]
+    let limit = userProfile ? userProfile.limits[resource] : PLAN_CONFIGS.free[resource]
 
-    if (resource === 'menus') {
+    if (resource === 'menus' || resource === 'aiImageGenerations') {
       // Fetch active (non-expired) creator packs
       const { data: packs } = await supabase
         .from('user_packs')
@@ -176,7 +175,12 @@ export const userOperations = {
       // Effective limit is the sum of subscription allowance and active packs
       // If subscription is unlimited (-1), stay unlimited
       if (limit !== -1) {
-        limit = limit + activePacksCount
+        if (resource === 'menus') {
+          limit = limit + activePacksCount
+        } else if (resource === 'aiImageGenerations') {
+          // Each Creator Pack grants 100 generations (aligned with free trial)
+          limit = limit + (activePacksCount * 100)
+        }
       }
     }
 

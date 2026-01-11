@@ -78,7 +78,7 @@
 
 ## Site stability
 - [ ] Waitlist (for MVP, email goes to me for confirmation)
-- [ ] Throttles (review what hourly and daily limits have been set per account level)
+- [x] Throttles (review what hourly and daily limits have been set per account level)
 - [ ] Understand what new sign-ups have access to (i.e. Generation limits, Admin dashboard, etc.)
 
 ## Sign up
