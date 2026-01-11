@@ -66,22 +66,20 @@
 - [x] Toggle "Enable Custom SMTP" to ON in Supabase prod and paste SMTP credentials in
 
 ## Review Pricing
-- [ ] Review pricing strategy
-- [ ] Clarify "unlock elements" on /export page
 - [ ] Determine pricing tiers
+- [ ] Clarify "unlock elements" on /export page
 - [ ] Implement changes in pricing page
-- [ ] QA to ensure pricing matches reality
-
-## Site stability
-- [ ] Waitlist (for MVP, email goes to me for confirmation)
-- [ ] Throttles (review what hourly and daily limits have been set per account level)
-- [ ] Understand what new sign-ups have access to (i.e. Generation limits, Admin dashboard, etc.)
 
 ## Back office
 - [x] Complete bank account application
 - [ ] Privacy Policy - consider data use (particularly at scale, benchmarking, etc.)
 - [ ] Terms of Service
 - [ ] Contact Us
+
+## Site stability
+- [ ] Waitlist (for MVP, email goes to me for confirmation)
+- [ ] Throttles (review what hourly and daily limits have been set per account level)
+- [ ] Understand what new sign-ups have access to (i.e. Generation limits, Admin dashboard, etc.)
 
 ## Sign up
 - [ ] Capture name and optional profile information
@@ -100,8 +98,9 @@
 - [ ] Upgrade Vercel package
 
 ## Railway
-- [ ] Implement Railway architecture to offload PDF export from Vercel
+- [ ] Implement Railway architecture to offload PDF export from Vercel (this might require sending user back to dashboard after design template selection, then download when available)
 - [ ] Review if Railway should also be used for other heavy-lifting tasks, e.g. image export
+- [ ] Check Railway billing status
 
 ## Email templates
 - [ ] Determine and document all emails sent
@@ -130,8 +129,10 @@
 
 ## Demo
 - [ ] More clarity on demo input menu as it stands before implementing changes
+- [ ] Show menu and image outputs on home page
 - [ ] Lloyd feedback: input menu is confusing, looks like output
 - [ ] Lloyd feedback: Give an option to email the PDF menu or send to printers (order x amount)
+- [ ] Include sample logo, address, etc.
 
 ## Market awareness
 - [ ] Create blog / comparison pages (https://www.upmenu.com/blog/menu-making-apps/)
@@ -153,8 +154,6 @@
 - [ ] QA
 
 ## Unclassified
-- [ ] Check Railway implementation status
-- [ ] Check Railway billing status
 - [ ] Integrate Posthog
 - [ ] Crop for large menus text extraction
 - [ ] Determine UAT requirements
@@ -172,6 +171,8 @@
 - [ ] Admin dashboard enhancements
 - [ ] Select all in category on /extracted page
 - [ ] Remove confidence tag at top of page
+- [ ] Watermark images in Creator Pack
+- [ ] QA to ensure pricing matches reality
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>

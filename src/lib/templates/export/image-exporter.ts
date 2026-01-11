@@ -133,16 +133,16 @@ export async function exportToImage(
     throw new Error(`Invalid image export options: ${validation.errors.join(', ')}`)
   }
 
-  // Calculate actual dimensions with pixel ratio
-  const actualWidth = Math.round(width * pixelRatio)
-  const actualHeight = Math.round(height * pixelRatio)
+  // Calculate actual dimensions (logical pixels)
+  const logicalWidth = width
+  const logicalHeight = height
 
   // Build complete HTML document
   const htmlResult = exportToHTML(componentHTML, data, context, {
     includeDoctype: true,
     includeMetaTags: true,
     includeStyles: true,
-    customCSS: generateImageCSS(width, height, customCSS),
+    customCSS: generateImageCSS(logicalWidth, logicalHeight, customCSS),
     pageTitle: data.metadata.title,
     themeColors
   })
@@ -150,15 +150,19 @@ export async function exportToImage(
   // Convert HTML to image using Puppeteer
   const imageBuffer = await renderHTMLToImage(
     htmlResult.html,
-    actualWidth,
-    actualHeight,
+    logicalWidth,
+    logicalHeight,
     format,
     quality,
-    backgroundColor
+    backgroundColor,
+    pixelRatio
   )
 
   const endTime = Date.now()
   const duration = Math.max(1, endTime - startTime)
+
+  const actualWidth = Math.round(logicalWidth * pixelRatio)
+  const actualHeight = Math.round(logicalHeight * pixelRatio)
 
   console.log(
     `[ImageExporter] Generated ${format.toUpperCase()} in ${duration}ms ` +
@@ -202,7 +206,8 @@ async function renderHTMLToImage(
   height: number,
   format: 'png' | 'jpg',
   quality: number,
-  backgroundColor: string
+  backgroundColor: string,
+  pixelRatio: number = 1
 ): Promise<Buffer> {
   let page
   try {
@@ -213,7 +218,7 @@ async function renderHTMLToImage(
     await page.setViewport({
       width,
       height,
-      deviceScaleFactor: 1
+      deviceScaleFactor: pixelRatio
     })
 
     // Increase default timeouts when supported; some test mocks may not implement these
@@ -271,7 +276,7 @@ function generateImageCSS(width: number, height: number, customCSS: string): str
     body {
       display: flex;
       align-items: flex-start;
-      justify-content: center;
+      justify-content: flex-start;
     }
     
     /* Ensure content fits within bounds */

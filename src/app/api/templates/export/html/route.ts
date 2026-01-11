@@ -13,6 +13,194 @@ import type { OutputContext } from '@/lib/templates/types'
 import { z } from 'zod'
 
 /**
+ * Handle HTML export using the V2 template engine
+ */
+async function handleV2TemplateEngine(
+  menu: any,
+  templateId: string,
+  context: OutputContext,
+  options: any,
+  userId: string,
+  metricsBuilder: MetricsBuilder,
+  headers?: Record<string, string>
+) {
+  // Import V2 template engine modules
+  const { transformMenuToV2 } = await import('@/lib/templates/v2/menu-transformer-v2')
+  const { generateLayoutV2 } = await import('@/lib/templates/v2/layout-engine-v2')
+  const { renderToWeb } = await import('@/lib/templates/v2/renderer-web-v2')
+  const { PALETTES_V2 } = await import('@/lib/templates/v2/renderer-v2')
+  const { renderToString } = await import('react-dom/server')
+  
+  // Transform menu to EngineMenuV2
+  metricsBuilder.markCalculationStart()
+  const engineMenu = transformMenuToV2(menu)
+
+  // Calculate menu characteristics for metrics
+  const totalItems = engineMenu.sections.reduce((sum, section) => sum + section.items.length, 0)
+  const itemsWithImages = engineMenu.sections.reduce(
+    (sum, section) => sum + section.items.filter(item => item.imageUrl).length,
+    0
+  )
+  const imageRatio = totalItems > 0 ? (itemsWithImages / totalItems) * 100 : 0
+  const allNames = engineMenu.sections.flatMap(section => section.items.map(item => item.name))
+  const avgNameLength = allNames.length > 0 
+    ? allNames.reduce((sum, name) => sum + name.length, 0) / allNames.length 
+    : 0
+  const hasDescriptions = engineMenu.sections.some(section => 
+    section.items.some(item => item.description && item.description.length > 0)
+  )
+  
+  metricsBuilder.setMenuCharacteristics({
+    sectionCount: engineMenu.sections.length,
+    totalItems,
+    imageRatio,
+    avgNameLength,
+    hasDescriptions
+  })
+  
+  // Load saved template selection (if exists)
+  const supabase = createServerSupabaseClient()
+  const { data: selectionData } = await supabase
+    .from('menu_template_selections')
+    .select('*')
+    .eq('menu_id', menu.id)
+    .single()
+  
+  const configuration = selectionData?.configuration || {}
+  
+  // Generate V2 layout
+  const layoutDocument = await generateLayoutV2({
+    menu: engineMenu,
+    templateId,
+    selection: {
+      textOnly: configuration.textOnly || false,
+      fillersEnabled: configuration.fillersEnabled || false,
+      texturesEnabled: configuration.texturesEnabled !== false,
+      showMenuTitle: configuration.showMenuTitle || false,
+      colourPaletteId: configuration.colourPaletteId || configuration.paletteId
+    },
+    debug: false
+  })
+  
+  metricsBuilder.setLayoutSelection(templateId, context)
+  metricsBuilder.markCalculationEnd()
+  
+  // Resolve palette
+  const paletteId = configuration.colourPaletteId || configuration.paletteId
+  const palette = PALETTES_V2.find(p => p.id === paletteId) || PALETTES_V2[0]
+  
+  // Pre-fetch texture data URL if enabled
+  const { getTextureDataURL } = await import('@/lib/templates/export/texture-utils')
+  let textureDataURL: string | undefined = undefined
+  if (configuration.texturesEnabled !== false) {
+    if (palette.id === 'midnight-gold') {
+      textureDataURL = await getTextureDataURL('dark-paper-2.png', headers) || undefined
+    } else if (palette.id === 'elegant-dark') {
+      textureDataURL = await getTextureDataURL('dark-paper.png', headers) || undefined
+    }
+  }
+
+  // Render layout to HTML
+  metricsBuilder.markRenderStart()
+  const componentHTML = renderToString(
+    renderToWeb(layoutDocument, {
+      scale: 1,
+      palette,
+      isExport: false, // Set to false to show page boundaries in web view
+      texturesEnabled: configuration.texturesEnabled !== false,
+      textureDataURL,
+      showGridOverlay: false,
+      showRegionBounds: false,
+      showTileIds: false
+    })
+  )
+  metricsBuilder.markRenderEnd()
+  
+  // Create complete HTML document with Google Fonts support
+  const fontSets = new Set(['modern-sans'])
+  layoutDocument.pages.forEach(page => {
+    page.tiles.forEach(tile => {
+      if ((tile as any).style?.typography?.fontSet) {
+        fontSets.add((tile as any).style.typography.fontSet)
+      }
+    })
+  })
+  
+  const { FONT_SETS_V2 } = await import('@/lib/templates/v2/renderer-v2')
+  const googleFontsParams = Array.from(fontSets)
+    .map(id => FONT_SETS_V2.find(set => set.id === id)?.googleFonts)
+    .filter(Boolean)
+    .join('&family=')
+  
+  const pageTitle = options.pageTitle || menu.name
+  
+  const htmlDocument = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${pageTitle}</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${googleFontsParams}&display=swap">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: ${palette.colors.background};
+    }
+    .layout-document-v2 {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 40px 0;
+    }
+    .page-container-v2 {
+      margin-bottom: 40px !important;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+      border-radius: 4px !important;
+    }
+    /* Mobile optimization */
+    @media (max-width: 600px) {
+      .layout-document-v2 {
+        padding: 10px 0;
+      }
+      .page-container-v2 {
+        margin-bottom: 20px !important;
+        transform: scale(0.9);
+        transform-origin: top center;
+      }
+    }
+    ${options.customCSS || ''}
+  </style>
+</head>
+<body>
+  ${componentHTML}
+</body>
+</html>
+  `.trim()
+  
+  metricsBuilder.markExportStart()
+  const size = Buffer.byteLength(htmlDocument, 'utf8')
+  metricsBuilder.markExportEnd()
+  
+  // Set export details and build metrics
+  metricsBuilder.setExportDetails('html', size)
+  const metrics = metricsBuilder.build()
+  logLayoutMetrics(metrics)
+  
+  return new Response(htmlDocument, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Length': size.toString(),
+      'Content-Disposition': `attachment; filename="${menu.slug || 'menu'}-${context}.html"`,
+      'Cache-Control': 'no-cache'
+    }
+  })
+}
+
+/**
  * Handle HTML export using the new template engine
  */
 async function handleNewTemplateEngine(
@@ -290,8 +478,42 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const { menuId, context, templateId, presetId, options = {} } = validation.data
+    let { menuId, context, templateId, presetId, options = {} } = validation.data
     
+    console.info(`[HTMLExport] Starting export for menu ${menuId}, templateId: ${templateId}, presetId: ${presetId}`)
+
+    // Engine Selection and Routing
+    let useV2 = false
+    let useV1 = false
+    let useLegacy = false
+
+    if (templateId) {
+      const { templateExists } = await import('@/lib/templates/v2/template-loader-v2')
+      if (await templateExists(templateId)) {
+        useV2 = true
+        console.info(`[HTMLExport] Using V2 engine for templateId: ${templateId}`)
+      } else {
+        const { TEMPLATE_REGISTRY } = await import('@/lib/templates/template-definitions')
+        if (TEMPLATE_REGISTRY[templateId]) {
+          useV1 = true
+          console.info(`[HTMLExport] Using V1 engine for templateId: ${templateId}`)
+        } else {
+          const { LAYOUT_PRESETS } = await import('@/lib/templates/presets')
+          if (LAYOUT_PRESETS[templateId]) {
+            useLegacy = true
+            presetId = templateId
+            templateId = undefined
+            console.info(`[HTMLExport] Re-routing legacy templateId "${presetId}" to preset path`)
+          } else {
+            console.warn(`[HTMLExport] templateId "${templateId}" not found in any registry`)
+          }
+        }
+      }
+    } else if (presetId) {
+      useLegacy = true
+      console.info(`[HTMLExport] Using legacy path for presetId: ${presetId}`)
+    }
+
     metricsBuilder.setMenuId(menuId)
     
     // Validate HTML export options
@@ -318,8 +540,20 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // NEW TEMPLATE ENGINE PATH
-    if (templateId) {
+    // EXECUTE SELECTED ENGINE PATH
+    
+    if (useV2 && templateId) {
+      const headers = {
+        cookie: request.headers.get('cookie') || '',
+        authorization: request.headers.get('authorization') || '',
+        host: request.headers.get('host') || '',
+        'x-forwarded-host': request.headers.get('x-forwarded-host') || '',
+        'x-forwarded-proto': request.headers.get('x-forwarded-proto') || ''
+      }
+      return await handleV2TemplateEngine(menu, templateId, context, options, user.id, metricsBuilder, headers)
+    }
+    
+    if (useV1 && templateId) {
       const headers = {
         cookie: request.headers.get('cookie') || '',
         authorization: request.headers.get('authorization') || '',
@@ -330,7 +564,7 @@ export async function POST(request: NextRequest) {
       return await handleNewTemplateEngine(menu, templateId, context, options, user.id, metricsBuilder, headers)
     }
     
-    // LEGACY PATH: Continue with existing preset-based system
+    // LEGACY PATH: Continue with existing preset-based system (or auto-select)
     
     // Get extraction data - either from extractionMetadata or reconstruct from items
     let extractionResult: any

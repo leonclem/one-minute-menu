@@ -16,6 +16,213 @@ import { logger } from '@/lib/logger'
 export const maxDuration = 60
 
 /**
+ * Handle image export using the V2 template engine
+ */
+async function handleV2TemplateEngine(
+  menu: any,
+  templateId: string,
+  context: OutputContext,
+  imageOptions: any,
+  userId: string,
+  metricsBuilder: MetricsBuilder,
+  headers?: Record<string, string>
+) {
+  // Import V2 template engine modules
+  const { transformMenuToV2 } = await import('@/lib/templates/v2/menu-transformer-v2')
+  const { generateLayoutV2 } = await import('@/lib/templates/v2/layout-engine-v2')
+  const { renderToWeb } = await import('@/lib/templates/v2/renderer-web-v2')
+  const { PALETTES_V2 } = await import('@/lib/templates/v2/renderer-v2')
+  const { renderToString } = await import('react-dom/server')
+  
+  // Transform menu to EngineMenuV2
+  metricsBuilder.markCalculationStart()
+  const engineMenu = transformMenuToV2(menu)
+
+  // Calculate menu characteristics for metrics
+  const sectionCount = engineMenu.sections.length
+  const totalItems = engineMenu.sections.reduce((sum, section) => sum + section.items.length, 0)
+  const itemsWithImages = engineMenu.sections.reduce((sum, section) => 
+    sum + section.items.filter(item => !!item.imageUrl).length, 0)
+  const imageRatio = totalItems > 0 ? (itemsWithImages / totalItems) * 100 : 0
+  
+  const totalNameLength = engineMenu.sections.reduce((sum, section) => 
+    sum + section.items.reduce((s, i) => s + i.name.length, 0), 0)
+  const avgNameLength = totalItems > 0 ? totalNameLength / totalItems : 0
+  
+  const hasDescriptions = engineMenu.sections.some(section => 
+    section.items.some(item => !!item.description && item.description.length > 0))
+
+  metricsBuilder.setMenuCharacteristics({
+    sectionCount,
+    totalItems,
+    imageRatio,
+    avgNameLength,
+    hasDescriptions
+  })
+  
+  // Load saved template selection (if exists)
+  const supabase = createServerSupabaseClient()
+  const { data: selectionData } = await supabase
+    .from('menu_template_selections')
+    .select('*')
+    .eq('menu_id', menu.id)
+    .single()
+  
+  const configuration = selectionData?.configuration || {}
+  
+  // Generate V2 layout
+  const layoutDocument = await generateLayoutV2({
+    menu: engineMenu,
+    templateId,
+    selection: {
+      textOnly: configuration.textOnly || false,
+      fillersEnabled: configuration.fillersEnabled || false,
+      texturesEnabled: configuration.texturesEnabled !== false,
+      showMenuTitle: configuration.showMenuTitle || false,
+      colourPaletteId: configuration.colourPaletteId || configuration.paletteId
+    },
+    debug: false
+  })
+  
+  metricsBuilder.setLayoutSelection(templateId, context)
+  metricsBuilder.markCalculationEnd()
+  
+  // Resolve palette
+  const paletteId = configuration.colourPaletteId || configuration.paletteId
+  const palette = PALETTES_V2.find(p => p.id === paletteId) || PALETTES_V2[0]
+  
+  // Calculate dimensions for image export based on page spec
+  const pageSpec = layoutDocument.pageSpec
+  
+  // Logical dimensions in points
+  const padding = 20 // points
+  const pageCount = layoutDocument.pages.length
+  const logicalWidth = Math.ceil(pageSpec.width + (padding * 2))
+  // For PNG, we can show all pages stacked if requested, or just the first page
+  // The user previously mentioned only first page is fine for now, but if we're
+  // fixing dimensions, let's at least make the viewport match the first page correctly.
+  // If they want multiple pages later, we can multiply height by pageCount.
+  const logicalHeight = Math.ceil(pageSpec.height + (padding * 2))
+
+  // Override dimensions for V2 to ensure flush output with buffer
+  // unless a specific preset dimension (like Instagram) was requested
+  if (!imageOptions.presetDimension) {
+    imageOptions.width = logicalWidth
+    imageOptions.height = logicalHeight
+  }
+
+  // Pre-fetch texture data URL if enabled
+  const { getTextureDataURL } = await import('@/lib/templates/export/texture-utils')
+  let textureDataURL: string | undefined = undefined
+  if (configuration.texturesEnabled !== false) {
+    if (palette.id === 'midnight-gold') {
+      textureDataURL = await getTextureDataURL('dark-paper-2.png', headers) || undefined
+    } else if (palette.id === 'elegant-dark') {
+      textureDataURL = await getTextureDataURL('dark-paper.png', headers) || undefined
+    }
+  }
+
+  // Extract font sets for Google Fonts support
+  const fontSets = new Set(['modern-sans'])
+  layoutDocument.pages.forEach(page => {
+    page.tiles.forEach(tile => {
+      if ((tile as any).style?.typography?.fontSet) {
+        fontSets.add((tile as any).style.typography.fontSet)
+      }
+    })
+  })
+  
+  const { FONT_SETS_V2 } = await import('@/lib/templates/v2/renderer-v2')
+  const googleFontsURL = `https://fonts.googleapis.com/css2?family=${Array.from(fontSets)
+    .map(id => FONT_SETS_V2.find(set => set.id === id)?.googleFonts)
+    .filter(Boolean)
+    .join('&family=')}&display=swap`
+  
+  // Prepare custom CSS for V2
+  const v2CustomCSS = `
+    @import url('${googleFontsURL}');
+    
+    body {
+      background-color: ${palette.colors.background};
+      margin: 0;
+      padding: ${padding}px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    
+    .layout-document-v2 {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: auto;
+    }
+    
+    .page-container-v2 {
+      margin-bottom: 0 !important;
+      box-shadow: none !important;
+    }
+  `
+
+  // Render layout to HTML fragment
+  metricsBuilder.markRenderStart()
+  const componentHTML = renderToString(
+    renderToWeb(layoutDocument, {
+      scale: 1,
+      palette,
+      isExport: true,
+      texturesEnabled: configuration.texturesEnabled !== false,
+      textureDataURL,
+      showGridOverlay: false,
+      showRegionBounds: false,
+      showTileIds: false
+    })
+  )
+  metricsBuilder.markRenderEnd()
+  
+  // Create LayoutMenuData for image export metadata
+  const layoutData = {
+    metadata: {
+      title: menu.name,
+      currency: engineMenu.metadata.currency
+    },
+    sections: []
+  }
+  
+  // Merge V2 styles into image options
+  const finalImageOptions = {
+    ...imageOptions,
+    customCSS: `${v2CustomCSS}${imageOptions.customCSS || ''}`,
+    themeColors: {
+      background: palette.colors.background,
+      text: palette.colors.itemTitle
+    }
+  }
+  
+  // Export to image
+  metricsBuilder.markExportStart()
+  const result = await exportToImage(componentHTML, layoutData, context, finalImageOptions)
+  metricsBuilder.markExportEnd()
+  
+  // Set export details and build metrics
+  const exportFormat = imageOptions.format || 'png'
+  metricsBuilder.setExportDetails(exportFormat, result.size)
+  const metrics = metricsBuilder.build()
+  logLayoutMetrics(metrics)
+  
+  return new Response(result.imageBuffer as any, {
+    status: 200,
+    headers: {
+      'Content-Type': exportFormat === 'png' ? 'image/png' : 'image/jpeg',
+      'Content-Length': result.size.toString(),
+      'Content-Disposition': `attachment; filename="${menu.slug || 'menu'}-${context}.${exportFormat === 'png' ? 'png' : 'jpg'}"`,
+      'Cache-Control': 'no-cache'
+    }
+  })
+}
+
+/**
  * Handle image export using the new template engine
  */
 async function handleNewTemplateEngine(
@@ -285,8 +492,42 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const { menuId, context, templateId, presetId, options = {} } = validation.data
+    let { menuId, context, templateId, presetId, options = {} } = validation.data
     
+    logger.info(`[ImageExport] Starting export for menu ${menuId}, templateId: ${templateId}, presetId: ${presetId}`)
+
+    // Engine Selection and Routing
+    let useV2 = false
+    let useV1 = false
+    let useLegacy = false
+
+    if (templateId) {
+      const { templateExists } = await import('@/lib/templates/v2/template-loader-v2')
+      if (await templateExists(templateId)) {
+        useV2 = true
+        logger.info(`[ImageExport] Using V2 engine for templateId: ${templateId}`)
+      } else {
+        const { TEMPLATE_REGISTRY } = await import('@/lib/templates/template-definitions')
+        if (TEMPLATE_REGISTRY[templateId]) {
+          useV1 = true
+          logger.info(`[ImageExport] Using V1 engine for templateId: ${templateId}`)
+        } else {
+          const { LAYOUT_PRESETS } = await import('@/lib/templates/presets')
+          if (LAYOUT_PRESETS[templateId]) {
+            useLegacy = true
+            presetId = templateId
+            templateId = undefined
+            logger.info(`[ImageExport] Re-routing legacy templateId "${presetId}" to preset path`)
+          } else {
+            logger.warn(`[ImageExport] templateId "${templateId}" not found in any registry`)
+          }
+        }
+      }
+    } else if (presetId) {
+      useLegacy = true
+      logger.info(`[ImageExport] Using legacy path for presetId: ${presetId}`)
+    }
+
     metricsBuilder.setMenuId(menuId)
     
     // Handle preset dimensions
@@ -319,8 +560,20 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // NEW TEMPLATE ENGINE PATH
-    if (templateId) {
+    // EXECUTE SELECTED ENGINE PATH
+    
+    if (useV2 && templateId) {
+      const headers = {
+        cookie: request.headers.get('cookie') || '',
+        authorization: request.headers.get('authorization') || '',
+        host: request.headers.get('host') || '',
+        'x-forwarded-host': request.headers.get('x-forwarded-host') || '',
+        'x-forwarded-proto': request.headers.get('x-forwarded-proto') || ''
+      }
+      return await handleV2TemplateEngine(menu, templateId, context, imageOptions, user.id, metricsBuilder, headers)
+    }
+    
+    if (useV1 && templateId) {
       const headers = {
         cookie: request.headers.get('cookie') || '',
         authorization: request.headers.get('authorization') || '',
@@ -331,7 +584,7 @@ export async function POST(request: NextRequest) {
       return await handleNewTemplateEngine(menu, templateId, context, imageOptions, user.id, metricsBuilder, headers)
     }
     
-    // LEGACY PATH: Continue with existing preset-based system
+    // LEGACY PATH: Continue with existing preset-based system (or auto-select)
     
     // Get extraction data - either from extractionMetadata or reconstruct from items
     let extractionResult: any

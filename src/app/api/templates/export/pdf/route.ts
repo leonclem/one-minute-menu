@@ -175,8 +175,23 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const { menuId, menu: demoMenu, templateId, presetId, options = {} } = validation.data
+    let { menuId, menu: demoMenu, templateId, presetId, options = {} } = validation.data
     
+    // Safety check: If templateId is actually a legacy preset ID, treat it as such
+    // This happens when older menus have legacy preset IDs stored in template_id
+    if (templateId) {
+      const { templateExists } = await import('@/lib/templates/v2/template-loader-v2')
+      const exists = await templateExists(templateId)
+      if (!exists) {
+        const { LAYOUT_PRESETS } = await import('@/lib/templates/presets')
+        if (LAYOUT_PRESETS[templateId]) {
+          logger.info(`[PDFExport] Re-routing legacy templateId "${templateId}" to presetId`)
+          presetId = templateId
+          templateId = undefined
+        }
+      }
+    }
+
     // Check if this is a demo export (menu data provided instead of menuId)
     const isDemo = !!demoMenu && !menuId
     
@@ -254,10 +269,11 @@ export async function POST(request: NextRequest) {
     
     // Determine which engine to use
     let effectiveTemplateId = templateId
+    let effectivePresetId = presetId
 
     // If no template ID provided but we have a menu ID (authenticated),
     // check if the user has a saved template selection
-    if (!effectiveTemplateId && menuId && !isDemo) {
+    if (!effectiveTemplateId && !effectivePresetId && menuId && !isDemo) {
       try {
         const supabase = createServerSupabaseClient()
         const { data: selectionData } = await supabase
@@ -267,8 +283,20 @@ export async function POST(request: NextRequest) {
           .single()
           
         if (selectionData && selectionData.template_id) {
-          effectiveTemplateId = selectionData.template_id
-          logger.info(`[PDFExporter] Found saved template selection: ${effectiveTemplateId}`)
+          const selectedId = selectionData.template_id
+          const { templateExists } = await import('@/lib/templates/v2/template-loader-v2')
+          const exists = await templateExists(selectedId)
+          
+          if (exists) {
+            effectiveTemplateId = selectedId
+            logger.info(`[PDFExporter] Found saved template selection: ${effectiveTemplateId}`)
+          } else {
+            const { LAYOUT_PRESETS } = await import('@/lib/templates/presets')
+            if (LAYOUT_PRESETS[selectedId]) {
+              effectivePresetId = selectedId
+              logger.info(`[PDFExporter] Found saved legacy preset selection: ${effectivePresetId}`)
+            }
+          }
         }
       } catch (err) {
         // Ignore error, fallback to legacy
@@ -368,9 +396,9 @@ export async function POST(request: NextRequest) {
     
     // Select preset (use provided presetId or auto-select)
     let preset
-    if (presetId) {
+    if (effectivePresetId) {
       const { LAYOUT_PRESETS } = await import('@/lib/templates/presets')
-      preset = LAYOUT_PRESETS[presetId]
+      preset = LAYOUT_PRESETS[effectivePresetId]
       if (!preset) {
         return NextResponse.json(
           { error: 'Invalid preset ID', code: ERROR_CODES.PRESET_NOT_FOUND },
