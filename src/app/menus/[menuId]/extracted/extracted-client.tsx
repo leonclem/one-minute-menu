@@ -1326,11 +1326,6 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                       )}
                     </>
                   )}
-                  {!isDemo && thumbnailUrl && (
-                    <p className="text-xs text-ux-text-secondary">
-                      You&apos;ve already uploaded a menu image. Uploading a new one will replace the existing image and you may need to re-run extraction.
-                    </p>
-                  )}
                 </>
               )}
             </div>
