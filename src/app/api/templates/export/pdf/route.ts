@@ -20,6 +20,7 @@ export const maxDuration = 60
 async function handleNewTemplateEngine(
   menu: any,
   templateId: string,
+  configuration: any,
   options: any,
   userId: string,
   metricsBuilder: MetricsBuilder,
@@ -36,6 +37,7 @@ async function handleNewTemplateEngine(
   const engineMenu = transformMenuToV2(menu)
 
   // Calculate menu characteristics for metrics
+  // ... metrics calculation ...
   const sectionCount = engineMenu.sections.length
   const totalItems = engineMenu.sections.reduce((sum, section) => sum + section.items.length, 0)
   const itemsWithImages = engineMenu.sections.reduce((sum, section) => 
@@ -57,26 +59,37 @@ async function handleNewTemplateEngine(
     hasDescriptions
   })
   
-  // Load saved template selection (if exists)
-  const supabase = createServerSupabaseClient()
-  const { data: selectionData } = await supabase
-    .from('menu_template_selections')
-    .select('*')
-    .eq('menu_id', menu.id)
-    .single()
+  // Resolve configuration: priority is passed configuration > database > menu object
+  let finalConfiguration = configuration || {}
   
-  const configuration = selectionData?.configuration || {}
+  if (!finalConfiguration.colourPaletteId && !finalConfiguration.paletteId) {
+    // Try to load saved template selection from database if no configuration passed
+    const supabase = createServerSupabaseClient()
+    const { data: selectionData } = await supabase
+      .from('menu_template_selections')
+      .select('*')
+      .eq('menu_id', menu.id)
+      .single()
+    
+    finalConfiguration = selectionData?.configuration || menu.configuration || {}
+  }
+  
+  // Set paletteId if still not present in configuration
+  if (!finalConfiguration.colourPaletteId && !finalConfiguration.paletteId && menu.theme?.colors) {
+    // Attempt to derive palette ID or use default
+    finalConfiguration.colourPaletteId = 'clean-modern'
+  }
   
   // Generate V2 layout
   const layoutDocument = await generateLayoutV2({
     menu: engineMenu,
     templateId,
     selection: {
-      textOnly: configuration.textOnly || false,
-      fillersEnabled: configuration.fillersEnabled || false,
-      texturesEnabled: configuration.texturesEnabled !== false, // default true
-      showMenuTitle: configuration.showMenuTitle || false,
-      colourPaletteId: configuration.colourPaletteId || configuration.paletteId
+      textOnly: finalConfiguration.textOnly || false,
+      fillersEnabled: finalConfiguration.fillersEnabled || false,
+      texturesEnabled: finalConfiguration.texturesEnabled !== false, // default true
+      showMenuTitle: finalConfiguration.showMenuTitle || false,
+      colourPaletteId: finalConfiguration.colourPaletteId || finalConfiguration.paletteId
     },
     debug: false
   })
@@ -97,10 +110,10 @@ async function handleNewTemplateEngine(
   metricsBuilder.markExportStart()
   const pdfResult = await renderToPdf(optimizedLayout, {
     title: options.title || menu.name,
-    paletteId: configuration.colourPaletteId || configuration.paletteId,
+    paletteId: finalConfiguration.colourPaletteId || finalConfiguration.paletteId,
     includePageNumbers: options.includePageNumbers !== false,
     printBackground: true,
-    texturesEnabled: configuration.texturesEnabled !== false,
+    texturesEnabled: finalConfiguration.texturesEnabled !== false,
     showRegionBounds: false
   })
   metricsBuilder.markExportEnd()
@@ -126,10 +139,11 @@ async function handleNewTemplateEngine(
 
 // Request body schema
 const ExportPDFRequestSchema = z.object({
-  menuId: z.string().uuid('Invalid menu ID format').optional(), // Optional for demo users
+  menuId: z.string().optional(), // Optional for demo users
   menu: z.any().optional(), // Demo users send menu data directly
   templateId: z.string().optional(), // New: template ID for new engine
   presetId: z.string().optional(),   // Legacy: preset ID for old engine
+  configuration: z.any().optional(), // Configuration for the new engine
   options: z.object({
     orientation: z.enum(['portrait', 'landscape']).optional(),
     title: z.string().optional(),
@@ -175,7 +189,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    let { menuId, menu: demoMenu, templateId, presetId, options = {} } = validation.data
+    let { menuId, menu: demoMenu, templateId, presetId, configuration, options = {} } = validation.data
     
     // Safety check: If templateId is actually a legacy preset ID, treat it as such
     // This happens when older menus have legacy preset IDs stored in template_id
@@ -313,7 +327,7 @@ export async function POST(request: NextRequest) {
         'x-forwarded-host': request.headers.get('x-forwarded-host') || '',
         'x-forwarded-proto': request.headers.get('x-forwarded-proto') || ''
       }
-      return await handleNewTemplateEngine(menu, effectiveTemplateId, options, user?.id || 'demo-user', metricsBuilder, headers)
+      return await handleNewTemplateEngine(menu, effectiveTemplateId, configuration, options, user?.id || 'demo-user', metricsBuilder, headers)
     }
     
     // LEGACY PATH: Continue with existing preset-based system

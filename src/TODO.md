@@ -88,6 +88,12 @@
 >>>>>>>>> GO TO PILOT >>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+/upload
+- [ ] "Enter items manually" button not working.
+
+/extracted
+- [ ] Need capability to delete a section
+
 ## Deployment
 - [x] Purchase domain
 - [ ] Set up gridmenu.ai emails
@@ -128,11 +134,11 @@
 - [x] /ux
 
 ## Demo
-- [ ] More clarity on demo input menu as it stands before implementing changes
+- [x] More clarity on demo input menu as it stands before implementing changes
 - [ ] Show menu and image outputs on home page
 - [ ] Lloyd feedback: input menu is confusing, looks like output
 - [ ] Lloyd feedback: Give an option to email the PDF menu or send to printers (order x amount)
-- [ ] Include sample logo, address, etc.
+- [x] Include sample logo, address, etc.
 
 ## Market awareness
 - [ ] Create blog / comparison pages (https://www.upmenu.com/blog/menu-making-apps/)
@@ -173,6 +179,7 @@
 - [ ] Remove confidence tag at top of page
 - [ ] Watermark images in Creator Pack
 - [ ] QA to ensure pricing matches reality
+- [ ] Show preview picture of menu (if design template chosen) embedded in Dashboard menus
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>

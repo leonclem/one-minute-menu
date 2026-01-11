@@ -50,7 +50,7 @@ describe('DemoSampleClient (sample demo flow)', () => {
   it('starts demo from a sample menu and tracks conversion + navigation', async () => {
     render(<DemoSampleClient />)
 
-    const tryButtons = screen.getAllByRole('button', { name: /try this menu/i })
+    const tryButtons = screen.getAllByRole('button', { name: /use this photo/i })
     expect(tryButtons.length).toBeGreaterThan(0)
 
     fireEvent.click(tryButtons[0])
@@ -102,7 +102,7 @@ describe('DemoSampleClient (sample demo flow)', () => {
 
     render(<DemoSampleClient />)
 
-    const tryButtons = screen.getAllByRole('button', { name: /try this menu/i })
+    const tryButtons = screen.getAllByRole('button', { name: /use this photo/i })
     fireEvent.click(tryButtons[0])
 
     await waitFor(() => {

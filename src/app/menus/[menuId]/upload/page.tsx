@@ -22,7 +22,9 @@ export default async function UploadPage({ params }: PageProps) {
     redirect('/dashboard')
   }
 
-  return <UploadClient menuId={params.menuId} menuName={menu.name} />
+  const hasItems = (menu.items?.length ?? 0) > 0
+
+  return <UploadClient menuId={params.menuId} menuName={menu.name} hasItems={hasItems} />
 }
 
 

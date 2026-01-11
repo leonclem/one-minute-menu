@@ -3,15 +3,15 @@ import { render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
 // Mock next/navigation for client component navigation
+const mockRouter = { push: jest.fn() }
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-  }),
+  useRouter: () => mockRouter,
 }))
 
 // Mock toast hook
+const mockToast = { showToast: jest.fn() }
 jest.mock('@/components/ui', () => ({
-  useToast: () => ({ showToast: jest.fn() }),
+  useToast: () => mockToast,
 }))
 
 import UXMenuExportClient from '@/app/menus/[menuId]/export/export-client'

@@ -9,9 +9,10 @@ import { UXButton } from '@/components/ux'
 interface UploadClientProps {
   menuId: string
   menuName?: string
+  hasItems?: boolean
 }
 
-export default function UploadClient({ menuId, menuName }: UploadClientProps) {
+export default function UploadClient({ menuId, menuName, hasItems = false }: UploadClientProps) {
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -58,26 +59,39 @@ export default function UploadClient({ menuId, menuName }: UploadClientProps) {
           </div>
         )}
 
-        <div className="card-ux bg-white/80 backdrop-blur-[1.5px]">
-          <div className="p-4 pb-2 text-center">
-            <p
-              className="text-ux-text-secondary mb-1"
-              style={{ fontSize: '1rem', lineHeight: '1rem' }}
-            >
-              Use a clear, readable photo of your menu.
-            </p>
-            <p
-              className="text-ux-text-secondary mb-3"
-              style={{ fontSize: '1rem', lineHeight: '1rem' }}
-            >
-              We&apos;ll extract items automatically so you can review and tweak them.
-            </p>
+        {!hasItems && (
+          <div className="card-ux bg-white/80 backdrop-blur-[1.5px]">
+            <div className="p-4 pb-2 text-center">
+              <p
+                className="text-ux-text-secondary mb-1"
+                style={{ fontSize: '1rem', lineHeight: '1rem' }}
+              >
+                Use a clear, readable photo of your menu.
+              </p>
+              <p
+                className="text-ux-text-secondary mb-3"
+                style={{ fontSize: '1rem', lineHeight: '1rem' }}
+              >
+                We&apos;ll extract items automatically so you can review and tweak them.
+              </p>
+            </div>
+            <ImageUpload
+              onImageSelected={(file) => handleUpload(file)}
+              className="w-full bg-transparent shadow-none"
+            />
           </div>
-          <ImageUpload
-            onImageSelected={(file) => handleUpload(file)}
-            className="w-full bg-transparent shadow-none"
-          />
-        </div>
+        )}
+
+        {hasItems && (
+          <div className="text-center py-12 bg-white/80 backdrop-blur-[1.5px] rounded-xl border border-white/20">
+            <p className="text-ux-text font-medium mb-4">
+              Your menu already has items. You can manage them in the items page.
+            </p>
+            <Link href={`/menus/${menuId}/extracted`}>
+              <UXButton variant="primary">Manage Menu Items</UXButton>
+            </Link>
+          </div>
+        )}
 
         <div className="mt-6 text-center space-y-2">
           <p className="text-sm text-white/90 text-hero-shadow">

@@ -28,6 +28,7 @@ interface ExportOption {
   description: string
   icon: string
   format: 'pdf' | 'image' | 'html' | 'images-zip'
+  disabledForDemo?: boolean
 }
 
 const EXPORT_OPTIONS: ExportOption[] = [
@@ -43,25 +44,35 @@ const EXPORT_OPTIONS: ExportOption[] = [
     name: 'Menu Image',
     description: 'High-quality image for social media or websites',
     icon: '🖼️',
-    format: 'image'
+    format: 'image',
+    disabledForDemo: true
   },
   {
     id: 'html',
     name: 'Web Menu',
     description: 'Interactive HTML menu for your website',
     icon: '🌐',
-    format: 'html'
+    format: 'html',
+    disabledForDemo: true
   },
   {
     id: 'images-zip',
     name: 'Menu Images Zip',
     description: 'Collection of menu images in different formats',
     icon: '📦',
-    format: 'images-zip'
+    format: 'images-zip',
+    disabledForDemo: true
   }
 ]
 
-const CONVERSION_INCENTIVES = [
+interface ConversionIncentive {
+  icon: string
+  title: string
+  description: string
+}
+
+const CONVERSION_INCENTIVES: ConversionIncentive[] = [
+  /*
   {
     icon: '🎨',
     title: 'Apply your own branding',
@@ -82,6 +93,7 @@ const CONVERSION_INCENTIVES = [
     title: 'Menu analytics',
     description: 'Track views and popular items'
   }
+  */
 ]
 
 interface TemplateSelection {
@@ -108,32 +120,11 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
   useEffect(() => {
     // Attempt to treat dashed IDs as valid when possible:
     // If menuId is like "demo-<uuid>", try authenticated fetch with the uuid.
-    const baseId = menuId.startsWith('demo-') ? menuId.slice(5) : menuId
+    const baseId = menuId.startsWith('demo-') ? menuId : menuId
 
     ;(async () => {
       try {
-        const resp = await fetch(`/api/menus/${baseId}`)
-        if (resp.ok) {
-          const json = await resp.json()
-          setAuthMenu(json?.data ?? null)
-          
-          // Fetch saved template selection for authenticated menus
-          try {
-            const selectionResp = await fetch(`/api/menus/${baseId}/template-selection`)
-            if (selectionResp.ok) {
-              const selectionJson = await selectionResp.json()
-              if (selectionJson?.data) {
-                setTemplateSelection(selectionJson.data)
-              }
-            }
-          } catch (selectionErr) {
-            console.error('Error fetching template selection:', selectionErr)
-            // Non-fatal error, continue without template selection
-          }
-          
-          return
-        }
-        // If unauthorized or not found and the original is a demo route, fall back to demo session
+        // If it's a demo ID, skip the authenticated fetch and go straight to session storage
         if (menuId.startsWith('demo-')) {
           const storedDemoMenu = sessionStorage.getItem('demoMenu')
           if (storedDemoMenu) {
@@ -158,7 +149,31 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           } else {
             router.push('/demo/sample')
           }
-        } else if (resp.status === 401) {
+          return
+        }
+
+        const resp = await fetch(`/api/menus/${menuId}`)
+        if (resp.ok) {
+          const json = await resp.json()
+          setAuthMenu(json?.data ?? null)
+          
+          // Fetch saved template selection for authenticated menus
+          try {
+            const selectionResp = await fetch(`/api/menus/${menuId}/template-selection`)
+            if (selectionResp.ok) {
+              const selectionJson = await selectionResp.json()
+              if (selectionJson?.data) {
+                setTemplateSelection(selectionJson.data)
+              }
+            }
+          } catch (selectionErr) {
+            console.error('Error fetching template selection:', selectionErr)
+            // Non-fatal error, continue without template selection
+          }
+          
+          return
+        }
+        if (resp.status === 401) {
           showToast({
             type: 'info',
             title: 'Sign in required',
@@ -198,8 +213,8 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
   }, [menuId, router, showToast])
 
   const handleExport = async (option: ExportOption) => {
-    const baseId = menuId.startsWith('demo-') ? menuId.slice(5) : menuId
-    const isDemo = !authMenu
+    const baseId = menuId.startsWith('demo-') ? menuId : menuId
+    const isDemo = !authMenu && menuId.startsWith('demo-')
     setExportingFormat(option.id)
 
     // Track export start for funnel analytics
@@ -216,15 +231,20 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
       if (isDemo) {
         if (!demoMenu || !templateSelection) return
         
-        // Generate styled export for demo users
-        const template = TEMPLATE_REGISTRY[templateSelection.templateId]
-        if (!template) {
-          showToast({
-            type: 'error',
-            title: 'Template not found',
-            description: 'Please go back and select a template first.'
-          })
-          return
+        // Skip registry check for V2 templates used in demo flow
+        const isV2Template = templateSelection.templateId.endsWith('-v2')
+        
+        if (!isV2Template) {
+          // Generate styled export for demo users (Legacy engine check)
+          const template = TEMPLATE_REGISTRY[templateSelection.templateId]
+          if (!template) {
+            showToast({
+              type: 'error',
+              title: 'Template not found',
+              description: 'Please go back and select a template first.'
+            })
+            return
+          }
         }
 
         // For PDF export, allow demo users to generate via API
@@ -573,42 +593,45 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           </h4>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {EXPORT_OPTIONS.map((option) => (
-              <UXCard 
-                key={option.id}
-                className="text-center hover:shadow-lg transition-all duration-200"
-              >
-                <div className="p-6">
-                  <div className="text-4xl mb-4">{option.icon}</div>
-                  <h5 className="text-lg font-semibold text-ux-text mb-2">
-                    {option.name}
-                  </h5>
-                  <p className="text-sm text-ux-text-secondary mb-4">
-                    {option.description}
-                  </p>
-                  
-                  {completedExports.has(option.id) ? (
-                    <div className="flex items-center justify-center text-ux-success">
-                      <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      Downloaded
-                    </div>
-                  ) : (
-                    <UXButton
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleExport(option)}
-                      loading={exportingFormat === option.id}
-                      disabled={exportingFormat !== null}
-                      className="w-full"
-                    >
-                      {exportingFormat === option.id ? 'Exporting...' : 'Export'}
-                    </UXButton>
-                  )}
-                </div>
-              </UXCard>
-            ))}
+            {EXPORT_OPTIONS.map((option) => {
+              const isDisabled = isDemo && option.disabledForDemo
+              return (
+                <UXCard 
+                  key={option.id}
+                  className={`text-center transition-all duration-200 ${isDisabled ? 'opacity-60 grayscale-[0.5]' : 'hover:shadow-lg'}`}
+                >
+                  <div className="p-6">
+                    <div className="text-4xl mb-4">{option.icon}</div>
+                    <h5 className="text-lg font-semibold text-ux-text mb-2">
+                      {option.name}
+                    </h5>
+                    <p className="text-sm text-ux-text-secondary mb-4">
+                      {isDisabled ? 'Not available for the demo flow' : option.description}
+                    </p>
+                    
+                    {completedExports.has(option.id) ? (
+                      <div className="flex items-center justify-center text-ux-success">
+                        <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Downloaded
+                      </div>
+                    ) : (
+                      <UXButton
+                        variant="primary"
+                        size="sm"
+                        onClick={() => !isDisabled && handleExport(option)}
+                        loading={exportingFormat === option.id}
+                        disabled={exportingFormat !== null || isDisabled}
+                        className="w-full"
+                      >
+                        {isDisabled ? 'Locked' : exportingFormat === option.id ? 'Exporting...' : 'Export'}
+                      </UXButton>
+                    )}
+                  </div>
+                </UXCard>
+              )
+            })}
           </div>
         </div>
 

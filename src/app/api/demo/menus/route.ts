@@ -65,7 +65,19 @@ export async function POST(request: NextRequest) {
         userId: 'demo-user'
       }],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      logoUrl: '/logos/logo.svg',
+      venueInfo: {
+        address: '123 Gourmet Avenue, Food City, FC 12345',
+        phone: '+1 (555) 123-4567',
+        email: 'hello@gridmenu.ai',
+        socialMedia: {
+          instagram: '@gridmenu_demo',
+          facebook: 'gridmenu.demo',
+          x: '@gridmenu_demo',
+          website: 'https://gridmenu.ai'
+        }
+      }
     }
     
     // Store demo menu in session storage (client-side) or temporary storage

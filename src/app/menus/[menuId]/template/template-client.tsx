@@ -233,7 +233,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           throw new Error(data?.error || 'Failed to save template selection')
         }
 
-        router.push(`/menus/${menuId}/export`)
+        router.push('/dashboard')
       }
     } catch (error) {
       console.error('Error applying template:', error)
@@ -265,7 +265,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     <UXSection>
       <div className="mb-8 text-center">
         <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
-          Design Your Menu
+          Configure Your Menu Layout
         </h1>
         <p className="mt-2 text-white/90 text-hero-shadow-strong">
           Choose a style, colors, and options. See the live preview below.
@@ -377,26 +377,6 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   </label>
                 </div>
               </div>
-
-              <div className="pt-4 flex flex-col gap-3">
-                <UXButton
-                  variant="primary"
-                  size="lg"
-                  className="w-full shadow-lg"
-                  onClick={handleSelectTemplate}
-                  loading={isSaving}
-                  disabled={!layoutDocument || !!previewError}
-                >
-                  Confirm and Export →
-                </UXButton>
-                <UXButton
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => router.push(`/menus/${menuId}/extracted`)}
-                >
-                  ← Back to Items
-                </UXButton>
-              </div>
             </div>
           </UXCard>
         </div>
@@ -496,6 +476,28 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
             The preview accurately represents your final PDF export
           </div>
         </div>
+      </div>
+
+      {/* Action Buttons at bottom */}
+      <div className="mt-12 flex flex-col sm:flex-row gap-4 justify-center">
+        <UXButton
+          variant="outline"
+          size="lg"
+          className="bg-white/20 border-white/40 text-white hover:bg-white/30 w-full sm:w-auto min-w-[200px]"
+          onClick={() => router.push(`/menus/${menuId}/extracted`)}
+        >
+          ← Back to Items
+        </UXButton>
+        <UXButton
+          variant="primary"
+          size="lg"
+          className="w-full sm:w-auto min-w-[240px] shadow-lg"
+          onClick={handleSelectTemplate}
+          loading={isSaving}
+          disabled={!layoutDocument || !!previewError}
+        >
+          {isDemoUser ? 'Confirm and Export →' : 'Confirm'}
+        </UXButton>
       </div>
     </UXSection>
   )

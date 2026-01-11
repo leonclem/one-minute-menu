@@ -62,7 +62,7 @@ With maple syrup, homemade jam & whipped cream
     id: 'sample-fine-dining',
     name: 'Fine Dining',
     description: 'Elegant multi-course selections including appetizers, mains, and desserts',
-    imageUrl: '/sample-menus/fine-dining.jpg',
+    imageUrl: '/sample-menus/chef---handwritten.png',
     category: 'restaurant',
     extractedText: `
 TODAY'S MENU
@@ -192,10 +192,10 @@ export default function DemoSampleClient() {
         {/* Page heading styled like the upload page */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
-            Choose a Sample Menu
+            Select starting point
           </h1>
           <p className="mt-2 text-white/90 text-hero-shadow-strong">
-            Try our menu creation process with one of these sample menus
+            Try our menu creation process with one of these example photos
           </p>
         </div>
 
@@ -266,7 +266,7 @@ export default function DemoSampleClient() {
                 >
                   {loading && selectedMenu?.id === sampleMenu.id 
                     ? 'Creating demo menu...' 
-                    : 'Try this menu'
+                    : 'Use this photo'
                   }
                 </UXButton>
               </div>

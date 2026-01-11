@@ -167,17 +167,48 @@ describe('UX Extracted Page', () => {
       expect(screen.getByText(/Menu control panel/i)).toBeInTheDocument()
     })
 
-    // Upload logo button should be present
-    const uploadLogoButton = screen.getByRole('button', { name: /Upload logo/i })
-    expect(uploadLogoButton).toBeInTheDocument()
+    // Manage logo button should be present since logoUrl is provided
+    const manageLogoButton = screen.getByRole('button', { name: /Manage logo/i })
+    expect(manageLogoButton).toBeInTheDocument()
 
     // Clicking should open the modal
-    uploadLogoButton.click()
+    manageLogoButton.click()
     await waitFor(() => {
-      expect(screen.getByText(/Upload a small JPEG or PNG logo/i)).toBeInTheDocument()
+      expect(screen.getByText(/Upload a new logo to swap it/i)).toBeInTheDocument()
     })
 
     unmount()
+  })
+
+  it('shows logo removal option when a logo exists', async () => {
+    const menuWithLogo = {
+      success: true,
+      data: {
+        id: 'menu-logo',
+        name: 'Logo Menu',
+        items: [{ id: '1', name: 'Soup', price: 5, category: 'Starters' }],
+        logoUrl: '/logo.png',
+      },
+    }
+
+    // @ts-ignore
+    global.fetch = jest.fn().mockImplementation((url) => {
+      if (url.includes('/api/menus/menu-logo')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => menuWithLogo,
+        })
+      }
+      return Promise.reject(new Error('not found'))
+    })
+
+    render(<UXMenuExtractedClient menuId="menu-logo" />)
+
+    const manageButton = await screen.findByRole('button', { name: /Manage logo/i })
+    fireEvent.click(manageButton)
+
+    const removeButton = await screen.findByRole('button', { name: /Remove Logo/i })
+    expect(removeButton).toBeInTheDocument()
   })
 })
 

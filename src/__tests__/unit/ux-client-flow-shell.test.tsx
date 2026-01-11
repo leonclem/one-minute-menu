@@ -40,10 +40,10 @@ describe('ClientFlowShell (single-page workflow shell)', () => {
   })
 
   it('derives current step from pathname and renders UXProgressSteps', () => {
-    mockPathname = '/menus/test-menu/extract'
+    mockPathname = '/menus/demo-test-menu/extract'
 
     render(
-      <ClientFlowShell menuId="test-menu">
+      <ClientFlowShell menuId="demo-test-menu">
         <div>content</div>
       </ClientFlowShell>,
     )
@@ -51,18 +51,18 @@ describe('ClientFlowShell (single-page workflow shell)', () => {
     expect(mockUXProgressSteps).toHaveBeenCalledWith(
       expect.objectContaining({
         currentStep: 'extract',
-        menuId: 'test-menu',
+        menuId: 'demo-test-menu',
       }),
     )
-    expect(mockSaveUXProgress).toHaveBeenCalledWith('test-menu', 'extract')
+    expect(mockSaveUXProgress).toHaveBeenCalledWith('demo-test-menu', 'extract')
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
   })
 
   it('falls back to upload step for unknown path segment', () => {
-    mockPathname = '/menus/test-menu/unknown-step'
+    mockPathname = '/menus/demo-test-menu/unknown-step'
 
     render(
-      <ClientFlowShell menuId="test-menu">
+      <ClientFlowShell menuId="demo-test-menu">
         <div>content</div>
       </ClientFlowShell>,
     )
@@ -72,7 +72,7 @@ describe('ClientFlowShell (single-page workflow shell)', () => {
         currentStep: 'upload',
       }),
     )
-    expect(mockSaveUXProgress).toHaveBeenCalledWith('test-menu', 'upload')
+    expect(mockSaveUXProgress).toHaveBeenCalledWith('demo-test-menu', 'upload')
   })
 })
 

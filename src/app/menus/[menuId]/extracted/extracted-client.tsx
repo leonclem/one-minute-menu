@@ -51,6 +51,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const [menuNameDraft, setMenuNameDraft] = useState('')
   const [showLogoUpload, setShowLogoUpload] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [removingLogo, setRemovingLogo] = useState(false)
   const [logoUploadError, setLogoUploadError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   
@@ -794,6 +795,42 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     }
   }
 
+  const handleRemoveLogo = async () => {
+    setRemovingLogo(true)
+    setLogoUploadError(null)
+    try {
+      const response = await fetch(`/api/menus/${menuId}/logo`, {
+        method: 'DELETE',
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json?.error || 'Failed to remove logo')
+      }
+
+      // The API returns the updated menu in json.data
+      const updatedMenu = json.data as Menu
+      setAuthMenu(updatedMenu)
+      setLogoUrl(null)
+      showToast({
+        type: 'success',
+        title: 'Logo removed',
+        description: 'The logo has been removed from your menu.',
+      })
+      setShowLogoUpload(false)
+    } catch (error) {
+      console.error('Error removing logo:', error)
+      const message = error instanceof Error ? error.message : 'Failed to remove logo. Please try again.'
+      setLogoUploadError(message)
+      showToast({
+        type: 'error',
+        title: 'Removal failed',
+        description: message,
+      })
+    } finally {
+      setRemovingLogo(false)
+    }
+  }
+
   const handleAIImageGenerated = async (itemId: string, imageUrl: string) => {
     try {
       const response = await fetch(`/api/menus/${menuId}/items/${itemId}`, {
@@ -1030,10 +1067,10 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       {/* Page heading styled like the sample page */}
       <div className="mb-8 text-center">
         <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
-          Review Extracted Items
+          {isDemo ? 'Review Extracted Items' : 'Configure Menu Content'}
         </h1>
         <p className="mt-2 text-white/90 text-hero-shadow-strong">
-          We found {totalItems} items across {categories.length} {categories.length === 1 ? 'category' : 'categories'}
+          {totalItems} items across {categories.length} {categories.length === 1 ? 'category' : 'categories'}
         </p>
       </div>
       <div className="max-w-4xl mx-auto space-y-6">
@@ -1083,17 +1120,13 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
               <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-ux-text-secondary">
                 <span>{totalItems} items</span>
                 <span>{categories.length} {categories.length === 1 ? 'category' : 'categories'}</span>
-                <span className="inline-flex items-center px-2 py-1 rounded-full bg-ux-success/10 text-ux-success">
-                  <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  {overallConfidence}% confidence
-                </span>
               </div>
             </div>
-            <p className="text-ux-text">
-              Please review the extracted items below. All items look good and are ready for template selection.
-            </p>
+            {((!isDemo && authResult) || (isDemo && demoGenerating)) && (
+              <p className="text-ux-text">
+                Please review the extracted items below. All items look good and are ready for template selection.
+              </p>
+            )}
           </div>
         </UXCard>
 
@@ -1196,15 +1229,17 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                       ) : (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        <UXButton
-                          variant="warning"
-                          size="md"
-                          onClick={() => router.push(`/menus/${menuId}/upload`)}
-                          disabled={loading}
-                        >
-                          <ImageUp className="hidden sm:inline-block h-4 w-4 mr-2" />
-                          Upload a menu image
-                        </UXButton>
+                        {isDemo && (
+                          <UXButton
+                            variant="warning"
+                            size="md"
+                            onClick={() => router.push(`/menus/${menuId}/upload`)}
+                            disabled={loading}
+                          >
+                            <ImageUp className="hidden sm:inline-block h-4 w-4 mr-2" />
+                            Upload a menu image
+                          </UXButton>
+                        )}
                         {!isDemo && (
                           <UXButton
                             variant="warning"
@@ -1213,7 +1248,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                             disabled={loading}
                           >
                             <ImageUp className="hidden sm:inline-block h-4 w-4 mr-2" />
-                            Upload logo
+                            {logoUrl ? 'Manage logo' : 'Upload logo'}
                           </UXButton>
                         )}
                         <UXButton
@@ -1642,10 +1677,10 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             variant="outline"
             size="lg"
             className="bg-white/20 border-white/40 text-white hover:bg-white/30"
-            onClick={handleBackToExtraction}
+            onClick={isDemo ? handleBackToExtraction : () => router.push('/dashboard')}
             disabled={loading}
           >
-            ← Back to Extraction
+            {isDemo ? '← Back to Extraction' : '← Back to Dashboard'}
           </UXButton>
           
           <UXButton
@@ -1739,14 +1774,14 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             <UXCard>
               <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-ux-border/60">
                 <h3 className="text-sm font-semibold text-ux-text">
-                  Upload logo
+                  {logoUrl ? 'Manage logo' : 'Upload logo'}
                 </h3>
                 <button
                   type="button"
                   className="h-7 w-7 flex items-center justify-center rounded-full text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-primary transition-colors"
-                  onClick={() => !uploadingLogo && setShowLogoUpload(false)}
+                  onClick={() => !uploadingLogo && !removingLogo && setShowLogoUpload(false)}
                   aria-label="Close logo upload"
-                  disabled={uploadingLogo}
+                  disabled={uploadingLogo || removingLogo}
                 >
                   <svg
                     className="h-4 w-4"
@@ -1766,26 +1801,42 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                   </div>
                 )}
                 <p className="text-xs text-ux-text-secondary">
-                  Upload a small JPEG or PNG logo (up to 8MB). For best results, use a square logo with a transparent or solid background.
+                  {logoUrl 
+                    ? 'Upload a new logo to swap it, or remove the current one altogether. Best as square JPEG/PNG up to 8MB.' 
+                    : 'Upload a small JPEG or PNG logo (up to 8MB). For best results, use a square logo with a transparent or solid background.'}
                 </p>
-                <ImageUpload
-                  onImageSelected={handleLogoImageSelected}
-                  onCancel={() => !uploadingLogo && setShowLogoUpload(false)}
-                  noWrapper={true}
-                />
+                <div className={(uploadingLogo || removingLogo) ? 'pointer-events-none opacity-60' : ''}>
+                  <ImageUpload
+                    onImageSelected={handleLogoImageSelected}
+                    onCancel={() => !uploadingLogo && !removingLogo && setShowLogoUpload(false)}
+                    noWrapper={true}
+                  />
+                </div>
                 {logoUrl && (
-                  <div className="flex items-center gap-3 pt-2 border-t border-dashed border-ux-border/60">
-                    <span className="text-xs text-ux-text-secondary">
-                      Current logo preview:
-                    </span>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={logoUrl}
-                      alt={baseMenu?.name || 'Restaurant logo'}
-                      className="h-9 w-9 rounded-full border border-ux-border object-cover bg-white"
-                      loading="lazy"
-                      decoding="async"
-                    />
+                  <div className="flex items-center justify-between pt-3 border-t border-dashed border-ux-border/60">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-ux-text-secondary">
+                        Current logo:
+                      </span>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={logoUrl}
+                        alt={baseMenu?.name || 'Restaurant logo'}
+                        className="h-9 w-9 rounded-full border border-ux-border object-cover bg-white"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                    <UXButton
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRemoveLogo}
+                      loading={removingLogo}
+                      disabled={uploadingLogo}
+                      className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 h-8 text-[11px]"
+                    >
+                      Remove Logo
+                    </UXButton>
                   </div>
                 )}
               </div>
