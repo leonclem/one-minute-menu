@@ -133,7 +133,10 @@ export function middleware(req: NextRequest) {
         // eslint-disable-next-line no-console
         console.warn('[security] Rate limit exceeded', { path: pathname, ip })
         return applySecurityHeaders(
-          NextResponse.json({ error: 'Too many requests' }, { status: 429 }),
+          NextResponse.json(
+            { error: 'Too many requests. Fair-use limits apply to ensure service quality for all users.' }, 
+            { status: 429 }
+          ),
         )
       }
     }

@@ -3,74 +3,102 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Pricing - Menu Export Packs | GridMenu',
-  description: 'Create beautiful, photo-perfect menus in minutes. Design free, pay only when you export. One-time purchase packs starting at $29.',
-  keywords: ['menu export pricing', 'AI menu pricing', 'restaurant menu design', 'menu creation cost'],
-  openGraph: {
-    title: 'Pricing - Menu Export Packs | GridMenu',
-    description: 'Design free. Pay only when exporting your final menu. One-time purchase packs starting at $29.',
-    type: 'website',
-  },
+  title: 'Pricing - Choose Your Plan | GridMenu',
+  description: 'Simple, transparent pricing. One-time Creator Packs or monthly subscriptions for unlimited power. All plans include photo-perfect AI menu generation.',
+  keywords: ['menu pricing', 'AI menu cost', 'restaurant menu subscription', 'GridMenu plans'],
 }
 
 export default function UXPricingPage() {
   const pricingTiers = [
     {
-      id: 'starter',
-      name: 'Starter Pack',
-      price: '$29',
+      id: 'creator',
+      name: 'Creator Pack',
+      tagline: '*First Pack free*',
+      price: '$95',
       period: 'One-time purchase',
-      description: 'Perfect for cafés and independent restaurants creating their first AI-generated menu.',
+      description: 'Perfect for independent venues needing a single, high-quality digital menu.',
       features: [
-        '1 full menu export (PDF + images)',
-        'Unlimited design edits',
-        'Unlimited image regenerations (fair-use capped)',
-        'All standard templates',
-        'Mobile-ready layout',
-        'Add QR code for your payment system',
-        'Email support'
+        '1 Fully customisable menu',
+        'Unlimited menu edits for 1 week',
+        'Unlimited image regenerations (fair-use capped*)',
+        'All templates included',
+        'Print-ready PDF Menu Export',
       ],
-      cta: 'Buy Starter Pack',
-      subtext: 'One export credit included. More credits can be purchased anytime.'
+      cta: 'Get Started Free',
+      subtext: 'Valid for 24 months. One free pack per signup.'
     },
     {
-      id: 'professional',
-      name: 'Professional Pack',
-      price: '$59',
-      period: 'One-time purchase',
+      id: 'grid-plus',
+      name: 'Grid+',
+      price: '$39',
+      period: 'per month',
       recommended: true,
-      description: 'Best for restaurants creating multiple menus (lunch, dinner, brunch, seasonal).',
+      description: 'Ideal for growing restaurants with multiple menus and seasonal updates.',
       features: [
-        '3 menu exports',
-        'Unlimited design edits',
-        'Unlimited image regenerations (fair-use capped)',
+        'Up to 5 active menus',
+        'Unlimited menu edits',
+        'Unlimited image regenerations (fair-use capped*)',
         'All templates included',
-        'Faster image generation',
-        'Brand styling options (colours & logo presets)',
-        'Add QR code for your payment system',
-        'Priority support'
+        'Priority support',
+        'Print-ready PDF Menu Export',
+        'Social media ready PNG Menu Export',
+        'Priority rendering queue',
+        'All menu items image export'
       ],
-      cta: 'Buy Professional Pack',
-      subtext: 'Best value for restaurants with multiple menu types.'
+      cta: 'Subscribe to Grid+',
+      subtext: 'Cancel anytime. Includes all Creator Pack benefits.'
     },
     {
-      id: 'proplus',
-      name: 'Pro+ Pack',
-      price: '$119',
-      period: 'One-time purchase',
-      description: 'Ideal for restaurants updating menus regularly or preparing a full year of specials.',
+      id: 'grid-premium',
+      name: 'Grid+Premium',
+      price: '$129',
+      period: 'per month',
+      description: 'For busy venues and chains requiring ultimate flexibility and early access.',
       features: [
-        '10 menu exports',
-        'Unlimited design edits',
-        'Unlimited image regenerations (fair-use capped)',
+        'Unlimited active menus',
+        'Unlimited menu edits',
+        'Unlimited image regenerations (fair-use capped*)',
         'All templates included',
+        'Priority support',
+        'Print-ready PDF Menu Export',
+        'Social media ready PNG Menu Export',
         'Priority rendering queue',
-        'Future updates included for your purchased exports',
-        'Add QR code for your payment system',
-        'Branding toolkit'
+        'All menu items image export',
+        'Early access to new templates'
       ],
-      cta: 'Buy Pro+ Pack',
-      subtext: 'Ideal for seasonal menus, weekly specials, or rapid experimentation.'
+      cta: 'Get Grid+Premium',
+      subtext: 'Unlimited everything for the professional restauranteur.'
+    }
+  ]
+
+  const faqs = [
+    {
+      q: 'Is there a free trial?',
+      a: 'Yes. The first Creator Pack is free for every sign up. This allows you to create and export one fully customisable menu at no cost.'
+    },
+    {
+      q: 'Does my Creator Pack ever expire?',
+      a: 'Creator Packs are valid for 24 months from purchase. You can export and use your menu during this period.'
+    },
+    {
+      q: 'Can I upgrade later?',
+      a: 'Yes. You can purchase additional packs or subscribe to a monthly plan at any time. Your existing menus and credits are preserved and added to your new plan.'
+    },
+    {
+      q: 'What payment methods do you accept?',
+      a: 'We accept major credit and debit cards. Additional payment methods may be available depending on your region.'
+    },
+    {
+      q: 'Do you offer refunds?',
+      a: 'Yes. If you are not satisfied, contact us within 30 days of your first purchase and we will review your request for a full refund. Note that excessive exports may void refund eligibility.'
+    },
+    {
+      q: 'Is my data secure?',
+      a: 'We use industry-standard security measures to protect your data. Data is processed in accordance with applicable data protection laws, and we only share data with trusted service providers necessary to operate the service.'
+    },
+    {
+      q: 'Can I cancel my subscription?',
+      a: 'Yes, Grid+ and Grid+Premium subscriptions are monthly and can be cancelled at any time through your dashboard.'
     }
   ]
 
@@ -78,24 +106,24 @@ export default function UXPricingPage() {
     <UXWrapper>
       <div className="text-center mb-6">
         <h1 className="text-3xl md:text-4xl font-bold text-white text-hero-shadow mb-4">
-          Choose Your Menu Pack
+          Simple, Transparent Pricing
         </h1>
         <p className="text-lg text-white/90 text-hero-shadow-strong max-w-2xl mx-auto">
-          Create beautiful, photo-perfect menus in minutes. Start free. Pay only when you export a final menu.
+          Choose the plan that fits your venue. Start free with your first Creator Pack.
         </p>
       </div>
 
       <div className="container-ux">
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12 pt-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-12 pt-12">
           {pricingTiers.map((tier) => (
             <UXCard 
-              key={tier.name} 
-              className={`relative ${tier.recommended ? 'ring-2 ring-ux-primary shadow-xl scale-105' : ''} hover:shadow-lg transition-all duration-200`}
+              key={tier.id} 
+              className={`relative flex flex-col ${tier.recommended ? 'ring-2 ring-ux-primary shadow-xl scale-105 z-10' : ''} hover:shadow-lg transition-all duration-200`}
               role="article"
               aria-labelledby={`tier-${tier.id}-title`}
             >
-              <div className="text-center">
+              <div className="text-center flex-grow">
                 {tier.recommended && (
                   <div className="mb-4 -mt-2">
                     <span className="inline-block bg-ux-primary text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
@@ -103,17 +131,20 @@ export default function UXPricingPage() {
                     </span>
                   </div>
                 )}
-                <h3 id={`tier-${tier.id}-title`} className="text-2xl font-bold text-ux-text mb-2">{tier.name}</h3>
-                <p className="text-gray-700 mb-4 min-h-[3rem]">{tier.description}</p>
+                <h3 id={`tier-${tier.id}-title`} className="text-2xl font-bold text-ux-text mb-1">{tier.name}</h3>
+                {tier.tagline && (
+                  <p className="text-ux-primary font-semibold text-sm mb-2">{tier.tagline}</p>
+                )}
+                <p className="text-gray-600 mb-4 text-sm min-h-[3rem]">{tier.description}</p>
                 
                 <div className="mb-6">
                   <span className="text-4xl font-bold text-ux-text">{tier.price}</span>
-                  <span className="text-gray-700 text-sm block mt-1">{tier.period}</span>
+                  <span className="text-gray-500 text-sm block mt-1">{tier.period}</span>
                 </div>
                 
-                <ul className="space-y-3 mb-6 text-left">
+                <ul className="space-y-3 mb-8 text-left">
                   {tier.features.map((feature) => (
-                    <li key={feature} className="flex items-start text-gray-700">
+                    <li key={feature} className="flex items-start text-gray-700 text-sm">
                       <svg className="w-5 h-5 text-ux-success mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
@@ -121,80 +152,67 @@ export default function UXPricingPage() {
                     </li>
                   ))}
                 </ul>
-                
+              </div>
+
+              <div className="mt-auto">
                 <UXButton 
                   variant={tier.recommended ? 'primary' : 'outline'} 
                   className="w-full mb-3"
                   size="lg"
-                  aria-label={`${tier.cta} for ${tier.name} at ${tier.price}`}
+                  aria-label={`${tier.cta} for ${tier.name}`}
                 >
                   {tier.cta}
                 </UXButton>
                 
                 {tier.subtext && (
-                  <p className="text-xs text-gray-700 italic">{tier.subtext}</p>
+                  <p className="text-[10px] text-gray-500 italic text-center leading-tight">{tier.subtext}</p>
                 )}
               </div>
             </UXCard>
           ))}
         </div>
 
+        {/* Fair Use Disclaimer */}
+        <div className="max-w-4xl mx-auto text-center mb-16">
+          <p className="text-sm text-white/80 italic">
+            *Fair-use limits apply to prevent abuse and ensure service quality. 
+            Automated throttling may occur during peak periods.
+          </p>
+        </div>
+
         {/* FAQ Section */}
-        <div className="max-w-4xl mx-auto bg-gradient-to-br from-ux-primary/30 to-ux-primary/40 rounded-md p-8 border border-ux-primary/40">
-          <h3 className="text-2xl font-bold text-white text-hero-shadow text-center mb-8">Frequently Asked Questions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-semibold text-white mb-2">Is there a free trial?</h4>
-                <p className="text-white/90 text-sm">Yes. You can design your menu and generate preview images for free. Payment is only required when you export the final high-resolution menu.</p>
+        <div className="max-w-5xl mx-auto bg-white/10 backdrop-blur-md rounded-xl p-8 md:p-12 border border-white/20 shadow-2xl mb-16">
+          <h3 className="text-3xl font-bold text-white text-center mb-12">Frequently Asked Questions</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+            {faqs.map((faq, i) => (
+              <div key={i} className="space-y-2">
+                <h4 className="font-bold text-white text-lg">{faq.q}</h4>
+                <p className="text-white/80 text-sm leading-relaxed">{faq.a}</p>
               </div>
-              <div>
-                <h4 className="font-semibold text-white mb-2">Do my export credits expire?</h4>
-                <p className="text-white/90 text-sm">No. Credits never expire. Use them whenever you need a new menu.</p>
-              </div>
-              <div>
-                <h4 className="font-semibold text-white mb-2">Can I upgrade later?</h4>
-                <p className="text-white/90 text-sm">Yes. You can purchase additional packs at any time. They are added to your account immediately.</p>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-semibold text-white mb-2">What payment methods do you accept?</h4>
-                <p className="text-white/90 text-sm">We accept all major credit cards and PayPal.</p>
-              </div>
-              <div>
-                <h4 className="font-semibold text-white mb-2">Do you offer refunds?</h4>
-                <p className="text-white/90 text-sm">Yes. If you are not satisfied with your exported menu, we offer a 30-day money-back guarantee.</p>
-              </div>
-              <div>
-                <h4 className="font-semibold text-white mb-2">Is my data secure?</h4>
-                <p className="text-white/90 text-sm">Your data is encrypted and stored securely. We are GDPR-compliant and never share your information.</p>
-              </div>
-              <div>
-                <h4 className="font-semibold text-white mb-2">Need help choosing?</h4>
-                <p className="text-white/90 text-sm">
-                  <Link href="/support" className="text-white hover:underline font-semibold underline">Contact us</Link> for personalised recommendations.
-                </p>
-              </div>
+            ))}
+            <div className="md:col-span-2 pt-6 border-t border-white/10 text-center">
+              <p className="text-white/90">
+                Need help choosing? <Link href="mailto:support@gridmenu.ai" className="text-ux-primary hover:underline font-bold">Contact us</Link> for personalised recommendations.
+              </p>
             </div>
           </div>
         </div>
 
         {/* CTA Section */}
-        <UXCard className="text-center mt-12">
-          <h3 className="text-2xl font-bold text-ux-text mb-4">Ready to get started?</h3>
-          <p className="text-gray-700 mb-6 max-w-2xl mx-auto">
-            Design free. Pay only when you export. No credit card required to start.
+        <UXCard className="text-center mb-12 bg-gradient-to-br from-white to-gray-50">
+          <h3 className="text-2xl font-bold text-ux-text mb-4">Ready to build your menu?</h3>
+          <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
+            Join thousands of restaurants using GridMenu to create beautiful, photo-perfect menus.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/">
-              <UXButton variant="primary" size="lg">
-                Try Free Now
+            <Link href="/auth/signup">
+              <UXButton variant="primary" size="lg" className="px-8">
+                Start for Free
               </UXButton>
             </Link>
-            <Link href="/register">
-              <UXButton variant="warning" size="lg">
-                Create Account
+            <Link href="/dashboard">
+              <UXButton variant="outline" size="lg" className="px-8">
+                View Dashboard
               </UXButton>
             </Link>
           </div>

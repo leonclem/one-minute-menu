@@ -218,7 +218,7 @@ export class RateLimiter {
 export const layoutGenerationLimiter = new RateLimiter({
   maxRequests: 60,
   windowMs: 60000, // 1 minute
-  message: 'Too many layout generation requests. Please try again in a minute.'
+  message: 'Too many layout generation requests. Fair-use limits apply to prevent abuse and ensure service quality.'
 })
 
 /**
@@ -228,7 +228,7 @@ export const layoutGenerationLimiter = new RateLimiter({
 export const htmlExportLimiter = new RateLimiter({
   maxRequests: 30,
   windowMs: 60000, // 1 minute
-  message: 'Too many HTML export requests. Please try again in a minute.'
+  message: 'Too many HTML export requests. Fair-use limits apply to prevent abuse and ensure service quality.'
 })
 
 /**
@@ -238,7 +238,7 @@ export const htmlExportLimiter = new RateLimiter({
 export const pdfExportLimiter = new RateLimiter({
   maxRequests: 10,
   windowMs: 60000, // 1 minute
-  message: 'Too many PDF export requests. Please try again in a minute.'
+  message: 'Too many PDF export requests. Fair-use limits apply to prevent abuse and ensure service quality.'
 })
 
 /**
@@ -248,7 +248,7 @@ export const pdfExportLimiter = new RateLimiter({
 export const imageExportLimiter = new RateLimiter({
   maxRequests: 10,
   windowMs: 60000, // 1 minute
-  message: 'Too many image export requests. Please try again in a minute.'
+  message: 'Too many image export requests. Fair-use limits apply to prevent abuse and ensure service quality.'
 })
 
 // ============================================================================

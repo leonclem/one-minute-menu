@@ -185,4 +185,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Support
 
-For support, email support@qrmenusystem.com or create an issue in this repository.
+For support, email support@gridmenu.ai or create an issue in this repository.

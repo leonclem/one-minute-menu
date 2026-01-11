@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { supabase } from '@/lib/supabase'
 import { generateImageFilename } from '@/lib/image-utils'
-import type { Menu, MenuItem, User, PlanLimits, MenuTheme } from '@/types'
+import type { Menu, MenuItem, User, PlanLimits, MenuTheme, UserPlan } from '@/types'
 import { PLAN_CONFIGS } from '@/types'
 import { computeSha256FromUrl } from '@/lib/utils'
 import { ensureBackwardCompatibility } from '@/lib/menu-data-migration'
@@ -35,7 +35,7 @@ export const userOperations = {
     }
     
     // Map plan_limits (snake_case in DB) -> PlanLimits (camelCase in app)
-    const mapPlanLimitsFromDb = (dbLimits: any, plan: User['plan']): PlanLimits => {
+    const mapPlanLimitsFromDb = (dbLimits: any, plan: UserPlan): PlanLimits => {
       const defaults = PLAN_CONFIGS[plan]
       return {
         menus: typeof dbLimits?.menus === 'number' ? dbLimits.menus : defaults.menus,
@@ -48,8 +48,8 @@ export const userOperations = {
     return {
       id: data.id,
       email: data.email,
-      plan: data.plan as 'free' | 'premium' | 'enterprise',
-      limits: mapPlanLimitsFromDb(data.plan_limits, data.plan as 'free' | 'premium' | 'enterprise'),
+      plan: data.plan as UserPlan,
+      limits: mapPlanLimitsFromDb(data.plan_limits, data.plan as UserPlan),
       createdAt: new Date(data.created_at),
       location: data.location || undefined,
       role: data.role as 'user' | 'admin' || 'user',
@@ -117,12 +117,14 @@ export const userOperations = {
         limit: -1
       }
     }
+
+    const supabase = createServerSupabaseClient()
     
     let current = 0
     
     switch (resource) {
       case 'menus':
-        const { count } = await createServerSupabaseClient()
+        const { count } = await supabase
           .from('menus')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', userId)
@@ -134,7 +136,7 @@ export const userOperations = {
         startMonth.setDate(1)
         startMonth.setHours(0, 0, 0, 0)
 
-        const { count: uploadCount } = await createServerSupabaseClient()
+        const { count: uploadCount } = await supabase
           .from('uploads')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', userId)
@@ -147,7 +149,7 @@ export const userOperations = {
         startOfCurrentMonth.setDate(1)
         startOfCurrentMonth.setHours(0, 0, 0, 0)
 
-        const { count: generationCount } = await createServerSupabaseClient()
+        const { count: generationCount } = await supabase
           .from('image_generation_jobs')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', userId)
@@ -157,7 +159,27 @@ export const userOperations = {
         break
     }
     
-    const limit = profile.limits[resource]
+    // Calculate effective limit (subscription base + active creator packs)
+    let limit = profile.limits[resource]
+
+    if (resource === 'menus') {
+      // Fetch active (non-expired) creator packs
+      const { data: packs } = await supabase
+        .from('user_packs')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('pack_type', 'creator_pack')
+        .gt('expires_at', new Date().toISOString())
+      
+      const activePacksCount = packs?.length || 0
+      
+      // Effective limit is the sum of subscription allowance and active packs
+      // If subscription is unlimited (-1), stay unlimited
+      if (limit !== -1) {
+        limit = limit + activePacksCount
+      }
+    }
+
     return {
       allowed: typeof limit === 'number' && limit < 0 ? true : current < limit,
       current,
@@ -443,6 +465,31 @@ export const menuOperations = {
   async updateMenu(menuId: string, userId: string, updates: Partial<Menu>): Promise<Menu> {
     const supabase = createServerSupabaseClient()
     
+    // Check if user is allowed to edit based on their plan/packs
+    const profile = await userOperations.getProfile(userId)
+    if (!profile) throw new DatabaseError('User profile not found')
+
+    // Monthly subscribers have unlimited edits
+    const isSubscriber = ['grid_plus', 'grid_plus_premium', 'premium', 'enterprise'].includes(profile.plan)
+    const isAdmin = profile.role === 'admin'
+
+    if (!isSubscriber && !isAdmin) {
+      // Check for active edit window from creator packs
+      const { data: activeWindows } = await supabase
+        .from('user_packs')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('pack_type', 'creator_pack')
+        .gt('edit_window_end', new Date().toISOString())
+      
+      if (!activeWindows || activeWindows.length === 0) {
+        throw new DatabaseError(
+          'Your edit window has expired. Please purchase a new Creator Pack or subscribe to Grid+ for unlimited edits.',
+          'EDIT_WINDOW_EXPIRED'
+        )
+      }
+    }
+
     const updateData: any = {}
     if (updates.name) updateData.name = updates.name
     if (updates.status) updateData.status = updates.status

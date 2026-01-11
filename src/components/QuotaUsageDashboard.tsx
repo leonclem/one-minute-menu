@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
 import { UpgradePrompt } from '@/components/ui'
+import type { UserPlan } from '@/types'
 
 interface QuotaData {
   quota: {
-    plan: 'free' | 'premium' | 'enterprise'
+    plan: UserPlan
     limit: number
     used: number
     remaining: number

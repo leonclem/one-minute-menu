@@ -1,9 +1,11 @@
 // Core data types for the QR Menu System
 
+export type UserPlan = 'free' | 'grid_plus' | 'grid_plus_premium' | 'premium' | 'enterprise'
+
 export interface User {
   id: string
   email: string
-  plan: 'free' | 'premium' | 'enterprise'
+  plan: UserPlan
   limits: PlanLimits
   createdAt: Date
   location?: string
@@ -21,11 +23,24 @@ export interface PlanLimits {
 // Plan configurations
 export const PLAN_CONFIGS: Record<User['plan'], PlanLimits> = {
   free: {
-    menus: 1,
+    menus: 0, // Free trial doesn't get a menu until Pack is used
     menuItems: 20,
-    monthlyUploads: 10,
-    aiImageGenerations: 10,
+    monthlyUploads: 5,
+    aiImageGenerations: 5,
   },
+  grid_plus: {
+    menus: 5,
+    menuItems: 500,
+    monthlyUploads: 100,
+    aiImageGenerations: 100,
+  },
+  grid_plus_premium: {
+    menus: -1, // unlimited
+    menuItems: -1,
+    monthlyUploads: -1,
+    aiImageGenerations: 1000,
+  },
+  // Keep legacy for backward compatibility during transition
   premium: {
     menus: 10,
     menuItems: 500,
@@ -47,14 +62,44 @@ export interface PlanRuntimeLimits {
 
 export const PLAN_RUNTIME_LIMITS: Record<User['plan'], PlanRuntimeLimits> = {
   free: {
-    extractionRatePerHour: 6,
+    extractionRatePerHour: 2,
   },
+  grid_plus: {
+    extractionRatePerHour: 20,
+  },
+  grid_plus_premium: {
+    extractionRatePerHour: 60,
+  },
+  // Legacy
   premium: {
     extractionRatePerHour: 20,
   },
   enterprise: {
     extractionRatePerHour: 60,
   },
+}
+
+export interface UserPack {
+  id: string
+  userId: string
+  packType: 'creator_pack'
+  purchaseDate: Date
+  expiresAt: Date
+  editWindowEnd: Date
+  isFreeTrial: boolean
+  metadata?: Record<string, any>
+}
+
+export interface PurchaseRecord {
+  id: string
+  userId: string
+  transactionId?: string
+  productId: string
+  amountCents: number
+  currency: string
+  status: 'success' | 'refunded' | 'failed'
+  metadata?: Record<string, any>
+  createdAt: Date
 }
 
 export interface Menu {
@@ -571,7 +616,7 @@ export interface NanoBananaParams {
 export interface GenerationQuota {
   id: string
   userId: string
-  plan: 'free' | 'premium' | 'enterprise'
+  plan: UserPlan
   monthlyLimit: number
   currentUsage: number
   resetDate: Date
@@ -605,7 +650,7 @@ export interface ImageGenerationRequest {
 
 export interface QuotaStatus {
   userId: string
-  plan: 'free' | 'premium' | 'enterprise'
+  plan: UserPlan
   limit: number
   used: number
   remaining: number

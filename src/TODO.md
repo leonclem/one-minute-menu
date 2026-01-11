@@ -66,15 +66,15 @@
 - [x] Toggle "Enable Custom SMTP" to ON in Supabase prod and paste SMTP credentials in
 
 ## Review Pricing
-- [ ] Determine pricing tiers
-- [ ] Clarify "unlock elements" on /export page
-- [ ] Implement changes in pricing page
+- [x] Determine pricing tiers
+- [x] Clarify "unlock elements" on /export page
+- [x] Implement changes in pricing page
 
 ## Back office
 - [x] Complete bank account application
-- [ ] Privacy Policy - consider data use (particularly at scale, benchmarking, etc.)
-- [ ] Terms of Service
-- [ ] Contact Us
+- [x] Privacy Policy - consider data use (particularly at scale, benchmarking, etc.)
+- [x] Terms of Service
+- [x] Contact Us
 
 ## Site stability
 - [ ] Waitlist (for MVP, email goes to me for confirmation)
@@ -93,6 +93,8 @@
 
 /extracted
 - [ ] Need capability to delete a section
+- [ ] Control Panel > Download Menu pages (PNG zip)
+- [ ] Control Panel > Download Menu Images (PNG zip)
 
 ## Deployment
 - [x] Purchase domain
@@ -107,6 +109,7 @@
 - [ ] Implement Railway architecture to offload PDF export from Vercel (this might require sending user back to dashboard after design template selection, then download when available)
 - [ ] Review if Railway should also be used for other heavy-lifting tasks, e.g. image export
 - [ ] Check Railway billing status
+- [ ] Priority rendering queue for subscribers
 
 ## Email templates
 - [ ] Determine and document all emails sent
@@ -120,7 +123,7 @@
 - [ ] Flourishes / section dividers (e.g. design-inspiration-7.png)
 
 ### Payment QR
-- [ ] Add capability to add a payment QR code via the /extracted page
+- [ ] Add capability to add a payment QR code via the /extracted page (and reflect on pricing page)
 
 ### Allergens / Spice level / etc
 - [x] Determine list (V2 supports dietary indicators: vegetarian, vegan, halal, kosher, gluten-free)
@@ -176,10 +179,13 @@
 - [ ] Logging
 - [ ] Admin dashboard enhancements
 - [ ] Select all in category on /extracted page
-- [ ] Remove confidence tag at top of page
+- [x] Remove confidence tag at top of page
 - [ ] Watermark images in Creator Pack
 - [ ] QA to ensure pricing matches reality
 - [ ] Show preview picture of menu (if design template chosen) embedded in Dashboard menus
+- [ ] Higher resolution images (up to 4K) for Grid+Premium (and include mention on pricing page)
+- [ ] Reminder email for credits expiry
+- [ ] Multi-user access to accounts (Premium tier)
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>
