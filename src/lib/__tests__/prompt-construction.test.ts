@@ -152,6 +152,24 @@ describe('PromptConstructionService', () => {
       expect(result.appliedTemplate).toBe('modern')
       expect(result.prompt).toContain('clean modern presentation')
     })
+
+    it('should include establishment context for experience restaurant', () => {
+      const params: ImageGenerationParams = {
+        establishmentType: 'experience-restaurant'
+      }
+      const result = service.buildPrompt(sampleItem, params)
+      expect(result.prompt).toContain('immersive dining atmosphere')
+      expect(result.prompt).toContain('theatrical presentation')
+    })
+
+    it('should include cuisine context for mexican', () => {
+      const params: ImageGenerationParams = {
+        primaryCuisine: 'mexican'
+      }
+      const result = service.buildPrompt(sampleItem, params)
+      expect(result.prompt).toContain('vibrant mexican presentation')
+      expect(result.prompt).toContain('authentic textures and colors')
+    })
   })
 
   describe('buildNegativePrompt', () => {

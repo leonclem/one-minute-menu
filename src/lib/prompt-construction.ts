@@ -136,6 +136,9 @@ export class PromptConstructionService {
         case 'fine-dining':
           styleElements.push('elegant presentation', 'sophisticated plating', 'premium restaurant setting', 'luxury feel')
           break
+        case 'experience-restaurant':
+          styleElements.push('immersive dining atmosphere', 'theatrical presentation', 'unique experiential setting', 'artistic and creative plating', 'dramatic lighting')
+          break
         case 'casual-dining':
           styleElements.push('relaxed atmosphere', 'approachable presentation', 'casual dining setting')
           break
@@ -172,6 +175,9 @@ export class PromptConstructionService {
           break
         case 'thai-viet':
           styleElements.push('southeast asian freshness', 'vibrant herbs', 'tropical plating style')
+          break
+        case 'mexican':
+          styleElements.push('vibrant mexican presentation', 'authentic textures and colors', 'fresh ingredients like lime, cilantro, and chilies', 'rustic pottery or colorful ceramics')
           break
       }
     }

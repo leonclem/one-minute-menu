@@ -192,6 +192,19 @@ describe('Menu Transformer V2', () => {
       expect(result.metadata.venueAddress).toBe('456 Elite Way')
     })
 
+    it('should include new establishment details for Experience Restaurant and Mexican cuisine', () => {
+      const menuWithNewInfo: Menu = {
+        ...mockMenu,
+        establishmentType: 'experience-restaurant',
+        primaryCuisine: 'mexican',
+      }
+
+      const result = transformMenuToV2(menuWithNewInfo)
+
+      expect(result.metadata.establishmentType).toBe('experience-restaurant')
+      expect(result.metadata.primaryCuisine).toBe('mexican')
+    })
+
     it('should produce deterministic output', () => {
       const result1 = transformMenuToV2(mockMenu)
       const result2 = transformMenuToV2(mockMenu)

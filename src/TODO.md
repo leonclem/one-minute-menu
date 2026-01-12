@@ -187,6 +187,7 @@
 - [ ] Reminder email for credits expiry
 - [ ] Multi-user access to accounts (Premium tier)
 - [ ] Display user information (e.g. email address of logged in user)
+- [ ] Add option to include opening hours in footer
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>
