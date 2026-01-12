@@ -46,7 +46,7 @@ export async function processImage(
     maxWidth = 2048,
     maxHeight = 2048,
     quality = 0.8,
-    format = 'jpeg',
+    format,
     autoRotate = false,
     // Note: stripExif is achieved automatically by canvas re-encode
     // because metadata is not preserved when drawing to canvas
@@ -54,6 +54,9 @@ export async function processImage(
     autoDeskew = false,
     autoCrop = false
   } = options
+
+  // Determine output format: priority is options.format > file.type > 'jpeg'
+  const targetFormat = format || (file.type === 'image/png' ? 'png' : 'jpeg')
 
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas')
@@ -122,7 +125,7 @@ export async function processImage(
         }
 
         // Get data URL for preview (EXIF stripped by re-encode)
-        const dataUrl = workCanvas.toDataURL(`image/${format}`, quality)
+        const dataUrl = workCanvas.toDataURL(`image/${targetFormat}`, targetFormat === 'png' ? undefined : quality)
 
         // Convert to blob for upload
         workCanvas.toBlob(
@@ -135,7 +138,7 @@ export async function processImage(
             }
 
             const processedFile = new File([blob], file.name, {
-              type: `image/${format}`,
+              type: `image/${targetFormat}`,
               lastModified: Date.now()
             })
 
@@ -147,8 +150,8 @@ export async function processImage(
               size: blob.size
             })
           },
-          `image/${format}`,
-          quality
+          `image/${targetFormat}`,
+          targetFormat === 'png' ? undefined : quality
         )
       } catch (error) {
         URL.revokeObjectURL(objectUrl)
@@ -365,7 +368,6 @@ export async function createThumbnail(
     maxWidth: size,
     maxHeight: size,
     quality: 0.7,
-    format: 'jpeg',
     autoRotate: true,
     stripExif: true
   })

@@ -292,6 +292,7 @@ function TileRenderer({ tile, options }: TileRendererProps) {
         width: tile.width * scale,
         height: tile.height * scale,
         zIndex: tile.layer === 'background' ? 0 : 1,
+        backgroundColor: 'transparent',
         border: options.showTileIds ? `1px dashed ${COLOR_TOKENS_V2.border.medium}` : 'none'
       }}
     >

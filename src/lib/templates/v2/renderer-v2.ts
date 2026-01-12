@@ -394,7 +394,8 @@ function renderLogoContent(
       content: content.imageUrl,
       style: {
         objectFit: 'contain',
-        objectPosition: 'center'
+        objectPosition: 'center',
+        backgroundColor: 'transparent'
       }
     })
   } else {

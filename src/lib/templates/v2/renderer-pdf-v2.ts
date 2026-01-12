@@ -383,6 +383,7 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string 
       display: flex;
       align-items: center;
       justify-content: center;
+      background: transparent;
     }
 
     .tile-title {

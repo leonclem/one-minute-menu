@@ -12,6 +12,7 @@ interface ImageUploadProps {
   maxSize?: number
   className?: string
   noWrapper?: boolean
+  outputFormat?: 'jpeg' | 'png' | 'webp'
 }
 
 export default function ImageUpload({ 
@@ -19,7 +20,8 @@ export default function ImageUpload({
   onCancel, 
   maxSize = 8 * 1024 * 1024, // 8MB
   className = '',
-  noWrapper = false
+  noWrapper = false,
+  outputFormat
 }: ImageUploadProps) {
   const [mode, setMode] = useState<'select' | 'camera' | 'preview'>('select')
   const [dragActive, setDragActive] = useState(false)
@@ -62,6 +64,7 @@ export default function ImageUpload({
         quality: 0.8,
         stripExif: true,
         autoRotate: true,
+        format: outputFormat, // Pass the forced output format if provided
 
         // Deskew/crop are disabled for preview to avoid rotation-induced borders
         autoDeskew: false,

@@ -1328,7 +1328,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                           <img
                             src={logoUrl}
                             alt={baseMenu?.name || 'Restaurant logo'}
-                            className="h-8 w-8 rounded-full border border-ux-border object-cover bg-white"
+                            className="h-8 w-8 rounded-full border border-ux-border object-cover"
                             loading="lazy"
                             decoding="async"
                           />
@@ -1815,6 +1815,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                     onImageSelected={handleLogoImageSelected}
                     onCancel={() => !uploadingLogo && !removingLogo && setShowLogoUpload(false)}
                     noWrapper={true}
+                    outputFormat="png"
                   />
                 </div>
                 {logoUrl && (
@@ -1827,7 +1828,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                       <img
                         src={logoUrl}
                         alt={baseMenu?.name || 'Restaurant logo'}
-                        className="h-9 w-9 rounded-full border border-ux-border object-cover bg-white"
+                        className="h-9 w-9 rounded-full border border-ux-border object-cover"
                         loading="lazy"
                         decoding="async"
                       />

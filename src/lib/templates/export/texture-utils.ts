@@ -91,7 +91,13 @@ export async function getMidnightGoldBackground(headers?: Record<string, string>
  * Fetch image from URL and convert to base64 data URL
  * Supports both HTTP/HTTPS URLs and local file paths (via FS or HTTP fallback)
  */
-export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<string, string>, timeoutMs: number = 5000, compress: boolean = true): Promise<string | null> {
+export async function fetchImageAsDataURL(
+  imageUrl: string, 
+  headers?: Record<string, string>, 
+  timeoutMs: number = 5000, 
+  compress: boolean = true,
+  preserveTransparency: boolean = false
+): Promise<string | null> {
   try {
     // Case 1: Local file path (starts with /)
     if (imageUrl.startsWith('/')) {
@@ -105,17 +111,19 @@ export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<str
           // Compress image if requested
           if (compress) {
             try {
-              const compressedBuffer = await compressImageBuffer(imageBuffer, 800, 80)
-              imageBuffer = Buffer.from(compressedBuffer)
-              console.log(`[TextureUtils] Compressed local image: ${imagePath} (${originalSize} -> ${imageBuffer.length} bytes, ${((1 - imageBuffer.length / originalSize) * 100).toFixed(1)}% reduction)`)
+              const compressedResult = await compressImageBuffer(imageBuffer, 800, 80, preserveTransparency)
+              imageBuffer = compressedResult.buffer
+              console.log(`[TextureUtils] Compressed local image: ${imagePath} (${originalSize} -> ${imageBuffer.length} bytes, ${((1 - imageBuffer.length / originalSize) * 100).toFixed(1)}% reduction, format: ${compressedResult.mimeType})`)
+              
+              const base64Image = imageBuffer.toString('base64')
+              return `data:${compressedResult.mimeType};base64,${base64Image}`
             } catch (error) {
               console.warn(`[TextureUtils] Compression failed for ${imagePath}, using original:`, error)
             }
           }
           
           const base64Image = imageBuffer.toString('base64')
-          // Always use jpeg after compression
-          const mimeType = compress ? 'image/jpeg' : (() => {
+          const mimeType = (() => {
             const ext = path.extname(imagePath).toLowerCase()
             if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg'
             if (ext === '.webp') return 'image/webp'
@@ -126,16 +134,8 @@ export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<str
         } catch (e) {
           console.warn(`[TextureUtils] Failed to read local file ${imagePath}, trying fallback...`)
         }
-      } else {
-        // Debug logging for Vercel file system
-        if (process.env.NODE_ENV === 'production') {
-          console.warn(`[TextureUtils] File not found at ${imagePath}. CWD: ${process.cwd()}`)
-          // Uncomment to inspect directory structure in logs if needed
-          // try {
-          //   console.log('[TextureUtils] CWD contents:', fs.readdirSync(process.cwd()).slice(0, 10))
-          // } catch (e) {}
-        }
       }
+      // ... (rest of local file logic)
       
       // Fallback: Try to fetch via HTTP (essential for Vercel where public files aren't always in FS)
       // Construct absolute URL based on request headers or environment
@@ -170,7 +170,7 @@ export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<str
       
       const absoluteUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
       console.log(`[TextureUtils] Fetching local image via HTTP: ${absoluteUrl}`)
-      return await fetchRemoteImageAsDataURL(absoluteUrl, timeoutMs, headers, compress)
+      return await fetchRemoteImageAsDataURL(absoluteUrl, timeoutMs, headers, compress, 0, preserveTransparency)
     }
     
     // Case 2: HTTP/HTTPS URLs
@@ -183,10 +183,10 @@ export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<str
       if (isInternal) {
         console.log(`[TextureUtils] Fetching internal image with optimized settings: ${imageUrl}`)
         // Use the provided timeout for internal images
-        return await fetchRemoteImageAsDataURL(imageUrl, timeoutMs, headers, compress)
+        return await fetchRemoteImageAsDataURL(imageUrl, timeoutMs, headers, compress, 0, preserveTransparency)
       }
       
-      return await fetchRemoteImageAsDataURL(imageUrl, timeoutMs, headers, compress)
+      return await fetchRemoteImageAsDataURL(imageUrl, timeoutMs, headers, compress, 0, preserveTransparency)
     }
     
     console.warn(`[TextureUtils] Unsupported image URL format: ${imageUrl}`)
@@ -200,32 +200,53 @@ export async function fetchImageAsDataURL(imageUrl: string, headers?: Record<str
 /**
  * Compress and resize image buffer for PDF embedding
  * Reduces file size dramatically while maintaining visual quality
+ * 
+ * If preserveTransparency is true, it will use PNG/WebP for images with an alpha channel.
  */
-async function compressImageBuffer(buffer: Buffer, maxWidth: number = 800, quality: number = 80): Promise<Buffer> {
+async function compressImageBuffer(
+  buffer: Buffer, 
+  maxWidth: number = 800, 
+  quality: number = 80,
+  preserveTransparency: boolean = false
+): Promise<{ buffer: Buffer; mimeType: string }> {
   try {
     const image = sharp(buffer as any)
     const metadata = await image.metadata()
     
+    // Determine output format
+    // Use PNG if preserveTransparency is true AND the image has an alpha channel
+    const usePng = preserveTransparency && metadata.hasAlpha
+    const mimeType = usePng ? 'image/png' : 'image/jpeg'
+    
+    let processed = image
+    
     // Only resize if image is larger than maxWidth
     if (metadata.width && metadata.width > maxWidth) {
-      const compressed = await image
-        .resize(maxWidth, null, { 
-          fit: 'inside',
-          withoutEnlargement: true 
-        })
-        .jpeg({ quality, mozjpeg: true })
-        .toBuffer()
-      return Buffer.from(compressed)
+      processed = processed.resize(maxWidth, null, { 
+        fit: 'inside',
+        withoutEnlargement: true 
+      })
     }
     
-    // Just compress without resizing
-    const compressed = await image
-      .jpeg({ quality, mozjpeg: true })
-      .toBuffer()
-    return Buffer.from(compressed)
+    let outputBuffer: Buffer
+    if (usePng) {
+      outputBuffer = await processed
+        .png({ compressionLevel: 9, palette: true })
+        .toBuffer()
+    } else {
+      outputBuffer = await processed
+        .jpeg({ quality, mozjpeg: true })
+        .toBuffer()
+    }
+    
+    return { 
+      buffer: Buffer.from(outputBuffer), 
+      mimeType 
+    }
   } catch (error) {
     console.warn('[TextureUtils] Image compression failed, using original:', error)
-    return buffer
+    // Fallback to original buffer and assume PNG if we failed
+    return { buffer, mimeType: 'image/png' }
   }
 }
 
@@ -233,7 +254,14 @@ async function compressImageBuffer(buffer: Buffer, maxWidth: number = 800, quali
  * Fetch remote image and convert to base64 with timeout
  * Uses fetch API for better SSL/TLS handling in serverless environments
  */
-async function fetchRemoteImageAsDataURL(url: string, timeoutMs: number = 5000, headers?: Record<string, string>, compress: boolean = true, retryCount: number = 0): Promise<string | null> {
+async function fetchRemoteImageAsDataURL(
+  url: string, 
+  timeoutMs: number = 5000, 
+  headers?: Record<string, string>, 
+  compress: boolean = true, 
+  retryCount: number = 0,
+  preserveTransparency: boolean = false
+): Promise<string | null> {
   const maxRetries = 2
   
   try {
@@ -286,7 +314,7 @@ async function fetchRemoteImageAsDataURL(url: string, timeoutMs: number = 5000, 
     
     // Get image buffer
     const arrayBuffer = await response.arrayBuffer()
-    let buffer = Buffer.from(arrayBuffer)
+    let buffer: Buffer = Buffer.from(arrayBuffer)
     const originalSize = buffer.length
     
     // Check actual size after download
@@ -298,9 +326,13 @@ async function fetchRemoteImageAsDataURL(url: string, timeoutMs: number = 5000, 
     // Compress image if requested (for PDF embedding)
     if (compress) {
       try {
-        const compressedBuffer = await compressImageBuffer(buffer, 800, 80)
-        buffer = Buffer.from(compressedBuffer)
-        console.log(`[TextureUtils] Compressed image: ${url} (${originalSize} -> ${buffer.length} bytes, ${((1 - buffer.length / originalSize) * 100).toFixed(1)}% reduction)`)
+        const compressedResult = await compressImageBuffer(buffer, 800, 80, preserveTransparency)
+        buffer = compressedResult.buffer
+        const mimeType = compressedResult.mimeType
+        
+        console.log(`[TextureUtils] Compressed image: ${url} (${originalSize} -> ${buffer.length} bytes, ${((1 - buffer.length / originalSize) * 100).toFixed(1)}% reduction, format: ${mimeType})`)
+        const base64Image = buffer.toString('base64')
+        return `data:${mimeType};base64,${base64Image}`
       } catch (error) {
         console.warn(`[TextureUtils] Compression failed for ${url}, using original:`, error)
       }
@@ -308,9 +340,9 @@ async function fetchRemoteImageAsDataURL(url: string, timeoutMs: number = 5000, 
     
     const base64Image = buffer.toString('base64')
     
-    // Determine MIME type - always use jpeg after compression
+    // Determine MIME type
     const contentType = response.headers.get('content-type')
-    const mimeType = compress ? 'image/jpeg' : (contentType || 'image/png').split(';')[0].trim()
+    const mimeType = (contentType || 'image/png').split(';')[0].trim()
     
     console.log(`[TextureUtils] Converted image to base64: ${url} (${buffer.length} bytes, ${mimeType})`)
     return `data:${mimeType};base64,${base64Image}`
@@ -328,7 +360,7 @@ async function fetchRemoteImageAsDataURL(url: string, timeoutMs: number = 5000, 
           const delay = Math.pow(2, retryCount) * 1000 // 1s, 2s, 4s
           console.log(`[TextureUtils] Retrying in ${delay}ms...`)
           await new Promise(resolve => setTimeout(resolve, delay))
-          return fetchRemoteImageAsDataURL(url, timeoutMs, headers, compress, retryCount + 1)
+          return fetchRemoteImageAsDataURL(url, timeoutMs, headers, compress, retryCount + 1, preserveTransparency)
         } else {
           console.error(`[TextureUtils] Max retries exceeded for SSL error on ${url}`)
         }
@@ -425,7 +457,8 @@ export async function convertLayoutImagesToDataURLs(
       try {
         // Handle V2 structure (tile.content.imageUrl)
         if (tile.content && 'imageUrl' in tile.content && tile.content.imageUrl) {
-          const dataURL = await fetchImageAsDataURL(tile.content.imageUrl, headers, timeout, true)
+          const isLogo = tile.type === 'LOGO'
+          const dataURL = await fetchImageAsDataURL(tile.content.imageUrl, headers, timeout, true, isLogo)
           if (dataURL) {
             tile.content.imageUrl = dataURL
             successCount++
@@ -435,7 +468,7 @@ export async function convertLayoutImagesToDataURLs(
 
         // Handle V1 structure (tile.logoUrl or tile.imageUrl)
         if (tile.type === 'LOGO' && tile.logoUrl) {
-          const dataURL = await fetchImageAsDataURL(tile.logoUrl, headers, timeout, true)
+          const dataURL = await fetchImageAsDataURL(tile.logoUrl, headers, timeout, true, true)
           if (dataURL) {
             tile.logoUrl = dataURL
             successCount++
@@ -446,7 +479,9 @@ export async function convertLayoutImagesToDataURLs(
           }
         }
         else if (tile.imageUrl) {
-          const dataURL = await fetchImageAsDataURL(tile.imageUrl, headers, timeout, true)
+          // Preserve transparency for logos in V2 structure too if possible
+          const isLogo = tile.type === 'LOGO' || (tile.content && 'type' in tile.content && tile.content.type === 'LOGO')
+          const dataURL = await fetchImageAsDataURL(tile.imageUrl, headers, timeout, true, isLogo)
           if (dataURL) {
             tile.imageUrl = dataURL
             successCount++

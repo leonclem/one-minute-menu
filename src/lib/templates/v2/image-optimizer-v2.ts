@@ -105,7 +105,14 @@ export async function optimizeLayoutDocumentImages(
       batch.map(async (task) => {
         try {
           // fetchImageAsDataURL handles compression internally using sharp
-          const dataURL = await fetchImageAsDataURL(task.url, headers, timeout, true)
+          // Pass preserveTransparency=true for logos
+          const dataURL = await fetchImageAsDataURL(
+            task.url, 
+            headers, 
+            timeout, 
+            true, 
+            task.type === 'LOGO'
+          )
           if (dataURL) {
             task.update(dataURL)
           }
