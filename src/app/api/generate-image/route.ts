@@ -250,6 +250,7 @@ export async function POST(request: NextRequest) {
       menuItemId: normalizedMenuItemId,
       itemName: menuItem.name,
       itemDescription: menuItem.description,
+      category: menuItem.category,
       generationNotes: body.generationNotes,
       styleParams: body.styleParams || {},
       numberOfVariations: requestedVariations
@@ -298,6 +299,7 @@ export async function POST(request: NextRequest) {
         description: menuItem.description,
         price: menuItem.price ?? 0,
         available: menuItem.available ?? true,
+        category: menuItem.category,
         order: menuItem.order ?? 0,
         imageSource: menuItem.imageSource ?? 'none'
       } as MenuItem,

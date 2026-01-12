@@ -123,9 +123,12 @@ export default function QuotaUsageDashboard({
   }
 
   const { quota, usage } = data
+  const isUnlimited = quota.limit === -1
   const percentUsed = quota.limit > 0 ? Math.min(100, Math.round((quota.used / quota.limit) * 100)) : 0
-  const approachingLimit = quota.used >= quota.warningThreshold && quota.remaining > 0
-  const exceeded = quota.remaining === 0
+  const approachingLimit = !isUnlimited && quota.used >= quota.warningThreshold && quota.remaining > 0
+  const exceeded = !isUnlimited && quota.remaining === 0
+  const limitDisplay = isUnlimited ? '∞' : quota.limit
+  const remainingDisplay = isUnlimited ? '∞' : quota.remaining
 
   if (variant === 'summary') {
     return (
@@ -136,7 +139,7 @@ export default function QuotaUsageDashboard({
           )}
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-lg font-semibold text-secondary-900">{quota.used}/{quota.limit}</div>
+              <div className="text-lg font-semibold text-secondary-900">{quota.used}/{limitDisplay}</div>
               <div className="text-xs text-secondary-600">Used this month</div>
             </div>
             <div className="w-40">
@@ -170,7 +173,7 @@ export default function QuotaUsageDashboard({
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-lg font-semibold text-secondary-900">{quota.used}/{quota.limit}</div>
+                <div className="text-lg font-semibold text-secondary-900">{quota.used}/{limitDisplay}</div>
                 <div className="text-xs text-secondary-600">Used this month</div>
               </div>
               <div className="w-40">
@@ -211,11 +214,11 @@ export default function QuotaUsageDashboard({
           {/* Summary */}
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-2xl font-bold text-secondary-900">{quota.used}/{quota.limit}</div>
+              <div className="text-2xl font-bold text-secondary-900">{quota.used}/{limitDisplay}</div>
               <div className="text-xs text-secondary-600">Used this month</div>
             </div>
             <div className="text-right">
-              <div className="text-lg font-semibold text-secondary-900">{quota.remaining}</div>
+              <div className="text-lg font-semibold text-secondary-900">{remainingDisplay}</div>
               <div className="text-xs text-secondary-600">Remaining</div>
             </div>
           </div>

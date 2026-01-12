@@ -1729,6 +1729,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           menuId={menuId}
           itemName={authMenu.items.find(i => i.id === activeImageItemId)?.name}
           itemDescription={authMenu.items.find(i => i.id === activeImageItemId)?.description}
+          itemCategory={authMenu.items.find(i => i.id === activeImageItemId)?.category}
           onImageSelected={async (itemId, imageUrl) => {
             console.log('🖼️ [Extracted Page] Image selected callback:', { itemId, imageUrl })
             // Immediately refresh the menu to show the new thumbnail
@@ -1753,7 +1754,12 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           menuId={menuId}
           items={authMenu.items
             .filter(item => selectedItemKeys.has(item.id))
-            .map(item => ({ id: item.id, name: item.name, description: item.description }))}
+            .map(item => ({ 
+              id: item.id, 
+              name: item.name, 
+              description: item.description,
+              category: item.category
+            }))}
           onClose={async () => {
             setShowBatchGeneration(false)
             await refreshMenu()

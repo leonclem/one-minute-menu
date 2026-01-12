@@ -14,6 +14,7 @@ interface ItemManagementModalProps {
   menuId: string
   itemName?: string
   itemDescription?: string
+  itemCategory?: string
   onClose: () => void
   onImageSelected?: (itemId: string, imageUrl: string) => void
 }
@@ -23,6 +24,7 @@ export default function ItemManagementModal({
   menuId, 
   itemName, 
   itemDescription, 
+  itemCategory,
   onClose,
   onImageSelected
 }: ItemManagementModalProps) {
@@ -322,6 +324,7 @@ export default function ItemManagementModal({
           menuItemId: itemId,
           itemName: itemName,
           itemDescription: itemDescription,
+          category: itemCategory,
           styleParams,
           numberOfVariations: 1,
           referenceImages: referenceImages.map(img => ({

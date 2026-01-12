@@ -4,6 +4,7 @@ export type BatchGenerationItem = {
   id: string
   name: string
   description?: string
+  category?: string
 }
 
 export type BatchGenerationResult = {
@@ -73,6 +74,7 @@ export async function runBatchGenerationSequential(
           menuItemId: item.id,
           itemName: item.name,
           itemDescription: item.description,
+          category: item.category,
           styleParams: options.styleParams,
           numberOfVariations: options.numberOfVariations ?? 1,
         }),

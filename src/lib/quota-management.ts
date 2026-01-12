@@ -65,8 +65,9 @@ export class QuotaManagementService {
       quotaRecord = await this.resetMonthlyQuota(userId)
     }
     
-    const remaining = Math.max(0, quotaRecord.monthlyLimit - quotaRecord.currentUsage)
-    const warningThreshold = Math.floor(quotaRecord.monthlyLimit * 0.8)
+    const isUnlimited = quotaRecord.monthlyLimit === -1
+    const remaining = isUnlimited ? 999999 : Math.max(0, quotaRecord.monthlyLimit - quotaRecord.currentUsage)
+    const warningThreshold = isUnlimited ? 999999 : Math.floor(quotaRecord.monthlyLimit * 0.8)
     
     return {
       userId,
@@ -76,7 +77,7 @@ export class QuotaManagementService {
       remaining,
       resetDate: quotaRecord.resetDate,
       warningThreshold,
-      needsUpgrade: remaining === 0 && quotaRecord.monthlyLimit > 0
+      needsUpgrade: !isUnlimited && remaining === 0 && quotaRecord.monthlyLimit > 0
     }
   }
   

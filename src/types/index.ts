@@ -645,6 +645,7 @@ export interface ImageGenerationRequest {
   menuItemId: string
   itemName: string
   itemDescription?: string
+  category?: string
   generationNotes?: string
   styleParams: ImageGenerationParams
   numberOfVariations?: number

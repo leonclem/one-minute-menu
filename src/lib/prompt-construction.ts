@@ -112,6 +112,11 @@ export class PromptConstructionService {
     // Add style modifiers from template
     const styleElements = [...template.styleModifiers]
     
+    // Add category context if available to help with ambiguous item names
+    if (item.category && item.category.toLowerCase() !== 'uncategorized' && item.category.toLowerCase() !== 'default') {
+      styleElements.push(`from the ${item.category} category`)
+    }
+    
     // Add presentation modifiers
     if (params.presentation) {
       const presentationMods = PRESENTATION_MODIFIERS[params.presentation] || []

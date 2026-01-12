@@ -105,6 +105,7 @@ export default function AIImageGeneration({
           menuItemId: stableItemId,
           itemName: menuItem.name,
           itemDescription: menuItem.description,
+          category: menuItem.category,
           styleParams,
           numberOfVariations: 1,
           referenceImages: referenceImages.map(img => ({
