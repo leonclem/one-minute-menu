@@ -281,20 +281,34 @@ export default function MenuItemActionsModal({
             
             {/* Move to category */}
             {otherCategories.length > 0 && (
-              <div className="border-t border-ux-border pt-2">
-                <p className="text-xs font-medium text-ux-text-secondary mb-2 px-3">
+              <div className="border-t border-ux-border pt-2 px-3">
+                <p className="text-xs font-medium text-ux-text-secondary mb-2">
                   Move to category:
                 </p>
-                {otherCategories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => handleMoveToCategory(category)}
+                <div className="relative">
+                  <select
                     disabled={loading}
-                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-ux-background-secondary transition-colors text-ux-text disabled:opacity-50"
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleMoveToCategory(e.target.value)
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-ux-border rounded-lg text-sm bg-white text-ux-text focus:outline-none focus:ring-2 focus:ring-ux-primary/20 transition-all cursor-pointer appearance-none"
+                    defaultValue=""
                   >
-                    {category}
-                  </button>
-                ))}
+                    <option value="" disabled>Select a category...</option>
+                    {otherCategories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-ux-text-secondary">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
               </div>
             )}
             

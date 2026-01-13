@@ -7,7 +7,7 @@ import { UXSection, UXButton, UXCard } from '@/components/ux'
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
-import type { Menu, MenuItem } from '@/types'
+import type { Menu, MenuItem, MenuCategory } from '@/types'
 import type { ExtractionResultType as Stage1ExtractionResult } from '@/lib/extraction/schema-stage1'
 import type { ExtractionResultV2Type as Stage2ExtractionResult } from '@/lib/extraction/schema-stage2'
 import { ImageUp, Sparkles, QrCode, Pencil } from 'lucide-react'
@@ -943,14 +943,32 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         }
       }
 
-      // Combine categories with items and empty categories, preserving a stable order
+      // Combine categories with items and empty categories
       const categoriesWithItems = Object.keys(itemsGrouped || {})
       const emptyArray = Array.from(emptyCategories)
-      
-      // Create a stable order by sorting category names alphabetically
-      // This ensures consistent ordering across refreshes
       const allCategoriesSet = new Set([...categoriesWithItems, ...emptyArray])
-      const allCategories = Array.from(allCategoriesSet).sort()
+      
+      // Determine final category list and its order
+      let allCategories: string[] = []
+      
+      if (authMenu?.categories && authMenu.categories.length > 0) {
+        // Use stored category order if available
+        const sortedStoredCategories = [...authMenu.categories].sort((a, b) => (a.order || 0) - (b.order || 0))
+        const storedCategoryNames = sortedStoredCategories.map(c => c.name)
+        
+        // Include stored categories that still exist in our set
+        allCategories = storedCategoryNames.filter(name => allCategoriesSet.has(name))
+        
+        // Append any new categories that aren't in stored order (e.g. just added)
+        const newCategories = Array.from(allCategoriesSet)
+          .filter(name => !storedCategoryNames.includes(name))
+          .sort()
+        
+        allCategories = [...allCategories, ...newCategories]
+      } else {
+        // Default to alphabetical sort if no stored order
+        allCategories = Array.from(allCategoriesSet).sort()
+      }
       
       const total = categoriesWithItems.reduce((sum, c) => sum + ((itemsGrouped[c] || []).length), 0)
       
@@ -968,6 +986,97 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       }
     }
   }, [isDemo, baseMenu, authMenu, authResult, emptyCategories])
+
+  const handleReorderCategory = async (categoryName: string, direction: 'up' | 'down') => {
+    if (isDemo || !authMenu) return
+
+    const currentIndex = categories.indexOf(categoryName)
+    if (currentIndex === -1) return
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (newIndex < 0 || newIndex >= categories.length) return
+
+    const newCategoriesOrder = [...categories]
+    const [movedCategory] = newCategoriesOrder.splice(currentIndex, 1)
+    newCategoriesOrder.splice(newIndex, 0, movedCategory)
+
+    try {
+      setLoading(true)
+      
+      // Prepare updated categories with new order
+      const existingCategories = authMenu.categories || []
+      const categoryMap = new Map<string, MenuCategory>(existingCategories.map(c => [c.name, c]))
+      
+      const updatedCategories: MenuCategory[] = newCategoriesOrder.map((name, index) => {
+        const existing = categoryMap.get(name)
+        // Ensure we use the latest items for this category from our grouped items
+        const items = (itemsByCategory[name] || []) as MenuItem[]
+        
+        return {
+          id: existing?.id || crypto.randomUUID(),
+          name,
+          order: index,
+          items: items,
+          subcategories: existing?.subcategories,
+          confidence: existing?.confidence || 1.0
+        }
+      })
+
+      // Also update the flat items array to match the new category order
+      // This ensures consistent ordering in features that rely on the flat items list
+      const updatedItems: MenuItem[] = []
+      updatedCategories.forEach(cat => {
+        cat.items.forEach(item => {
+          updatedItems.push({
+            ...item,
+            order: updatedItems.length
+          })
+        })
+      })
+
+      // 1. Update categories order via the main menu endpoint
+      const menuResponse = await fetch(`/api/menus/${menuId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: authMenu.name, // Include name to pass validation
+          categories: updatedCategories 
+        }),
+      })
+
+      if (!menuResponse.ok) {
+        throw new Error('Failed to update category order')
+      }
+
+      // 2. Update flat items order via the items reorder endpoint
+      // This ensures the flat items list is also consistently ordered
+      const itemsResponse = await fetch(`/api/menus/${menuId}/items`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemIds: updatedItems.map(i => i.id) }),
+      })
+
+      if (!itemsResponse.ok) {
+        console.warn('Flat items reorder failed, but categories were updated')
+      }
+
+      await refreshMenu()
+      showToast({
+        type: 'success',
+        title: 'Order updated',
+        description: `Category order has been saved.`,
+      })
+    } catch (error) {
+      console.error('Error reordering categories:', error)
+      showToast({
+        type: 'error',
+        title: 'Update failed',
+        description: 'Could not save category order. Please try again.',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Loading state if neither demo nor authenticated menu are present
   if (!demoMenu && !authMenu) {
@@ -1356,7 +1465,36 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
               <UXCard key={category}>
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4 border-b-2 border-ux-border pb-2 gap-3">
-                    <div className="flex items-center gap-2 flex-1">
+                    <div className="flex items-center gap-3 flex-1">
+                      {/* Category Reorder Controls */}
+                      {!isDemo && (
+                        <div className="flex flex-col gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleReorderCategory(category, 'up')}
+                            disabled={loading || categories.indexOf(category) === 0}
+                            className="p-0.5 text-ux-text-secondary hover:text-ux-primary disabled:opacity-30 transition-colors"
+                            aria-label={`Move ${category} up`}
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleReorderCategory(category, 'down')}
+                            disabled={loading || categories.indexOf(category) === categories.length - 1}
+                            className="p-0.5 text-ux-text-secondary hover:text-ux-primary disabled:opacity-30 transition-colors"
+                            aria-label={`Move ${category} down`}
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 flex-1">
                       {editingCategory === category && !isDemo ? (
                         <input
                           type="text"
@@ -1408,7 +1546,8 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                  </div>
+                  <div className="flex items-center gap-2">
                       {!isDemo && (
                         <button
                           type="button"
