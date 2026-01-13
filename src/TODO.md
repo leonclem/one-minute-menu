@@ -93,8 +93,8 @@
 
 /extracted
 - [ ] Need capability to delete a section
-- [ ] Control Panel > Download Menu pages (PNG zip)
-- [ ] Control Panel > Download Menu Images (PNG zip)
+- [ ] Menu Control Panel > Download Menu pages (PNG zip)
+- [ ] Menu Control Panel > Download Menu Images (PNG zip)
 
 ## Deployment
 - [x] Purchase domain
@@ -188,6 +188,7 @@
 - [ ] Multi-user access to accounts (Premium tier)
 - [ ] Display user information (e.g. email address of logged in user)
 - [ ] Add option to include opening hours in footer
+- [ ] Need a sense of Draft -> Published to allow edits in the case of live menus
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>
