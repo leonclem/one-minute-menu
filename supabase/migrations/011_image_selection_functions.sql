@@ -156,12 +156,18 @@ BEGIN
     -- If this was the selected image, we need to handle the selection
     IF v_was_selected THEN
         -- Count remaining images for this menu item
-        SELECT COUNT(*), MIN(id)
-        INTO v_remaining_count, v_next_image_id
+        SELECT COUNT(*) INTO v_remaining_count
         FROM ai_generated_images 
         WHERE menu_item_id = v_menu_item_id;
         
         IF v_remaining_count > 0 THEN
+            -- Get the oldest remaining image
+            SELECT id INTO v_next_image_id
+            FROM ai_generated_images 
+            WHERE menu_item_id = v_menu_item_id
+            ORDER BY created_at ASC
+            LIMIT 1;
+
             -- Select the oldest remaining image
             UPDATE ai_generated_images 
             SET selected = true 
