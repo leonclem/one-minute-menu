@@ -11,6 +11,34 @@ export * from '@/lib/menu-data-migration'
 
 // Database utility functions for menu management
 
+/**
+ * Resolves effective plan limits by merging subscription defaults with database overrides.
+ * Ensures that plan upgrades correctly override legacy defaults stored in the JSONB column.
+ */
+export const resolvePlanLimits = (dbLimits: any, plan: UserPlan): PlanLimits => {
+  const defaults = PLAN_CONFIGS[plan]
+  
+  const resolve = (dbValue: any, planDefault: number): number => {
+    if (typeof dbValue !== 'number') return planDefault
+    
+    // If plan default is unlimited (-1), it should always win unless the override is also -1
+    if (planDefault === -1) return -1
+    
+    // If override is unlimited (-1), it wins
+    if (dbValue === -1) return -1
+    
+    // Otherwise take the maximum of both to ensure upgrades work even with stale overrides
+    return Math.max(dbValue, planDefault)
+  }
+
+  return {
+    menus: resolve(dbLimits?.menus, defaults.menus),
+    menuItems: resolve(dbLimits?.items, defaults.menuItems),
+    monthlyUploads: resolve(dbLimits?.monthly_uploads, defaults.monthlyUploads),
+    aiImageGenerations: resolve(dbLimits?.ai_image_generations, defaults.aiImageGenerations),
+  }
+}
+
 export class DatabaseError extends Error {
   constructor(message: string, public code?: string) {
     super(message)
@@ -34,22 +62,11 @@ export const userOperations = {
       throw new DatabaseError(`Failed to get user profile: ${error.message}`, error.code)
     }
     
-    // Map plan_limits (snake_case in DB) -> PlanLimits (camelCase in app)
-    const mapPlanLimitsFromDb = (dbLimits: any, plan: UserPlan): PlanLimits => {
-      const defaults = PLAN_CONFIGS[plan]
-      return {
-        menus: typeof dbLimits?.menus === 'number' ? dbLimits.menus : defaults.menus,
-        menuItems: typeof dbLimits?.items === 'number' ? dbLimits.items : defaults.menuItems,
-        monthlyUploads: typeof dbLimits?.monthly_uploads === 'number' ? dbLimits.monthly_uploads : defaults.monthlyUploads,
-        aiImageGenerations: typeof dbLimits?.ai_image_generations === 'number' ? dbLimits.ai_image_generations : defaults.aiImageGenerations,
-      }
-    }
-
     return {
       id: data.id,
       email: data.email,
       plan: data.plan as UserPlan,
-      limits: mapPlanLimitsFromDb(data.plan_limits, data.plan as UserPlan),
+      limits: resolvePlanLimits(data.plan_limits, data.plan as UserPlan),
       createdAt: new Date(data.created_at),
       location: data.location || undefined,
       role: data.role as 'user' | 'admin' || 'user',
@@ -83,22 +100,11 @@ export const userOperations = {
       throw new DatabaseError(`Failed to update profile: ${error.message}`, error.code)
     }
     
-    // Reuse the same mapper for returned row
-    const mapPlanLimitsFromDb = (dbLimits: any, plan: User['plan']): PlanLimits => {
-      const defaults = PLAN_CONFIGS[plan]
-      return {
-        menus: typeof dbLimits?.menus === 'number' ? dbLimits.menus : defaults.menus,
-        menuItems: typeof dbLimits?.items === 'number' ? dbLimits.items : defaults.menuItems,
-        monthlyUploads: typeof dbLimits?.monthly_uploads === 'number' ? dbLimits.monthly_uploads : defaults.monthlyUploads,
-        aiImageGenerations: typeof dbLimits?.ai_image_generations === 'number' ? dbLimits.ai_image_generations : defaults.aiImageGenerations,
-      }
-    }
-
     return {
       id: data.id,
       email: data.email,
       plan: data.plan,
-      limits: mapPlanLimitsFromDb(data.plan_limits, data.plan),
+      limits: resolvePlanLimits(data.plan_limits, data.plan),
       createdAt: new Date(data.created_at),
       location: data.location || undefined,
       role: data.role as 'user' | 'admin' || 'user',
@@ -706,7 +712,7 @@ export const menuItemOperations = {
     if (typeof itemLimit === 'number' && itemLimit >= 0) {
       const nextCount = menu.items.length + 1
       if (nextCount > itemLimit) {
-        throw new DatabaseError('Item limit exceeded for your plan', 'PLAN_LIMIT_EXCEEDED')
+        throw new DatabaseError(`Item limit exceeded. Your plan allows up to ${itemLimit} items per menu.`, 'PLAN_LIMIT_EXCEEDED')
       }
     }
 

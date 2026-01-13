@@ -49,12 +49,12 @@ export async function POST(
       if (error.code === 'PLAN_LIMIT_EXCEEDED') {
         return NextResponse.json(
           {
-            error: 'You have reached your plan limit for menu items. Please upgrade to add more.',
+            error: error.message,
             code: 'PLAN_LIMIT_EXCEEDED',
             upgrade: {
-              cta: 'Upgrade to Premium',
+              cta: 'View Plans',
               href: '/upgrade',
-              reason: 'Increase item limit from 20 to 500 items',
+              reason: 'Upgrade your plan to increase your menu item limit',
             }
           },
           { status: 403 }
