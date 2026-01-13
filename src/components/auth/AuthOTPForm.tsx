@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { UXButton, UXInput } from '@/components/ux'
 import { isValidEmail } from '@/lib/utils'
@@ -29,9 +29,14 @@ export function AuthOTPForm({
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [mounted, setMounted] = useState(false)
   
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Robust localhost check
-  const isLocalDev = typeof window !== 'undefined' && 
+  const isLocalDev = mounted && 
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
   const handleSubmit = async (e: React.FormEvent) => {
