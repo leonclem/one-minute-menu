@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Button, useToast } from '@/components/ui'
+import { useToast } from '@/components/ui'
+import { UXButton, UXCard } from '@/components/ux'
 import type { ImageGenerationParams } from '@/types'
 import { runBatchGenerationSequential, type BatchGenerationItem, type BatchGenerationResult, type BatchProgressUpdate } from '@/lib/batch-generation'
 
@@ -30,6 +31,13 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
     lighting: 'natural',
     presentation: 'white_plate',
   })
+  const [referenceImages, setReferenceImages] = useState<Array<{
+    id: string
+    dataUrl: string
+    name: string
+    comment: string
+    role: string
+  }>>([])
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<Record<string, BatchProgressUpdate['status']>>({})
   const [results, setResults] = useState<BatchGenerationResult[] | null>(null)
@@ -61,6 +69,12 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
       const batchResults = await runBatchGenerationSequential(menuId, items, {
         styleParams,
         numberOfVariations: 1,
+        referenceImages: referenceImages.map(img => ({
+          dataUrl: img.dataUrl,
+          comment: img.comment,
+          name: img.name,
+          role: img.role
+        })),
         onProgress: (update) => {
           setProgress(prev => ({ ...prev, [update.itemId]: update.status }))
         },
@@ -180,6 +194,116 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
                     </select>
                   </div>
                 </div>
+
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Reference Photos ({referenceImages.length}/3)
+                    </label>
+                    {referenceImages.length < 3 && (
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            if (file.size > 7 * 1024 * 1024) {
+                              showToast({ type: 'error', title: 'File too large', description: 'Max size is 7MB' })
+                              return
+                            }
+                            const reader = new FileReader()
+                            reader.onload = () => {
+                              setReferenceImages(prev => [
+                                ...prev,
+                                {
+                                  id: `upload_${Date.now()}`,
+                                  dataUrl: reader.result as string,
+                                  name: file.name,
+                                  comment: '',
+                                  role: 'scene'
+                                }
+                              ])
+                            }
+                            reader.readAsDataURL(file)
+                          }}
+                        />
+                        <UXButton variant="outline" size="sm" className="text-xs">
+                          Add Photo
+                        </UXButton>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {referenceImages.length > 0 ? (
+                    <div className="space-y-3">
+                      {referenceImages.map((ref) => (
+                        <UXCard key={ref.id} className="p-3 bg-white/50 backdrop-blur-sm border-ux-border/40">
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <div className="relative w-full sm:w-16 h-24 sm:h-16 flex-shrink-0">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img 
+                                src={ref.dataUrl} 
+                                alt={ref.name}
+                                className="w-full h-full object-cover rounded-md border border-gray-100" 
+                              />
+                            </div>
+                            <div className="flex-1 flex flex-col justify-between gap-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <select
+                                  value={ref.role}
+                                  onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, role: e.target.value } : r))}
+                                  className="text-[10px] px-2 py-1 border border-gray-200 rounded bg-white font-medium text-gray-700 w-full sm:w-auto"
+                                  disabled={running}
+                                >
+                                  <option value="dish">Dish / Subject</option>
+                                  <option value="scene">Table / Scene</option>
+                                  <option value="style">Style / Lighting</option>
+                                  <option value="layout">Plating / Layout</option>
+                                  <option value="other">Other</option>
+                                </select>
+                                <button
+                                  onClick={() => setReferenceImages(prev => prev.filter(r => r.id !== ref.id))}
+                                  className="text-[10px] text-red-500 hover:text-red-700 font-medium uppercase sm:hidden"
+                                  disabled={running}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                              <div className="relative flex-1">
+                                <textarea
+                                  placeholder="e.g., use this plate, match the lighting, remove herbs"
+                                  value={ref.comment}
+                                  onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, comment: e.target.value } : r))}
+                                  className="w-full text-xs p-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-ux-primary focus:border-ux-primary resize-none bg-white/80"
+                                  rows={1}
+                                  disabled={running}
+                                />
+                              </div>
+                              <div className="hidden sm:flex justify-end">
+                                <button
+                                  onClick={() => setReferenceImages(prev => prev.filter(r => r.id !== ref.id))}
+                                  className="text-[10px] text-red-500 hover:text-red-700 font-medium uppercase tracking-wider transition-colors"
+                                  disabled={running}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </UXCard>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 border-2 border-dashed border-gray-200 rounded-lg">
+                      <p className="text-xs text-gray-400">
+                        No reference photos added.<br/>
+                        Upload one to guide the generation.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -217,15 +341,16 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
 
           {/* Actions */}
           <div className="flex gap-3">
-            <Button variant="outline" onClick={onClose} disabled={running}>Close</Button>
-            <Button 
+            <UXButton variant="outline" onClick={onClose} disabled={running} className="flex-1">Close</UXButton>
+            <UXButton 
               variant="primary" 
               onClick={startBatch} 
               loading={running} 
               disabled={running || !!results}
+              className="flex-1"
             >
               {results ? 'Batch Completed' : (running ? 'Creating…' : 'Create Photos')}
-            </Button>
+            </UXButton>
           </div>
         </div>
       </div>

@@ -29,6 +29,12 @@ export type BatchProgressUpdate = {
 export interface RunBatchOptions {
   styleParams: ImageGenerationParams
   numberOfVariations?: number
+  referenceImages?: Array<{
+    dataUrl: string
+    comment: string
+    name: string
+    role: string
+  }>
   onProgress?: (update: BatchProgressUpdate) => void
   /**
    * Override fetch implementation for testing.
@@ -77,6 +83,7 @@ export async function runBatchGenerationSequential(
           category: item.category,
           styleParams: options.styleParams,
           numberOfVariations: options.numberOfVariations ?? 1,
+          referenceImages: options.referenceImages,
         }),
       })
 
