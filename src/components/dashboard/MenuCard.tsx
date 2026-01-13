@@ -123,21 +123,6 @@ export function MenuCard({ menu }: MenuCardProps) {
           
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-ux-text">Status:</span>
-              <span className={`capitalize px-2 py-1 rounded-full text-xs ${
-                menu.status === 'published' 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {menu.status}
-                {menu.status === 'published' && menu.publishedAt && (
-                  <span className="ml-1 text-xs opacity-75">
-                    ({menu.publishedAt.toLocaleDateString()})
-                  </span>
-                )}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
               <span className="text-ux-text">Items:</span>
               <span className="text-ux-text">{menu.items?.length || 0}</span>
             </div>
@@ -149,14 +134,6 @@ export function MenuCard({ menu }: MenuCardProps) {
               <span className="text-ux-text">Last updated:</span>
               <span className="text-ux-text">
                 {menu.updatedAt ? menu.updatedAt.toLocaleDateString() : '—'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-ux-text">Published:</span>
-              <span className="text-ux-text">
-                {menu.status === 'published' && menu.publishedAt
-                  ? menu.publishedAt.toLocaleDateString()
-                  : 'Not yet published'}
               </span>
             </div>
             <div className="pt-3 flex justify-center">

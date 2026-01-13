@@ -143,16 +143,6 @@ export default function TestDashboardPage() {
                   <CardContent>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-secondary-600">Status:</span>
-                        <span className={`capitalize px-2 py-1 rounded-full text-xs ${
-                          menu.status === 'published' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {menu.status}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
                         <span className="text-secondary-600">Items:</span>
                         <span>{menu.menu_data?.items?.length || 0}</span>
                       </div>
