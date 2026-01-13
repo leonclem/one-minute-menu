@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { imageProcessingService } from '@/lib/image-processing'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
+
+// Admin client to bypass RLS for ownership verification
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 // DELETE /api/images/[imageId] - Delete an AI-generated image
 export async function DELETE(
@@ -29,35 +36,46 @@ export async function DELETE(
       )
     }
     
-    // Verify user owns the image (through menu item ownership)
-    const { data: imageData, error: imageError } = await supabase
+    // Verify user owns the image (through menu item ownership) using admin client to bypass RLS issues
+    // Step 1: Fetch the image data
+    const { data: imageData, error: imageError } = await supabaseAdmin
       .from('ai_generated_images')
-      .select(`
-        id,
-        menu_item_id,
-        original_url,
-        thumbnail_url,
-        mobile_url,
-        desktop_url,
-        webp_url,
-        selected,
-        menu_items!inner(
-          menus!inner(user_id)
-        )
-      `)
+      .select('*')
       .eq('id', imageId)
       .single()
     
     if (imageError || !imageData) {
+      logger.error('Error fetching image for deletion:', imageError)
       return NextResponse.json(
         { error: 'AI-generated image not found' },
         { status: 404 }
       )
     }
     
-    // Verify user owns the menu
-    const menuData = imageData.menu_items as any
-    if (menuData.menus.user_id !== user.id) {
+    // Step 2: Fetch the menu item and its menu owner to verify ownership
+    const { data: itemData, error: itemError } = await supabaseAdmin
+      .from('menu_items')
+      .select(`
+        id,
+        name,
+        menus (user_id)
+      `)
+      .eq('id', imageData.menu_item_id)
+      .single()
+      
+    if (itemError || !itemData) {
+      logger.error('Error fetching menu item for image deletion:', itemError)
+      return NextResponse.json(
+        { error: 'Menu item associated with image not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Step 3: Verify ownership
+    const menuData = Array.isArray(itemData.menus) ? itemData.menus[0] : itemData.menus as any
+      
+    if (!menuData || menuData.user_id !== user.id) {
+      logger.warn('Unauthorized delete attempt:', { imageId, userId: user.id, ownerId: menuData?.user_id })
       return NextResponse.json(
         { error: 'Unauthorized access to image' },
         { status: 403 }
@@ -83,8 +101,8 @@ export async function DELETE(
         }
       }
       
-      // Use database function to handle the deletion and cleanup
-      const { error: deleteError } = await supabase.rpc('delete_ai_generated_image', {
+      // Use database function to handle the deletion and cleanup using admin client
+      const { error: deleteError } = await supabaseAdmin.rpc('delete_ai_generated_image', {
         p_image_id: imageId
       })
       
@@ -147,46 +165,46 @@ export async function GET(
       )
     }
     
-    // Get image details with ownership verification
-    const { data: imageData, error: imageError } = await supabase
+    // Get image details with ownership verification using admin client to bypass RLS issues
+    // Step 1: Fetch the image data
+    const { data: imageData, error: imageError } = await supabaseAdmin
       .from('ai_generated_images')
-      .select(`
-        id,
-        menu_item_id,
-        generation_job_id,
-        original_url,
-        thumbnail_url,
-        mobile_url,
-        desktop_url,
-        webp_url,
-        prompt,
-        negative_prompt,
-        aspect_ratio,
-        width,
-        height,
-        file_size,
-        selected,
-        metadata,
-        created_at,
-        menu_items!inner(
-          id,
-          name,
-          menus!inner(user_id)
-        )
-      `)
+      .select('*')
       .eq('id', imageId)
       .single()
     
     if (imageError || !imageData) {
+      logger.error('Error fetching image details:', imageError)
       return NextResponse.json(
         { error: 'AI-generated image not found' },
         { status: 404 }
       )
     }
     
-    // Verify user owns the menu
-    const menuData = imageData.menu_items as any
-    if (menuData.menus.user_id !== user.id) {
+    // Step 2: Fetch the menu item and its menu owner to verify ownership
+    const { data: itemData, error: itemError } = await supabaseAdmin
+      .from('menu_items')
+      .select(`
+        id,
+        name,
+        menus (user_id)
+      `)
+      .eq('id', imageData.menu_item_id)
+      .single()
+      
+    if (itemError || !itemData) {
+      logger.error('Error fetching menu item for image details:', itemError)
+      return NextResponse.json(
+        { error: 'Menu item associated with image not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Step 3: Verify ownership
+    const menuData = Array.isArray(itemData.menus) ? itemData.menus[0] : itemData.menus as any
+      
+    if (!menuData || menuData.user_id !== user.id) {
+      logger.warn('Unauthorized access attempt:', { imageId, userId: user.id, ownerId: menuData?.user_id })
       return NextResponse.json(
         { error: 'Unauthorized access to image' },
         { status: 403 }
@@ -198,7 +216,7 @@ export async function GET(
       data: {
         id: imageData.id,
         menuItemId: imageData.menu_item_id,
-        menuItemName: menuData.name,
+        menuItemName: itemData.name,
         generationJobId: imageData.generation_job_id,
         urls: {
           original: imageData.original_url,
