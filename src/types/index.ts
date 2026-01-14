@@ -11,6 +11,11 @@ export interface User {
   location?: string
   securityFlags?: string[]
   role?: 'user' | 'admin'
+  username?: string
+  onboardingCompleted?: boolean
+  restaurantName?: string
+  establishmentType?: string
+  primaryCuisine?: string
 }
 
 export interface PlanLimits {

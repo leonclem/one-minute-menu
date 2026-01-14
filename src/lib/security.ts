@@ -65,4 +65,22 @@ export function sanitizeMenuPayload<T extends {
   return out
 }
 
+export function sanitizeProfilePayload<T extends { 
+  username?: string; 
+  restaurantName?: string;
+  establishmentType?: string;
+  primaryCuisine?: string;
+  location?: string;
+  onboardingCompleted?: boolean;
+}>(data: T): T {
+  const out = { ...data }
+  if (out.username !== undefined) out.username = sanitizeString(out.username, 50) as any
+  if (out.restaurantName !== undefined) out.restaurantName = sanitizeString(out.restaurantName, 100) as any
+  if (out.establishmentType !== undefined) out.establishmentType = sanitizeString(out.establishmentType, 50) as any
+  if (out.primaryCuisine !== undefined) out.primaryCuisine = sanitizeString(out.primaryCuisine, 50) as any
+  if (out.location !== undefined) out.location = sanitizeString(out.location, 100) as any
+  // onboardingCompleted is boolean, no sanitization needed beyond existence check
+  return out
+}
+
 

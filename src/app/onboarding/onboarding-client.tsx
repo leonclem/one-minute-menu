@@ -12,6 +12,7 @@ export default function OnboardingClient({ userEmail }: { userEmail?: string }) 
     name: '',
     establishmentType: '',
     primaryCuisine: '',
+    username: '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -37,26 +38,26 @@ export default function OnboardingClient({ userEmail }: { userEmail?: string }) 
     setError('')
 
     try {
-      // Create first menu automatically
-      const slug = formData.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
+      // Update user profile instead of creating a menu
       const result = await fetchJsonWithRetry<{ success: boolean; data: any }>(
-        '/api/menus',
+        '/api/profile',
         {
-          method: 'POST',
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: formData.name,
-            slug,
+            restaurantName: formData.name,
             establishmentType: formData.establishmentType,
             primaryCuisine: formData.primaryCuisine,
+            username: formData.username || undefined,
+            onboardingCompleted: true,
           }),
         }
       )
 
       if (result.success) {
-        router.push(`/menus/${result.data.id}/upload`)
+        router.push('/dashboard')
       } else {
-        setError('Failed to create your first menu. Please try again.')
+        setError('Failed to complete onboarding. Please try again.')
       }
     } catch (err) {
       setError('An error occurred. Please try again.')
@@ -159,6 +160,14 @@ export default function OnboardingClient({ userEmail }: { userEmail?: string }) 
                         ))}
                       </select>
                     </div>
+
+                    <UXInput
+                      label="Username (optional)"
+                      value={formData.username}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      placeholder="e.g. golden-grill"
+                      helperText="Your public profile will be at gridmenu.com/u/your-username"
+                    />
                   </div>
 
                   {error && <p className="text-sm text-ux-error">{error}</p>}
@@ -181,7 +190,7 @@ export default function OnboardingClient({ userEmail }: { userEmail?: string }) 
                       className="flex-1"
                       loading={loading}
                     >
-                      Create Menu
+                      Go to Dashboard
                     </UXButton>
                   </div>
                 </form>

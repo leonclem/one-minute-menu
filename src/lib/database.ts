@@ -70,6 +70,11 @@ export const userOperations = {
       createdAt: new Date(data.created_at),
       location: data.location || undefined,
       role: data.role as 'user' | 'admin' || 'user',
+      username: data.username || undefined,
+      onboardingCompleted: data.onboarding_completed || false,
+      restaurantName: data.restaurant_name || undefined,
+      establishmentType: data.establishment_type || undefined,
+      primaryCuisine: data.primary_cuisine || undefined,
     }
   },
 
@@ -88,6 +93,11 @@ export const userOperations = {
       }
     }
     if (updates.location !== undefined) updateData.location = updates.location
+    if (updates.username !== undefined) updateData.username = updates.username
+    if (updates.onboardingCompleted !== undefined) updateData.onboarding_completed = updates.onboardingCompleted
+    if (updates.restaurantName !== undefined) updateData.restaurant_name = updates.restaurantName
+    if (updates.establishmentType !== undefined) updateData.establishment_type = updates.establishmentType
+    if (updates.primaryCuisine !== undefined) updateData.primary_cuisine = updates.primaryCuisine
     
     const { data, error } = await supabase
       .from('profiles')
@@ -108,6 +118,11 @@ export const userOperations = {
       createdAt: new Date(data.created_at),
       location: data.location || undefined,
       role: data.role as 'user' | 'admin' || 'user',
+      username: data.username || undefined,
+      onboardingCompleted: data.onboarding_completed || false,
+      restaurantName: data.restaurant_name || undefined,
+      establishmentType: data.establishment_type || undefined,
+      primaryCuisine: data.primary_cuisine || undefined,
     }
   },
 

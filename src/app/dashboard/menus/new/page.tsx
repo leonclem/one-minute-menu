@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { UpgradePrompt } from '@/components/ui'
 import { UXButton, UXInput, UXCard } from '@/components/ux'
 import { validateCreateMenu, generateSlugFromName } from '@/lib/validation'
 import { fetchJsonWithRetry, HttpError } from '@/lib/retry'
-import type { CreateMenuFormData } from '@/types'
+import type { CreateMenuFormData, User } from '@/types'
 import { ESTABLISHMENT_TYPES, CUISINES } from '@/types'
 
 export default function NewMenuPage() {
@@ -29,6 +29,28 @@ export default function NewMenuPage() {
       },
     },
   })
+
+  // Pre-fill from profile
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const response = await fetchJsonWithRetry<{ success: boolean; data: User }>('/api/profile')
+        if (response.success && response.data) {
+          const profile = response.data
+          setFormData(prev => ({
+            ...prev,
+            name: profile.restaurantName || prev.name,
+            slug: profile.restaurantName ? generateSlugFromName(profile.restaurantName) : prev.slug,
+            establishmentType: profile.establishmentType || prev.establishmentType,
+            primaryCuisine: profile.primaryCuisine || prev.primaryCuisine,
+          }))
+        }
+      } catch (err) {
+        console.error('Failed to load profile for pre-filling:', err)
+      }
+    }
+    loadProfile()
+  }, [])
 
   // Helper component for info tooltips
   const InfoTip = ({ children }: { children: React.ReactNode }) => (

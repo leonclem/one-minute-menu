@@ -28,19 +28,37 @@ export async function DELETE(
     const deletedFiles: string[] = []
     
     for (const bucket of buckets) {
-      // List all files in the user's folder
-      // In Supabase Storage, listing a "folder" is listing files with that prefix
-      const { data: files, error: listError } = await supabaseAdmin.storage
-        .from(bucket)
-        .list(userId, { recursive: true })
+      // List all files recursively in the user's folder
+      // We need a recursive helper because Supabase list() doesn't support it
+      const getAllFiles = async (path: string): Promise<string[]> => {
+        const { data, error } = await supabaseAdmin.storage
+          .from(bucket)
+          .list(path)
 
-      if (listError) {
-        logger.error(`Failed to list storage for user ${userId} in bucket ${bucket}`, listError)
-        continue
+        if (error) {
+          logger.error(`Failed to list storage for user ${userId} in bucket ${bucket} at path ${path}`, error)
+          return []
+        }
+
+        let files: string[] = []
+        if (data) {
+          for (const item of data) {
+            const fullPath = `${path}/${item.name}`
+            // Folders in Supabase Storage don't have metadata or id
+            if (!item.id && !item.metadata) {
+              const subFiles = await getAllFiles(fullPath)
+              files.push(...subFiles)
+            } else {
+              files.push(fullPath)
+            }
+          }
+        }
+        return files
       }
 
-      if (files && files.length > 0) {
-        const paths = files.map(f => `${userId}/${f.name}`)
+      const paths = await getAllFiles(userId)
+
+      if (paths.length > 0) {
         const { error: removeError } = await supabaseAdmin.storage.from(bucket).remove(paths)
         
         if (removeError) {
