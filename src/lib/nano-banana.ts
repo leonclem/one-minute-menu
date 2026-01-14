@@ -149,6 +149,10 @@ export class NanoBananaClient {
       ...params
     }
 
+    // Determine model and base URL
+    const model = requestParams.model || 'gemini-2.5-flash-image'
+    const baseUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+
     // Validate parameters
     this.validateParams(requestParams)
 
@@ -162,9 +166,10 @@ export class NanoBananaClient {
 
       // Important: never log reference image bytes; prompts can be logged for learning.
       logger.info('🎨 [Nano Banana] Outbound request', {
-        model: 'gemini-2.5-flash-image',
+        model,
         candidateCount: Math.min(Math.max(requestParams.number_of_images || 1, 1), 4),
         aspectRatio: requestParams.aspect_ratio,
+        imageSize: requestParams.image_size,
         hasReferenceImages: hasRef,
         referenceMode: requestParams.reference_mode || null,
         referenceImages: refMeta,
@@ -181,7 +186,7 @@ export class NanoBananaClient {
       // If reference images are provided, guide the model with explicit instructions.
       // We use the "Image A/B/C" syntax recommended for Nano Banana Pro.
       if (requestParams.reference_images && requestParams.reference_images.length > 0) {
-        const alphabet = ['A', 'B', 'C']
+        const alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N']
         const roleInstructions: string[] = []
         
         for (let i = 0; i < requestParams.reference_images.length; i++) {
@@ -212,9 +217,12 @@ export class NanoBananaClient {
       if (requestParams.negative_prompt) {
         promptText += `\nExclude: ${requestParams.negative_prompt}`
       }
-      if (requestParams.aspect_ratio) {
+      
+      // Gemini 3 Pro uses imageConfig for aspect ratio, 2.5 Flash uses prompt instructions
+      if (model === 'gemini-2.5-flash-image' && requestParams.aspect_ratio) {
         promptText += `\nAspect ratio: ${requestParams.aspect_ratio}`
       }
+      
       if (requestParams.person_generation === 'dont_allow') {
         promptText += `\nNo people in the image.`
       }
@@ -226,13 +234,32 @@ export class NanoBananaClient {
 
       // Add reference image(s) as inlineData parts (base64, no data URL prefix).
       if (requestParams.reference_images && requestParams.reference_images.length > 0) {
-        for (const img of requestParams.reference_images.slice(0, 3)) {
+        for (const img of requestParams.reference_images) {
           parts.push({
             inlineData: {
               mimeType: img.mimeType,
               data: img.data,
             },
           })
+        }
+      }
+
+      const generationConfig: any = {
+        responseModalities: ['image'],
+        candidateCount,
+      }
+
+      // Add imageConfig for Gemini 3 Pro
+      if (model.includes('gemini-3') || model.includes('pro')) {
+        const imageConfig: any = {}
+        if (requestParams.aspect_ratio) {
+          imageConfig.aspectRatio = requestParams.aspect_ratio
+        }
+        if (requestParams.image_size) {
+          imageConfig.imageSize = requestParams.image_size
+        }
+        if (Object.keys(imageConfig).length > 0) {
+          generationConfig.imageConfig = imageConfig
         }
       }
 
@@ -243,21 +270,21 @@ export class NanoBananaClient {
             parts,
           },
         ],
-        generationConfig: {
-          responseModalities: ['image'],
-          candidateCount,
-        },
+        generationConfig,
       }
 
       // Build URL with API key as query param per Gemini requirements
-      const url = new URL(this.baseUrl)
+      const url = new URL(baseUrl)
       url.searchParams.set('key', this.apiKey)
 
       // Log the exact URL being called for debugging
       console.log('🔍 [Nano Banana] Making request to:', url.toString().replace(/key=[^&]+/, 'key=***'))
-      console.log('🔍 [Nano Banana] Request body:', JSON.stringify(requestBody, null, 2))
-      console.log('🔍 [Nano Banana] API Key (first 10 chars):', this.apiKey.substring(0, 10) + '...')
-      console.log('🔍 [Nano Banana] Base URL:', this.baseUrl)
+      console.log('🔍 [Nano Banana] Request body summary:', {
+        candidateCount,
+        imageConfig: generationConfig.imageConfig,
+        promptLength: promptText.length,
+        referenceImageCount: requestParams.reference_images?.length || 0
+      })
 
       // Make the API request
       const apiResponse = await fetchJsonWithRetry<any>(
@@ -432,8 +459,12 @@ export class NanoBananaClient {
     }
 
     if (params.reference_images && params.reference_images.length > 0) {
-      if (params.reference_images.length > 3) {
-        throw new NanoBananaError('Too many reference images (max 3)', 'INVALID_PARAMS')
+      const model = params.model || 'gemini-2.5-flash-image'
+      const isPro = model.includes('gemini-3') || model.includes('pro')
+      const maxRefs = isPro ? 14 : 3
+      
+      if (params.reference_images.length > maxRefs) {
+        throw new NanoBananaError(`Too many reference images (max ${maxRefs} for ${model})`, 'INVALID_PARAMS')
       }
       for (const img of params.reference_images) {
         const validTypes = ['image/png', 'image/jpeg', 'image/webp']

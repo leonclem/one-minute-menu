@@ -71,6 +71,7 @@ const PROMPT_TEMPLATES: Record<string, PromptTemplate> = {
 
 // Presentation style modifiers
 const PRESENTATION_MODIFIERS: Record<string, string[]> = {
+  none: [], // Special case: skip default presentation
   white_plate: ['served on a clean white plate', 'white ceramic dishware'],
   wooden_board: ['presented on a rustic wooden board', 'natural wood serving surface'],
   overhead: ['overhead view', 'top-down perspective', 'flat lay style'],
@@ -119,8 +120,12 @@ export class PromptConstructionService {
     
     // Add presentation modifiers
     if (params.presentation) {
-      const presentationMods = PRESENTATION_MODIFIERS[params.presentation] || []
-      styleElements.push(...presentationMods)
+      if (params.presentation === 'none' && params.hasReferenceImage) {
+        styleElements.push('use the exact plating and presentation style shown in the reference image')
+      } else {
+        const presentationMods = PRESENTATION_MODIFIERS[params.presentation] || []
+        styleElements.push(...presentationMods)
+      }
     }
     
     // Add lighting modifiers

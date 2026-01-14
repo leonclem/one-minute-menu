@@ -13,7 +13,6 @@ interface MenuItemActionsModalProps {
   onClose: () => void
   onItemUpdated: () => void
   onManageImages?: () => void
-  onGenerateImage?: () => void
   onEditDetails?: () => void
 }
 
@@ -24,7 +23,6 @@ export default function MenuItemActionsModal({
   onClose,
   onItemUpdated,
   onManageImages,
-  onGenerateImage,
   onEditDetails
 }: MenuItemActionsModalProps) {
   const [loading, setLoading] = useState(false)
@@ -241,22 +239,7 @@ export default function MenuItemActionsModal({
               </button>
             )}
 
-            {/* Create AI Photo */}
-            {onGenerateImage && (
-              <button
-                onClick={() => {
-                  onGenerateImage()
-                  onClose()
-                }}
-                disabled={loading}
-                className="w-full text-left px-3 py-2 rounded-lg hover:bg-ux-background-secondary transition-colors text-ux-text disabled:opacity-50 flex items-center justify-between"
-              >
-                <span>Create AI Photo</span>
-                <span className="text-[10px] bg-ux-primary/10 text-ux-primary px-1.5 py-0.5 rounded uppercase font-bold tracking-tight">New</span>
-              </button>
-            )}
-
-            {/* Manage images */}
+            {/* Image management */}
             {onManageImages && (
               <button
                 onClick={() => {
@@ -264,9 +247,16 @@ export default function MenuItemActionsModal({
                   onClose()
                 }}
                 disabled={loading}
-                className="w-full text-left px-3 py-2 rounded-lg hover:bg-ux-background-secondary transition-colors text-ux-text disabled:opacity-50"
+                className="w-full text-left px-3 py-2 rounded-lg hover:bg-ux-background-secondary transition-colors text-ux-text disabled:opacity-50 flex items-center justify-between"
               >
-                Manage photos & images
+                <span>
+                  {item.imageSource !== 'none' || item.customImageUrl || item.aiImageId 
+                    ? 'Manage photos & images' 
+                    : 'Add photo / Create AI Photo'}
+                </span>
+                {!(item.imageSource !== 'none' || item.customImageUrl || item.aiImageId) && (
+                  <span className="text-[10px] bg-ux-primary/10 text-ux-primary px-1.5 py-0.5 rounded uppercase font-bold tracking-tight">New</span>
+                )}
               </button>
             )}
             

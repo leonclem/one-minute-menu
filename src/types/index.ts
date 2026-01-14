@@ -533,13 +533,14 @@ export interface ValidationError extends AppError {
 
 export interface ImageGenerationParams {
   style?: 'rustic' | 'modern' | 'elegant' | 'casual'
-  presentation?: 'white_plate' | 'wooden_board' | 'overhead' | 'closeup' | 'bokeh'
+  presentation?: 'white_plate' | 'wooden_board' | 'overhead' | 'closeup' | 'bokeh' | 'none'
   lighting?: 'warm' | 'natural' | 'studio' | 'cinematic' | 'golden_hour'
   aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
   negativePrompt?: string
   customPromptAdditions?: string
   establishmentType?: string
   primaryCuisine?: string
+  hasReferenceImage?: boolean
 }
 
 export interface GeneratedImage {
@@ -618,6 +619,14 @@ export interface NanoBananaParams {
    * Affects how roles are described in prompts.
    */
   context?: 'food' | 'general'
+  /**
+   * Optional model override. Defaults to gemini-2.5-flash-image.
+   */
+  model?: string
+  /**
+   * Optional image size (e.g., "1K", "2K", "4K"). Used by Gemini 3 Pro.
+   */
+  image_size?: string
 }
 
 export interface GenerationQuota {

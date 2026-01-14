@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { UXSection, UXButton, UXCard } from '@/components/ux'
-import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
 import type { Menu, MenuItem, MenuCategory } from '@/types'
@@ -36,7 +35,6 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const [authResult, setAuthResult] = useState<Stage1ExtractionResult | Stage2ExtractionResult | null>(null)
   const [authMenu, setAuthMenu] = useState<Menu | null>(null)
   const [loading, setLoading] = useState(false)
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(new Set())
   const [controlPanelOpen, setControlPanelOpen] = useState(true)
@@ -127,7 +125,6 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         try {
           const parsedMenu = JSON.parse(storedDemoMenu)
           setDemoMenu(parsedMenu)
-          setThumbnailUrl(parsedMenu?.imageUrl ?? null)
           setLogoUrl(parsedMenu?.logoUrl ?? null)
         } catch (error) {
           console.error('Error parsing demo menu:', error)
@@ -156,7 +153,6 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             
             // Always set authMenu if we successfully loaded it from the database
             setAuthMenu(loadedMenu)
-            setThumbnailUrl(loadedMenu.imageUrl ?? null)
             setLogoUrl(loadedMenu.logoUrl ?? null)
             
             // Check if menu has extracted data (items or extractionMetadata)
@@ -243,7 +239,6 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                       items: applyJson.data?.items
                     })
                     setAuthMenu(applyJson.data as Menu)
-                    setThumbnailUrl(applyJson.data?.imageUrl ?? null)
                     setLogoUrl((applyJson.data as Menu)?.logoUrl ?? null)
                   } catch (err) {
                     console.error('Failed to apply extraction to menu', err)
@@ -374,7 +369,6 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         imageSource: item.imageSource
       })))
       setAuthMenu(json?.data as Menu)
-      setThumbnailUrl(json?.data?.imageUrl ?? null)
       setLogoUrl(json?.data?.logoUrl ?? null)
     } catch (error) {
       console.error('Error refreshing menu:', error)
@@ -928,7 +922,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const baseMenu: Menu | null = isDemo ? (demoMenu as Menu) : authMenu
 
   // Compute categories and totals with useMemo to prevent re-computation
-  const { itemsByCategory, categories, totalItems } = useMemo(() => {
+  const { itemsByCategory, categories, totalItems, itemsWithImages } = useMemo(() => {
     try {
       let itemsGrouped: Record<string, AnyItem[] | MenuItem[]> = {}
 
@@ -971,18 +965,25 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       }
       
       const total = categoriesWithItems.reduce((sum, c) => sum + ((itemsGrouped[c] || []).length), 0)
+      const withImages = categoriesWithItems.reduce((sum, c) => {
+        return sum + (itemsGrouped[c] || []).filter((item: any) => 
+          (item.customImageUrl || item.imageUrl || (item.imageSource && item.imageSource !== 'none'))
+        ).length
+      }, 0)
       
       return {
         itemsByCategory: itemsGrouped,
         categories: allCategories,
-        totalItems: total
+        totalItems: total,
+        itemsWithImages: withImages
       }
     } catch (error) {
       console.error('Error computing categories:', error)
       return {
         itemsByCategory: {},
         categories: [],
-        totalItems: 0
+        totalItems: 0,
+        itemsWithImages: 0
       }
     }
   }, [isDemo, baseMenu, authMenu, authResult, emptyCategories])
@@ -1188,64 +1189,96 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
           {isDemo ? 'Review Extracted Items' : 'Configure Menu Content'}
         </h1>
-        <p className="mt-2 text-white/90 text-hero-shadow-strong">
-          {totalItems} items across {categories.length} {categories.length === 1 ? 'category' : 'categories'}
-        </p>
       </div>
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Summary Card */}
         <UXCard>
-          <MenuThumbnailBadge imageUrl={thumbnailUrl} position="right" />
           <div className="p-6 relative z-10">
-            <div className="mb-4">
-              {editingMenuName && !isDemo ? (
-                <div className="flex items-center gap-2 mb-2">
-                  <input
-                    type="text"
-                    className="flex-1 px-3 py-1.5 text-lg font-semibold bg-ux-background border border-ux-border rounded-lg text-ux-text focus:outline-none focus:ring-2 focus:ring-ux-primary"
-                    value={menuNameDraft}
-                    onChange={(e) => setMenuNameDraft(e.target.value)}
-                    onBlur={handleUpdateMenuName}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleUpdateMenuName()
-                      if (e.key === 'Escape') {
-                        setEditingMenuName(false)
-                        setMenuNameDraft(baseMenu?.name || '')
-                      }
-                    }}
-                    autoFocus
-                  />
-                </div>
-              ) : (
-                <div className="group inline-flex items-center gap-2 mb-2">
-                  <h3 className="text-lg font-semibold text-ux-text">
-                    {baseMenu?.name || 'Extracted Menu'}
-                  </h3>
-                  {!isDemo && (
-                    <button
-                      type="button"
-                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-ux-text-secondary hover:text-ux-primary p-1 rounded"
-                      onClick={() => {
-                        setMenuNameDraft(baseMenu?.name || '')
-                        setEditingMenuName(true)
-                      }}
-                      aria-label="Edit menu name"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
+            <div className="flex flex-col md:flex-row md:justify-between gap-6">
+              <div className="flex-1 min-w-0">
+                {logoUrl && (
+                  <div className="mb-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={logoUrl}
+                      alt={baseMenu?.name || 'Restaurant logo'}
+                      className="max-h-20 w-auto object-contain"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                )}
+                
+                <div className="mb-4">
+                  {editingMenuName && !isDemo ? (
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg font-semibold text-ux-text-secondary">Title:</span>
+                      <input
+                        type="text"
+                        className="flex-1 px-3 py-1.5 text-lg font-semibold bg-ux-background border border-ux-border rounded-lg text-ux-text focus:outline-none focus:ring-2 focus:ring-ux-primary"
+                        value={menuNameDraft}
+                        onChange={(e) => setMenuNameDraft(e.target.value)}
+                        onBlur={handleUpdateMenuName}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleUpdateMenuName()
+                          if (e.key === 'Escape') {
+                            setEditingMenuName(false)
+                            setMenuNameDraft(baseMenu?.name || '')
+                          }
+                        }}
+                        autoFocus
+                      />
+                    </div>
+                  ) : (
+                    <div className="group inline-flex items-center gap-2 mb-2">
+                      <h3 className="text-lg font-semibold text-ux-text">
+                        <span className="text-ux-text-secondary font-medium mr-1.5">Title:</span>
+                        {baseMenu?.name || 'Extracted Menu'}
+                      </h3>
+                      {!isDemo && (
+                        <button
+                          type="button"
+                          className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-ux-text-secondary hover:text-ux-primary p-1 rounded"
+                          onClick={() => {
+                            setMenuNameDraft(baseMenu?.name || '')
+                            setEditingMenuName(true)
+                          }}
+                          aria-label="Edit menu name"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-              <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-ux-text-secondary">
-                <span>{totalItems} items</span>
-                <span>{categories.length} {categories.length === 1 ? 'category' : 'categories'}</span>
+
+                {((!isDemo && authResult) || (isDemo && demoGenerating)) && (
+                  <p className="text-ux-text max-w-xl">
+                    Please review the extracted items below. All items look good and are ready for template selection.
+                  </p>
+                )}
               </div>
+
+              {totalItems > 0 && (
+                <div className="flex flex-row md:flex-col gap-6 md:gap-4 shrink-0 md:text-right md:border-l md:border-ux-border/40 md:pl-6">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] md:text-xs text-ux-text-secondary uppercase tracking-wider font-semibold">Total Items</span>
+                    <span className="text-base md:text-lg font-bold text-ux-text">{totalItems}</span>
+                  </div>
+                  <div className="flex flex-col border-l border-ux-border/40 pl-6 md:border-l-0 md:pl-0">
+                    <span className="text-[10px] md:text-xs text-ux-text-secondary uppercase tracking-wider font-semibold">Categories</span>
+                    <span className="text-base md:text-lg font-bold text-ux-text">{categories.length}</span>
+                  </div>
+                  <div className="flex flex-col border-l border-ux-border/40 pl-6 md:border-l-0 md:pl-0">
+                    <span className="text-[10px] md:text-xs text-ux-text-secondary uppercase tracking-wider font-semibold">Photos</span>
+                    <div className="flex items-baseline md:justify-end gap-1">
+                      <span className="text-base md:text-lg font-bold text-ux-text">{itemsWithImages}</span>
+                      <span className="text-[10px] md:text-xs text-ux-text-secondary">/ {totalItems}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            {((!isDemo && authResult) || (isDemo && demoGenerating)) && (
-              <p className="text-ux-text">
-                Please review the extracted items below. All items look good and are ready for template selection.
-              </p>
-            )}
           </div>
         </UXCard>
 
@@ -1430,19 +1463,6 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                       )}
                       <div className="hidden">{/* Close the grid div properly */}
                       </div>
-                      {!isDemo && logoUrl && (
-                        <div className="mt-3 flex items-center gap-2 text-xs text-ux-text-secondary">
-                          <span>Current logo:</span>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={logoUrl}
-                            alt={baseMenu?.name || 'Restaurant logo'}
-                            className="h-8 w-8 rounded-full border border-ux-border object-cover"
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        </div>
-                      )}
                     </>
                   )}
                 </>
@@ -1736,43 +1756,11 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                                   aria-label={`Photos for ${raw.name || 'item'}`}
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    if (isDemo && typeof imageSrc === 'string') {
+                                    if (typeof imageSrc === 'string' && imageSrc.length > 0) {
                                       setPreviewImage({
                                         url: imageSrc,
                                         alt: (raw.name as string) || 'Menu item photo',
                                       })
-                                    } else if (!isDemo && authMenu) {
-                                      // For non-demo menus, clicking the thumbnail should also open the context menu
-                                      const menuItem = authMenu.items.find(i => i.id === (raw as MenuItem).id)
-                                      if (menuItem) {
-                                        // If item is out of stock, show quick toggle option
-                                        if (!menuItem.available) {
-                                          // Quick toggle to make available
-                                          const toggleAvailability = async () => {
-                                            try {
-                                              const response = await fetch(`/api/menus/${menuId}/items/${menuItem.id}`, {
-                                                method: 'PUT',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ available: true }),
-                                              })
-                                              
-                                              if (response.ok) {
-                                                await refreshMenu()
-                                                showToast({
-                                                  type: 'success',
-                                                  title: 'Item marked available',
-                                                  description: `"${menuItem.name}" is now available.`,
-                                                })
-                                              }
-                                            } catch (error) {
-                                              console.error('Error updating availability:', error)
-                                            }
-                                          }
-                                          toggleAvailability()
-                                          return
-                                        }
-                                        setActiveMenuItem(menuItem)
-                                      }
                                     }
                                   }}
                                 >
@@ -1901,14 +1889,15 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             }))}
           onClose={async () => {
             setShowBatchGeneration(false)
+            setSelectedItemKeys(new Set())
             await refreshMenu()
           }}
           onItemImageGenerated={handleAIImageGenerated}
         />
       )}
 
-      {/* Demo thumbnail zoom modal (demo flow only) */}
-      {isDemo && previewImage && (
+      {/* Thumbnail zoom modal */}
+      {previewImage && (
         <ZoomableImageModal
           isOpen={!!previewImage}
           onClose={() => setPreviewImage(null)}
@@ -2165,12 +2154,6 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           onItemUpdated={async () => {
             await refreshMenu()
             setSelectedItemKeys(new Set()) // Clear selections after update
-          }}
-          onGenerateImage={() => {
-            setActiveImageItemId(activeMenuItem.id)
-            setActiveImageItemName(activeMenuItem.name)
-            setActiveImageMode('generate')
-            setActiveMenuItem(null)
           }}
           onManageImages={() => {
             setActiveImageItemId(activeMenuItem.id)

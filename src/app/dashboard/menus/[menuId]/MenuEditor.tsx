@@ -1881,7 +1881,10 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
             <BatchAIImageGeneration
               menuId={menu.id}
               items={optimisticMenu.items.filter(i => selectedItemIds.has(i.id)).map(i => ({ id: i.id, name: i.name, description: i.description }))}
-              onClose={() => setShowBatchGeneration(false)}
+              onClose={() => {
+                setShowBatchGeneration(false)
+                setSelectedItemIds(new Set())
+              }}
               onItemImageGenerated={async (itemId, imageUrl) => {
                 await handleAIImageGenerated(itemId, imageUrl)
               }}

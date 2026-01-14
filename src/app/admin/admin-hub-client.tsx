@@ -106,6 +106,12 @@ export function AdminHubClient() {
                   >
                     Gemini 2.5 (Restaurant)
                   </a>
+                  <a
+                    href="/admin/gemini-3-pro-image-generator"
+                    className="block px-4 py-2 text-sm text-purple-700 font-semibold hover:bg-purple-50"
+                  >
+                    Gemini 3.0 Pro (Test)
+                  </a>
                 </div>
               </div>
               <a

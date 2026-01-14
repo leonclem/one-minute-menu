@@ -314,6 +314,7 @@ export default function ItemManagementModal({
         aspectRatio: '1:1',
         negativePrompt: advancedParams.negativePrompt || '',
         customPromptAdditions: advancedParams.customPromptAdditions || '',
+        hasReferenceImage: referenceImages.length > 0,
       }
 
       const response = await fetch('/api/generate-image', {
@@ -539,7 +540,7 @@ export default function ItemManagementModal({
               variant="primary" 
               size="sm" 
               onClick={generateAIImage} 
-              disabled={loading !== null || generating}
+              disabled={loading !== null || generating || (advancedParams.presentation === 'none' && referenceImages.length === 0)}
               className="flex-shrink-0 text-xs px-2 py-1"
             >
               {generating ? (
@@ -551,8 +552,8 @@ export default function ItemManagementModal({
               ) : (
                 <>
                   <Sparkles className="h-3 w-3 mr-1" />
-                  <span className="hidden sm:inline">{variations.length === 0 ? 'Generate AI Photo' : 'Generate Another'}</span>
-                  <span className="sm:hidden">{variations.length === 0 ? 'Generate' : 'Another'}</span>
+                  <span className="hidden sm:inline">{variations.length === 0 ? 'Generate AI Photo' : 'Generate'}</span>
+                  <span className="sm:hidden">Generate</span>
                 </>
               )}
             </Button>
@@ -661,9 +662,23 @@ export default function ItemManagementModal({
                           <option value="overhead">Overhead</option>
                           <option value="closeup">Close-up</option>
                           <option value="bokeh">Shallow focus (Bokeh)</option>
+                          <option value="none">None / Use Reference</option>
                         </select>
                       </div>
                     </div>
+
+                    {advancedParams.presentation === 'none' && referenceImages.length === 0 && (
+                      <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-md">
+                        <div className="flex gap-2">
+                          <svg className="h-4 w-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p className="text-[11px] leading-tight text-blue-700">
+                            Please add a reference photo below to use this setting, or choose a presentation style above.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     
                     <div>
                       <label className="block text-xs font-medium text-secondary-700 mb-1">
@@ -729,6 +744,8 @@ export default function ItemManagementModal({
                                       role: 'scene'
                                     }
                                   ])
+                                  // Auto-switch to "None / Use Reference" when a photo is added
+                                  setAdvancedParams(prev => ({ ...prev, presentation: 'none' }))
                                 }
                                 reader.readAsDataURL(file)
                               }}

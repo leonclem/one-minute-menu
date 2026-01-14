@@ -64,6 +64,7 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
         lighting: advancedParams.lighting || 'natural',
         negativePrompt: advancedParams.negativePrompt || '',
         customPromptAdditions: advancedParams.customPromptAdditions || '',
+        hasReferenceImage: referenceImages.length > 0,
       }
 
       const batchResults = await runBatchGenerationSequential(menuId, items, {
@@ -191,9 +192,23 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
                       <option value="overhead">Overhead</option>
                       <option value="closeup">Close-up</option>
                       <option value="bokeh">Shallow focus (Bokeh)</option>
+                      <option value="none">None / Use Reference</option>
                     </select>
                   </div>
                 </div>
+
+                {advancedParams.presentation === 'none' && referenceImages.length === 0 && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-md mt-3">
+                    <div className="flex gap-2">
+                      <svg className="h-5 w-5 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-xs text-blue-700">
+                        Please add a reference photo below to use this setting, or choose a presentation style above.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="border-t border-gray-200 pt-4 mt-4">
                   <div className="flex items-center justify-between mb-2">
@@ -214,18 +229,20 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
                               return
                             }
                             const reader = new FileReader()
-                            reader.onload = () => {
-                              setReferenceImages(prev => [
-                                ...prev,
-                                {
-                                  id: `upload_${Date.now()}`,
-                                  dataUrl: reader.result as string,
-                                  name: file.name,
-                                  comment: '',
-                                  role: 'scene'
+                                reader.onload = () => {
+                                  setReferenceImages(prev => [
+                                    ...prev,
+                                    {
+                                      id: `upload_${Date.now()}`,
+                                      dataUrl: reader.result as string,
+                                      name: file.name,
+                                      comment: '',
+                                      role: 'scene'
+                                    }
+                                  ])
+                                  // Auto-switch to "None / Use Reference" when a photo is added
+                                  setAdvancedParams(prev => ({ ...prev, presentation: 'none' }))
                                 }
-                              ])
-                            }
                             reader.readAsDataURL(file)
                           }}
                         />
@@ -346,7 +363,7 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
               variant="primary" 
               onClick={startBatch} 
               loading={running} 
-              disabled={running || !!results}
+              disabled={running || !!results || (advancedParams.presentation === 'none' && referenceImages.length === 0)}
               className="flex-1"
             >
               {results ? 'Batch Completed' : (running ? 'Creating…' : 'Create Photos')}
