@@ -82,7 +82,7 @@
 - [ ] Understand what new sign-ups have access to (i.e. Generation limits, Admin dashboard, etc.)
 
 ## Sign up
-- [ ] Capture name and optional profile information
+- [x] Capture name and optional profile information
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> GO TO PILOT >>>>>>>>>>>>>>
@@ -143,6 +143,10 @@
 - [ ] Lloyd feedback: Give an option to email the PDF menu or send to printers (order x amount)
 - [x] Include sample logo, address, etc.
 
+## Templates
+- [ ] Amit feedback: "Column-style" pages (e.g. "half-A4, tall")
+- [ ] Amit feedback: Only selected "specials" have photos
+
 ## Market awareness
 - [ ] Create blog / comparison pages (https://www.upmenu.com/blog/menu-making-apps/)
 - [ ] Reddit community posting
@@ -189,6 +193,7 @@
 - [ ] Display user information (e.g. email address of logged in user)
 - [ ] Add option to include opening hours in footer
 - [ ] Need a sense of Draft -> Published to allow edits in the case of live menus
+- [ ] If the first time a user lands on /extracted, and they have used an image to create items - display a modal that asks them to review all the details.
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>
