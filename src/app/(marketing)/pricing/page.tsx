@@ -67,7 +67,7 @@ export default function UXPricingPage() {
         'Early access to new templates'
       ],
       cta: 'Get Grid+Premium',
-      subtext: 'Unlimited everything for the professional restauranteur.'
+      subtext: 'Unlimited everything for the professional restaurateur.'
     }
   ]
 
