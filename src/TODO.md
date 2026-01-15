@@ -48,7 +48,6 @@
 - [x] Capability to modify category styling
 - [x] Prices should be right-justified to avoid clashing with menu item titles
 - [x] V2 tech as default for general use
-- [ ] Verify "print ready"
 
 ### PDF Improvements
 - [x] Resolution (V2 uses points-based system for consistent PDF output)
@@ -77,9 +76,9 @@
 - [x] Contact Us
 
 ## Site stability
-- [ ] Waitlist (for MVP, email goes to me for confirmation)
+- [x] Waitlist (for MVP, email goes to me for confirmation)
 - [x] Throttles (review what hourly and daily limits have been set per account level)
-- [ ] Understand what new sign-ups have access to (i.e. Generation limits, Admin dashboard, etc.)
+- [x] Understand what new sign-ups have access to (i.e. Generation limits, Admin dashboard, etc.)
 
 ## Sign up
 - [x] Capture name and optional profile information
@@ -88,28 +87,37 @@
 >>>>>>>>> GO TO PILOT >>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-/upload
+## /upload
 - [x] "Enter items manually" button not working.
+- [ ] *NEXT* Add multiple pages with recommendation for number of items per photo
+- [ ] Fail gracefully
 
-/extracted
+## Deployment
+- [x] Purchase domain
+- [ ] *NEXT* Set up gridmenu.ai emails
+- [ ] Determine UAT requirements
+- [ ] Determine if database backup strategy exists (Supabase / Vercel)
+- [ ] Upgrade Vercel package
+
+## Aspire Completion
+- [ ] Add company name Gorrrf Private Ltd, UEN number, and office address as per ACRA
+- [ ] Finalise Aspire bank account setup
+- [ ] Implement Stripe payment system
+
+## /extracted
 - [ ] Need capability to delete a section
 - [ ] Menu Control Panel > Download Menu pages (PNG zip)
 - [ ] Menu Control Panel > Download Menu Images (PNG zip)
 
-## Deployment
-- [x] Purchase domain
-- [ ] Set up gridmenu.ai emails
-- [ ] Finalise Aspire bank account setup
-- [ ] Implement Stripe payment system
-- [ ] Determine UAT requirements
-- [ ] Determine if database backup strategy exists (Supabase / Vercel)
-- [ ] Upgrade Vercel package
+## Exports
+- [ ] Verify "print ready"
 
 ## Railway
 - [ ] Implement Railway architecture to offload PDF export from Vercel (this might require sending user back to dashboard after design template selection, then download when available)
 - [ ] Review if Railway should also be used for other heavy-lifting tasks, e.g. image export
 - [ ] Check Railway billing status
 - [ ] Priority rendering queue for subscribers
+- [ ] Review use for OCR jobs (particularly larger menu images)
 
 ## Email templates
 - [ ] Determine and document all emails sent
