@@ -21,12 +21,14 @@ import {
   ImageGenerationTab,
   AnalyticsTab,
   DeveloperTab,
+  UserManagementTab,
 } from '@/components/admin'
 
-type TabId = 'overview' | 'menu-metrics' | 'costs' | 'metrics' | 'image-generation' | 'feedback' | 'analytics' | 'developer'
+type TabId = 'overview' | 'user-management' | 'menu-metrics' | 'costs' | 'metrics' | 'image-generation' | 'feedback' | 'analytics' | 'developer'
 
 const tabs: { id: TabId; label: string; description: string; hidden?: boolean }[] = [
   { id: 'overview', label: 'Overview', description: 'Quick stats and alerts' },
+  { id: 'user-management', label: 'Users', description: 'Pilot approval and management' },
   { id: 'menu-metrics', label: 'Menu Metrics', description: 'Platform menu statistics' },
   { id: 'costs', label: 'Cost Monitoring', description: 'Spending and controls' },
   { id: 'metrics', label: 'Extraction Metrics', description: 'Performance and quality' },
@@ -148,6 +150,7 @@ export function AdminHubClient() {
       {/* Tab Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'overview' && <OverviewTab />}
+        {activeTab === 'user-management' && <UserManagementTab />}
         {activeTab === 'menu-metrics' && <MenuMetricsTab />}
         {activeTab === 'costs' && <CostMonitorTab />}
         {activeTab === 'metrics' && <MetricsTab />}

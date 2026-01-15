@@ -3,27 +3,10 @@ import type { NanoBananaParams, GenerationError } from '@/types'
 import { logger } from '@/lib/logger'
 import { createHash } from 'crypto'
 
-// Nano Banana API response types
-interface NanoBananaResponse {
-  success: boolean
-  images?: string[] // base64 encoded images
-  error?: {
-    code: string
-    message: string
-    details?: any
-  }
-  metadata?: {
-    processing_time_ms: number
-    model_version: string
-    safety_filter_applied?: boolean
-    filter_reason?: string
-  }
-}
-
 interface NanoBananaRateLimitInfo {
-  remaining: number
-  reset_time: number
-  limit: number
+  remaining: number;
+  reset_time: number;
+  limit: number;
 }
 
 export class NanoBananaError extends Error {
@@ -151,7 +134,9 @@ export class NanoBananaClient {
 
     // Determine model and base URL
     const model = requestParams.model || 'gemini-2.5-flash-image'
-    const baseUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+    const baseUrl = params.model 
+      ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+      : this.baseUrl
 
     // Validate parameters
     this.validateParams(requestParams)
@@ -487,24 +472,6 @@ export class NanoBananaClient {
         )
       }
     }
-  }
-
-  /**
-   * Create appropriate error from API response
-   */
-  private createErrorFromResponse(response: NanoBananaResponse): NanoBananaError {
-    const error = response.error
-    if (!error) {
-      return new NanoBananaError('Unknown API error', 'UNKNOWN_ERROR')
-    }
-
-    return new NanoBananaError(
-      error.message,
-      error.code,
-      undefined,
-      undefined,
-      error.details?.filter_reason
-    )
   }
 
   /**

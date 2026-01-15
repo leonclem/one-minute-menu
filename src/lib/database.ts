@@ -71,6 +71,9 @@ export const userOperations = {
       location: data.location || undefined,
       role: data.role as 'user' | 'admin' || 'user',
       username: data.username || undefined,
+      isApproved: data.is_approved || false,
+      approvedAt: data.approved_at ? new Date(data.approved_at) : undefined,
+      adminNotified: data.admin_notified || false,
       onboardingCompleted: data.onboarding_completed || false,
       restaurantName: data.restaurant_name || undefined,
       establishmentType: data.establishment_type || undefined,
@@ -94,6 +97,13 @@ export const userOperations = {
     }
     if (updates.location !== undefined) updateData.location = updates.location
     if (updates.username !== undefined) updateData.username = updates.username
+    if (updates.isApproved !== undefined) {
+      updateData.is_approved = updates.isApproved
+      if (updates.isApproved) {
+        updateData.approved_at = new Date().toISOString()
+      }
+    }
+    if (updates.adminNotified !== undefined) updateData.admin_notified = updates.adminNotified
     if (updates.onboardingCompleted !== undefined) updateData.onboarding_completed = updates.onboardingCompleted
     if (updates.restaurantName !== undefined) updateData.restaurant_name = updates.restaurantName
     if (updates.establishmentType !== undefined) updateData.establishment_type = updates.establishmentType
@@ -119,6 +129,9 @@ export const userOperations = {
       location: data.location || undefined,
       role: data.role as 'user' | 'admin' || 'user',
       username: data.username || undefined,
+      isApproved: data.is_approved || false,
+      approvedAt: data.approved_at ? new Date(data.approved_at) : undefined,
+      adminNotified: data.admin_notified || false,
       onboardingCompleted: data.onboarding_completed || false,
       restaurantName: data.restaurant_name || undefined,
       establishmentType: data.establishment_type || undefined,

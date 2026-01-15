@@ -91,6 +91,7 @@ export async function requireAdmin(redirectUrl: string = '/dashboard'): Promise<
       .single()
     
     if (profileError || !profile || profile.role !== 'admin') {
+      console.warn(`[security] Unauthorized admin access attempt by ${user.email} (ID: ${user.id})`)
       redirect(redirectUrl)
     }
   } catch (e) {

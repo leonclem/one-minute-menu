@@ -61,8 +61,8 @@ describe('UX Extracted Page', () => {
 
     expect(await screen.findByText(/Review Extracted Items/i)).toBeInTheDocument()
     expect(screen.getByText(/Proceed to GridMenu layout/i)).toBeInTheDocument()
-    // There are two occurrences ("We found 2 items..." and a summary badge). Accept either.
-    expect(screen.getAllByText(/2\s*items/i).length).toBeGreaterThan(0)
+    expect(screen.getByText('Total Items')).toBeInTheDocument()
+    expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(2)
     // Should show category headers
     expect(screen.getByText('Starters')).toBeInTheDocument()
     expect(screen.getByText('Mains')).toBeInTheDocument()
@@ -174,7 +174,7 @@ describe('UX Extracted Page', () => {
     expect(manageLogoButton).toBeInTheDocument()
 
     // Clicking should open the modal
-    manageLogoButton.click()
+    fireEvent.click(manageLogoButton)
     await waitFor(() => {
       expect(screen.getByText(/Upload a new logo to swap it/i)).toBeInTheDocument()
     })

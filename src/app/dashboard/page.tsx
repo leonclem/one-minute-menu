@@ -7,6 +7,8 @@ import nextDynamic from 'next/dynamic'
 import { getCurrentUser } from '@/lib/auth-utils'
 import { UXHeader, UXFooter, UXCard, UXButton } from '@/components/ux'
 import { MenuCard } from '@/components/dashboard'
+import { PendingApproval } from '@/components/dashboard/PendingApproval'
+import { sendAdminNewUserAlert } from '@/lib/notifications'
 const QuotaUsageDashboard = nextDynamic(() => import('@/components/QuotaUsageDashboard'), { ssr: false })
 
 export default async function DashboardPage() {
@@ -26,6 +28,36 @@ export default async function DashboardPage() {
   ])
   
   const isAdmin = currentUser?.role === 'admin'
+
+  // APPROVAL GATE
+  if (!isAdmin && profile && !profile.isApproved) {
+    // Trigger notification if not already sent
+    if (!profile.adminNotified) {
+      await sendAdminNewUserAlert(profile)
+      // Update profile to mark admin as notified (best effort)
+      await userOperations.updateProfile(user.id, { adminNotified: true })
+    }
+    
+    return (
+      <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10"
+          style={{
+            backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.45)), url(/backgrounds/kung-pao-chicken.png)`,
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center 30%'
+          }}
+        />
+        <UXHeader userEmail={user.email ?? undefined} isAdmin={false} />
+        <main className="container-ux py-10 md:py-12">
+          <PendingApproval email={user.email} />
+        </main>
+        <UXFooter />
+      </div>
+    )
+  }
 
   // Show dashboard even if the user has no menus. Onboarding remains available via links below.
 

@@ -12,6 +12,9 @@ export interface User {
   securityFlags?: string[]
   role?: 'user' | 'admin'
   username?: string
+  isApproved?: boolean
+  approvedAt?: Date
+  adminNotified?: boolean
   onboardingCompleted?: boolean
   restaurantName?: string
   establishmentType?: string
