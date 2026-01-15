@@ -47,6 +47,14 @@ export default function ItemManagementModal({
   const [selectedStyle, setSelectedStyle] = useState<'modern' | 'rustic' | 'elegant' | 'casual'>('modern')
   const [generationJob, setGenerationJob] = useState<ImageGenerationJob | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [dailyStats, setDailyStats] = useState<{ limit: number; remaining: number; used: number } | null>(null)
+  const [lastError, setLastError] = useState<{ 
+    message: string; 
+    code?: string; 
+    suggestions?: string[]; 
+    retryAfter?: number;
+    filterReason?: string;
+  } | null>(null)
   const [advancedParams, setAdvancedParams] = useState<Partial<ImageGenerationParams>>({
     negativePrompt: '',
     customPromptAdditions: '',
@@ -84,6 +92,9 @@ export default function ItemManagementModal({
         const list: GeneratedImage[] = json?.data?.variations || []
         setVariations(list)
         setSelectedId(json?.data?.selectedImageId || null)
+        if (json?.data?.dailyStats) {
+          setDailyStats(json.data.dailyStats)
+        }
       } catch (e: any) {
         if (!mounted) return
         // Don't show error for newly created items that might not have variations yet
@@ -305,6 +316,7 @@ export default function ItemManagementModal({
 
     setGenerating(true)
     setError(null)
+    setLastError(null)
     
     try {
       const styleParams: ImageGenerationParams = {
@@ -340,21 +352,44 @@ export default function ItemManagementModal({
       const result = await response.json()
       
       if (!response.ok) {
+        setGenerating(false)
         if (result.code === 'QUOTA_EXCEEDED') {
           showToast({
             type: 'info',
             title: 'Monthly limit reached',
             description: result.error || 'Upgrade to generate more images this month.',
           })
+        } else if (result.code === 'ITEM_DAILY_LIMIT') {
+          setDailyStats(prev => prev ? { ...prev, remaining: 0, used: prev.limit } : null)
+          showToast({
+            type: 'info',
+            title: 'Daily limit reached',
+            description: result.error || 'Try again tomorrow.',
+          })
         } else {
-          setError(result.error || 'Failed to start image generation')
+          setLastError({
+            message: result.error || 'Failed to start image generation',
+            code: result.code,
+            suggestions: result.suggestions,
+            retryAfter: result.retryAfter,
+            filterReason: result.filterReason
+          })
           showToast({
             type: 'error',
-            title: 'Generation failed',
+            title: result.code === 'CONTENT_POLICY_VIOLATION' ? 'Content policy' : 'Generation failed',
             description: result.error || 'Please try again.',
           })
         }
         return
+      }
+
+      // Update daily stats if returned
+      if (result.data?.quota?.itemDailyRemaining !== undefined) {
+        setDailyStats({
+          limit: result.data.quota.itemDailyLimit,
+          remaining: result.data.quota.itemDailyRemaining,
+          used: result.data.quota.itemDailyLimit - result.data.quota.itemDailyRemaining
+        })
       }
 
       // Check if images were returned directly (synchronous path)
@@ -420,6 +455,11 @@ export default function ItemManagementModal({
             } else if (job.status === 'failed') {
               clearInterval(pollInterval)
               setGenerating(false)
+              setLastError({
+                message: job.errorMessage || 'Image generation failed',
+                code: job.errorCode,
+                suggestions: statusJson.data?.errorSuggestions
+              })
               throw new Error(job.errorMessage || 'Image generation failed')
             }
           } catch (pollError: any) {
@@ -536,11 +576,19 @@ export default function ItemManagementModal({
             )}
           </div>
           <div className="flex items-center gap-1 ml-2 flex-wrap justify-end">
+            {dailyStats && (
+              <div className="hidden md:flex flex-col items-end mr-2 text-[10px] text-secondary-500 leading-tight">
+                <span className={dailyStats.remaining <= 2 ? 'text-amber-600 font-medium' : ''}>
+                  {dailyStats.remaining} generation{dailyStats.remaining === 1 ? '' : 's'} left today
+                </span>
+                <span>Limit: {dailyStats.limit}/item/day</span>
+              </div>
+            )}
             <Button 
               variant="primary" 
               size="sm" 
               onClick={generateAIImage} 
-              disabled={loading !== null || generating || (advancedParams.presentation === 'none' && referenceImages.length === 0)}
+              disabled={loading !== null || generating || (advancedParams.presentation === 'none' && referenceImages.length === 0) || (dailyStats !== null && dailyStats.remaining <= 0)}
               className="flex-shrink-0 text-xs px-2 py-1"
             >
               {generating ? (
@@ -580,6 +628,45 @@ export default function ItemManagementModal({
 
         {error && (
           <div className="px-4 py-2 bg-red-50 text-red-700 text-sm border-b">{error}</div>
+        )}
+
+        {lastError && (
+          <div className="px-4 py-3 bg-red-50 border-b border-red-100">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <div className="text-sm text-red-800 font-semibold mb-1">
+                  {lastError.code === 'CONTENT_POLICY_VIOLATION' ? 'Image Blocked by Content Filter' : 'Generation Failed'}
+                </div>
+                <div className="text-xs text-red-700 mb-2">{lastError.message}</div>
+                
+                {lastError.suggestions && lastError.suggestions.length > 0 && (
+                  <div className="mt-2">
+                    <div className="text-[10px] font-bold text-red-800 uppercase tracking-wider mb-1">Recommended Actions:</div>
+                    <ul className="list-disc pl-4 text-xs text-red-700 space-y-1">
+                      {lastError.suggestions.map((s, idx) => (
+                        <li key={idx}>{s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="mt-3">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-[10px] h-7 px-3 border-red-200 hover:bg-red-100 text-red-700"
+                    onClick={() => {
+                      setLastError(null)
+                      generateAIImage()
+                    }}
+                    disabled={generating || (dailyStats !== null && dailyStats.remaining <= 0)}
+                  >
+                    Try Again Now
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
 

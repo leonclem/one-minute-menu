@@ -48,6 +48,7 @@ export default function AIImageGeneration({
     isPrevious?: boolean
   }>>([])
   
+  const [dailyStats, setDailyStats] = useState<{ limit: number; remaining: number; used: number } | null>(null)
   const [lastError, setLastError] = useState<{ code?: string; message?: string; suggestions?: string[]; retryAfter?: number; filterReason?: string } | null>(null)
 
   const stableItemId = menuItem?.id
@@ -58,8 +59,13 @@ export default function AIImageGeneration({
         if (!stableItemId) return
         const res = await fetch(`/api/menu-items/${stableItemId}/variations`)
         const json = await res.json()
-        if (res.ok && json?.data?.variations && isMounted) {
-          setPreviousImages(json.data.variations as GeneratedImage[])
+        if (res.ok && isMounted) {
+          if (json?.data?.variations) {
+            setPreviousImages(json.data.variations as GeneratedImage[])
+          }
+          if (json?.data?.dailyStats) {
+            setDailyStats(json.data.dailyStats)
+          }
         }
       } catch {
         // best-effort; ignore
@@ -128,6 +134,7 @@ export default function AIImageGeneration({
             description: result.error || 'Upgrade to generate more images this month.',
           })
         } else if (result.code === 'ITEM_DAILY_LIMIT') {
+          setDailyStats(prev => prev ? { ...prev, remaining: 0, used: prev.limit } : null)
           showToast({
             type: 'info',
             title: 'Daily limit reached for this item',
@@ -141,6 +148,15 @@ export default function AIImageGeneration({
           showToast({ type: 'error', title, description: desc })
         }
         return
+      }
+
+      // Update daily stats if returned
+      if (result.data?.quota?.itemDailyRemaining !== undefined) {
+        setDailyStats({
+          limit: result.data.quota.itemDailyLimit,
+          remaining: result.data.quota.itemDailyRemaining,
+          used: result.data.quota.itemDailyLimit - result.data.quota.itemDailyRemaining
+        })
       }
 
       // Synchronous path returns images directly
@@ -310,9 +326,18 @@ export default function AIImageGeneration({
       <div className="relative my-4 sm:my-8 bg-white rounded-lg shadow-xl max-w-2xl w-full flex flex-col">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6 sticky top-0 bg-white z-20 pb-2">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Create Photo for "{menuItem.name}"
-            </h2>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Create Photo for "{menuItem.name}"
+              </h2>
+              {dailyStats && (
+                <div className="text-[10px] text-gray-500 mt-0.5">
+                  <span className={dailyStats.remaining <= 2 ? 'text-amber-600 font-medium' : ''}>
+                    {dailyStats.remaining} generation{dailyStats.remaining === 1 ? '' : 's'} left for this item today
+                  </span>
+                </div>
+              )}
+            </div>
             <button
               onClick={onCancel}
               className="text-gray-400 hover:text-gray-600"

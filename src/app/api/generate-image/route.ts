@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Enforce per-item daily regeneration limit (5 attempts per item per day)
+    // Enforce per-item daily regeneration limit (10 attempts per item per day)
     const startOfToday = new Date()
     startOfToday.setHours(0, 0, 0, 0)
     const { count: todaysAttempts, error: attemptsError } = await supabase
@@ -208,14 +208,17 @@ export async function POST(request: NextRequest) {
       .eq('menu_item_id', normalizedMenuItemId)
       .gte('created_at', startOfToday.toISOString())
 
+    const DAILY_LIMIT = 10
+    const remainingForToday = Math.max(0, DAILY_LIMIT - (todaysAttempts || 0))
+
     if (attemptsError) {
       logger.warn('❌ [Generate Image] Failed to count daily attempts:', attemptsError)
-    } else if ((todaysAttempts || 0) >= 5) {
+    } else if (remainingForToday <= 0) {
       return NextResponse.json(
         {
           error: 'Daily limit reached for this item. Try again tomorrow.',
           code: 'ITEM_DAILY_LIMIT',
-          limit: 5,
+          limit: DAILY_LIMIT,
           remaining: 0
         },
         { status: 429 }
@@ -436,7 +439,9 @@ export async function POST(request: NextRequest) {
         quota: {
           remaining: quotaStatus.remaining - requestedVariations,
           used: quotaStatus.used + requestedVariations,
-          limit: quotaStatus.limit
+          limit: quotaStatus.limit,
+          itemDailyRemaining: remainingForToday - requestedVariations,
+          itemDailyLimit: DAILY_LIMIT
         }
       }
     }, { status: 201 })

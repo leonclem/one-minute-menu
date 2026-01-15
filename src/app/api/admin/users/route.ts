@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createAdminSupabaseClient } from '@/lib/supabase-server'
 import { requireAdmin } from '@/lib/auth-utils'
 
 // GET /api/admin/users - List users for management
@@ -7,7 +7,10 @@ export async function GET() {
   try {
     await requireAdmin()
     
-    const supabase = createServerSupabaseClient()
+    // Use Admin client to bypass RLS and see all profiles
+    const supabase = createAdminSupabaseClient()
+    
+    console.log('[admin-users] Fetching all profiles...')
     
     // Fetch profiles sorted by approval status (unapproved first) then creation date
     const { data: users, error } = await supabase
@@ -17,8 +20,12 @@ export async function GET() {
       .order('created_at', { ascending: false })
     
     if (error) {
+      console.error('[admin-users] Supabase error:', error)
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
+    
+    console.log(`[admin-users] Found ${users?.length || 0} profiles`)
+
     
     return NextResponse.json({
       success: true,

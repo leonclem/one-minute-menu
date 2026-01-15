@@ -48,8 +48,8 @@ export class DatabaseError extends Error {
 
 // User Profile Operations
 export const userOperations = {
-  async getProfile(userId: string): Promise<User | null> {
-    const supabase = createServerSupabaseClient()
+  async getProfile(userId: string, supabaseClient?: any): Promise<User | null> {
+    const supabase = supabaseClient || createServerSupabaseClient()
     
     const { data, error } = await supabase
       .from('profiles')
@@ -81,8 +81,8 @@ export const userOperations = {
     }
   },
 
-  async updateProfile(userId: string, updates: Partial<User>): Promise<User> {
-    const supabase = createServerSupabaseClient()
+  async updateProfile(userId: string, updates: Partial<User>, supabaseClient?: any): Promise<User> {
+    const supabase = supabaseClient || createServerSupabaseClient()
     
     const updateData: any = {}
     if (updates.plan) updateData.plan = updates.plan

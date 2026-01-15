@@ -79,7 +79,20 @@ export function AuthOTPForm({
       })
 
       if (error) {
-        setError(error.message)
+        // Map generic Supabase errors to more user-friendly messages
+        let userMessage = error.message
+        
+        if (error.message.includes('Database error saving new user')) {
+          if (type === 'signin') {
+            userMessage = 'This email is not registered. Please sign up for a new account.'
+          } else {
+            userMessage = 'There was a problem creating your account. Please try again or contact support.'
+          }
+        } else if (error.message.includes('rate limit')) {
+          userMessage = 'Too many requests. Please wait a few minutes before trying again.'
+        }
+        
+        setError(userMessage)
       } else {
         if (isLocalDev) {
            setMessage('Development mode: Check the Supabase logs or MailDev at http://localhost:54324 for the magic link!')

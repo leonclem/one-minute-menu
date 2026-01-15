@@ -122,6 +122,17 @@ export async function GET(
     
     // Get the currently selected image
     const selectedImage = variations.find(img => img.selected)
+
+    // Get daily attempt stats
+    const DAILY_LIMIT = 10
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    const { count: todaysAttempts } = await supabase
+      .from('image_generation_jobs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('menu_item_id', itemId)
+      .gte('created_at', startOfToday.toISOString())
     
     return NextResponse.json({
       success: true,
@@ -130,7 +141,12 @@ export async function GET(
         menuItemName: menuItem.name,
         totalVariations: variations.length,
         selectedImageId: selectedImage?.id || null,
-        variations
+        variations,
+        dailyStats: {
+          limit: DAILY_LIMIT,
+          remaining: Math.max(0, DAILY_LIMIT - (todaysAttempts || 0)),
+          used: todaysAttempts || 0
+        }
       }
     })
     

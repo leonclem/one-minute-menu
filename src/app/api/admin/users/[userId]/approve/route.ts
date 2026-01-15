@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { userOperations } from '@/lib/database'
 import { requireAdmin } from '@/lib/auth-utils'
 import { sendUserApprovalNotification } from '@/lib/notifications'
+import { createAdminSupabaseClient } from '@/lib/supabase-server'
 
 // PATCH /api/admin/users/[userId]/approve - Approve a user
 export async function PATCH(
@@ -12,11 +13,12 @@ export async function PATCH(
     await requireAdmin()
     
     const { userId } = params
+    const adminSupabase = createAdminSupabaseClient()
     
-    // Update profile
+    // Update profile using Admin client to bypass RLS
     const updatedProfile = await userOperations.updateProfile(userId, {
       isApproved: true
-    })
+    }, adminSupabase)
     
     // Send notification to user
     await sendUserApprovalNotification(updatedProfile)
