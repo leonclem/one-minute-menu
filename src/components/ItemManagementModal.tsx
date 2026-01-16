@@ -6,6 +6,7 @@ import { Pencil, Sparkles } from 'lucide-react'
 import type { GeneratedImage, MenuItem, ImageGenerationParams, ImageGenerationJob } from '@/types'
 import { Button } from '@/components/ui'
 import { useToast } from '@/components/ui'
+import { processImage } from '@/lib/image-utils'
 import ImageUpload from '@/components/ImageUpload'
 import ZoomableImageModal from '@/components/ZoomableImageModal'
 
@@ -165,17 +166,6 @@ export default function ItemManagementModal({
     await updateItemField('description', newDescription)
   }
 
-  const urlToBase64 = async (url: string): Promise<string> => {
-    const response = await fetch(url)
-    const blob = await response.blob()
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
-  }
-
   const addPreviousAsReference = async (image: GeneratedImage) => {
     if (referenceImages.length >= 3) {
       showToast({
@@ -188,12 +178,16 @@ export default function ItemManagementModal({
 
     try {
       setGenerating(true)
-      const dataUrl = await urlToBase64(image.originalUrl)
+      const response = await fetch(image.originalUrl)
+      const blob = await response.blob()
+      const file = new File([blob], 'reference.jpg', { type: blob.type })
+      const processed = await processImage(file, { maxWidth: 1024, maxHeight: 1024, quality: 0.8 })
+
       setReferenceImages(prev => [
         ...prev,
         {
           id: `prev_${image.id}`,
-          dataUrl,
+          dataUrl: processed.dataUrl,
           name: `Previous generation ${image.id.slice(0, 4)}`,
           comment: '',
           role: 'dish',
@@ -815,17 +809,21 @@ export default function ItemManagementModal({
                               onChange={async (e) => {
                                 const file = e.target.files?.[0]
                                 if (!file) return
-                                if (file.size > 7 * 1024 * 1024) {
-                                  showToast({ type: 'error', title: 'File too large', description: 'Max size is 7MB' })
-                                  return
-                                }
-                                const reader = new FileReader()
-                                reader.onload = () => {
+                                
+                                try {
+                                  setGenerating(true)
+                                  // Resize on client side to avoid Vercel 4.5MB payload limit
+                                  const processed = await processImage(file, { 
+                                    maxWidth: 1024, 
+                                    maxHeight: 1024, 
+                                    quality: 0.8 
+                                  })
+
                                   setReferenceImages(prev => [
                                     ...prev,
                                     {
                                       id: `upload_${Date.now()}`,
-                                      dataUrl: reader.result as string,
+                                      dataUrl: processed.dataUrl,
                                       name: file.name,
                                       comment: '',
                                       role: 'scene'
@@ -833,8 +831,16 @@ export default function ItemManagementModal({
                                   ])
                                   // Auto-switch to "None / Use Reference" when a photo is added
                                   setAdvancedParams(prev => ({ ...prev, presentation: 'none' }))
+                                } catch (err) {
+                                  console.error('Error processing reference image:', err)
+                                  showToast({ 
+                                    type: 'error', 
+                                    title: 'Processing failed', 
+                                    description: 'Could not prepare the image for generation.' 
+                                  })
+                                } finally {
+                                  setGenerating(false)
                                 }
-                                reader.readAsDataURL(file)
                               }}
                             />
                             <button className="text-xs text-primary-600 hover:text-primary-700 font-medium">
