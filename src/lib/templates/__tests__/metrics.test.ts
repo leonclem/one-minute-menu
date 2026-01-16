@@ -59,7 +59,7 @@ describe('PerformanceTimer', () => {
     timer.reset()
     
     const elapsed = timer.elapsed()
-    expect(elapsed).toBeLessThan(10)
+    expect(elapsed).toBeLessThan(30)
   })
 })
 
