@@ -11,9 +11,9 @@ export function UXFooter() {
               © {year} GridMenu. Built for food & beverage businesses.
             </p>
             <p className="mt-2 text-[10px] leading-relaxed text-white/60 text-soft-shadow">
-              GridMenu is operated by GORRRF Private Ltd (UEN: 202550882W), registered in Singapore.
+              GridMenu is operated by Gorrrf Private Ltd (UEN: 202550882W), registered in Singapore.
               <br />
-              Registered address: 111 SOMERSET ROAD, #08-10A, 111 SOMERSET, SINGAPORE 238164.
+              Registered address: 111 Somerset Road, #08-10A, 111 Somerset, Singapore 238164.
             </p>
           </div>
           <div className="flex gap-6 text-sm sm:pt-1">

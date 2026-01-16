@@ -32,7 +32,7 @@ export default function TermsPage() {
             <section className="mb-12">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Acceptance of Terms</h2>
               <p>
-                By accessing and using GridMenu ("the Service"), provided by GORRRF Private Ltd (UEN: 202550882W), you accept and agree to be bound by the 
+                By accessing and using GridMenu ("the Service"), provided by Gorrrf Private Ltd (UEN: 202550882W), you accept and agree to be bound by the 
                 terms and provision of this agreement. These terms apply to all visitors, users, and others who access or use the Service.
               </p>
             </section>
