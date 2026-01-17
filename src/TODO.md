@@ -1,15 +1,130 @@
 # Roadmap
 
-## General functionality
+## Image Generation
+- [ ] Update from Gemini 2.5 Flash Image Preview to Gemini 2.5 Flash Image
 
-### Menu editing (/extracted)
+## /upload
+- [ ] *NEXT* Add multiple pages with recommendation for number of items per photo
+- [ ] Fail gracefully
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+>>>>>>>>> GO TO PILOT >>>>>>>>>>>>>>
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+## Deployment
+- [ ] Determine UAT requirements
+- [ ] Determine if database backup strategy exists (Supabase / Vercel)
+- [ ] Upgrade Vercel package
+
+## Aspire Completion
+- [x] Add company name Gorrrf Private Ltd, UEN number, and office address as per ACRA
+- [ ] Finalise Aspire bank account setup
+- [ ] Implement Stripe payment system
+
+## /extracted
+- [ ] Need capability to delete a section
+- [ ] Menu Control Panel > Download Menu pages (PNG zip)
+- [ ] Menu Control Panel > Download Menu Images (PNG zip)
+
+## Exports
+- [ ] Investigate examples of low-res images in PDFs with consideration to file size
+- [ ] Verify "print ready"
+
+## Railway
+- [ ] Implement Railway architecture to offload PDF export from Vercel (this might require sending user back to dashboard after design template selection, then download when available)
+- [ ] Review if Railway should also be used for other heavy-lifting tasks, e.g. image export
+- [ ] Check Railway billing status
+- [ ] Priority rendering queue for subscribers
+- [ ] Review use for OCR jobs (particularly larger menu images)
+
+## Email templates
+- [ ] Determine and document all emails sent
+- [ ] Decide on style and content
+- [ ] Implement changes
+
+### GridMenu V2 Layout Engine Enhancements
+- [ ] Additional template families (two-, three-, four-column)
+- [ ] A4 landscape and A3 page size support
+- [ ] Amit feedback: "Column-style" pages (e.g. "half-A4, tall")
+- [ ] Amit feedback: Only selected "specials" have photos
+- [ ] Flourishes / section dividers (e.g. design-inspiration-7.png)
+- [ ] Multi-cell filler tiles / Mosaic layouts (currently 1x1 only), e.g. design-inspiration-5.jpg
+
+### Payment QR
+- [ ] Add capability to add a payment QR code via the /extracted page (and reflect on pricing page)
+
+### Allergens / Spice level / etc
+- [x] Determine list (V2 supports dietary indicators: vegetarian, vegan, halal, kosher, gluten-free)
+- [x] Consider design impact (V2 renders indicators within item tiles using INLINE mode)
+- [x] Implement (V2 has full ItemIndicatorsV2 support with configurable rendering modes)
+- [ ] Extend indicator taxonomy for additional dietary restrictions
+- [ ] Add custom allergen management via /extracted page
+
+## Demo
+- [x] More clarity on demo input menu as it stands before implementing changes
+- [ ] Show menu and image outputs on home page
+- [ ] Lloyd feedback: input menu is confusing, looks like output
+- [ ] Lloyd feedback: Give an option to email the PDF menu or send to printers (order x amount)
+- [x] Include sample logo, address, etc.
+
+## Global Reach
+- [ ] Initially geo-lock to Singapore
+- [ ] Currency Support
+- [ ] Language support
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+>>>>>>>>> GO TO MARKET >>>>>>>>>>>>>
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+## Tech debt
+- [ ] Review code
+- [ ] Review SQL
+- [ ] Review MD docs
+- [ ] QA
+
+## Market awareness
+- [ ] Create blog / comparison pages (https://www.upmenu.com/blog/menu-making-apps/)
+- [ ] Reddit community posting
+
+## Unclassified
+- [ ] Integrate Posthog
+- [ ] Crop for large menus text extraction
+- [ ] Determine UAT requirements
+- [ ] SEO optimisation
+- [ ] Documentation
+- [ ] Cyber attack protection plan
+- [ ] Playwright (Patrick Ellis YT video)
+- [ ] Accessibility (read Reddit pain points analysis)
+- [ ] Power user, i.e. "login as user X" (support)
+- [ ] App
+- [ ] Generate descriptions
+- [ ] Advanced menu options: Currency selection
+- [ ] Advanced menu options: Edit order of categories
+- [ ] Logging
+- [ ] Admin dashboard enhancements
+- [ ] Review "select all" in category on /extracted page
+- [ ] Watermark images in Creator Pack
+- [ ] QA to ensure pricing matches reality
+- [ ] Show preview picture of menu (if design template chosen) embedded in Dashboard menus
+- [ ] Higher resolution images (up to 4K) for Grid+Premium (and include mention on pricing page)
+- [ ] Reminder email for credits expiry
+- [ ] Multi-user access to accounts (Premium tier)
+- [ ] Display user information (e.g. email address of logged in user)
+- [ ] Add option to include opening hours in footer
+- [ ] Need a sense of Draft -> Published to allow edits in the case of live menus
+- [ ] If the first time a user lands on /extracted, and they have used an image to create items - display a modal that asks them to review all the details.
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+>>>>>>>>>>>>> DONE >>>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+## Menu editing (/extracted)
 - [x] Remove "Bulk tools will use your current selection." from menu items
 - [x] Edit category title
 - [x] Add category
 - [x] Delete category
 - [x] Add establishment details to "profile", e.g. establishment name, type, address, etc.
-
-### Menu item Management
 - [x] Pencil icon rather than click image
 - [x] Delete menu item
 - [x] Mark item as out of stock
@@ -19,7 +134,6 @@
 - [x] Can't edit title, description, price, etc. for menu item
 
 ## Image Generation Test Harness
-- [ ] Update from Gemini 2.5 Flash Image Preview to Gemini 2.5 Flash Image
 - [x] Reference image
 - [x] Test with OMG Donuts
 - [x] Reference photo(s) for inclusion in image generation for general users
@@ -49,10 +163,9 @@
 - [x] Prices should be right-justified to avoid clashing with menu item titles
 - [x] V2 tech as default for general use
 
-### PDF Improvements
+## Export
 - [x] Resolution (V2 uses points-based system for consistent PDF output)
 - [x] Fixed sizes, e.g. A4 (V2 supports A4 portrait/landscape with configurable margins)
-
 ### Logo placement
 - [x] Needs to be at the top and smaller
 - [x] Remove dotted line
@@ -83,126 +196,14 @@
 ## Sign up
 - [x] Capture name and optional profile information
 
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
->>>>>>>>> GO TO PILOT >>>>>>>>>>>>>>
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-## /upload
-- [x] "Enter items manually" button not working.
-- [ ] *NEXT* Add multiple pages with recommendation for number of items per photo
-- [ ] Fail gracefully
-
-## Deployment
-- [x] Purchase domain
-- [ ] *NEXT* Set up gridmenu.ai emails
-- [ ] Determine UAT requirements
-- [ ] Determine if database backup strategy exists (Supabase / Vercel)
-- [ ] Upgrade Vercel package
-
-## Aspire Completion
-- [x] Add company name Gorrrf Private Ltd, UEN number, and office address as per ACRA
-- [ ] Finalise Aspire bank account setup
-- [ ] Implement Stripe payment system
-
-## /extracted
-- [ ] Need capability to delete a section
-- [ ] Menu Control Panel > Download Menu pages (PNG zip)
-- [ ] Menu Control Panel > Download Menu Images (PNG zip)
-
-## Exports
-- [ ] Verify "print ready"
-
-## Railway
-- [ ] Implement Railway architecture to offload PDF export from Vercel (this might require sending user back to dashboard after design template selection, then download when available)
-- [ ] Review if Railway should also be used for other heavy-lifting tasks, e.g. image export
-- [ ] Check Railway billing status
-- [ ] Priority rendering queue for subscribers
-- [ ] Review use for OCR jobs (particularly larger menu images)
-
-## Email templates
-- [ ] Determine and document all emails sent
-- [ ] Decide on style and content
-- [ ] Implement changes
-
-### GridMenu V2 Layout Engine Enhancements
-- [ ] A4 landscape and A3 page size support
-- [ ] Additional template families (two-, three-, four-column)
-- [ ] Multi-cell filler tiles / Mosaic layouts (currently 1x1 only), e.g. design-inspiration-5.jpg
-- [ ] Flourishes / section dividers (e.g. design-inspiration-7.png)
-
-### Payment QR
-- [ ] Add capability to add a payment QR code via the /extracted page (and reflect on pricing page)
-
-### Allergens / Spice level / etc
-- [x] Determine list (V2 supports dietary indicators: vegetarian, vegan, halal, kosher, gluten-free)
-- [x] Consider design impact (V2 renders indicators within item tiles using INLINE mode)
-- [x] Implement (V2 has full ItemIndicatorsV2 support with configurable rendering modes)
-- [ ] Extend indicator taxonomy for additional dietary restrictions
-- [ ] Add custom allergen management via /extracted page
-
 ## Resolve paths
 - [x] Create sitemap.xml (if not generated by Vercel)
 - [x] Submit sitemap.xml full URL to Google Search Tools and Bing Webmaster Tools
 - [x] /ux
 
-## Demo
-- [x] More clarity on demo input menu as it stands before implementing changes
-- [ ] Show menu and image outputs on home page
-- [ ] Lloyd feedback: input menu is confusing, looks like output
-- [ ] Lloyd feedback: Give an option to email the PDF menu or send to printers (order x amount)
-- [x] Include sample logo, address, etc.
-
-## Templates
-- [ ] Amit feedback: "Column-style" pages (e.g. "half-A4, tall")
-- [ ] Amit feedback: Only selected "specials" have photos
-
-## Market awareness
-- [ ] Create blog / comparison pages (https://www.upmenu.com/blog/menu-making-apps/)
-- [ ] Reddit community posting
-
-## Global Reach
-- [ ] Initially geo-lock to Singapore
-- [ ] Currency Support
-- [ ] Language support
-
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
->>>>>>>>> GO TO MARKET >>>>>>>>>>>>>
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-## Tech debt
-- [ ] Review code
-- [ ] Review SQL
-- [ ] Review MD docs
-- [ ] QA
-
-## Unclassified
-- [ ] Integrate Posthog
-- [ ] Crop for large menus text extraction
-- [ ] Determine UAT requirements
-- [ ] SEO optimisation
-- [ ] Documentation
-- [ ] Cyber attack protection plan
-- [ ] Playwright (Patrick Ellis YT video)
-- [ ] Accessibility (read Reddit pain points analysis)
-- [ ] Power user, i.e. "login as user X" (support)
-- [ ] App
-- [ ] Generate descriptions
-- [ ] Advanced menu options: Currency selection
-- [ ] Advanced menu options: Edit order of categories
-- [ ] Logging
-- [ ] Admin dashboard enhancements
-- [ ] Review "select all" in category on /extracted page
-- [x] Remove confidence tag at top of page
-- [ ] Watermark images in Creator Pack
-- [ ] QA to ensure pricing matches reality
-- [ ] Show preview picture of menu (if design template chosen) embedded in Dashboard menus
-- [ ] Higher resolution images (up to 4K) for Grid+Premium (and include mention on pricing page)
-- [ ] Reminder email for credits expiry
-- [ ] Multi-user access to accounts (Premium tier)
-- [ ] Display user information (e.g. email address of logged in user)
-- [ ] Add option to include opening hours in footer
-- [ ] Need a sense of Draft -> Published to allow edits in the case of live menus
-- [ ] If the first time a user lands on /extracted, and they have used an image to create items - display a modal that asks them to review all the details.
+## Deployment
+- [x] Purchase domain
+- [x] Set up gridmenu.ai emails
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>
