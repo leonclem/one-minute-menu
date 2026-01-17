@@ -5,18 +5,11 @@ export function UXFooter() {
   return (
     <footer className="ux-footer shrink-0" style={{ backgroundColor: 'rgb(var(--ux-primary))' }}>
       <div className="container-ux py-6">
-        <div className="flex flex-col items-center justify-between gap-4 sm:flex-row sm:items-start">
-          <div className="text-center sm:text-left">
-            <p className="text-sm text-white/90 text-soft-shadow">
-              © {year} GridMenu. Built for food & beverage businesses.
-            </p>
-            <p className="mt-2 text-[10px] leading-relaxed text-white/60 text-soft-shadow">
-              GridMenu is operated by Gorrrf Private Ltd (UEN: 202550882W), registered in Singapore.
-              <br />
-              Registered address: 111 Somerset Road, #08-10A, 111 Somerset, Singapore 238164.
-            </p>
-          </div>
-          <div className="flex gap-6 text-sm sm:pt-1">
+        <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+          <p className="text-sm text-white/90 text-soft-shadow">
+            © {year} GridMenu. Built for food & beverage businesses.
+          </p>
+          <div className="flex gap-6 text-sm">
             <Link href="/privacy" className="ux-footer-link">
               Privacy Policy
             </Link>
@@ -27,6 +20,11 @@ export function UXFooter() {
               Contact Us
             </Link>
           </div>
+        </div>
+        <div className="mt-4 text-left">
+          <p className="text-[10px] text-white/60 text-soft-shadow leading-relaxed">
+            GridMenu is operated by Gorrrf Private Ltd (UEN: 202550882W), registered in Singapore. &nbsp;•&nbsp; Registered address: 111 Somerset Road, #08-10A, 111 Somerset, Singapore 238164.
+          </p>
         </div>
       </div>
     </footer>
