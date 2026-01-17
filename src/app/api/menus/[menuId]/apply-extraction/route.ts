@@ -11,6 +11,7 @@ interface ApplyExtractionBody {
   schemaVersion: 'stage1' | 'stage2'
   promptVersion?: string
   jobId?: string
+  append?: boolean
 }
 
 export async function POST(
@@ -47,6 +48,7 @@ export async function POST(
       schemaVersion: body.schemaVersion,
       promptVersion: body.promptVersion,
       jobId: body.jobId,
+      append: body.append,
       resultStructure: {
         hasMenu: !!body.result?.menu,
         hasCategories: !!body.result?.menu?.categories,
@@ -62,7 +64,8 @@ export async function POST(
       body.result,
       body.schemaVersion,
       body.promptVersion || 'unknown',
-      body.jobId
+      body.jobId,
+      body.append
     )
 
     console.log('[Apply Extraction] Result menu:', {

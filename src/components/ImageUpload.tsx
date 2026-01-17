@@ -8,20 +8,26 @@ import { validateImageFile, processImage, createThumbnail, rotateImageQuarterTur
 
 interface ImageUploadProps {
   onImageSelected: (file: File, preview: string) => void
+  onImagesSelected?: (files: File[]) => void
   onCancel?: () => void
   maxSize?: number
   className?: string
   noWrapper?: boolean
   outputFormat?: 'jpeg' | 'png' | 'webp'
+  multiple?: boolean
+  skipPreview?: boolean
 }
 
 export default function ImageUpload({ 
   onImageSelected, 
+  onImagesSelected,
   onCancel, 
   maxSize = 8 * 1024 * 1024, // 8MB
   className = '',
   noWrapper = false,
-  outputFormat
+  outputFormat,
+  multiple = false,
+  skipPreview = false
 }: ImageUploadProps) {
   const [mode, setMode] = useState<'select' | 'camera' | 'preview'>('select')
   const [dragActive, setDragActive] = useState(false)
@@ -29,6 +35,7 @@ export default function ImageUpload({
   const [error, setError] = useState<string | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -74,6 +81,11 @@ export default function ImageUpload({
       // Create preview
       const preview = await createThumbnail(processed.file, 400)
       
+      if (skipPreview) {
+        onImageSelected(processed.file, preview)
+        return
+      }
+
       setSelectedFile(processed.file)
       setPreviewImage(preview)
       setMode('preview')
@@ -83,7 +95,46 @@ export default function ImageUpload({
     } finally {
       setProcessing(false)
     }
-  }, [])
+  }, [outputFormat, skipPreview, onImageSelected])
+
+  const handleMultipleFilesSelect = useCallback(async (files: File[]) => {
+    setError(null)
+    setProcessing(true)
+
+    try {
+      const processedFiles: File[] = []
+      for (const file of files) {
+        const validation = validateImageFile(file)
+        if (!validation.valid) {
+          console.warn(`Skipping invalid file: ${file.name}`, validation.error)
+          continue
+        }
+
+        const processed = await processImage(file, {
+          maxWidth: 2048,
+          maxHeight: 2048,
+          quality: 0.8,
+          stripExif: true,
+          autoRotate: true,
+          format: outputFormat,
+          autoDeskew: false,
+          autoCrop: false
+        })
+        processedFiles.push(processed.file)
+      }
+
+      if (processedFiles.length > 0) {
+        onImagesSelected?.(processedFiles)
+      } else {
+        setError('No valid images selected.')
+      }
+    } catch (err) {
+      console.error('Image processing error:', err)
+      setError('Failed to process images. Please try again.')
+    } finally {
+      setProcessing(false)
+    }
+  }, [onImagesSelected, outputFormat])
 
   // Handle drag events
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -104,17 +155,25 @@ export default function ImageUpload({
 
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 0) {
-      handleFileSelect(files[0])
+      if (multiple && files.length > 1) {
+        handleMultipleFilesSelect(files)
+      } else {
+        handleFileSelect(files[0])
+      }
     }
-  }, [handleFileSelect])
+  }, [handleFileSelect, handleMultipleFilesSelect, multiple])
 
   // Handle file input change
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files && files.length > 0) {
-      handleFileSelect(files[0])
+      if (multiple && files.length > 1) {
+        handleMultipleFilesSelect(Array.from(files))
+      } else {
+        handleFileSelect(files[0])
+      }
     }
-  }, [handleFileSelect])
+  }, [handleFileSelect, handleMultipleFilesSelect, multiple])
 
   // Handle camera capture
   const handleCameraCapture = useCallback((file: File) => {
@@ -370,6 +429,7 @@ export default function ImageUpload({
                 type="file"
                 accept="image/jpeg,image/jpg,image/png"
                 onChange={handleInputChange}
+                multiple={multiple}
                 className="hidden"
               />
             </>

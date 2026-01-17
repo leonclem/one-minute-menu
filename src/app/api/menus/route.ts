@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuOperations, DatabaseError } from '@/lib/database'
 import { validateCreateMenu, generateSlugFromName } from '@/lib/validation'
@@ -72,6 +73,9 @@ export async function POST(request: NextRequest) {
       primaryCuisine: body.primaryCuisine,
       venueInfo: body.venueInfo,
     })
+
+    // Ensure dashboard reflects newly created menu on next client navigation
+    revalidatePath('/dashboard')
     
     return NextResponse.json({
       success: true,

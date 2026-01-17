@@ -22,7 +22,8 @@ export async function applyExtractionToMenu(
   extractionResult: ExtractionResultType | ExtractionResultV2Type,
   schemaVersion: 'stage1' | 'stage2',
   promptVersion: string,
-  jobId?: string
+  jobId?: string,
+  append: boolean = false
 ): Promise<Menu> {
   // If we already applied this job's extraction to the menu, return existing menu
   const existing = await menuOperations.getMenu(menuId, userId)
@@ -64,7 +65,7 @@ export async function applyExtractionToMenu(
     items: menuUpdates.items || [],
     categories: menuUpdates.categories,
     extractionMetadata: menuUpdates.extractionMetadata,
-  })
+  }, append)
 
   console.log('[Menu Integration] Updated menu in database:', {
     menuId: updated.id,

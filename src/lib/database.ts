@@ -641,7 +641,8 @@ export const menuOperations = {
       items: MenuItem[]
       categories?: any[]
       extractionMetadata?: any
-    }
+    },
+    append: boolean = false
   ): Promise<Menu> {
     const supabase = createServerSupabaseClient()
     
@@ -650,9 +651,78 @@ export const menuOperations = {
     if (!currentMenu) throw new DatabaseError('Menu not found')
     
     // Prepare updated menu data
+    let updatedItems = extractionData.items
+    let updatedCategories = extractionData.categories
+
+    if (append) {
+      // Merge items
+      const existingItems = currentMenu.items || []
+      // Re-index new items to avoid order clashing
+      const reindexedNewItems = extractionData.items.map((item, idx) => ({
+        ...item,
+        order: existingItems.length + idx
+      }))
+      updatedItems = [...existingItems, ...reindexedNewItems]
+
+      // Merge categories logically
+      const existingCategories = currentMenu.categories || []
+      if (extractionData.categories && extractionData.categories.length > 0) {
+        // Create a map of existing categories by lowercase name for reconciliation
+        const categoryMap = new Map<string, any>()
+        existingCategories.forEach(cat => {
+          categoryMap.set(cat.name.trim().toLowerCase(), { ...cat })
+        })
+
+        const newCategoriesToAppend: any[] = []
+
+        extractionData.categories.forEach(newCat => {
+          const lowerName = newCat.name.trim().toLowerCase()
+          if (categoryMap.has(lowerName)) {
+            // Reconcile: append items to existing category
+            const existingCat = categoryMap.get(lowerName)
+            
+            // Re-index items being added to follow existing ones
+            const existingItemCount = existingCat.items?.length || 0
+            const reindexedItems = (newCat.items || []).map((item: any, idx: number) => ({
+              ...item,
+              order: existingItemCount + idx
+            }))
+
+            existingCat.items = [...(existingCat.items || []), ...reindexedItems]
+            // Update the map with the merged category
+            categoryMap.set(lowerName, existingCat)
+          } else {
+            // It's a brand new category name
+            newCategoriesToAppend.push(newCat)
+          }
+        })
+
+        // Reconstruct the category list:
+        // 1. Start with the existing categories (some now have more items)
+        const updatedExisting = existingCategories.map(cat => 
+          categoryMap.get(cat.name.trim().toLowerCase())
+        )
+        
+        // 2. Append truly new categories found in the second image
+        // Re-order new categories to follow the last existing category
+        const lastOrder = existingCategories.length > 0 
+          ? Math.max(...existingCategories.map(c => c.order || 0)) 
+          : -1
+        
+        const orderedNewAppend = newCategoriesToAppend.map((cat, idx) => ({
+          ...cat,
+          order: lastOrder + 1 + idx
+        }))
+
+        updatedCategories = [...updatedExisting, ...orderedNewAppend]
+      } else {
+        updatedCategories = existingCategories
+      }
+    }
+
     const updatedMenuData = {
-      items: extractionData.items,
-      categories: extractionData.categories,
+      items: updatedItems,
+      categories: updatedCategories,
       theme: currentMenu.theme,
       paymentInfo: currentMenu.paymentInfo,
       extractionMetadata: extractionData.extractionMetadata,

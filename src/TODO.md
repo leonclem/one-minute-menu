@@ -4,22 +4,25 @@
 - [ ] Update from Gemini 2.5 Flash Image Preview to Gemini 2.5 Flash Image
 
 ## /upload
-- [ ] *NEXT* Add multiple pages with recommendation for number of items per photo
-- [ ] Fail gracefully
+- [x] Add multiple pages with recommendation for number of items per photo
+- [x] Capability to "append" new items
+- [x] Fail gracefully
+- [x] Handle multiple images at once
+- [ ] Use PDF
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> GO TO PILOT >>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## Deployment
-- [ ] Determine UAT requirements
-- [ ] Determine if database backup strategy exists (Supabase / Vercel)
-- [ ] Upgrade Vercel package
-
 ## Aspire Completion
 - [x] Add company name Gorrrf Private Ltd, UEN number, and office address as per ACRA
 - [ ] Finalise Aspire bank account setup
 - [ ] Implement Stripe payment system
+
+## Deployment
+- [ ] Determine UAT requirements
+- [ ] Determine if database backup strategy exists (Supabase / Vercel)
+- [ ] Upgrade Vercel package
 
 ## /extracted
 - [ ] Need capability to delete a section

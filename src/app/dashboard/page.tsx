@@ -7,6 +7,7 @@ import nextDynamic from 'next/dynamic'
 import { getCurrentUser } from '@/lib/auth-utils'
 import { UXHeader, UXFooter, UXCard, UXButton } from '@/components/ux'
 import { MenuCard } from '@/components/dashboard'
+import { DashboardAutoRefresh } from '@/components/dashboard/DashboardAutoRefresh'
 import { PendingApproval } from '@/components/dashboard/PendingApproval'
 import { sendAdminNewUserAlert } from '@/lib/notifications'
 const QuotaUsageDashboard = nextDynamic(() => import('@/components/QuotaUsageDashboard'), { ssr: false })
@@ -63,6 +64,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
+      <DashboardAutoRefresh />
       {/* Background image + soft overlay behind header and main */}
       <div
         aria-hidden

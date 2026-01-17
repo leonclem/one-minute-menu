@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState } from 'react'
+import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
 
 interface UXHeaderProps {
   userEmail?: string
@@ -45,6 +46,10 @@ export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
                 key={item.href}
                 href={item.href} 
                 className="ux-nav-link"
+                prefetch={item.href === '/dashboard' ? false : undefined}
+                onClick={() => {
+                  if (item.href === '/dashboard') markDashboardForRefresh()
+                }}
               >
                 {item.label}
               </Link>
@@ -84,7 +89,11 @@ export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
                   key={item.href}
                   href={item.href} 
                   className="ux-nav-link"
-                  onClick={() => setIsMenuOpen(false)}
+                  prefetch={item.href === '/dashboard' ? false : undefined}
+                  onClick={() => {
+                    if (item.href === '/dashboard') markDashboardForRefresh()
+                    setIsMenuOpen(false)
+                  }}
                 >
                   {item.label}
                 </Link>

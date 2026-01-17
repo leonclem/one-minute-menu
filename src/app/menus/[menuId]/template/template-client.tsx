@@ -10,6 +10,7 @@ import { PageRenderer } from '@/lib/templates/v2/renderer-web-v2'
 import { PALETTES_V2 } from '@/lib/templates/v2/renderer-v2'
 import type { LayoutDocumentV2 } from '@/lib/templates/v2/engine-types-v2'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
+import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
 
 interface UXMenuTemplateClientProps {
   menuId: string
@@ -234,7 +235,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           const data = await resp.json()
           throw new Error(data?.error || 'Failed to save template selection')
         }
-
+        markDashboardForRefresh()
         router.push('/dashboard')
       }
     } catch (error) {

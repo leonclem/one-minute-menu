@@ -25,5 +25,13 @@
         }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "src/app/api/extraction/submit/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/extraction/status/[jobId]/route.ts": {
+      "maxDuration": 120
+    }
+  }
 }

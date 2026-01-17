@@ -42,6 +42,11 @@ export interface ExtractionJob {
   createdAt: Date
   completedAt?: Date
   processingTime?: number
+  /**
+   * True when we returned an existing completed result without re-running the LLM.
+   * Used to surface "cache hits" to the client/UI.
+   */
+  cached?: boolean
   tokenUsage?: TokenUsage
   confidence?: number
   uncertainItems?: any[]
@@ -142,6 +147,7 @@ export class MenuExtractionService {
         if (hasNewFormat) {
           console.log(`Returning cached result for image hash: ${imageHash}`)
           console.log(`Cached result has ${existingJob.result.menu.categories.length} categories`)
+          existingJob.cached = true
           return existingJob
         } else {
           console.warn(`Found completed job with old format result, will re-process. Job ID: ${existingJob.id}`)
@@ -262,7 +268,7 @@ export class MenuExtractionService {
                 }
               ],
               temperature: promptPackage.temperature,
-              max_tokens: 4096,
+              max_tokens: 8192, // Increased from 4096 to support larger menus (>25 items)
               response_format: { type: 'json_object' }
             })
             return response

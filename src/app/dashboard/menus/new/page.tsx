@@ -7,6 +7,7 @@ import { UpgradePrompt } from '@/components/ui'
 import { UXButton, UXInput, UXCard } from '@/components/ux'
 import { validateCreateMenu, generateSlugFromName } from '@/lib/validation'
 import { fetchJsonWithRetry, HttpError } from '@/lib/retry'
+import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
 import type { CreateMenuFormData, User } from '@/types'
 import { ESTABLISHMENT_TYPES, CUISINES } from '@/types'
 
@@ -122,6 +123,8 @@ export default function NewMenuPage() {
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) },
         { retries: 2, baseDelayMs: 250, maxDelayMs: 1000 }
       )
+      // Ensure dashboard list is fresh when user later returns
+      markDashboardForRefresh()
       router.push(`/menus/${result.data.id}/upload`)
     } catch (error) {
       if (error instanceof HttpError) {

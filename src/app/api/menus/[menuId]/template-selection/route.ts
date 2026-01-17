@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { TEMPLATE_REGISTRY } from '@/lib/templates/template-definitions'
 import { templateExists } from '@/lib/templates/v2/template-loader-v2'
@@ -101,6 +102,10 @@ export async function POST(
           { status: 500 }
         )
       }
+
+      // Ensure dashboard reflects updated template selection on next navigation
+      revalidatePath('/dashboard')
+      revalidatePath(`/dashboard/menus/${params.menuId}`)
       
       return NextResponse.json({
         success: true,
@@ -132,6 +137,10 @@ export async function POST(
           { status: 500 }
         )
       }
+
+      // Ensure dashboard reflects updated template selection on next navigation
+      revalidatePath('/dashboard')
+      revalidatePath(`/dashboard/menus/${params.menuId}`)
       
       return NextResponse.json({
         success: true,

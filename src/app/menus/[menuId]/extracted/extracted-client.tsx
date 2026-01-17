@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { UXSection, UXButton, UXCard } from '@/components/ux'
-import { useToast } from '@/components/ui'
+import { useToast, ConfirmDialog } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
 import type { Menu, MenuItem, MenuCategory } from '@/types'
 import type { ExtractionResultType as Stage1ExtractionResult } from '@/lib/extraction/schema-stage1'
@@ -17,6 +17,7 @@ import ZoomableImageModal from '@/components/ZoomableImageModal'
 import ImageUpload from '@/components/ImageUpload'
 import MenuItemActionsModal from '@/components/MenuItemActionsModal'
 import BulkDeleteModal from '@/components/BulkDeleteModal'
+import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
 
 // Constants for category management
 const DEFAULT_CATEGORY = 'Uncategorized'
@@ -78,11 +79,20 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   // Menu item actions states
   const [activeMenuItem, setActiveMenuItem] = useState<MenuItem | null>(null)
   const [showBulkDelete, setShowBulkDelete] = useState(false)
+  const [showReviewAcknowledge, setShowReviewAcknowledge] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const isManualEntry = searchParams.get('manual') === 'true'
+  const isNewExtraction = searchParams.get('newExtraction') === 'true'
   const { showToast } = useToast()
   const appliedRef = useRef(false)
+
+  // Show review acknowledgment modal for new extractions
+  useEffect(() => {
+    if (isNewExtraction) {
+      setShowReviewAcknowledge(true)
+    }
+  }, [isNewExtraction])
   
   // Client-side mount detection for portal
   useEffect(() => {
@@ -945,6 +955,16 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       // Determine final category list and its order
       let allCategories: string[] = []
       
+      // Get categories in the order they appear in the items list
+      const appearanceOrder: string[] = []
+      const itemsForOrder = (isDemo ? baseMenu?.items : authMenu?.items) || []
+      itemsForOrder.forEach(item => {
+        const cat = normalizeCategory((item as any).category)
+        if (!appearanceOrder.includes(cat)) {
+          appearanceOrder.push(cat)
+        }
+      })
+      
       if (authMenu?.categories && authMenu.categories.length > 0) {
         // Use stored category order if available
         const sortedStoredCategories = [...authMenu.categories].sort((a, b) => (a.order || 0) - (b.order || 0))
@@ -954,14 +974,25 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         allCategories = storedCategoryNames.filter(name => allCategoriesSet.has(name))
         
         // Append any new categories that aren't in stored order (e.g. just added)
-        const newCategories = Array.from(allCategoriesSet)
-          .filter(name => !storedCategoryNames.includes(name))
+        // BUT use their appearance order from items instead of alphabetical sort
+        const newCategories = appearanceOrder.filter(name => !storedCategoryNames.includes(name) && allCategoriesSet.has(name))
+        
+        // Finally add any remaining categories from allCategoriesSet (e.g. empty categories not in items)
+        const remainingCategories = Array.from(allCategoriesSet)
+          .filter(name => !allCategories.includes(name) && !newCategories.includes(name))
           .sort()
         
-        allCategories = [...allCategories, ...newCategories]
+        allCategories = [...allCategories, ...newCategories, ...remainingCategories]
       } else {
-        // Default to alphabetical sort if no stored order
-        allCategories = Array.from(allCategoriesSet).sort()
+        // Use appearance order instead of alphabetical sort
+        allCategories = appearanceOrder.filter(cat => allCategoriesSet.has(cat))
+        
+        // Add any categories from allCategoriesSet that weren't in appearanceOrder (e.g. empty ones)
+        const missingCategories = Array.from(allCategoriesSet)
+          .filter(name => !allCategories.includes(name))
+          .sort()
+          
+        allCategories = [...allCategories, ...missingCategories]
       }
       
       const total = categoriesWithItems.reduce((sum, c) => sum + ((itemsGrouped[c] || []).length), 0)
@@ -1809,7 +1840,10 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             variant="outline"
             size="lg"
             className="bg-white/20 border-white/40 text-white hover:bg-white/30"
-            onClick={isDemo ? handleBackToExtraction : () => router.push('/dashboard')}
+            onClick={isDemo ? handleBackToExtraction : () => {
+              markDashboardForRefresh()
+              router.push('/dashboard')
+            }}
             disabled={loading}
           >
             {isDemo ? '← Back to Extraction' : '← Back to Dashboard'}
@@ -2386,6 +2420,19 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             </UXCard>
           </div>
         </div>,
+        document.body
+      )}
+
+      {showReviewAcknowledge && mounted && createPortal(
+        <ConfirmDialog
+          open={showReviewAcknowledge}
+          title="Extraction Complete"
+          description="Our AI has extracted the items from your photo. Please review the results carefully for any inaccuracies or formatting issues before proceeding."
+          confirmText="Got it, I'll review"
+          cancelText=""
+          onConfirm={() => setShowReviewAcknowledge(false)}
+          onCancel={() => setShowReviewAcknowledge(false)}
+        />,
         document.body
       )}
     </UXSection>

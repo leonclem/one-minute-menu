@@ -194,6 +194,7 @@ export async function POST(request: NextRequest) {
       data: {
         jobId: job.id,
         status: job.status,
+        cached: !!(job as any).cached,
         estimatedCompletionTime: estimatedCompletionTime.toISOString(),
         processingTime: Date.now() - startTime
       }

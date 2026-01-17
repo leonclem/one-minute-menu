@@ -34,12 +34,14 @@ export function ConfirmDialog({
           {description}
         </div>
         <div className="px-4 py-3 border-t flex justify-end gap-2 bg-gray-50/50">
-          <button
-            className="px-3 py-2 text-sm rounded-md border border-secondary-300 text-secondary-700 bg-white hover:bg-secondary-50"
-            onClick={onCancel}
-          >
-            {cancelText}
-          </button>
+          {cancelText && (
+            <button
+              className="px-3 py-2 text-sm rounded-md border border-secondary-300 text-secondary-700 bg-white hover:bg-secondary-50"
+              onClick={onCancel}
+            >
+              {cancelText}
+            </button>
+          )}
           <button
             className={`px-3 py-2 text-sm rounded-md text-white shadow-sm ${
               variant === 'danger' 
