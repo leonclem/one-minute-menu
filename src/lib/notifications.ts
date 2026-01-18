@@ -12,11 +12,12 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://gridmenu.ai'
 
 /**
  * Sends an email notification to the admin when a new user registers and is pending approval.
+ * Returns true if the email was successfully sent, false otherwise.
  */
-export async function sendAdminNewUserAlert(profile: User) {
+export async function sendAdminNewUserAlert(profile: User): Promise<boolean> {
   if (!process.env.SENDGRID_API_KEY) {
     console.warn('[notifications] SENDGRID_API_KEY missing. Skipping admin alert.')
-    return
+    return false
   }
 
   const msg = {
@@ -43,8 +44,10 @@ export async function sendAdminNewUserAlert(profile: User) {
   try {
     await sgMail.send(msg)
     console.log(`[notifications] Admin alert sent for ${profile.email}`)
+    return true
   } catch (error) {
     console.error('[notifications] Failed to send admin alert:', error)
+    return false
   }
 }
 

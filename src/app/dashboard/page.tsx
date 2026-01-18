@@ -9,7 +9,6 @@ import { UXHeader, UXFooter, UXCard, UXButton } from '@/components/ux'
 import { MenuCard } from '@/components/dashboard'
 import { DashboardAutoRefresh } from '@/components/dashboard/DashboardAutoRefresh'
 import { PendingApproval } from '@/components/dashboard/PendingApproval'
-import { sendAdminNewUserAlert } from '@/lib/notifications'
 const QuotaUsageDashboard = nextDynamic(() => import('@/components/QuotaUsageDashboard'), { ssr: false })
 
 export default async function DashboardPage() {
@@ -32,13 +31,6 @@ export default async function DashboardPage() {
 
   // APPROVAL GATE
   if (!isAdmin && profile && !profile.isApproved) {
-    // Trigger notification if not already sent
-    if (!profile.adminNotified) {
-      await sendAdminNewUserAlert(profile)
-      // Update profile to mark admin as notified (best effort)
-      await userOperations.updateProfile(user.id, { adminNotified: true })
-    }
-    
     return (
       <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
         <div

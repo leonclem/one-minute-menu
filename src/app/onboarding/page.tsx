@@ -3,7 +3,6 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { menuOperations, userOperations } from '@/lib/database'
 import OnboardingClient from './onboarding-client'
 import { PendingApproval } from '@/components/dashboard/PendingApproval'
-import { sendAdminNewUserAlert } from '@/lib/notifications'
 import { UXHeader, UXFooter } from '@/components/ux'
 
 export const dynamic = 'force-dynamic'
@@ -22,12 +21,6 @@ export default async function OnboardingPage() {
   // APPROVAL GATE
   const isAdmin = profile?.role === 'admin'
   if (!isAdmin && profile && !profile.isApproved) {
-    // Trigger notification if not already sent
-    if (!profile.adminNotified) {
-      await sendAdminNewUserAlert(profile)
-      await userOperations.updateProfile(user.id, { adminNotified: true })
-    }
-    
     return (
       <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
         <div
