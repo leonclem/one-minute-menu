@@ -7,11 +7,11 @@ import { getCurrentUser } from '@/lib/auth-utils'
 export const metadata: Metadata = {
   title: 'Create Your Digital Menu | GridMenu',
   description:
-    'Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required.',
+    'Ready to create your new beautiful menu in under 5 minutes?',
   keywords: ['QR menu', 'digital menu', 'restaurant menu', 'mobile menu', 'QR code menu'],
   openGraph: {
     title: 'Create Your Digital Menu | GridMenu',
-    description: 'Transform your restaurant menu into a mobile-friendly QR code menu in minutes.',
+    description: 'Ready to create your new beautiful menu in under 5 minutes?',
     type: 'website',
     url: '/',
     images: [
