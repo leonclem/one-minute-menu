@@ -6,13 +6,28 @@ import { UXHeader, UXFooter, UXButton, UXInput, UXCard } from '@/components/ux'
 import { fetchJsonWithRetry } from '@/lib/retry'
 import { ESTABLISHMENT_TYPES, CUISINES } from '@/types'
 
-export default function OnboardingClient({ userEmail }: { userEmail?: string }) {
+export default function OnboardingClient({ 
+  userEmail, 
+  next,
+  reason,
+  initialData,
+}: { 
+  userEmail?: string;
+  next?: string;
+  reason?: string;
+  initialData?: {
+    restaurantName: string;
+    establishmentType: string;
+    primaryCuisine: string;
+    username: string;
+  };
+}) {
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
-    name: '',
-    establishmentType: '',
-    primaryCuisine: '',
-    username: '',
+    name: initialData?.restaurantName || '',
+    establishmentType: initialData?.establishmentType || '',
+    primaryCuisine: initialData?.primaryCuisine || '',
+    username: initialData?.username || '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -55,7 +70,12 @@ export default function OnboardingClient({ userEmail }: { userEmail?: string }) 
       )
 
       if (result.success) {
-        router.push('/dashboard')
+        // Refresh to ensure the next page/layout sees the updated profile
+        router.refresh()
+        // Small delay to let the refresh/revalidation propagate
+        setTimeout(() => {
+          router.push(next || '/dashboard')
+        }, 100)
       } else {
         setError('Failed to complete onboarding. Please try again.')
       }
@@ -83,6 +103,13 @@ export default function OnboardingClient({ userEmail }: { userEmail?: string }) 
 
       <main className="container-ux py-10 md:py-12 flex-grow grid place-items-center">
         <div className="w-full max-w-xl">
+          {reason === 'required' && (
+            <div className="mb-6 p-4 bg-ux-primary/20 border border-ux-primary/30 rounded-xl text-white text-center text-sm backdrop-blur-md">
+              <p className="font-semibold mb-1">Finish setting up your profile</p>
+              <p className="opacity-90">We use these details to generate higher-quality AI images for your menu items.</p>
+            </div>
+          )}
+
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
               Welcome to GridMenu

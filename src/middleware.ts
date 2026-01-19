@@ -143,6 +143,7 @@ export function middleware(req: NextRequest) {
   }
 
   const res = NextResponse.next()
+  res.headers.set('x-pathname', pathname)
   return applySecurityHeaders(res)
 }
 

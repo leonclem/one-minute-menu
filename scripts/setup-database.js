@@ -29,7 +29,7 @@ async function setupDatabase() {
     console.log('🚀 Setting up QR Menu System database...')
 
     try {
-        // Read the migration file
+        // Read the base schema migration file
         const migrationPath = path.join(__dirname, '..', 'supabase', 'migrations', '001_initial_schema.sql')
         const migrationSQL = fs.readFileSync(migrationPath, 'utf8')
 
@@ -44,6 +44,24 @@ async function setupDatabase() {
         }
 
         console.log('✅ Database schema applied successfully!')
+
+        // Apply critical follow-up migrations that the app depends on.
+        // (This script does not run the full Supabase migration chain.)
+        const followUpMigrations = [
+            '033_track_profile_last_login.sql',
+        ]
+
+        for (const file of followUpMigrations) {
+            const p = path.join(__dirname, '..', 'supabase', 'migrations', file)
+            if (fs.existsSync(p)) {
+                console.log(`📄 Applying follow-up migration: ${file}...`)
+                const sql = fs.readFileSync(p, 'utf8')
+                const { error: followUpError } = await supabase.rpc('exec_sql', { sql })
+                if (followUpError) {
+                    console.warn(`⚠️  Follow-up migration ${file} warning:`, followUpError.message)
+                }
+            }
+        }
 
         // Test the setup by checking if tables exist
         console.log('🔍 Verifying database setup...')
@@ -77,7 +95,7 @@ async function setupDatabaseDirect() {
     console.log('🚀 Setting up QR Menu System database (direct method)...')
 
     try {
-        // Read the migration file
+        // Read the base schema migration file
         const migrationPath = path.join(__dirname, '..', 'supabase', 'migrations', '001_initial_schema.sql')
         const migrationSQL = fs.readFileSync(migrationPath, 'utf8')
 
@@ -106,6 +124,40 @@ async function setupDatabaseDirect() {
         }
 
         console.log('✅ Database schema applied!')
+
+        // Apply critical follow-up migrations that the app depends on.
+        // (This script does not run the full Supabase migration chain.)
+        const followUpMigrations = [
+            '033_track_profile_last_login.sql',
+        ]
+
+        for (const file of followUpMigrations) {
+            const p = path.join(__dirname, '..', 'supabase', 'migrations', file)
+            if (!fs.existsSync(p)) continue
+
+            const sql = fs.readFileSync(p, 'utf8')
+            const followUpStatements = sql
+                .split(';')
+                .map(stmt => stmt.trim())
+                .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'))
+
+            console.log(`📝 Executing follow-up migration ${file} (${followUpStatements.length} statements)...`)
+
+            for (let i = 0; i < followUpStatements.length; i++) {
+                const statement = followUpStatements[i]
+                if (!statement.trim()) continue
+
+                try {
+                    const { error } = await supabase.rpc('exec_sql', { sql: statement + ';' })
+                    if (error && !error.message.includes('already exists')) {
+                        console.warn(`⚠️  Follow-up statement ${i + 1} warning:`, error.message)
+                    }
+                } catch (err) {
+                    console.warn(`⚠️  Follow-up statement ${i + 1} error:`, err.message)
+                }
+            }
+        }
+
         console.log('\n🎉 Setup complete! You can now run: npm run dev')
 
     } catch (error) {

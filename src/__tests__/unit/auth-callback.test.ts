@@ -43,6 +43,7 @@ jest.mock('@/lib/supabase-server', () => ({
 
 describe('Auth Callback Route', () => {
   let mockSupabase: any
+  let mockAdminSupabase: any
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -54,7 +55,15 @@ describe('Auth Callback Route', () => {
       },
     }
     ;(createServerClient as jest.Mock).mockReturnValue(mockSupabase)
-    ;(createAdminSupabaseClient as jest.Mock).mockReturnValue({ mock: 'admin-supabase' })
+    
+    mockAdminSupabase = {
+      from: jest.fn().mockReturnValue({
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+        }),
+      }),
+    }
+    ;(createAdminSupabaseClient as jest.Mock).mockReturnValue(mockAdminSupabase)
   })
 
   const makeRequest = (url: string) => {
@@ -72,6 +81,7 @@ describe('Auth Callback Route', () => {
     
     expect(res.url).toBe('http://localhost:3000/dashboard')
     expect(mockSupabase.auth.exchangeCodeForSession).toHaveBeenCalledWith('test-code')
+    expect(createAdminSupabaseClient).toHaveBeenCalled()
   })
 
   it('should trigger admin alert for new unapproved users', async () => {
@@ -94,7 +104,7 @@ describe('Auth Callback Route', () => {
     expect(userOperations.updateProfile).toHaveBeenCalledWith(
       'user-123', 
       { adminNotified: true }, 
-      { mock: 'admin-supabase' }
+      mockAdminSupabase
     )
   })
 

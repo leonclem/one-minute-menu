@@ -1,13 +1,18 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { menuOperations, userOperations } from '@/lib/database'
+import { userOperations } from '@/lib/database'
 import OnboardingClient from './onboarding-client'
 import { PendingApproval } from '@/components/dashboard/PendingApproval'
 import { UXHeader, UXFooter } from '@/components/ux'
+import { isOnboardingComplete } from '@/lib/onboarding-gate'
 
 export const dynamic = 'force-dynamic'
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: { next?: string; reason?: string }
+}) {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -15,7 +20,7 @@ export default async function OnboardingPage() {
     redirect('/auth/signin')
   }
 
-  // If user has already completed onboarding, skip it and go to dashboard
+  // If user has already completed onboarding, skip it and go to next or dashboard
   const profile = await userOperations.getProfile(user.id)
   
   // APPROVAL GATE
@@ -42,16 +47,22 @@ export default async function OnboardingPage() {
     )
   }
 
-  if (profile?.onboardingCompleted) {
-    redirect('/dashboard')
+  if (isOnboardingComplete(profile)) {
+    redirect(searchParams.next || '/dashboard')
   }
 
-  // Fallback: If user already has menus, they shouldn't see onboarding
-  const menus = await menuOperations.getUserMenus(user.id)
-  if (menus && menus.length > 0) {
-    redirect('/dashboard')
-  }
-
-  return <OnboardingClient userEmail={user.email} />
+  return (
+    <OnboardingClient 
+      userEmail={user.email} 
+      next={searchParams.next} 
+      reason={searchParams.reason}
+      initialData={{
+        restaurantName: profile?.restaurantName || '',
+        establishmentType: profile?.establishmentType || '',
+        primaryCuisine: profile?.primaryCuisine || '',
+        username: profile?.username || '',
+      }}
+    />
+  )
 }
 

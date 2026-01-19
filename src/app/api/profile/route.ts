@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { userOperations, DatabaseError } from '@/lib/database'
 import { sanitizeProfilePayload } from '@/lib/security'
@@ -64,6 +65,9 @@ export async function PATCH(request: NextRequest) {
     )
 
     const updatedProfile = await userOperations.updateProfile(user.id, allowedUpdates)
+    
+    // Ensure layouts and pages see the updated profile immediately
+    revalidatePath('/', 'layout')
     
     return NextResponse.json({
       success: true,

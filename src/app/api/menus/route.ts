@@ -5,6 +5,7 @@ import { menuOperations, DatabaseError } from '@/lib/database'
 import { validateCreateMenu, generateSlugFromName } from '@/lib/validation'
 import { sanitizeMenuPayload } from '@/lib/security'
 import type { CreateMenuFormData } from '@/types'
+import { requireOnboardingCompleteApi } from '@/lib/onboarding-api-auth'
 
 // GET /api/menus - Get user's menus
 export async function GET() {
@@ -42,12 +43,12 @@ export async function GET() {
 // POST /api/menus - Create new menu
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const onboarding = await requireOnboardingCompleteApi(request)
+    if (!onboarding.ok) {
+      return onboarding.response
     }
+    
+    const { user } = onboarding
     
     const body = sanitizeMenuPayload(await request.json() as CreateMenuFormData)
     

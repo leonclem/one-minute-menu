@@ -64,6 +64,20 @@ export async function GET(req: NextRequest) {
             profile = await userOperations.getProfile(user.id, supabase)
           }
 
+          // Record that the user actually completed the magic-link callback.
+          // This is our app-owned "verified inbox" signal for Admin Hub gating.
+          // We use the service-role client to avoid any RLS edge cases.
+          try {
+            const adminSupabase = createAdminSupabaseClient()
+            await adminSupabase
+              .from('profiles')
+              .update({ last_login_at: new Date().toISOString() })
+              .eq('id', user.id)
+          } catch (e) {
+            // Don't block auth redirect if logging fails.
+            console.warn('[auth-callback] Failed to stamp last_login_at:', e)
+          }
+
           // Trigger admin alert if user is pending approval and hasn't notified admin yet
           // Only notify for non-admin users who aren't yet approved
           if (profile && !profile.isApproved && !profile.adminNotified && profile.role !== 'admin') {
