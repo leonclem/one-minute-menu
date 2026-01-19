@@ -1,37 +1,21 @@
 # Roadmap
 
-## Image Generation
-- [ ] Update from Gemini 2.5 Flash Image Preview to Gemini 2.5 Flash Image
-
-## /upload
-- [x] Add multiple pages with recommendation for number of items per photo
-- [x] Capability to "append" new items
-- [x] Fail gracefully
-- [x] Handle multiple images at once
-- [ ] Use PDF
-
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
->>>>>>>>> GO TO PILOT >>>>>>>>>>>>>>
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
 ## Aspire Completion
 - [x] Add company name Gorrrf Private Ltd, UEN number, and office address as per ACRA
-- [ ] Finalise Aspire bank account setup
-- [ ] Implement Stripe payment system
+- [x] Finalise Aspire bank account setup
+- [x] Add funds
+- [ ] Obtain payment mechanism
+
+## Implement Stripe payment system
+- [ ] Register account
+- [ ] Set up test transactions
+- [ ] Integrate with payment page
+- [ ] Test in Production
 
 ## Deployment
+- [x] Upgrade Vercel package
 - [ ] Determine UAT requirements
 - [ ] Determine if database backup strategy exists (Supabase / Vercel)
-- [ ] Upgrade Vercel package
-
-## /extracted
-- [ ] Need capability to delete a section
-- [ ] Menu Control Panel > Download Menu pages (PNG zip)
-- [ ] Menu Control Panel > Download Menu Images (PNG zip)
-
-## Exports
-- [ ] Investigate examples of low-res images in PDFs with consideration to file size
-- [ ] Verify "print ready"
 
 ## Railway
 - [ ] Implement Railway architecture to offload PDF export from Vercel (this might require sending user back to dashboard after design template selection, then download when available)
@@ -39,6 +23,25 @@
 - [ ] Check Railway billing status
 - [ ] Priority rendering queue for subscribers
 - [ ] Review use for OCR jobs (particularly larger menu images)
+
+## Allergens / Spice level / etc
+- [x] Determine list (V2 supports dietary indicators: vegetarian, vegan, halal, kosher, gluten-free)
+- [x] Consider design impact (V2 renders indicators within item tiles using INLINE mode)
+- [x] Implement (V2 has full ItemIndicatorsV2 support with configurable rendering modes)
+- [ ] Extend indicator taxonomy for additional dietary restrictions
+- [ ] Add custom allergen management via /extracted page
+
+## "What's New?" page
+- [ ] "What's New?" page
+- [ ] Add popup banner to /dashboard 
+
+## /extracted
+- [ ] Menu Control Panel > Download Menu pages (PNG zip)
+- [ ] Menu Control Panel > Download Menu Images (PNG zip)
+
+## Exports
+- [ ] Investigate examples of low-res images in PDFs with consideration to file size
+- [ ] Verify "print ready"
 
 ## Email templates
 - [ ] Determine and document all emails sent
@@ -55,13 +58,6 @@
 
 ### Payment QR
 - [ ] Add capability to add a payment QR code via the /extracted page (and reflect on pricing page)
-
-### Allergens / Spice level / etc
-- [x] Determine list (V2 supports dietary indicators: vegetarian, vegan, halal, kosher, gluten-free)
-- [x] Consider design impact (V2 renders indicators within item tiles using INLINE mode)
-- [x] Implement (V2 has full ItemIndicatorsV2 support with configurable rendering modes)
-- [ ] Extend indicator taxonomy for additional dietary restrictions
-- [ ] Add custom allergen management via /extracted page
 
 ## Demo
 - [x] More clarity on demo input menu as it stands before implementing changes
@@ -116,11 +112,21 @@
 - [ ] Add option to include opening hours in footer
 - [ ] Need a sense of Draft -> Published to allow edits in the case of live menus
 - [ ] If the first time a user lands on /extracted, and they have used an image to create items - display a modal that asks them to review all the details.
+- [ ] Use existing PDF menu as input (upload)
+- [ ] Mauricio feedback - menu item suggestion - including ingredients and recipes
+- [ ] Mauricio feedback - inventory management
+- [ ] Mauricio feedback - billing period (quarterly, bi-annually, annually)
 
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> DONE >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+## /upload
+- [x] Add multiple pages with recommendation for number of items per photo
+- [x] Capability to "append" new items
+- [x] Fail gracefully
+- [x] Handle multiple images at once
 
 ## Menu editing (/extracted)
 - [x] Remove "Bulk tools will use your current selection." from menu items
@@ -179,6 +185,7 @@
 - [x] Set up account (add domain gridmenu.ai)
 - [x] Get the SMTP credentials provided
 - [x] Toggle "Enable Custom SMTP" to ON in Supabase prod and paste SMTP credentials in
+- [x] Set up Admin auth emails via SendGrid and Vercel Env vars
 
 ## Review Pricing
 - [x] Determine pricing tiers
