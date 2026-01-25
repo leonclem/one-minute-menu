@@ -11,6 +11,21 @@
  * Requirements: 3.5, 8.5
  */
 
+// Enable rate limiting enforcement for these tests
+const originalEnforceRateLimiting = process.env.ENFORCE_RATE_LIMITING_IN_TESTS
+
+beforeAll(() => {
+  process.env.ENFORCE_RATE_LIMITING_IN_TESTS = 'true'
+})
+
+afterAll(() => {
+  if (originalEnforceRateLimiting === undefined) {
+    delete process.env.ENFORCE_RATE_LIMITING_IN_TESTS
+  } else {
+    process.env.ENFORCE_RATE_LIMITING_IN_TESTS = originalEnforceRateLimiting
+  }
+})
+
 import { generateGridLayout, calculateLayoutStatistics, clearCache } from '../grid-generator'
 import { selectLayoutPreset } from '../layout-selector'
 import { analyzeMenuCharacteristics } from '../data-transformer'

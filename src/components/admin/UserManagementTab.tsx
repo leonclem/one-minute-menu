@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { UXButton } from '@/components/ux'
+import { getPlanFriendlyName } from '@/lib/utils'
 
 interface ManagedUser {
   id: string
@@ -153,7 +154,7 @@ export function UserManagementTab() {
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
                     }`}>
-                      {user.role === 'admin' ? 'Admin' : user.plan}
+                      {user.role === 'admin' ? 'Admin' : getPlanFriendlyName(user.plan)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

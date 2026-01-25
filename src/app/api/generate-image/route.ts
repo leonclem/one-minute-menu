@@ -238,8 +238,8 @@ export async function POST(request: NextRequest) {
           code: 'QUOTA_EXCEEDED',
           quota: quotaStatus,
           upgrade: quotaStatus.needsUpgrade ? {
-            cta: 'Upgrade to Premium',
-            href: '/upgrade',
+            cta: 'View Pricing',
+            href: '/pricing',
             reason: `Increase monthly AI image generations from ${quotaStatus.limit} to ${quotaStatus.plan === 'free' ? '100' : '1000'}`
           } : undefined
         },

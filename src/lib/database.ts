@@ -27,8 +27,10 @@ export const resolvePlanLimits = (dbLimits: any, plan: UserPlan): PlanLimits => 
     // If override is unlimited (-1), it wins
     if (dbValue === -1) return -1
     
-    // Otherwise take the maximum of both to ensure upgrades work even with stale overrides
-    return Math.max(dbValue, planDefault)
+    // Use the value from the database if it exists, otherwise use the plan default.
+    // We don't use Math.max here because we want the database to be the source of truth
+    // for overrides, but we want the plan to be the source of truth for defaults.
+    return dbValue
   }
 
   return {
@@ -199,12 +201,16 @@ export const userOperations = {
       // Fetch active (non-expired) creator packs
       const { data: packs } = await supabase
         .from('user_packs')
-        .select('id')
+        .select('id, is_free_trial, metadata')
         .eq('user_id', userId)
         .eq('pack_type', 'creator_pack')
         .gt('expires_at', new Date().toISOString())
       
-      const activePacksCount = packs?.length || 0
+      const activePacks = packs || []
+      const countablePacks = resource === 'menus'
+        ? activePacks.filter(pack => !pack.is_free_trial || !!pack.metadata?.transaction_id)
+        : activePacks
+      const activePacksCount = countablePacks.length
       
       // Effective limit is the sum of subscription allowance and active packs
       // If subscription is unlimited (-1), stay unlimited

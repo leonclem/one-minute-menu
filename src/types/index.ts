@@ -31,7 +31,7 @@ export interface PlanLimits {
 // Plan configurations
 export const PLAN_CONFIGS: Record<User['plan'], PlanLimits> = {
   free: {
-    menus: 0, // Free trial doesn't get a menu until Pack is used
+    menus: 1, // First menu is free
     menuItems: 20,
     monthlyUploads: 5,
     aiImageGenerations: 100,
@@ -695,3 +695,51 @@ export type DeepPartial<T> = {
 export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>
 
 export type OptionalFields<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
+
+
+// ============================================================================
+// Stripe Payment Integration Types
+// ============================================================================
+
+/**
+ * Request body for creating a Stripe Checkout Session
+ */
+export interface CheckoutRequest {
+  productType: 'grid_plus' | 'grid_plus_premium' | 'creator_pack'
+  successUrl?: string
+  cancelUrl?: string
+}
+
+/**
+ * Response from checkout session creation
+ */
+export interface CheckoutResponse {
+  sessionId?: string
+  url?: string
+  grantedFree?: boolean  // True if free pack was granted directly
+}
+
+/**
+ * Error response from checkout
+ */
+export interface CheckoutError {
+  error: string
+  code: string
+  timestamp?: string
+  retryAfter?: number
+  details?: Record<string, any>
+}
+
+/**
+ * Request body for creating a Customer Portal session
+ */
+export interface CustomerPortalRequest {
+  returnUrl?: string
+}
+
+/**
+ * Response from Customer Portal session creation
+ */
+export interface CustomerPortalResponse {
+  url: string
+}

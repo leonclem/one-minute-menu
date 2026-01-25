@@ -68,6 +68,8 @@ export async function PATCH(request: NextRequest) {
     
     // Ensure layouts and pages see the updated profile immediately
     revalidatePath('/', 'layout')
+    revalidatePath('/dashboard', 'layout')
+    revalidatePath('/menus', 'layout')
     
     return NextResponse.json({
       success: true,

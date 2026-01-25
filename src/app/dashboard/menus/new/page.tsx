@@ -148,6 +148,8 @@ export default function NewMenuPage() {
     }
   }
 
+  const isPlanLimitReached = errors.general === 'Plan limit reached' || errors.general?.includes('plan limit')
+
   return (
     <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
       {/* Background image + soft overlay behind content */}
@@ -170,210 +172,226 @@ export default function NewMenuPage() {
             Create New Menu
           </h1>
           <p className="mt-2 text-white/90 text-hero-shadow-strong">
-            Set up your menu details to get started
+            {isPlanLimitReached 
+              ? 'You have reached the menu limit for your current plan'
+              : 'Set up your menu details to get started'}
           </p>
         </div>
 
         <div className="w-full max-w-2xl mx-auto">
           <UXCard className="w-full">
             <div className="p-6 w-full">
-              <h3 className="text-lg font-semibold text-ux-text mb-4">Menu Details</h3>
+              <h3 className="text-lg font-semibold text-ux-text mb-4">
+                {isPlanLimitReached ? 'Upgrade Required' : 'Menu Details'}
+              </h3>
 
-              <form onSubmit={handleSubmit} className="space-y-6 w-full">
-                {/* General Error */}
-                {errors.general && (
+              {isPlanLimitReached ? (
+                <div className="space-y-6">
                   <UpgradePrompt
                     title="Plan limit reached"
-                    message={errors.general}
-                    cta="Upgrade to Premium"
-                    href="/upgrade"
-                    reason="Free plan allows 1 menu. Premium allows up to 10."
+                    message="You have reached your plan limit for menus. Please upgrade to create more."
+                    cta="View Pricing"
+                    href="/pricing"
                   />
-                )}
-
-                {/* Menu Name */}
-                <UXInput
-                  label="Menu Name"
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  placeholder="e.g., Main Menu, Lunch Specials, Drinks"
-                  error={errors.name}
-                  helperText="This will be displayed at the top of your menu"
-                  required
-                  autoFocus
-                />
-
-                {/* Description (Optional) */}
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-ux-text">
-                    Description (Optional)
-                    <InfoTip>
-                      This helps our AI understand the theme of your menu to generate more relevant and appetizing images for your dishes later.
-                    </InfoTip>
-                  </label>
-                  <textarea
-                    value={formData.description || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Brief description of your menu..."
-                    rows={3}
-                    className="input-ux resize-none"
-                  />
-                </div>
-
-                {/* Establishment Details */}
-                <div className="pt-4 border-t border-ux-border">
-                  <h4 className="text-md font-semibold text-ux-text mb-4">
-                    Establishment & Cuisine (Optional)
-                    <InfoTip>
-                      This helps our AI tailor the presentation and style of generated images to match your brand (e.g., fine dining vs. casual cafe).
-                    </InfoTip>
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-ux-text">Establishment Type</label>
-                      <select
-                        className="input-ux w-full"
-                        value={formData.establishmentType}
-                        onChange={(e) => setFormData({ ...formData, establishmentType: e.target.value })}
-                      >
-                        <option value="">Select a type...</option>
-                        {ESTABLISHMENT_TYPES.map((type) => (
-                          <option key={type.id} value={type.id}>
-                            {type.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-ux-text">Primary Cuisine</label>
-                      <select
-                        className="input-ux w-full"
-                        value={formData.primaryCuisine}
-                        onChange={(e) => setFormData({ ...formData, primaryCuisine: e.target.value })}
-                      >
-                        <option value="">Select a cuisine...</option>
-                        {CUISINES.map((cuisine) => (
-                          <option key={cuisine.id} value={cuisine.id}>
-                            {cuisine.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  <div className="flex justify-center pt-4">
+                    <Link href="/dashboard">
+                      <UXButton variant="secondary">Back to Dashboard</UXButton>
+                    </Link>
                   </div>
                 </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-6 w-full">
+                  {/* General Error */}
+                  {errors.general && (
+                    <div className="p-4 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
+                      {errors.general}
+                    </div>
+                  )}
 
-                {/* Venue & Contact Info */}
-                <div className="pt-4 border-t border-ux-border">
-                  <h4 className="text-md font-semibold text-ux-text mb-4">
-                    Venue & Contact (Optional)
-                    <InfoTip>
-                      These details will be automatically formatted and displayed in the footer of your digital menu, making it easy for guests to find or contact you.
-                    </InfoTip>
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-ux-text">Address</label>
-                      <textarea
-                        value={formData.venueInfo?.address || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          venueInfo: { ...formData.venueInfo, address: e.target.value }
-                        })}
-                        placeholder="123 Restaurant St, Food City"
-                        rows={2}
-                        className="input-ux resize-none"
-                      />
-                    </div>
+                  {/* Menu Name */}
+                  <UXInput
+                    label="Menu Name"
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    placeholder="e.g., Main Menu, Lunch Specials, Drinks"
+                    error={errors.name}
+                    helperText="This will be displayed at the top of your menu"
+                    required
+                    autoFocus
+                  />
+
+                  {/* Description (Optional) */}
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-ux-text">
+                      Description (Optional)
+                      <InfoTip>
+                        This helps our AI understand the theme of your menu to generate more relevant and appetizing images for your dishes later.
+                      </InfoTip>
+                    </label>
+                    <textarea
+                      value={formData.description || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Brief description of your menu..."
+                      rows={3}
+                      className="input-ux resize-none"
+                    />
+                  </div>
+
+                  {/* Establishment Details */}
+                  <div className="pt-4 border-t border-ux-border">
+                    <h4 className="text-md font-semibold text-ux-text mb-4">
+                      Establishment & Cuisine (Optional)
+                      <InfoTip>
+                        This helps our AI tailor the presentation and style of generated images to match your brand (e.g., fine dining vs. casual cafe).
+                      </InfoTip>
+                    </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <UXInput
-                        label="Email Address"
-                        type="email"
-                        value={formData.venueInfo?.email || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          venueInfo: { ...formData.venueInfo, email: e.target.value }
-                        })}
-                        placeholder="hello@restaurant.com"
-                      />
-                      <UXInput
-                        label="Telephone"
-                        value={formData.venueInfo?.phone || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          venueInfo: { ...formData.venueInfo, phone: e.target.value }
-                        })}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <UXInput
-                        label="Instagram (@handle)"
-                        value={formData.venueInfo?.socialMedia?.instagram || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          venueInfo: {
-                            ...formData.venueInfo,
-                            socialMedia: { ...formData.venueInfo?.socialMedia, instagram: e.target.value }
-                          }
-                        })}
-                        placeholder="@restaurant"
-                      />
-                      <UXInput
-                        label="Facebook (URL or @handle)"
-                        value={formData.venueInfo?.socialMedia?.facebook || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          venueInfo: {
-                            ...formData.venueInfo,
-                            socialMedia: { ...formData.venueInfo?.socialMedia, facebook: e.target.value }
-                          }
-                        })}
-                        placeholder="facebook.com/restaurant"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <UXInput
-                        label="X (Twitter) (@handle)"
-                        value={formData.venueInfo?.socialMedia?.x || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          venueInfo: {
-                            ...formData.venueInfo,
-                            socialMedia: { ...formData.venueInfo?.socialMedia, x: e.target.value }
-                          }
-                        })}
-                        placeholder="@restaurant"
-                      />
-                      <UXInput
-                        label="Website URL"
-                        value={formData.venueInfo?.socialMedia?.website || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          venueInfo: {
-                            ...formData.venueInfo,
-                            socialMedia: { ...formData.venueInfo?.socialMedia, website: e.target.value }
-                          }
-                        })}
-                        placeholder="www.restaurant.com"
-                      />
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-ux-text">Establishment Type</label>
+                        <select
+                          className="input-ux w-full"
+                          value={formData.establishmentType}
+                          onChange={(e) => setFormData({ ...formData, establishmentType: e.target.value })}
+                        >
+                          <option value="">Select a type...</option>
+                          {ESTABLISHMENT_TYPES.map((type) => (
+                            <option key={type.id} value={type.id}>
+                              {type.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-ux-text">Primary Cuisine</label>
+                        <select
+                          className="input-ux w-full"
+                          value={formData.primaryCuisine}
+                          onChange={(e) => setFormData({ ...formData, primaryCuisine: e.target.value })}
+                        >
+                          <option value="">Select a cuisine...</option>
+                          {CUISINES.map((cuisine) => (
+                            <option key={cuisine.id} value={cuisine.id}>
+                              {cuisine.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Actions */}
-                <div className="flex justify-center">
-                  <UXButton
-                    type="submit"
-                    variant="primary"
-                    size="md"
-                    loading={loading}
-                    className="w-full sm:w-auto"
-                  >
-                    {loading ? 'Creating Menu...' : 'Create Menu'}
-                  </UXButton>
-                </div>
-              </form>
+                  {/* Venue & Contact Info */}
+                  <div className="pt-4 border-t border-ux-border">
+                    <h4 className="text-md font-semibold text-ux-text mb-4">
+                      Venue & Contact (Optional)
+                      <InfoTip>
+                        These details will be automatically formatted and displayed in the footer of your digital menu, making it easy for guests to find or contact you.
+                      </InfoTip>
+                    </h4>
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-ux-text">Address</label>
+                        <textarea
+                          value={formData.venueInfo?.address || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            venueInfo: { ...formData.venueInfo, address: e.target.value }
+                          })}
+                          placeholder="123 Restaurant St, Food City"
+                          rows={2}
+                          className="input-ux resize-none"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <UXInput
+                          label="Email Address"
+                          type="email"
+                          value={formData.venueInfo?.email || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            venueInfo: { ...formData.venueInfo, email: e.target.value }
+                          })}
+                          placeholder="hello@restaurant.com"
+                        />
+                        <UXInput
+                          label="Telephone"
+                          value={formData.venueInfo?.phone || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            venueInfo: { ...formData.venueInfo, phone: e.target.value }
+                          })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <UXInput
+                          label="Instagram (@handle)"
+                          value={formData.venueInfo?.socialMedia?.instagram || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            venueInfo: {
+                              ...formData.venueInfo,
+                              socialMedia: { ...formData.venueInfo?.socialMedia, instagram: e.target.value }
+                            }
+                          })}
+                          placeholder="@restaurant"
+                        />
+                        <UXInput
+                          label="Facebook (URL or @handle)"
+                          value={formData.venueInfo?.socialMedia?.facebook || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            venueInfo: {
+                              ...formData.venueInfo,
+                              socialMedia: { ...formData.venueInfo?.socialMedia, facebook: e.target.value }
+                            }
+                          })}
+                          placeholder="facebook.com/restaurant"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <UXInput
+                          label="X (Twitter) (@handle)"
+                          value={formData.venueInfo?.socialMedia?.x || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            venueInfo: {
+                              ...formData.venueInfo,
+                              socialMedia: { ...formData.venueInfo?.socialMedia, x: e.target.value }
+                            }
+                          })}
+                          placeholder="@restaurant"
+                        />
+                        <UXInput
+                          label="Website URL"
+                          value={formData.venueInfo?.socialMedia?.website || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            venueInfo: {
+                              ...formData.venueInfo,
+                              socialMedia: { ...formData.venueInfo?.socialMedia, website: e.target.value }
+                            }
+                          })}
+                          placeholder="www.restaurant.com"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-center">
+                    <UXButton
+                      type="submit"
+                      variant="primary"
+                      size="md"
+                      loading={loading}
+                      className="w-full sm:w-auto"
+                    >
+                      {loading ? 'Creating Menu...' : 'Create Menu'}
+                    </UXButton>
+                  </div>
+                </form>
+              )}
             </div>
           </UXCard>
 

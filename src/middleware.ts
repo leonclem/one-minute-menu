@@ -106,6 +106,12 @@ export function middleware(req: NextRequest) {
 
   // CSRF protection for state-changing API requests
   if (pathname.startsWith('/api/') && isStateChanging(req.method)) {
+    // Allow webhook endpoints to receive unsigned cross-origin POSTs
+    if (pathname.startsWith('/api/webhooks/stripe')) {
+      const res = NextResponse.next()
+      res.headers.set('x-pathname', pathname)
+      return applySecurityHeaders(res)
+    }
     // Exception: Allow PDF export endpoint self-calls for image fetching
     // This avoids 403/401 when the server calls itself to fetch images
     const isSelfCall = req.headers.get('user-agent')?.includes('node') || false

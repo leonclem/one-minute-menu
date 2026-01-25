@@ -47,9 +47,9 @@ export async function POST(
           error: `You have reached your monthly upload limit (${current}/${limit}).`,
           code: 'PLAN_LIMIT_EXCEEDED',
           upgrade: {
-            cta: 'Upgrade to Premium',
-            href: '/upgrade',
-            reason: 'Increase uploads/month from 10 to 100',
+            cta: 'View Pricing',
+            href: '/pricing',
+            reason: 'Increase uploads/month',
           }
         },
         { status: 403 }

@@ -261,3 +261,20 @@ export async function computeSha256FromUrl(url: string): Promise<string> {
   const crypto = await import('crypto')
   return crypto.createHash('sha256').update(Buffer.from(arrayBuffer)).digest('hex')
 }
+
+/**
+ * Get friendly plan name from plan ID
+ */
+export function getPlanFriendlyName(plan: string | undefined): string {
+  if (!plan) return 'Free'
+  const planNames: Record<string, string> = {
+    'free': 'Free',
+    'creator_pack': 'Creator Pack',
+    'grid_plus': 'Grid+',
+    'grid_plus_premium': 'Grid+ Premium',
+    'premium': 'Premium',
+    'enterprise': 'Enterprise'
+  }
+  const normalizedPlan = plan.toLowerCase()
+  return planNames[normalizedPlan] || plan.charAt(0).toUpperCase() + plan.slice(1).replace(/_/g, ' ')
+}

@@ -17,6 +17,8 @@ import { LayoutEngineError, ERROR_CODES } from './error-logger'
 // ============================================================================
 
 interface RateLimitConfig {
+  /** Prefix for the rate limit key to avoid collisions between limiters */
+  prefix?: string
   /** Maximum requests per window */
   maxRequests: number
   /** Time window in milliseconds */
@@ -44,11 +46,18 @@ class RateLimitStore {
   private store: Map<string, RateLimitEntry> = new Map()
   private cleanupInterval: NodeJS.Timeout | null = null
 
-  constructor() {
+  constructor(enableAutoCleanup = true) {
     // Clean up expired entries every minute
-    this.cleanupInterval = setInterval(() => {
-      this.cleanup()
-    }, 60000)
+    // Skip in test environment to prevent Jest from hanging
+    if (enableAutoCleanup && process.env.NODE_ENV !== 'test') {
+      this.cleanupInterval = setInterval(() => {
+        this.cleanup()
+      }, 60000)
+      // Unref the interval so it doesn't keep the process alive
+      if (this.cleanupInterval && typeof this.cleanupInterval.unref === 'function') {
+        this.cleanupInterval.unref()
+      }
+    }
   }
 
   get(key: string): RateLimitEntry | undefined {
@@ -61,6 +70,10 @@ class RateLimitStore {
 
   delete(key: string): void {
     this.store.delete(key)
+  }
+
+  clear(): void {
+    this.store.clear()
   }
 
   cleanup(): void {
@@ -116,6 +129,15 @@ export class RateLimiter {
     resetTime: number
     retryAfter?: number
   } {
+    // Bypass in test environment unless explicitly enforced
+    if (process.env.NODE_ENV === 'test' && process.env.ENFORCE_RATE_LIMITING_IN_TESTS !== 'true') {
+      return {
+        allowed: true,
+        remaining: 999,
+        resetTime: Date.now() + this.config.windowMs,
+      }
+    }
+
     const now = Date.now()
     const key = this.getKey(identifier)
     const entry = this.store.get(key)
@@ -203,7 +225,8 @@ export class RateLimiter {
    * Get rate limit key
    */
   private getKey(identifier: string): string {
-    return `ratelimit:${identifier}`
+    const prefix = this.config.prefix ? `${this.config.prefix}:` : ''
+    return `ratelimit:${prefix}${identifier}`
   }
 }
 
@@ -324,3 +347,10 @@ if (typeof process !== 'undefined') {
   })
 }
 
+/**
+ * Cleanup function to destroy the global store
+ * Useful for tests to prevent Jest from hanging
+ */
+export function cleanupGlobalStore(): void {
+  globalStore.destroy()
+}

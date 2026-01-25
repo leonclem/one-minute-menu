@@ -13,6 +13,21 @@ import {
 } from '../rate-limiter'
 import { LayoutEngineError, ERROR_CODES } from '../error-logger'
 
+// Enable rate limiting enforcement for these tests
+const originalEnforceRateLimiting = process.env.ENFORCE_RATE_LIMITING_IN_TESTS
+
+beforeAll(() => {
+  process.env.ENFORCE_RATE_LIMITING_IN_TESTS = 'true'
+})
+
+afterAll(() => {
+  if (originalEnforceRateLimiting === undefined) {
+    delete process.env.ENFORCE_RATE_LIMITING_IN_TESTS
+  } else {
+    process.env.ENFORCE_RATE_LIMITING_IN_TESTS = originalEnforceRateLimiting
+  }
+})
+
 describe('RateLimiter', () => {
   describe('Basic Rate Limiting', () => {
     it('should allow requests within limit', () => {

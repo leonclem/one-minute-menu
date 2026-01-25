@@ -39,7 +39,7 @@ export default async function OnboardingPage({
           }}
         />
         <UXHeader userEmail={user.email ?? undefined} isAdmin={false} />
-        <main className="container-ux py-10 md:py-12">
+        <main className="container-ux py-10 md:py-12 flex-1">
           <PendingApproval email={user.email} />
         </main>
         <UXFooter />

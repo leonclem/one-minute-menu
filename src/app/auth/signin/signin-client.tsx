@@ -26,7 +26,7 @@ export default function SignInClient() {
 
       <UXHeader />
 
-      <main className="container-ux py-10 md:py-12 grid place-items-center">
+      <main className="container-ux py-10 md:py-12 grid place-items-center flex-1">
         <div className="w-full max-w-md space-y-8">
           {/* Hero heading */}
           <div className="text-center">

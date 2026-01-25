@@ -93,9 +93,8 @@ export async function POST(request: NextRequest) {
             error: 'You have reached your plan limit for menus. Please upgrade to create more.',
             code: 'PLAN_LIMIT_EXCEEDED',
             upgrade: {
-              cta: 'Upgrade to Premium',
-              href: '/upgrade',
-              reason: 'Increase menu limit from 1 to 10 menus',
+              cta: 'View Pricing',
+              href: '/pricing',
             }
           },
           { status: 403 }

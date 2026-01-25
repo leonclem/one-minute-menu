@@ -48,7 +48,11 @@ async function setupDatabase() {
         // Apply critical follow-up migrations that the app depends on.
         // (This script does not run the full Supabase migration chain.)
         const followUpMigrations = [
+            '027_pricing_overhaul.sql',
+            '028_align_generation_quotas.sql',
             '033_track_profile_last_login.sql',
+            '034_stripe_integration.sql',
+            '035_add_webhook_latency_tracking.sql',
         ]
 
         for (const file of followUpMigrations) {
@@ -128,7 +132,11 @@ async function setupDatabaseDirect() {
         // Apply critical follow-up migrations that the app depends on.
         // (This script does not run the full Supabase migration chain.)
         const followUpMigrations = [
+            '027_pricing_overhaul.sql',
+            '028_align_generation_quotas.sql',
             '033_track_profile_last_login.sql',
+            '034_stripe_integration.sql',
+            '035_add_webhook_latency_tracking.sql',
         ]
 
         for (const file of followUpMigrations) {
