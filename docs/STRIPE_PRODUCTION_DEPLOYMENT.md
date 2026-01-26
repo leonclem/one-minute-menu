@@ -6,10 +6,10 @@ This checklist guides you through deploying the Stripe payment integration to pr
 
 Before deploying to production, ensure:
 
-- [ ] All unit tests pass (`npm test`)
+- [x] All unit tests pass (`npm test`)
 - [ ] All property tests pass with 100 iterations
-- [ ] Local testing with Stripe CLI completed successfully
-- [ ] Code review completed and approved
+- [x] Local testing with Stripe CLI completed successfully
+- [x] Code review completed and approved
 
 ---
 
@@ -66,8 +66,8 @@ STRIPE_PRICE_ID_GRID_PLUS_PREMIUM=price_...
 STRIPE_PRICE_ID_CREATOR_PACK=price_...
 
 # SendGrid (Email Notifications)
-SENDGRID_API_KEY=SG....
-SENDGRID_FROM_EMAIL=noreply@gridmenu.app
+SENDGRID_API_KEY=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
+SENDGRID_FROM_EMAIL=noreply@gridmenu.ai
 SENDGRID_FROM_NAME=GridMenu
 
 # Existing Supabase Config (should already be set)
