@@ -1,21 +1,13 @@
 # Roadmap
 
-## Aspire Completion
-- [x] Add company name Gorrrf Private Ltd, UEN number, and office address as per ACRA
-- [x] Finalise Aspire bank account setup
-- [x] Add funds
-- [ ] Obtain payment mechanism
-
 ## Implement Stripe payment system
-- [ ] Register account
-- [ ] Set up test transactions
-- [ ] Integrate with payment page
+- [x] Register account
+- [x] Set up test transactions
+- [x] Integrate with payment page
+- [x] Test all scenarios as per STRIPE_CLI_LOCAL_TESTING.md
+- [x] Ensure Creator Packs can't be purchased while on Grid+Premium
+- [x] Remove /upgrade page (and all paths to it)
 - [ ] Test in Production
-
-## Deployment
-- [x] Upgrade Vercel package
-- [ ] Determine UAT requirements
-- [ ] Determine if database backup strategy exists (Supabase / Vercel)
 
 ## Railway
 - [ ] Implement Railway architecture to offload PDF export from Vercel (this might require sending user back to dashboard after design template selection, then download when available)
@@ -23,6 +15,11 @@
 - [ ] Check Railway billing status
 - [ ] Priority rendering queue for subscribers
 - [ ] Review use for OCR jobs (particularly larger menu images)
+
+## Deployment
+- [x] Upgrade Vercel package
+- [ ] Determine UAT requirements
+- [ ] Determine if database backup strategy exists (Supabase / Vercel)
 
 ## Allergens / Spice level / etc
 - [x] Determine list (V2 supports dietary indicators: vegetarian, vegan, halal, kosher, gluten-free)
@@ -116,6 +113,12 @@
 - [ ] Mauricio feedback - menu item suggestion - including ingredients and recipes
 - [ ] Mauricio feedback - inventory management
 - [ ] Mauricio feedback - billing period (quarterly, bi-annually, annually)
+- [ ] Dashboard - make Current Plan square more "jazzy" (badge) for Grid+ and Grid+ Premium
+- [ ] Determine and document how to issue refunds
+- [ ] Talk to JBL about SUTE Tax Exemption
+- [ ] If someone subscribes to G+P and they have Creator Packs, refund the CPs
+- [ ] Create CP, Grid+, and G+P logo for upload to Stripe products config
+- [ ] Enable subscription cancellation process
 
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -214,6 +217,12 @@
 ## Deployment
 - [x] Purchase domain
 - [x] Set up gridmenu.ai emails
+
+## Aspire Completion
+- [x] Add company name Gorrrf Private Ltd, UEN number, and office address as per ACRA
+- [x] Finalise Aspire bank account setup
+- [x] Add funds
+- [x] Obtain payment mechanism
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>
