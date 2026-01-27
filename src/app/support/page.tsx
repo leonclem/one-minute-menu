@@ -19,7 +19,7 @@ export default function SupportPage() {
 
       <UXHeader />
 
-      <main className="container-ux py-10 md:py-12 flex-grow">
+      <main className="container-ux py-10 md:py-12 flex-1">
         {/* Hero heading */}
         <div className="text-center mb-2">
           <h1 className="text-3xl md:text-4xl font-bold text-white text-hero-shadow">Support</h1>

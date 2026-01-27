@@ -57,7 +57,13 @@ export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
             {userEmail && (
               <div className="flex items-center space-x-3">
                 <form action="/auth/signout" method="post">
-                  <button type="submit" className="ux-nav-link">Sign out</button>
+                  <button 
+                    type="submit" 
+                    className="ux-nav-link"
+                    title={`Logged in as ${userEmail}`}
+                  >
+                    Sign out
+                  </button>
                 </form>
               </div>
             )}
@@ -99,9 +105,18 @@ export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
                 </Link>
               ))}
               {userEmail && (
-                <div className="flex items-center justify-end pt-2">
+                <div className="flex flex-col items-end pt-2 border-t border-white/10 mt-2">
+                  <span className="text-[10px] text-white/40 font-medium uppercase tracking-wider mb-1 px-3">
+                    {userEmail}
+                  </span>
                   <form action="/auth/signout" method="post">
-                    <button type="submit" className="ux-nav-link">Sign out</button>
+                    <button 
+                      type="submit" 
+                      className="ux-nav-link"
+                      title={`Logged in as ${userEmail}`}
+                    >
+                      Sign out
+                    </button>
                   </form>
                 </div>
               )}

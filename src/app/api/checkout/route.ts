@@ -90,6 +90,17 @@ export async function POST(request: NextRequest) {
       if (profile) {
         existingCustomerId = profile.stripe_customer_id
 
+        // Block redundant purchases for high-tier plans (Requirement 5.2)
+        if (profile.plan === 'grid_plus_premium' || profile.plan === 'enterprise') {
+          const { getPlanFriendlyName } = await import('@/lib/utils')
+          const errorResponse: CheckoutError = {
+            error: `You already have unlimited access with your ${getPlanFriendlyName(profile.plan)} plan. No further purchases are required.`,
+            code: 'REDUNDANT_PURCHASE',
+            timestamp: new Date().toISOString(),
+          }
+          return NextResponse.json(errorResponse, { status: 400 })
+        }
+
         if (profile.subscription_status === 'active' || profile.subscription_status === 'trialing') {
           if (profile.plan === productType) {
             const errorResponse: CheckoutError = {

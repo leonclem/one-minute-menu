@@ -101,7 +101,7 @@ export default function OnboardingClient({
 
       <UXHeader userEmail={userEmail} />
 
-      <main className="container-ux py-10 md:py-12 flex-grow grid place-items-center">
+      <main className="container-ux py-10 md:py-12 flex-1 grid place-items-center">
         <div className="w-full max-w-xl">
           {reason === 'required' && (
             <div className="mb-6 p-4 bg-ux-primary/20 border border-ux-primary/30 rounded-xl text-white text-center text-sm backdrop-blur-md">

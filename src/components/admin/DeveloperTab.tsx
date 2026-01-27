@@ -7,48 +7,9 @@
  * Only visible when NEXT_PUBLIC_LAYOUT_LAB_ENABLED is true.
  */
 
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, ConfirmDialog, useToast } from '@/components/ui'
-import { useState } from 'react'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
 
 export function DeveloperTab() {
-  const [userIdToDelete, setUserIdToDelete] = useState('')
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
-  const { showToast } = useToast()
-
-  const handleDeleteUser = async () => {
-    if (!userIdToDelete) return
-
-    setIsDeleting(true)
-    try {
-      const response = await fetch(`/api/admin/users/${userIdToDelete}`, {
-        method: 'DELETE',
-      })
-
-      const result = await response.json()
-
-      if (response.ok) {
-        showToast({
-          type: 'success',
-          title: 'User Deleted',
-          description: result.message,
-        })
-        setUserIdToDelete('')
-      } else {
-        throw new Error(result.error || 'Failed to delete user')
-      }
-    } catch (error: any) {
-      showToast({
-        type: 'error',
-        title: 'Deletion Failed',
-        description: error.message,
-      })
-    } finally {
-      setIsDeleting(false)
-      setShowConfirm(false)
-    }
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -108,51 +69,7 @@ export function DeveloperTab() {
             </div>
           </CardContent>
         </Card>
-
-        <Card className="border-red-100 bg-red-50/30">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-700">
-              <span className="p-2 bg-red-100 text-red-700 rounded-lg">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </span>
-              Danger Zone
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-red-600 mb-4">
-              <strong>Delete User Altogether:</strong> Permanently removes a user, all their menus, images, and data. This action is irreversible.
-            </p>
-            <div className="space-y-3">
-              <Input
-                placeholder="Enter User UUID"
-                value={userIdToDelete}
-                onChange={(e) => setUserIdToDelete(e.target.value)}
-                className="bg-white"
-              />
-              <Button
-                variant="danger"
-                className="w-full"
-                disabled={!userIdToDelete || isDeleting}
-                onClick={() => setShowConfirm(true)}
-              >
-                {isDeleting ? 'Deleting...' : 'Delete User Permanently'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
-
-      <ConfirmDialog
-        open={showConfirm}
-        onCancel={() => setShowConfirm(false)}
-        onConfirm={handleDeleteUser}
-        title="Permanently Delete User?"
-        description="This will delete the user account and ALL associated data (menus, images, analytics). This action cannot be undone."
-        confirmText="Yes, delete everything"
-        variant="danger"
-      />
     </div>
   )
 }

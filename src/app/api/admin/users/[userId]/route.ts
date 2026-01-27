@@ -2,6 +2,64 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireAdminApi } from '@/lib/admin-api-auth'
 import { logger } from '@/lib/logger'
+import { createAdminSupabaseClient } from '@/lib/supabase-server'
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: { userId: string } }
+) {
+  const { userId } = params
+  
+  // 1. Ensure only Admins can call this
+  const auth = await requireAdminApi()
+  if (!auth.ok) return auth.response
+
+  try {
+    const { plan } = await request.json()
+    
+    if (!plan) {
+      return NextResponse.json({ error: 'Plan is required' }, { status: 400 })
+    }
+
+    const supabaseAdmin = createAdminSupabaseClient()
+
+    logger.info(`Admin ${auth.user.id} updating plan for user ${userId} to ${plan}`)
+
+    const updateData: any = { plan }
+    
+    // If downgrading to free, clear subscription metadata
+    if (plan === 'free') {
+      updateData.subscription_status = null
+      updateData.stripe_subscription_id = null
+      updateData.subscription_period_end = null
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('profiles')
+      .update(updateData)
+      .eq('id', userId)
+      .select()
+      .single()
+
+    if (error) {
+      logger.error(`Failed to update plan for user ${userId}`, error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: `User ${userId} plan updated to ${plan} successfully.`,
+      data
+    })
+
+  } catch (error: any) {
+    logger.error(`Critical error during user plan update for ${userId}`, error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to update user plan' },
+      { status: 500 }
+    )
+  }
+}
 
 export async function DELETE(
   request: Request,

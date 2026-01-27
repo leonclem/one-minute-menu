@@ -3,6 +3,7 @@
 import { UXWrapper, UXCard, UXButton } from '@/components/ux'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { ConfirmDialog } from '@/components/ui'
 
 export default function UXPricingPageContent({ 
   initialUser 
@@ -11,6 +12,8 @@ export default function UXPricingPageContent({
 }) {
   const [loading, setLoading] = useState<string | null>(null)
   const [user, setUser] = useState<any>(initialUser || null)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const [checkoutErrorTitle, setCheckoutErrorTitle] = useState<string>('Checkout Error')
 
   useEffect(() => {
     const getUser = async () => {
@@ -140,11 +143,13 @@ export default function UXPricingPageContent({
         window.location.href = '/dashboard?free_pack=granted'
       } else {
         console.error('Checkout error:', data.error)
-        alert(data.error || 'Failed to initiate checkout')
+        setCheckoutErrorTitle(data.code === 'REDUNDANT_PURCHASE' ? 'Purchase Not Required' : 'Checkout Error')
+        setCheckoutError(data.error || 'Failed to initiate checkout')
       }
     } catch (error) {
       console.error('Checkout request failed:', error)
-      alert('An unexpected error occurred. Please try again.')
+      setCheckoutErrorTitle('Unexpected Error')
+      setCheckoutError('An unexpected error occurred. Please try again.')
     } finally {
       setLoading(null)
     }
@@ -270,6 +275,15 @@ export default function UXPricingPageContent({
           </UXCard>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!checkoutError}
+        title={checkoutErrorTitle}
+        description={checkoutError || ''}
+        confirmText="Got it"
+        onConfirm={() => setCheckoutError(null)}
+        onCancel={() => setCheckoutError(null)}
+      />
     </UXWrapper>
   )
 }

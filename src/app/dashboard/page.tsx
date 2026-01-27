@@ -23,29 +23,61 @@ export default async function DashboardPage() {
   }
 
   // Get user profile, menus, and check if user is admin
-  const [profile, menus, currentUser, creatorPackCount] = await Promise.all([
+  const [profile, menus, currentUser, creatorPackData] = await Promise.all([
     userOperations.getProfile(user.id),
     menuOperations.getUserMenus(user.id),
     getCurrentUser(),
     (async () => {
       const { data: packs, error: packError } = await supabase
         .from('user_packs')
-        .select('id, is_free_trial, metadata')
+        .select('id, is_free_trial, metadata, edit_window_end')
         .eq('user_id', user.id)
         .eq('pack_type', 'creator_pack')
         .gt('expires_at', new Date().toISOString())
 
-      if (packError || !packs) return 0
+      if (packError || !packs) return { count: 0, latestEditWindowEnd: null }
 
       const countablePacks = packs.filter(pack => !pack.is_free_trial || !!pack.metadata?.transaction_id)
-      return countablePacks.length
+      
+      // Find the latest edit window end date
+      let latestEditWindowEnd: Date | null = null
+      packs.forEach(pack => {
+        if (pack.edit_window_end) {
+          const date = new Date(pack.edit_window_end)
+          if (!latestEditWindowEnd || date > latestEditWindowEnd) {
+            latestEditWindowEnd = date
+          }
+        }
+      })
+
+      return { 
+        count: countablePacks.length, 
+        latestEditWindowEnd 
+      }
     })()
   ])
   
+  const creatorPackCount = creatorPackData.count
+  const latestEditWindowEnd = creatorPackData.latestEditWindowEnd
   const isAdmin = currentUser?.role === 'admin'
 
   // Check if user has reached menu limit
   const { allowed: canCreateMenu, limit: menuLimit } = await userOperations.checkPlanLimits(user.id, 'menus', profile || undefined)
+
+  const formatRemainingTime = (expiryDate: Date) => {
+    const now = new Date()
+    const diff = expiryDate.getTime() - now.getTime()
+    
+    if (diff <= 0) return 'Expired'
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    
+    if (days > 0) {
+      return `${days}d ${hours}h remaining`
+    }
+    return `${hours}h remaining`
+  }
 
   const getPlanLimits = (plan: string | undefined, effectiveMenuLimit?: number) => {
     const planKey = (plan || 'free') as keyof typeof PLAN_CONFIGS
@@ -101,7 +133,7 @@ export default async function DashboardPage() {
       <UXHeader userEmail={user.email ?? undefined} isAdmin={isAdmin} />
 
       {/* Main Content */}
-      <main className="container-ux py-10 md:py-12">
+      <main className="container-ux py-10 md:py-12 flex-1">
         <div className="space-y-8">
           {/* Hero heading (no separate Admin chip; Admin moved into header nav) */}
           <div className="text-center mb-2">
@@ -133,6 +165,16 @@ export default async function DashboardPage() {
                   <p className="text-sm text-ux-text-secondary mt-2">
                     {getPlanLimits(profile?.plan, menuLimit)}
                   </p>
+                  {profile?.plan === 'free' && latestEditWindowEnd && (
+                    <div className="mt-4 pt-4 border-t border-ux-border">
+                      <div className="flex items-center gap-2 text-xs font-medium text-ux-text-secondary">
+                        <svg className="h-4 w-4 text-ux-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Editing window: {formatRemainingTime(latestEditWindowEnd)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </UXCard>
 
