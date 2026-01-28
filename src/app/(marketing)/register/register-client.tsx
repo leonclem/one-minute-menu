@@ -7,6 +7,26 @@ import { AuthOTPForm } from '@/components/auth/AuthOTPForm'
 export default function UXRegisterClient() {
   return (
     <div className="w-full max-w-md mx-auto">
+      {/* Waitlist Info Banner */}
+      <div className="mb-6 p-6 bg-white/95 backdrop-blur-sm rounded-xl border-2 shadow-lg" style={{ borderColor: '#01B3BF' }}>
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#01B3BF' }}>
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="font-bold text-gray-900 mb-1">Join the GridMenu Pilot! 🎉</h3>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Sign up now to join our exclusive waitlist. We're carefully onboarding restaurants to ensure the best experience. 
+              <strong className="text-gray-900"> Most applications are approved within 24 hours!</strong>
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Registration Form */}
       <UXCard className="mb-8">
         <div className="p-6">

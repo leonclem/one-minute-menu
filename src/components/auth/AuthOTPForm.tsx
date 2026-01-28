@@ -97,7 +97,11 @@ export function AuthOTPForm({
         if (isLocalDev) {
            setMessage('Development mode: Check the Supabase logs or MailDev at http://localhost:54324 for the magic link!')
         } else {
-           setMessage('Check your email for the magic link to sign in!')
+          if (type === 'signup') {
+            setMessage('🎉 Exciting! Check your email for your magic link to join the GridMenu pilot!')
+          } else {
+            setMessage('Check your email for the magic link to sign in!')
+          }
         }
         
         if (type === 'signup') {
