@@ -1,20 +1,16 @@
 # Roadmap
 
-## Implement Stripe payment system
-- [x] Register account
-- [x] Set up test transactions
-- [x] Integrate with payment page
-- [x] Test all scenarios as per STRIPE_CLI_LOCAL_TESTING.md
-- [x] Ensure Creator Packs can't be purchased while on Grid+Premium
-- [x] Remove /upgrade page (and all paths to it)
-- [ ] Test in Production
-
 ## Railway
 - [ ] Implement Railway architecture to offload PDF export from Vercel (this might require sending user back to dashboard after design template selection, then download when available)
 - [ ] Review if Railway should also be used for other heavy-lifting tasks, e.g. image export
-- [ ] Check Railway billing status
 - [ ] Priority rendering queue for subscribers
 - [ ] Review use for OCR jobs (particularly larger menu images)
+- [ ] Check Railway billing status
+
+## Global Reach
+- [ ] Initially geo-lock to Singapore
+- [ ] Currency Support
+- [ ] Language support
 
 ## Deployment
 - [x] Upgrade Vercel package
@@ -62,11 +58,6 @@
 - [ ] Lloyd feedback: input menu is confusing, looks like output
 - [ ] Lloyd feedback: Give an option to email the PDF menu or send to printers (order x amount)
 - [x] Include sample logo, address, etc.
-
-## Global Reach
-- [ ] Initially geo-lock to Singapore
-- [ ] Currency Support
-- [ ] Language support
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> GO TO MARKET >>>>>>>>>>>>>
@@ -223,6 +214,15 @@
 - [x] Finalise Aspire bank account setup
 - [x] Add funds
 - [x] Obtain payment mechanism
+
+## Implement Stripe payment system
+- [x] Register account
+- [x] Set up test transactions
+- [x] Integrate with payment page
+- [x] Test all scenarios as per STRIPE_CLI_LOCAL_TESTING.md
+- [x] Ensure Creator Packs can't be purchased while on Grid+Premium
+- [x] Remove /upgrade page (and all paths to it)
+- [x] Test in Production
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>
