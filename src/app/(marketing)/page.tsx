@@ -4,15 +4,24 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { UXButton } from '@/components/ux'
 import { getABVariant, trackConversionEvent } from '@/lib/conversion-tracking'
+import { supabase } from '@/lib/supabase'
 
 export default function HomePage() {
   // Start with 'A' to match server-side rendering, then update on client
   const [ctaVariant, setCtaVariant] = useState<string>('A')
+  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
     // Get the actual variant on client-side only (after hydration)
     const variant = getABVariant('ux_home_primary_cta', ['A', 'B'])
     setCtaVariant(variant)
+
+    // Check if user is signed in
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      setUser(session?.user ?? null)
+    }
+    checkUser()
 
     // Track landing page view with the correct variant
     trackConversionEvent({
@@ -40,22 +49,25 @@ export default function HomePage() {
     ctaVariant === 'B' ? '✨ Start with my menu' : '✨ Transform My Menu'
 
   const handlePrimaryClick = () => {
+    const destination = user ? '/dashboard' : '/register'
     trackConversionEvent({
       event: 'cta_click_primary',
       metadata: {
         path: '/',
         ctaVariant,
-        destination: '/register',
+        destination,
       },
     })
-    trackConversionEvent({
-      event: 'registration_start',
-      metadata: {
-        path: '/',
-        ctaVariant,
-        source: 'hero_primary',
-      },
-    })
+    if (!user) {
+      trackConversionEvent({
+        event: 'registration_start',
+        metadata: {
+          path: '/',
+          ctaVariant,
+          source: 'hero_primary',
+        },
+      })
+    }
   }
 
   const handleSecondaryClick = () => {
@@ -95,7 +107,7 @@ export default function HomePage() {
             Transform your menu into a print- and mobile-friendly, flexible digital menu. Instant price changes, 86&apos;ing and much more.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-6 md:mt-8">
-            <Link href="/register" className="w-full sm:w-auto" onClick={handlePrimaryClick}>
+            <Link href={user ? '/dashboard' : '/register'} className="w-full sm:w-auto" onClick={handlePrimaryClick}>
               <UXButton variant="primary" size="lg" className="w-full sm:w-auto min-w-[240px]">
                 {primaryCtaLabel}
               </UXButton>
