@@ -44,7 +44,7 @@ Run the contents of these files in the SQL Editor in order:
 - `040_fix_signup_rls_policies.sql`
 - `041_grant_auth_admin_privileges.sql`
 - `042_fix_generation_quota_schema.sql`
-- `043_create_export_files_bucket.sql`
+- `043_create_export_files_bucket.sql` (This also sets up the storage bucket and RLS policies)
 - `044_add_logo_url_to_menus.sql`
 
 ### 1.2 Verify Database State
@@ -63,35 +63,28 @@ SELECT pg_get_functiondef('claim_export_job(text)'::regprocedure);
 
 ## Step 2: Supabase Storage (Production)
 
-The worker requires the `export-files` bucket to store generated PDFs and images.
+The worker requires the `export-files` bucket to store generated PDFs and images. If you ran migration `043` in Step 1.1, this is already complete.
 
-### 2.1 Create Bucket
+### 2.1 Verify or Create Bucket Manually
+
+If you didn't run the migration or prefer the UI:
 
 1. Go to **Supabase Dashboard** → **Storage**
-2. Create a new **Private** bucket named `export-files`
-3. Set **File size limit** to `10MB`
-4. Set **Allowed MIME types** to `application/pdf`, `image/png`, `image/jpeg`
+2. Check if `export-files` exists. If not, create a new **Private** bucket named `export-files`.
+3. Set **File size limit** to `20MB` (as per migration 043).
+4. Set **Allowed MIME types** to `application/pdf`, `image/png`, `image/jpeg`.
 
-### 2.2 Apply RLS Policies
+### 2.2 Verify RLS Policies
 
-Run migration `043_create_export_files_bucket.sql` or apply manually:
+To check if the policies were created successfully, run this in the SQL Editor:
 
 ```sql
--- Service role access
-CREATE POLICY "Service role can manage export files"
-ON storage.objects FOR ALL
-TO service_role
-USING (bucket_id = 'export-files')
-WITH CHECK (bucket_id = 'export-files');
-
--- User read access
-CREATE POLICY "Users can read own export files"
-ON storage.objects FOR SELECT
-TO authenticated
-USING (
-  bucket_id = 'export-files' 
-  AND (storage.foldername(name))[1] = auth.uid()::text
-);
+-- Check for policies on storage.objects related to export-files
+-- The simplest way to see policy names for storage objects.  Looking for "Users can upload/view/delete own exports" and "Service role can manage export files"
+SELECT policyname 
+FROM pg_policies 
+WHERE tablename = 'objects' 
+AND schemaname = 'storage';
 ```
 
 ---
