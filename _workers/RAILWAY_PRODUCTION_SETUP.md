@@ -107,7 +107,7 @@ In your Railway service, go to the **Variables** tab and add the following:
 | :--- | :--- | :--- |
 | `NODE_ENV` | Environment | `production` |
 | `DATABASE_URL` | Postgres Connection String | Supabase Dashboard → Settings → Database |
-| `SUPABASE_URL` | Project URL | Supabase Dashboard → Settings → API |
+| `SUPABASE_URL` | Project URL | Supabase Dashboard → Settings → API (Project URL) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key (Secret) | Supabase Dashboard → Settings → API |
 | `STORAGE_BUCKET` | Storage bucket name | `export-files` |
 | `SENDGRID_API_KEY` | SendGrid API Key | Your SendGrid Dashboard |
