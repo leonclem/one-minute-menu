@@ -1,11 +1,22 @@
 # Roadmap
 
 ## Railway
-- [ ] Implement Railway architecture to offload PDF export from Vercel (this might require sending user back to dashboard after design template selection, then download when available)
-- [ ] Review if Railway should also be used for other heavy-lifting tasks, e.g. image export
-- [ ] Priority rendering queue for subscribers
-- [ ] Review use for OCR jobs (particularly larger menu images)
-- [ ] Check Railway billing status
+- [x] Implement Railway architecture to offload PDF export from Vercel
+- [ ] Plan for utilising Railway for image export
+- [ ] Monitoring of workers in the Admin dashboard
+
+## Email templates
+- [ ] Determine and document all emails sent
+- [ ] Decide on style and content
+- [ ] Implement changes
+
+### GridMenu V2 Layout Engine Enhancements
+- [ ] Additional template families (two-, three-, four-column)
+- [ ] A4 landscape and A3 page size support
+- [ ] Amit feedback: "Column-style" pages (e.g. "half-A4, tall")
+- [ ] Amit feedback: Only selected "specials" have photos
+- [ ] Flourishes / section dividers (e.g. design-inspiration-7.png)
+- [ ] Multi-cell filler tiles / Mosaic layouts (currently 1x1 only), e.g. design-inspiration-5.jpg
 
 ## Global Reach
 - [ ] Initially geo-lock to Singapore
@@ -36,19 +47,6 @@
 - [ ] Investigate examples of low-res images in PDFs with consideration to file size
 - [ ] Verify "print ready"
 
-## Email templates
-- [ ] Determine and document all emails sent
-- [ ] Decide on style and content
-- [ ] Implement changes
-
-### GridMenu V2 Layout Engine Enhancements
-- [ ] Additional template families (two-, three-, four-column)
-- [ ] A4 landscape and A3 page size support
-- [ ] Amit feedback: "Column-style" pages (e.g. "half-A4, tall")
-- [ ] Amit feedback: Only selected "specials" have photos
-- [ ] Flourishes / section dividers (e.g. design-inspiration-7.png)
-- [ ] Multi-cell filler tiles / Mosaic layouts (currently 1x1 only), e.g. design-inspiration-5.jpg
-
 ### Payment QR
 - [ ] Add capability to add a payment QR code via the /extracted page (and reflect on pricing page)
 
@@ -62,6 +60,9 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> GO TO MARKET >>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+## Security
+- [ ] Address Next.js DoS vulnerabilities (see `SECURITY_NEXTJS_VULNERABILITIES.md`)
 
 ## Tech debt
 - [ ] Review code
@@ -110,7 +111,8 @@
 - [ ] If someone subscribes to G+P and they have Creator Packs, refund the CPs
 - [ ] Create CP, Grid+, and G+P logo for upload to Stripe products config
 - [ ] Enable subscription cancellation process
-
+- [ ] Review and address issues in SECURITY_NEXTJS_VULNERABILITIES.md
+- [ ] Priority Railway queues for subscribers
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> DONE >>>>>>>>>>>>>>>>>
