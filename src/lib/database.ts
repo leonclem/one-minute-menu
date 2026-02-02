@@ -48,6 +48,51 @@ export class DatabaseError extends Error {
   }
 }
 
+/**
+ * Enforce edit permissions for menu mutations based on plan/packs.
+ * Shared by any server-side operation that mutates a menu or its items.
+ */
+export async function assertUserCanEditMenu(opts: {
+  userId: string
+  menuCreatedAt: Date
+  profile?: User | null
+  supabaseClient?: any
+}): Promise<void> {
+  const supabase = opts.supabaseClient || createServerSupabaseClient()
+  const profile = opts.profile ?? (await userOperations.getProfile(opts.userId, supabase))
+  if (!profile) throw new DatabaseError('User profile not found')
+
+  // Monthly subscribers and admins have unlimited edits
+  const isSubscriber = ['grid_plus', 'grid_plus_premium', 'premium', 'enterprise'].includes(profile.plan)
+  const isAdmin = profile.role === 'admin'
+  if (isSubscriber || isAdmin) return
+
+  // Grace period: allow edits for the first week after signup (free users try-before-you-buy)
+  // This is a safety net in case free Creator Pack provisioning is delayed.
+  const signupGracePeriodMs = 7 * 24 * 60 * 60 * 1000
+  const isWithinSignupGrace = (Date.now() - profile.createdAt.getTime()) < signupGracePeriodMs
+  if (isWithinSignupGrace) return
+
+  // Check for active edit window from creator packs
+  const { data: activeWindows, error } = await supabase
+    .from('user_packs')
+    .select('id')
+    .eq('user_id', opts.userId)
+    .eq('pack_type', 'creator_pack')
+    .gt('edit_window_end', new Date().toISOString())
+
+  if (error) {
+    throw new DatabaseError(`Failed to check edit permissions: ${error.message}`, error.code)
+  }
+
+  if (!activeWindows || activeWindows.length === 0) {
+    throw new DatabaseError(
+      'Your edit window has expired. Please purchase a new Creator Pack or subscribe to Grid+ for unlimited edits.',
+      'EDIT_WINDOW_EXPIRED'
+    )
+  }
+}
+
 // User Profile Operations
 export const userOperations = {
   async getProfile(userId: string, supabaseClient?: any): Promise<User | null> {
@@ -510,40 +555,16 @@ export const menuOperations = {
     const supabase = createServerSupabaseClient()
     
     // Check if user is allowed to edit based on their plan/packs
-    const profile = await userOperations.getProfile(userId)
-    if (!profile) throw new DatabaseError('User profile not found')
-
+    const profile = await userOperations.getProfile(userId, supabase)
     // Get current menu to check ownership and creation date (grace period)
     const currentMenu = await this.getMenu(menuId, userId)
     if (!currentMenu) throw new DatabaseError('Menu not found')
-
-    // Monthly subscribers and admins have unlimited edits
-    const isSubscriber = ['grid_plus', 'grid_plus_premium', 'premium', 'enterprise'].includes(profile.plan)
-    const isAdmin = profile.role === 'admin'
-
-    if (!isSubscriber && !isAdmin) {
-      // Grace period: allow edits for the first 24 hours after menu creation
-      // This ensures a smooth onboarding for new users even if pack triggers are delayed
-      const gracePeriodMs = 24 * 60 * 60 * 1000
-      const isWithinGracePeriod = (Date.now() - currentMenu.createdAt.getTime()) < gracePeriodMs
-
-      if (!isWithinGracePeriod) {
-        // Check for active edit window from creator packs
-        const { data: activeWindows } = await supabase
-          .from('user_packs')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('pack_type', 'creator_pack')
-          .gt('edit_window_end', new Date().toISOString())
-        
-        if (!activeWindows || activeWindows.length === 0) {
-          throw new DatabaseError(
-            'Your edit window has expired. Please purchase a new Creator Pack or subscribe to Grid+ for unlimited edits.',
-            'EDIT_WINDOW_EXPIRED'
-          )
-        }
-      }
-    }
+    await assertUserCanEditMenu({
+      userId,
+      menuCreatedAt: currentMenu.createdAt,
+      profile,
+      supabaseClient: supabase,
+    })
 
     const updateData: any = {}
     if (updates.name) updateData.name = updates.name
@@ -587,6 +608,18 @@ export const menuOperations = {
   async deleteMenu(menuId: string, userId: string): Promise<void> {
     const supabase = createServerSupabaseClient()
     
+    // Deleting a menu is an edit action. If the user's edit window has expired,
+    // they should not be able to delete the menu (prevents "delete & recreate" loophole).
+    const profile = await userOperations.getProfile(userId, supabase)
+    const currentMenu = await this.getMenu(menuId, userId)
+    if (!currentMenu) throw new DatabaseError('Menu not found')
+    await assertUserCanEditMenu({
+      userId,
+      menuCreatedAt: currentMenu.createdAt,
+      profile,
+      supabaseClient: supabase,
+    })
+
     const { error } = await supabase
       .from('menus')
       .delete()

@@ -199,6 +199,20 @@ export async function DELETE(
     console.error('Error deleting menu:', error)
     
     if (error instanceof DatabaseError) {
+      if (error.code === 'EDIT_WINDOW_EXPIRED') {
+        return NextResponse.json(
+          {
+            error: error.message,
+            code: error.code,
+            upgrade: {
+              cta: 'View Pricing',
+              href: '/pricing',
+              reason: 'Subscribe to Grid+ or purchase a Creator Pack to unlock editing again.',
+            },
+          },
+          { status: 403 }
+        )
+      }
       return NextResponse.json(
         { error: error.message, code: error.code },
         { status: 400 }

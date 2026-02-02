@@ -845,7 +845,11 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     }
   }
 
-  const handleAIImageGenerated = async (itemId: string, imageUrl: string) => {
+  const applyAIImageToMenuItem = async (
+    itemId: string,
+    imageUrl: string,
+    opts?: { silent?: boolean; closeModal?: boolean }
+  ) => {
     try {
       const response = await fetch(`/api/menus/${menuId}/items/${itemId}`, {
         method: 'PUT',
@@ -854,24 +858,38 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       })
       const json = await response.json()
       if (!response.ok) {
-        throw new Error(json?.error || 'Failed to update item image')
+        const message = (json?.error as string | undefined) || 'Failed to update item image'
+        const code = json?.code as string | undefined
+        const err = new Error(message)
+        ;(err as any).code = code
+        throw err
       }
       setAuthMenu(json.data as Menu)
-      showToast({
-        type: 'success',
-        title: 'Photo added',
-        description: 'AI-generated image has been added to your menu item.',
-      })
+      if (!opts?.silent) {
+        showToast({
+          type: 'success',
+          title: 'Photo added',
+          description: 'AI-generated image has been added to your menu item.',
+        })
+      }
     } catch (error) {
       console.error('Error updating item with AI image from UX page:', error)
-      showToast({
-        type: 'error',
-        title: 'Update failed',
-        description: 'Please try again.',
-      })
+      const code = (error as any)?.code as string | undefined
+      const message = error instanceof Error ? error.message : 'Update failed. Please try again.'
+      if (!opts?.silent) {
+        showToast({
+          type: code === 'EDIT_WINDOW_EXPIRED' ? 'info' : 'error',
+          title: code === 'EDIT_WINDOW_EXPIRED' ? 'Edits locked' : 'Update failed',
+          description: message,
+        })
+      }
     } finally {
-      setActiveImageItemId(null)
+      if (opts?.closeModal !== false) setActiveImageItemId(null)
     }
+  }
+
+  const handleAIImageGenerated = async (itemId: string, imageUrl: string) => {
+    await applyAIImageToMenuItem(itemId, imageUrl, { closeModal: true })
   }
 
   // Helper: compute items grouped by category for menus
@@ -1926,7 +1944,8 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             setSelectedItemKeys(new Set())
             await refreshMenu()
           }}
-          onItemImageGenerated={handleAIImageGenerated}
+          // In batch mode, avoid per-item toasts; the batch modal provides summary feedback.
+          onItemImageGenerated={(itemId, imageUrl) => applyAIImageToMenuItem(itemId, imageUrl, { silent: true, closeModal: false })}
         />
       )}
 

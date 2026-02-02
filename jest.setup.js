@@ -98,7 +98,7 @@ jest.mock('next/router', () => ({
 jest.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
-      getSession: jest.fn(),
+      getSession: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
       signUp: jest.fn(),
       signIn: jest.fn(),
       signOut: jest.fn(),

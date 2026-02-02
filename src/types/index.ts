@@ -32,7 +32,7 @@ export interface PlanLimits {
 export const PLAN_CONFIGS: Record<User['plan'], PlanLimits> = {
   free: {
     menus: 1, // First menu is free
-    menuItems: 20,
+    menuItems: 100,
     monthlyUploads: 5,
     aiImageGenerations: 100,
   },

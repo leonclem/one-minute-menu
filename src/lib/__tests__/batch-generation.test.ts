@@ -95,6 +95,33 @@ describe('runBatchGenerationSequential', () => {
     expect(results[0].status).toBe('failed')
     expect(results[0].error).toBe('boom')
   })
+
+  test('stops the batch immediately when edit window is expired', async () => {
+    const items = makeItems(3)
+    let calls = 0
+    const mockFetch = async (url: string) => {
+      if (url === '/api/generate-image') {
+        calls++
+        return {
+          ok: false,
+          json: async () => ({ error: 'Your edit window has expired', code: 'EDIT_WINDOW_EXPIRED' }),
+        } as any
+      }
+      throw new Error('unexpected url')
+    }
+
+    const results = await runBatchGenerationSequential('menu-1', items, {
+      styleParams: { aspectRatio: '1:1' },
+      fetchImpl: mockFetch as any,
+    })
+
+    // Only the first item should be attempted
+    expect(calls).toBe(1)
+    expect(results).toHaveLength(3)
+    expect(results[0]).toEqual(expect.objectContaining({ itemId: 'item-1', status: 'failed', errorCode: 'EDIT_WINDOW_EXPIRED' }))
+    expect(results[1]).toEqual(expect.objectContaining({ itemId: 'item-2', status: 'failed', errorCode: 'EDIT_WINDOW_EXPIRED' }))
+    expect(results[2]).toEqual(expect.objectContaining({ itemId: 'item-3', status: 'failed', errorCode: 'EDIT_WINDOW_EXPIRED' }))
+  })
 })
 
 

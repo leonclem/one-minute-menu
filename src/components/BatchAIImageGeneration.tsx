@@ -21,6 +21,8 @@ const STYLE_PRESETS = [
   { id: 'casual', name: 'Casual', description: 'Relaxed, everyday dining' },
 ] as const
 
+const MAX_BATCH_ITEMS = 20
+
 export default function BatchAIImageGeneration({ menuId, items, onClose, onItemImageGenerated }: BatchAIImageGenerationProps) {
   const { showToast } = useToast()
   const [selectedStyle, setSelectedStyle] = useState<string>('modern')
@@ -42,17 +44,21 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
   const [progress, setProgress] = useState<Record<string, BatchProgressUpdate['status']>>({})
   const [results, setResults] = useState<BatchGenerationResult[] | null>(null)
 
-  const total = items.length
+  const totalSelected = items.length
+  const itemsToProcess = useMemo(() => items.slice(0, MAX_BATCH_ITEMS), [items])
+  const limitedCount = itemsToProcess.length
+  const isLimited = totalSelected > limitedCount
+
+  const total = limitedCount
   const completedCount = useMemo(() => Object.values(progress).filter(s => s === 'completed' || s === 'failed').length, [progress])
   const failedCount = useMemo(() => Object.values(progress).filter(s => s === 'failed').length, [progress])
 
   useEffect(() => {
     // Initialize progress map
     const initial: Record<string, BatchProgressUpdate['status']> = {}
-    for (const it of items) initial[it.id] = 'queued'
+    for (const it of itemsToProcess) initial[it.id] = 'queued'
     setProgress(initial)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [itemsToProcess])
 
   const startBatch = async () => {
     setRunning(true)
@@ -67,7 +73,15 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
         hasReferenceImage: referenceImages.length > 0,
       }
 
-      const batchResults = await runBatchGenerationSequential(menuId, items, {
+      if (isLimited) {
+        showToast({
+          type: 'info',
+          title: 'Selection limited',
+          description: `You selected ${totalSelected} items. We'll generate photos for the first ${limitedCount}.`,
+        })
+      }
+
+      const batchResults = await runBatchGenerationSequential(menuId, itemsToProcess, {
         styleParams,
         numberOfVariations: 1,
         referenceImages: referenceImages.map(img => ({
@@ -99,8 +113,16 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
       
       // Check if batch stopped due to quota exceeded
       const quotaExceeded = batchResults.some(r => r.errorCode === 'QUOTA_EXCEEDED')
+      const editWindowExpired = batchResults.some(r => r.errorCode === 'EDIT_WINDOW_EXPIRED')
       
-      if (quotaExceeded) {
+      if (editWindowExpired) {
+        const first = batchResults.find(r => r.errorCode === 'EDIT_WINDOW_EXPIRED')
+        showToast({ 
+          type: 'info', 
+          title: 'Edits locked', 
+          description: first?.error || 'Your edit window has expired. Purchase a Creator Pack or subscribe to Grid+ to continue.' 
+        })
+      } else if (quotaExceeded) {
         showToast({ 
           type: 'info', 
           title: 'Monthly limit reached', 
@@ -133,11 +155,21 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Create Photos for {items.length} Selected Items</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              {isLimited
+                ? `Create Photos for ${limitedCount} of ${totalSelected} Selected Items`
+                : `Create Photos for ${limitedCount} Selected Items`}
+            </h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600" disabled={running} aria-label="Close">
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
+
+          {isLimited && (
+            <div className="mb-6 p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-800">
+              You selected <strong>{totalSelected}</strong> items. To keep things fast and predictable, we’ll generate photos for the first <strong>{limitedCount}</strong>.
+            </div>
+          )}
 
           {/* Style Selection */}
           <div className="mb-6">
@@ -329,7 +361,7 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
           <div className="mb-6">
             <h4 className="text-sm font-medium text-gray-900 mb-2">Items</h4>
             <div className="space-y-2 max-h-64 overflow-auto">
-              {items.map((it, idx) => {
+              {itemsToProcess.map((it, idx) => {
                 const status = progress[it.id] || 'queued'
                 return (
                   <div key={it.id} className="flex items-center justify-between p-2 border rounded">

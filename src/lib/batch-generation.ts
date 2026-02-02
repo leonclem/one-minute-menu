@@ -95,15 +95,17 @@ export async function runBatchGenerationSequential(
         options.onProgress?.({ index, total, itemId: item.id, status: 'failed', error: errMsg })
         results.push({ itemId: item.id, status: 'failed', error: errMsg, errorCode })
         
-        // Stop batch immediately if quota exceeded
-        if (errorCode === 'QUOTA_EXCEEDED') {
+        // Stop batch immediately for non-recoverable "stop" reasons
+        if (errorCode === 'QUOTA_EXCEEDED' || errorCode === 'EDIT_WINDOW_EXPIRED') {
           // Mark remaining items as not attempted
           for (let j = index + 1; j < items.length; j++) {
             results.push({ 
               itemId: items[j].id, 
               status: 'failed', 
-              error: 'Batch stopped due to quota limit',
-              errorCode: 'QUOTA_EXCEEDED'
+              error: errorCode === 'EDIT_WINDOW_EXPIRED'
+                ? 'Batch stopped because your edit window has expired'
+                : 'Batch stopped due to quota limit',
+              errorCode
             })
           }
           break

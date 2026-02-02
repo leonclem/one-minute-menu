@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { userOperations } from '@/lib/database'
+import { getItemDailyGenerationLimit } from '@/lib/image-generation-limits'
 import type { GeneratedImage } from '@/types'
 
 // GET /api/menu-items/[itemId]/variations - Get all image variations for a menu item
@@ -124,7 +126,9 @@ export async function GET(
     const selectedImage = variations.find(img => img.selected)
 
     // Get daily attempt stats
-    const DAILY_LIMIT = 10
+    const profile = await userOperations.getProfile(user.id, supabase)
+    const plan = (profile?.plan ?? 'free') as any
+    const DAILY_LIMIT = getItemDailyGenerationLimit(plan, profile?.role)
     const startOfToday = new Date()
     startOfToday.setHours(0, 0, 0, 0)
     const { count: todaysAttempts } = await supabase

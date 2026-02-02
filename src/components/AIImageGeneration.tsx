@@ -134,6 +134,12 @@ export default function AIImageGeneration({
             title: 'Monthly limit reached',
             description: result.error || 'Upgrade to generate more images this month.',
           })
+        } else if (result.code === 'EDIT_WINDOW_EXPIRED') {
+          showToast({
+            type: 'info',
+            title: 'Edits locked',
+            description: result.error || 'Your edit window has expired. Purchase a Creator Pack or subscribe to Grid+ to continue.',
+          })
         } else if (result.code === 'ITEM_DAILY_LIMIT') {
           setDailyStats(prev => prev ? { ...prev, remaining: 0, used: prev.limit } : null)
           showToast({

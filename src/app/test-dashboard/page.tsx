@@ -12,7 +12,7 @@ export default function TestDashboardPage() {
     plan: 'free' as const,
     limits: {
       menus: 1,
-      menuItems: 20,
+      menuItems: 100,
       ocrJobs: 5,
       monthlyUploads: 10,
     }

@@ -5,7 +5,8 @@ import { quotaOperations } from '@/lib/quota-management'
 import { analyticsOperations } from '@/lib/analytics-server'
 import { getPromptConstructionService } from '@/lib/prompt-construction'
 import { imageProcessingService } from '@/lib/image-processing'
-import { DatabaseError } from '@/lib/database'
+import { DatabaseError, assertUserCanEditMenu, userOperations } from '@/lib/database'
+import { getItemDailyGenerationLimit } from '@/lib/image-generation-limits'
 import type { 
   ImageGenerationRequest, 
   NanoBananaParams,
@@ -92,6 +93,18 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       )
     }
+
+    // Generating images for a menu item is an "edit" because this route may normalize IDs
+    // and because the intended UX is to apply the generated image back onto the menu.
+    const profile = await userOperations.getProfile(user.id, supabase)
+    const createdAt = new Date((menuRow as any).created_at || (menuRow as any).createdAt || Date.now())
+    await assertUserCanEditMenu({
+      userId: user.id,
+      menuCreatedAt: createdAt,
+      profile,
+      supabaseClient: supabase,
+    })
+
     const items: Array<any> = menuRow.menu_data?.items || []
     const menuItem = items.find((it: any) => it.id === body.menuItemId)
     if (!menuItem) {
@@ -198,7 +211,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Enforce per-item daily regeneration limit (10 attempts per item per day)
+    // Enforce per-item daily regeneration limit (plan-based)
     const startOfToday = new Date()
     startOfToday.setHours(0, 0, 0, 0)
     const { count: todaysAttempts, error: attemptsError } = await supabase
@@ -208,7 +221,8 @@ export async function POST(request: NextRequest) {
       .eq('menu_item_id', normalizedMenuItemId)
       .gte('created_at', startOfToday.toISOString())
 
-    const DAILY_LIMIT = 10
+    const plan = (profile?.plan ?? 'free') as any
+    const DAILY_LIMIT = getItemDailyGenerationLimit(plan, profile?.role)
     const remainingForToday = Math.max(0, DAILY_LIMIT - (todaysAttempts || 0))
 
     if (attemptsError) {
@@ -456,6 +470,20 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: error.message, code: error.code },
           { status: 429 }
+        )
+      }
+      if (error.code === 'EDIT_WINDOW_EXPIRED') {
+        return NextResponse.json(
+          {
+            error: error.message,
+            code: error.code,
+            upgrade: {
+              cta: 'View Pricing',
+              href: '/pricing',
+              reason: 'Subscribe to Grid+ or purchase a Creator Pack to continue editing.',
+            },
+          },
+          { status: 403 }
         )
       }
       return NextResponse.json(

@@ -979,7 +979,11 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
           const response = await fetch(`/api/menus/${menu.id}`, { method: 'DELETE' })
           const result = await response.json().catch(() => ({}))
           if (!response.ok) {
-            showToast({ type: 'error', title: 'Delete failed', description: result?.error || 'Please try again.' })
+            if (result?.code === 'EDIT_WINDOW_EXPIRED') {
+              showToast({ type: 'info', title: 'Edits locked', description: result?.error || 'Your edit window has expired.' })
+            } else {
+              showToast({ type: 'error', title: 'Delete failed', description: result?.error || 'Please try again.' })
+            }
             return
           }
           showToast({ type: 'success', title: 'Menu deleted', description: 'Returning to dashboard…' })
