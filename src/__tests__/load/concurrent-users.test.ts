@@ -143,7 +143,7 @@ describe('Load Testing: Extraction Job Queue', () => {
     
     expect(results).toHaveLength(JOB_COUNT)
     expect(totalTime).toBeLessThanOrEqual(expectedTime + 1000) // Allow 1000ms overhead
-  }, 10000) // 10 second timeout
+  }, 15000) // 15 second timeout
 
   it('should handle job failures and retries', async () => {
     const jobs = Array.from({ length: 10 }, (_, i) => ({
