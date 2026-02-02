@@ -102,8 +102,31 @@ export async function fetchImageAsDataURL(
     // Case 1: Local file path (starts with /)
     if (imageUrl.startsWith('/')) {
       // Try FS first (works locally and if files are included in build)
-      const imagePath = path.join(process.cwd(), 'public', imageUrl)
-      if (fs.existsSync(imagePath)) {
+      // Remove leading slash to avoid path.join issues
+      const relativePath = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl
+      
+      // Try multiple possible base paths for Docker and local dev
+      const possiblePaths = [
+        path.join(process.cwd(), 'public', relativePath),
+        path.join(process.cwd(), relativePath),
+        path.join(__dirname, '../../../../public', relativePath), // Relative to dist/lib/worker
+        path.join(__dirname, '../../../../', relativePath)
+      ]
+      
+      let imagePath = possiblePaths[0]
+      let found = false
+      
+      for (const p of possiblePaths) {
+        console.log(`[TextureUtils] Checking local path: ${p}`)
+        if (fs.existsSync(p)) {
+          imagePath = p
+          found = true
+          break
+        }
+      }
+      
+      if (found) {
+        console.log(`[TextureUtils] Found local file: ${imagePath}`)
         try {
           let imageBuffer: Buffer = fs.readFileSync(imagePath)
           const originalSize = imageBuffer.length

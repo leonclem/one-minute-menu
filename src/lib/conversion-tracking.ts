@@ -12,6 +12,7 @@ export type ConversionEvent =
   | 'registration_start'
   | 'signup_completed'
   | 'export_start'
+  | 'export_submitted'
   | 'export_completed'
   | 'cta_click_primary'
   | 'cta_click_secondary'

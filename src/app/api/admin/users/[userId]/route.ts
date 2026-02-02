@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { requireAdminApi } from '@/lib/admin-api-auth'
 import { logger } from '@/lib/logger'
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
+import { PLAN_CONFIGS, type UserPlan } from '@/types'
 
 export async function PATCH(
   request: Request,
@@ -15,17 +16,45 @@ export async function PATCH(
   if (!auth.ok) return auth.response
 
   try {
-    const { plan } = await request.json()
-    
-    if (!plan) {
-      return NextResponse.json({ error: 'Plan is required' }, { status: 400 })
+    const body: unknown = await request.json()
+    const planRaw: unknown =
+      body && typeof body === 'object' && 'plan' in body ? (body as { plan?: unknown }).plan : undefined
+
+    const allowedPlans: readonly UserPlan[] = [
+      'free',
+      'grid_plus',
+      'grid_plus_premium',
+      'premium',
+      'enterprise',
+    ]
+
+    const isUserPlan = (value: unknown): value is UserPlan =>
+      typeof value === 'string' && (allowedPlans as readonly string[]).includes(value)
+
+    if (!isUserPlan(planRaw)) {
+      return NextResponse.json(
+        { error: `Invalid plan. Must be one of: ${allowedPlans.join(', ')}` },
+        { status: 400 }
+      )
     }
+
+    const plan = planRaw
 
     const supabaseAdmin = createAdminSupabaseClient()
 
     logger.info(`Admin ${auth.user.id} updating plan for user ${userId} to ${plan}`)
 
     const updateData: any = { plan }
+
+    // IMPORTANT: keep plan_limits in sync with plan selection.
+    // Otherwise legacy values in plan_limits (e.g. free defaults) can override the upgraded plan.
+    const limits = PLAN_CONFIGS[plan]
+    updateData.plan_limits = {
+      menus: limits.menus,
+      items: limits.menuItems,
+      monthly_uploads: limits.monthlyUploads,
+      ai_image_generations: limits.aiImageGenerations,
+    }
     
     // If downgrading to free, clear subscription metadata
     if (plan === 'free') {

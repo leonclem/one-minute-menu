@@ -164,6 +164,9 @@ export async function POST(request: NextRequest) {
       const optimizedLayout = await optimizeLayoutDocumentImages(layoutDocument, {
         maxWidth: 1000, // Reduced from 1200 to help Puppeteer
         quality: 75,   // Reduced from 85
+        maxImages: 50,
+        timeout: 10000,
+        concurrency: 3,
         headers
       })
       

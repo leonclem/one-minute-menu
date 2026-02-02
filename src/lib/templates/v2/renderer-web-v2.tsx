@@ -145,14 +145,16 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
     const textureUrl = options.textureDataURL || '/textures/dark-paper-2.png'
     backgroundStyle = {
       backgroundColor: '#1A1A1A',
-      backgroundImage: `
-        linear-gradient(135deg, rgba(212, 175, 55, 0.03) 0%, transparent 50%, rgba(212, 175, 55, 0.02) 100%),
-        url('${textureUrl}')
-      `,
-      backgroundSize: '100% 100%, cover',
-      backgroundRepeat: 'no-repeat, no-repeat',
+      backgroundImage: isExport 
+        ? `url('${textureUrl}')`
+        : `
+          linear-gradient(135deg, rgba(212, 175, 55, 0.03) 0%, transparent 50%, rgba(212, 175, 55, 0.02) 100%),
+          url('${textureUrl}')
+        `,
+      backgroundSize: isExport ? 'cover' : '100% 100%, cover',
+      backgroundRepeat: isExport ? 'no-repeat' : 'no-repeat, no-repeat',
       backgroundPosition: 'center, center',
-      backgroundBlendMode: 'overlay, normal'
+      backgroundBlendMode: isExport ? 'normal' : 'overlay, normal'
     }
   } else if (texturesEnabled && palette?.id === 'elegant-dark') {
     const textureUrl = options.textureDataURL || '/textures/dark-paper.png'

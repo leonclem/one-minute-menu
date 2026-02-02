@@ -7,6 +7,62 @@ import { TextEncoder, TextDecoder } from 'util'
 global.TextEncoder = TextEncoder
 global.TextDecoder = TextDecoder
 
+// Polyfill setImmediate for Winston logger in Jest
+if (typeof global.setImmediate === 'undefined') {
+  global.setImmediate = (callback, ...args) => setTimeout(callback, 0, ...args)
+}
+
+// Polyfill Request and Response for Next.js server components
+// These are minimal implementations for testing purposes
+if (typeof global.Request === 'undefined') {
+  global.Request = class Request {
+    constructor(input, init) {
+      this.url = typeof input === 'string' ? input : input.url
+      this.method = init?.method || 'GET'
+      this.headers = new Map(Object.entries(init?.headers || {}))
+      this._body = init?.body
+    }
+    
+    async json() {
+      return JSON.parse(this._body)
+    }
+  }
+}
+
+if (typeof global.Response === 'undefined') {
+  global.Response = class Response {
+    constructor(body, init) {
+      this.body = body
+      this.status = init?.status || 200
+      this.statusText = init?.statusText || 'OK'
+      this.headers = new Map(Object.entries(init?.headers || {}))
+    }
+    
+    async json() {
+      return typeof this.body === 'string' ? JSON.parse(this.body) : this.body
+    }
+    
+    // Static json method required by NextResponse
+    static json(data, init) {
+      return new Response(JSON.stringify(data), {
+        ...init,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(init?.headers || {})
+        }
+      })
+    }
+  }
+}
+
+if (typeof global.Headers === 'undefined') {
+  global.Headers = class Headers extends Map {
+    constructor(init) {
+      super(Object.entries(init || {}))
+    }
+  }
+}
+
 // Polyfill crypto.randomUUID for Node.js test environment
 if (typeof global.crypto === 'undefined') {
   global.crypto = {}

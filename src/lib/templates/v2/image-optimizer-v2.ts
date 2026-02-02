@@ -42,9 +42,12 @@ export async function optimizeLayoutDocumentImages(
   const {
     maxWidth = 800,
     quality = 80,
-    maxImages = 50,
+    // Default to no cap. If a caller wants to protect a serverless runtime,
+    // it must explicitly pass maxImages (e.g. 50) in that environment.
+    maxImages = Number.POSITIVE_INFINITY,
     concurrency = 3,
-    timeout = 10000,
+    // Default per-image timeout. Serverless routes can override to a lower value.
+    timeout = 60000,
     headers
   } = options
 

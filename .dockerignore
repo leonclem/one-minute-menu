@@ -1,0 +1,95 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+# package-lock.json  # COMMENTED OUT - needed for Docker build with npm ci
+
+# Git
+.git
+.gitignore
+.github
+
+# Next.js
+.next
+out
+.vercel
+
+# Testing
+coverage
+**/*.test.ts
+**/*.test.tsx
+**/__tests__
+**/__mocks__
+jest.config.js
+jest.setup.js
+
+# Development
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+
+# Documentation
+README.md
+docs
+*.md
+!package.json
+
+# Scripts
+scripts
+Development Scripts
+Database Scripts
+
+# Debug files
+debug-*.js
+debug-*.ts
+debug-*.test.ts
+test_output.txt
+
+# Build artifacts
+dist
+.next
+.swc
+tsconfig.tsbuildinfo
+
+# Logs
+*.log
+logs
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# Public assets (not needed for worker)
+public
+!public/textures
+!public/textures/**
+
+# Supabase local
+supabase/.branches
+supabase/.temp
+
+# Implementation notes
+Implementation Notes
+
+# Spec files
+.kiro/specs
+
+# Other
+vercel.json
+railway.json

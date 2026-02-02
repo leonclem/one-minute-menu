@@ -85,12 +85,11 @@ describe('Property 14: Subscription Fulfillment Updates Quotas', () => {
           // Verify: reset_date is set to first day of next month
           const upsertCall = mockUpsert.mock.calls[0][0]
           const [year, month, day] = upsertCall.reset_date.split('-').map(Number)
-          const nextMonth = new Date()
-          nextMonth.setMonth(nextMonth.getMonth() + 1)
-          nextMonth.setDate(1)
+          const now = new Date()
+          const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
           
           expect(year).toBe(nextMonth.getFullYear())
-          expect(month - 1).toBe(nextMonth.getMonth()) // month is 1-indexed in string, 0-indexed in Date
+          expect(month).toBe(nextMonth.getMonth() + 1) // month is 1-indexed in string, 0-indexed in Date
           expect(day).toBe(1)
         }
       ),

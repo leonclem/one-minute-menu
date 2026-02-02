@@ -67,7 +67,9 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
       }
 
       setExtractionStatus('submitting')
-      setExtractionMessage(`Starting extraction${fileLabel}...`)
+      setExtractionMessage(
+        `Please bear with us, this can take a couple of minutes for menus with a large number of items.${fileLabel}`
+      )
       
       const extractRes = await fetch('/api/extraction/submit', {
         method: 'POST',

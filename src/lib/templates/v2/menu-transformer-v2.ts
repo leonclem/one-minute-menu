@@ -234,20 +234,10 @@ function transformItemToV2(
  * This ensures deterministic rendering and simplifies null checks downstream.
  */
 function transformIndicators(item: MenuItem): ItemIndicatorsV2 {
-  // TODO: Once MenuItem type is extended with indicator fields,
-  // extract them here. For now, return defaults.
-  //
-  // Future implementation:
-  // return {
-  //   dietary: item.dietary ?? [],
-  //   allergens: item.allergens ?? [],
-  //   spiceLevel: item.spiceLevel ?? null,
-  // }
-
   return {
-    dietary: [],
-    allergens: [],
-    spiceLevel: null,
+    dietary: (item as any).dietary || [],
+    allergens: (item as any).allergens || [],
+    spiceLevel: (item as any).spiceLevel !== undefined ? (item as any).spiceLevel : null,
   }
 }
 

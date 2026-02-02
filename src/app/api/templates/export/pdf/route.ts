@@ -102,6 +102,11 @@ async function handleNewTemplateEngine(
   const optimizedLayout = await optimizeLayoutDocumentImages(layoutDocument, {
     maxWidth: 1000,
     quality: 75,
+    // Protect serverless runtime (Vercel) from spending too long optimizing huge menus.
+    // Worker exports do not use this route.
+    maxImages: 50,
+    timeout: 10000,
+    concurrency: 3,
     headers
   })
   metricsBuilder.markRenderEnd()

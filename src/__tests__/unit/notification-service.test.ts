@@ -8,7 +8,7 @@
 
 import sgMail from '@sendgrid/mail'
 import { notificationService } from '@/lib/notification-service'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createWorkerSupabaseClient } from '@/lib/supabase-worker'
 
 // Mock SendGrid
 jest.mock('@sendgrid/mail', () => ({
@@ -16,9 +16,9 @@ jest.mock('@sendgrid/mail', () => ({
   send: jest.fn(),
 }))
 
-// Mock Supabase client
-jest.mock('@/lib/supabase-server', () => ({
-  createServerSupabaseClient: jest.fn(),
+// Mock Supabase client (worker-safe client used by notificationService)
+jest.mock('@/lib/supabase-worker', () => ({
+  createWorkerSupabaseClient: jest.fn(),
 }))
 
 describe('Notification Service', () => {
@@ -53,7 +53,7 @@ describe('Notification Service', () => {
       })),
     }
     
-    ;(createServerSupabaseClient as jest.Mock).mockReturnValue(mockSupabaseClient)
+    ;(createWorkerSupabaseClient as jest.Mock).mockReturnValue(mockSupabaseClient)
     ;(sgMail.send as jest.Mock).mockResolvedValue([{ statusCode: 202 }, {}])
   })
 
@@ -217,7 +217,7 @@ describe('Notification Service', () => {
           })),
         })),
       }
-      ;(createServerSupabaseClient as jest.Mock).mockReturnValueOnce(errorMockClient)
+      ;(createWorkerSupabaseClient as jest.Mock).mockReturnValueOnce(errorMockClient)
 
       await expect(
         notificationService.sendCreatorPackConfirmation('user-123', false)
@@ -292,7 +292,7 @@ describe('Notification Service', () => {
           })),
         })),
       }
-      ;(createServerSupabaseClient as jest.Mock).mockReturnValueOnce(errorMockClient)
+      ;(createWorkerSupabaseClient as jest.Mock).mockReturnValueOnce(errorMockClient)
 
       await expect(
         notificationService.sendPaymentFailedNotification('user-123', 'Card declined')
@@ -370,7 +370,7 @@ describe('Notification Service', () => {
           })),
         })),
       }
-      ;(createServerSupabaseClient as jest.Mock).mockReturnValueOnce(errorMockClient)
+      ;(createWorkerSupabaseClient as jest.Mock).mockReturnValueOnce(errorMockClient)
 
       const periodEnd = new Date('2024-12-31')
       await expect(

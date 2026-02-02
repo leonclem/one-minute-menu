@@ -85,5 +85,3 @@ BEGIN
     END IF;
 END $$;
 
--- Add comment for documentation
-COMMENT ON TABLE storage.buckets IS 'Storage buckets for file uploads';

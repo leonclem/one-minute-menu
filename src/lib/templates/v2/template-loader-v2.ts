@@ -198,7 +198,7 @@ function validateDerivedValues(
   }
   
   // Cast to TemplateV2 (schema validation ensures type safety)
-  return raw as TemplateV2
+  return raw as unknown as TemplateV2
 }
 
 // =============================================================================

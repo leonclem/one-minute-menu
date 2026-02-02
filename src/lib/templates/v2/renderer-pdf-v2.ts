@@ -225,10 +225,28 @@ async function generatePDFHTML(
   // Pre-fetch texture data URL if enabled
   let textureDataURL: string | undefined = undefined
   if (options.texturesEnabled) {
+    logger.info(`[PDFRendererV2] Textures enabled, fetching for palette: ${palette.id}`)
     if (palette.id === 'midnight-gold') {
       textureDataURL = await getTextureDataURL('dark-paper-2.png') || undefined
     } else if (palette.id === 'elegant-dark') {
       textureDataURL = await getTextureDataURL('dark-paper.png') || undefined
+    }
+    
+    if (textureDataURL) {
+      logger.info(`[PDFRendererV2] Texture loaded successfully (length: ${textureDataURL.length})`)
+      
+      // If we have a data URL, we should use a simpler CSS for PDF to ensure it renders
+      // Puppeteer can sometimes struggle with complex multi-layer gradients + textures in a single property
+      customCSS += `
+        .page-container-v2 {
+          background-image: url('${textureDataURL}') !important;
+          background-size: cover !important;
+          background-repeat: no-repeat !important;
+          background-blend-mode: normal !important;
+        }
+      `
+    } else {
+      logger.warn(`[PDFRendererV2] Failed to load texture for palette: ${palette.id}`)
     }
   }
 

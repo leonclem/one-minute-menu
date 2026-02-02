@@ -743,3 +743,246 @@ export interface CustomerPortalRequest {
 export interface CustomerPortalResponse {
   url: string
 }
+
+
+// ============================================================================
+// Railway Workers - Export Job Types
+// ============================================================================
+
+/**
+ * Job status enum for export jobs
+ */
+export enum JobStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed'
+}
+
+/**
+ * Export type enum
+ */
+export enum ExportType {
+  PDF = 'pdf',
+  IMAGE = 'image'
+}
+
+/**
+ * Export job record
+ */
+export interface ExportJob {
+  id: string
+  user_id: string
+  menu_id: string
+  export_type: ExportType
+  status: JobStatus
+  priority: number
+  retry_count: number
+  error_message?: string
+  file_url?: string
+  storage_path?: string
+  available_at: Date
+  metadata: ExportJobMetadata
+  worker_id?: string
+  created_at: Date
+  updated_at: Date
+  started_at?: Date
+  completed_at?: Date
+}
+
+/**
+ * Complete snapshot of menu state at job creation time.
+ * This data is frozen and stored in the export_jobs.metadata JSONB column.
+ * Ensures that menu edits after job creation don't affect the export output.
+ */
+export interface RenderSnapshot {
+  // Template information
+  template_id: string // UUID of the template being used
+  template_version: string // Version identifier for template compatibility
+  template_name: string // Human-readable template name (e.g., "elegant-dark")
+  
+  // V2 Configuration
+  configuration?: {
+    palette?: any
+    typography?: any
+    layout?: any
+    textures?: any
+    features?: any
+  }
+  
+  // Menu data (frozen state)
+  menu_data: {
+    id: string // Menu UUID
+    name: string // Menu name for display
+    description?: string // Menu description
+    logo_url?: string // Restaurant logo URL (Supabase Storage)
+    establishment_name?: string // Restaurant name
+    establishment_address?: string
+    establishment_phone?: string
+    /** Raw venue info from DB (used for V2 footer: address/phone/email/social) */
+    venue_info?: VenueInfo
+    
+    // Menu items with full details
+    items: Array<{
+      id: string
+      name: string
+      description?: string
+      price?: number
+      currency?: string
+      category?: string
+      image_url?: string // Supabase Storage URL
+      display_order: number
+      
+      // Modifiers and variants
+      modifiers?: Array<{
+        id: string
+        name: string
+        options: Array<{
+          name: string
+          price_adjustment?: number
+        }>
+      }>
+      
+      variants?: Array<{
+        id: string
+        name: string
+        price?: number
+      }>
+
+      // Item indicators
+      indicators?: {
+        dietary: string[]
+        spiceLevel: number | null
+        allergens: string[]
+      }
+    }>
+    
+    // Categories for organization
+    categories?: Array<{
+      name: string
+      display_order: number
+    }>
+  }
+  
+  // Export options
+  export_options: {
+    format?: 'A4' | 'Letter'
+    orientation?: 'portrait' | 'landscape'
+    include_images?: boolean
+    include_prices?: boolean
+  }
+  
+  // Metadata for debugging
+  snapshot_created_at: string // ISO timestamp
+  snapshot_version: string // Schema version (e.g., "1.0")
+}
+
+/**
+ * Export job metadata stored in JSONB column
+ */
+export interface ExportJobMetadata {
+  format?: 'A4' | 'Letter'
+  orientation?: 'portrait' | 'landscape'
+  worker_version?: string
+  render_time_ms?: number
+  file_size_bytes?: number
+  puppeteer_version?: string
+  menu_name?: string // User-friendly name for downloads
+  render_snapshot?: RenderSnapshot // Snapshot of render input at job creation
+}
+
+/**
+ * PDF rendering options
+ */
+export interface PDFOptions {
+  format: 'A4' | 'Letter'
+  orientation: 'portrait' | 'landscape'
+  printBackground: boolean
+  margin: {
+    top: string
+    right: string
+    bottom: string
+    left: string
+  }
+}
+
+/**
+ * Image rendering options
+ */
+export interface ImageOptions {
+  type: 'png' | 'jpeg'
+  quality?: number // 0-100 for JPEG
+  fullPage: boolean
+  omitBackground: boolean
+}
+
+/**
+ * Worker configuration
+ */
+export interface WorkerConfig {
+  database_url: string
+  supabase_url: string
+  supabase_service_role_key: string
+  storage_bucket: string
+  sendgrid_api_key: string
+  puppeteer_executable_path?: string
+  max_concurrent_renders: number // Default 3
+  job_timeout_seconds: number // Default 60
+  polling_interval_busy_ms: number // Default 2000
+  polling_interval_idle_ms: number // Default 5000
+  graceful_shutdown_timeout_ms: number // Default 30000
+  worker_id: string // Unique identifier for this worker instance
+}
+
+/**
+ * Rate limit configuration
+ */
+export interface RateLimitConfig {
+  free_user_hourly_limit: number // 10
+  subscriber_hourly_limit: number // 50
+  free_user_pending_limit: number // 5
+  subscriber_pending_limit: number // 20
+}
+
+/**
+ * Queue statistics
+ */
+export interface QueueStats {
+  pending_count: number
+  processing_count: number
+  completed_count_24h: number
+  failed_count_24h: number
+  average_processing_time_seconds: number
+  oldest_pending_job_age_seconds: number
+}
+
+/**
+ * Validation result for rendered output
+ */
+export interface ValidationResult {
+  valid: boolean
+  errors: string[]
+  warnings: string[]
+  file_size: number
+  format_verified: boolean
+}
+
+/**
+ * Error categories for retry logic
+ */
+export enum ErrorCategory {
+  TRANSIENT = 'transient', // Network timeout, temporary DB issue - retry
+  PERMANENT = 'permanent', // Invalid HTML, missing menu - don't retry
+  RESOURCE = 'resource', // OOM, timeout - retry with backoff
+  VALIDATION = 'validation' // Bad output format - don't retry
+}
+
+/**
+ * Error classification for retry decisions
+ */
+export interface ErrorClassification {
+  category: ErrorCategory
+  should_retry: boolean
+  user_message: string // Friendly message for user
+  internal_message: string // Detailed message for logs
+}

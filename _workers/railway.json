@@ -1,0 +1,183 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile",
+    "watchPatterns": [
+      "src/**",
+      "package.json",
+      "package-lock.json",
+      "tsconfig.json"
+    ]
+  },
+  "deploy": {
+    "numReplicas": 3,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3,
+    "sleepApplication": false,
+    "startCommand": "node dist/worker/index.js"
+  },
+  "healthcheck": {
+    "path": "/health",
+    "interval": 30,
+    "timeout": 10,
+    "retries": 3
+  },
+  "resources": {
+    "memory": 2048,
+    "cpu": 1000
+  },
+  "regions": [
+    "us-west1"
+  ],
+  "environmentVariables": {
+    "NODE_ENV": {
+      "description": "Node environment",
+      "default": "production"
+    },
+    "LOG_LEVEL": {
+      "description": "Logging level",
+      "default": "info"
+    },
+    "WORKER_ID": {
+      "description": "Unique worker identifier",
+      "required": true
+    },
+    "DATABASE_URL": {
+      "description": "PostgreSQL connection string",
+      "required": true
+    },
+    "SUPABASE_URL": {
+      "description": "Supabase project URL",
+      "required": true
+    },
+    "SUPABASE_SERVICE_ROLE_KEY": {
+      "description": "Supabase service role key",
+      "required": true
+    },
+    "STORAGE_BUCKET": {
+      "description": "Supabase Storage bucket name",
+      "required": true
+    },
+    "SENDGRID_API_KEY": {
+      "description": "SendGrid API key for emails",
+      "required": true
+    },
+    "SENDGRID_FROM_EMAIL": {
+      "description": "Email address to send from",
+      "required": true
+    },
+    "PUPPETEER_EXECUTABLE_PATH": {
+      "description": "Path to Chromium executable",
+      "default": "/usr/bin/chromium"
+    },
+    "MAX_CONCURRENT_RENDERS": {
+      "description": "Maximum concurrent Puppeteer instances",
+      "default": "3"
+    },
+    "JOB_TIMEOUT_SECONDS": {
+      "description": "Maximum time for a single export job",
+      "default": "60"
+    },
+    "POLLING_INTERVAL_BUSY_MS": {
+      "description": "Polling interval when jobs are pending",
+      "default": "2000"
+    },
+    "POLLING_INTERVAL_IDLE_MS": {
+      "description": "Polling interval when queue is empty",
+      "default": "5000"
+    },
+    "GRACEFUL_SHUTDOWN_TIMEOUT_MS": {
+      "description": "Maximum time to wait for current job during shutdown",
+      "default": "30000"
+    },
+    "FREE_USER_HOURLY_LIMIT": {
+      "description": "Maximum exports per hour for free users",
+      "default": "10"
+    },
+    "SUBSCRIBER_HOURLY_LIMIT": {
+      "description": "Maximum exports per hour for subscribers",
+      "default": "50"
+    },
+    "FREE_USER_PENDING_LIMIT": {
+      "description": "Maximum pending jobs for free users",
+      "default": "5"
+    },
+    "SUBSCRIBER_PENDING_LIMIT": {
+      "description": "Maximum pending jobs for subscribers",
+      "default": "20"
+    },
+    "MAX_HTML_SIZE_BYTES": {
+      "description": "Maximum menu HTML size in bytes",
+      "default": "5242880"
+    },
+    "MAX_IMAGE_COUNT": {
+      "description": "Maximum number of images per menu",
+      "default": "100"
+    },
+    "RETRY_BASE_DELAY_MS": {
+      "description": "Base delay for exponential backoff",
+      "default": "30000"
+    },
+    "RETRY_MAX_DELAY_MS": {
+      "description": "Maximum retry delay",
+      "default": "300000"
+    },
+    "MAX_RETRY_COUNT": {
+      "description": "Maximum retry attempts before terminal failure",
+      "default": "3"
+    },
+    "STALE_JOB_THRESHOLD_MINUTES": {
+      "description": "Time before a processing job is considered stale",
+      "default": "5"
+    },
+    "STALE_JOB_CHECK_INTERVAL_MINUTES": {
+      "description": "Interval to run stale job detection",
+      "default": "5"
+    },
+    "FILE_CLEANUP_AGE_DAYS": {
+      "description": "Age before export files are deleted",
+      "default": "30"
+    },
+    "FILE_CLEANUP_INTERVAL_HOURS": {
+      "description": "Interval to run file cleanup",
+      "default": "24"
+    },
+    "HEALTH_CHECK_PORT": {
+      "description": "Port for health check endpoint",
+      "default": "3000"
+    },
+    "ENABLE_CANARY_EXPORT": {
+      "description": "Enable canary export test on startup",
+      "default": "true"
+    },
+    "ENABLE_CIRCUIT_BREAKER": {
+      "description": "Enable circuit breaker for storage failures",
+      "default": "true"
+    },
+    "CIRCUIT_BREAKER_FAILURE_THRESHOLD": {
+      "description": "Failures before opening circuit",
+      "default": "3"
+    },
+    "CIRCUIT_BREAKER_COOLDOWN_MS": {
+      "description": "Cooldown before attempting to close circuit",
+      "default": "60000"
+    },
+    "MEMORY_THRESHOLD_PERCENT": {
+      "description": "Memory usage threshold to stop accepting jobs",
+      "default": "80"
+    },
+    "QUEUE_DEPTH_WARNING_THRESHOLD": {
+      "description": "Queue depth threshold for warnings",
+      "default": "50"
+    },
+    "SIGNED_URL_EXPIRY_SECONDS": {
+      "description": "Expiry time for signed download URLs",
+      "default": "604800"
+    }
+  },
+  "volumes": [],
+  "networking": {
+    "serviceDomain": "railway-worker.railway.internal"
+  }
+}

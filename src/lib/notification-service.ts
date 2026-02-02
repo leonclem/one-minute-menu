@@ -1,5 +1,5 @@
 import sgMail from '@sendgrid/mail'
-import { createServerSupabaseClient } from './supabase-server'
+import { createWorkerSupabaseClient } from '@/lib/supabase-worker'
 
 // Initialize SendGrid with API Key from environment variables
 if (process.env.SENDGRID_API_KEY) {
@@ -9,6 +9,14 @@ if (process.env.SENDGRID_API_KEY) {
 const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || process.env.FROM_EMAIL || 'noreply@gridmenu.ai'
 const FROM_NAME = process.env.SENDGRID_FROM_NAME || 'GridMenu'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://gridmenu.ai'
+
+/**
+ * Helper to create a Supabase client compatible with both Next.js and Worker environments.
+ * It uses the worker client which bypasses cookie issues.
+ */
+const getServiceClient = () => {
+  return createWorkerSupabaseClient()
+}
 
 /**
  * Notification service for sending payment-related emails
@@ -33,7 +41,7 @@ export const notificationService = {
 
     try {
       // Get user details from database
-      const supabase = createServerSupabaseClient()
+      const supabase = getServiceClient()
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('email, restaurant_name')
@@ -102,7 +110,7 @@ export const notificationService = {
 
     try {
       // Get user details from database
-      const supabase = createServerSupabaseClient()
+      const supabase = getServiceClient()
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('email, restaurant_name')
@@ -178,7 +186,7 @@ export const notificationService = {
 
     try {
       // Get user details from database
-      const supabase = createServerSupabaseClient()
+      const supabase = getServiceClient()
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('email, restaurant_name')
@@ -243,7 +251,7 @@ export const notificationService = {
 
     try {
       // Get user details from database
-      const supabase = createServerSupabaseClient()
+      const supabase = getServiceClient()
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('email, restaurant_name')
@@ -295,6 +303,156 @@ export const notificationService = {
       console.log(`[notification-service] Subscription cancelled notification sent to ${profile.email}`)
     } catch (error) {
       console.error('[notification-service] Failed to send subscription cancelled notification:', error)
+      // Don't throw - email failure shouldn't break fulfillment
+    }
+  },
+
+  /**
+   * Sends an export completion email with download link
+   * @param userId - The user ID
+   * @param downloadUrl - The signed download URL (valid for 7 days)
+   * @param menuName - The name of the menu from metadata
+   * @param exportType - The export type (pdf or image)
+   */
+  async sendExportCompletionEmail(
+    userId: string,
+    downloadUrl: string,
+    menuName: string,
+    exportType: 'pdf' | 'image'
+  ): Promise<void> {
+    if (!process.env.SENDGRID_API_KEY) {
+      console.warn('[notification-service] SENDGRID_API_KEY missing. Skipping export completion email.')
+      return
+    }
+
+    try {
+      // Get user details from database
+      const supabase = getServiceClient()
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('email, restaurant_name')
+        .eq('id', userId)
+        .single()
+
+      if (error || !profile) {
+        console.error('[notification-service] Failed to fetch user profile:', error)
+        return
+      }
+
+      const exportTypeLabel = exportType === 'pdf' ? 'PDF' : 'Image'
+      const subject = `Your ${exportTypeLabel} export is ready: ${menuName}`
+
+      const msg = {
+        to: profile.email,
+        from: {
+          email: FROM_EMAIL,
+          name: FROM_NAME
+        },
+        subject,
+        text: `Your ${exportTypeLabel} export for "${menuName}" is ready!\n\nYou can download your file using the link below. This link will be valid for 7 days.\n\nDownload: ${downloadUrl}\n\nMenu: ${menuName}\nType: ${exportTypeLabel}\n\nThank you for using GridMenu!`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h2 style="color: #1a202c; margin-top: 0;">Your Export is Ready!</h2>
+            <p style="color: #4a5568; font-size: 16px;">Your ${exportTypeLabel} export for <strong>"${menuName}"</strong> has been successfully generated.</p>
+            <div style="background-color: #f0fdf4; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #10b981;">
+              <p style="margin: 0; color: #065f46;"><strong>Menu:</strong> ${menuName}</p>
+              <p style="margin: 5px 0 0 0; color: #065f46;"><strong>Type:</strong> ${exportTypeLabel}</p>
+            </div>
+            <p style="color: #4a5568; font-size: 16px;">Click the button below to download your file. This link will be valid for 7 days.</p>
+            <div style="margin: 30px 0;">
+              <a href="${downloadUrl}" 
+                 style="display: inline-block; background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                Download ${exportTypeLabel}
+              </a>
+            </div>
+            <p style="color: #718096; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="color: #3182ce; font-size: 14px; word-break: break-all;">${downloadUrl}</p>
+            <p style="color: #718096; font-size: 14px; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
+              Thank you for using GridMenu,<br>The GridMenu Team
+            </p>
+          </div>
+        `,
+      }
+
+      await sgMail.send(msg)
+      console.log(`[notification-service] Export completion email sent to ${profile.email}`)
+    } catch (error) {
+      console.error('[notification-service] Failed to send export completion email:', error)
+      // Don't throw - email failure shouldn't break fulfillment
+    }
+  },
+
+  /**
+   * Sends an export failure email with error details
+   * Only sent for terminal failures (after all retries exhausted)
+   * @param userId - The user ID
+   * @param menuName - The name of the menu from metadata
+   * @param exportType - The export type (pdf or image)
+   * @param errorMessage - User-friendly error message
+   */
+  async sendExportFailureEmail(
+    userId: string,
+    menuName: string,
+    exportType: 'pdf' | 'image',
+    errorMessage: string
+  ): Promise<void> {
+    if (!process.env.SENDGRID_API_KEY) {
+      console.warn('[notification-service] SENDGRID_API_KEY missing. Skipping export failure email.')
+      return
+    }
+
+    try {
+      // Get user details from database
+      const supabase = getServiceClient()
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('email, restaurant_name')
+        .eq('id', userId)
+        .single()
+
+      if (error || !profile) {
+        console.error('[notification-service] Failed to fetch user profile:', error)
+        return
+      }
+
+      const exportTypeLabel = exportType === 'pdf' ? 'PDF' : 'Image'
+      const subject = `Export failed: ${menuName} (${exportTypeLabel})`
+
+      const msg = {
+        to: profile.email,
+        from: {
+          email: FROM_EMAIL,
+          name: FROM_NAME
+        },
+        subject,
+        text: `We were unable to complete your ${exportTypeLabel} export for "${menuName}".\n\nError: ${errorMessage}\n\nMenu: ${menuName}\nType: ${exportTypeLabel}\n\nPlease try again or contact support if the problem persists.\n\nSupport: ${APP_URL}/support`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h2 style="color: #c53030; margin-top: 0;">Export Failed</h2>
+            <p style="color: #4a5568; font-size: 16px;">We were unable to complete your ${exportTypeLabel} export for <strong>"${menuName}"</strong>.</p>
+            <div style="background-color: #fff5f5; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #fc8181;">
+              <p style="margin: 0; color: #742a2a;"><strong>Menu:</strong> ${menuName}</p>
+              <p style="margin: 5px 0 0 0; color: #742a2a;"><strong>Type:</strong> ${exportTypeLabel}</p>
+              <p style="margin: 10px 0 0 0; color: #742a2a;"><strong>Error:</strong> ${errorMessage}</p>
+            </div>
+            <p style="color: #4a5568; font-size: 16px;">Please try exporting again. If the problem persists, please contact our support team.</p>
+            <div style="margin: 30px 0;">
+              <a href="${APP_URL}/support" 
+                 style="display: inline-block; background-color: #3182ce; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                Contact Support
+              </a>
+            </div>
+            <p style="color: #718096; font-size: 14px; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
+              We apologize for the inconvenience,<br>The GridMenu Team
+            </p>
+          </div>
+        `,
+      }
+
+      await sgMail.send(msg)
+      console.log(`[notification-service] Export failure email sent to ${profile.email}`)
+    } catch (error) {
+      console.error('[notification-service] Failed to send export failure email:', error)
       // Don't throw - email failure shouldn't break fulfillment
     }
   }

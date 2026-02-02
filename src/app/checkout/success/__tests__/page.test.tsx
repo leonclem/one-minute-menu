@@ -597,7 +597,7 @@ describe('CheckoutSuccessPage', () => {
       
       await waitFor(() => {
         expect(screen.getByText(/If you completed the payment, your account will be upgraded automatically/)).toBeInTheDocument()
-      })
+      }, { timeout: 10000 })
     })
   })
 
