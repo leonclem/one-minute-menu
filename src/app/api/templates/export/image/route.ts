@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 export const runtime = 'nodejs'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { menuOperations, DatabaseError } from '@/lib/database'
+import { menuOperations, DatabaseError, assertUserCanEditMenu, userOperations } from '@/lib/database'
 import { transformExtractionToLayout } from '@/lib/templates/data-transformer'
 import { selectLayoutPresetWithContext } from '@/lib/templates/layout-selector'
 import { exportToImage, validateImageExportOptions, PRESET_DIMENSIONS } from '@/lib/templates/export/image-exporter'
@@ -558,6 +558,22 @@ export async function POST(request: NextRequest) {
         { error: 'Menu not found' },
         { status: 404 }
       )
+    }
+
+    // If edits are locked, exporting is locked too (view-only mode)
+    const profile = await userOperations.getProfile(user.id, supabase)
+    try {
+      await assertUserCanEditMenu({
+        userId: user.id,
+        menuCreatedAt: menu.createdAt,
+        profile,
+        supabaseClient: supabase,
+      })
+    } catch (e) {
+      if (e instanceof DatabaseError && e.code === 'EDIT_WINDOW_EXPIRED') {
+        return NextResponse.json({ error: e.message, code: e.code }, { status: 403 })
+      }
+      throw e
     }
     
     // EXECUTE SELECTED ENGINE PATH

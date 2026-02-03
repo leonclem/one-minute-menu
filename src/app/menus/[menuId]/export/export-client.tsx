@@ -114,6 +114,7 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
   const [templateSelection, setTemplateSelection] = useState<TemplateSelection | null>(null)
   const [exportingFormat, setExportingFormat] = useState<string | null>(null)
   const [completedExports, setCompletedExports] = useState<Set<string>>(new Set())
+  const [canEdit, setCanEdit] = useState(true)
   const router = useRouter()
   const { showToast } = useToast()
 
@@ -211,6 +212,27 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
       }
     })()
   }, [menuId, router, showToast])
+
+  const isDemo = menuId.startsWith('demo-')
+  const isReadOnly = !isDemo && canEdit === false
+
+  useEffect(() => {
+    if (isDemo) return
+    let mounted = true
+    ;(async () => {
+      try {
+        const resp = await fetch('/api/user/edit-access')
+        const json = await resp.json().catch(() => ({}))
+        if (!mounted) return
+        if (resp.ok && typeof json?.canEdit === 'boolean') {
+          setCanEdit(json.canEdit)
+        }
+      } catch {
+        // best-effort
+      }
+    })()
+    return () => { mounted = false }
+  }, [isDemo])
 
   const handleExport = async (option: ExportOption) => {
     const baseId = menuId.startsWith('demo-') ? menuId : menuId
@@ -473,7 +495,6 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
     router.push(`/menus/${menuId}/template`)
   }
 
-  const isDemo = menuId.startsWith('demo-')
   const ready = isDemo ? !!demoMenu : !!authMenu
   const menuForSummary = isDemo ? demoMenu : authMenu
 
@@ -546,6 +567,16 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
         </p>
       </div>
       <div className="max-w-6xl mx-auto space-y-8">
+        {isReadOnly && (
+          <UXCard>
+            <div className="p-6">
+              <div className="text-sm font-medium text-ux-text">Viewing mode</div>
+              <div className="mt-1 text-sm text-ux-text-secondary">
+                Your editing window has expired. Export is locked until you purchase a Creator Pack or subscribe.
+              </div>
+            </div>
+          </UXCard>
+        )}
         {/* Menu Summary */}
         <UXCard>
           <MenuThumbnailBadge imageUrl={menuForSummary?.imageUrl} position="right" />
@@ -595,10 +626,11 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {EXPORT_OPTIONS.map((option) => {
               const isDisabled = isDemo && option.disabledForDemo
+              const isLocked = !isDemo && isReadOnly
               return (
                 <UXCard 
                   key={option.id}
-                  className={`text-center transition-all duration-200 ${isDisabled ? 'opacity-60 grayscale-[0.5]' : 'hover:shadow-lg'}`}
+                  className={`text-center transition-all duration-200 ${(isDisabled || isLocked) ? 'opacity-60 grayscale-[0.5]' : 'hover:shadow-lg'}`}
                 >
                   <div className="p-6">
                     <div className="text-4xl mb-4">{option.icon}</div>
@@ -606,7 +638,9 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
                       {option.name}
                     </h5>
                     <p className="text-sm text-ux-text-secondary mb-4">
-                      {isDisabled ? 'Not available for the demo flow' : option.description}
+                      {isLocked
+                        ? 'Locked until you purchase a Creator Pack or subscribe'
+                        : (isDisabled ? 'Not available for the demo flow' : option.description)}
                     </p>
                     
                     {completedExports.has(option.id) ? (
@@ -620,12 +654,22 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
                       <UXButton
                         variant="primary"
                         size="sm"
-                        onClick={() => !isDisabled && handleExport(option)}
+                        onClick={() => {
+                          if (isLocked) {
+                            showToast({
+                              type: 'info',
+                              title: 'Export locked',
+                              description: 'Purchase a Creator Pack or subscribe to export your menu.',
+                            })
+                            return
+                          }
+                          if (!isDisabled) handleExport(option)
+                        }}
                         loading={exportingFormat === option.id}
-                        disabled={exportingFormat !== null || isDisabled}
+                        disabled={exportingFormat !== null || isDisabled || isLocked}
                         className="w-full"
                       >
-                        {isDisabled ? 'Locked' : exportingFormat === option.id ? 'Exporting...' : 'Export'}
+                        {(isDisabled || isLocked) ? 'Locked' : exportingFormat === option.id ? 'Exporting...' : 'Export'}
                       </UXButton>
                     )}
                   </div>

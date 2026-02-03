@@ -10,6 +10,11 @@ import type { Menu } from '@/types'
 
 interface MenuCardProps {
   menu: Menu
+  /**
+   * When true, the user can view but not edit (free plan edit window expired).
+   * This drives label/CTA behavior; server APIs still enforce permissions.
+   */
+  isEditLocked?: boolean
 }
 
 /**
@@ -23,7 +28,7 @@ interface MenuCardProps {
  * - Handle menu deletion with API call
  * - Smart routing based on menu state
  */
-export function MenuCard({ menu }: MenuCardProps) {
+export function MenuCard({ menu, isEditLocked = false }: MenuCardProps) {
   const router = useRouter()
   const { showToast } = useToast()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -64,6 +69,16 @@ export function MenuCard({ menu }: MenuCardProps) {
 
       if (!response.ok) {
         const error = await response.json()
+        if (error?.code === 'EDIT_WINDOW_EXPIRED') {
+          showToast({
+            type: 'info',
+            title: 'Edits locked',
+            description: error?.error || 'Your edit window has expired.',
+          })
+          setShowDeleteDialog(false)
+          setIsDeleting(false)
+          return
+        }
         throw new Error(error.error || 'Failed to delete menu')
       }
 
@@ -142,7 +157,7 @@ export function MenuCard({ menu }: MenuCardProps) {
                 className="inline-block w-full sm:w-auto"
               >
                 <span className="inline-flex items-center justify-center font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ux-primary focus:ring-offset-2 btn-ux-primary px-5 py-2.5 text-sm rounded-full text-soft-shadow w-full sm:w-auto">
-                  Edit menu
+                  {isEditLocked ? 'View Menu' : 'Edit menu'}
                 </span>
               </Link>
             </div>

@@ -37,6 +37,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const [authMenu, setAuthMenu] = useState<Menu | null>(null)
   const [loading, setLoading] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [canEdit, setCanEdit] = useState(true)
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(new Set())
   const [controlPanelOpen, setControlPanelOpen] = useState(true)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
@@ -86,6 +87,16 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const isNewExtraction = searchParams.get('newExtraction') === 'true'
   const { showToast } = useToast()
   const appliedRef = useRef(false)
+  const isDemo = menuId.startsWith('demo-')
+  const isReadOnly = !isDemo && canEdit === false
+
+  const blocked = (action: string) => {
+    showToast({
+      type: 'info',
+      title: 'Edits locked',
+      description: `You can view this menu, but ${action} is locked until you purchase a Creator Pack or subscribe.`,
+    })
+  }
 
   // Show review acknowledgment modal for new extractions
   useEffect(() => {
@@ -99,6 +110,25 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     setMounted(true)
     return () => setMounted(false)
   }, [])
+
+  // Determine edit access for authenticated users (view-only when locked)
+  useEffect(() => {
+    if (isDemo) return
+    let mounted = true
+    ;(async () => {
+      try {
+        const resp = await fetch('/api/user/edit-access')
+        const json = await resp.json().catch(() => ({}))
+        if (!mounted) return
+        if (resp.ok && typeof json?.canEdit === 'boolean') {
+          setCanEdit(json.canEdit)
+        }
+      } catch {
+        // best-effort
+      }
+    })()
+    return () => { mounted = false }
+  }, [isDemo])
 
   // Demo image assets
   const DEMO_IMAGES = {
@@ -946,7 +976,6 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   }
 
   // Compute grouping and totals depending on flow
-  const isDemo = !!demoMenu
   const baseMenu: Menu | null = isDemo ? (demoMenu as Menu) : authMenu
 
   // Compute categories and totals with useMemo to prevent re-computation
@@ -1284,7 +1313,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                         <span className="text-ux-text-secondary font-medium mr-1.5">Title:</span>
                         {baseMenu?.name || 'Extracted Menu'}
                       </h3>
-                      {!isDemo && (
+                      {!isDemo && !isReadOnly && (
                         <button
                           type="button"
                           className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-ux-text-secondary hover:text-ux-primary p-1 rounded"
@@ -1441,7 +1470,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                             Upload a menu image
                           </UXButton>
                         )}
-                        {!isDemo && (
+                        {!isDemo && !isReadOnly && (
                           <UXButton
                             variant="warning"
                             size="md"
@@ -1452,47 +1481,51 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                             {logoUrl ? 'Manage logo' : 'Upload logo'}
                           </UXButton>
                         )}
-                        <UXButton
-                          variant="warning"
-                          size="md"
-                          onClick={() => {
-                            if (!authMenu) return
-                            const selected = authMenu.items.filter(item => selectedItemKeys.has(item.id))
-                            if (selected.length === 0) {
-                              showToast({
-                                type: 'info',
-                                title: 'Select items first',
-                                description: 'Choose one or more items to create photos for.',
-                              })
-                              return
-                            }
-                            setShowBatchGeneration(true)
-                          }}
-                          disabled={loading}
-                        >
-                          <Sparkles className="hidden sm:inline-block h-4 w-4 mr-2" />
-                          Batch Create Photos
-                        </UXButton>
-                        <UXButton
-                          variant="warning"
-                          size="md"
-                          onClick={() => setShowAddCategory(true)}
-                          disabled={loading}
-                        >
-                          <svg className="hidden sm:inline-block h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                          Add Category
-                        </UXButton>
-                        <UXButton
-                          variant="warning"
-                          size="md"
-                          onClick={() => router.push(`/dashboard/menus/${menuId}`)}
-                          disabled={loading}
-                        >
-                          <QrCode className="hidden sm:inline-block h-4 w-4 mr-2" />
-                          Add QR / manage items
-                        </UXButton>
+                        {!isReadOnly && (
+                          <>
+                            <UXButton
+                              variant="warning"
+                              size="md"
+                              onClick={() => {
+                                if (!authMenu) return
+                                const selected = authMenu.items.filter(item => selectedItemKeys.has(item.id))
+                                if (selected.length === 0) {
+                                  showToast({
+                                    type: 'info',
+                                    title: 'Select items first',
+                                    description: 'Choose one or more items to create photos for.',
+                                  })
+                                  return
+                                }
+                                setShowBatchGeneration(true)
+                              }}
+                              disabled={loading}
+                            >
+                              <Sparkles className="hidden sm:inline-block h-4 w-4 mr-2" />
+                              Batch Create Photos
+                            </UXButton>
+                            <UXButton
+                              variant="warning"
+                              size="md"
+                              onClick={() => setShowAddCategory(true)}
+                              disabled={loading}
+                            >
+                              <svg className="hidden sm:inline-block h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                              Add Category
+                            </UXButton>
+                            <UXButton
+                              variant="warning"
+                              size="md"
+                              onClick={() => router.push(`/dashboard/menus/${menuId}`)}
+                              disabled={loading}
+                            >
+                              <QrCode className="hidden sm:inline-block h-4 w-4 mr-2" />
+                              Add QR / manage items
+                            </UXButton>
+                          </>
+                        )}
                       </div>
                       {selectedCount > 0 && (
                         <div className="flex justify-end">
@@ -1500,7 +1533,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                             variant="outline"
                             size="md"
                             onClick={() => setShowBulkDelete(true)}
-                            disabled={loading}
+                            disabled={loading || isReadOnly}
                             className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
                           >
                             <svg className="hidden sm:inline-block h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1617,7 +1650,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                      {!isDemo && (
+                      {!isDemo && !isReadOnly && (
                         <button
                           type="button"
                           className="px-2 py-1 text-xs font-medium text-ux-primary hover:text-ux-primary/80 hover:bg-ux-primary/10 rounded transition-colors"
@@ -1664,7 +1697,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                     {items.length === 0 ? (
                       <div className="text-center py-8 text-ux-text-secondary">
                         <p className="text-sm">No items in this category yet.</p>
-                        {!isDemo && (
+                        {!isDemo && !isReadOnly && (
                           <button
                             type="button"
                             className="mt-2 px-3 py-1 text-sm font-medium text-ux-primary hover:text-ux-primary/80 hover:bg-ux-primary/10 rounded transition-colors"
@@ -1738,6 +1771,10 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                                 toggleAvailability()
                                 return
                               }
+                              if (isReadOnly) {
+                                blocked('editing items')
+                                return
+                              }
                               setActiveMenuItem(menuItem)
                             }
                           }}
@@ -1760,6 +1797,10 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                                 aria-label={`Select ${raw.name || 'item'}`}
                                 onClick={(e) => {
                                   e.stopPropagation()
+                                  if (isReadOnly) {
+                                    blocked('editing this menu')
+                                    return
+                                  }
                                   toggleItemSelected(key, !selected)
                                 }}
                                 className="relative z-20 h-4 w-4 min-h-[1rem] min-w-[1rem] p-0 rounded border border-ux-border flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ux-primary transition-colors shrink-0 mt-0.5"
@@ -1892,7 +1933,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       </div>
 
       {/* Single-item AI image generation modal */}
-      {!isDemo && activeImageItemId && activeImageMode === 'generate' && authMenu && (
+      {!isDemo && !isReadOnly && activeImageItemId && activeImageMode === 'generate' && authMenu && (
         <AIImageGeneration
           menuId={menuId}
           menuItem={authMenu.items.find(i => i.id === activeImageItemId)!}
@@ -1902,7 +1943,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       )}
 
       {/* Single-item management modal */}
-      {!isDemo && activeImageItemId && activeImageMode === 'manage' && authMenu && (
+      {!isDemo && !isReadOnly && activeImageItemId && activeImageMode === 'manage' && authMenu && (
         <ItemManagementModal
           itemId={activeImageItemId}
           menuId={menuId}
@@ -1928,7 +1969,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       )}
 
       {/* Batch image generation modal */}
-      {!isDemo && showBatchGeneration && authMenu && (
+      {!isDemo && !isReadOnly && showBatchGeneration && authMenu && (
         <BatchAIImageGeneration
           menuId={menuId}
           items={authMenu.items

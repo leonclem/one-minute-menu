@@ -57,12 +57,28 @@ export default async function DashboardPage() {
     })()
   ])
   
-  const creatorPackCount = creatorPackData.count
-  const latestEditWindowEnd = creatorPackData.latestEditWindowEnd
+  // TS inference for Promise.all can be finicky here; keep the shape explicit.
+  const creatorPackDataTyped = creatorPackData as { count: number; latestEditWindowEnd: Date | null }
+  const creatorPackCount = creatorPackDataTyped.count
+  const latestEditWindowEnd = creatorPackDataTyped.latestEditWindowEnd
   const isAdmin = currentUser?.role === 'admin'
+  const isSubscriber = ['grid_plus', 'grid_plus_premium', 'premium', 'enterprise'].includes(profile?.plan ?? 'free')
 
   // Check if user has reached menu limit
   const { allowed: canCreateMenu, limit: menuLimit } = await userOperations.checkPlanLimits(user.id, 'menus', profile || undefined)
+
+  const isEditWindowExpired = (() => {
+    if (isAdmin) return false
+    if (isSubscriber) return false
+    if (!profile) return true
+    // Free users can edit for 1 week after signup (onboarding grace)
+    const signupGraceMs = 7 * 24 * 60 * 60 * 1000
+    const withinSignupGrace = (Date.now() - profile.createdAt.getTime()) < signupGraceMs
+    if (withinSignupGrace) return false
+    // Active creator pack edit windows keep editing enabled
+    if (latestEditWindowEnd instanceof Date && latestEditWindowEnd.getTime() > Date.now()) return false
+    return true
+  })()
 
   const formatRemainingTime = (expiryDate: Date) => {
     const now = new Date()
@@ -83,7 +99,7 @@ export default async function DashboardPage() {
     const planKey = (plan || 'free') as keyof typeof PLAN_CONFIGS
     const config = PLAN_CONFIGS[planKey] || PLAN_CONFIGS.free
     
-    if (planKey === 'free') return '1 menu, 20 items'
+    if (planKey === 'free') return `1 menu, ${config.menuItems} items`
     
     const menuLimit = typeof effectiveMenuLimit === 'number' ? effectiveMenuLimit : config.menus
     if (menuLimit === -1) return 'Unlimited menus'
@@ -257,7 +273,7 @@ export default async function DashboardPage() {
                   </Link>
                 )}
                 {menus.map((menu) => (
-                  <MenuCard key={menu.id} menu={menu} />
+                  <MenuCard key={menu.id} menu={menu} isEditLocked={isEditWindowExpired} />
                 ))}
               </div>
             ) : (
