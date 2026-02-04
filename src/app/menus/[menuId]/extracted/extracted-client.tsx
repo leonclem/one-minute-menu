@@ -213,7 +213,13 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         }
         if (channel) {
           try {
-            supabase.removeChannel(channel)
+            // Supabase realtime APIs differ between client versions; best-effort cleanup.
+            const sb: any = supabase as any
+            if (typeof sb.removeChannel === 'function') {
+              sb.removeChannel(channel)
+            } else if (typeof sb.removeSubscription === 'function') {
+              sb.removeSubscription(channel)
+            }
           } catch {
             // best-effort
           }
@@ -286,67 +292,75 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         }
 
         // Subscribe to real-time updates for the extraction job
-        channel = supabase
-          .channel(`extraction_job:${jobId}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'menu_extraction_jobs',
-              filter: `id=eq.${jobId}`
-            },
-            async (payload) => {
-              const status = payload.new.status
-              setExtractionStatus(status)
-              
-              if (status === 'completed' && payload.new.result) {
-                setAuthResult(payload.new.result as Stage1ExtractionResult | Stage2ExtractionResult)
-                
-                if (!appliedRef.current) {
-                  appliedRef.current = true
-                  try {
-                    const applyResp = await fetch(`/api/menus/${menuId}/apply-extraction`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        result: payload.new.result,
-                        schemaVersion: (payload.new.schema_version || 'stage2') as 'stage1' | 'stage2',
-                        promptVersion: payload.new.prompt_version,
-                        jobId,
-                      }),
-                    })
-                    const applyJson = await applyResp.json()
-                    if (!applyResp.ok) {
-                      throw new Error(applyJson?.error || 'Failed to save extracted items to menu')
+        {
+          const sb: any = supabase as any
+          if (typeof sb.channel === 'function') {
+            channel = sb
+              .channel(`extraction_job:${jobId}`)
+              .on(
+                'postgres_changes',
+                {
+                  event: 'UPDATE',
+                  schema: 'public',
+                  table: 'menu_extraction_jobs',
+                  filter: `id=eq.${jobId}`,
+                },
+                async (payload: any) => {
+                  const status = payload.new.status
+                  setExtractionStatus(status)
+
+                  if (status === 'completed' && payload.new.result) {
+                    setAuthResult(payload.new.result as Stage1ExtractionResult | Stage2ExtractionResult)
+
+                    if (!appliedRef.current) {
+                      appliedRef.current = true
+                      try {
+                        const applyResp = await fetch(`/api/menus/${menuId}/apply-extraction`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            result: payload.new.result,
+                            schemaVersion: (payload.new.schema_version || 'stage2') as 'stage1' | 'stage2',
+                            promptVersion: payload.new.prompt_version,
+                            jobId,
+                          }),
+                        })
+                        const applyJson = await applyResp.json()
+                        if (!applyResp.ok) {
+                          throw new Error(applyJson?.error || 'Failed to save extracted items to menu')
+                        }
+                        setAuthMenu(applyJson.data as Menu)
+                        setLogoUrl((applyJson.data as Menu)?.logoUrl ?? null)
+                        setExtractionStatus('completed')
+                        stopWatching()
+                      } catch (err) {
+                        console.error('Failed to apply extraction to menu', err)
+                        showToast({
+                          type: 'error',
+                          title: 'Could not save items',
+                          description: 'Please try again from the extraction step.',
+                        })
+                        router.push(`/menus/${menuId}/extract`)
+                        stopWatching()
+                      }
                     }
-                    setAuthMenu(applyJson.data as Menu)
-                    setLogoUrl((applyJson.data as Menu)?.logoUrl ?? null)
-                    setExtractionStatus('completed')
-                    stopWatching()
-                  } catch (err) {
-                    console.error('Failed to apply extraction to menu', err)
+                  } else if (status === 'failed') {
                     showToast({
                       type: 'error',
-                      title: 'Could not save items',
-                      description: 'Please try again from the extraction step.',
+                      title: 'Extraction failed',
+                      description: payload.new.error_message || 'Please try again.',
                     })
                     router.push(`/menus/${menuId}/extract`)
                     stopWatching()
                   }
                 }
-              } else if (status === 'failed') {
-                showToast({
-                  type: 'error',
-                  title: 'Extraction failed',
-                  description: payload.new.error_message || 'Please try again.'
-                })
-                router.push(`/menus/${menuId}/extract`)
-                stopWatching()
-              }
-            }
-          )
-          .subscribe()
+              )
+              .subscribe()
+          } else {
+            // In some test/runtime environments realtime isn't available; polling below still works.
+            console.warn('[Extracted Page] Supabase realtime not available; falling back to polling')
+          }
+        }
 
         const fetchStatus = async () => {
           try {

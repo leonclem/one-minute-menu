@@ -84,9 +84,16 @@ export class JobProcessor {
     
     logJobEvent.started(job.id, job.export_type)
 
-    // Load public URL for translation
-    const supabasePublicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321'
-    const supabaseInternalUrl = process.env.SUPABASE_URL || 'http://host.docker.internal:54321'
+    // Load URLs for translation (images must be fetchable from inside Docker).
+    const supabasePublicUrl =
+      process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      process.env.SUPABASE_URL ||
+      'http://localhost:54321'
+    const supabaseInternalUrl =
+      process.env.SUPABASE_INTERNAL_URL ||
+      process.env.WORKER_SUPABASE_URL ||
+      process.env.SUPABASE_URL ||
+      'http://host.docker.internal:54321'
 
     try {
       // Step 1: Fetch render snapshot from job metadata

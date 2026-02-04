@@ -25,6 +25,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [menu, setMenu] = useState<Menu | null>(null)
   const [loading, setLoading] = useState(true)
   const [isDemoUser, setIsDemoUser] = useState(false)
+  const [deliveryEmail, setDeliveryEmail] = useState<string | null>(null)
   
   // Selection State
   const [templateId, setTemplateId] = useState('classic-cards-v2')
@@ -129,6 +130,31 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
 
     loadMenuData()
   }, [menuId, router, showToast])
+
+  // Load user's email address for export notifications (best-effort)
+  useEffect(() => {
+    if (menuId.startsWith('demo-')) return
+    let mounted = true
+
+    ;(async () => {
+      try {
+        const resp = await fetch('/api/profile')
+        if (!resp.ok) return
+        const json = await resp.json().catch(() => ({}))
+        const email = json?.data?.email
+        if (!mounted) return
+        if (typeof email === 'string' && email.includes('@')) {
+          setDeliveryEmail(email)
+        }
+      } catch {
+        // best-effort
+      }
+    })()
+
+    return () => {
+      mounted = false
+    }
+  }, [menuId])
 
   // Fetch layout preview
   const fetchLayoutPreview = useCallback(async () => {
@@ -299,8 +325,10 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
 
       showToast({
         type: 'success',
-        title: 'Export submitted',
-        description: 'Your PDF is being generated. You will receive an email when it is ready.'
+        title: 'Export request received',
+        description: deliveryEmail
+          ? `We’re generating your PDF now. We’ll email it to ${deliveryEmail} in a few minutes.`
+          : 'We’re generating your PDF now. You’ll receive an email when it’s ready.'
       })
 
       trackConversionEvent({

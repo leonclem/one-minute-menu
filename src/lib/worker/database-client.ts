@@ -12,6 +12,7 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
+import fs from 'node:fs'
 
 /**
  * Configuration for database client
@@ -241,8 +242,10 @@ export const databaseClient = new DatabaseClient()
  * @throws Error if required environment variables are missing
  */
 export function initializeDatabaseClient(): void {
-  // IMPORTANT: For Docker containers, we MUST use the internal URL if available
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+  // IMPORTANT:
+  // - In Docker, `localhost` points to the container so we must use a gateway/internal URL.
+  // - Allow a dedicated worker/internal URL env var to avoid breaking the host app.
+  const supabaseUrl = resolveSupabaseUrlForWorker()
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!supabaseUrl) {
@@ -260,6 +263,55 @@ export function initializeDatabaseClient(): void {
     retryDelayMs: parseInt(process.env.DB_RETRY_DELAY_MS || '1000', 10),
     connectionTimeout: parseInt(process.env.DB_CONNECTION_TIMEOUT || '10000', 10),
   })
+}
+
+function resolveSupabaseUrlForWorker(): string | undefined {
+  const isDocker = isRunningInDocker()
+
+  const internal =
+    process.env.SUPABASE_INTERNAL_URL ||
+    process.env.WORKER_SUPABASE_URL
+
+  const fallback =
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL
+
+  const selected = (internal || fallback) || undefined
+  if (!selected) return undefined
+
+  if (isDocker) {
+    return rewriteLocalhostToGateway(selected)
+  }
+
+  return selected
+}
+
+function rewriteLocalhostToGateway(inputUrl: string): string {
+  try {
+    const url = new URL(inputUrl)
+    if (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
+      return inputUrl
+    }
+    url.hostname = process.env.WORKER_HOST_GATEWAY || 'host.docker.internal'
+    return url.toString()
+  } catch {
+    return inputUrl
+  }
+}
+
+function isRunningInDocker(): boolean {
+  if (process.env.RUNNING_IN_DOCKER === 'true') return true
+  try {
+    if (fs.existsSync('/.dockerenv')) return true
+  } catch {
+    // ignore
+  }
+  try {
+    const cgroup = fs.readFileSync('/proc/1/cgroup', 'utf8')
+    return /docker|containerd|kubepods/i.test(cgroup)
+  } catch {
+    return false
+  }
 }
 
 /**

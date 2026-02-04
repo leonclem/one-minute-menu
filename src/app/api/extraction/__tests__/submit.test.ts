@@ -52,15 +52,23 @@ describe('POST /api/extraction/submit', () => {
 
     // Mock extraction service
     mockExtractionService = {
-      submitExtractionJob: jest.fn()
+      // The submit route uses this for idempotency hashing
+      calculateImageHash: jest.fn().mockResolvedValue('hash123'),
+      // Kept for backwards compatibility; route currently queues via JobQueueManager
+      submitExtractionJob: jest.fn(),
     }
     mockCreateMenuExtractionService.mockReturnValue(mockExtractionService)
 
     // Mock queue manager
     mockQueueManager = {
-      checkRateLimit: jest.fn()
+      checkRateLimit: jest.fn(),
+      submitJob: jest.fn(),
     }
     mockJobQueueManager.mockImplementation(() => mockQueueManager)
+    mockQueueManager.submitJob.mockResolvedValue({
+      job: { id: 'job-123', status: 'queued' },
+      cached: false,
+    })
 
     // Mock cost monitor with default allowed state
     mockCostMonitor = {
@@ -343,7 +351,7 @@ describe('POST /api/extraction/submit', () => {
         createdAt: new Date()
       }
 
-      mockExtractionService.submitExtractionJob.mockResolvedValue(mockJob)
+      mockQueueManager.submitJob.mockResolvedValue({ job: mockJob, cached: false })
 
       const request = new NextRequest('http://localhost/api/extraction/submit', {
         method: 'POST',
@@ -362,16 +370,17 @@ describe('POST /api/extraction/submit', () => {
     })
 
     it('should pass extraction options to service', async () => {
-      mockExtractionService.submitExtractionJob.mockResolvedValue({
+      const mockJob = {
         id: 'job-123',
-        status: 'queued',
+        status: 'queued' as const,
         userId: 'user-123',
         imageUrl: 'https://example.com/image.jpg',
         imageHash: 'hash123',
-        schemaVersion: 'stage2',
+        schemaVersion: 'stage2' as const,
         promptVersion: 'v2.0',
-        createdAt: new Date()
-      })
+        createdAt: new Date(),
+      }
+      mockQueueManager.submitJob.mockResolvedValue({ job: mockJob, cached: false })
 
       const request = new NextRequest('http://localhost/api/extraction/submit', {
         method: 'POST',
@@ -386,14 +395,17 @@ describe('POST /api/extraction/submit', () => {
 
       await POST(request)
 
-      expect(mockExtractionService.submitExtractionJob).toHaveBeenCalledWith(
-        'https://example.com/image.jpg',
+      expect(mockExtractionService.calculateImageHash).toHaveBeenCalledWith('https://example.com/image.jpg')
+      expect(mockQueueManager.submitJob).toHaveBeenCalledWith(
         'user-123',
+        'https://example.com/image.jpg',
+        'hash123',
         {
           schemaVersion: 'stage2',
           promptVersion: 'v2.0',
           currency: 'USD',
-          language: 'en'
+          language: 'en',
+          menuId: undefined,
         }
       )
     })
@@ -453,9 +465,7 @@ describe('POST /api/extraction/submit', () => {
     })
 
     it('should return 500 if extraction service throws error', async () => {
-      mockExtractionService.submitExtractionJob.mockRejectedValue(
-        new Error('Extraction failed')
-      )
+      mockQueueManager.submitJob.mockRejectedValue(new Error('Extraction failed'))
 
       const request = new NextRequest('http://localhost/api/extraction/submit', {
         method: 'POST',
