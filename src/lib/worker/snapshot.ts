@@ -5,7 +5,7 @@
  * Ensures that menu edits after job creation don't affect the export output.
  */
 
-import { createServerSupabaseClient } from '../supabase-server'
+import { createWorkerSupabaseClient } from '@/lib/supabase-worker'
 import type { RenderSnapshot } from '@/types'
 
 /**
@@ -139,7 +139,7 @@ async function fetchTemplate(templateId: string): Promise<{
  * @returns Complete menu data including items, categories, and metadata
  */
 async function fetchMenuWithItems(menuId: string): Promise<any> {
-  const supabase = createServerSupabaseClient()
+  const supabase = createWorkerSupabaseClient()
   
   const { data: menu, error } = await supabase
     .from('menus')

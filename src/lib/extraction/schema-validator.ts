@@ -236,7 +236,7 @@ export class SchemaValidator {
               const validItems: MenuItem[] = []
               for (const item of cat.items) {
                 try {
-                  const validatedItem = MenuItemSchema.parse(item)
+                  const validatedItem = MenuItemSchema.parse(item) as MenuItem
                   validItems.push(validatedItem)
                   itemsRecovered++
                 } catch (error) {

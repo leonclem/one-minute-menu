@@ -86,11 +86,14 @@ export class JobQueueManager {
         user_id: userId,
         image_url: imageUrl,
         image_hash: imageHash,
+        menu_id: options.menuId,
         extraction_method: 'vision_llm',
-        status: 'processing',
+        status: 'queued',
         schema_version: options.schemaVersion || 'stage1',
         prompt_version: options.promptVersion || 'v1.0',
-        retry_count: 0
+        retry_count: 0,
+        priority: 0,
+        available_at: new Date().toISOString()
       })
       .select('*')
       .single()

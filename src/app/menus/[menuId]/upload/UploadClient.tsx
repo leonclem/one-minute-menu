@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import ImageUpload from '@/components/ImageUpload'
 import { UXButton, UXCard } from '@/components/ux'
 import ExtractionStatusBanner from '@/components/ExtractionStatusBanner'
-import { AlertTriangle, Info, X, Plus, FileImage } from 'lucide-react'
+import { AlertTriangle, Info, X, Plus } from 'lucide-react'
 import { createThumbnail, rotateImageQuarterTurns } from '@/lib/image-utils'
 
 interface UploadClientProps {
@@ -37,7 +37,9 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
 
   const processQueue = useCallback(async () => {
     if (currentJobIndex.current >= jobQueue.current.length) {
-      setExtractionStatus('completed')
+      // Don't show "completed" here — the worker will continue processing on the next page.
+      setExtractionStatus('processing')
+      setExtractionMessage('Sending you to the next step to review your items…')
       setExtractionProgress(100)
       setQueuedFiles([])
       setSubmitting(false)
@@ -90,11 +92,6 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
       const jobId = extractData.data.jobId
       const isCached = !!extractData?.data?.cached
       
-      // Polling loop for this specific job
-      const maxAttempts = 60
-      const delayMs = 2000
-      let completed = false
-
       // If we got a cache hit, try once immediately (no polling delay)
       if (isCached) {
         setExtractionStatus('processing')
@@ -120,60 +117,23 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
               throw new Error('Failed to apply extraction results')
             }
 
-            completed = true
+            // Move to next file in queue
+            currentJobIndex.current++
+            processQueue()
+            return
           }
         }
       }
 
-      for (let attempt = 0; attempt < maxAttempts && !completed; attempt++) {
-        const statusResp = await fetch(`/api/extraction/status/${jobId}`)
-        if (statusResp.ok) {
-          const statusData = await statusResp.json()
-          const status = statusData?.data?.status
-
-          setExtractionStatus('processing')
-          setExtractionMessage(`AI is extracting items${fileLabel}...`)
-          // Overall progress across all files
-          const baseProgress = (currentJobIndex.current / totalFiles) * 100
-          const currentFileProgress = ((attempt + 1) / maxAttempts) * (100 / totalFiles)
-          setExtractionProgress(Math.min(95, baseProgress + currentFileProgress))
-
-          if (status === 'completed') {
-            // Apply this specific extraction
-            const applyRes = await fetch(`/api/menus/${menuId}/apply-extraction`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                result: statusData.data.result,
-                schemaVersion: statusData.data.schemaVersion,
-                promptVersion: statusData.data.promptVersion,
-                jobId: jobId,
-                append: hasItems || currentJobIndex.current > 0
-              })
-            })
-
-            if (!applyRes.ok) {
-              throw new Error('Failed to apply extraction results')
-            }
-
-            completed = true
-            break
-          }
-
-          if (status === 'failed') {
-            throw new Error(statusData?.error || 'Extraction failed')
-          }
-        }
-        await new Promise(r => setTimeout(r, delayMs))
-      }
-
-      if (!completed) {
-        throw new Error('Extraction timed out')
-      }
-
-      // Move to next file in queue
-      currentJobIndex.current++
-      processQueue()
+      // Store job ID and redirect to extracted page for worker processing
+      sessionStorage.setItem(`extractionJob:${menuId}`, jobId)
+      // Don't show "completed" here — the worker will continue processing on the next page.
+      setExtractionStatus('processing')
+      setExtractionMessage('Sending you to the next step to review your items…')
+      setExtractionProgress(100)
+      setQueuedFiles([])
+      setSubmitting(false)
+      router.push(`/menus/${menuId}/extracted?newExtraction=true`)
 
     } catch (e: any) {
       setExtractionStatus('failed')
@@ -267,10 +227,12 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
-            Add items for {menuName || 'your menu'}
+            Let&apos;s add items to {menuName || 'your menu'}
           </h1>
           <p className="mt-2 text-white/80 text-hero-shadow">
-            Upload one or more photos of your menu to extract items automatically.
+            {hasItems
+              ? 'Upload more photos to add items fast — or jump back to your items to edit.'
+              : 'To build your menu, you can upload photos of an existing menu (fastest) or enter items manually.'}
           </p>
         </div>
 
@@ -290,12 +252,27 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
           <div className="space-y-6">
             <div className="card-ux bg-white/80 backdrop-blur-[1.5px]">
               <div className="p-4 pb-2 text-center">
-                <p className="text-ux-text font-medium mb-1">
-                  {hasItems ? 'Add more items to your menu' : 'Use clear, readable photos of your menu'}
-                </p>
-                <p className="text-ux-text-secondary text-sm mb-3">
-                  You can upload multiple photos to capture your entire menu.
-                </p>
+                {!hasItems ? (
+                  <>
+                    <p className="text-ux-text font-semibold mb-1">
+                      Quick question — do you already have a menu you can photograph?
+                    </p>
+                    <p className="text-ux-text-secondary text-sm mb-3">
+                      If yes, upload or drag &amp; drop a few clear photos below and we&apos;ll pull out the items for you. If not, no worries —
+                      you can type them in manually.
+                    </p>
+                    <p className="text-xs text-ux-text-secondary">
+                      Either way, you&apos;ll be able to review and edit everything in the next step.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-ux-text font-medium mb-1">Upload more menu photos</p>
+                    <p className="text-ux-text-secondary text-sm mb-3">
+                      Upload one or more new photos and we’ll append any new items.
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Selection and Queue Area */}
@@ -370,7 +347,7 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
                         className="w-full py-4 text-lg"
                         onClick={startExtraction}
                       >
-                        Extract {queuedFiles.length} {queuedFiles.length === 1 ? 'Photo' : 'Photos'} Now
+                        Extract items from {queuedFiles.length} {queuedFiles.length === 1 ? 'photo' : 'photos'}
                       </UXButton>
                       <p className="text-center text-xs text-ux-text-secondary">
                         AI will process these images one by one and append the items.
@@ -378,13 +355,41 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
                     </div>
                   </div>
                 ) : (
-                  <ImageUpload
-                    onImageSelected={(file, preview) => handleUpload(file, preview)}
-                    onImagesSelected={(files) => handleMultipleUpload(files)}
-                    multiple
-                    skipPreview
-                    className="w-full bg-transparent shadow-none"
-                  />
+                  <>
+                    <ImageUpload
+                      onImageSelected={(file, preview) => handleUpload(file, preview)}
+                      onImagesSelected={(files) => handleMultipleUpload(files)}
+                      multiple
+                      skipPreview
+                      enableCamera={false}
+                      primaryUploadLabel={hasItems ? 'Upload more menu photos' : 'Upload menu photos'}
+                      uploadButtonVariant="primary"
+                      className="w-full bg-transparent shadow-none"
+                    />
+
+                    {!hasItems && (
+                      <div className="mt-5">
+                        <div className="relative">
+                          <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-ux-border/60" />
+                          </div>
+                          <div className="relative flex justify-center text-xs">
+                            <span className="px-2 bg-white/80 backdrop-blur-[1px] text-ux-text-secondary font-semibold tracking-wide">
+                              OR
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex justify-center">
+                          <Link href={`/menus/${menuId}/extracted?manual=true`} aria-label="Enter items manually">
+                            <UXButton variant="warning" size="md" noShadow className="min-w-[220px] py-2">
+                              Enter items manually
+                            </UXButton>
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
               
@@ -499,22 +504,6 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
                 </Link>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Only show manual entry if the menu is empty */}
-        {!hasItems && extractionStatus === 'idle' && (
-          <div className="mt-10 text-center space-y-2">
-            <p className="text-sm text-white/90 text-hero-shadow">
-              Prefer to build everything by hand instead?
-            </p>
-            <div className="flex justify-center items-center">
-              <Link href={`/menus/${menuId}/extracted?manual=true`} aria-label="Enter items manually in the extracted page">
-                <UXButton variant="warning" size="md" noShadow className="min-w-[220px] py-2">
-                  Enter items manually
-                </UXButton>
-              </Link>
-            </div>
           </div>
         )}
       </div>

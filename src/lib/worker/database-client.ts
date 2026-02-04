@@ -336,6 +336,121 @@ export async function claimJob(workerId: string): Promise<ExportJob | null> {
 }
 
 /**
+ * Extraction job type from database
+ */
+export interface ExtractionJob {
+  id: string
+  user_id: string
+  menu_id: string | null
+  image_url: string
+  image_hash: string
+  status: 'queued' | 'processing' | 'completed' | 'failed'
+  schema_version: 'stage1' | 'stage2'
+  prompt_version: string
+  retry_count: number
+  priority: number
+  worker_id: string | null
+  available_at: string
+  created_at: string
+  updated_at: string
+  started_at: string | null
+  completed_at: string | null
+  result?: any
+  token_usage?: any
+  confidence?: number
+  uncertain_items?: any[]
+  superfluous_text?: any[]
+  error_message?: string
+}
+
+/**
+ * Atomic extraction job claiming
+ * 
+ * @param workerId - Unique identifier for the worker claiming the job
+ * @returns Claimed extraction job or null if no jobs available
+ */
+export async function claimExtractionJob(workerId: string): Promise<ExtractionJob | null> {
+  return databaseClient.withRetry(async () => {
+    const client = databaseClient.getClient()
+    
+    // Use RPC to execute atomic claim in a single transaction
+    // @ts-ignore - RPC function not in generated types yet
+    const { data, error } = await client.rpc('claim_menu_extraction_job', {
+      p_worker_id: workerId
+    }) as { data: ExtractionJob[] | null; error: any }
+
+    if (error) {
+      throw new Error(`Failed to claim extraction job: ${error.message}`)
+    }
+
+    // RPC returns array, get first result or null
+    return data && data.length > 0 ? data[0] : null
+  }, 'claimExtractionJob')
+}
+
+/**
+ * Update extraction job status to completed
+ */
+export async function updateExtractionJobToCompleted(
+  jobId: string,
+  result: any,
+  processingTime: number,
+  tokenUsage?: any,
+  confidence?: number,
+  uncertainItems?: any[],
+  superfluousText?: any[]
+): Promise<void> {
+  return databaseClient.withRetry(async () => {
+    const client = databaseClient.getClient()
+    
+    const { error } = await client
+      .from('menu_extraction_jobs')
+      .update({
+        status: 'completed' as const,
+        result,
+        processing_time: processingTime,
+        token_usage: tokenUsage,
+        confidence,
+        uncertain_items: uncertainItems,
+        superfluous_text: superfluousText,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('id', jobId)
+
+    if (error) {
+      throw new Error(`Failed to update extraction job to completed: ${error.message}`)
+    }
+  }, 'updateExtractionJobToCompleted')
+}
+
+/**
+ * Update extraction job status to failed
+ */
+export async function updateExtractionJobToFailed(
+  jobId: string,
+  errorMessage: string
+): Promise<void> {
+  return databaseClient.withRetry(async () => {
+    const client = databaseClient.getClient()
+    
+    const { error } = await client
+      .from('menu_extraction_jobs')
+      .update({
+        status: 'failed' as const,
+        error_message: errorMessage,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('id', jobId)
+
+    if (error) {
+      throw new Error(`Failed to update extraction job to failed: ${error.message}`)
+    }
+  }, 'updateExtractionJobToFailed')
+}
+
+/**
  * Task 3.3: Update job status to processing
  * 
  * @param jobId - Job ID to update

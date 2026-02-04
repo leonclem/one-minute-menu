@@ -169,21 +169,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create extraction service
-    const extractionService = createMenuExtractionService(openaiApiKey, supabase)
+    // Create extraction service (optional for submission if we just queue)
+    // (queueManager already created above for rate-limit checks)
 
-    // Submit extraction job
-    const job = await extractionService.submitExtractionJob(
-      body.imageUrl,
+    // Calculate image hash for idempotency checking before submission
+    const extractionService = createMenuExtractionService(openaiApiKey, supabase)
+    const imageHash = await (extractionService as any).calculateImageHash(body.imageUrl)
+
+    // Submit extraction job to queue
+    const submission = await queueManager.submitJob(
       user.id,
+      body.imageUrl,
+      imageHash,
       {
         schemaVersion: body.schemaVersion || 'stage1',
         promptVersion: body.promptVersion,
         currency: body.currency,
         language: body.language,
-        ...(body.menuId ? { menuId: body.menuId } : {})
+        menuId: body.menuId
       }
     )
+
+    const job = submission.job
 
     // Calculate estimated completion time
     // Average processing time is ~10-15 seconds
@@ -194,7 +201,7 @@ export async function POST(request: NextRequest) {
       data: {
         jobId: job.id,
         status: job.status,
-        cached: !!(job as any).cached,
+        cached: submission.cached,
         estimatedCompletionTime: estimatedCompletionTime.toISOString(),
         processingTime: Date.now() - startTime
       }

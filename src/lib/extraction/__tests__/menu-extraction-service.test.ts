@@ -264,6 +264,70 @@ describe('MenuExtractionService', () => {
       )
     })
 
+    it('should inline local/Docker URLs as base64 (OpenAI cannot fetch them)', async () => {
+      const originalFetch = global.fetch
+      try {
+        // @ts-expect-error - test mocking fetch
+        global.fetch = jest.fn(async () => ({
+          ok: true,
+          arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+          headers: { get: () => 'image/jpeg' },
+        }))
+
+        const mockImageUrl = 'http://host.docker.internal:54321/storage/v1/object/public/menu-images/test.jpg'
+        const mockPromptPackage = {
+          systemRole: 'You are an expert',
+          userPrompt: 'Extract menu data',
+          temperature: 0,
+          version: 'v1.0',
+          schemaVersion: 'stage1' as const,
+        }
+
+        mockCreate.mockResolvedValue({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                menu: {
+                  categories: [{
+                    name: 'Appetizers',
+                    confidence: 0.9,
+                    items: [{ name: 'Spring Rolls', price: 5.99, confidence: 0.9 }]
+                  }]
+                },
+                currency: 'USD',
+                uncertainItems: [],
+                superfluousText: []
+              })
+            }
+          }],
+          usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 }
+        })
+
+        await service.processWithVisionLLM(mockImageUrl, mockPromptPackage)
+
+        expect(global.fetch).toHaveBeenCalledWith(mockImageUrl)
+        expect(mockCreate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            messages: expect.arrayContaining([
+              expect.objectContaining({
+                role: 'user',
+                content: expect.arrayContaining([
+                  expect.objectContaining({
+                    type: 'image_url',
+                    image_url: expect.objectContaining({
+                      url: expect.stringMatching(/^data:image\/jpeg;base64,/)
+                    })
+                  })
+                ])
+              })
+            ])
+          })
+        )
+      } finally {
+        global.fetch = originalFetch
+      }
+    })
+
     it('should throw error for invalid JSON response', async () => {
       const mockImageUrl = 'https://example.com/menu.jpg'
       const mockPromptPackage = {

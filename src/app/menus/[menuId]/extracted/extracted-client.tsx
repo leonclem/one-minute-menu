@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { UXSection, UXButton, UXCard } from '@/components/ux'
 import { useToast, ConfirmDialog } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
+import { supabase } from '@/lib/supabase'
 import type { Menu, MenuItem, MenuCategory } from '@/types'
 import type { ExtractionResultType as Stage1ExtractionResult } from '@/lib/extraction/schema-stage1'
 import type { ExtractionResultV2Type as Stage2ExtractionResult } from '@/lib/extraction/schema-stage2'
@@ -36,6 +37,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const [authResult, setAuthResult] = useState<Stage1ExtractionResult | Stage2ExtractionResult | null>(null)
   const [authMenu, setAuthMenu] = useState<Menu | null>(null)
   const [loading, setLoading] = useState(false)
+  const [extractionStatus, setExtractionStatus] = useState<'queued' | 'processing' | 'completed' | 'failed' | 'idle'>('idle')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [canEdit, setCanEdit] = useState(true)
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(new Set())
@@ -87,6 +89,28 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const isNewExtraction = searchParams.get('newExtraction') === 'true'
   const { showToast } = useToast()
   const appliedRef = useRef(false)
+
+  // Loading messages for the charismatic loading state
+  const loadingMessages = useMemo(() => [
+    "Analyzing your menu's layout...",
+    "Deciphering those delicious dishes...",
+    "Organizing categories and prices...",
+    "AI is working its magic on your menu...",
+    "Extracting culinary secrets...",
+    "Making sense of the menu structure...",
+    "Preparing your items for curation..."
+  ], [])
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
+
+  useEffect(() => {
+    if (extractionStatus === 'queued' || extractionStatus === 'processing') {
+      const interval = setInterval(() => {
+        setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length)
+      }, 3500)
+      return () => clearInterval(interval)
+    }
+  }, [extractionStatus, loadingMessages.length])
+
   const isDemo = menuId.startsWith('demo-')
   const isReadOnly = !isDemo && canEdit === false
 
@@ -178,6 +202,24 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       // Handle authenticated user menu
       // First, try to load the menu from the database to check if it has extracted data
       let cancelled = false
+      let channel: any | null = null
+      let pollTimer: ReturnType<typeof setTimeout> | null = null
+      let pollAttempts = 0
+
+      const stopWatching = () => {
+        if (pollTimer) {
+          clearTimeout(pollTimer)
+          pollTimer = null
+        }
+        if (channel) {
+          try {
+            supabase.removeChannel(channel)
+          } catch {
+            // best-effort
+          }
+          channel = null
+        }
+      }
 
       ;(async () => {
         const loadMenuFromDatabase = async () => {
@@ -243,6 +285,69 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           return
         }
 
+        // Subscribe to real-time updates for the extraction job
+        channel = supabase
+          .channel(`extraction_job:${jobId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'menu_extraction_jobs',
+              filter: `id=eq.${jobId}`
+            },
+            async (payload) => {
+              const status = payload.new.status
+              setExtractionStatus(status)
+              
+              if (status === 'completed' && payload.new.result) {
+                setAuthResult(payload.new.result as Stage1ExtractionResult | Stage2ExtractionResult)
+                
+                if (!appliedRef.current) {
+                  appliedRef.current = true
+                  try {
+                    const applyResp = await fetch(`/api/menus/${menuId}/apply-extraction`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        result: payload.new.result,
+                        schemaVersion: (payload.new.schema_version || 'stage2') as 'stage1' | 'stage2',
+                        promptVersion: payload.new.prompt_version,
+                        jobId,
+                      }),
+                    })
+                    const applyJson = await applyResp.json()
+                    if (!applyResp.ok) {
+                      throw new Error(applyJson?.error || 'Failed to save extracted items to menu')
+                    }
+                    setAuthMenu(applyJson.data as Menu)
+                    setLogoUrl((applyJson.data as Menu)?.logoUrl ?? null)
+                    setExtractionStatus('completed')
+                    stopWatching()
+                  } catch (err) {
+                    console.error('Failed to apply extraction to menu', err)
+                    showToast({
+                      type: 'error',
+                      title: 'Could not save items',
+                      description: 'Please try again from the extraction step.',
+                    })
+                    router.push(`/menus/${menuId}/extract`)
+                    stopWatching()
+                  }
+                }
+              } else if (status === 'failed') {
+                showToast({
+                  type: 'error',
+                  title: 'Extraction failed',
+                  description: payload.new.error_message || 'Please try again.'
+                })
+                router.push(`/menus/${menuId}/extract`)
+                stopWatching()
+              }
+            }
+          )
+          .subscribe()
+
         const fetchStatus = async () => {
           try {
             const resp = await fetch(`/api/extraction/status/${jobId}`)
@@ -251,6 +356,8 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
               throw new Error(json?.error || 'Failed to get extraction status')
             }
             const status = json?.data?.status
+            setExtractionStatus(status)
+
             if (status === 'completed' && json?.data?.result) {
               if (!cancelled) {
                 setAuthResult(json.data.result as Stage1ExtractionResult | Stage2ExtractionResult)
@@ -280,6 +387,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                     })
                     setAuthMenu(applyJson.data as Menu)
                     setLogoUrl((applyJson.data as Menu)?.logoUrl ?? null)
+                    stopWatching()
                   } catch (err) {
                     console.error('Failed to apply extraction to menu', err)
                     showToast({
@@ -288,6 +396,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                       description: 'Please try again from the extraction step.',
                     })
                     router.push(`/menus/${menuId}/extract`)
+                    stopWatching()
                     return true
                   }
                 }
@@ -301,6 +410,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                 description: json?.data?.error || 'Please try again.'
               })
               router.push(`/menus/${menuId}/extract`)
+              stopWatching()
               return true
             }
             return false
@@ -312,23 +422,49 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
               description: 'Please try again from the extraction step.'
             })
             router.push(`/menus/${menuId}/extract`)
+            stopWatching()
             return true
           }
         }
 
-        // Poll for completion if needed
-        const maxAttempts = 20
-        const delayMs = 2000
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-          const done = await fetchStatus()
-          if (done) break
-          await new Promise((r) => setTimeout(r, delayMs))
-          if (cancelled) break
+        const schedulePoll = () => {
+          if (cancelled) return
+          if (pollTimer) return
+
+          pollTimer = setTimeout(async () => {
+            pollTimer = null
+            if (cancelled) return
+
+            pollAttempts += 1
+            // ~5 minutes at 2s interval
+            if (pollAttempts > 150) {
+              showToast({
+                type: 'error',
+                title: 'Taking longer than expected',
+                description: 'We could not confirm completion. Please try again from the extraction step.',
+              })
+              router.push(`/menus/${menuId}/extract`)
+              stopWatching()
+              return
+            }
+
+            const done = await fetchStatus()
+            if (!done) schedulePoll()
+          }, 2000)
         }
+
+        // Initial fetch and then keep polling until completed/failed.
+        // Realtime updates should short-circuit this, but local/dev environments
+        // can be flaky, so polling keeps the UI responsive.
+        const done = await fetchStatus()
+        if (!done) schedulePoll()
+        
+        // Note: cleanup is handled by the outer effect cleanup calling stopWatching().
       })()
 
       return () => {
         cancelled = true
+        stopWatching()
       }
     }
   }, [menuId, router, showToast, isManualEntry])
@@ -1268,8 +1404,49 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           {isDemo ? 'Review Extracted Items' : 'Configure Menu Content'}
         </h1>
       </div>
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Summary Card */}
+
+      {(extractionStatus === 'queued' || extractionStatus === 'processing') && (
+        <div className="max-w-4xl mx-auto space-y-6 animate-pulse">
+          <UXCard>
+            <div className="p-8 text-center space-y-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-ux-primary/10 text-ux-primary mb-2">
+                <Sparkles className="h-8 w-8 animate-spin-slow" />
+              </div>
+              <h2 className="text-2xl font-bold text-ux-text">AI is extracting your menu...</h2>
+              <p className="text-lg text-ux-primary font-medium transition-all duration-500">
+                {loadingMessages[loadingMessageIndex]}
+              </p>
+              <div className="w-full bg-ux-background-secondary rounded-full h-2 max-w-md mx-auto overflow-hidden">
+                <div className="bg-ux-primary h-full animate-progress-indeterminate"></div>
+              </div>
+            </div>
+          </UXCard>
+
+          {/* Ghost Rows / Skeleton UI */}
+          {[1, 2, 3].map((i) => (
+            <UXCard key={i}>
+              <div className="p-6 space-y-4">
+                <div className="h-6 bg-ux-background-secondary rounded w-1/4 mb-4"></div>
+                {[1, 2, 3, 4].map((j) => (
+                  <div key={j} className="flex gap-4 items-start border-t border-ux-border/40 pt-4">
+                    <div className="h-16 w-16 bg-ux-background-secondary rounded shrink-0"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-ux-background-secondary rounded w-1/3"></div>
+                      <div className="h-3 bg-ux-background-secondary rounded w-2/3"></div>
+                    </div>
+                    <div className="h-4 bg-ux-background-secondary rounded w-12"></div>
+                  </div>
+                ))}
+              </div>
+            </UXCard>
+          ))}
+        </div>
+      )}
+
+      {extractionStatus !== 'queued' && extractionStatus !== 'processing' && (
+        <>
+          <div className="max-w-4xl mx-auto space-y-6">
+          {/* Summary Card */}
         <UXCard>
           <div className="p-6 relative z-10">
             <div className="flex flex-col md:flex-row md:justify-between gap-6">
@@ -2495,6 +2672,8 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         />,
         document.body
       )}
-    </UXSection>
+        </>
+      )}
+</UXSection>
   )
 }

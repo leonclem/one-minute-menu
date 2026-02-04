@@ -20,12 +20,19 @@ import { getRenderSnapshot } from './snapshot'
 import { handleJobFailure } from './retry-strategy'
 import {
   ExportJob,
+  ExtractionJob,
   updateJobToCompleted,
   updateJobToFailed,
   resetJobToPendingWithBackoff,
   updateJobStatus,
+  updateExtractionJobToCompleted,
+  updateExtractionJobToFailed,
 } from './database-client'
 import { notificationService } from '@/lib/notification-service'
+import { createMenuExtractionService } from '@/lib/extraction/menu-extraction-service'
+import { createWorkerSupabaseClient } from '@/lib/supabase-worker'
+import { getPromptPackage } from '@/lib/extraction/prompt-stage1'
+import { getPromptPackageV2 } from '@/lib/extraction/prompt-stage2'
 import type { PDFOptions, ImageOptions, RenderSnapshot } from '@/types'
 import { logJobEvent, logError, logWarning, logInfo } from './logger'
 import {
@@ -196,6 +203,79 @@ export class JobProcessor {
     } catch (error) {
       logError('Job processing failed', error as Error, { job_id: job.id })
       await this.handleError(job, error as Error)
+    }
+  }
+
+  /**
+   * Process a single menu extraction job
+   */
+  async processExtraction(job: ExtractionJob): Promise<void> {
+    const startTime = Date.now()
+    logInfo('Processing extraction job', { job_id: job.id })
+
+    try {
+      const openaiApiKey = process.env.OPENAI_API_KEY
+      if (!openaiApiKey) {
+        throw new Error('OPENAI_API_KEY not configured in worker')
+      }
+
+      // NOTE: The image_url may be a local Supabase URL like http://localhost:54321/...
+      // When running inside Docker, localhost points to the container, not the host.
+      // Rewrite to host.docker.internal so the worker can fetch the image for preprocessing.
+      const imageUrlForWorker = rewriteLocalhostUrlForDocker(job.image_url)
+
+      // Create extraction service with worker's Supabase client
+      // IMPORTANT: Workers must not use Next.js cookie-based clients.
+      // Use the direct worker client (service role) instead.
+      const supabase = createWorkerSupabaseClient()
+      const extractionService = createMenuExtractionService(openaiApiKey, supabase)
+
+      // Build prompt package based on schema version
+      const useStage2 = job.schema_version === 'stage2'
+      const promptPackage = useStage2
+        ? getPromptPackageV2({
+            currencyOverride: (job as any).currency,
+            includeExamples: true,
+          })
+        : getPromptPackage({
+            currencyOverride: (job as any).currency,
+            includeExamples: true,
+          })
+
+      // Run the extraction
+      // Note: extractionService handles its own vision-LLM calls and validation
+      const result = await (extractionService as any).processWithVisionLLM(
+        imageUrlForWorker,
+        promptPackage,
+        {
+          schemaVersion: job.schema_version,
+          promptVersion: job.prompt_version,
+          menuId: job.menu_id || undefined
+        }
+      )
+
+      const processingTime = Date.now() - startTime
+      const tokenUsage = (extractionService as any).calculateTokenUsage(result.usage)
+
+      // Update job to completed
+      await updateExtractionJobToCompleted(
+        job.id,
+        result.extractionResult,
+        processingTime,
+        tokenUsage,
+        (result as any).confidence,
+        (result as any).uncertainItems,
+        (result as any).superfluousText
+      )
+
+      logInfo('Extraction job completed', {
+        job_id: job.id,
+        duration_ms: processingTime,
+        tokens: tokenUsage.totalTokens
+      })
+    } catch (error) {
+      logError('Extraction job failed', error as Error, { job_id: job.id })
+      await updateExtractionJobToFailed(job.id, (error as Error).message)
     }
   }
 
@@ -557,5 +637,22 @@ export class JobProcessor {
     logInfo('JobProcessor shutting down')
     await this.renderer.shutdown()
     logInfo('JobProcessor shutdown complete')
+  }
+}
+
+function rewriteLocalhostUrlForDocker(inputUrl: string): string {
+  try {
+    const url = new URL(inputUrl)
+
+    // Only rewrite true localhost-style URLs.
+    if (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
+      return inputUrl
+    }
+
+    // In Docker Desktop, host.docker.internal is the host gateway (works with --add-host on Linux too).
+    url.hostname = process.env.WORKER_HOST_GATEWAY || 'host.docker.internal'
+    return url.toString()
+  } catch {
+    return inputUrl
   }
 }

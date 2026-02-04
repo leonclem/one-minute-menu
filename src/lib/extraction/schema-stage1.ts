@@ -75,9 +75,9 @@ export const MenuItemSchema = z.object({
 export const CategorySchema: z.ZodType<Category> = z.lazy(() => z.object({
   name: z.string().min(1, 'Category name cannot be empty').max(100, 'Category name too long'),
   items: z.array(MenuItemSchema),
-  subcategories: z.array(CategorySchema).optional(),
+  subcategories: z.array(z.lazy(() => CategorySchema)).optional(),
   confidence: z.number().min(0, 'Confidence must be >= 0').max(1, 'Confidence must be <= 1')
-}))
+})) as any
 
 /**
  * Structured Menu Schema

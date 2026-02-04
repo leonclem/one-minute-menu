@@ -63,6 +63,7 @@ RUN echo '{\n\
     "resolveJsonModule": true,\n\
     "allowSyntheticDefaultImports": true\n  },\n  "include": [\n\
     "src/lib/worker/**/*",\n\
+    "src/lib/extraction/**/*",\n\
     "src/lib/database.ts",\n\
     "src/lib/supabase-server.ts",\n\
     "src/lib/supabase-worker.ts",\n\
@@ -71,6 +72,7 @@ RUN echo '{\n\
     "src/lib/logger.ts",\n\
     "src/lib/image-utils.ts",\n\
     "src/lib/utils.ts",\n\
+    "src/lib/retry.ts",\n\
     "src/lib/menu-data-migration.ts",\n\
     "src/lib/templates/v2/**/*",\n\
     "src/lib/templates/export/texture-utils.ts",\n\

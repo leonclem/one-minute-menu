@@ -11,8 +11,8 @@ const mockEq = jest.fn(() => ({ single: mockSingle }))
 const mockSelect = jest.fn(() => ({ eq: mockEq }))
 const mockFrom = jest.fn(() => ({ select: mockSelect }))
 
-jest.mock('../../supabase-server', () => ({
-  createServerSupabaseClient: jest.fn(() => ({
+jest.mock('@/lib/supabase-worker', () => ({
+  createWorkerSupabaseClient: jest.fn(() => ({
     from: mockFrom
   }))
 }))

@@ -16,6 +16,9 @@ interface ImageUploadProps {
   outputFormat?: 'jpeg' | 'png' | 'webp'
   multiple?: boolean
   skipPreview?: boolean
+  enableCamera?: boolean
+  primaryUploadLabel?: string
+  uploadButtonVariant?: 'primary' | 'secondary' | 'outline' | 'warning'
 }
 
 export default function ImageUpload({ 
@@ -27,7 +30,10 @@ export default function ImageUpload({
   noWrapper = false,
   outputFormat,
   multiple = false,
-  skipPreview = false
+  skipPreview = false,
+  enableCamera = true,
+  primaryUploadLabel = 'Choose file',
+  uploadButtonVariant = 'warning'
 }: ImageUploadProps) {
   const [mode, setMode] = useState<'select' | 'camera' | 'preview'>('select')
   const [dragActive, setDragActive] = useState(false)
@@ -50,6 +56,7 @@ export default function ImageUpload({
       setHasCamera(false)
     }
   }, [])
+  const showCamera = enableCamera && hasCamera
 
   // Handle file selection
   const handleFileSelect = useCallback(async (file: File) => {
@@ -349,7 +356,7 @@ export default function ImageUpload({
           {!processing && (
             <>
               {/* Camera option (mobile) */}
-              {hasCamera && (
+              {showCamera && (
                 <div className="mb-4">
                   <UXButton
                     variant="primary"
@@ -367,7 +374,7 @@ export default function ImageUpload({
               )}
 
               {/* Divider */}
-              {hasCamera && (
+              {showCamera && (
                 <div className="relative mb-4">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-gray-300" />
@@ -407,12 +414,12 @@ export default function ImageUpload({
                   <div className="mt-4">
                     <p className="text-sm text-gray-700">
                       <UXButton
-                        variant="warning"
+                        variant={uploadButtonVariant}
                         noShadow
                         onClick={() => fileInputRef.current?.click()}
                         className="mr-1 py-2"
                       >
-                        Choose file
+                        {primaryUploadLabel}
                       </UXButton>
                       or drag and drop
                     </p>

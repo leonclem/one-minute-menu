@@ -594,8 +594,35 @@ export class MenuExtractionService {
    * Preprocess image (resize, compress, format conversion)
    */
   private async preprocessImage(imageUrl: string): Promise<string> {
-    // Check if URL is localhost (local development)
-    const isLocalhost = imageUrl.includes('localhost') || imageUrl.includes('127.0.0.1')
+    // Check if URL is local/private (dev / Docker / LAN).
+    // OpenAI can't fetch these URLs directly, so we must fetch and inline as base64.
+    const isLocalhost = (() => {
+      try {
+        const url = new URL(imageUrl)
+        const hostname = url.hostname
+
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === 'host.docker.internal') {
+          return true
+        }
+
+        // Simple private IPv4 detection (RFC1918 + loopback)
+        const m = hostname.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
+        if (m) {
+          const a = Number(m[1])
+          const b = Number(m[2])
+          // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8
+          if (a === 10) return true
+          if (a === 127) return true
+          if (a === 192 && b === 168) return true
+          if (a === 172 && b >= 16 && b <= 31) return true
+        }
+
+        return false
+      } catch {
+        // Fallback for non-URL strings
+        return imageUrl.includes('localhost') || imageUrl.includes('127.0.0.1') || imageUrl.includes('host.docker.internal')
+      }
+    })()
     
     if (isLocalhost) {
       // Convert to base64 data URL for local development

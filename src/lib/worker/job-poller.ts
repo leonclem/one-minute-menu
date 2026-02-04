@@ -11,9 +11,9 @@
  * Requirements: 2.1, 2.3, 12.7, 12.8
  */
 
-import { claimJob, getQueueDepth } from './database-client'
+import { claimJob, claimExtractionJob, getQueueDepth } from './database-client'
 import { JobProcessor } from './job-processor'
-import type { ExportJob } from './database-client'
+import type { ExportJob, ExtractionJob } from './database-client'
 import { logJobEvent, logInfo, logWarning, logError } from './logger'
 import {
   updateQueueDepth,
@@ -120,22 +120,48 @@ export class JobPoller {
     }
 
     try {
-      // Attempt to claim a job
-      const job = await this.claimJob()
+      // 1. Attempt to claim an extraction job (higher priority for UX)
+      const extractionJob = await this.claimExtractionJob()
+      if (extractionJob) {
+        logInfo('Claimed extraction job', { job_id: extractionJob.id })
+        
+        incrementProcessingJobs(this.workerId)
+        const jobPromise = this.processor.processExtraction(extractionJob)
+        
+        if (this.onJobStart) {
+          this.onJobStart(jobPromise)
+        }
 
-      if (job) {
+        await jobPromise
+        decrementProcessingJobs(this.workerId)
+
+        if (this.onJobComplete) {
+          this.onJobComplete()
+        }
+        
+        // After processing a job, immediately check for more work
+        if (this.isRunning) {
+          this.poll()
+          return
+        }
+      }
+
+      // 2. Attempt to claim an export job
+      const exportJob = await this.claimExportJob()
+
+      if (exportJob) {
         logJobEvent.claimed(
-          job.id,
-          job.export_type,
-          job.priority,
-          job.retry_count
+          exportJob.id,
+          exportJob.export_type,
+          exportJob.priority,
+          exportJob.retry_count
         )
         
         // Increment processing jobs metric
         incrementProcessingJobs(this.workerId)
 
         // Process the job and track it for graceful shutdown
-        const jobPromise = this.processor.process(job)
+        const jobPromise = this.processor.process(exportJob)
         
         // Notify graceful shutdown handler that we're processing a job
         if (this.onJobStart) {
@@ -151,6 +177,12 @@ export class JobPoller {
         // Notify graceful shutdown handler that job is complete
         if (this.onJobComplete) {
           this.onJobComplete()
+        }
+        
+        // After processing a job, immediately check for more work
+        if (this.isRunning) {
+          this.poll()
+          return
         }
       }
     } catch (error) {
@@ -179,20 +211,27 @@ export class JobPoller {
   }
 
   /**
-   * Atomically claim one job from the queue
-   * 
-   * Uses SELECT FOR UPDATE SKIP LOCKED to ensure only one worker
-   * claims each job. Respects available_at for retry backoff.
-   * 
-   * @returns Claimed job or null if no jobs available
-   * 
-   * Requirements: 2.3
+   * Atomically claim one export job from the queue
    */
-  private async claimJob(): Promise<ExportJob | null> {
+  private async claimExportJob(): Promise<ExportJob | null> {
     try {
       return await claimJob(this.workerId)
     } catch (error) {
-      logError('Error claiming job', error as Error, {
+      logError('Error claiming export job', error as Error, {
+        worker_id: this.workerId,
+      })
+      return null
+    }
+  }
+
+  /**
+   * Atomically claim one extraction job from the queue
+   */
+  private async claimExtractionJob(): Promise<ExtractionJob | null> {
+    try {
+      return await claimExtractionJob(this.workerId)
+    } catch (error) {
+      logError('Error claiming extraction job', error as Error, {
         worker_id: this.workerId,
       })
       return null

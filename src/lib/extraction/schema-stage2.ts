@@ -177,9 +177,9 @@ export const MenuItemV2Schema = MenuItemV2SchemaBase.refine(
 export const CategoryV2Schema: z.ZodType<CategoryV2> = z.lazy(() => z.object({
   name: z.string().min(1).max(100),
   items: z.array(MenuItemV2Schema),
-  subcategories: z.array(CategoryV2Schema).optional(),
+  subcategories: z.array(z.lazy(() => CategoryV2Schema)).optional(),
   confidence: z.number().min(0).max(1)
-}))
+})) as any
 
 export const StructuredMenuV2Schema = z.object({
   categories: z.array(CategoryV2Schema).min(1)
