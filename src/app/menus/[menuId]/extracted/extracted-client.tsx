@@ -122,12 +122,13 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     })
   }
 
-  // Show review acknowledgment modal for new extractions
+  // Show review acknowledgment modal only once extraction is truly complete.
+  // (We land on this page while a worker is still processing, so showing it immediately is misleading.)
   useEffect(() => {
-    if (isNewExtraction) {
-      setShowReviewAcknowledge(true)
-    }
-  }, [isNewExtraction])
+    if (!isNewExtraction) return
+    if (extractionStatus !== 'completed') return
+    setShowReviewAcknowledge(true)
+  }, [isNewExtraction, extractionStatus])
   
   // Client-side mount detection for portal
   useEffect(() => {
@@ -2681,8 +2682,15 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           description="Our AI has extracted the items from your photo. Please review the results carefully for any inaccuracies or formatting issues before proceeding."
           confirmText="Got it, I'll review"
           cancelText=""
-          onConfirm={() => setShowReviewAcknowledge(false)}
-          onCancel={() => setShowReviewAcknowledge(false)}
+          onConfirm={() => {
+            setShowReviewAcknowledge(false)
+            // Clear the query param so refresh/back doesn't keep showing the dialog.
+            router.replace(`/menus/${menuId}/extracted`)
+          }}
+          onCancel={() => {
+            setShowReviewAcknowledge(false)
+            router.replace(`/menus/${menuId}/extracted`)
+          }}
         />,
         document.body
       )}
