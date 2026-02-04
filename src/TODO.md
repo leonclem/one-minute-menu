@@ -3,7 +3,7 @@
 ## Railway
 - [x] Implement Railway architecture to offload PDF export from Vercel
 - [x] Plan for utilising Railway for image export
-- [ ] Monitoring of workers in the Admin dashboard
+- [ ] Monitoring of workers in the Admin dashboard (particularly keen to understand turnaround times for extraction and export tasks)
 
 ## Email templates
 - [ ] Determine and document all emails sent
