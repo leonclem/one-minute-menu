@@ -10,6 +10,49 @@ const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || process.env.FROM_EMAIL || 
 const FROM_NAME = process.env.SENDGRID_FROM_NAME || 'GridMenu'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://gridmenu.ai'
 
+// Deliverability / legitimacy helpers (best-effort; no hardcoded real-world address)
+const COMPANY_NAME = process.env.COMPANY_NAME || process.env.SENDGRID_COMPANY_NAME || FROM_NAME
+const COMPANY_MAILING_ADDRESS =
+  process.env.COMPANY_MAILING_ADDRESS ||
+  process.env.SENDGRID_COMPANY_MAILING_ADDRESS ||
+  ''
+const COMPANY_SUPPORT_EMAIL =
+  process.env.SUPPORT_EMAIL ||
+  process.env.SENDGRID_SUPPORT_EMAIL ||
+  FROM_EMAIL
+
+function withCompanyPrefix(subject: string): string {
+  // Avoid double-prefixing if already present
+  if (subject.toLowerCase().startsWith(COMPANY_NAME.toLowerCase())) return subject
+  return `${COMPANY_NAME} — ${subject}`
+}
+
+function renderComplianceFooterText(): string {
+  const lines: string[] = []
+  if (COMPANY_MAILING_ADDRESS.trim()) {
+    lines.push(COMPANY_MAILING_ADDRESS.trim())
+  }
+  if (COMPANY_SUPPORT_EMAIL.trim()) {
+    lines.push(`Support: ${COMPANY_SUPPORT_EMAIL.trim()}`)
+  }
+  if (lines.length === 0) return ''
+  return `\n\n—\n${COMPANY_NAME}\n${lines.join('\n')}`
+}
+
+function renderComplianceFooterHtml(): string {
+  const address = COMPANY_MAILING_ADDRESS.trim()
+  const support = COMPANY_SUPPORT_EMAIL.trim()
+  if (!address && !support) return ''
+
+  return `
+    <div style="margin-top: 32px; border-top: 1px solid #edf2f7; padding-top: 16px; color: #718096; font-size: 12px; line-height: 1.5;">
+      <div style="font-weight: 600; color: #4a5568;">${COMPANY_NAME}</div>
+      ${address ? `<div>${address}</div>` : ''}
+      ${support ? `<div>Support: <a href="mailto:${support}" style="color: #3182ce; text-decoration: none;">${support}</a></div>` : ''}
+    </div>
+  `
+}
+
 /**
  * Helper to create a Supabase client compatible with both Next.js and Worker environments.
  * It uses the worker client which bypasses cookie issues.
@@ -62,8 +105,8 @@ export const notificationService = {
           email: FROM_EMAIL,
           name: FROM_NAME
         },
-        subject: `Welcome to ${planName}! Your subscription is active`,
-        text: `Thank you for subscribing to ${planName}!\n\nYour subscription is now active and you have access to all premium features.\n\nAmount: $${amountDollars}\nPlan: ${planName}\n\nManage your subscription: ${APP_URL}/upgrade\n\nThank you for choosing GridMenu!`,
+        subject: withCompanyPrefix(`Welcome to ${planName}! Your subscription is active`),
+        text: `Thank you for subscribing to ${planName}!\n\nYour subscription is now active and you have access to all premium features.\n\nAmount: $${amountDollars}\nPlan: ${planName}\n\nManage your subscription: ${APP_URL}/upgrade\n\nThank you for choosing ${COMPANY_NAME}!${renderComplianceFooterText()}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
             <h2 style="color: #1a202c; margin-top: 0;">Welcome to ${planName}!</h2>
@@ -82,6 +125,7 @@ export const notificationService = {
             <p style="color: #718096; font-size: 14px; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
               Thank you for choosing GridMenu,<br>The GridMenu Team
             </p>
+            ${renderComplianceFooterHtml()}
           </div>
         `,
       }
@@ -136,8 +180,8 @@ export const notificationService = {
           email: FROM_EMAIL,
           name: FROM_NAME
         },
-        subject,
-        text: `${greeting}\n\nYou can now create one additional menu with full editing capabilities.\n\nPack Details:\n- Valid for: 24 months\n- Edit window: 7 days from creation\n- Additional menus: 1\n\nStart creating: ${APP_URL}/dashboard\n\nThank you for choosing GridMenu!`,
+        subject: withCompanyPrefix(subject),
+        text: `${greeting}\n\nYou can now create one additional menu with full editing capabilities.\n\nPack Details:\n- Valid for: 24 months\n- Edit window: 7 days from creation\n- Additional menus: 1\n\nStart creating: ${APP_URL}/dashboard\n\nThank you for choosing ${COMPANY_NAME}!${renderComplianceFooterText()}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
             <h2 style="color: #1a202c; margin-top: 0;">${isFree ? 'Your Free Creator Pack is Ready!' : 'Creator Pack Confirmed'}</h2>
@@ -158,6 +202,7 @@ export const notificationService = {
             <p style="color: #718096; font-size: 14px; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
               Thank you for choosing GridMenu,<br>The GridMenu Team
             </p>
+            ${renderComplianceFooterHtml()}
           </div>
         `,
       }
@@ -204,8 +249,8 @@ export const notificationService = {
           email: FROM_EMAIL,
           name: FROM_NAME
         },
-        subject: 'Payment Failed - Action Required',
-        text: `We were unable to process your payment.\n\nReason: ${reason}\n\nPlease update your payment method to continue using GridMenu premium features.\n\nUpdate payment method: ${APP_URL}/upgrade\n\nIf you have questions, please contact our support team.`,
+        subject: withCompanyPrefix('Payment Failed - Action Required'),
+        text: `We were unable to process your payment.\n\nReason: ${reason}\n\nPlease update your payment method to continue using ${COMPANY_NAME} premium features.\n\nUpdate payment method: ${APP_URL}/upgrade\n\nIf you have questions, please contact our support team.${renderComplianceFooterText()}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
             <h2 style="color: #c53030; margin-top: 0;">Payment Failed</h2>
@@ -223,6 +268,7 @@ export const notificationService = {
             <p style="color: #718096; font-size: 14px; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
               If you have questions, please contact our support team.<br>The GridMenu Team
             </p>
+            ${renderComplianceFooterHtml()}
           </div>
         `,
       }
@@ -275,8 +321,8 @@ export const notificationService = {
           email: FROM_EMAIL,
           name: FROM_NAME
         },
-        subject: 'Your subscription has been cancelled',
-        text: `Your GridMenu subscription has been cancelled.\n\nYou will continue to have access to premium features until ${periodEndFormatted}.\n\nAfter this date, your account will be downgraded to the free plan.\n\nIf you change your mind, you can resubscribe at any time: ${APP_URL}/upgrade\n\nThank you for using GridMenu!`,
+        subject: withCompanyPrefix('Your subscription has been cancelled'),
+        text: `Your ${COMPANY_NAME} subscription has been cancelled.\n\nYou will continue to have access to premium features until ${periodEndFormatted}.\n\nAfter this date, your account will be downgraded to the free plan.\n\nIf you change your mind, you can resubscribe at any time: ${APP_URL}/upgrade\n\nThank you for using ${COMPANY_NAME}!${renderComplianceFooterText()}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
             <h2 style="color: #1a202c; margin-top: 0;">Subscription Cancelled</h2>
@@ -295,6 +341,7 @@ export const notificationService = {
             <p style="color: #718096; font-size: 14px; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
               Thank you for using GridMenu,<br>The GridMenu Team
             </p>
+            ${renderComplianceFooterHtml()}
           </div>
         `,
       }
@@ -340,7 +387,7 @@ export const notificationService = {
       }
 
       const exportTypeLabel = exportType === 'pdf' ? 'PDF' : 'Image'
-      const subject = `Your ${exportTypeLabel} export is ready: ${menuName}`
+      const subject = withCompanyPrefix(`Your ${exportTypeLabel} export is ready: ${menuName}`)
 
       const msg = {
         to: profile.email,
@@ -359,7 +406,7 @@ export const notificationService = {
             enableText: false,
           },
         },
-        text: `Your ${exportTypeLabel} export for "${menuName}" is ready!\n\nYou can download your file using the link below. This link will be valid for 7 days.\n\nDownload: ${downloadUrl}\n\nMenu: ${menuName}\nType: ${exportTypeLabel}\n\nThank you for using GridMenu!`,
+        text: `Your ${exportTypeLabel} export for "${menuName}" is ready!\n\nYou can download your file using the link below. This link will be valid for 7 days.\n\nDownload: ${downloadUrl}\n\nMenu: ${menuName}\nType: ${exportTypeLabel}\n\nThank you for using ${COMPANY_NAME}!${renderComplianceFooterText()}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
             <h2 style="color: #1a202c; margin-top: 0;">Your Export is Ready!</h2>
@@ -380,6 +427,7 @@ export const notificationService = {
             <p style="color: #718096; font-size: 14px; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
               Thank you for using GridMenu,<br>The GridMenu Team
             </p>
+            ${renderComplianceFooterHtml()}
           </div>
         `,
       }
@@ -426,7 +474,7 @@ export const notificationService = {
       }
 
       const exportTypeLabel = exportType === 'pdf' ? 'PDF' : 'Image'
-      const subject = `Export failed: ${menuName} (${exportTypeLabel})`
+      const subject = withCompanyPrefix(`Export failed: ${menuName} (${exportTypeLabel})`)
 
       const msg = {
         to: profile.email,
@@ -435,7 +483,7 @@ export const notificationService = {
           name: FROM_NAME
         },
         subject,
-        text: `We were unable to complete your ${exportTypeLabel} export for "${menuName}".\n\nError: ${errorMessage}\n\nMenu: ${menuName}\nType: ${exportTypeLabel}\n\nPlease try again or contact support if the problem persists.\n\nSupport: ${APP_URL}/support`,
+        text: `We were unable to complete your ${exportTypeLabel} export for "${menuName}".\n\nError: ${errorMessage}\n\nMenu: ${menuName}\nType: ${exportTypeLabel}\n\nPlease try again or contact support if the problem persists.\n\nSupport: ${APP_URL}/support${renderComplianceFooterText()}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
             <h2 style="color: #c53030; margin-top: 0;">Export Failed</h2>
@@ -455,6 +503,7 @@ export const notificationService = {
             <p style="color: #718096; font-size: 14px; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
               We apologize for the inconvenience,<br>The GridMenu Team
             </p>
+            ${renderComplianceFooterHtml()}
           </div>
         `,
       }

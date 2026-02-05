@@ -146,6 +146,7 @@ export default function DemoSampleClient() {
       }
 
       const menu: Menu = result.data
+      const flowMenuId = menu.id?.startsWith('demo-') ? menu.id : `demo-${menu.id}`
 
       // Store demo menu data in sessionStorage for the demo flow, include imageUrl for preview consistency
       const demoWithImage = { ...result.data, imageUrl: sampleMenu.imageUrl }
@@ -168,7 +169,7 @@ export default function DemoSampleClient() {
       })
 
       // Navigate directly to extraction since we have sample text
-      router.push(`/menus/${menu.id}/extract`)
+      router.push(`/menus/${flowMenuId}/extract`)
       
     } catch (error) {
       console.error('Error creating demo menu:', error)

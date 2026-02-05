@@ -72,7 +72,7 @@ describe('Notification Service', () => {
             email: 'noreply@gridmenu.ai',
             name: 'GridMenu',
           },
-          subject: 'Welcome to Grid+! Your subscription is active',
+          subject: expect.stringContaining('Welcome to Grid+! Your subscription is active'),
           text: expect.stringContaining('Grid+'),
           html: expect.stringContaining('Grid+'),
         })
@@ -85,7 +85,7 @@ describe('Notification Service', () => {
       expect(sgMail.send).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'user@example.com',
-          subject: 'Welcome to Grid+ Premium! Your subscription is active',
+          subject: expect.stringContaining('Welcome to Grid+ Premium! Your subscription is active'),
           text: expect.stringContaining('Grid+ Premium'),
           html: expect.stringContaining('Grid+ Premium'),
         })
@@ -156,7 +156,7 @@ describe('Notification Service', () => {
       expect(sgMail.send).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'user@example.com',
-          subject: 'Your free Creator Pack is ready!',
+          subject: expect.stringContaining('Your free Creator Pack is ready!'),
           text: expect.stringContaining('free Creator Pack'),
           html: expect.stringContaining('Free Creator Pack'),
         })
@@ -169,7 +169,7 @@ describe('Notification Service', () => {
       expect(sgMail.send).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'user@example.com',
-          subject: 'Your Creator Pack purchase is confirmed',
+          subject: expect.stringContaining('Your Creator Pack purchase is confirmed'),
           text: expect.stringContaining('purchasing a Creator Pack'),
           html: expect.stringContaining('Creator Pack Confirmed'),
         })
@@ -242,7 +242,7 @@ describe('Notification Service', () => {
       expect(sgMail.send).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'user@example.com',
-          subject: 'Payment Failed - Action Required',
+          subject: expect.stringContaining('Payment Failed - Action Required'),
           text: expect.stringContaining('Card declined'),
           html: expect.stringContaining('Card declined'),
         })
@@ -318,7 +318,7 @@ describe('Notification Service', () => {
       expect(sgMail.send).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'user@example.com',
-          subject: 'Your subscription has been cancelled',
+          subject: expect.stringContaining('Your subscription has been cancelled'),
           text: expect.stringContaining('cancelled'),
           html: expect.stringContaining('Subscription Cancelled'),
         })

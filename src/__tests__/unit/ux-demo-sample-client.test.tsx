@@ -72,7 +72,7 @@ describe('DemoSampleClient (sample demo flow)', () => {
           type: 'success',
         }),
       )
-      expect(mockPush).toHaveBeenCalledWith('/menus/menu-demo-1/extract')
+      expect(mockPush).toHaveBeenCalledWith('/menus/demo-menu-demo-1/extract')
     })
 
     // demo_completed should also be tracked with menuId

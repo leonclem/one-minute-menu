@@ -22,41 +22,45 @@ export default async function MenuUxLayout({
   children: React.ReactNode
   params: { menuId: string }
 }) {
+  const isDemoMenu = params.menuId.startsWith('demo-')
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) {
+  // Demo flow must be accessible without an account.
+  if (!user && !isDemoMenu) {
     redirect('/auth/signin')
   }
 
-  const profile = await userOperations.getProfile(user.id)
-  
-  // Onboarding gate: block if approved but not complete
-  const isAdmin = profile?.role === 'admin'
-  const isApproved = profile?.isApproved || isAdmin
+  // Onboarding gate: block if approved but not complete (skip for demo routes)
+  if (user && !isDemoMenu) {
+    const profile = await userOperations.getProfile(user.id)
 
-  if (isApproved && !isAdmin && !isOnboardingComplete(profile)) {
-    const headerList = headers()
-    const pathname = headerList.get('x-pathname') || `/menus/${params.menuId}`
-    const reason = getOnboardingBlockReason(profile)
-    
-    console.warn('[onboarding] gate_blocked_navigation', {
-      userId: user.id,
-      email: user.email,
-      path: pathname,
-      reason
-    })
+    const isAdmin = profile?.role === 'admin'
+    const isApproved = profile?.isApproved || isAdmin
 
-    try {
-      await analyticsOperations.trackPlatformMetric('onboarding_gate_blocked', 1, {
+    if (isApproved && !isAdmin && !isOnboardingComplete(profile)) {
+      const headerList = headers()
+      const pathname = headerList.get('x-pathname') || `/menus/${params.menuId}`
+      const reason = getOnboardingBlockReason(profile)
+
+      console.warn('[onboarding] gate_blocked_navigation', {
         userId: user.id,
+        email: user.email,
         path: pathname,
-        reason,
-        layer: 'navigation'
+        reason
       })
-    } catch (err) {}
 
-    redirect(`/onboarding?reason=required&next=${encodeURIComponent(pathname)}`)
+      try {
+        await analyticsOperations.trackPlatformMetric('onboarding_gate_blocked', 1, {
+          userId: user.id,
+          path: pathname,
+          reason,
+          layer: 'navigation'
+        })
+      } catch (err) {}
+
+      redirect(`/onboarding?reason=required&next=${encodeURIComponent(pathname)}`)
+    }
   }
 
   return (
