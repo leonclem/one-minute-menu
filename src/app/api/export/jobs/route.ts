@@ -458,11 +458,25 @@ export async function POST(request: NextRequest) {
     // Determine priority based on subscription
     const priority = isSubscriber ? 100 : 10
     
+    // Fetch restaurant name for friendlier filenames in downloads/emails (best-effort)
+    let restaurantName: string | undefined = undefined
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('restaurant_name')
+        .eq('id', userId)
+        .single()
+      restaurantName = profile?.restaurant_name || undefined
+    } catch {
+      // best-effort
+    }
+
     // Create export job metadata
     const metadata: ExportJobMetadata = {
       format: body.metadata?.format || 'A4',
       orientation: body.metadata?.orientation || 'portrait',
       menu_name: menu.name,
+      restaurant_name: restaurantName,
       render_snapshot: snapshot
     }
     

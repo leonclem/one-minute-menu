@@ -888,6 +888,7 @@ export interface ExportJobMetadata {
   file_size_bytes?: number
   puppeteer_version?: string
   menu_name?: string // User-friendly name for downloads
+  restaurant_name?: string // Optional restaurant name for filenames/emails
   render_snapshot?: RenderSnapshot // Snapshot of render input at job creation
 }
 

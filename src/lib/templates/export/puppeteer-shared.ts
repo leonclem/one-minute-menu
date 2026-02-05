@@ -58,6 +58,16 @@ export async function getSharedBrowser() {
 
   // Launch a single shared browser with a unique userDataDir (avoids default profile contention)
   const createAndLaunch = async (): Promise<any> => {
+    // Guard against invalid executable paths leaking from container-centric envs.
+    // Example: local Windows dev with PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium.
+    const configuredExecutablePath = process.env.PUPPETEER_EXECUTABLE_PATH
+    if (configuredExecutablePath && !fs.existsSync(configuredExecutablePath)) {
+      console.warn(
+        `[PuppeteerShared] Ignoring PUPPETEER_EXECUTABLE_PATH (not found): ${configuredExecutablePath}`
+      )
+      delete process.env.PUPPETEER_EXECUTABLE_PATH
+    }
+
     // Prefer external Browserless endpoint if configured
     const browserlessWSEndpoint =
       process.env.BROWSERLESS_URL ||

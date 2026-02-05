@@ -105,16 +105,54 @@ export class StorageClient {
   }
 
   /**
+   * Download a file from storage.
+   * Returns null if the object does not exist.
+   */
+  async download(path: string): Promise<Uint8Array | null> {
+    const { data, error } = await this.supabase.storage
+      .from(this.bucket)
+      .download(path);
+
+    if (error) {
+      const statusCode = (error as any)?.statusCode;
+      const message = String((error as any)?.message || '');
+      if (statusCode === 404 || message.toLowerCase().includes('not found')) {
+        return null;
+      }
+      throw error;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    // supabase-js returns a Blob in Node runtimes (Next.js route handlers included).
+    const arrayBuffer = await (data as any).arrayBuffer();
+    return new Uint8Array(arrayBuffer);
+  }
+
+  /**
    * Generate a signed URL with 7-day expiry and Content-Disposition header
    */
   async generateSignedUrl(
     path: string,
-    expiresIn: number = 604800 // 7 days in seconds
+    expiresIn: number = 604800, // 7 days in seconds
+    filename?: string
   ): Promise<string> {
+    const safeFilename = filename
+      ? filename
+          .replace(/[\\\/]/g, '-') // prevent path traversal / invalid chars
+          .replace(/[\r\n"]/g, '') // avoid header injection
+          .trim()
+          .slice(0, 160)
+      : undefined
+
     const { data, error } = await this.supabase.storage
       .from(this.bucket)
       .createSignedUrl(path, expiresIn, {
-        download: true // Sets Content-Disposition: attachment
+        // If filename is provided, Supabase sets Content-Disposition with that filename.
+        // Otherwise just force attachment download.
+        download: safeFilename || true
       });
 
     if (error) {
@@ -131,12 +169,26 @@ export class StorageClient {
     // If we're running in Docker, Supabase returns a URL pointing to 'host.docker.internal'.
     // We need to translate this back to 'localhost' so the link works in the user's browser.
     const publicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (publicUrl && signedUrl.includes('host.docker.internal')) {
+    if (publicUrl) {
       try {
         const publicUrlObj = new URL(publicUrl);
-        signedUrl = signedUrl.replace('host.docker.internal:54321', publicUrlObj.host);
+        const signedUrlObj = new URL(signedUrl);
+
+        // If Supabase generated an internal Docker host, translate host + protocol.
+        if (
+          signedUrlObj.hostname === 'host.docker.internal' ||
+          signedUrlObj.hostname === 'localhost' ||
+          signedUrlObj.hostname === '127.0.0.1'
+        ) {
+          signedUrlObj.host = publicUrlObj.host;
+        }
+
+        // Always align protocol with public URL (prevents "insecure download" blocks in HTTPS contexts).
+        signedUrlObj.protocol = publicUrlObj.protocol;
+
+        signedUrl = signedUrlObj.toString();
       } catch (e) {
-        console.error('[StorageClient] Failed to parse NEXT_PUBLIC_SUPABASE_URL for translation:', e);
+        console.error('[StorageClient] Failed to normalize signed URL:', e);
       }
     }
 

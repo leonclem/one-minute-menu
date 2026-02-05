@@ -349,6 +349,16 @@ export const notificationService = {
           name: FROM_NAME
         },
         subject,
+        // IMPORTANT: Disable click tracking for export download links.
+        // Outlook/Edge can flag tracked download redirects (especially if the branded tracking
+        // domain isn't serving a valid HTTPS certificate). This keeps the link as the direct
+        // Supabase signed HTTPS URL and avoids scary "can't be downloaded securely" warnings.
+        trackingSettings: {
+          clickTracking: {
+            enable: false,
+            enableText: false,
+          },
+        },
         text: `Your ${exportTypeLabel} export for "${menuName}" is ready!\n\nYou can download your file using the link below. This link will be valid for 7 days.\n\nDownload: ${downloadUrl}\n\nMenu: ${menuName}\nType: ${exportTypeLabel}\n\nThank you for using GridMenu!`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">

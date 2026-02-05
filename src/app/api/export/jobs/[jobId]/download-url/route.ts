@@ -133,9 +133,23 @@ export async function POST(
     
     // Generate new signed URL with 7-day expiry
     const expiresInSeconds = 604800 // 7 days
+    const restaurantName = (job as any)?.metadata?.restaurant_name
+    const menuName = (job as any)?.metadata?.menu_name
+    const base = [restaurantName, menuName].filter(Boolean).join(' - ').trim()
+    const safeBase = base
+      ? base
+          .toLowerCase()
+          .trim()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/[\s_-]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 140)
+      : undefined
+    const filename = safeBase ? `${safeBase}.pdf` : undefined
     const newSignedUrl = await storageClient.generateSignedUrl(
       job.storage_path,
-      expiresInSeconds
+      expiresInSeconds,
+      filename
     )
     
     // Calculate expiry timestamp

@@ -5,6 +5,11 @@
 - [x] Plan for utilising Railway for image export
 - [ ] Monitoring of workers in the Admin dashboard (particularly keen to understand turnaround times for extraction and export tasks)
 
+## Global Reach
+- [ ] Initially geo-lock to Singapore
+- [ ] Currency Support
+- [ ] Language support
+
 ## Email templates
 - [ ] Determine and document all emails sent
 - [ ] Decide on style and content
@@ -17,11 +22,6 @@
 - [ ] Amit feedback: Only selected "specials" have photos
 - [ ] Flourishes / section dividers (e.g. design-inspiration-7.png)
 - [ ] Multi-cell filler tiles / Mosaic layouts (currently 1x1 only), e.g. design-inspiration-5.jpg
-
-## Global Reach
-- [ ] Initially geo-lock to Singapore
-- [ ] Currency Support
-- [ ] Language support
 
 ## Deployment
 - [x] Upgrade Vercel package
@@ -75,6 +75,7 @@
 - [ ] Reddit community posting
 
 ## Unclassified
+- [ ] Remove LOG_LEVEL="debug" from Railway variables
 - [ ] Integrate Posthog
 - [ ] Crop for large menus text extraction
 - [ ] Determine UAT requirements

@@ -175,9 +175,11 @@ export class JobProcessor {
       })
 
       // Step 7: Generate signed URL with 7-day expiry
+      const filename = buildFriendlyExportFilename(job)
       const signedUrl = await this.storageClient.generateSignedUrl(
         storagePath,
-        604800 // 7 days in seconds
+        604800, // 7 days in seconds
+        filename
       )
       logInfo('Generated signed URL', { job_id: job.id })
 
@@ -645,6 +647,28 @@ export class JobProcessor {
     await this.renderer.shutdown()
     logInfo('JobProcessor shutdown complete')
   }
+}
+
+function buildFriendlyExportFilename(job: ExportJob): string | undefined {
+  const menuName = job.metadata?.menu_name
+  const restaurantName = (job.metadata as any)?.restaurant_name
+
+  const baseParts = [restaurantName, menuName].filter(Boolean).map(String)
+  const base = baseParts.join(' - ').trim()
+  if (!base) return undefined
+
+  const safe = slugifyForFilename(base).slice(0, 140)
+  const ext = job.export_type === 'image' ? 'png' : 'pdf'
+  return `${safe}.${ext}`
+}
+
+function slugifyForFilename(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'export'
 }
 
 function rewriteLocalhostUrlForDocker(inputUrl: string): string {
