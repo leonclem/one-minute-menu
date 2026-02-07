@@ -6,9 +6,9 @@
 - [ ] Monitoring of workers in the Admin dashboard (particularly keen to understand turnaround times for extraction and export tasks)
 
 ## Global Reach
-- [ ] Initially geo-lock to Singapore
-- [ ] Currency Support
-- [ ] Language support
+- [ ] Currency Support (for appearing on menus)
+- [ ] Currency Support (for package pricing / Stripe)
+- [ ] Google "Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required."
 
 ## Email templates
 - [ ] Determine and document all emails sent
@@ -114,6 +114,7 @@
 - [ ] Enable subscription cancellation process
 - [ ] Review and address issues in SECURITY_NEXTJS_VULNERABILITIES.md
 - [ ] Priority Railway queues for subscribers
+- [ ] Language support
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> DONE >>>>>>>>>>>>>>>>>
@@ -226,6 +227,9 @@
 - [x] Ensure Creator Packs can't be purchased while on Grid+Premium
 - [x] Remove /upgrade page (and all paths to it)
 - [x] Test in Production
+
+## Misc.
+- [x] Updates FAQ with battle card Qs
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>

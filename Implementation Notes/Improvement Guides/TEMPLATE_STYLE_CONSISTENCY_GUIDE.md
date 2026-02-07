@@ -436,6 +436,38 @@ Each menu item should have components stacked vertically:
 <p>description</p>
 ```
 
+## UX Page CTA Panel Style
+
+### Translucent Primary Blue Panel
+Use this style for prominent call-to-action panels on marketing/UX pages (e.g. support, export).
+**Do NOT** use glassy/blur (`bg-white/10 backdrop-blur-md`) for CTA panels — prefer the translucent primary gradient for stronger brand presence and better readability.
+
+**Important:** Use a plain `<div>`, NOT `<UXCard>`. The `.card-ux` class applies `background-color: rgba(255,255,255,0.7)` and `backdrop-filter: blur(1.5px)` which wash out the gradient.
+
+**Pattern:**
+```tsx
+<div className="text-center bg-gradient-to-br from-ux-primary/30 to-ux-primary/40 rounded-md p-8 border border-ux-primary/40 shadow-xl text-white">
+  <h3 className="text-xl font-bold text-white text-hero-shadow mb-2">Headline</h3>
+  <p className="text-white/90 text-hero-shadow-strong mb-6 max-w-lg mx-auto">
+    Supporting text
+  </p>
+  <UXButton variant="primary" size="lg" className="px-8 shadow-lg">
+    Call to Action
+  </UXButton>
+</div>
+```
+
+**Key classes:**
+- Container: plain `<div>` (not `UXCard`) with `rounded-md p-8`
+- Background: `bg-gradient-to-br from-ux-primary/30 to-ux-primary/40`
+- Border: `border border-ux-primary/40`
+- Heading: `text-white text-hero-shadow`
+- Body text: `text-white/90 text-hero-shadow-strong`
+
+**Pages using this pattern:**
+- `/support` — "Ready to Get Started?" CTA
+- `/menus/[menuId]/export` — "Want to unlock more features?" conversion panel
+
 ## Related Documentation
 - [Template Styling Sync Summary](./TEMPLATE_STYLING_SYNC_SUMMARY.md)
 - [PDF Export Fix Summary](./PDF_EXPORT_FIX_SUMMARY.md)
