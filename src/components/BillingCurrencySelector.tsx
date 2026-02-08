@@ -100,6 +100,16 @@ export default function BillingCurrencySelector({
           }
         }
 
+        // Use geo result when we have it (from debug or country override fetch) so it isn't overridden by localStorage
+        if (geoCurrency) {
+          setSelectedCurrency(geoCurrency)
+          onCurrencyChange?.(geoCurrency)
+          if (userId === undefined) setLocalStorageBillingCurrency(geoCurrency)
+          if (geoDebug) console.log('[BillingCurrencySelector] Using geo result:', geoCurrency)
+          setLoading(false)
+          return
+        }
+
         const stored = getLocalStorageBillingCurrency()
         if (stored && !hasCountryOverride) {
           setSelectedCurrency(stored)
