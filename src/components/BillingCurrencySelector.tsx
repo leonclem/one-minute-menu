@@ -14,6 +14,8 @@ interface BillingCurrencySelectorProps {
   userId?: string
   onCurrencyChange?: (currency: BillingCurrency) => void
   className?: string
+  /** Optional extra class for the <select> (e.g. text-sm py-1.5 for compact layout). */
+  selectClassName?: string
   /** When provided (e.g. test env), used for initial load so integration tests can mock it. */
   getBillingCurrency?: GetBillingCurrencyFn
   /** When provided (e.g. test env), used on change so integration tests can assert persistence. */
@@ -24,6 +26,7 @@ export default function BillingCurrencySelector({
   userId,
   onCurrencyChange,
   className = '',
+  selectClassName = '',
   getBillingCurrency: injectGetBillingCurrency,
   setBillingCurrency: injectSetBillingCurrency,
 }: BillingCurrencySelectorProps) {
@@ -215,24 +218,23 @@ export default function BillingCurrencySelector({
   const supportedCurrencies = getSupportedBillingCurrencies()
 
   if (loading) {
+    const loadingSelectClass = `px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-400 cursor-not-allowed ${selectClassName}`.trim()
     return (
       <div className={`inline-block ${className}`}>
-        <select 
-          disabled 
-          className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-400 cursor-not-allowed"
-        >
+        <select disabled className={loadingSelectClass}>
           <option>Loading...</option>
         </select>
       </div>
     )
   }
 
+  const selectClass = `px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-ux-primary focus:border-transparent transition-colors cursor-pointer ${selectClassName}`.trim()
   return (
     <div className={`inline-block ${className}`}>
       <select
         value={selectedCurrency}
         onChange={handleCurrencyChange}
-        className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-ux-primary focus:border-transparent transition-colors cursor-pointer"
+        className={selectClass}
         aria-label="Select billing currency"
       >
         {supportedCurrencies.map((currency) => {

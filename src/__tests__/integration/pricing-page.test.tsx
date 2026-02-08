@@ -133,8 +133,8 @@ describe('Pricing Page - Integration Tests', () => {
         expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
       })
 
-      // Verify label is present
-      expect(screen.getByText(/select your billing currency/i)).toBeInTheDocument()
+      // Verify label is present (page uses "Billing currency" below pricing cards)
+      expect(screen.getByText(/billing currency/i)).toBeInTheDocument()
     })
 
     it('should have currency selector accessible via label', async () => {

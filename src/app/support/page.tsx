@@ -172,11 +172,11 @@ const faqs: Array<{ q: string; a: ReactNode; aPlainText: string }> = [
   {
     q: 'Is there a free plan?',
     aPlainText:
-      'Yes. GridMenu offers a free plan that includes one menu with all core features, so you can try it properly before upgrading. Paid plans unlock additional menus and advanced features for ongoing use.',
+      'Yes. GridMenu offers a free plan—your first Creator Pack is free for every sign up, including one menu with all core features. You can try it properly before upgrading to additional packs or a subscription.',
     a: (
       <p>
-        Yes. GridMenu offers a free plan that includes one menu with all core features, so you can try it properly
-        before upgrading. Paid plans unlock additional menus and advanced features for ongoing use.
+        Yes. GridMenu offers a free plan—your first Creator Pack is free for every sign up, including one menu with all
+        core features. You can try it properly before upgrading to additional packs or a subscription.
       </p>
     ),
   },

@@ -48,8 +48,8 @@ export default function UXPricingPageContent({
 
   const faqs = [
     {
-      q: 'Is there a free trial?',
-      a: 'Yes. The first Creator Pack is free for every sign up. This allows you to create and export one fully customisable menu at no cost.'
+      q: 'Is there a free plan?',
+      a: 'Yes. GridMenu offers a free plan—your first Creator Pack is free for every sign up, including one menu with all core features. You can try it properly before upgrading to additional packs or a subscription.'
     },
     {
       q: 'Does my Creator Pack ever expire?',
@@ -125,22 +125,11 @@ export default function UXPricingPageContent({
         <p className="text-lg text-white/90 text-hero-shadow-strong max-w-2xl mx-auto mb-6">
           Choose the plan that fits your venue. Start free with your first Creator Pack.
         </p>
-        
-        {/* Currency Selector */}
-        <div className="flex flex-col items-center gap-2">
-          <label htmlFor="currency-selector" className="text-sm text-white/80 font-medium">
-            Select your billing currency:
-          </label>
-          <BillingCurrencySelector
-            userId={user?.id}
-            onCurrencyChange={handleCurrencyChange}
-          />
-        </div>
       </div>
 
       <div className="container-ux">
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-12 pt-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-8 pt-8">
           {pricingTiers.map((tier) => (
             <UXCard 
               key={tier.id} 
@@ -199,6 +188,18 @@ export default function UXPricingPageContent({
           ))}
         </div>
 
+        {/* Currency selector – below packages, compact so geo default is enough for most */}
+        <div className="flex flex-col items-center gap-1.5 mb-12">
+          <label htmlFor="currency-selector" className="text-xs text-white/70 font-medium">
+            Billing currency
+          </label>
+          <BillingCurrencySelector
+            userId={user?.id}
+            onCurrencyChange={handleCurrencyChange}
+            selectClassName="text-sm py-1.5 px-3"
+          />
+        </div>
+
         {/* Fair Use Disclaimer */}
         <div className="max-w-4xl mx-auto text-center mb-16">
           <p className="text-sm text-white/80 italic">
@@ -207,18 +208,18 @@ export default function UXPricingPageContent({
           </p>
         </div>
 
-        {/* FAQ Section */}
-        <div className="max-w-5xl mx-auto bg-white/10 backdrop-blur-md rounded-xl p-8 md:p-12 border border-white/20 shadow-2xl mb-16">
-          <h3 className="text-3xl font-bold text-white text-center mb-12">Frequently Asked Questions</h3>
+        {/* FAQ Section – translucent primary panel per style guide */}
+        <div className="max-w-5xl mx-auto bg-gradient-to-br from-ux-primary/30 to-ux-primary/40 rounded-md p-8 md:p-12 border border-ux-primary/40 shadow-xl mb-16 text-white">
+          <h3 className="text-3xl font-bold text-white text-hero-shadow text-center mb-12">Frequently Asked Questions</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
             {faqs.map((faq, i) => (
               <div key={i} className="space-y-2">
-                <h4 className="font-bold text-white text-lg">{faq.q}</h4>
-                <p className="text-white/80 text-sm leading-relaxed">{faq.a}</p>
+                <h4 className="font-bold text-white text-hero-shadow text-lg">{faq.q}</h4>
+                <p className="text-white/90 text-hero-shadow-strong text-sm leading-relaxed">{faq.a}</p>
               </div>
             ))}
-            <div className="md:col-span-2 pt-6 border-t border-white/10 text-center">
-              <p className="text-white/90">
+            <div className="md:col-span-2 pt-6 border-t border-white/20 text-center">
+              <p className="text-white/90 text-hero-shadow-strong">
                 Need help choosing? <a href="mailto:support@gridmenu.ai" className="text-ux-primary hover:underline font-bold">Contact us</a> for personalised recommendations.
               </p>
             </div>
