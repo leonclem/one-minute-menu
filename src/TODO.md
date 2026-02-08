@@ -6,8 +6,8 @@
 - [ ] Monitoring of workers in the Admin dashboard (particularly keen to understand turnaround times for extraction and export tasks)
 
 ## Global Reach
-- [ ] Currency Support (for appearing on menus)
-- [ ] Currency Support (for package pricing / Stripe)
+- [x] Currency Support (for appearing on menus)
+- [x] Currency Support (for package pricing / Stripe)
 - [ ] Google "Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required."
 
 ## Email templates
@@ -22,6 +22,7 @@
 - [ ] Amit feedback: Only selected "specials" have photos
 - [ ] Flourishes / section dividers (e.g. design-inspiration-7.png)
 - [ ] Multi-cell filler tiles / Mosaic layouts (currently 1x1 only), e.g. design-inspiration-5.jpg
+- [ ] Themed menus, e.g. Superbowl, Valentine's, CNY, etc.
 
 ## Deployment
 - [x] Upgrade Vercel package
@@ -37,6 +38,7 @@
 
 ## "What's New?" page
 - [ ] "What's New?" page
+- [ ] Coming soon...
 - [ ] Add popup banner to /dashboard 
 
 ## /extracted
@@ -56,6 +58,9 @@
 - [ ] Lloyd feedback: input menu is confusing, looks like output
 - [ ] Lloyd feedback: Give an option to email the PDF menu or send to printers (order x amount)
 - [x] Include sample logo, address, etc.
+
+## Stripe
+- [ ] Verify that webhooks are in place to detect recurring payments, failures, etc. (as per Gemini chat)
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> GO TO MARKET >>>>>>>>>>>>>
@@ -115,6 +120,7 @@
 - [ ] Review and address issues in SECURITY_NEXTJS_VULNERABILITIES.md
 - [ ] Priority Railway queues for subscribers
 - [ ] Language support
+- [ ] Change account preferences, e.g. Menu currency, Restaurant name, type, address, social media
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> DONE >>>>>>>>>>>>>>>>>
