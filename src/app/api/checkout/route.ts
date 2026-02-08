@@ -6,14 +6,17 @@ import type { CheckoutRequest, CheckoutResponse, CheckoutError } from '@/types'
 import { checkoutRateLimiter } from '@/lib/stripe-rate-limiter'
 import { getRateLimitHeaders } from '@/lib/templates/rate-limiter'
 import { logUnauthorizedAccess, logRateLimitViolation, logInvalidInput } from '@/lib/security'
+import { getBillingCurrency, getStripePriceId } from '@/lib/billing-currency-service'
+import type { BillingCurrency } from '@/lib/currency-config'
 
 /**
  * POST /api/checkout
  * 
  * Creates a Stripe Checkout Session for subscription or Creator Pack purchase.
  * Handles free Creator Pack eligibility check and direct grant.
+ * Uses user's selected billing currency to determine the appropriate Stripe Price ID.
  * 
- * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.9
+ * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.9, 3.1, 3.2, 3.3
  */
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID()
@@ -255,9 +258,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse, { status: 400 })
     }
 
-    // Validate price ID exists for product type (Requirement 10.4)
+    // Validate price ID exists for product type and currency (Requirement 10.4)
     try {
-      getPriceId(productType) // This will throw if price ID is not configured
+      // Get user's billing currency to validate price ID
+      const billingCurrency = await getBillingCurrency(user?.id)
+      getStripePriceId(productType, billingCurrency) // This will throw if price ID is not configured
     } catch (priceError: any) {
       const errorResponse: CheckoutError = {
         error: 'Product configuration error',
@@ -268,9 +273,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse, { status: 400 })
     }
 
-    // 4. Create Stripe Checkout Session (Requirements 2.1, 2.2, 2.3, 2.4, 2.5)
+    // 4. Get user's selected billing currency (Requirements 2.3, 3.1, 3.2, 3.3)
+    const billingCurrency: BillingCurrency = await getBillingCurrency(user?.id)
+
+    // 5. Create Stripe Checkout Session (Requirements 2.1, 2.2, 2.3, 2.4, 2.5)
     const stripe = getStripe()
-    const priceId = getPriceId(productType)
+    const priceId = getStripePriceId(productType, billingCurrency)
 
     // Determine session mode based on product type
     const mode = productType === 'creator_pack' ? 'payment' : 'subscription'
@@ -278,6 +286,7 @@ export async function POST(request: NextRequest) {
     // Build session parameters
     const metadata: any = {
       product_type: productType,
+      billing_currency: billingCurrency,
     }
     if (user) {
       metadata.user_id = user.id
@@ -301,6 +310,7 @@ export async function POST(request: NextRequest) {
         description: 'GridMenu Creator Pack',
         metadata: {
           product_type: productType,
+          billing_currency: billingCurrency,
           ...(user ? { user_id: user.id } : {}),
         },
       }

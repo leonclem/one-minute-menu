@@ -21,15 +21,15 @@ export const resolvePlanLimits = (dbLimits: any, plan: UserPlan): PlanLimits => 
   const resolve = (dbValue: any, planDefault: number): number => {
     if (typeof dbValue !== 'number') return planDefault
     
-    // If plan default is unlimited (-1), it should always win unless the override is also -1
+    // Plan is source of truth for whether a resource is unlimited. Only plans with
+    // planDefault === -1 (e.g. grid_plus_premium, enterprise) get unlimited.
     if (planDefault === -1) return -1
     
-    // If override is unlimited (-1), it wins
-    if (dbValue === -1) return -1
+    // Stale DB value: if the plan has a finite limit (e.g. Grid+ = 5 menus), never
+    // grant unlimited from an old -1 in plan_limits (e.g. after downgrade or test data).
+    if (planDefault !== -1 && dbValue === -1) return planDefault
     
     // Use the value from the database if it exists, otherwise use the plan default.
-    // We don't use Math.max here because we want the database to be the source of truth
-    // for overrides, but we want the plan to be the source of truth for defaults.
     return dbValue
   }
 

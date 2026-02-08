@@ -7,7 +7,8 @@ import { Button, Input, Card, CardHeader, CardTitle, CardContent, useToast, Conf
 import { getAvailableThemes, applyTheme as applyThemeLib, generateThemePreview } from '@/lib/themes'
 import { fetchJsonWithRetry, HttpError } from '@/lib/retry'
 import { pickDominantColorsFromImageData, hexToRgb } from '@/lib/color'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency as formatCurrencyUtil } from '@/lib/utils'
+import { formatCurrency } from '@/lib/currency-formatter'
 import { validateMenuItem } from '@/lib/validation'
 import VersionHistory from '@/components/VersionHistory'
 import ImageUpload from '@/components/ImageUpload'
@@ -102,11 +103,38 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const [showBatchGeneration, setShowBatchGeneration] = useState(false)
   const [showVariationsManagerFor, setShowVariationsManagerFor] = useState<string | null>(null)
+  const [menuCurrency, setMenuCurrency] = useState<string>('USD')
   const router = useRouter()
   // Load available templates once
   useEffect(() => {
     setThemeTemplates(getAvailableThemes())
   }, [])
+
+  // Fetch menu currency for the user
+  useEffect(() => {
+    const fetchMenuCurrency = async () => {
+      try {
+        const response = await fetch('/api/menu-currency', {
+          // Add cache-busting to ensure fresh data
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        })
+        if (!response.ok) {
+          throw new Error('Failed to fetch menu currency')
+        }
+        const result = await response.json()
+        setMenuCurrency(result.data.currency)
+      } catch (error) {
+        console.error('Failed to fetch menu currency:', error)
+        // Default to USD if fetch fails
+        setMenuCurrency('USD')
+      }
+    }
+    
+    fetchMenuCurrency()
+  }, [menu.userId, menu.id]) // Re-fetch when menu changes
 
   // Update branding preview when template or theme changes
   useEffect(() => {
@@ -1941,7 +1969,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                       required
                     />
                     <Input
-                      label="Price (SGD)"
+                      label={`Price (${menuCurrency})`}
                       type="number"
                       step="0.01"
                       min="0"
@@ -2214,7 +2242,7 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                                   aria-label="Edit price"
                                   title="Edit price"
                                 >
-                                  {formatCurrency(item.price)}
+                                  {formatCurrency(item.price, menuCurrency)}
                                 </button>
                                 <button
                                   type="button"

@@ -134,12 +134,12 @@ export function isValidSlug(slug: string): boolean {
 }
 
 // Price formatting and validation
+// Note: This function now delegates to the centralized Currency_Formatter
+// to ensure consistent formatting across all views and exports
+import { formatCurrency } from './currency-formatter'
+
 export function formatPrice(price: number, currency = 'SGD'): string {
-  return new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-  }).format(price)
+  return formatCurrency(price, currency, { locale: 'en-US' })
 }
 
 export function parsePrice(priceString: string): number | null {

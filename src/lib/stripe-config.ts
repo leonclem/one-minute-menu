@@ -3,9 +3,11 @@
  * 
  * Centralizes Stripe initialization and configuration management.
  * Validates all required environment variables and provides type-safe access.
+ * Supports multi-currency pricing for international expansion.
  */
 
 import Stripe from 'stripe'
+import type { BillingCurrency } from './currency-config'
 
 /**
  * Stripe configuration interface
@@ -27,31 +29,40 @@ export interface StripeConfig {
 export type ProductType = 'grid_plus' | 'grid_plus_premium' | 'creator_pack'
 
 /**
- * Load and validate Stripe configuration from environment variables
- * @throws Error if any required environment variable is missing
+ * Multi-currency price configuration
+ * Maps each product type to Price IDs for all supported billing currencies
  */
-function loadStripeConfig(): StripeConfig {
+export interface MultiCurrencyPriceConfig {
+  productType: ProductType
+  prices: {
+    [K in BillingCurrency]: string // Stripe Price ID
+  }
+}
+
+/**
+ * Core Stripe config required for API client, webhooks, and publishable key.
+ * Does not include legacy single-currency price IDs (use multi-currency env vars instead).
+ */
+interface CoreStripeConfig {
+  secretKey: string
+  publishableKey: string
+  webhookSecret: string
+}
+
+function loadCoreStripeConfig(): CoreStripeConfig {
   const secretKey = process.env.STRIPE_SECRET_KEY
   const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-  const gridPlusPriceId = process.env.STRIPE_PRICE_ID_GRID_PLUS
-  const gridPlusPremiumPriceId = process.env.STRIPE_PRICE_ID_GRID_PLUS_PREMIUM
-  const creatorPackPriceId = process.env.STRIPE_PRICE_ID_CREATOR_PACK
 
-  // Validate all required environment variables
   const missing: string[] = []
-  
   if (!secretKey) missing.push('STRIPE_SECRET_KEY')
   if (!publishableKey) missing.push('STRIPE_PUBLISHABLE_KEY')
   if (!webhookSecret) missing.push('STRIPE_WEBHOOK_SECRET')
-  if (!gridPlusPriceId) missing.push('STRIPE_PRICE_ID_GRID_PLUS')
-  if (!gridPlusPremiumPriceId) missing.push('STRIPE_PRICE_ID_GRID_PLUS_PREMIUM')
-  if (!creatorPackPriceId) missing.push('STRIPE_PRICE_ID_CREATOR_PACK')
 
   if (missing.length > 0) {
     throw new Error(
       `Missing required Stripe environment variables: ${missing.join(', ')}. ` +
-      `Please ensure all Stripe configuration is set in your environment.`
+        `Please ensure all Stripe configuration is set in your environment.`
     )
   }
 
@@ -59,6 +70,34 @@ function loadStripeConfig(): StripeConfig {
     secretKey: secretKey!,
     publishableKey: publishableKey!,
     webhookSecret: webhookSecret!,
+  }
+}
+
+/**
+ * Load and validate full Stripe configuration from environment variables.
+ * Includes legacy single-currency price IDs (optional if using multi-currency only).
+ * @throws Error if any required environment variable is missing
+ */
+function loadStripeConfig(): StripeConfig {
+  const core = loadCoreStripeConfig()
+  const gridPlusPriceId = process.env.STRIPE_PRICE_ID_GRID_PLUS
+  const gridPlusPremiumPriceId = process.env.STRIPE_PRICE_ID_GRID_PLUS_PREMIUM
+  const creatorPackPriceId = process.env.STRIPE_PRICE_ID_CREATOR_PACK
+
+  const missing: string[] = []
+  if (!gridPlusPriceId) missing.push('STRIPE_PRICE_ID_GRID_PLUS')
+  if (!gridPlusPremiumPriceId) missing.push('STRIPE_PRICE_ID_GRID_PLUS_PREMIUM')
+  if (!creatorPackPriceId) missing.push('STRIPE_PRICE_ID_CREATOR_PACK')
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required Stripe environment variables: ${missing.join(', ')}. ` +
+        `Please ensure all Stripe configuration is set in your environment.`
+    )
+  }
+
+  return {
+    ...core,
     priceIds: {
       gridPlus: gridPlusPriceId!,
       gridPlusPremium: gridPlusPremiumPriceId!,
@@ -68,11 +107,74 @@ function loadStripeConfig(): StripeConfig {
 }
 
 /**
- * Validate Stripe configuration
+ * Load multi-currency Price IDs from environment variables
+ * @param productType - The product type to load Price IDs for
+ * @returns Record mapping each billing currency to its Price ID
+ * @throws Error if any required Price ID is missing
+ */
+function loadMultiCurrencyPriceIds(productType: ProductType): Record<BillingCurrency, string> {
+  const productKey = productType.toUpperCase()
+  const currencies: BillingCurrency[] = ['SGD', 'USD', 'GBP', 'AUD', 'EUR']
+  const priceIds: Partial<Record<BillingCurrency, string>> = {}
+  const missing: string[] = []
+
+  for (const currency of currencies) {
+    const envVar = `STRIPE_PRICE_ID_${productKey}_${currency}`
+    const priceId = process.env[envVar]
+    
+    if (!priceId) {
+      missing.push(envVar)
+    } else {
+      priceIds[currency] = priceId
+    }
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required Stripe Price ID environment variables: ${missing.join(', ')}. ` +
+      `Please ensure all multi-currency Price IDs are configured.`
+    )
+  }
+
+  return priceIds as Record<BillingCurrency, string>
+}
+
+/**
+ * Validate Stripe configuration (core + multi-currency Price IDs).
+ * Does not require legacy single-currency price IDs.
  * @throws Error if configuration is invalid
  */
 export function validateStripeConfig(): void {
-  loadStripeConfig()
+  loadCoreStripeConfig()
+  const products: ProductType[] = ['grid_plus', 'grid_plus_premium', 'creator_pack']
+  for (const product of products) {
+    loadMultiCurrencyPriceIds(product)
+  }
+}
+
+/**
+ * Get the Stripe Price ID for a given product type and billing currency
+ * @param productType - The product type to get the price ID for
+ * @param currency - The billing currency
+ * @returns The Stripe Price ID for the specified product and currency
+ * @throws Error if product type is invalid
+ */
+export function getPriceIdForCurrency(
+  productType: ProductType,
+  currency: BillingCurrency
+): string {
+  const priceIds = loadMultiCurrencyPriceIds(productType)
+  return priceIds[currency]
+}
+
+/**
+ * Get all Price IDs for a given product type across all billing currencies
+ * @param productType - The product type to get Price IDs for
+ * @returns Record mapping each billing currency to its Price ID
+ * @throws Error if product type is invalid
+ */
+export function getAllPriceIds(productType: ProductType): Record<BillingCurrency, string> {
+  return loadMultiCurrencyPriceIds(productType)
 }
 
 /**
@@ -101,7 +203,7 @@ export function getPriceId(productType: ProductType): string {
  * @returns The webhook secret
  */
 export function getWebhookSecret(): string {
-  const config = loadStripeConfig()
+  const config = loadCoreStripeConfig()
   return config.webhookSecret
 }
 
@@ -110,7 +212,7 @@ export function getWebhookSecret(): string {
  * @returns The publishable key
  */
 export function getPublishableKey(): string {
-  const config = loadStripeConfig()
+  const config = loadCoreStripeConfig()
   return config.publishableKey
 }
 
@@ -122,7 +224,7 @@ export function getPublishableKey(): string {
  * @returns True if in test mode, false if in production mode
  */
 export function isTestMode(): boolean {
-  const config = loadStripeConfig()
+  const config = loadCoreStripeConfig()
   return config.secretKey.startsWith('sk_test_')
 }
 
@@ -138,7 +240,7 @@ let stripeInstance: Stripe | null = null
  */
 export function getStripe(): Stripe {
   if (!stripeInstance) {
-    const config = loadStripeConfig()
+    const config = loadCoreStripeConfig()
     stripeInstance = new Stripe(config.secretKey, {
       apiVersion: '2025-12-15.clover',
       typescript: true,

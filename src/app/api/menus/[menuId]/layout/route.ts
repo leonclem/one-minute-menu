@@ -6,6 +6,7 @@ import { transformMenuToV2, isEngineMenuV2 } from '@/lib/templates/v2/menu-trans
 import { generateLayoutWithVersion } from '@/lib/templates/engine-selector'
 import { TEMPLATE_REGISTRY } from '@/lib/templates/template-definitions'
 import type { MenuTemplateSelection } from '@/lib/templates/engine-types'
+import { getMenuCurrency } from '@/lib/menu-currency-service'
 
 /**
  * Simple in-memory cache for layout instances
@@ -17,16 +18,19 @@ const MAX_CACHE_SIZE = 100
 
 /**
  * Generate a cache key for a layout
+ * Includes menu currency so layout regenerates when user changes currency in settings
  */
 function generateCacheKey(
   menuId: string,
   templateId: string,
   menuUpdatedAt: Date,
-  configuration?: any
+  configuration?: any,
+  menuCurrency?: string
 ): string {
   const configHash = configuration ? JSON.stringify(configuration) : 'default'
   const menuVersion = menuUpdatedAt.getTime()
-  return `${menuId}-${templateId}-${menuVersion}-${configHash}`
+  const currencyPart = menuCurrency || 'default'
+  return `${menuId}-${templateId}-${menuVersion}-${configHash}-${currencyPart}`
 }
 
 /**
@@ -148,12 +152,16 @@ export async function GET(
       engineVersion
     }
     
-    // Generate cache key
+    // Fetch user's menu currency preference (needed for cache key and transformation)
+    const menuCurrency = await getMenuCurrency(user!.id)
+    
+    // Generate cache key (includes currency so layout regenerates when user changes settings)
     const cacheKey = generateCacheKey(
       params.menuId,
       templateId,
       menu.updatedAt,
-      configuration
+      configuration,
+      menuCurrency
     )
     
     // Check cache
@@ -168,8 +176,8 @@ export async function GET(
     
     let layout
     if (engineVersion === 'v2') {
-      // Transform to EngineMenuV2
-      const menuV2 = transformMenuToV2(menu)
+      // Transform to EngineMenuV2 with user's currency preference
+      const menuV2 = transformMenuToV2(menu, { currency: menuCurrency })
       
       layout = await generateLayoutWithVersion({
         menu: menuV2,

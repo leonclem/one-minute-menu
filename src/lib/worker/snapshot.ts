@@ -204,6 +204,10 @@ export async function createRenderSnapshot(
     // Fetch menu data with all relations
     const menu = await fetchMenuWithItems(menuId)
     
+    // Fetch user's menu currency preference
+    const { getMenuCurrency } = await import('@/lib/menu-currency-service')
+    const userMenuCurrency = await getMenuCurrency(menu.user_id)
+    
     // Fetch template information
     const template = await fetchTemplate(templateId)
     
@@ -248,7 +252,7 @@ export async function createRenderSnapshot(
           name: item.name,
           description: item.description,
           price: item.price,
-          currency: menuData.currency || 'SGD',
+          currency: userMenuCurrency, // Use user's menu currency preference
           category: item.category,
           image_url: item.customImageUrl || item.aiImageId, // Use custom or AI image
           display_order: item.order ?? index,

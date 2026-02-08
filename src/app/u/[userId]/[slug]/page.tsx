@@ -1,7 +1,9 @@
 import { Metadata, Viewport } from 'next'
 import { menuOperations } from '@/lib/database'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { cn, formatCurrency } from '@/lib/utils'
+import { cn } from '@/lib/utils'
+import { formatCurrency } from '@/lib/currency-formatter'
+import { getMenuCurrency } from '@/lib/menu-currency-service'
 import PublicMenuImage from '@/components/PublicMenuImage'
 import CopyOrderNote from '@/components/CopyOrderNote'
 import MenuViewTracker from '@/components/MenuViewTracker'
@@ -87,6 +89,9 @@ export default async function PublicMenuPage({ params, searchParams }: PageProps
     )
   }
 
+  // Get account's menu currency setting
+  const menuCurrency = await getMenuCurrency(params.userId)
+
   const colors = menu.theme.colors
   const availableItems = menu.items.filter(i => i.available)
   const unavailableItems = menu.items.filter(i => !i.available)
@@ -134,7 +139,7 @@ export default async function PublicMenuPage({ params, searchParams }: PageProps
                 </div>
               </div>
               <div className="shrink-0 text-base font-semibold" style={{ color: colors.primary }}>
-                {formatCurrency(item.price)}
+                {formatCurrency(item.price, menuCurrency)}
               </div>
             </li>
           ))}

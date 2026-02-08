@@ -23,6 +23,17 @@ jest.mock('@/lib/purchase-logger', () => ({
     logPurchase: jest.fn(),
   },
 }))
+jest.mock('@/lib/billing-currency-service', () => ({
+  getBillingCurrency: jest.fn().mockResolvedValue('USD'),
+  getStripePriceId: jest.fn((productType: string) => {
+    const priceIds: Record<string, string> = {
+      'grid_plus': 'price_mock_grid_plus',
+      'grid_plus_premium': 'price_mock_grid_plus_premium',
+      'creator_pack': 'price_mock_creator_pack'
+    }
+    return priceIds[productType] || 'price_mock_default'
+  })
+}))
 
 import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/checkout/route'

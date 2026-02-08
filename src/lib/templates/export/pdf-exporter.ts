@@ -17,6 +17,7 @@ import { PDFDocument, rgb } from 'pdf-lib'
 import type { PDFPage } from 'pdf-lib'
 import type { LayoutMenuData, LayoutPreset } from '../types'
 import { FONT_SIZE_PX, SPACING_PX } from '../design-tokens'
+import { formatCurrency } from '../../currency-formatter'
 
 // Use shared Puppeteer browser to avoid userDataDir conflicts across tests
 
@@ -235,7 +236,9 @@ function renderMenuItem(
   let currentY = y
 
   // Render item name and price on same line
-  const priceText = `${currency}${item.price.toFixed(2)}`
+  // Use Currency_Formatter for consistent formatting across all exports
+  const currencyCode = currency || 'USD'
+  const priceText = formatCurrency(item.price, currencyCode)
   const priceWidth = boldFont.widthOfTextAtSize(priceText, priceSize)
 
   // Item name (truncate if too long)

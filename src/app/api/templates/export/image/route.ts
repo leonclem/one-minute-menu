@@ -33,10 +33,12 @@ async function handleV2TemplateEngine(
   const { renderToWeb } = await import('@/lib/templates/v2/renderer-web-v2')
   const { PALETTES_V2 } = await import('@/lib/templates/v2/renderer-v2')
   const { renderToString } = await import('react-dom/server')
+  const { getMenuCurrency } = await import('@/lib/menu-currency-service')
   
-  // Transform menu to EngineMenuV2
+  // Transform menu to EngineMenuV2 with user's menu currency preference
   metricsBuilder.markCalculationStart()
-  const engineMenu = transformMenuToV2(menu)
+  const menuCurrency = await getMenuCurrency(userId)
+  const engineMenu = transformMenuToV2(menu, { currency: menuCurrency })
 
   // Calculate menu characteristics for metrics
   const sectionCount = engineMenu.sections.length

@@ -25,6 +25,7 @@ import type {
   TextBlockContentV2,
   FooterInfoContentV2
 } from './engine-types-v2'
+import { formatCurrency } from '../../currency-formatter'
 
 // ============================================================================
 // Render Options Interface
@@ -683,8 +684,9 @@ function renderItemContent(
   }
 
   // Price (positioned after description)
-  const currency = content.currency || '$'
-  const priceText = `${currency}${content.price.toFixed(2)}`
+  // Use Currency_Formatter for consistent formatting across all exports
+  const currencyCode = content.currency || 'USD'
+  const priceText = formatCurrency(content.price, currencyCode)
   const priceFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xxxs // 6pt (50% reduction from 12pt)
   elements.push({
     type: 'text',

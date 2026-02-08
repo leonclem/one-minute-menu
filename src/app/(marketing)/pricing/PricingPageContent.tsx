@@ -4,6 +4,9 @@ import { UXWrapper, UXCard, UXButton } from '@/components/ux'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { ConfirmDialog } from '@/components/ui'
+import BillingCurrencySelector from '@/components/BillingCurrencySelector'
+import { PRICING_TIERS, formatPrice } from '@/lib/pricing-config'
+import type { BillingCurrency } from '@/lib/currency-config'
 
 export default function UXPricingPageContent({ 
   initialUser 
@@ -14,6 +17,7 @@ export default function UXPricingPageContent({
   const [user, setUser] = useState<any>(initialUser || null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [checkoutErrorTitle, setCheckoutErrorTitle] = useState<string>('Checkout Error')
+  const [selectedCurrency, setSelectedCurrency] = useState<BillingCurrency>('USD')
 
   useEffect(() => {
     const getUser = async () => {
@@ -23,67 +27,21 @@ export default function UXPricingPageContent({
     getUser()
   }, [])
 
-  const pricingTiers = [
-    {
-      id: 'creator_pack',
-      name: 'Creator Pack',
-      tagline: user ? undefined : '*First Pack free*',
-      price: '$95',
-      period: 'One-time purchase',
-      description: 'Perfect for independent venues needing a single, high-quality digital menu.',
-      features: [
-        '1 Fully customisable menu',
-        'Unlimited menu edits for 1 week',
-        'Unlimited image regenerations (fair-use capped*)',
-        'All templates included',
-        'Print-ready PDF Menu Export',
-      ],
-      cta: user ? 'Buy' : 'Get Started Free',
-      subtext: user ? 'Purchase additional menus and edit windows.' : 'Valid for 24 months. One free pack per signup.'
-    },
-    {
-      id: 'grid_plus',
-      name: 'Grid+',
-      price: '$39',
-      period: 'per month',
-      recommended: true,
-      description: 'Ideal for growing restaurants with multiple menus and seasonal updates.',
-      features: [
-        'Up to 5 active menus',
-        'Unlimited menu edits',
-        'Unlimited image regenerations (fair-use capped*)',
-        'All templates included',
-        'Priority support',
-        'Print-ready PDF Menu Export',
-        'Social media ready PNG Menu Export',
-        'Priority rendering queue',
-        'All menu items image export'
-      ],
-      cta: 'Subscribe to Grid+',
-      subtext: 'Cancel anytime. Includes all Creator Pack benefits.'
-    },
-    {
-      id: 'grid_plus_premium',
-      name: 'Grid+Premium',
-      price: '$129',
-      period: 'per month',
-      description: 'For busy venues and chains requiring ultimate flexibility and early access.',
-      features: [
-        'Unlimited active menus',
-        'Unlimited menu edits',
-        'Unlimited image regenerations (fair-use capped*)',
-        'All templates included',
-        'Priority support',
-        'Print-ready PDF Menu Export',
-        'Social media ready PNG Menu Export',
-        'Priority rendering queue',
-        'All menu items image export',
-        'Early access to new templates'
-      ],
-      cta: 'Get Grid+Premium',
-      subtext: 'Unlimited everything for the professional restaurateur.'
-    }
-  ]
+  const handleCurrencyChange = (currency: BillingCurrency) => {
+    setSelectedCurrency(currency)
+  }
+
+  const pricingTiers = PRICING_TIERS.map(tier => ({
+    ...tier,
+    price: formatPrice(tier.prices[selectedCurrency], selectedCurrency),
+    cta: tier.id === 'creator_pack' && !user ? 'Get Started Free' : tier.cta,
+    tagline: tier.id === 'creator_pack' && !user ? tier.tagline : undefined,
+    subtext: tier.id === 'creator_pack' && !user 
+      ? 'Valid for 24 months. One free pack per signup.' 
+      : tier.id === 'creator_pack' 
+        ? 'Purchase additional menus and edit windows.'
+        : tier.subtext,
+  }))
 
   const faqs = [
     {
@@ -161,9 +119,20 @@ export default function UXPricingPageContent({
         <h1 className="text-3xl md:text-4xl font-bold text-white text-hero-shadow mb-4">
           Simple, Transparent Pricing
         </h1>
-        <p className="text-lg text-white/90 text-hero-shadow-strong max-w-2xl mx-auto">
+        <p className="text-lg text-white/90 text-hero-shadow-strong max-w-2xl mx-auto mb-6">
           Choose the plan that fits your venue. Start free with your first Creator Pack.
         </p>
+        
+        {/* Currency Selector */}
+        <div className="flex flex-col items-center gap-2">
+          <label htmlFor="currency-selector" className="text-sm text-white/80 font-medium">
+            Select your billing currency:
+          </label>
+          <BillingCurrencySelector
+            userId={user?.id}
+            onCurrencyChange={handleCurrencyChange}
+          />
+        </div>
       </div>
 
       <div className="container-ux">

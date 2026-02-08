@@ -33,10 +33,12 @@ async function handleNewTemplateEngine(
   const { generateLayoutV2 } = await import('@/lib/templates/v2/layout-engine-v2')
   const { renderToPdf } = await import('@/lib/templates/v2/renderer-pdf-v2')
   const { optimizeLayoutDocumentImages } = await import('@/lib/templates/v2/image-optimizer-v2')
+  const { getMenuCurrency } = await import('@/lib/menu-currency-service')
   
-  // Transform menu to EngineMenuV2
+  // Transform menu to EngineMenuV2 with user's menu currency preference
   metricsBuilder.markCalculationStart()
-  const engineMenu = transformMenuToV2(menu)
+  const menuCurrency = userId ? await getMenuCurrency(userId) : 'USD'
+  const engineMenu = transformMenuToV2(menu, { currency: menuCurrency })
 
   // Calculate menu characteristics for metrics
   // ... metrics calculation ...

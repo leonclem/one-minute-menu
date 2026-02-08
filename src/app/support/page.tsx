@@ -180,6 +180,31 @@ const faqs: Array<{ q: string; a: ReactNode; aPlainText: string }> = [
       </p>
     ),
   },
+  {
+    q: 'Can I change my billing currency after subscribing?',
+    aPlainText:
+      'Once you have an active subscription, the billing currency is locked for that subscription period to maintain consistent billing and accounting. If you need to change your billing currency, you would need to cancel your current subscription and create a new one with your preferred currency. Your subscription will remain active until the end of your current billing period. If you need assistance with this process, please contact us at support@gridmenu.ai and we can help guide you through the transition.',
+    a: (
+      <div className="space-y-3">
+        <p>
+          Once you have an active subscription, the billing currency is locked for that subscription period to maintain
+          consistent billing and accounting.
+        </p>
+        <p>
+          If you need to change your billing currency, you would need to cancel your current subscription and create a
+          new one with your preferred currency. Your subscription will remain active until the end of your current
+          billing period.
+        </p>
+        <p>
+          If you need assistance with this process, please contact us at{' '}
+          <a href="mailto:support@gridmenu.ai" className="text-ux-primary hover:opacity-90 font-medium">
+            support@gridmenu.ai
+          </a>{' '}
+          and we can help guide you through the transition.
+        </p>
+      </div>
+    ),
+  },
 ]
 
 /** FAQPage schema for SEO (schema.org). Generated from the same FAQ data as the visible list. */

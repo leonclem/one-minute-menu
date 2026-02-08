@@ -187,7 +187,24 @@ export async function processSubscriptionUpdated(
     return
   }
 
+  // CRITICAL: Verify subscription currency hasn't changed during renewal
+  // Requirements 3.4, 3.5: Subscription currency must remain constant across renewals
+  const subscriptionCurrency = subscription.currency?.toUpperCase()
+  const originalCurrency = subscription.metadata?.billingCurrency
+  
+  if (originalCurrency && subscriptionCurrency !== originalCurrency) {
+    console.error(
+      `[webhook:${requestId}] CRITICAL: Subscription currency mismatch detected! ` +
+      `Original: ${originalCurrency}, Current: ${subscriptionCurrency}. ` +
+      `Subscription currency must never change during renewal.`
+    )
+    throw new Error(
+      `Subscription currency immutability violation: expected ${originalCurrency}, got ${subscriptionCurrency}`
+    )
+  }
+
   // Update subscription status and period end
+  // Note: We do NOT update billing_currency here - subscription currency is immutable
   const { error: updateError } = await supabase
     .from('profiles')
     .update({
@@ -201,7 +218,10 @@ export async function processSubscriptionUpdated(
     throw new Error(`Failed to update subscription: ${updateError.message}`)
   }
 
-  console.log(`[webhook:${requestId}] Subscription ${subscription.id} updated for user ${profile.id}`)
+  console.log(
+    `[webhook:${requestId}] Subscription ${subscription.id} updated for user ${profile.id}. ` +
+    `Currency: ${subscriptionCurrency} (immutable)`
+  )
 }
 
 /**

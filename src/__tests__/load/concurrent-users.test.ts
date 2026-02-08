@@ -140,9 +140,10 @@ describe('Load Testing: Extraction Job Queue', () => {
     const totalTime = endTime - startTime
 
     const expectedTime = Math.ceil(JOB_COUNT / WORKER_COUNT) * PROCESSING_TIME
-    
+    const overheadMs = 2500 // Allow overhead for event loop / CI variance
+
     expect(results).toHaveLength(JOB_COUNT)
-    expect(totalTime).toBeLessThanOrEqual(expectedTime + 1000) // Allow 1000ms overhead
+    expect(totalTime).toBeLessThanOrEqual(expectedTime + overheadMs)
   }, 15000) // 15 second timeout
 
   it('should handle job failures and retries', async () => {

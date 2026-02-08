@@ -18,6 +18,7 @@ export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
     ? [
         { href: '/dashboard', label: 'Dashboard' },
         ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
+        { href: '/dashboard/settings', label: 'Settings' },
         { href: '/pricing', label: 'Pricing' },
         { href: '/support', label: 'Support' },
       ]

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { UXSection, UXButton, UXCard } from '@/components/ux'
 import { useToast, ConfirmDialog } from '@/components/ui'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency } from '@/lib/currency-formatter'
 import { supabase } from '@/lib/supabase'
 import type { Menu, MenuItem, MenuCategory } from '@/types'
 import type { ExtractionResultType as Stage1ExtractionResult } from '@/lib/extraction/schema-stage1'
@@ -83,6 +83,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const [activeMenuItem, setActiveMenuItem] = useState<MenuItem | null>(null)
   const [showBulkDelete, setShowBulkDelete] = useState(false)
   const [showReviewAcknowledge, setShowReviewAcknowledge] = useState(false)
+  const [menuCurrency, setMenuCurrency] = useState<string>('USD')
   const router = useRouter()
   const searchParams = useSearchParams()
   const isManualEntry = searchParams.get('manual') === 'true'
@@ -135,6 +136,56 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     setMounted(true)
     return () => setMounted(false)
   }, [])
+
+  // Fetch menu currency for authenticated users (used for price display)
+  useEffect(() => {
+    if (!isDemo) {
+      let cancelled = false
+      ;(async () => {
+        try {
+          const resp = await fetch('/api/menu-currency')
+          if (!resp.ok || cancelled) return
+          const json = await resp.json().catch(() => ({}))
+          const currency = json?.data?.currency
+          if (!cancelled && typeof currency === 'string' && currency.length === 3) {
+            setMenuCurrency(currency)
+          }
+        } catch {
+          // Non-fatal: fallback to USD
+        }
+      })()
+      return () => { cancelled = true }
+    }
+  }, [isDemo])
+
+  // Geo-detection for demo flow: suggest menu currency based on location
+  useEffect(() => {
+    if (!isDemo) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        // Try IP-based geo (Vercel headers) first - works with VPN
+        const resp = await fetch('/api/geo')
+        if (!resp.ok || cancelled) return
+        const json = await resp.json().catch(() => ({}))
+        const data = json?.data
+        if (!cancelled && data?.detected && typeof data?.menuCurrency === 'string') {
+          setMenuCurrency(data.menuCurrency)
+          return
+        }
+        // Fallback to client-side detection (browser language)
+        const { detectLocation, suggestCurrencies } = await import('@/lib/geo-detection')
+        const location = await detectLocation()
+        const suggestion = suggestCurrencies(location)
+        if (!cancelled && suggestion?.menuCurrency) {
+          setMenuCurrency(suggestion.menuCurrency)
+        }
+      } catch {
+        // Non-fatal: keep default USD
+      }
+    })()
+    return () => { cancelled = true }
+  }, [isDemo])
 
   // Determine edit access for authenticated users (view-only when locked)
   useEffect(() => {
@@ -2067,7 +2118,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                             </div>
                             <div className="flex-1 flex flex-col items-end text-right gap-1">
                               <div className="font-semibold text-ux-text">
-                                {typeof price === 'number' ? formatCurrency(price) : '—'}
+                                {typeof price === 'number' ? formatCurrency(price, menuCurrency) : '—'}
                               </div>
                             </div>
                           </div>
