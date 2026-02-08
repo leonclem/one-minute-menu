@@ -40,7 +40,7 @@ export default function BillingCurrencySelector({
 
       if (geoDebug) {
         console.log('[BillingCurrencySelector] geo_debug=1 | URL params:', { countryOverride: countryOverride || null, hasCountryOverride })
-        console.log('[BillingCurrencySelector] Test other countries: ?country=SG | ?country=US | ?country=GB | ?country=AU | ?country=DE (dev only)')
+        console.log('[BillingCurrencySelector] If you see "Applying geo" and "[PricingPage] handleCurrencyChange received" but prices stay USD, the parent state is not driving the UI. If you never see "Applying geo", another branch (API/localStorage) ran first or geo fetch returned no country.')
       }
 
       // When injectGetBillingCurrency is provided (e.g. tests), use it for initial currency so mocks can be asserted
@@ -87,6 +87,20 @@ export default function BillingCurrencySelector({
           return
         }
 
+        // When geo was explicitly requested (debug or override), use it before saved preference.
+        // Otherwise a second effect run (e.g. when userId loads after auth) overwrites with API currency.
+        if (geoCurrency) {
+          if (geoDebug) {
+            console.log('[BillingCurrencySelector] Applying geo → dropdown and onCurrencyChange(' + geoCurrency + ') so parent can update prices')
+          }
+          setSelectedCurrency(geoCurrency)
+          onCurrencyChange?.(geoCurrency)
+          if (userId === undefined) setLocalStorageBillingCurrency(geoCurrency)
+          if (geoDebug) console.log('[BillingCurrencySelector] Using geo result:', geoCurrency)
+          setLoading(false)
+          return
+        }
+
         if (userId !== undefined) {
           const response = await fetch('/api/billing-currency')
           if (response.ok) {
@@ -98,16 +112,6 @@ export default function BillingCurrencySelector({
             setLoading(false)
             return
           }
-        }
-
-        // Use geo result when we have it (from debug or country override fetch) so it isn't overridden by localStorage
-        if (geoCurrency) {
-          setSelectedCurrency(geoCurrency)
-          onCurrencyChange?.(geoCurrency)
-          if (userId === undefined) setLocalStorageBillingCurrency(geoCurrency)
-          if (geoDebug) console.log('[BillingCurrencySelector] Using geo result:', geoCurrency)
-          setLoading(false)
-          return
         }
 
         const stored = getLocalStorageBillingCurrency()

@@ -28,6 +28,9 @@ export default function UXPricingPageContent({
   }, [])
 
   const handleCurrencyChange = (currency: BillingCurrency) => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('geo_debug') === '1') {
+      console.log('[PricingPage] handleCurrencyChange received → setting selectedCurrency to', currency, '(prices will re-render with this)')
+    }
     setSelectedCurrency(currency)
   }
 
