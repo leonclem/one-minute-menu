@@ -37,7 +37,7 @@ describe('resolvePlanLimits', () => {
       'free'
     )
     expect(resolved.menus).toBe(1)
-    expect(resolved.menuItems).toBe(100)
+    expect(resolved.menuItems).toBe(40)
   })
 
   it('uses DB value when plan default is finite and DB has a finite value', () => {

@@ -15,9 +15,9 @@ describe('Notifications: sendAdminNewUserAlert', () => {
     plan: 'free',
     limits: {
       menus: 1,
-      menuItems: 100,
+      menuItems: 40,
       monthlyUploads: 5,
-      aiImageGenerations: 100,
+      aiImageGenerations: 20,
     },
     createdAt: new Date(),
     role: 'user',

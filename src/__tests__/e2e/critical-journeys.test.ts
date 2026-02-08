@@ -320,7 +320,7 @@ describe('E2E: Plan Limits Enforcement', () => {
     const mockProfile = {
       id: 'user-123',
       plan: 'free',
-      plan_limits: { menus: 1, items: 20, extraction_jobs: 5 },
+      plan_limits: { menus: 1, items: 40, extraction_jobs: 5 },
     }
 
     mockSupabase.from.mockReturnValue({
@@ -346,7 +346,7 @@ describe('E2E: Plan Limits Enforcement', () => {
     const mockProfile = {
       id: 'user-123',
       plan: 'free',
-      plan_limits: { menus: 1, items: 20, extraction_jobs: 5 },
+      plan_limits: { menus: 1, items: 40, extraction_jobs: 5 },
     }
 
     // Mock checking current OCR job count

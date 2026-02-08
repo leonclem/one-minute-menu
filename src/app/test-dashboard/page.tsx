@@ -12,7 +12,7 @@ export default function TestDashboardPage() {
     plan: 'free' as const,
     limits: {
       menus: 1,
-      menuItems: 100,
+      menuItems: 40,
       ocrJobs: 5,
       monthlyUploads: 10,
     }
@@ -79,7 +79,7 @@ export default function TestDashboardPage() {
                     {mockProfile.plan}
                   </div>
                   <p className="text-sm text-secondary-500 mt-1">
-                    {mockProfile.plan === 'free' ? '1 menu, 20 items' : 'Unlimited'}
+                    {mockProfile.plan === 'free' ? '1 menu, 40 items' : 'Unlimited'}
                   </p>
                 </CardContent>
               </Card>
