@@ -56,9 +56,11 @@ export default function BillingCurrencySelector({
         }
       }
 
-      // When geo_debug=1 or ?country=XX, always call /api/geo first so we can log or use dev override
+      // Call /api/geo when: debugging, dev override, or when we may need it for default currency
+      // (IP-based geo only works when this API is called; Vercel sets x-vercel-ip-country in production)
       let geoCurrency: BillingCurrency | null = null
-      if (geoDebug || hasCountryOverride) {
+      const shouldFetchGeo = geoDebug || hasCountryOverride
+      if (shouldFetchGeo) {
         try {
           const geoRes = await fetch(`/api/geo${geoQuery}`)
           const geoJson = await geoRes.json().catch(() => ({}))
@@ -107,24 +109,41 @@ export default function BillingCurrencySelector({
           return
         }
 
-        // Use geo result if we already have it (from geo_debug/country fetch), else run client detection
+        // Use geo result if we have it; otherwise try /api/geo once (IP-based in production), then client fallback
         let currency: BillingCurrency
         if (geoCurrency) {
           currency = geoCurrency
         } else {
-          const location = await detectLocation()
-          const suggestion = suggestCurrencies(location)
-          if (geoDebug) {
-            console.log('[BillingCurrencySelector] Client fallback:', {
-              location: { country: location.country, countryCode: location.countryCode, detected: location.detected },
-              suggestion: { billingCurrency: suggestion.billingCurrency, confidence: suggestion.confidence },
-              navigatorLanguage: typeof navigator !== 'undefined' ? navigator.language : undefined,
-            })
-            if (typeof window !== 'undefined' && window.location?.hostname === 'localhost') {
-              console.log('[BillingCurrencySelector] On localhost, IP geo is never set. Use ?country=SG to test SGD, or set browser language to English (Singapore).')
+          // In production, IP-based geo only works if we call /api/geo (Vercel sets x-vercel-ip-country)
+          try {
+            const geoRes = await fetch('/api/geo')
+            const geoJson = await geoRes.json().catch(() => ({}))
+            const data = geoJson?.data
+            if (geoDebug && data) {
+              console.log('[BillingCurrencySelector] /api/geo (default path):', { status: geoRes.status, data })
             }
+            if (data?.detected && data?.billingCurrency) {
+              currency = data.billingCurrency
+            } else {
+              const location = await detectLocation()
+              const suggestion = suggestCurrencies(location)
+              if (geoDebug) {
+                console.log('[BillingCurrencySelector] Client fallback:', {
+                  location: { country: location.country, countryCode: location.countryCode, detected: location.detected },
+                  suggestion: { billingCurrency: suggestion.billingCurrency, confidence: suggestion.confidence },
+                  navigatorLanguage: typeof navigator !== 'undefined' ? navigator.language : undefined,
+                })
+                if (typeof window !== 'undefined' && window.location?.hostname === 'localhost') {
+                  console.log('[BillingCurrencySelector] On localhost, IP geo is never set. Use ?country=SG to test SGD, or set browser language to English (Singapore).')
+                }
+              }
+              currency = suggestion.billingCurrency
+            }
+          } catch {
+            const location = await detectLocation()
+            const suggestion = suggestCurrencies(location)
+            currency = suggestion.billingCurrency
           }
-          currency = suggestion.billingCurrency
         }
 
         setSelectedCurrency(currency)
