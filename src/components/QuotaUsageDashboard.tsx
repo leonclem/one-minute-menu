@@ -48,7 +48,11 @@ export default function QuotaUsageDashboard({
       try {
         setLoading(true)
         setError(null)
-        const res = await fetch('/api/quota', { cache: 'no-store' })
+        // Add timestamp to prevent any caching
+        const res = await fetch(`/api/quota?t=${Date.now()}`, { 
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        })
         const json = await res.json()
         if (!json.success) {
           throw new Error(json.error || 'Failed to load quota')

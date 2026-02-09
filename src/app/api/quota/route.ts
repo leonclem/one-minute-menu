@@ -19,7 +19,12 @@ export async function GET(_request: NextRequest) {
       quotaOperations.getUsageStats(user.id)
     ])
 
-    return NextResponse.json({ success: true, data: { quota, usage } })
+    const response = NextResponse.json({ success: true, data: { quota, usage } })
+    // Explicitly prevent caching
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    return response
   } catch (err) {
     console.error('Failed to fetch quota:', err)
     return NextResponse.json({ success: false, error: 'Failed to fetch quota' }, { status: 500 })

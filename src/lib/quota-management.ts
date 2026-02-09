@@ -42,6 +42,7 @@ export class QuotaManagementService {
     
     // If the monthly_limit in the record doesn't match the effective limit (e.g. after a pack purchase), update it
     if (quotaRecord.monthlyLimit !== effectiveLimit) {
+      console.log(`[QuotaManagement] Syncing quota for user ${userId}: ${quotaRecord.monthlyLimit} -> ${effectiveLimit}`)
       const { data: updatedQuota, error: updateError } = await supabase
         .from('generation_quotas')
         .update({
@@ -52,8 +53,11 @@ export class QuotaManagementService {
         .select()
         .single()
       
-      if (!updateError && updatedQuota) {
+      if (updateError) {
+        console.error(`[QuotaManagement] Failed to sync quota for user ${userId}:`, updateError)
+      } else if (updatedQuota) {
         quotaRecord = this.transformQuotaFromDB(updatedQuota)
+        console.log(`[QuotaManagement] Successfully synced quota for user ${userId}: ${quotaRecord.monthlyLimit}`)
       }
     }
     
