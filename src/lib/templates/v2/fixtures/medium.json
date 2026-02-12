@@ -122,6 +122,7 @@
           "price": 24.99,
           "imageUrl": "https://placehold.co/400x300?text=Foodribeye.jpg",
           "sortOrder": 3,
+          "isFeatured": true,
           "indicators": {
             "dietary": [],
             "allergens": ["dairy"],
@@ -223,6 +224,7 @@
           "price": 6.99,
           "imageUrl": "https://placehold.co/400x300?text=Foodlava-cake.jpg",
           "sortOrder": 0,
+          "isFeatured": true,
           "indicators": {
             "dietary": ["vegetarian"],
             "allergens": ["gluten", "dairy", "eggs"],

@@ -1,12 +1,12 @@
-id: classic-cards-v2
+id: two-column-classic-v2
 version: "2.0.0"
-name: Classic Cards V2
+name: Two Column Classic V2
 
 page:
   size: A4_PORTRAIT
   margins:
-    top: 22.68    # ~8mm in points (reduced by 60%)
-    right: 25.51  # ~9mm (reduced by 40%)
+    top: 22.68
+    right: 25.51
     bottom: 22.68
     left: 25.51
 
@@ -21,10 +21,10 @@ regions:
 body:
   container:
     type: GRID
-    cols: 4
-    rowHeight: 70      # Base row height - ITEM_TEXT_ROW fits in 1 row
-    gapX: 8
-    gapY: 8
+    cols: 2
+    rowHeight: 80
+    gapX: 12
+    gapY: 10
 
 tiles:
   LOGO:
@@ -51,7 +51,7 @@ tiles:
 
   SECTION_HEADER:
     region: body
-    colSpan: 4
+    colSpan: 2
     style:
       typography:
         fontSet: "elegant-serif"
@@ -59,7 +59,6 @@ tiles:
         fontWeight: "semibold"
         textAlign: "left"
         lineHeight: "normal"
-        color: "#696969"
       spacing:
         paddingLeft: 8
         paddingTop: 0
@@ -78,83 +77,39 @@ tiles:
       paddingBottom: 4
       totalHeight: 24
 
-  # DESIGN DECISION (Issue #5): ITEM_CARD uses rowSpan: 2, ITEM_TEXT_ROW uses rowSpan: 1
-  # 
-  # The grid rowHeight is 70pt (matching ITEM_TEXT_ROW).
-  # ITEM_CARD needs ~140pt total, so it spans 2 rows.
+  # ITEM_CARD uses rowSpan: 2 for wider two-column layout
   # Height formula: rowSpan * rowHeight + (rowSpan - 1) * gapY
-  #   = 2 * 70 + 1 * 8 = 148pt actual height
-  # 
-  # This keeps the grid math clean:
-  #   - Text-only mode: all items use 1 row (70pt)
-  #   - Card mode: all items use 2 rows (148pt with gap)
-  #   - No sparse layouts or wasted space
+  #   = 2 * 80 + 1 * 10 = 170pt actual height
+  # Wider columns allow more description space and a larger image box
   ITEM_CARD:
     region: body
-    rowSpan: 2         # 2 rows = 148pt (2×70 + 1×8 gap)
-    contentBudget:
-      nameLines: 2
-      descLines: 2
-      indicatorAreaHeight: 16
-      imageBoxHeight: 70
-      paddingTop: 8
-      paddingBottom: 8
-      totalHeight: 148   # Must match: rowSpan * rowHeight + (rowSpan-1) * gapY
-
-  ITEM_TEXT_ROW:
-    region: body
-    rowSpan: 1         # 1 row × 70pt = 70pt total
-    contentBudget:
-      nameLines: 2
-      descLines: 2
-      indicatorAreaHeight: 16
-      imageBoxHeight: 0
-      paddingTop: 8
-      paddingBottom: 8
-      totalHeight: 70
-
-  # FEATURE_CARD: multi-cell tile for featured menu items
-  # Spans 2 columns and 3 rows for visual prominence.
-  # Height formula: 3 * 70 + 2 * 8 = 226pt
-  FEATURE_CARD:
-    region: body
-    colSpan: 2
-    rowSpan: 3
+    rowSpan: 2
     contentBudget:
       nameLines: 2
       descLines: 3
-      indicatorAreaHeight: 20
-      imageBoxHeight: 100
-      paddingTop: 10
-      paddingBottom: 10
-      totalHeight: 226
+      indicatorAreaHeight: 18
+      imageBoxHeight: 75
+      paddingTop: 8
+      paddingBottom: 8
+      totalHeight: 170
 
-  # DECORATIVE_DIVIDER: full-width divider between sections
-  # Height formula: 1 * 70 + 0 * 8 = 70pt
-  DECORATIVE_DIVIDER:
+  ITEM_TEXT_ROW:
     region: body
-    colSpan: 4
     rowSpan: 1
     contentBudget:
-      nameLines: 0
-      descLines: 0
-      indicatorAreaHeight: 0
+      nameLines: 2
+      descLines: 2
+      indicatorAreaHeight: 18
       imageBoxHeight: 0
-      paddingTop: 4
-      paddingBottom: 4
-      totalHeight: 70
-
-dividers:
-  enabled: true
-  style: ornament
-  height: 24
+      paddingTop: 8
+      paddingBottom: 8
+      totalHeight: 80
 
 policies:
   lastRowBalancing: CENTER
   showLogoOnPages: [FIRST, CONTINUATION, FINAL, SINGLE]
   repeatSectionHeaderOnContinuation: true
   sectionHeaderKeepWithNextItems: 1
-  maxFeaturedPerSection: 1
 
 filler:
   enabled: false
@@ -162,7 +117,7 @@ filler:
     - startRow: 0
       endRow: LAST_CONTENT
       startCol: 0
-      endCol: 3
+      endCol: 1
   tiles:
     - id: filler-icon-1
       style: icon

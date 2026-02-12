@@ -23,7 +23,9 @@ import type {
   DietaryIndicator,
   TileStyleV2,
   TextBlockContentV2,
-  FooterInfoContentV2
+  FooterInfoContentV2,
+  FeatureCardContentV2,
+  DividerContentV2
 } from './engine-types-v2'
 import { formatCurrency } from '../../currency-formatter'
 
@@ -283,10 +285,188 @@ export const PALETTES_V2: ColorPaletteV2[] = [
       },
       textMuted: '#666666'
     }
+  },
+  {
+    id: 'warm-earth',
+    name: 'Warm Earth',
+    colors: {
+      background: '#F5F0E8',
+      menuTitle: '#3E2C1C',
+      sectionHeader: '#3E2C1C',
+      itemTitle: '#3E2C1C',
+      itemPrice: '#8B6914',
+      itemDescription: '#6B5B4E',
+      itemIndicators: {
+        background: '#F5F0E8'
+      },
+      border: {
+        light: '#E0D5C4',
+        medium: '#C9BAA3'
+      },
+      textMuted: '#9A8B7A'
+    }
+  },
+  {
+    id: 'ocean-breeze',
+    name: 'Ocean Breeze',
+    colors: {
+      background: '#F0F5F8',
+      menuTitle: '#1B3A4B',
+      sectionHeader: '#1B3A4B',
+      itemTitle: '#1B3A4B',
+      itemPrice: '#2E6B8A',
+      itemDescription: '#5A7A8A',
+      itemIndicators: {
+        background: '#F0F5F8'
+      },
+      border: {
+        light: '#D0DEE6',
+        medium: '#B3C8D4'
+      },
+      textMuted: '#8A9FAB'
+    }
+  },
+  {
+    id: 'forest-green',
+    name: 'Forest Green',
+    colors: {
+      background: '#F2F5F0',
+      menuTitle: '#1C3318',
+      sectionHeader: '#1C3318',
+      itemTitle: '#1C3318',
+      itemPrice: '#2D5A27',
+      itemDescription: '#4E6B4A',
+      itemIndicators: {
+        background: '#F2F5F0'
+      },
+      border: {
+        light: '#D4DED0',
+        medium: '#B8C9B3'
+      },
+      textMuted: '#7E9478'
+    }
+  },
+  {
+    id: 'valentines-rose',
+    name: "Valentine's Rose",
+    colors: {
+      background: '#FFF0F3',
+      menuTitle: '#8B1A4A',
+      sectionHeader: '#8B1A4A',
+      itemTitle: '#4A0E2B',
+      itemPrice: '#C2185B',
+      itemDescription: '#7A5060',
+      itemIndicators: {
+        background: '#FFF0F3'
+      },
+      border: {
+        light: '#F5D0DA',
+        medium: '#E8A8BA'
+      },
+      textMuted: '#B08090'
+    }
+  },
+  {
+    id: 'lunar-red-gold',
+    name: 'Lunar Red & Gold',
+    colors: {
+      background: '#2B0A0A',
+      menuTitle: '#D4A017',
+      sectionHeader: '#D4A017',
+      itemTitle: '#F5E6C8',
+      itemPrice: '#D4A017',
+      itemDescription: '#C4A882',
+      itemIndicators: {
+        background: '#2B0A0A'
+      },
+      border: {
+        light: '#5C1A1A',
+        medium: '#7A2E2E'
+      },
+      textMuted: '#8A6A5A'
+    }
   }
 ]
 
 export const DEFAULT_PALETTE_V2 = PALETTES_V2[0]
+
+// ============================================================================
+// Texture Registry
+// ============================================================================
+
+/** Configuration for a palette's background texture */
+export interface TextureConfig {
+  paletteId: string
+  webCss: (textureUrl: string) => Record<string, string>
+  webCssExport: (textureUrl: string) => Record<string, string>
+  pdfTextureFile: string
+  backgroundColor: string
+}
+
+/** Registry mapping palette IDs to their texture configurations */
+export const TEXTURE_REGISTRY = new Map<string, TextureConfig>([
+  ['midnight-gold', {
+    paletteId: 'midnight-gold',
+    webCss: (url: string) => ({
+      backgroundColor: '#1A1A1A',
+      backgroundImage: `linear-gradient(135deg, rgba(212, 175, 55, 0.03) 0%, transparent 50%, rgba(212, 175, 55, 0.02) 100%), url('${url}')`,
+      backgroundSize: '100% 100%, cover',
+      backgroundRepeat: 'no-repeat, no-repeat',
+      backgroundPosition: 'center, center',
+      backgroundBlendMode: 'overlay, normal',
+    }),
+    webCssExport: (url: string) => ({
+      backgroundColor: '#1A1A1A',
+      backgroundImage: `url('${url}')`,
+      backgroundSize: 'cover',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center, center',
+      backgroundBlendMode: 'normal',
+    }),
+    pdfTextureFile: 'dark-paper-2.png',
+    backgroundColor: '#1A1A1A',
+  }],
+  ['elegant-dark', {
+    paletteId: 'elegant-dark',
+    webCss: (url: string) => ({
+      backgroundColor: '#0b0d11',
+      backgroundImage: `url('${url}')`,
+      backgroundSize: 'cover',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
+    }),
+    webCssExport: (url: string) => ({
+      backgroundColor: '#0b0d11',
+      backgroundImage: `url('${url}')`,
+      backgroundSize: 'cover',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
+    }),
+    pdfTextureFile: 'dark-paper.png',
+    backgroundColor: '#0b0d11',
+  }],
+  ['lunar-red-gold', {
+    paletteId: 'lunar-red-gold',
+    webCss: (url: string) => ({
+      backgroundColor: '#2B0A0A',
+      backgroundImage: `linear-gradient(135deg, rgba(212, 160, 23, 0.04) 0%, transparent 50%, rgba(212, 160, 23, 0.03) 100%), url('${url}')`,
+      backgroundSize: '100% 100%, cover',
+      backgroundRepeat: 'no-repeat, no-repeat',
+      backgroundPosition: 'center, center',
+      backgroundBlendMode: 'overlay, normal',
+    }),
+    webCssExport: (url: string) => ({
+      backgroundColor: '#2B0A0A',
+      backgroundImage: `url('${url}')`,
+      backgroundSize: 'cover',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center, center',
+      backgroundBlendMode: 'normal',
+    }),
+    pdfTextureFile: 'dark-paper-2.png',
+    backgroundColor: '#2B0A0A',
+  }],
+])
 
 // ============================================================================
 // Shared Rendering Primitives
@@ -322,6 +502,9 @@ export function renderTileContent(
     case 'ITEM_TEXT_ROW':
       return renderItemContent(content as ItemContentV2, tile, options)
     
+    case 'FEATURE_CARD':
+      return renderFeatureCardContent(content as FeatureCardContentV2, tile, options)
+    
     case 'FILLER':
       return renderFillerContent(content as FillerContentV2, tile, options)
     
@@ -330,6 +513,9 @@ export function renderTileContent(
     
     case 'FOOTER_INFO':
       return renderFooterInfoContent(content as FooterInfoContentV2, tile, options)
+    
+    case 'DECORATIVE_DIVIDER':
+      return renderDividerContent(content as DividerContentV2, tile, options)
     
     default:
       return {
@@ -717,6 +903,277 @@ function renderItemContent(
       palette
     )
     elements.push(...indicatorElements)
+  }
+
+  return { elements }
+}
+
+/**
+ * Render a FEATURE_CARD tile — a larger, visually distinct tile for featured menu items.
+ * Uses bigger typography and more generous spacing than standard ITEM_CARD to
+ * fill the multi-cell footprint (typically colSpan: 2, rowSpan: 3).
+ */
+function renderFeatureCardContent(
+  content: FeatureCardContentV2,
+  tile: TileInstanceV2,
+  options: RenderOptionsV2
+): TileRenderData {
+  const elements: RenderElement[] = []
+  const palette = getPalette(options)
+  const padding = 12
+  let currentY = padding
+
+  const baseLineHeight = TYPOGRAPHY_TOKENS_V2.lineHeight.tight
+  const descLineHeight = TYPOGRAPHY_TOKENS_V2.lineHeight.normal
+
+  // Featured image (larger than standard ITEM_CARD)
+  if (content.showImage) {
+    const imageHeight = tile.contentBudget?.imageBoxHeight ?? 100
+    if (content.imageUrl) {
+      elements.push({
+        type: 'image',
+        x: padding,
+        y: currentY,
+        width: tile.width - (padding * 2),
+        height: imageHeight,
+        content: content.imageUrl,
+        style: {
+          borderRadius: 6,
+          objectFit: 'cover'
+        }
+      })
+    } else {
+      elements.push({
+        type: 'background',
+        x: padding,
+        y: currentY,
+        width: tile.width - (padding * 2),
+        height: imageHeight,
+        content: '',
+        style: {
+          backgroundColor: palette.colors.border.light,
+          borderRadius: 6
+        }
+      })
+    }
+
+    // Overlay indicators on the image
+    if (content.indicators) {
+      const indicatorElements = renderIndicators(
+        content.indicators,
+        padding + 4,
+        currentY + 4,
+        tile.width - (padding * 2) - 8,
+        palette
+      )
+      elements.push(...indicatorElements)
+    }
+
+    currentY += imageHeight + 10
+  }
+
+  // Item name — larger font for featured prominence
+  const nameWidth = tile.width - (padding * 2)
+  const nameFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.sm
+  const nameMaxLines = tile.contentBudget?.nameLines ?? 2
+  const nameLineHeight = nameFontSize * baseLineHeight
+
+  elements.push({
+    type: 'text',
+    x: padding,
+    y: currentY,
+    width: nameWidth,
+    height: nameLineHeight * nameMaxLines,
+    content: content.name,
+    style: {
+      fontSize: nameFontSize,
+      fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
+      lineHeight: baseLineHeight,
+      maxLines: nameMaxLines,
+      color: palette.colors.itemTitle,
+      textAlign: 'left'
+    }
+  })
+
+  currentY += nameLineHeight * 2.0
+
+  // Description — slightly larger than standard items
+  if (content.description) {
+    const descMaxLines = tile.contentBudget?.descLines ?? 3
+    const descFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xs
+    const descHeight = descFontSize * descLineHeight * descMaxLines
+
+    elements.push({
+      type: 'text',
+      x: padding,
+      y: currentY,
+      width: tile.width - (padding * 2),
+      height: descHeight,
+      content: content.description,
+      style: {
+        fontSize: descFontSize,
+        lineHeight: descLineHeight,
+        maxLines: descMaxLines,
+        color: palette.colors.itemDescription,
+        textAlign: 'left'
+      }
+    })
+    currentY += descHeight + 6
+  }
+
+  // Price — larger and bolder for featured items
+  const currencyCode = content.currency || 'USD'
+  const priceText = formatCurrency(content.price, currencyCode)
+  const priceFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xsm
+
+  elements.push({
+    type: 'text',
+    x: padding,
+    y: currentY,
+    width: tile.width - (padding * 2),
+    height: priceFontSize * baseLineHeight,
+    content: priceText,
+    style: {
+      fontSize: priceFontSize,
+      fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
+      lineHeight: baseLineHeight,
+      maxLines: 1,
+      color: palette.colors.itemPrice,
+      textAlign: 'left'
+    }
+  })
+
+  currentY += (priceFontSize * baseLineHeight) + 6
+
+  // Indicators fallback (if not already rendered overlayed on image)
+  if (content.indicators && !content.showImage) {
+    const indicatorElements = renderIndicators(
+      content.indicators,
+      padding,
+      currentY,
+      tile.width - (padding * 2),
+      palette
+    )
+    elements.push(...indicatorElements)
+  }
+
+  return { elements }
+}
+
+/**
+ * Render decorative divider content.
+ * Supports line, pattern, icon, and ornament styles.
+ */
+function renderDividerContent(
+  content: DividerContentV2,
+  tile: TileInstanceV2,
+  options: RenderOptionsV2
+): TileRenderData {
+  const elements: RenderElement[] = []
+  const palette = getPalette(options)
+  const centerY = tile.height / 2
+
+  switch (content.style) {
+    case 'line':
+      // Simple horizontal line
+      elements.push({
+        type: 'background',
+        x: tile.width * 0.1,
+        y: centerY - 0.5,
+        width: tile.width * 0.8,
+        height: 1,
+        content: '',
+        style: {
+          backgroundColor: palette.colors.border.medium,
+        }
+      })
+      break
+
+    case 'pattern':
+      // Dashed pattern line
+      elements.push({
+        type: 'background',
+        x: tile.width * 0.05,
+        y: centerY - 0.5,
+        width: tile.width * 0.9,
+        height: 1,
+        content: '',
+        style: {
+          backgroundColor: palette.colors.border.light,
+          opacity: 0.6,
+        }
+      })
+      break
+
+    case 'icon':
+      // Center dot with lines on each side
+      elements.push({
+        type: 'background',
+        x: tile.width * 0.1,
+        y: centerY - 0.5,
+        width: tile.width * 0.35,
+        height: 1,
+        content: '',
+        style: { backgroundColor: palette.colors.border.light }
+      })
+      elements.push({
+        type: 'text',
+        x: tile.width * 0.45,
+        y: centerY - 5,
+        width: tile.width * 0.1,
+        height: 10,
+        content: '◆',
+        style: {
+          fontSize: 8,
+          color: palette.colors.border.medium,
+          textAlign: 'center',
+        }
+      })
+      elements.push({
+        type: 'background',
+        x: tile.width * 0.55,
+        y: centerY - 0.5,
+        width: tile.width * 0.35,
+        height: 1,
+        content: '',
+        style: { backgroundColor: palette.colors.border.light }
+      })
+      break
+
+    case 'ornament':
+      // Ornamental divider with decorative center
+      elements.push({
+        type: 'background',
+        x: tile.width * 0.15,
+        y: centerY - 0.5,
+        width: tile.width * 0.3,
+        height: 1,
+        content: '',
+        style: { backgroundColor: palette.colors.border.light }
+      })
+      elements.push({
+        type: 'text',
+        x: tile.width * 0.35,
+        y: centerY - 6,
+        width: tile.width * 0.3,
+        height: 12,
+        content: '✦  ✦  ✦',
+        style: {
+          fontSize: 7,
+          color: palette.colors.textMuted,
+          textAlign: 'center',
+        }
+      })
+      elements.push({
+        type: 'background',
+        x: tile.width * 0.55,
+        y: centerY - 0.5,
+        width: tile.width * 0.3,
+        height: 1,
+        content: '',
+        style: { backgroundColor: palette.colors.border.light }
+      })
+      break
   }
 
   return { elements }

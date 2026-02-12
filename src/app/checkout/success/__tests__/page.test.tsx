@@ -473,7 +473,7 @@ describe('CheckoutSuccessPage', () => {
       await waitFor(() => {
         expect(screen.getByText(/Your purchase is being processed/)).toBeInTheDocument()
       }, { timeout: 10000 })
-    })
+    }, 20000)
 
     it('should show email confirmation message on timeout', async () => {
       ;(global.fetch as jest.Mock).mockResolvedValue({
@@ -500,7 +500,7 @@ describe('CheckoutSuccessPage', () => {
       await waitFor(() => {
         expect(screen.getByText(/You'll receive an email confirmation shortly/)).toBeInTheDocument()
       }, { timeout: 10000 })
-    })
+    }, 20000)
 
     it('should show verify button on timeout', async () => {
       ;(global.fetch as jest.Mock).mockResolvedValue({

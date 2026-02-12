@@ -150,7 +150,10 @@ export function LayoutLabPreview({
 
   // V2 Preview
   const v2Layout = layoutDocument as LayoutDocumentV2
-  const currentPage = v2Layout.pages[currentPageIndex]
+  
+  // Clamp page index when layout changes (e.g. switching to a template with fewer pages)
+  const safePageIndex = Math.min(currentPageIndex, v2Layout.pages.length - 1)
+  const currentPage = v2Layout.pages[safePageIndex]
   
   return (
     <div className="space-y-4">
@@ -208,8 +211,8 @@ export function LayoutLabPreview({
           {totalPages > 1 && (
             <div className="flex items-center space-x-3">
               <Button
-                onClick={() => setCurrentPageIndex(Math.max(0, currentPageIndex - 1))}
-                disabled={currentPageIndex === 0}
+                onClick={() => setCurrentPageIndex(Math.max(0, safePageIndex - 1))}
+                disabled={safePageIndex === 0}
                 variant="outline"
                 size="sm"
                 className="h-8 px-3"
@@ -218,13 +221,13 @@ export function LayoutLabPreview({
               </Button>
               
               <span className="text-xs font-medium text-gray-500 whitespace-nowrap min-w-[80px] text-center">
-                Page {currentPageIndex + 1} / {totalPages}
+                Page {safePageIndex + 1} / {totalPages}
                 <span className="block text-[9px] uppercase opacity-60 font-bold">{currentPage.pageType}</span>
               </span>
               
               <Button
-                onClick={() => setCurrentPageIndex(Math.min(totalPages - 1, currentPageIndex + 1))}
-                disabled={currentPageIndex === totalPages - 1}
+                onClick={() => setCurrentPageIndex(Math.min(totalPages - 1, safePageIndex + 1))}
+                disabled={safePageIndex === totalPages - 1}
                 variant="outline"
                 size="sm"
                 className="h-8 px-3"

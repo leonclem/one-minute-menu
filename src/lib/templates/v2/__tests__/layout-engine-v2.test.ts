@@ -35,7 +35,7 @@ async function generateLayout(menu: EngineMenuV2, debug = true): Promise<LayoutD
 function countItemTiles(doc: LayoutDocumentV2): number {
   return doc.pages.reduce((count, page) => {
     return count + page.tiles.filter(
-      t => t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW'
+      t => t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW' || t.type === 'FEATURE_CARD'
     ).length
   }, 0)
 }

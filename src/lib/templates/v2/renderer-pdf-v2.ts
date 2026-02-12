@@ -25,6 +25,7 @@ import {
   TYPOGRAPHY_TOKENS_V2,
   COLOR_TOKENS_V2,
   PALETTES_V2,
+  TEXTURE_REGISTRY,
   getFontSet,
   type RenderOptionsV2 
 } from './renderer-v2'
@@ -226,10 +227,9 @@ async function generatePDFHTML(
   let textureDataURL: string | undefined = undefined
   if (options.texturesEnabled) {
     logger.info(`[PDFRendererV2] Textures enabled, fetching for palette: ${palette.id}`)
-    if (palette.id === 'midnight-gold') {
-      textureDataURL = await getTextureDataURL('dark-paper-2.png') || undefined
-    } else if (palette.id === 'elegant-dark') {
-      textureDataURL = await getTextureDataURL('dark-paper.png') || undefined
+    const textureConfig = TEXTURE_REGISTRY.get(palette.id)
+    if (textureConfig) {
+      textureDataURL = await getTextureDataURL(textureConfig.pdfTextureFile) || undefined
     }
     
     if (textureDataURL) {
@@ -245,7 +245,7 @@ async function generatePDFHTML(
           background-blend-mode: normal !important;
         }
       `
-    } else {
+    } else if (textureConfig) {
       logger.warn(`[PDFRendererV2] Failed to load texture for palette: ${palette.id}`)
     }
   }

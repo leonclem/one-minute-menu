@@ -2068,8 +2068,11 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                                 )}
                               </button>
                               <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-ux-text leading-tight">
+                                <h4 className="font-medium text-ux-text leading-tight flex items-center gap-1">
                                   {raw.name}
+                                  {!isDemo && (raw as MenuItem).isFeatured && (
+                                    <span className="text-amber-500 text-sm shrink-0" title="Featured item">★</span>
+                                  )}
                                 </h4>
                               </div>
                             </div>
@@ -2487,6 +2490,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           item={activeMenuItem}
           menuId={menuId}
           availableCategories={categories}
+          allItems={authMenu.items}
           onClose={() => setActiveMenuItem(null)}
           onItemUpdated={async () => {
             await refreshMenu()

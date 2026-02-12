@@ -401,7 +401,7 @@ describe('Streaming Paginator', () => {
         // Count items should match input
         const totalInputItems = menu.sections.reduce((sum, section) => sum + section.items.length, 0)
         const totalOutputItems = result.pages.reduce((sum, page) => {
-          return sum + page.tiles.filter(t => t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW').length
+          return sum + page.tiles.filter(t => t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW' || t.type === 'FEATURE_CARD').length
         }, 0)
         expect(totalOutputItems).toBe(totalInputItems)
       })

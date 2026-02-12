@@ -154,6 +154,9 @@ export interface MenuItem {
   type?: 'standard' | 'set_menu' | 'combo'
   setMenu?: SetMenu
   
+  // Featured item flag
+  isFeatured?: boolean
+  
   // AI Image Generation fields
   aiImageId?: string
   customImageUrl?: string
@@ -443,6 +446,7 @@ export interface MenuItemFormData {
   price: number
   category?: string
   available: boolean
+  isFeatured?: boolean
   
   // AI Image Generation fields (optional for form data)
   aiImageId?: string

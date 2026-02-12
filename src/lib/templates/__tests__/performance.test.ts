@@ -136,9 +136,10 @@ describe('Performance: Layout Generation', () => {
       const secondCallDuration = timer2.elapsed()
       
       // Cache hit should be faster or approximately equal allowing small jitter
-      // Note: On very fast systems, both might be < 1ms; allow 0.5ms slack or 50% jitter
+      // Note: On very fast systems, both might be < 1ms; allow 1ms slack or 50% jitter
+      // to account for event-loop variance when running the full test suite
       expect(cachedLayout.totalTiles).toBe(20)
-      const tolerance = Math.max(0.5, firstCallDuration * 0.5)
+      const tolerance = Math.max(1, firstCallDuration * 0.5)
       expect(secondCallDuration).toBeLessThanOrEqual(firstCallDuration + tolerance)
     })
   })

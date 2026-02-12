@@ -48,6 +48,21 @@ export const PAGE_DIMENSIONS = {
     width: 841.89,
     height: 595.28,
   },
+  A3_PORTRAIT: {
+    id: 'A3_PORTRAIT',
+    width: 841.89,
+    height: 1190.55,
+  },
+  A3_LANDSCAPE: {
+    id: 'A3_LANDSCAPE',
+    width: 1190.55,
+    height: 841.89,
+  },
+  HALF_A4_TALL: {
+    id: 'HALF_A4_TALL',
+    width: 297.64,
+    height: 841.89,
+  },
 } as const
 
 export type PageDimensionId = keyof typeof PAGE_DIMENSIONS
@@ -117,6 +132,8 @@ export type TileTypeV2 =
   | 'FILLER'
   | 'TEXT_BLOCK'
   | 'FOOTER_INFO'
+  | 'FEATURE_CARD'
+  | 'DECORATIVE_DIVIDER'
 
 /** Tile layer for z-ordering and overlap detection */
 export type TileLayerV2 = 'background' | 'content'
@@ -221,6 +238,30 @@ export interface FooterInfoContentV2 {
   }
 }
 
+/** Feature card tile content (for multi-cell featured items) */
+export interface FeatureCardContentV2 {
+  type: 'FEATURE_CARD'
+  itemId: string
+  sectionId: string
+  name: string
+  description?: string
+  price: number
+  imageUrl?: string
+  showImage: boolean
+  currency: string
+  indicators: ItemIndicatorsV2
+}
+
+/** Divider style options */
+export type DividerStyleV2 = 'line' | 'pattern' | 'icon' | 'ornament'
+
+/** Decorative divider tile content (inserted between sections) */
+export interface DividerContentV2 {
+  type: 'DECORATIVE_DIVIDER'
+  sectionId: string // section after the divider
+  style: DividerStyleV2
+}
+
 /** Union of all tile content types */
 export type TileContentV2 =
   | LogoContentV2
@@ -230,6 +271,8 @@ export type TileContentV2 =
   | FillerContentV2
   | TextBlockContentV2
   | FooterInfoContentV2
+  | FeatureCardContentV2
+  | DividerContentV2
 
 // =============================================================================
 // Tile Instance
@@ -374,6 +417,7 @@ export interface EngineItemV2 {
   imageUrl?: string
   sortOrder: number
   indicators: ItemIndicatorsV2
+  isFeatured?: boolean
 }
 
 // =============================================================================
@@ -408,6 +452,7 @@ export interface TemplateV2 {
   regions: TemplateRegionsConfigV2
   body: TemplateBodyConfigV2
   tiles: TemplateTileVariantsV2
+  dividers?: TemplateDividersConfigV2
   policies: TemplatePoliciesV2
   filler: TemplateFillerConfigV2
   itemIndicators: TemplateIndicatorConfigV2
@@ -422,6 +467,13 @@ export interface TemplatePageConfigV2 {
     bottom: number
     left: number
   }
+}
+
+/** Optional dividers configuration */
+export interface TemplateDividersConfigV2 {
+  enabled: boolean
+  style: DividerStyleV2
+  height: number
 }
 
 /** Region definitions in template */
@@ -526,6 +578,8 @@ export interface TemplateTileVariantsV2 {
   ITEM_CARD: TileVariantDefV2
   ITEM_TEXT_ROW: TileVariantDefV2
   FILLER?: TileVariantDefV2[]
+  FEATURE_CARD?: TileVariantDefV2
+  DECORATIVE_DIVIDER?: TileVariantDefV2
 }
 
 /** Layout policies */
@@ -534,6 +588,8 @@ export interface TemplatePoliciesV2 {
   showLogoOnPages: PageTypeV2[]
   repeatSectionHeaderOnContinuation: boolean
   sectionHeaderKeepWithNextItems: number
+  /** Max featured items per section. Excess items fall back to ITEM_CARD. Default: unlimited */
+  maxFeaturedPerSection?: number
 }
 
 /**

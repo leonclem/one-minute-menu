@@ -220,6 +220,7 @@ function transformItemToV2(
     imageUrl,
     sortOrder: item.order ?? fallbackOrder,
     indicators: transformIndicators(item),
+    isFeatured: item.isFeatured ?? false,
   }
 }
 

@@ -260,19 +260,22 @@ describe('Tile Placer', () => {
 
   describe('selectItemVariant', () => {
     it('selects ITEM_CARD for item with image', () => {
-      const variant = selectItemVariant(mockItem, mockTemplate)
-      expect(variant).toBe(mockTemplate.tiles.ITEM_CARD)
+      const result = selectItemVariant(mockItem, mockTemplate)
+      expect(result.variant).toBe(mockTemplate.tiles.ITEM_CARD)
+      expect(result.tileType).toBe('ITEM_CARD')
     })
 
     it('selects ITEM_CARD for item without image (for visual parity)', () => {
       const itemWithoutImage = { ...mockItem, imageUrl: undefined }
-      const variant = selectItemVariant(itemWithoutImage, mockTemplate)
-      expect(variant).toBe(mockTemplate.tiles.ITEM_CARD)
+      const result = selectItemVariant(itemWithoutImage, mockTemplate)
+      expect(result.variant).toBe(mockTemplate.tiles.ITEM_CARD)
+      expect(result.tileType).toBe('ITEM_CARD')
     })
 
     it('selects ITEM_TEXT_ROW when textOnly is enabled', () => {
-      const variant = selectItemVariant(mockItem, mockTemplate, { textOnly: true })
-      expect(variant).toBe(mockTemplate.tiles.ITEM_TEXT_ROW)
+      const result = selectItemVariant(mockItem, mockTemplate, { textOnly: true })
+      expect(result.variant).toBe(mockTemplate.tiles.ITEM_TEXT_ROW)
+      expect(result.tileType).toBe('ITEM_TEXT_ROW')
     })
   })
 

@@ -144,7 +144,7 @@ export const TemplateSchemaV2 = z.object({
   name: z.string(),
   
   page: z.object({
-    size: z.enum(['A4_PORTRAIT', 'A4_LANDSCAPE']),
+    size: z.enum(['A4_PORTRAIT', 'A4_LANDSCAPE', 'A3_PORTRAIT', 'A3_LANDSCAPE', 'HALF_A4_TALL']),
     margins: z.object({
       top: z.number(),
       right: z.number(),
@@ -176,14 +176,23 @@ export const TemplateSchemaV2 = z.object({
     SECTION_HEADER: TileVariantSchemaV2,
     ITEM_CARD: TileVariantSchemaV2,
     ITEM_TEXT_ROW: TileVariantSchemaV2,
-    FILLER: z.array(FillerTileSchemaV2).optional()
+    FILLER: z.array(FillerTileSchemaV2).optional(),
+    FEATURE_CARD: TileVariantSchemaV2.optional(),
+    DECORATIVE_DIVIDER: TileVariantSchemaV2.optional(),
   }),
+  
+  dividers: z.object({
+    enabled: z.boolean(),
+    style: z.enum(['line', 'pattern', 'icon', 'ornament']),
+    height: z.number().min(0),
+  }).optional(),
   
   policies: z.object({
     lastRowBalancing: z.enum(['CENTER', 'LEFT', 'RIGHT']),
     showLogoOnPages: z.array(z.enum(['FIRST', 'CONTINUATION', 'FINAL', 'SINGLE'])),
     repeatSectionHeaderOnContinuation: z.boolean(),
-    sectionHeaderKeepWithNextItems: z.number().int().min(1)
+    sectionHeaderKeepWithNextItems: z.number().int().min(1),
+    maxFeaturedPerSection: z.number().int().min(1).optional()
   }),
   
   filler: z.object({

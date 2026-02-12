@@ -32,6 +32,7 @@ import {
   createLogoTile,
   createTitleTile,
   createFooterInfoTile,
+  createDividerTile,
   selectItemVariant,
   placeTile,
   advancePosition,
@@ -337,8 +338,8 @@ function canPlaceHeaderWithItems(
   for (let i = 0; i < itemsToCheck; i++) {
     const item = section.items[i]
     const itemVariant = selectItemVariant(item, ctx.template, ctx.selection)
-    const itemRowSpan = itemVariant.rowSpan ?? 1
-    const itemColSpan = itemVariant.colSpan ?? 1
+    const itemRowSpan = itemVariant.variant.rowSpan ?? 1
+    const itemColSpan = itemVariant.variant.colSpan ?? 1
     
     // Correct simulation: Check if item fits in current row before updating maxRowSpan
     if (simulatedCol + itemColSpan > cols && simulatedCol > 0) {
@@ -405,11 +406,36 @@ export function streamingPaginate(
   
   // Process each section in sortOrder
   const sortedSections = [...menu.sections].sort((a, b) => a.sortOrder - b.sortOrder)
+  let nonEmptySectionIndex = 0
   for (const section of sortedSections) {
     // Skip empty sections (enforce INV-3: No widowed section headers)
     if (!section.items || section.items.length === 0) {
       continue
     }
+
+    // Insert divider between sections (not before first non-empty section)
+    if (template.dividers?.enabled && nonEmptySectionIndex > 0) {
+      const dividerTile = createDividerTile(section.id, template)
+
+      // Force new row before divider
+      if (ctx.currentCol !== 0) {
+        advanceToNextRow(ctx, ctx.currentRowMaxSpan)
+      }
+
+      if (!fitsInCurrentPage(ctx, dividerTile.height, dividerTile.colSpan)) {
+        // Divider + next section go to new page together
+        finalizePage(ctx)
+        startNewPage(ctx, 'CONTINUATION')
+        placeStaticTiles(ctx, menu, 'CONTINUATION')
+      }
+
+      const dividerRegion = getBodyRegion(ctx.currentPage.regions)
+      const placedDivider = placeTile(ctx, ctx.currentPage, dividerTile, dividerRegion, template)
+      logPlacement(ctx, 'placed', placedDivider.id, 'Section divider')
+      advanceToNextRow(ctx, dividerTile.rowSpan)
+    }
+
+    nonEmptySectionIndex++
 
     // Create section header tile with FOOTPRINT height
     const headerTile = createSectionHeaderTile(section, template, false)
@@ -448,8 +474,18 @@ export function streamingPaginate(
     
     // Process items in this section in sortOrder
     const sortedItems = [...section.items].sort((a, b) => a.sortOrder - b.sortOrder)
+    const maxFeatured = template.policies.maxFeaturedPerSection
+    let featuredCount = 0
     for (const item of sortedItems) {
-      const itemTile = createItemTile(item, section.id, template, menu.metadata.currency, selection)
+      // Enforce per-section featured limit: demote excess featured items to regular cards
+      let effectiveItem = item
+      if (item.isFeatured && maxFeatured != null && featuredCount >= maxFeatured) {
+        effectiveItem = { ...item, isFeatured: false }
+      }
+      const itemTile = createItemTile(effectiveItem, section.id, template, menu.metadata.currency, selection)
+      if (effectiveItem.isFeatured && itemTile.type === 'FEATURE_CARD') {
+        featuredCount++
+      }
       
       // Check if item fits on current page (passing colSpan for accurate wrap prediction)
       if (!fitsInCurrentPage(ctx, itemTile.height, itemTile.colSpan)) {

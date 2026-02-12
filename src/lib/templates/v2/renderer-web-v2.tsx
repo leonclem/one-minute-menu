@@ -27,6 +27,7 @@ import {
   COLOR_TOKENS_V2,
   getFontSet,
   FONT_SETS_V2,
+  TEXTURE_REGISTRY,
   type RenderOptionsV2,
   type RenderElement 
 } from './renderer-v2'
@@ -141,29 +142,14 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
     backgroundColor: bgColor
   }
   
-  if (texturesEnabled && palette?.id === 'midnight-gold') {
-    const textureUrl = options.textureDataURL || '/textures/dark-paper-2.png'
-    backgroundStyle = {
-      backgroundColor: '#1A1A1A',
-      backgroundImage: isExport 
-        ? `url('${textureUrl}')`
-        : `
-          linear-gradient(135deg, rgba(212, 175, 55, 0.03) 0%, transparent 50%, rgba(212, 175, 55, 0.02) 100%),
-          url('${textureUrl}')
-        `,
-      backgroundSize: isExport ? 'cover' : '100% 100%, cover',
-      backgroundRepeat: isExport ? 'no-repeat' : 'no-repeat, no-repeat',
-      backgroundPosition: 'center, center',
-      backgroundBlendMode: isExport ? 'normal' : 'overlay, normal'
-    }
-  } else if (texturesEnabled && palette?.id === 'elegant-dark') {
-    const textureUrl = options.textureDataURL || '/textures/dark-paper.png'
-    backgroundStyle = {
-      backgroundColor: '#0b0d11',
-      backgroundImage: `url('${textureUrl}')`,
-      backgroundSize: 'cover',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center'
+  if (texturesEnabled && palette?.id) {
+    const textureConfig = TEXTURE_REGISTRY.get(palette.id)
+    if (textureConfig) {
+      const textureUrl = options.textureDataURL || `/textures/${textureConfig.pdfTextureFile}`
+      const cssProps = isExport
+        ? textureConfig.webCssExport(textureUrl)
+        : textureConfig.webCss(textureUrl)
+      backgroundStyle = cssProps as React.CSSProperties
     }
   }
   

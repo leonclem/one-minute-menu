@@ -11,7 +11,8 @@ import { load as parseYaml } from 'js-yaml'
 import { TemplateSchemaV2 } from './template-schema-v2'
 import { TemplateValidationError } from './errors-v2'
 import { logger } from '../../logger'
-import type { TemplateV2 } from './engine-types-v2'
+import { PAGE_DIMENSIONS } from './engine-types-v2'
+import type { TemplateV2, PageDimensionId } from './engine-types-v2'
 
 // =============================================================================
 // Template Cache
@@ -163,7 +164,9 @@ function validateDerivedValues(
                            raw.regions.footer.height
   
   // For A4 portrait (841.89pt height), regions shouldn't consume more than ~60% of page
-  const maxRegionHeight = raw.page.size === 'A4_PORTRAIT' ? 500 : 350 // landscape has less height
+  // Calculate limit based on actual page dimensions instead of hardcoding per size
+  const pageDims = PAGE_DIMENSIONS[raw.page.size as PageDimensionId]
+  const maxRegionHeight = Math.round(pageDims.height * 0.6)
   if (totalRegionHeight > maxRegionHeight) {
     errors.push(
       `Total region height (${totalRegionHeight}pt) exceeds reasonable limit ` +

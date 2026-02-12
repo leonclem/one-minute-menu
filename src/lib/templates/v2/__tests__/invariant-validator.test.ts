@@ -398,5 +398,112 @@ describe('validateInvariants', () => {
       const violations = validateInvariants(document, mockTemplate)
       expect(violations).toHaveLength(0)
     })
+
+    it('should detect FEATURE_CARD tile outside body region', () => {
+      const featureTile = createMockTile({
+        id: 'feature-1',
+        type: 'FEATURE_CARD',
+        regionId: 'header', // wrong region
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 50, // fits within header height of 60
+        colSpan: 2,
+        rowSpan: 3,
+        content: {
+          type: 'FEATURE_CARD',
+          itemId: 'item-1',
+          sectionId: 'section-1',
+          name: 'Featured Item',
+          price: 19.99,
+          showImage: true,
+          currency: '$',
+          indicators: { dietary: [], allergens: [], spiceLevel: null }
+        }
+      })
+      
+      const page = createMockPage([featureTile])
+      const document = createMockDocument([page])
+      
+      const violations = validateInvariants(document, mockTemplate)
+      expect(violations.some(v => v.code === 'ITEM_NOT_IN_BODY')).toBe(true)
+      expect(violations.find(v => v.code === 'ITEM_NOT_IN_BODY')!.message).toContain('header region')
+    })
+
+    it('should allow FEATURE_CARD tile in body region', () => {
+      const featureTile = createMockTile({
+        id: 'feature-1',
+        type: 'FEATURE_CARD',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 226,
+        colSpan: 2,
+        rowSpan: 3,
+        content: {
+          type: 'FEATURE_CARD',
+          itemId: 'item-1',
+          sectionId: 'section-1',
+          name: 'Featured Item',
+          price: 19.99,
+          showImage: true,
+          currency: '$',
+          indicators: { dietary: [], allergens: [], spiceLevel: null }
+        }
+      })
+      
+      const page = createMockPage([featureTile])
+      const document = createMockDocument([page])
+      
+      const violations = validateInvariants(document, mockTemplate)
+      expect(violations).toHaveLength(0)
+    })
+  })
+
+  describe('INV-3: FEATURE_CARD prevents widowed section headers', () => {
+    it('should not flag widowed header when FEATURE_CARD item follows', () => {
+      const header = createMockTile({
+        id: 'header-1',
+        type: 'SECTION_HEADER',
+        x: 0,
+        y: 0,
+        width: 510,
+        height: 32,
+        content: {
+          type: 'SECTION_HEADER',
+          sectionId: 'section-1',
+          label: 'Specials',
+          isContinuation: false
+        }
+      })
+      
+      const featureItem = createMockTile({
+        id: 'feature-1',
+        type: 'FEATURE_CARD',
+        x: 0,
+        y: 40,
+        width: 200,
+        height: 226,
+        colSpan: 2,
+        rowSpan: 3,
+        content: {
+          type: 'FEATURE_CARD',
+          itemId: 'item-1',
+          sectionId: 'section-1',
+          name: 'Featured Dish',
+          price: 24.99,
+          showImage: true,
+          currency: '$',
+          indicators: { dietary: [], allergens: [], spiceLevel: null }
+        }
+      })
+      
+      const page = createMockPage([header, featureItem])
+      const document = createMockDocument([page])
+      
+      const violations = validateInvariants(document, mockTemplate)
+      expect(violations).toHaveLength(0)
+    })
   })
 })

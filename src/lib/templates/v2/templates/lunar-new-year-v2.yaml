@@ -1,12 +1,12 @@
-id: classic-cards-v2
+id: lunar-new-year-v2
 version: "2.0.0"
-name: Classic Cards V2
+name: Lunar New Year
 
 page:
   size: A4_PORTRAIT
   margins:
-    top: 22.68    # ~8mm in points (reduced by 60%)
-    right: 25.51  # ~9mm (reduced by 40%)
+    top: 22.68
+    right: 25.51
     bottom: 22.68
     left: 25.51
 
@@ -22,7 +22,7 @@ body:
   container:
     type: GRID
     cols: 4
-    rowHeight: 70      # Base row height - ITEM_TEXT_ROW fits in 1 row
+    rowHeight: 70
     gapX: 8
     gapY: 8
 
@@ -56,17 +56,17 @@ tiles:
       typography:
         fontSet: "elegant-serif"
         fontSize: "xl"
-        fontWeight: "semibold"
+        fontWeight: "bold"
         textAlign: "left"
         lineHeight: "normal"
-        color: "#696969"
+        color: "#D4A017"
       spacing:
         paddingLeft: 8
         paddingTop: 0
         paddingBottom: 0
       border:
         width: 0.5
-        color: "#696969"
+        color: "#7A2E2E"
         style: "solid"
         sides: ["bottom"]
     contentBudget:
@@ -78,20 +78,9 @@ tiles:
       paddingBottom: 4
       totalHeight: 24
 
-  # DESIGN DECISION (Issue #5): ITEM_CARD uses rowSpan: 2, ITEM_TEXT_ROW uses rowSpan: 1
-  # 
-  # The grid rowHeight is 70pt (matching ITEM_TEXT_ROW).
-  # ITEM_CARD needs ~140pt total, so it spans 2 rows.
-  # Height formula: rowSpan * rowHeight + (rowSpan - 1) * gapY
-  #   = 2 * 70 + 1 * 8 = 148pt actual height
-  # 
-  # This keeps the grid math clean:
-  #   - Text-only mode: all items use 1 row (70pt)
-  #   - Card mode: all items use 2 rows (148pt with gap)
-  #   - No sparse layouts or wasted space
   ITEM_CARD:
     region: body
-    rowSpan: 2         # 2 rows = 148pt (2×70 + 1×8 gap)
+    rowSpan: 2
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -99,11 +88,11 @@ tiles:
       imageBoxHeight: 70
       paddingTop: 8
       paddingBottom: 8
-      totalHeight: 148   # Must match: rowSpan * rowHeight + (rowSpan-1) * gapY
+      totalHeight: 148
 
   ITEM_TEXT_ROW:
     region: body
-    rowSpan: 1         # 1 row × 70pt = 70pt total
+    rowSpan: 1
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -113,9 +102,6 @@ tiles:
       paddingBottom: 8
       totalHeight: 70
 
-  # FEATURE_CARD: multi-cell tile for featured menu items
-  # Spans 2 columns and 3 rows for visual prominence.
-  # Height formula: 3 * 70 + 2 * 8 = 226pt
   FEATURE_CARD:
     region: body
     colSpan: 2
@@ -129,8 +115,6 @@ tiles:
       paddingBottom: 10
       totalHeight: 226
 
-  # DECORATIVE_DIVIDER: full-width divider between sections
-  # Height formula: 1 * 70 + 0 * 8 = 70pt
   DECORATIVE_DIVIDER:
     region: body
     colSpan: 4
@@ -158,20 +142,8 @@ policies:
 
 filler:
   enabled: false
-  safeZones:
-    - startRow: 0
-      endRow: LAST_CONTENT
-      startCol: 0
-      endCol: 3
-  tiles:
-    - id: filler-icon-1
-      style: icon
-      content: utensils
-      rowSpan: 2
-    - id: filler-icon-2
-      style: icon
-      content: coffee
-      rowSpan: 2
+  safeZones: []
+  tiles: []
   policy: SEQUENTIAL
 
 itemIndicators:

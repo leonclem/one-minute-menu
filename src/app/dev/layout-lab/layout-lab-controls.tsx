@@ -35,8 +35,14 @@ const V1_TEMPLATES = [
 ]
 
 const V2_TEMPLATES = [
-  { id: 'classic-cards-v2', name: 'Classic Cards V2', description: '4-column grid layout' },
-  { id: 'italian-v2', name: 'Italian Classic V2', description: '2-column text-focused layout' }
+  { id: 'classic-cards-v2', name: 'Classic Cards V2', description: 'A4 Portrait · 4-column grid layout' },
+  { id: 'italian-v2', name: 'Italian Classic V2', description: 'A4 Portrait · 2-column text-focused layout' },
+  { id: 'classic-cards-v2-landscape', name: 'Classic Cards Landscape', description: 'A4 Landscape · 4-column wide-format layout' },
+  { id: 'two-column-classic-v2', name: 'Two Column Classic', description: 'A4 Portrait · 2-column with wider cards' },
+  { id: 'three-column-modern-v2', name: 'Three Column Modern', description: 'A4 Portrait · 3-column balanced grid' },
+  { id: 'half-a4-tall-v2', name: 'Half A4 Tall', description: 'Half A4 · Narrow single-column for tent cards' },
+  { id: 'valentines-v2', name: "Valentine's Day", description: 'A4 Portrait · Themed with ornament dividers' },
+  { id: 'lunar-new-year-v2', name: 'Lunar New Year', description: 'A4 Portrait · Themed with gold accents' },
 ]
 
 const ENGINE_VERSIONS = [
@@ -158,6 +164,14 @@ export function LayoutLabControls({
                   // Auto-enable textOnly for Italian template
                   if (newTemplateId === 'italian-v2') {
                     updates.textOnly = true
+                  }
+                  
+                  // Auto-select themed palettes
+                  if (newTemplateId === 'valentines-v2') {
+                    updates.paletteId = 'valentines-rose'
+                  } else if (newTemplateId === 'lunar-new-year-v2') {
+                    updates.paletteId = 'lunar-red-gold'
+                    updates.texturesEnabled = true
                   }
                   
                   onStateChange(updates)
@@ -306,7 +320,7 @@ export function LayoutLabControls({
             <span className="text-sm">Textured backgrounds</span>
           </label>
           <p className="text-xs text-gray-500 ml-6">
-            Applies paper textures to Midnight Gold and Elegant Dark palettes
+            Applies paper textures to palettes that support them (Midnight Gold, Elegant Dark, Lunar Red &amp; Gold)
           </p>
           
           <label className="flex items-center space-x-3 cursor-pointer">

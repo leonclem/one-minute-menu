@@ -21,6 +21,7 @@ import type {
   SelectionConfigV2,
   PageLayoutV2,
   TileVariantDefV2,
+  TileTypeV2,
   RegionV2,
 } from './engine-types-v2'
 import { calculateTileHeight, calculateTileWidth, calculateCellWidth } from './engine-types-v2'
@@ -124,7 +125,7 @@ export function createItemTile(
   selection?: SelectionConfigV2
 ): Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'> {
   // Select variant based on config and item properties
-  const variant = selectItemVariant(item, template, selection)
+  const { variant, tileType } = selectItemVariant(item, template, selection)
   const { rowHeight, gapY, cols, gapX } = template.body.container
   
   const rowSpan = variant.rowSpan ?? 1
@@ -138,8 +139,34 @@ export function createItemTile(
   const cellWidth = calculateCellWidth(bodyRegion.width || 1000, cols, gapX)
   const width = calculateTileWidth(colSpan, cellWidth, gapX)
   
-  const tileType = variant === template.tiles.ITEM_CARD ? 'ITEM_CARD' : 'ITEM_TEXT_ROW'
-  const showImage = tileType === 'ITEM_CARD' // Always true for ITEM_CARD to ensure space allocation
+  const showImage = tileType === 'ITEM_CARD' || tileType === 'FEATURE_CARD'
+  
+  // Build content based on tile type
+  const content = tileType === 'FEATURE_CARD'
+    ? {
+        type: 'FEATURE_CARD' as const,
+        itemId: item.id,
+        sectionId,
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        imageUrl: item.imageUrl,
+        showImage,
+        currency: currency || '$',
+        indicators: item.indicators,
+      }
+    : {
+        type: tileType as 'ITEM_CARD' | 'ITEM_TEXT_ROW',
+        itemId: item.id,
+        sectionId,
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        imageUrl: item.imageUrl,
+        showImage,
+        currency: currency || '$',
+        indicators: item.indicators,
+      }
   
   return {
     id: `item-${item.id}`,
@@ -150,18 +177,7 @@ export function createItemTile(
     colSpan,
     rowSpan,
     layer: 'content',
-    content: {
-      type: tileType,
-      itemId: item.id,
-      sectionId,
-      name: item.name,
-      description: item.description,
-      price: item.price,
-      imageUrl: item.imageUrl,
-      showImage,
-      currency: currency || '$',
-      indicators: item.indicators,
-    },
+    content,
     style: variant.style,
     contentBudget: variant.contentBudget,
   }
@@ -264,6 +280,48 @@ export function createFooterInfoTile(
   }
 }
 
+/**
+ * Create a decorative divider tile (inserted between sections).
+ *
+ * @param sectionId - ID of the section after the divider
+ * @param template - Template configuration
+ * @returns Divider tile instance (without position - set during placement)
+ */
+export function createDividerTile(
+  sectionId: string,
+  template: TemplateV2
+): Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'> {
+  const { rowHeight, gapY, cols, gapX } = template.body.container
+  const dividerVariant = template.tiles.DECORATIVE_DIVIDER
+  
+  const colSpan = dividerVariant?.colSpan ?? cols // Full width by default
+  const rowSpan = dividerVariant?.rowSpan ?? 1
+  
+  const height = calculateTileHeight(rowSpan, rowHeight, gapY)
+  const cellWidth = calculateCellWidth(1000, cols, gapX) // placeholder width, recalculated at placement
+  const width = calculateTileWidth(colSpan, cellWidth, gapX)
+  
+  const style = template.dividers?.style ?? 'line'
+  
+  return {
+    id: `divider-${sectionId}`,
+    type: 'DECORATIVE_DIVIDER',
+    regionId: 'body',
+    width,
+    height,
+    colSpan,
+    rowSpan,
+    layer: 'content',
+    content: {
+      type: 'DECORATIVE_DIVIDER',
+      sectionId,
+      style,
+    },
+    contentBudget: dividerVariant?.contentBudget,
+    style: dividerVariant?.style,
+  }
+}
+
 // =============================================================================
 // Variant Selection
 // =============================================================================
@@ -274,26 +332,31 @@ export function createFooterInfoTile(
  * @param item - Item data
  * @param template - Template configuration
  * @param selection - User selection config
- * @returns The selected tile variant definition
+ * @returns The selected tile variant definition and tile type
  */
 export function selectItemVariant(
   item: EngineItemV2,
   template: TemplateV2,
   selection?: SelectionConfigV2
-): TileVariantDefV2 {
+): { variant: TileVariantDefV2; tileType: TileTypeV2 } {
   // If textOnly mode is enabled, always use ITEM_TEXT_ROW
   if (selection?.textOnly) {
-    return template.tiles.ITEM_TEXT_ROW
+    return { variant: template.tiles.ITEM_TEXT_ROW, tileType: 'ITEM_TEXT_ROW' }
+  }
+  
+  // Featured item — use FEATURE_CARD if template supports it
+  if (item.isFeatured && template.tiles.FEATURE_CARD) {
+    return { variant: template.tiles.FEATURE_CARD, tileType: 'FEATURE_CARD' }
   }
   
   // Use ITEM_CARD for all items (with placeholder if no image) to maintain visual parity
   // This ensures consistent spacing and layout regardless of image availability
   if (template.tiles.ITEM_CARD) {
-    return template.tiles.ITEM_CARD
+    return { variant: template.tiles.ITEM_CARD, tileType: 'ITEM_CARD' }
   }
   
   // Fallback to ITEM_TEXT_ROW if ITEM_CARD is not available in template
-  return template.tiles.ITEM_TEXT_ROW
+  return { variant: template.tiles.ITEM_TEXT_ROW, tileType: 'ITEM_TEXT_ROW' }
 }
 
 // =============================================================================
@@ -327,6 +390,11 @@ export function placeTile(
   let gridCol: number
   
   if (tile.regionId === 'body') {
+    // If the tile's colSpan would overflow the current row, wrap to the next row
+    if (ctx.currentCol + tile.colSpan > cols && ctx.currentCol > 0) {
+      advanceToNextRow(ctx, ctx.currentRowMaxSpan)
+    }
+    
     // For body tiles, use grid-based positioning
     x = ctx.currentCol * (cellWidth + gapX)
     y = ctx.currentRow * (rowHeight + gapY)
@@ -433,7 +501,7 @@ export function applyLastRowBalancing(
   // Find all body tiles (items only)
   const bodyTiles = page.tiles.filter(
     t => t.regionId === 'body' && 
-         (t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW')
+         (t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW' || t.type === 'FEATURE_CARD')
   )
   
   if (bodyTiles.length === 0) {

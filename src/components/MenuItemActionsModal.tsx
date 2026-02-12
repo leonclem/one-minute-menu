@@ -10,6 +10,8 @@ interface MenuItemActionsModalProps {
   item: MenuItem
   menuId: string
   availableCategories: string[]
+  /** All items in the menu, used to check for existing featured items in the same category */
+  allItems?: MenuItem[]
   onClose: () => void
   onItemUpdated: () => void
   onManageImages?: () => void
@@ -20,6 +22,7 @@ export default function MenuItemActionsModal({
   item,
   menuId,
   availableCategories,
+  allItems,
   onClose,
   onItemUpdated,
   onManageImages,
@@ -27,6 +30,7 @@ export default function MenuItemActionsModal({
 }: MenuItemActionsModalProps) {
   const [loading, setLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showFeaturedConfirm, setShowFeaturedConfirm] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const { showToast } = useToast()
 
@@ -117,6 +121,79 @@ export default function MenuItemActionsModal({
     }
   }
 
+  const handleToggleFeatured = async (replacingItemId?: string) => {
+    setLoading(true)
+    try {
+      // If replacing another featured item, unfeatured it first
+      if (replacingItemId) {
+        const unfeatRes = await fetch(`/api/menus/${menuId}/items/${replacingItemId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isFeatured: false }),
+        })
+        if (!unfeatRes.ok) {
+          throw new Error('Failed to remove featured status from existing item')
+        }
+      }
+
+      const newFeatured = !item.isFeatured
+      const response = await fetch(`/api/menus/${menuId}/items/${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isFeatured: newFeatured }),
+      })
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to update item'
+        try {
+          const error = await response.json()
+          errorMessage = error.error || errorMessage
+        } catch {
+          errorMessage = `${response.status}: ${response.statusText}`
+        }
+        throw new Error(errorMessage)
+      }
+
+      showToast({
+        type: 'success',
+        title: newFeatured ? 'Item featured' : 'Featured removed',
+        description: newFeatured
+          ? `"${item.name}" will be highlighted on your menu.`
+          : `"${item.name}" is no longer featured.`,
+      })
+
+      onItemUpdated()
+      onClose()
+    } catch (error) {
+      console.error('Error updating featured status:', error)
+      showToast({
+        type: 'error',
+        title: 'Update failed',
+        description: error instanceof Error ? error.message : 'Please try again.',
+      })
+    } finally {
+      setLoading(false)
+      setShowFeaturedConfirm(null)
+    }
+  }
+
+  const handleFeaturedClick = () => {
+    if (item.isFeatured) {
+      // Removing featured — no confirmation needed
+      handleToggleFeatured()
+      return
+    }
+    // Check if another item in the same category is already featured
+    const existingFeatured = allItems?.find(
+      i => i.id !== item.id && i.category === item.category && i.isFeatured
+    )
+    if (existingFeatured) {
+      setShowFeaturedConfirm(existingFeatured.name)
+    } else {
+      handleToggleFeatured()
+    }
+  }
+
   const handleMoveToCategory = async (newCategory: string) => {
     if (newCategory === item.category) {
       onClose()
@@ -201,6 +278,43 @@ export default function MenuItemActionsModal({
     )
   }
 
+  if (showFeaturedConfirm) {
+    const existingFeatured = allItems?.find(
+      i => i.id !== item.id && i.category === item.category && i.isFeatured
+    )
+    return createPortal(
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+        <div className="w-full max-w-md bg-white rounded-lg shadow-lg border border-ux-border">
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-ux-text mb-2">
+              Replace Featured Item
+            </h3>
+            <p className="text-ux-text-secondary mb-4">
+              &ldquo;{showFeaturedConfirm}&rdquo; is already featured in {item.category || 'this category'}. Only one item per category can be featured. Replace it with &ldquo;{item.name}&rdquo;?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowFeaturedConfirm(null)}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => handleToggleFeatured(existingFeatured?.id)}
+                disabled={loading}
+              >
+                {loading ? 'Updating...' : 'Replace'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )
+  }
+
   // Filter out current category from available categories
   const otherCategories = availableCategories.filter(cat => cat !== item.category)
 
@@ -267,6 +381,18 @@ export default function MenuItemActionsModal({
               className="w-full text-left px-3 py-2 rounded-lg hover:bg-ux-background-secondary transition-colors text-ux-text disabled:opacity-50"
             >
               {item.available ? 'Mark as out of stock' : 'Mark as available'}
+            </button>
+
+            {/* Toggle featured */}
+            <button
+              onClick={handleFeaturedClick}
+              disabled={loading}
+              className="w-full text-left px-3 py-2 rounded-lg hover:bg-ux-background-secondary transition-colors text-ux-text disabled:opacity-50 flex items-center justify-between"
+            >
+              <span>{item.isFeatured ? 'Remove featured' : 'Mark as featured'}</span>
+              {item.isFeatured && (
+                <span className="text-amber-500">★</span>
+              )}
             </button>
             
             {/* Move to category */}

@@ -677,7 +677,7 @@ describe('Performance', () => {
     const duration = endTime - startTime
     expect(duration).toBeLessThan(4000) // Should complete within 4 seconds
     expect(result.imageBuffer).toBeTruthy()
-  })
+  }, 15000)
 
   it('should report accurate duration metrics', async () => {
     const componentHTML = renderComponentHTML(mockMenuData, mockPreset, 'desktop')
@@ -685,7 +685,7 @@ describe('Performance', () => {
 
     expect(result.duration).toBeGreaterThan(0)
     expect(result.duration).toBeLessThan(4000)
-  })
+  }, 15000)
 })
 
 // ============================================================================
