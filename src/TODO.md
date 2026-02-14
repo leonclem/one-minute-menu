@@ -10,19 +10,24 @@
 - [x] Currency Support (for package pricing / Stripe)
 - [ ] Google "Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required."
 
-## Email templates
+## Outbound Email
+- [ ] Upgrade SendGrid plan to Pro to prevent IP address sharing (with potential spammers)
+- [x] Create Google Workspace account to enable outgoing @gridmenu.ai email addresses
 - [ ] Determine and document all emails sent
 - [ ] Decide on style and content
 - [ ] Implement changes
 
 ### GridMenu V2 Layout Engine Enhancements
-- [ ] Additional template families (two-, three-, four-column)
-- [ ] A4 landscape and A3 page size support
-- [ ] Amit feedback: "Column-style" pages (e.g. "half-A4, tall")
-- [ ] Amit feedback: Only selected "specials" have photos
-- [ ] Flourishes / section dividers (e.g. design-inspiration-7.png)
-- [ ] Multi-cell filler tiles / Mosaic layouts (currently 1x1 only), e.g. design-inspiration-5.jpg
-- [ ] Themed menus, e.g. Superbowl, Valentine's, CNY, etc.
+- [x] Additional template families (two-, three-, four-column)
+- [x] A4 landscape and A3 page size support
+- [x] Amit feedback: "Column-style" pages (e.g. "half-A4, tall")
+- [x] Amit feedback: Only selected "specials" have photos
+- [x] Flourishes / section dividers (e.g. design-inspiration-7.png)
+- [x] Multi-cell filler tiles / Mosaic layouts (currently 1x1 only), e.g. design-inspiration-5.jpg
+- [x] Themed menus, e.g. Superbowl, Valentine's, CNY, etc.
+- [x] Swap colour palettes
+- [x] Additional background colours and textures
+- [ ] "Full-tile image" variants
 
 ## Deployment
 - [x] Upgrade Vercel package
@@ -68,6 +73,7 @@
 
 ## Security
 - [ ] Address Next.js DoS vulnerabilities (see `SECURITY_NEXTJS_VULNERABILITIES.md`)
+- [ ] Ensure MFA is set on email accounts
 
 ## Tech debt
 - [ ] Review code
@@ -80,6 +86,9 @@
 - [ ] Reddit community posting
 
 ## Unclassified
+- [ ] Migrate out of OneDrive on laptop development
+- [ ] Change primary email logins to admin@gridmenu.ai (e.g. SendGrid, NameCheap, Railway, Supabase, etc.)
+- [ ] Existing menu extract: Message "This may take a few minutes. Leave this page open while the key is being added." and checkbox with "Email me instead".
 - [ ] Remove LOG_LEVEL="debug" from Railway variables
 - [ ] Integrate Posthog
 - [ ] Crop for large menus text extraction
