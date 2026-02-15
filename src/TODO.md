@@ -3,6 +3,7 @@
 ## Railway
 - [x] Implement Railway architecture to offload PDF export from Vercel
 - [x] Plan for utilising Railway for image export
+- [x] Utilise workers for Demo exports now that complexity is rising in template options
 - [ ] Monitoring of workers in the Admin dashboard (particularly keen to understand turnaround times for extraction and export tasks)
 
 ## Global Reach
@@ -86,6 +87,8 @@
 - [ ] Reddit community posting
 
 ## Unclassified
+- [ ] Demo flow - don't allow users to proceed beyond /extracted until all images generated
+- [ ] Redirect user back to Dashboard after export from /template to reduce repeat clicks/requests
 - [ ] Migrate out of OneDrive on laptop development
 - [ ] Change primary email logins to admin@gridmenu.ai (e.g. SendGrid, NameCheap, Railway, Supabase, etc.)
 - [ ] Existing menu extract: Message "This may take a few minutes. Leave this page open while the key is being added." and checkbox with "Email me instead".
