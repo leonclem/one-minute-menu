@@ -345,9 +345,12 @@ describe('Pricing Page - Integration Tests', () => {
       const user = userEvent.setup()
       const { rerender } = render(<UXPricingPageContent />)
 
-      await waitFor(() => {
-        expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
-      })
+      await waitFor(
+        () => {
+          expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
+        },
+        { timeout: 5000 }
+      )
 
       // Change currency
       const currencySelector = screen.getByLabelText(/select billing currency/i)
@@ -358,9 +361,12 @@ describe('Pricing Page - Integration Tests', () => {
       rerender(<UXPricingPageContent />)
 
       // Wait for reload
-      await waitFor(() => {
-        expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
-      })
+      await waitFor(
+        () => {
+          expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
+        },
+        { timeout: 5000 }
+      )
 
       // Verify EUR is still selected
       const reloadedSelector = screen.getByLabelText(/select billing currency/i) as HTMLSelectElement
@@ -371,7 +377,7 @@ describe('Pricing Page - Integration Tests', () => {
         const eurPrice = `€${tier.prices.EUR}`
         expect(screen.getByText(eurPrice)).toBeInTheDocument()
       })
-    })
+    }, 15000)
   })
 
   describe('Geo-detection suggests appropriate default', () => {

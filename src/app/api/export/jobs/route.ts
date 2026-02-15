@@ -9,8 +9,11 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createWorkerSupabaseClient } from '@/lib/supabase-worker'
 import { userOperations, menuOperations, assertUserCanEditMenu, DatabaseError } from '@/lib/database'
-import { createRenderSnapshot, SnapshotCreationError } from '@/lib/worker/snapshot'
+import { createRenderSnapshot, createRenderSnapshotFromMenuData, SnapshotCreationError } from '@/lib/worker/snapshot'
+import { StorageClient } from '@/lib/worker/storage-client'
+import { computeDemoPdfCachePath } from '@/lib/templates/export/demo-pdf-cache'
 import type { ExportJobMetadata } from '@/types'
 
 /**
@@ -29,10 +32,10 @@ const RATE_LIMITS = {
 const SUBSCRIBER_PLANS = ['grid_plus', 'grid_plus_premium', 'premium', 'enterprise']
 
 /**
- * Request body schema
+ * Request body schema (authenticated)
  */
 interface CreateExportJobRequest {
-  menu_id: string
+  menu_id?: string
   export_type: 'pdf' | 'image'
   template_id?: string
   configuration?: any
@@ -43,13 +46,30 @@ interface CreateExportJobRequest {
 }
 
 /**
+ * Demo request body (menu data in body, no auth)
+ */
+interface CreateDemoExportJobRequest {
+  menu: any
+  templateId: string
+  configuration?: any
+  options?: {
+    orientation?: 'portrait' | 'landscape'
+    title?: string
+    includePageNumbers?: boolean
+  }
+}
+
+/**
  * Response schema
  */
 interface CreateExportJobResponse {
-  job_id: string
+  job_id?: string
   status: 'pending'
-  created_at: string
+  created_at?: string
   estimated_wait_seconds?: number
+  /** Demo cache hit: return signed URL for immediate download */
+  cache_hit?: boolean
+  download_url?: string
 }
 
 /**
@@ -316,18 +336,209 @@ export async function GET(request: NextRequest) {
   }
 }
 
+const DEMO_RATE_LIMIT_HOURLY = 50
+
+/**
+ * Handle demo export: check cache first, then create job if miss.
+ */
+async function handleDemoExportJob(
+  request: NextRequest,
+  body: CreateDemoExportJobRequest
+): Promise<NextResponse> {
+  const options = {
+    orientation: (body.options?.orientation || 'portrait') as 'portrait' | 'landscape',
+    title: body.options?.title || body.menu?.name || 'Demo Menu',
+    includePageNumbers: body.options?.includePageNumbers !== false
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const bucket = process.env.EXPORT_STORAGE_BUCKET || process.env.STORAGE_BUCKET || 'export-files'
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json<ErrorResponse>(
+      { error: 'Demo export unavailable: storage not configured', code: 'CONFIG_ERROR' },
+      { status: 503 }
+    )
+  }
+
+  try {
+    const { cachePath, filenameBase } = await computeDemoPdfCachePath({
+      menu: body.menu,
+      templateId: body.templateId,
+      configuration: body.configuration,
+      options
+    })
+
+    // Cache check: if PDF exists, return signed URL immediately.
+    // On any storage error (e.g. 400 when bucket missing locally), treat as cache miss and create job.
+    const storageClient = new StorageClient({
+      supabase_url: supabaseUrl,
+      supabase_service_role_key: serviceRoleKey,
+      storage_bucket: bucket
+    })
+
+    let cachedBytes: Uint8Array | null = null
+    try {
+      cachedBytes = await storageClient.download(cachePath)
+    } catch (storageErr) {
+      // Bucket missing, 400, or other storage error: proceed as cache miss
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[API] Demo cache check failed (treating as miss):', storageErr instanceof Error ? storageErr.message : storageErr)
+      }
+    }
+
+    const skipCacheInDev = process.env.NODE_ENV === 'development' && process.env.SKIP_DEMO_PDF_CACHE === 'true'
+    if (!skipCacheInDev && cachedBytes && cachedBytes.length > 0) {
+      try {
+        const signedUrl = await storageClient.generateSignedUrl(
+          cachePath,
+          86400,
+          `${filenameBase}.pdf`
+        )
+        if (process.env.NODE_ENV === 'development') {
+          console.info('[API] Demo export: cache hit, returning signed URL (no worker used)')
+        }
+        return NextResponse.json({
+          cache_hit: true,
+          download_url: signedUrl,
+          status: 'pending'
+        } satisfies CreateExportJobResponse, { status: 200 })
+      } catch {
+        // Signed URL failed; fall through to create job
+      }
+    }
+
+    // Cache miss (or skip cache in dev): create snapshot and job for worker to process
+    if (process.env.NODE_ENV === 'development') {
+      console.info('[API] Demo export: cache miss or SKIP_DEMO_PDF_CACHE=true, creating job for worker')
+    }
+    const snapshot = await createRenderSnapshotFromMenuData(
+      body.menu,
+      body.templateId,
+      {
+        template_id: body.templateId,
+        configuration: body.configuration,
+        format: 'A4',
+        orientation: options.orientation,
+        include_images: true,
+        include_prices: true
+      }
+    )
+
+    // Demo rate limit: global hourly cap
+    const workerSupabase = createWorkerSupabaseClient()
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const { count } = await workerSupabase
+      .from('export_jobs')
+      .select('*', { count: 'exact', head: true })
+      .is('user_id', null)
+      .gte('created_at', oneHourAgo)
+
+    if ((count || 0) >= DEMO_RATE_LIMIT_HOURLY) {
+      return NextResponse.json<ErrorResponse>(
+        {
+          error: 'Demo export limit reached. Please try again later.',
+          code: 'RATE_LIMIT_EXCEEDED'
+        },
+        { status: 429 }
+      )
+    }
+
+    const metadata: ExportJobMetadata & { demo_cache_path?: string } = {
+      format: 'A4',
+      orientation: options.orientation,
+      menu_name: body.menu?.name || 'Demo Menu',
+      render_snapshot: snapshot,
+      demo_cache_path: cachePath
+    }
+
+    const { data: job, error: createError } = await workerSupabase
+      .from('export_jobs')
+      .insert({
+        user_id: null,
+        menu_id: null,
+        export_type: 'pdf',
+        status: 'pending',
+        priority: 5,
+        retry_count: 0,
+        available_at: new Date().toISOString(),
+        metadata
+      })
+      .select()
+      .single()
+
+    if (createError) {
+      console.error('[API] Demo job creation failed:', createError)
+      return NextResponse.json<ErrorResponse>(
+        {
+          error: 'Failed to create export job',
+          code: 'JOB_CREATION_FAILED',
+          details: { message: createError.message }
+        },
+        { status: 500 }
+      )
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.info('[API] Demo export: job created', { job_id: job.id, message: 'Docker worker should claim and process this job' })
+    }
+    return NextResponse.json({
+      job_id: job.id,
+      status: 'pending',
+      created_at: job.created_at
+    } satisfies CreateExportJobResponse, { status: 201 })
+  } catch (error) {
+    if (error instanceof SnapshotCreationError) {
+      return NextResponse.json<ErrorResponse>(
+        { error: error.message, code: error.code, details: error.details },
+        { status: 400 }
+      )
+    }
+    const message =
+      error instanceof Error
+        ? (error.message || 'Unknown error')
+        : typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as { message: unknown }).message)
+          : String(error)
+    const safeMessage = message && message !== '{}' ? message : 'Demo export failed (check server logs)'
+    console.error('[API] Demo export error:', error instanceof Error ? error : safeMessage)
+    if (error instanceof Error && error.stack) {
+      console.error('[API] Demo export stack:', error.stack)
+    }
+    return NextResponse.json<ErrorResponse>(
+      {
+        error: 'Failed to create demo export',
+        code: 'INTERNAL_ERROR',
+        details: { message: safeMessage }
+      },
+      { status: 500 }
+    )
+  }
+}
+
 /**
  * POST /api/export/jobs
  * 
- * Creates a new export job
+ * Creates a new export job.
+ * Supports demo flow: send { menu, templateId, configuration } for unauthenticated demo exports.
  */
 export async function POST(request: NextRequest) {
   try {
     // Parse request body
-    const body: CreateExportJobRequest = await request.json()
+    const body = await request.json()
+    
+    // Detect demo flow: menu data in body, no menu_id
+    const isDemo = !!(body.menu && !body.menu_id)
+    
+    if (isDemo) {
+      return await handleDemoExportJob(request, body as CreateDemoExportJobRequest)
+    }
+    
+    const typedBody = body as CreateExportJobRequest
     
     // Validate export_type
-    if (!validateExportType(body.export_type)) {
+    if (!validateExportType(typedBody.export_type)) {
       return NextResponse.json<ErrorResponse>(
         {
           error: 'Invalid export_type. Must be "pdf" or "image".',
@@ -338,7 +549,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Validate menu_id
-    if (!validateMenuId(body.menu_id)) {
+    if (!typedBody.menu_id || !validateMenuId(typedBody.menu_id)) {
       return NextResponse.json<ErrorResponse>(
         {
           error: 'Invalid menu_id. Must be a valid UUID.',
@@ -365,7 +576,7 @@ export async function POST(request: NextRequest) {
     const userId = user.id
     
     // Check if user owns the menu
-    const menu = await menuOperations.getMenu(body.menu_id, userId)
+    const menu = await menuOperations.getMenu(typedBody.menu_id!, userId)
     
     if (!menu) {
       return NextResponse.json<ErrorResponse>(
@@ -429,13 +640,13 @@ export async function POST(request: NextRequest) {
     let snapshot
     try {
       snapshot = await createRenderSnapshot(
-        body.menu_id,
-        body.template_id || 'elegant-dark',
+        typedBody.menu_id!,
+        typedBody.template_id || 'elegant-dark',
         {
-          template_id: body.template_id || 'elegant-dark',
-          configuration: body.configuration,
-          format: body.metadata?.format || 'A4',
-          orientation: body.metadata?.orientation || 'portrait',
+          template_id: typedBody.template_id || 'elegant-dark',
+          configuration: typedBody.configuration,
+          format: typedBody.metadata?.format || 'A4',
+          orientation: typedBody.metadata?.orientation || 'portrait',
           include_images: true,
           include_prices: true
         }
@@ -473,8 +684,8 @@ export async function POST(request: NextRequest) {
 
     // Create export job metadata
     const metadata: ExportJobMetadata = {
-      format: body.metadata?.format || 'A4',
-      orientation: body.metadata?.orientation || 'portrait',
+      format: typedBody.metadata?.format || 'A4',
+      orientation: typedBody.metadata?.orientation || 'portrait',
       menu_name: menu.name,
       restaurant_name: restaurantName,
       render_snapshot: snapshot
@@ -485,8 +696,8 @@ export async function POST(request: NextRequest) {
       .from('export_jobs')
       .insert({
         user_id: userId,
-        menu_id: body.menu_id,
-        export_type: body.export_type,
+        menu_id: typedBody.menu_id,
+        export_type: typedBody.export_type,
         status: 'pending',
         priority,
         retry_count: 0,

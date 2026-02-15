@@ -10,8 +10,6 @@ import { pdfExportLimiter, applyRateLimit } from '@/lib/templates/rate-limiter'
 import { MetricsBuilder, logLayoutMetrics, validatePerformance } from '@/lib/templates/metrics'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
-import { StorageClient } from '@/lib/worker/storage-client'
-import { computeDemoPdfCachePath } from '@/lib/templates/export/demo-pdf-cache'
 
 // Extended timeout for PDF generation
 export const maxDuration = 60
@@ -357,104 +355,15 @@ export async function POST(request: NextRequest) {
         'x-forwarded-proto': request.headers.get('x-forwarded-proto') || ''
       }
 
-      // Demo PDF caching (V2 templates)
-      // Demo exports currently run in this API route (not the worker).
-      // Cache the generated PDF in Supabase Storage so we don't regenerate identical PDFs repeatedly.
+      // Demo exports are handled by POST /api/export/jobs (Railway worker)
       if (isDemo) {
-        // IMPORTANT: For the Next.js app runtime (non-Docker), prefer the public URL.
-        // In local setups, SUPABASE_URL may be set to `host.docker.internal:54321` for workers,
-        // which will fail from the host process.
-        const supabaseUrl =
-          process.env.NEXT_PUBLIC_SUPABASE_URL ||
-          process.env.SUPABASE_URL
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-        const bucket = process.env.EXPORT_STORAGE_BUCKET || process.env.STORAGE_BUCKET || 'export-files'
-
-        if (supabaseUrl && serviceRoleKey) {
-          try {
-            const storageClient = new StorageClient({
-              supabase_url: supabaseUrl,
-              supabase_service_role_key: serviceRoleKey,
-              storage_bucket: bucket,
-            })
-
-            const { cachePath, filenameBase } = await computeDemoPdfCachePath({
-              menu,
-              templateId: effectiveTemplateId,
-              configuration,
-              options,
-            })
-
-            // Try cache hit first
-            const cachedBytes = await storageClient.download(cachePath)
-            if (cachedBytes) {
-              // Redirect to a signed URL to avoid streaming bytes through the app server.
-              const signedUrl = await storageClient.generateSignedUrl(cachePath, 86400, `${filenameBase}.pdf`) // 24h
-              return NextResponse.redirect(signedUrl, {
-                headers: {
-                  'x-demo-pdf-cache': 'HIT',
-                },
-              })
-            }
-
-            // Cache miss: generate, upload, then redirect to signed URL
-            const generatedResponse = await handleNewTemplateEngine(
-              menu,
-              effectiveTemplateId,
-              configuration,
-              options,
-              user?.id || 'demo-user',
-              metricsBuilder,
-              headers
-            )
-
-            if (generatedResponse.ok) {
-              try {
-                // Clone so we can still return the original response if caching fails.
-                const cloned = generatedResponse.clone()
-                const arrayBuffer = await cloned.arrayBuffer()
-                const pdfBytes = new Uint8Array(arrayBuffer)
-                const uploadBuffer = Buffer.from(pdfBytes)
-
-                await storageClient.upload(uploadBuffer, cachePath, 'application/pdf')
-
-                const signedUrl = await storageClient.generateSignedUrl(cachePath, 86400, `${filenameBase}.pdf`) // 24h
-                return NextResponse.redirect(signedUrl, {
-                  headers: {
-                    'x-demo-pdf-cache': 'MISS',
-                    // Helpful for debugging in logs; not relied upon by the client
-                    'x-demo-pdf-cache-path': cachePath,
-                    'x-demo-pdf-filename': `${filenameBase}.pdf`,
-                  },
-                })
-              } catch (e) {
-                logger.warn('[PDFExport] Demo cache write failed; falling back to direct response', {
-                  error: e instanceof Error ? e.message : String(e),
-                  cachePath,
-                })
-                return generatedResponse
-              }
-            }
-
-            return generatedResponse
-          } catch (e) {
-            // Never fail the export because caching infrastructure is unavailable.
-            logger.warn('[PDFExport] Demo cache unavailable; proceeding without cache', {
-              error: e instanceof Error ? e.message : String(e),
-            })
-            return await handleNewTemplateEngine(
-              menu,
-              effectiveTemplateId,
-              configuration,
-              options,
-              user?.id || 'demo-user',
-              metricsBuilder,
-              headers
-            )
-          }
-        } else {
-          logger.warn('[PDFExport] Demo cache disabled (missing SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY)')
-        }
+        return NextResponse.json(
+          {
+            error: 'Demo exports use the job queue. Use POST /api/export/jobs with menu data.',
+            code: 'USE_EXPORT_JOBS'
+          },
+          { status: 400 }
+        )
       }
 
       return await handleNewTemplateEngine(menu, effectiveTemplateId, configuration, options, user?.id || 'demo-user', metricsBuilder, headers)

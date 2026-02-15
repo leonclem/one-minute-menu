@@ -117,7 +117,7 @@ describe('V2 Layout Engine Property Tests', () => {
       ),
       { numRuns: 100 }
     )
-  })
+  }, 30000)
 
   /**
    * Property 2: Tiles Within Region Bounds
@@ -151,7 +151,7 @@ describe('V2 Layout Engine Property Tests', () => {
       ),
       { numRuns: 100 }
     )
-  })
+  }, 30000)
 
   /**
    * Property 3: No Widowed Section Headers

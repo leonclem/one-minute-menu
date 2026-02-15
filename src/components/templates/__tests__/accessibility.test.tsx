@@ -713,55 +713,23 @@ describe('Accessibility - Color and Visual Information', () => {
 // ============================================================================
 
 describe('Accessibility - Responsive Contexts', () => {
-  it('should maintain accessibility on mobile', async () => {
-    const { container } = render(
-      <GridMenuLayout
-        data={mockMenuData}
-        preset={LAYOUT_PRESETS['balanced']}
-        context="mobile"
-      />
-    )
+  // Run all four context checks in one test so axe runs sequentially and avoids
+  // "Axe is already running" when multiple axe() calls overlap (jest-axe/axe-core).
+  it('should maintain accessibility on mobile, tablet, desktop and print', async () => {
+    const contexts = ['mobile', 'tablet', 'desktop', 'print'] as const
 
-    const results = await axe(container)
-    expect(results).toHaveNoViolations()
-  })
+    for (const context of contexts) {
+      const { container, unmount } = render(
+        <GridMenuLayout
+          data={mockMenuData}
+          preset={LAYOUT_PRESETS['balanced']}
+          context={context}
+        />
+      )
 
-  it('should maintain accessibility on tablet', async () => {
-    const { container } = render(
-      <GridMenuLayout
-        data={mockMenuData}
-        preset={LAYOUT_PRESETS['balanced']}
-        context="tablet"
-      />
-    )
-
-    const results = await axe(container)
-    expect(results).toHaveNoViolations()
-  })
-
-  it('should maintain accessibility on desktop', async () => {
-    const { container } = render(
-      <GridMenuLayout
-        data={mockMenuData}
-        preset={LAYOUT_PRESETS['balanced']}
-        context="desktop"
-      />
-    )
-
-    const results = await axe(container)
-    expect(results).toHaveNoViolations()
-  })
-
-  it('should maintain accessibility for print', async () => {
-    const { container } = render(
-      <GridMenuLayout
-        data={mockMenuData}
-        preset={LAYOUT_PRESETS['balanced']}
-        context="print"
-      />
-    )
-
-    const results = await axe(container)
-    expect(results).toHaveNoViolations()
+      const results = await axe(container)
+      expect(results).toHaveNoViolations()
+      unmount()
+    }
   })
 })

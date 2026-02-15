@@ -269,12 +269,10 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           }
         }
 
-        // For PDF export, allow demo users to generate via API
+        // For PDF export, demo users use the job queue (Railway worker)
         if (option.format === 'pdf') {
-          // Demo users can export PDF - use the same API as authenticated users
-          // but send menu data in the request body
           try {
-            const resp = await fetch('/api/templates/export/pdf', {
+            const resp = await fetch('/api/export/jobs', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -289,42 +287,87 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
               })
             })
 
+            const data = await resp.json().catch(() => ({}))
+            const filename = `${demoMenu.name.replace(/\s+/g, '-').toLowerCase()}-menu.pdf`
+
             if (!resp.ok) {
-              const errText = await resp.text().catch(() => 'Export failed')
-              throw new Error(errText)
+              throw new Error(data?.error || 'Export failed')
             }
 
-            const blob = await resp.blob()
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `${demoMenu.name.replace(/\s+/g, '-').toLowerCase()}-menu.pdf`
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-            URL.revokeObjectURL(url)
+            // Cache hit: immediate download via signed URL
+            if (data.cache_hit && data.download_url) {
+              const a = document.createElement('a')
+              a.href = data.download_url
+              a.download = filename
+              a.rel = 'noopener noreferrer'
+              document.body.appendChild(a)
+              a.click()
+              document.body.removeChild(a)
+              setCompletedExports(prev => new Set(Array.from(prev).concat(option.id)))
+              showToast({
+                type: 'success',
+                title: 'PDF Menu exported',
+                description: 'Your PDF has been downloaded successfully'
+              })
+              trackConversionEvent({
+                event: 'export_completed',
+                metadata: { path: `/menus/${menuId}/export`, format: option.format, isDemo: true }
+              })
+              return
+            }
 
-            setCompletedExports(prev => new Set(Array.from(prev).concat(option.id)))
+            // Cache miss: poll for job completion
+            const jobId = data.job_id
+            if (!jobId) throw new Error('No job ID returned')
+
             showToast({
-              type: 'success',
-              title: 'PDF Menu exported',
-              description: 'Your PDF has been downloaded successfully'
+              type: 'info',
+              title: 'Generating your PDF...',
+              description: 'Your menu is being prepared. This usually takes a few seconds.'
             })
-            
-            trackConversionEvent({
-              event: 'export_completed',
-              metadata: {
-                path: `/menus/${menuId}/export`,
-                format: option.format,
-                isDemo: true,
-              },
-            })
+
+            const pollInterval = 2000
+            const maxAttempts = 90 // 3 minutes
+            let attempts = 0
+
+            while (attempts < maxAttempts) {
+              await new Promise(r => setTimeout(r, pollInterval))
+              const statusResp = await fetch(`/api/export/jobs/${jobId}`)
+              const statusData = await statusResp.json().catch(() => ({}))
+              attempts++
+
+              if (statusData.status === 'completed' && statusData.file_url) {
+                const a = document.createElement('a')
+                a.href = statusData.file_url
+                a.download = filename
+                a.rel = 'noopener noreferrer'
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+                setCompletedExports(prev => new Set(Array.from(prev).concat(option.id)))
+                showToast({
+                  type: 'success',
+                  title: 'PDF Menu exported',
+                  description: 'Your PDF has been downloaded successfully'
+                })
+                trackConversionEvent({
+                  event: 'export_completed',
+                  metadata: { path: `/menus/${menuId}/export`, format: option.format, isDemo: true }
+                })
+                return
+              }
+              if (statusData.status === 'failed') {
+                throw new Error(statusData.error_message || 'PDF generation failed')
+              }
+            }
+
+            throw new Error('Export is taking longer than expected. Please try again.')
           } catch (error) {
             console.error('Error exporting PDF:', error)
             showToast({
               type: 'error',
               title: 'Export failed',
-              description: 'Failed to generate PDF export. Please try again.'
+              description: error instanceof Error ? error.message : 'Failed to generate PDF export. Please try again.'
             })
           }
           return

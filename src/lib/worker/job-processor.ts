@@ -138,9 +138,10 @@ export class JobProcessor {
         file_size: validation.file_size,
       })
 
-      // Step 4: Generate deterministic storage path
-      const storagePath = generateStoragePath(
-        job.user_id,
+      // Step 4: Determine storage path (demo jobs use cache path for idempotency)
+      const demoCachePath = (job.metadata as any)?.demo_cache_path
+      const storagePath = demoCachePath ?? generateStoragePath(
+        job.user_id!,
         job.export_type,
         job.id
       )
@@ -198,17 +199,17 @@ export class JobProcessor {
         signedUrl
       )
 
-      // Step 9: Send completion notification email
-      // Property 33: Only send emails for terminal states (completed)
-      // Property 34: Include menu name and export type in email
-      const menuName = job.metadata.menu_name || 'Your Menu'
-      await notificationService.sendExportCompletionEmail(
-        job.user_id,
-        signedUrl,
-        menuName,
-        job.export_type
-      )
-      logInfo('Sent completion email', { job_id: job.id })
+      // Step 9: Send completion notification email (skip for demo jobs)
+      if (job.user_id) {
+        const menuName = job.metadata.menu_name || 'Your Menu'
+        await notificationService.sendExportCompletionEmail(
+          job.user_id,
+          signedUrl,
+          menuName,
+          job.export_type
+        )
+        logInfo('Sent completion email', { job_id: job.id })
+      }
     } catch (error) {
       logError('Job processing failed', error as Error, { job_id: job.id })
       await this.handleError(job, error as Error)
@@ -311,16 +312,11 @@ export class JobProcessor {
     if (isV2 && job.export_type === 'pdf') {
       logInfo('Using V2 Layout Engine for PDF export', { job_id: job.id })
       
-      // 0. Translate public URLs to internal Docker URLs for image fetching inside Docker
+      // 0. Translate public URLs to internal Docker URLs for image fetching inside Docker.
+      // Rewrites any localhost/127.0.0.1 (Supabase :54321, Next app :3000 for demo images) to host.docker.internal.
       const translateUrl = (url?: string) => {
         if (!url) return url
-        try {
-          const publicHost = new URL(supabasePublicUrl).host
-          const internalHost = new URL(supabaseInternalUrl).host
-          return url.replace(publicHost, internalHost)
-        } catch (e) {
-          return url.replace('localhost:54321', 'host.docker.internal:54321')
-        }
+        return rewriteLocalhostUrlForDocker(url)
       }
 
       const translatedItems = snapshot.menu_data.items.map(item => ({

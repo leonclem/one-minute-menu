@@ -112,11 +112,27 @@ async function fetchTemplate(templateId: string): Promise<{
     'classic-menu': { version: '1.0', name: 'Classic Menu' },
     'rustic-charm': { version: '1.0', name: 'Rustic Charm' },
     'classic-cards-v2': { version: '2.0', name: 'Classic Cards V2' },
-    'italian-v2': { version: '2.0', name: 'Italian Classic V2' }
+    'italian-v2': { version: '2.0', name: 'Italian Classic V2' },
+    'two-column-classic-v2': { version: '2.0', name: 'Two Column Classic V2' },
+    'three-column-modern-v2': { version: '2.0', name: 'Three Column Modern V2' },
+    'half-a4-tall-v2': { version: '2.0', name: 'Half A4 Tall V2' },
+    'classic-cards-v2-landscape': { version: '2.0', name: 'Classic Cards V2 Landscape' },
+    'lunar-new-year-v2': { version: '2.0', name: 'Lunar New Year V2' },
+    'valentines-v2': { version: '2.0', name: 'Valentines V2' }
   }
-  
-  const template = templateMap[templateId]
-  
+
+  // Try template loader for V2 templates not in map
+  let template = templateMap[templateId]
+  if (!template && templateId.endsWith('-v2')) {
+    try {
+      const { loadTemplateV2 } = await import('@/lib/templates/v2/template-loader-v2')
+      const t = await loadTemplateV2(templateId)
+      template = { version: t.version, name: t.name }
+    } catch {
+      // Fall through to throw
+    }
+  }
+
   if (!template) {
     throw new SnapshotCreationError(
       `Template not found: ${templateId}`,
@@ -314,6 +330,124 @@ export async function createRenderSnapshot(
         templateId,
         error: error instanceof Error ? error.message : String(error)
       }
+    )
+  }
+}
+
+/**
+ * Resolves relative image URLs to absolute for worker fetch.
+ * Demo menus use paths like /sample-menus/generated/breakfast/foo.webp
+ */
+function resolveDemoImageUrl(url: string | null | undefined, baseUrl: string): string | undefined {
+  if (!url || typeof url !== 'string') return undefined
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  const path = url.startsWith('/') ? url : `/${url}`
+  return `${baseUrl.replace(/\/$/, '')}${path}`
+}
+
+/**
+ * Creates a render snapshot from in-memory menu data (demo flow).
+ * Used when menu data is provided in the request body instead of fetched from DB.
+ *
+ * @param menu - Demo menu object (items, venueInfo, logoUrl, theme, etc.)
+ * @param templateId - Template identifier
+ * @param exportOptions - Export configuration
+ * @returns Complete render snapshot
+ */
+export async function createRenderSnapshotFromMenuData(
+  menu: any,
+  templateId: string,
+  exportOptions: ExportOptions
+): Promise<RenderSnapshot> {
+  try {
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+      'https://one-minute-menu.vercel.app'
+
+    const template = await fetchTemplate(templateId)
+
+    const menuData = menu.menu_data || {}
+    const items = menuData.items || menu.items || []
+    const resolveUrl = (url: string | null | undefined) => resolveDemoImageUrl(url, baseUrl)
+
+    const snapshot: RenderSnapshot = {
+      template_id: template.id,
+      template_version: template.version,
+      template_name: template.name,
+      configuration: exportOptions.configuration,
+
+      menu_data: {
+        id: menu.id || 'demo-menu',
+        name: menu.name || 'Demo Menu',
+        description: menuData.description || menu.description,
+        logo_url: resolveUrl(menu.logoUrl || menu.logo_url || menuData.logo_url),
+        establishment_name: menuData.establishment_name || menu.venueInfo?.name || menu.venue_info?.name || menu.name,
+        establishment_address: menuData.establishment_address || menu.venueInfo?.address || menu.venue_info?.address,
+        establishment_phone: menuData.establishment_phone || menu.venueInfo?.phone || menu.venue_info?.phone,
+        venue_info: menu.venueInfo || menu.venue_info,
+
+        items: items.map((item: any, index: number) => ({
+          id: item.id || `item-${index}`,
+          name: item.name ?? '',
+          description: item.description,
+          price: item.price,
+          currency: 'USD',
+          category: item.category || 'General',
+          image_url: resolveUrl(item.customImageUrl || item.imageUrl || item.image_url),
+          display_order: item.display_order ?? item.displayOrder ?? item.order ?? index,
+
+          modifiers: item.modifierGroups?.map((group: any) => ({
+            id: group.id || `modifier-${group.name}`,
+            name: group.name,
+            options: group.options?.map((opt: any) => ({
+              name: opt.name,
+              price_adjustment: opt.priceDelta
+            })) || []
+          })),
+          variants: item.variants?.map((variant: any) => ({
+            id: variant.id || `variant-${variant.size}`,
+            name: variant.size || variant.name,
+            price: variant.price
+          })),
+          indicators: item.indicators || {
+            dietary: [],
+            spiceLevel: null,
+            allergens: []
+          }
+        })),
+
+        categories:
+          (menuData.categories || []).length > 0
+            ? (menuData.categories || []).map((cat: any, index: number) => ({
+                name: cat.name,
+                display_order: cat.order ?? cat.display_order ?? index
+              }))
+            : Array.from(new Set(items.map((i: any) => i.category || 'General')))
+                .filter(Boolean)
+                .map((name, index) => ({ name, display_order: index }))
+      },
+
+      export_options: {
+        format: exportOptions.format || 'A4',
+        orientation: exportOptions.orientation || 'portrait',
+        include_images: exportOptions.include_images ?? true,
+        include_prices: exportOptions.include_prices ?? true
+      },
+
+      snapshot_created_at: new Date().toISOString(),
+      snapshot_version: '2.0'
+    }
+
+    return snapshot
+  } catch (error) {
+    if (error instanceof SnapshotCreationError) {
+      throw error
+    }
+    throw new SnapshotCreationError(
+      `Demo snapshot creation failed: ${error instanceof Error ? error.message : String(error)}`,
+      'SNAPSHOT_CREATION_FAILED',
+      { templateId, error: error instanceof Error ? error.message : String(error) }
     )
   }
 }

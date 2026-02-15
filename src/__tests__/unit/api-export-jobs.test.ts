@@ -1068,13 +1068,31 @@ describe('GET /api/export/jobs/:jobId', () => {
   })
   
   /**
-   * Test: Unauthorized request returns 401
+   * Test: Unauthorized request returns 401 (for non-demo jobs)
    */
   describe('unauthorized requests', () => {
     it('should return 401 when user is not authenticated', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: null },
         error: new Error('Not authenticated')
+      })
+
+      // Mock query to return a job with user_id (non-demo) so we reach the 401 branch
+      mockSupabase.from.mockReturnValue({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            single: jest.fn(() => ({
+              data: {
+                id: TEST_JOB_ID,
+                user_id: TEST_USER_ID,
+                menu_id: TEST_MENU_ID,
+                export_type: 'pdf',
+                status: 'pending'
+              },
+              error: null
+            }))
+          }))
+        }))
       })
       
       const request = createMockGetRequest(TEST_JOB_ID)
@@ -1091,6 +1109,23 @@ describe('GET /api/export/jobs/:jobId', () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: null },
         error: { message: 'Invalid token' }
+      })
+
+      mockSupabase.from.mockReturnValue({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            single: jest.fn(() => ({
+              data: {
+                id: TEST_JOB_ID,
+                user_id: TEST_USER_ID,
+                menu_id: TEST_MENU_ID,
+                export_type: 'pdf',
+                status: 'pending'
+              },
+              error: null
+            }))
+          }))
+        }))
       })
       
       const request = createMockGetRequest(TEST_JOB_ID)

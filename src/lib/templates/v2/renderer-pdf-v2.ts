@@ -396,6 +396,11 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string 
       overflow: hidden;
     }
 
+    /* Footer tile: allow content to show (preview doesn't clip; PDF was clipping due to overflow: hidden above) */
+    .tile-footer_info {
+      overflow: visible;
+    }
+
     /* Tile Type Specific Styles */
     .tile-logo {
       display: flex;

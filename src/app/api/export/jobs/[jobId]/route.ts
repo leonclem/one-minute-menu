@@ -64,30 +64,17 @@ export async function GET(
         { status: 400 }
       )
     }
-    
-    // Get authenticated user from Supabase
+
     const supabase = createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json<ErrorResponse>(
-        {
-          error: 'Unauthorized. Please sign in.',
-          code: 'UNAUTHORIZED'
-        },
-        { status: 401 }
-      )
-    }
-    
-    const userId = user.id
-    
-    // Query the export job
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Query the export job (RLS allows: own jobs or demo jobs when user_id IS NULL)
     const { data: job, error: queryError } = await supabase
       .from('export_jobs')
       .select('*')
       .eq('id', jobId)
       .single()
-    
+
     // Handle job not found
     if (queryError || !job) {
       return NextResponse.json<ErrorResponse>(
@@ -98,9 +85,19 @@ export async function GET(
         { status: 404 }
       )
     }
-    
-    // Verify user owns the job
-    if (job.user_id !== userId) {
+
+    // Demo jobs: user_id is null, allow unauthenticated access (caller has job_id from create)
+    if (job.user_id === null) {
+      // Allow access to demo jobs
+    } else if (!user) {
+      return NextResponse.json<ErrorResponse>(
+        {
+          error: 'Unauthorized. Please sign in.',
+          code: 'UNAUTHORIZED'
+        },
+        { status: 401 }
+      )
+    } else if (job.user_id !== user.id) {
       return NextResponse.json<ErrorResponse>(
         {
           error: 'You do not have permission to access this job.',

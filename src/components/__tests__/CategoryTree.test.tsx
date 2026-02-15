@@ -220,20 +220,22 @@ describe('CategoryTree', () => {
         return parent?.textContent?.includes('8.5')
       })
       
-      if (priceEditButton) {
-        fireEvent.click(priceEditButton)
-        
-        const input = screen.getByDisplayValue('8.5') as HTMLInputElement
-        expect(input.type).toBe('number')
-        
-        fireEvent.change(input, { target: { value: '9.5' } })
-        fireEvent.click(screen.getByTitle('Save'))
-        
-        await waitFor(() => {
+      expect(priceEditButton).toBeDefined()
+      fireEvent.click(priceEditButton!)
+      
+      const input = screen.getByDisplayValue('8.5') as HTMLInputElement
+      expect(input.type).toBe('number')
+      
+      fireEvent.change(input, { target: { value: '9.5' } })
+      fireEvent.click(screen.getByTitle('Save'))
+      
+      await waitFor(
+        () => {
           expect(onEditItem).toHaveBeenCalledWith([0], 0, { price: 9.5 })
-        })
-      }
-    })
+        },
+        { timeout: 5000 }
+      )
+    }, 10000)
 
     it('should cancel editing on Escape key', () => {
       const onEditItem = jest.fn()

@@ -20,7 +20,8 @@
     "setup-db": "node scripts/setup-database.js",
     "deploy-check": "node scripts/deploy-check.js",
     "deploy:vercel": "vercel --prod",
-    "scan:secrets": "node scripts/scan-secrets.js"
+    "scan:secrets": "node scripts/scan-secrets.js",
+    "prewarm:demo-pdf": "node scripts/prewarm-demo-pdf-cache.js"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
