@@ -170,7 +170,11 @@ class DatabaseClient {
    */
   private isRetryableError(error: Error): boolean {
     const message = error.message.toLowerCase()
-    
+    // Also check cause - Node fetch often wraps ECONNREFUSED/ETIMEDOUT in "fetch failed"
+    const causeMessage = error.cause && typeof (error.cause as Error).message === 'string'
+      ? ((error.cause as Error).message as string).toLowerCase()
+      : ''
+
     // Network and connection errors that are typically transient
     const retryablePatterns = [
       'econnrefused',
@@ -181,9 +185,11 @@ class DatabaseClient {
       'network error',
       'socket hang up',
       'econnreset',
+      'fetch failed', // Node fetch surfaces many network errors with this generic message
     ]
 
-    return retryablePatterns.some(pattern => message.includes(pattern))
+    const toCheck = `${message} ${causeMessage}`
+    return retryablePatterns.some(pattern => toCheck.includes(pattern))
   }
 
   /**

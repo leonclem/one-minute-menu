@@ -1127,13 +1127,14 @@ describe('End-to-End Export Workflow', () => {
         const error = new Error('ETIMEDOUT')
         
         if (job.retry_count < 3) {
-          // Retry with backoff
+          // Retry with backoff (use single timestamp so delay math is deterministic under load)
+          const now = Date.now()
           const retryDelay = calculateRetryDelay(job.retry_count)
-          const availableAt = new Date(Date.now() + retryDelay)
+          const availableAt = new Date(now + retryDelay)
           
           retryAttempts.push({
             retry_count: job.retry_count,
-            timestamp: Date.now(),
+            timestamp: now,
             available_at: availableAt
           })
           
