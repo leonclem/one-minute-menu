@@ -541,10 +541,91 @@ export function applyLastRowBalancing(
     return
   }
   
-  // Apply offset to last row tiles
+  // Apply offset to last row tiles.
+  // IMPORTANT: Make this idempotent. Use gridCol to compute the base X so
+  // repeated balancing (or other prior shifts) doesn't accumulate.
   for (const tile of lastRowTiles) {
-    tile.x += offsetXPts
+    const baseX = tile.gridCol * (cellWidth + gapX)
+    tile.x = baseX + offsetXPts
     // Note: gridCol is not updated for fractional offsets
+  }
+}
+
+/**
+ * Center-align items in all incomplete rows of a section.
+ * This ensures that when a section has fewer items than columns in any row, they're centered.
+ * Processes each page separately since Y coordinates are region-relative and reset per page.
+ *
+ * @param pages - All pages in the layout document
+ * @param sectionId - Section ID to center-align
+ * @param template - Template configuration
+ */
+export function applySectionLastRowCentering(
+  pages: PageLayoutV2[],
+  sectionId: string,
+  template: TemplateV2
+): void {
+  const { cols, gapX } = template.body.container
+  
+  // Process each page separately since Y coordinates are region-relative and reset per page
+  for (const page of pages) {
+    // Find all item tiles from this section on this page
+    const sectionItems = page.tiles.filter(
+      t => t.regionId === 'body' &&
+           (t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW' || t.type === 'FEATURE_CARD') &&
+           (t.content as any).sectionId === sectionId
+    )
+    
+    if (sectionItems.length === 0) {
+      continue
+    }
+    
+    // Get body region for this page
+    const bodyRegion = page.regions.find(r => r.id === 'body')
+    if (!bodyRegion) {
+      continue
+    }
+    
+    const cellWidth = calculateCellWidth(bodyRegion.width, cols, gapX)
+    
+    // Group items by their starting Y coordinate (row) within this page
+    // Items with the same Y coordinate are in the same row
+    const itemsByRow = new Map<number, TileInstanceV2[]>()
+    for (const item of sectionItems) {
+      const rowY = item.y
+      if (!itemsByRow.has(rowY)) {
+        itemsByRow.set(rowY, [])
+      }
+      itemsByRow.get(rowY)!.push(item)
+    }
+    
+    // For each row, check if it's incomplete and center it if needed
+    for (const [rowY, rowItems] of itemsByRow.entries()) {
+      // Calculate occupied columns in this row
+      const occupiedCols = rowItems.reduce((sum, t) => sum + t.colSpan, 0)
+      
+      // If row is full, no centering needed
+      if (occupiedCols >= cols) {
+        continue
+      }
+      
+      // Calculate center offset for this incomplete row
+      const emptyCols = cols - occupiedCols
+      const fractionalOffset = emptyCols / 2
+      const offsetXPts = fractionalOffset * (cellWidth + gapX)
+      
+      if (offsetXPts === 0) {
+        continue
+      }
+      
+      // Apply offset to all items in this row.
+      // IMPORTANT: Make this idempotent by using gridCol-derived base X.
+      for (const tile of rowItems) {
+        const baseX = tile.gridCol * (cellWidth + gapX)
+        tile.x = baseX + offsetXPts
+        // Note: gridCol is not updated for fractional offsets
+      }
+    }
   }
 }
 

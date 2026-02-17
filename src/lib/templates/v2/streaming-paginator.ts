@@ -38,6 +38,7 @@ import {
   advancePosition,
   advanceToNextRow,
   applyLastRowBalancing,
+  applySectionLastRowCentering,
   PlacementContext,
   initPlacementContext,
 } from './tile-placer'
@@ -521,6 +522,9 @@ export function streamingPaginate(
         advancePosition(ctx, placedItem, template)
       }
     }
+    
+    // Center-align items in this section's last row
+    applySectionLastRowCentering(ctx.pages, section.id, template)
   }
   
   // Finalize last page

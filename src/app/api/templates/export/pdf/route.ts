@@ -79,7 +79,7 @@ async function handleNewTemplateEngine(
   // Set paletteId if still not present in configuration
   if (!finalConfiguration.colourPaletteId && !finalConfiguration.paletteId && menu.theme?.colors) {
     // Attempt to derive palette ID or use default
-    finalConfiguration.colourPaletteId = 'clean-modern'
+    finalConfiguration.colourPaletteId = 'midnight-gold'
   }
   
   // Generate V2 layout

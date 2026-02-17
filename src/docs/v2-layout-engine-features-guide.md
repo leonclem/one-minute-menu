@@ -23,18 +23,18 @@ Eight palettes are available in `PALETTES_V2` (defined in `renderer-v2.ts`). Sel
 
 | Palette ID | Name | Background | Accent | Best For |
 |---|---|---|---|---|
-| `clean-modern` | Clean Modern | `#FFFFFF` | `#111827` | Default, minimal, contemporary |
+| `clean-modern` | Clean Modern | `#FFFFFF` | `#111827` | Minimal, contemporary |
 | `elegant-cream` | Elegant Cream | `#FDFCF0` | `#8B6B23` | Upscale, warm, classic |
 | `midnight-gold` | Midnight Gold | `#1A1A1A` | `#D4AF37` | Dark mode, luxury, fine dining |
 | `warm-earth` | Warm Earth | `#F5F0E8` | `#8B6914` | Earthy, rustic, café |
 | `ocean-breeze` | Ocean Breeze | `#F0F5F8` | `#2E6B8A` | Cool, coastal, seafood |
 | `forest-green` | Forest Green | `#F2F5F0` | `#2D5A27` | Natural, organic, farm-to-table |
-| `valentines-rose` | Valentine's Rose | `#FFF0F3` | `#C2185B` | Valentine's Day theme |
+| `valentines-rose` | Blush Rose | `#FFF0F3` | `#C2185B` | Romantic / love theme |
 | `lunar-red-gold` | Lunar Red & Gold | `#2B0A0A` | `#D4A017` | Lunar New Year theme |
 
 Every palette defines all required `ColorPaletteV2` fields: `background`, `menuTitle`, `sectionHeader`, `itemTitle`, `itemPrice`, `itemDescription`, `itemIndicators.background`, `border.light`, `border.medium`, and `textMuted`.
 
-If an unknown palette ID is provided, the engine falls back to `clean-modern`.
+If an unknown palette ID is provided, the engine falls back to `midnight-gold`.
 
 ### Programmatic usage
 
@@ -426,7 +426,7 @@ interface SelectionConfigV2 {
   fillersEnabled?: boolean     // Enable filler tiles in empty grid cells
   texturesEnabled?: boolean    // Enable background textures (if palette supports it)
   showMenuTitle?: boolean      // Show/hide the title region
-  colourPaletteId?: string     // Palette ID (falls back to clean-modern)
+  colourPaletteId?: string     // Palette ID (falls back to midnight-gold)
 }
 ```
 

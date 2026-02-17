@@ -1,25 +1,22 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { UXSection, UXButton, UXCard } from '@/components/ux'
+import { UXSection, UXButton, UXCard, PaletteDropdown, TemplateDropdown } from '@/components/ux'
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
 import { PageRenderer } from '@/lib/templates/v2/renderer-web-v2'
-import { PALETTES_V2 } from '@/lib/templates/v2/renderer-v2'
+import { PALETTES_V2, DEFAULT_PALETTE_V2 } from '@/lib/templates/v2/renderer-v2'
 import type { LayoutDocumentV2 } from '@/lib/templates/v2/engine-types-v2'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
+import { V2_TEMPLATE_OPTIONS } from '@/lib/templates/v2/template-options'
 
 interface UXMenuTemplateClientProps {
   menuId: string
 }
-
-const V2_TEMPLATES = [
-  { id: 'classic-cards-v2', name: 'Classic Cards', description: 'Photo-forward 4-column grid' },
-  { id: 'italian-v2', name: 'Italian Classic', description: 'Elegant 2-column text-focused layout' }
-]
 
 export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientProps) {
   const [menu, setMenu] = useState<Menu | null>(null)
@@ -29,7 +26,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   
   // Selection State
   const [templateId, setTemplateId] = useState('classic-cards-v2')
-  const [paletteId, setPaletteId] = useState('clean-modern')
+  const [paletteId, setPaletteId] = useState('midnight-gold')
   const [fillersEnabled, setFillersEnabled] = useState(false)
   const [textOnly, setTextOnly] = useState(false)
   const [texturesEnabled, setTexturesEnabled] = useState(true)
@@ -45,9 +42,15 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [isSaving, setIsSaving] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [exportStatus, setExportStatus] = useState<string | null>(null)
+  const [exportSuccessModalOpen, setExportSuccessModalOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const { showToast } = useToast()
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Load menu data
   useEffect(() => {
@@ -100,7 +103,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               setTemplateId(mappedTemplateId)
               
               // Map legacy V1 palette IDs to V2
-              const savedPaletteId = config.colourPaletteId || config.paletteId || 'clean-modern'
+              const savedPaletteId = config.colourPaletteId || config.paletteId || 'midnight-gold'
               const mappedPaletteId = 
                 savedPaletteId === 'elegant-dark' ? 'midnight-gold' :
                 savedPaletteId === 'simple-dark' ? 'midnight-gold' :
@@ -323,14 +326,6 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         throw new Error(data?.error || 'Failed to create export job')
       }
 
-      showToast({
-        type: 'success',
-        title: 'Export request received',
-        description: deliveryEmail
-          ? `We’re generating your PDF now. We’ll email it to ${deliveryEmail} in a few minutes.`
-          : 'We’re generating your PDF now. You’ll receive an email when it’s ready.'
-      })
-
       trackConversionEvent({
         event: 'export_submitted',
         metadata: {
@@ -340,12 +335,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         },
       })
 
-      // Keep isExporting true for a few seconds to prevent accidental double clicks
-      // even after the toast appears
-      setTimeout(() => {
-        setIsExporting(false)
-        setExportStatus(null)
-      }, 10000)
+      setExportStatus(null)
+      setExportSuccessModalOpen(true)
 
     } catch (error) {
       console.error('Error exporting PDF:', error)
@@ -378,7 +369,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     )
   }
 
-  const palette = PALETTES_V2.find(p => p.id === paletteId) || PALETTES_V2[0]
+  const palette = PALETTES_V2.find(p => p.id === paletteId) ?? DEFAULT_PALETTE_V2
   const totalPages = layoutDocument?.pages?.length || 0
   const currentPage = layoutDocument?.pages?.[currentPageIndex]
 
@@ -410,50 +401,24 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               {/* Template Selection */}
               <div className="space-y-3">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">1. Choose Template</h4>
-                <div className="grid grid-cols-1 gap-3">
-                  {V2_TEMPLATES.map(t => (
-                    <button
-                      key={t.id}
-                      onClick={() => {
-                        setTemplateId(t.id)
-                        if (t.id === 'italian-v2') setTextOnly(true)
-                      }}
-                      className={`flex flex-col p-4 rounded-xl border-2 transition-all text-left ${
-                        templateId === t.id 
-                          ? 'border-ux-primary bg-ux-primary/5 ring-1 ring-ux-primary/20' 
-                          : 'border-neutral-200 hover:border-neutral-300 bg-white'
-                      }`}
-                    >
-                      <span className="font-bold text-ux-text">{t.name}</span>
-                      <span className="text-xs text-ux-text-secondary mt-1">{t.description}</span>
-                    </button>
-                  ))}
-                </div>
+                <TemplateDropdown
+                  templates={V2_TEMPLATE_OPTIONS}
+                  value={templateId}
+                  onChange={setTemplateId}
+                  onSelectTemplate={(id) => { if (id === 'italian-v2') setTextOnly(false) }}
+                  variant="primary"
+                />
               </div>
 
               {/* Palette Selection */}
               <div className="space-y-3">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">2. Color Palette</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {PALETTES_V2.map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => setPaletteId(p.id)}
-                      className={`flex items-center p-2 rounded-lg border transition-all ${
-                        paletteId === p.id 
-                          ? 'border-ux-primary bg-ux-primary/5' 
-                          : 'border-neutral-200 hover:border-neutral-300 bg-white'
-                      }`}
-                    >
-                      <div className="flex -space-x-1 mr-2">
-                        <div className="w-4 h-4 rounded-full border border-white" style={{ backgroundColor: p.colors.background }} />
-                        <div className="w-4 h-4 rounded-full border border-white" style={{ backgroundColor: p.colors.itemTitle }} />
-                        <div className="w-4 h-4 rounded-full border border-white" style={{ backgroundColor: p.colors.itemPrice }} />
-                      </div>
-                      <span className="text-xs font-medium text-ux-text truncate">{p.name}</span>
-                    </button>
-                  ))}
-                </div>
+                <PaletteDropdown
+                  palettes={PALETTES_V2}
+                  value={paletteId}
+                  onChange={setPaletteId}
+                  variant="primary"
+                />
               </div>
 
               {/* Display Options */}
@@ -640,6 +605,32 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           {isDemoUser ? 'Confirm and Export →' : 'Go to Dashboard'}
         </UXButton>
       </div>
+
+      {exportSuccessModalOpen && mounted && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
+          <div className="w-full max-w-sm rounded-lg bg-white shadow-lg overflow-hidden my-8">
+            <div className="px-4 py-3 border-b">
+              <h3 className="font-medium text-secondary-900">Export started</h3>
+            </div>
+            <div className="px-4 py-3 text-sm text-secondary-700">
+              Your PDF is being generated and will be emailed to you when it&apos;s ready. You can return to your dashboard now.
+            </div>
+            <div className="px-4 py-3 border-t flex justify-end gap-2 bg-gray-50/50">
+              <button
+                className="px-3 py-2 text-sm rounded-md text-white shadow-sm bg-primary-600 hover:bg-primary-700"
+                onClick={() => {
+                  setExportSuccessModalOpen(false)
+                  setIsExporting(false)
+                  router.push('/dashboard')
+                }}
+              >
+                Okay
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </UXSection>
   )
 }

@@ -39,7 +39,7 @@ export interface LayoutLabState {
 const initialState: LayoutLabState = {
   fixtureId: 'tiny',
   templateId: 'classic-cards-v2',
-  paletteId: 'clean-modern',
+  paletteId: 'midnight-gold',
   engineVersion: 'v2',
   showGridOverlay: false,
   showRegionBounds: false,

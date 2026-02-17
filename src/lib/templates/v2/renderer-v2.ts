@@ -348,7 +348,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
   },
   {
     id: 'valentines-rose',
-    name: "Valentine's Rose",
+    name: 'Blush Rose',
     colors: {
       background: '#FFF0F3',
       menuTitle: '#8B1A4A',
@@ -388,7 +388,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
   }
 ]
 
-export const DEFAULT_PALETTE_V2 = PALETTES_V2[0]
+export const DEFAULT_PALETTE_V2 = PALETTES_V2.find(p => p.id === 'midnight-gold')!
 
 // ============================================================================
 // Texture Registry
@@ -647,11 +647,11 @@ function renderSectionHeaderContent(
   const fontSet = tileStyle?.typography?.fontSet || 'modern-sans'
   const fontSize = tileStyle?.typography?.fontSize || '2xl'
   const fontWeight = tileStyle?.typography?.fontWeight || 'semibold'
-  const textAlign = tileStyle?.typography?.textAlign || 'left'
+  const textAlign = 'center' // Always center section headers for consistency
   const lineHeight = tileStyle?.typography?.lineHeight || 'normal'
   
-  // Apply spacing styling
-  const paddingLeft = tileStyle?.spacing?.paddingLeft || 8
+  // Apply spacing styling - center horizontally
+  const paddingLeft = 0 // No left padding when centered
   const paddingTop = tileStyle?.spacing?.paddingTop || 0
   
   // Get font family from font set
@@ -738,11 +738,14 @@ function renderSectionHeaderContent(
     })
   }
   
-  // Add text element
+  // Add text element - centered horizontally
+  const textWidth = tile.width
+  const textX = 0 // Full width, centered via textAlign
   elements.push({
     type: 'text',
-    x: paddingLeft,
+    x: textX,
     y: paddingTop || tile.height / 2,
+    width: textWidth,
     content: content.label,
     style: {
       fontSize: TYPOGRAPHY_TOKENS_V2.fontSize[fontSize as FontSizeV2] || TYPOGRAPHY_TOKENS_V2.fontSize['2xl'],
@@ -772,27 +775,47 @@ function renderItemContent(
 
   // Item image (for ITEM_CARD)
   if (content.type === 'ITEM_CARD' && content.showImage) {
-    const imageHeight = tile.contentBudget?.imageBoxHeight ?? 60
+    const imageWidth = tile.width - (padding * 2)
+    
+    // Compute how much vertical space text elements need below the image.
+    // This mirrors the layout: name (2 lines) + optional desc + price + gaps.
+    const nameReserve = (TYPOGRAPHY_TOKENS_V2.fontSize.xsm * baseLineHeight) * 2.0
+    const descReserve = content.description
+      ? (TYPOGRAPHY_TOKENS_V2.fontSize.xxs * descLineHeight * (tile.contentBudget?.descLines ?? 2)) + 4
+      : 0
+    const priceReserve = (TYPOGRAPHY_TOKENS_V2.fontSize.xxxs * baseLineHeight) + 4
+    const textTotal = nameReserve + descReserve + priceReserve
+    
+    // Available height for image = tile height minus top padding, image-bottom gap, and text below
+    const availableForImage = tile.height - padding - 8 - textTotal
+    
+    // Aim for ~4:3 aspect ratio where possible, but never exceed available space
+    const ideal4by3 = imageWidth * 0.75
+    const imageHeight = Math.max(40, Math.min(ideal4by3, availableForImage))
+    
+    const imageX = (tile.width - imageWidth) / 2 // Center horizontally
+    
     if (content.imageUrl) {
       elements.push({
         type: 'image',
-        x: padding,
+        x: imageX,
         y: currentY,
-        width: tile.width - (padding * 2),
+        width: imageWidth,
         height: imageHeight,
         content: content.imageUrl,
         style: {
           borderRadius: 4,
-          objectFit: 'cover'
+          objectFit: 'cover',
+          objectPosition: 'center'
         }
       })
     } else {
       // Placeholder for missing image to preserve grid effect
       elements.push({
         type: 'background',
-        x: padding,
+        x: imageX,
         y: currentY,
-        width: tile.width - (padding * 2),
+        width: imageWidth,
         height: imageHeight,
         content: '',
         style: {
@@ -806,9 +829,9 @@ function renderItemContent(
     if (content.indicators) {
       const indicatorElements = renderIndicators(
         content.indicators,
-        padding + 4,
+        imageX + 4,
         currentY + 4,
-        tile.width - (padding * 2) - 8,
+        imageWidth - 8,
         palette
       )
       elements.push(...indicatorElements)
@@ -817,15 +840,16 @@ function renderItemContent(
     currentY += imageHeight + 8
   }
 
-  // Item name (now with more space)
+  // Item name (now with more space) - centered horizontally
   const nameWidth = tile.width - (padding * 2)
   const nameFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xsm // Reduced to xsm (11pt) for better fit
   const nameMaxLines = tile.contentBudget?.nameLines ?? 3
   const nameLineHeight = nameFontSize * baseLineHeight
+  const nameX = (tile.width - nameWidth) / 2 // Center horizontally
 
   elements.push({
     type: 'text',
-    x: padding,
+    x: nameX,
     y: currentY,
     width: nameWidth,
     height: nameLineHeight * nameMaxLines,
@@ -836,7 +860,7 @@ function renderItemContent(
       lineHeight: baseLineHeight,
       maxLines: nameMaxLines,
       color: palette.colors.itemTitle,
-      textAlign: 'left'
+      textAlign: 'center'
     }
   })
 
@@ -844,17 +868,19 @@ function renderItemContent(
   // and prevent overlap with the description row below.
   currentY += (nameLineHeight * 2.0)
 
-  // Description
+  // Description - centered horizontally
   if (content.description) {
     const descMaxLines = tile.contentBudget?.descLines ?? 3
     const descFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xxs // 7pt (30% reduction from 10pt)
     const descHeight = descFontSize * descLineHeight * descMaxLines
+    const descWidth = tile.width - (padding * 2)
+    const descX = (tile.width - descWidth) / 2 // Center horizontally
     
     elements.push({
       type: 'text',
-      x: padding,
+      x: descX,
       y: currentY,
-      width: tile.width - (padding * 2),
+      width: descWidth,
       height: descHeight,
       content: content.description,
       style: {
@@ -862,23 +888,25 @@ function renderItemContent(
         lineHeight: descLineHeight,
         maxLines: descMaxLines,
         color: palette.colors.itemDescription,
-        textAlign: 'left'
+        textAlign: 'center'
       }
     })
     // Reserve space for the full description height (3 lines) plus spacing
     currentY += descHeight + 4
   }
 
-  // Price (positioned after description)
+  // Price (positioned after description) - centered horizontally
   // Use Currency_Formatter for consistent formatting across all exports
   const currencyCode = content.currency || 'USD'
   const priceText = formatCurrency(content.price, currencyCode)
   const priceFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xxxs // 6pt (50% reduction from 12pt)
+  const priceWidth = tile.width - (padding * 2)
+  const priceX = (tile.width - priceWidth) / 2 // Center horizontally
   elements.push({
     type: 'text',
-    x: padding,
+    x: priceX,
     y: currentY,
-    width: tile.width - (padding * 2),
+    width: priceWidth,
     height: priceFontSize * baseLineHeight,
     content: priceText,
     style: {
@@ -887,19 +915,21 @@ function renderItemContent(
       lineHeight: baseLineHeight,
       maxLines: 1,
       color: palette.colors.itemPrice,
-      textAlign: 'left'
+      textAlign: 'center'
     }
   })
 
   currentY += (priceFontSize * baseLineHeight) + 4
 
-  // Indicators fallback (if not already rendered overlayed on image)
+  // Indicators fallback (if not already rendered overlayed on image) - centered
   if (content.indicators && !(content.type === 'ITEM_CARD' && content.showImage)) {
+    const indicatorWidth = tile.width - (padding * 2)
+    const indicatorX = (tile.width - indicatorWidth) / 2 // Center horizontally
     const indicatorElements = renderIndicators(
       content.indicators,
-      padding,
+      indicatorX,
       currentY,
-      tile.width - (padding * 2),
+      indicatorWidth,
       palette
     )
     elements.push(...indicatorElements)
@@ -926,28 +956,32 @@ function renderFeatureCardContent(
   const baseLineHeight = TYPOGRAPHY_TOKENS_V2.lineHeight.tight
   const descLineHeight = TYPOGRAPHY_TOKENS_V2.lineHeight.normal
 
-  // Featured image (larger than standard ITEM_CARD)
+  // Featured image (larger than standard ITEM_CARD) - centered
   if (content.showImage) {
     const imageHeight = tile.contentBudget?.imageBoxHeight ?? 100
+    const imageWidth = tile.width - (padding * 2)
+    const imageX = (tile.width - imageWidth) / 2 // Center horizontally
+    
     if (content.imageUrl) {
       elements.push({
         type: 'image',
-        x: padding,
+        x: imageX,
         y: currentY,
-        width: tile.width - (padding * 2),
+        width: imageWidth,
         height: imageHeight,
         content: content.imageUrl,
         style: {
           borderRadius: 6,
-          objectFit: 'cover'
+          objectFit: 'cover',
+          objectPosition: 'center'
         }
       })
     } else {
       elements.push({
         type: 'background',
-        x: padding,
+        x: imageX,
         y: currentY,
-        width: tile.width - (padding * 2),
+        width: imageWidth,
         height: imageHeight,
         content: '',
         style: {
@@ -961,9 +995,9 @@ function renderFeatureCardContent(
     if (content.indicators) {
       const indicatorElements = renderIndicators(
         content.indicators,
-        padding + 4,
+        imageX + 4,
         currentY + 4,
-        tile.width - (padding * 2) - 8,
+        imageWidth - 8,
         palette
       )
       elements.push(...indicatorElements)
@@ -972,15 +1006,16 @@ function renderFeatureCardContent(
     currentY += imageHeight + 10
   }
 
-  // Item name — larger font for featured prominence
+  // Item name — larger font for featured prominence - centered
   const nameWidth = tile.width - (padding * 2)
   const nameFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.sm
   const nameMaxLines = tile.contentBudget?.nameLines ?? 2
   const nameLineHeight = nameFontSize * baseLineHeight
+  const nameX = (tile.width - nameWidth) / 2 // Center horizontally
 
   elements.push({
     type: 'text',
-    x: padding,
+    x: nameX,
     y: currentY,
     width: nameWidth,
     height: nameLineHeight * nameMaxLines,
@@ -991,23 +1026,25 @@ function renderFeatureCardContent(
       lineHeight: baseLineHeight,
       maxLines: nameMaxLines,
       color: palette.colors.itemTitle,
-      textAlign: 'left'
+      textAlign: 'center'
     }
   })
 
   currentY += nameLineHeight * 2.0
 
-  // Description — slightly larger than standard items
+  // Description — slightly larger than standard items - centered
   if (content.description) {
     const descMaxLines = tile.contentBudget?.descLines ?? 3
     const descFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xs
     const descHeight = descFontSize * descLineHeight * descMaxLines
+    const descWidth = tile.width - (padding * 2)
+    const descX = (tile.width - descWidth) / 2 // Center horizontally
 
     elements.push({
       type: 'text',
-      x: padding,
+      x: descX,
       y: currentY,
-      width: tile.width - (padding * 2),
+      width: descWidth,
       height: descHeight,
       content: content.description,
       style: {
@@ -1015,22 +1052,24 @@ function renderFeatureCardContent(
         lineHeight: descLineHeight,
         maxLines: descMaxLines,
         color: palette.colors.itemDescription,
-        textAlign: 'left'
+        textAlign: 'center'
       }
     })
     currentY += descHeight + 6
   }
 
-  // Price — larger and bolder for featured items
+  // Price — larger and bolder for featured items - centered
   const currencyCode = content.currency || 'USD'
   const priceText = formatCurrency(content.price, currencyCode)
   const priceFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xsm
+  const priceWidth = tile.width - (padding * 2)
+  const priceX = (tile.width - priceWidth) / 2 // Center horizontally
 
   elements.push({
     type: 'text',
-    x: padding,
+    x: priceX,
     y: currentY,
-    width: tile.width - (padding * 2),
+    width: priceWidth,
     height: priceFontSize * baseLineHeight,
     content: priceText,
     style: {
@@ -1039,19 +1078,21 @@ function renderFeatureCardContent(
       lineHeight: baseLineHeight,
       maxLines: 1,
       color: palette.colors.itemPrice,
-      textAlign: 'left'
+      textAlign: 'center'
     }
   })
 
   currentY += (priceFontSize * baseLineHeight) + 6
 
-  // Indicators fallback (if not already rendered overlayed on image)
+  // Indicators fallback (if not already rendered overlayed on image) - centered
   if (content.indicators && !content.showImage) {
+    const indicatorWidth = tile.width - (padding * 2)
+    const indicatorX = (tile.width - indicatorWidth) / 2 // Center horizontally
     const indicatorElements = renderIndicators(
       content.indicators,
-      padding,
+      indicatorX,
       currentY,
-      tile.width - (padding * 2),
+      indicatorWidth,
       palette
     )
     elements.push(...indicatorElements)

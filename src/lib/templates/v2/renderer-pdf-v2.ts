@@ -25,6 +25,7 @@ import {
   TYPOGRAPHY_TOKENS_V2,
   COLOR_TOKENS_V2,
   PALETTES_V2,
+  DEFAULT_PALETTE_V2,
   TEXTURE_REGISTRY,
   getFontSet,
   type RenderOptionsV2 
@@ -221,7 +222,7 @@ async function generatePDFHTML(
   // in Route Handlers and Server Components.
   const { renderToString } = await import('react-dom/server')
 
-  const palette = PALETTES_V2.find(p => p.id === options.paletteId) || PALETTES_V2[0]
+  const palette = PALETTES_V2.find(p => p.id === options.paletteId) ?? DEFAULT_PALETTE_V2
 
   // Pre-fetch texture data URL if enabled
   let textureDataURL: string | undefined = undefined
@@ -329,7 +330,7 @@ function generateGoogleFontsURL(fontSetIds: string[]): string {
  * Includes font loading, print styles, and layout fixes
  */
 function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string {
-  const palette = PALETTES_V2.find(p => p.id === paletteId) || PALETTES_V2[0]
+  const palette = PALETTES_V2.find(p => p.id === paletteId) ?? DEFAULT_PALETTE_V2
   const usedFontSets = extractUsedFontSets(document)
   const googleFontsURL = generateGoogleFontsURL(usedFontSets)
 
@@ -432,11 +433,14 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string 
       border-radius: 4px;
     }
 
-    /* Image Styles */
+    /* Image Styles - center crop so food is in shot (not top crop) */
+    .page-container-v2 img,
+    .tile-v2 img,
     img {
       max-width: 100%;
       height: auto;
       object-fit: cover;
+      object-position: center !important;
       border-radius: 4px;
     }
 

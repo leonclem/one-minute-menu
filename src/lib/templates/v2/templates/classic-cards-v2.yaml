@@ -145,7 +145,7 @@ tiles:
       totalHeight: 70
 
 dividers:
-  enabled: true
+  enabled: false
   style: ornament
   height: 24
 

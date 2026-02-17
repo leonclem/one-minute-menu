@@ -79,7 +79,7 @@ const DEFAULT_CONFIG = {
   fillersEnabled: false,
   texturesEnabled: true,
   showMenuTitle: false,
-  palette: { id: 'clean-modern', name: 'Clean Modern' }
+  palette: { id: 'midnight-gold', name: 'Midnight Gold' }
 }
 
 async function createDemoJob(menu, templateId) {

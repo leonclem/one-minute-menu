@@ -12,6 +12,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import type { LayoutLabState } from './layout-lab-client'
 import type { Menu } from '@/types'
 import { PALETTES_V2 } from '@/lib/templates/v2/renderer-v2'
+import { V2_TEMPLATE_OPTIONS, V2_TEMPLATE_OPTIONS_EXTRA } from '@/lib/templates/v2/template-options'
+import { PaletteDropdown, TemplateDropdown } from '@/components/ux'
 
 interface LayoutLabControlsProps {
   state: LayoutLabState
@@ -34,16 +36,7 @@ const V1_TEMPLATES = [
   { id: 'simple-rows', name: 'Simple Rows', description: 'Clean single-column layout' }
 ]
 
-const V2_TEMPLATES = [
-  { id: 'classic-cards-v2', name: 'Classic Cards V2', description: 'A4 Portrait · 4-column grid layout' },
-  { id: 'italian-v2', name: 'Italian Classic V2', description: 'A4 Portrait · 2-column text-focused layout' },
-  { id: 'classic-cards-v2-landscape', name: 'Classic Cards Landscape', description: 'A4 Landscape · 4-column wide-format layout' },
-  { id: 'two-column-classic-v2', name: 'Two Column Classic', description: 'A4 Portrait · 2-column with wider cards' },
-  { id: 'three-column-modern-v2', name: 'Three Column Modern', description: 'A4 Portrait · 3-column balanced grid' },
-  { id: 'half-a4-tall-v2', name: 'Half A4 Tall', description: 'Half A4 · Narrow single-column for tent cards' },
-  { id: 'valentines-v2', name: "Valentine's Day", description: 'A4 Portrait · Themed with ornament dividers' },
-  { id: 'lunar-new-year-v2', name: 'Lunar New Year', description: 'A4 Portrait · Themed with gold accents' },
-]
+const V2_TEMPLATES = [...V2_TEMPLATE_OPTIONS, ...V2_TEMPLATE_OPTIONS_EXTRA]
 
 const ENGINE_VERSIONS = [
   { id: 'v1' as const, name: 'V1 (Legacy)', description: 'Current production engine' },
@@ -144,87 +137,45 @@ export function LayoutLabControls({
         </CardContent>
       </Card>
       
-      {/* Template Selection */}
+      {/* 1. Template Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>Template</CardTitle>
+          <CardTitle>1. Choose Template</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {templates.map(template => (
-            <label key={template.id} className="flex items-start space-x-3 cursor-pointer">
-              <input
-                type="radio"
-                name="template"
-                value={template.id}
-                checked={state.templateId === template.id}
-                onChange={(e) => {
-                  const newTemplateId = e.target.value
-                  const updates: any = { templateId: newTemplateId }
-                  
-                  // Auto-enable textOnly for Italian template
-                  if (newTemplateId === 'italian-v2') {
-                    updates.textOnly = true
-                  }
-                  
-                  // Auto-select themed palettes
-                  if (newTemplateId === 'valentines-v2') {
-                    updates.paletteId = 'valentines-rose'
-                  } else if (newTemplateId === 'lunar-new-year-v2') {
-                    updates.paletteId = 'lunar-red-gold'
-                    updates.texturesEnabled = true
-                  }
-                  
-                  onStateChange(updates)
-                }}
-                className="mt-1"
-              />
-              <div>
-                <div className="font-medium text-sm">{template.name}</div>
-                <div className="text-xs text-gray-500">{template.description}</div>
-              </div>
-            </label>
-          ))}
+          <TemplateDropdown
+            templates={templates.map(t => ({ id: t.id, name: t.name, description: t.description }))}
+            value={state.templateId}
+            onChange={(newTemplateId) => {
+              const updates: Partial<LayoutLabState> = { templateId: newTemplateId }
+              if (newTemplateId === 'italian-v2') {
+                updates.textOnly = false
+              }
+              if (newTemplateId === 'valentines-v2') {
+                updates.paletteId = 'valentines-rose'
+              } else if (newTemplateId === 'lunar-new-year-v2') {
+                updates.paletteId = 'lunar-red-gold'
+                updates.texturesEnabled = true
+              }
+              onStateChange(updates)
+            }}
+            variant="neutral"
+          />
         </CardContent>
       </Card>
 
-      {/* Color Palette Selection */}
+      {/* 2. Color Palette Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>Color Palette</CardTitle>
+          <CardTitle>2. Color Palette</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {PALETTES_V2.map(palette => (
-            <label key={palette.id} className="flex items-start space-x-3 cursor-pointer">
-              <input
-                type="radio"
-                name="palette"
-                value={palette.id}
-                checked={state.paletteId === palette.id}
-                onChange={(e) => onStateChange({ paletteId: e.target.value })}
-                className="mt-1"
-              />
-              <div className="flex-1">
-                <div className="font-medium text-sm">{palette.name}</div>
-                <div className="flex space-x-1 mt-1">
-                  <div 
-                    className="w-4 h-4 rounded-full border border-gray-200" 
-                    style={{ backgroundColor: palette.colors.background }}
-                    title="Background"
-                  />
-                  <div 
-                    className="w-4 h-4 rounded-full border border-gray-200" 
-                    style={{ backgroundColor: palette.colors.menuTitle }}
-                    title="Title"
-                  />
-                  <div 
-                    className="w-4 h-4 rounded-full border border-gray-200" 
-                    style={{ backgroundColor: palette.colors.itemPrice }}
-                    title="Accent/Price"
-                  />
-                </div>
-              </div>
-            </label>
-          ))}
+          <PaletteDropdown
+            palettes={PALETTES_V2}
+            value={state.paletteId}
+            onChange={(paletteId) => onStateChange({ paletteId })}
+            variant="neutral"
+          />
         </CardContent>
       </Card>
       
@@ -260,10 +211,10 @@ export function LayoutLabControls({
         </CardContent>
       </Card>
       
-      {/* Display Options */}
+      {/* 3. Display Options */}
       <Card>
         <CardHeader>
-          <CardTitle>Display Options</CardTitle>
+          <CardTitle>3. Display Options</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <label className="flex items-center space-x-3 cursor-pointer">

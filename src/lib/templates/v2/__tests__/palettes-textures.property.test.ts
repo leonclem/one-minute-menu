@@ -19,7 +19,7 @@ import {
 
 // Helper: resolve palette by ID (same pattern used across the codebase)
 function resolvePalette(paletteId: string): ColorPaletteV2 {
-  return PALETTES_V2.find(p => p.id === paletteId) || PALETTES_V2[0]
+  return PALETTES_V2.find(p => p.id === paletteId) ?? DEFAULT_PALETTE_V2
 }
 
 // Collect all valid palette IDs for filtering
@@ -62,7 +62,7 @@ describe('Feature: gridmenu-v2-layout-enhancements, Property 1: Palette Complete
 describe('Feature: gridmenu-v2-layout-enhancements, Property 2: Unknown Palette Fallback', () => {
   /**
    * Property 2: Unknown Palette Fallback
-   * For any random string not in PALETTES_V2, getPalette returns default (clean-modern).
+   * For any random string not in PALETTES_V2, getPalette returns default (midnight-gold).
    *
    * **Validates: Requirements 1.4**
    */
@@ -73,7 +73,7 @@ describe('Feature: gridmenu-v2-layout-enhancements, Property 2: Unknown Palette 
         (unknownId) => {
           const resolved = resolvePalette(unknownId)
           expect(resolved).toBe(DEFAULT_PALETTE_V2)
-          expect(resolved.id).toBe('clean-modern')
+          expect(resolved.id).toBe('midnight-gold')
         }
       ),
       { numRuns: 100 }

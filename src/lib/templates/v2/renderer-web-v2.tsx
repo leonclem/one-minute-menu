@@ -343,16 +343,15 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
     lineHeight: element.style.lineHeight,
     color: element.style.color,
     backgroundColor: element.style.backgroundColor,
-    textAlign: element.style.textAlign,
+    textAlign: 'center',
     opacity: element.style.opacity,
     borderRadius: element.style.borderRadius ? element.style.borderRadius * scale : undefined,
     display: element.style.maxLines && element.style.maxLines > 1 ? '-webkit-box' : 'flex',
     WebkitLineClamp: element.style.maxLines,
     WebkitBoxOrient: element.style.maxLines && element.style.maxLines > 1 ? 'vertical' : undefined,
     overflow: element.style.maxLines ? 'hidden' : undefined,
-    alignItems: element.style.maxLines ? 'flex-start' : 'center',
-    justifyContent: element.style.textAlign === 'center' ? 'center' : 
-                   element.style.textAlign === 'right' ? 'flex-end' : 'flex-start'
+    alignItems: 'center',
+    justifyContent: 'center'
   }
 
   switch (element.type) {
@@ -371,7 +370,7 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
           style={{
             ...baseStyle,
             objectFit: element.style.objectFit || 'cover',
-            objectPosition: element.style.objectPosition || 'center',
+            objectPosition: 'center',
             borderRadius: element.style.borderRadius ? element.style.borderRadius * scale : undefined
           }}
         />

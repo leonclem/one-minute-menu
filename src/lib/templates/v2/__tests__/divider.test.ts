@@ -240,7 +240,8 @@ describe('Divider insertion with menu fixtures', () => {
 
   beforeAll(async () => {
     clearTemplateCache()
-    dividerTemplate = await loadTemplateV2('classic-cards-v2')
+    // Use valentines-v2 which has dividers enabled (classic-cards-v2 now has dividers disabled)
+    dividerTemplate = await loadTemplateV2('valentines-v2')
     pageSpec = buildPageSpec('A4_PORTRAIT', { top: 22, right: 25, bottom: 22, left: 25 })
   })
 
@@ -379,7 +380,8 @@ describe('Divider page overflow behavior', () => {
 
   beforeAll(async () => {
     clearTemplateCache()
-    dividerTemplate = await loadTemplateV2('classic-cards-v2')
+    // Use valentines-v2 which has dividers enabled (classic-cards-v2 now has dividers disabled)
+    dividerTemplate = await loadTemplateV2('valentines-v2')
     pageSpec = buildPageSpec('A4_PORTRAIT', { top: 22, right: 25, bottom: 22, left: 25 })
   })
 

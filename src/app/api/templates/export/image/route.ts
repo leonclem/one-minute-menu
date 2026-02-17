@@ -31,7 +31,7 @@ async function handleV2TemplateEngine(
   const { transformMenuToV2 } = await import('@/lib/templates/v2/menu-transformer-v2')
   const { generateLayoutV2 } = await import('@/lib/templates/v2/layout-engine-v2')
   const { renderToWeb } = await import('@/lib/templates/v2/renderer-web-v2')
-  const { PALETTES_V2 } = await import('@/lib/templates/v2/renderer-v2')
+  const { PALETTES_V2, DEFAULT_PALETTE_V2 } = await import('@/lib/templates/v2/renderer-v2')
   const { renderToString } = await import('react-dom/server')
   const { getMenuCurrency } = await import('@/lib/menu-currency-service')
   
@@ -91,7 +91,7 @@ async function handleV2TemplateEngine(
   
   // Resolve palette
   const paletteId = configuration.colourPaletteId || configuration.paletteId
-  const palette = PALETTES_V2.find(p => p.id === paletteId) || PALETTES_V2[0]
+  const palette = PALETTES_V2.find(p => p.id === paletteId) ?? DEFAULT_PALETTE_V2
   
   // Calculate dimensions for image export based on page spec
   const pageSpec = layoutDocument.pageSpec
