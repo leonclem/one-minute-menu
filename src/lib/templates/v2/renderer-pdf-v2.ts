@@ -57,6 +57,8 @@ export interface PDFExportOptionsV2 {
   showRegionBounds?: boolean
   /** Enable textured backgrounds for supported palettes */
   texturesEnabled?: boolean
+  /** Image rendering mode */
+  imageMode?: string
 }
 
 export interface PDFExportResultV2 {
@@ -135,7 +137,8 @@ export async function renderToPdf(
     const htmlContent = await generatePDFHTML(document, customCSS, { 
       showRegionBounds,
       paletteId: options.paletteId,
-      texturesEnabled: options.texturesEnabled
+      texturesEnabled: options.texturesEnabled,
+      imageMode: options.imageMode
     })
     logger.info(`[PDFRendererV2] HTML generated in ${Date.now() - htmlStartTime}ms (HTML length: ${htmlContent.length})`)
 
@@ -216,7 +219,7 @@ export async function renderToPdf(
 async function generatePDFHTML(
   document: LayoutDocumentV2, 
   customCSS: string = '',
-  options: { showRegionBounds?: boolean; paletteId?: string; texturesEnabled?: boolean } = {}
+  options: { showRegionBounds?: boolean; paletteId?: string; texturesEnabled?: boolean; imageMode?: string } = {}
 ): Promise<string> {
   // Use dynamic import to avoid Next.js static analysis issues with react-dom/server
   // in Route Handlers and Server Components.
@@ -257,6 +260,7 @@ async function generatePDFHTML(
     palette,
     texturesEnabled: options.texturesEnabled,
     textureDataURL,
+    imageMode: (options.imageMode as any) || 'stretch',
     showGridOverlay: false,
     showRegionBounds: options.showRegionBounds || false,
     showTileIds: false,

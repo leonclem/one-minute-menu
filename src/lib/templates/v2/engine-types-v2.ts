@@ -424,6 +424,9 @@ export interface EngineItemV2 {
 // Selection Config
 // =============================================================================
 
+/** Image rendering mode for menu item tiles */
+export type ImageModeV2 = 'compact-rect' | 'compact-circle' | 'stretch' | 'background'
+
 /** User selection configuration for layout generation */
 export interface SelectionConfigV2 {
   /** Use text-only mode (ITEM_TEXT_ROW for all items) */
@@ -436,6 +439,8 @@ export interface SelectionConfigV2 {
   showMenuTitle?: boolean
   /** Optional custom colour palette ID */
   colourPaletteId?: string
+  /** Image rendering mode - defaults to 'stretch' */
+  imageMode?: ImageModeV2
 }
 
 

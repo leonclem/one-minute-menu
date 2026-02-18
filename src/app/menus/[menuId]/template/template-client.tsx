@@ -3,13 +3,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { UXSection, UXButton, UXCard, PaletteDropdown, TemplateDropdown } from '@/components/ux'
+import { UXSection, UXButton, UXCard, PaletteDropdown, TemplateDropdown, ImageModeDropdown } from '@/components/ux'
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
 import { PageRenderer } from '@/lib/templates/v2/renderer-web-v2'
 import { PALETTES_V2, DEFAULT_PALETTE_V2 } from '@/lib/templates/v2/renderer-v2'
-import type { LayoutDocumentV2 } from '@/lib/templates/v2/engine-types-v2'
+import type { LayoutDocumentV2, ImageModeV2 } from '@/lib/templates/v2/engine-types-v2'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
 import { V2_TEMPLATE_OPTIONS } from '@/lib/templates/v2/template-options'
@@ -27,6 +27,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   // Selection State
   const [templateId, setTemplateId] = useState('classic-cards-v2')
   const [paletteId, setPaletteId] = useState('midnight-gold')
+  const [imageMode, setImageMode] = useState<ImageModeV2>('stretch')
   const [fillersEnabled, setFillersEnabled] = useState(false)
   const [textOnly, setTextOnly] = useState(false)
   const [texturesEnabled, setTexturesEnabled] = useState(true)
@@ -117,6 +118,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               setTextOnly(config.textOnly || false)
               setTexturesEnabled(config.texturesEnabled !== false)
               setShowMenuTitle(config.showMenuTitle || false)
+              setImageMode(config.imageMode || 'stretch')
             }
           }
         } catch (e) {
@@ -170,6 +172,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       let resp
       const config = {
         paletteId,
+        imageMode,
         fillersEnabled,
         textOnly,
         texturesEnabled,
@@ -191,6 +194,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         const params = new URLSearchParams({
           templateId,
           paletteId,
+          imageMode,
           fillersEnabled: fillersEnabled.toString(),
           textOnly: textOnly.toString(),
           texturesEnabled: texturesEnabled.toString(),
@@ -217,7 +221,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     } finally {
       setPreviewLoading(false)
     }
-  }, [menu, menuId, templateId, paletteId, fillersEnabled, textOnly, texturesEnabled, showMenuTitle, isDemoUser, currentPageIndex])
+  }, [menu, menuId, templateId, paletteId, imageMode, fillersEnabled, textOnly, texturesEnabled, showMenuTitle, isDemoUser, currentPageIndex])
 
   // Debounced preview update
   useEffect(() => {
@@ -240,7 +244,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         fillersEnabled,
         texturesEnabled,
         showMenuTitle,
-        colourPaletteId: paletteId
+        colourPaletteId: paletteId,
+        imageMode
       }
 
       if (isDemoUser) {
@@ -302,7 +307,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         fillersEnabled,
         texturesEnabled,
         showMenuTitle,
-        palette: palette
+        palette: palette,
+        imageMode
       }
 
       // 1. Create Export Job
@@ -421,9 +427,19 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 />
               </div>
 
+              {/* Image Mode Selection */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">3. Image Options</h4>
+                <ImageModeDropdown
+                  value={imageMode}
+                  onChange={setImageMode}
+                  variant="primary"
+                />
+              </div>
+
               {/* Display Options */}
               <div className="space-y-4">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">3. Display Options</h4>
+                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">4. Display Options</h4>
                 <div className="space-y-3">
                   <label className="flex items-center justify-between cursor-pointer group">
                     <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Fillers (decorative icons)</span>
@@ -542,6 +558,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                       scale: 1.0,
                       palette,
                       texturesEnabled,
+                      imageMode,
                       showGridOverlay: false,
                       showRegionBounds: false,
                       showTileIds: false,

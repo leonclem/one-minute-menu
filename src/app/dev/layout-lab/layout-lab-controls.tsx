@@ -13,7 +13,7 @@ import type { LayoutLabState } from './layout-lab-client'
 import type { Menu } from '@/types'
 import { PALETTES_V2 } from '@/lib/templates/v2/renderer-v2'
 import { V2_TEMPLATE_OPTIONS, V2_TEMPLATE_OPTIONS_EXTRA } from '@/lib/templates/v2/template-options'
-import { PaletteDropdown, TemplateDropdown } from '@/components/ux'
+import { PaletteDropdown, TemplateDropdown, ImageModeDropdown } from '@/components/ux'
 
 interface LayoutLabControlsProps {
   state: LayoutLabState
@@ -210,11 +210,25 @@ export function LayoutLabControls({
           ))}
         </CardContent>
       </Card>
-      
-      {/* 3. Display Options */}
+
+      {/* 3. Image Options */}
       <Card>
         <CardHeader>
-          <CardTitle>3. Display Options</CardTitle>
+          <CardTitle>3. Image Options</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <ImageModeDropdown
+            value={state.imageMode}
+            onChange={(imageMode) => onStateChange({ imageMode })}
+            variant="neutral"
+          />
+        </CardContent>
+      </Card>
+      
+      {/* 4. Display Options */}
+      <Card>
+        <CardHeader>
+          <CardTitle>4. Display Options</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <label className="flex items-center space-x-3 cursor-pointer">

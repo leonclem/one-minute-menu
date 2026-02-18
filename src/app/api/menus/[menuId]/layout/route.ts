@@ -90,6 +90,7 @@ export async function GET(
     const textOnly = searchParams.get('textOnly') === 'true'
     const texturesEnabled = searchParams.get('texturesEnabled') !== 'false' // default true
     const showMenuTitle = searchParams.get('showMenuTitle') === 'true'
+    const imageMode = (searchParams.get('imageMode') as any) || 'stretch'
     const engineVersion = (searchParams.get('engineVersion') as 'v1' | 'v2') || 'v2'
     
     if (!templateId) {
@@ -145,6 +146,7 @@ export async function GET(
     // Configuration object for cache and engine
     const configuration = {
       paletteId,
+      imageMode,
       fillersEnabled,
       textOnly,
       texturesEnabled,
@@ -187,7 +189,8 @@ export async function GET(
           fillersEnabled,
           texturesEnabled,
           showMenuTitle,
-          colourPaletteId: paletteId || undefined
+          colourPaletteId: paletteId || undefined,
+          imageMode
         },
         debug: true
       }, 'v2')
@@ -249,6 +252,7 @@ export async function POST(
     
     const {
       paletteId,
+      imageMode = 'stretch',
       fillersEnabled = false,
       textOnly = false,
       texturesEnabled = true,
@@ -283,7 +287,8 @@ export async function POST(
           fillersEnabled,
           texturesEnabled,
           showMenuTitle,
-          colourPaletteId: paletteId
+          colourPaletteId: paletteId,
+          imageMode
         },
         debug: true
       }, 'v2')

@@ -25,7 +25,8 @@ import type {
   TextBlockContentV2,
   FooterInfoContentV2,
   FeatureCardContentV2,
-  DividerContentV2
+  DividerContentV2,
+  ImageModeV2
 } from './engine-types-v2'
 import { formatCurrency } from '../../currency-formatter'
 
@@ -42,6 +43,8 @@ export interface RenderOptionsV2 {
   texturesEnabled?: boolean
   /** Pre-fetched data URL for texture (used in export mode to avoid relative path issues) */
   textureDataURL?: string
+  /** Image rendering mode - defaults to 'stretch' */
+  imageMode?: ImageModeV2
   /** Show grid overlay for debugging */
   showGridOverlay: boolean
   /** Show region boundary rectangles */
@@ -552,6 +555,8 @@ export interface RenderStyle {
   maxLines?: number
   color?: string
   backgroundColor?: string
+  /** CSS background (e.g. linear-gradient for overlays) */
+  background?: string
   textAlign?: 'left' | 'center' | 'right'
   opacity?: number
   borderRadius?: number
@@ -775,7 +780,7 @@ function renderItemContent(
 
   // Item image (for ITEM_CARD)
   if (content.type === 'ITEM_CARD' && content.showImage) {
-    const imageWidth = tile.width - (padding * 2)
+    const imageMode: ImageModeV2 = options.imageMode || 'stretch'
     
     // Compute how much vertical space text elements need below the image.
     // This mirrors the layout: name (2 lines) + optional desc + price + gaps.
@@ -789,58 +794,134 @@ function renderItemContent(
     // Available height for image = tile height minus top padding, image-bottom gap, and text below
     const availableForImage = tile.height - padding - 8 - textTotal
     
-    // Aim for ~4:3 aspect ratio where possible, but never exceed available space
-    const ideal4by3 = imageWidth * 0.75
-    const imageHeight = Math.max(40, Math.min(ideal4by3, availableForImage))
-    
-    const imageX = (tile.width - imageWidth) / 2 // Center horizontally
-    
-    if (content.imageUrl) {
-      elements.push({
-        type: 'image',
-        x: imageX,
-        y: currentY,
-        width: imageWidth,
-        height: imageHeight,
-        content: content.imageUrl,
-        style: {
-          borderRadius: 4,
-          objectFit: 'cover',
-          objectPosition: 'center'
-        }
-      })
+    if (imageMode === 'background') {
+      // Background mode: full-tile image with gradient overlay
+      if (content.imageUrl) {
+        // Full tile background image
+        elements.push({
+          type: 'image',
+          x: 0,
+          y: 0,
+          width: tile.width,
+          height: tile.height,
+          content: content.imageUrl,
+          style: {
+            borderRadius: 0,
+            objectFit: 'cover',
+            objectPosition: 'center'
+          }
+        })
+        
+        // Gradient overlay for text readability
+        elements.push({
+          type: 'background',
+          x: 0,
+          y: 0,
+          width: tile.width,
+          height: tile.height,
+          content: '',
+          style: {
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.5) 100%)',
+            borderRadius: 0
+          }
+        })
+      }
+      
+      // Overlay indicators on the background
+      if (content.indicators) {
+        const indicatorElements = renderIndicators(
+          content.indicators,
+          4,
+          4,
+          tile.width - 8,
+          palette
+        )
+        elements.push(...indicatorElements)
+      }
+      
+      // Don't advance currentY - text will render over the background
+      // Text colors will be overridden to white/light below
     } else {
-      // Placeholder for missing image to preserve grid effect
-      elements.push({
-        type: 'background',
-        x: imageX,
-        y: currentY,
-        width: imageWidth,
-        height: imageHeight,
-        content: '',
-        style: {
-          backgroundColor: palette.colors.border.light,
-          borderRadius: 4
+      // Non-background modes: compute image dimensions based on mode
+      let imageWidth: number
+      let imageHeight: number
+      let imageX: number
+      let borderRadius: number = 4
+      
+      if (imageMode === 'compact-rect') {
+        // Compact rectangular: smaller image box, 4:3 aspect, centered
+        imageWidth = tile.width * 0.6
+        imageHeight = imageWidth * 0.75 // 4:3 aspect
+        // Cap by available space
+        if (imageHeight > availableForImage) {
+          imageHeight = availableForImage
+          imageWidth = imageHeight / 0.75
         }
-      })
-    }
+        imageX = (tile.width - imageWidth) / 2
+      } else if (imageMode === 'compact-circle') {
+        // Compact circular: square crop with borderRadius 50%
+        const diameter = Math.min(tile.width * 0.45, availableForImage)
+        imageWidth = diameter
+        imageHeight = diameter
+        imageX = (tile.width - imageWidth) / 2
+        borderRadius = diameter / 2 // 50% for circle
+      } else {
+        // stretch (default): current behavior
+        imageWidth = tile.width - (padding * 2)
+        const ideal4by3 = imageWidth * 0.75
+        imageHeight = Math.max(40, Math.min(ideal4by3, availableForImage))
+        imageX = (tile.width - imageWidth) / 2
+      }
+      
+      if (content.imageUrl) {
+        elements.push({
+          type: 'image',
+          x: imageX,
+          y: currentY,
+          width: imageWidth,
+          height: imageHeight,
+          content: content.imageUrl,
+          style: {
+            borderRadius,
+            objectFit: 'cover',
+            objectPosition: 'center'
+          }
+        })
+      } else {
+        // Placeholder for missing image to preserve grid effect
+        elements.push({
+          type: 'background',
+          x: imageX,
+          y: currentY,
+          width: imageWidth,
+          height: imageHeight,
+          content: '',
+          style: {
+            backgroundColor: palette.colors.border.light,
+            borderRadius
+          }
+        })
+      }
 
-    // Overlay indicators on the image
-    if (content.indicators) {
-      const indicatorElements = renderIndicators(
-        content.indicators,
-        imageX + 4,
-        currentY + 4,
-        imageWidth - 8,
-        palette
-      )
-      elements.push(...indicatorElements)
-    }
+      // Overlay indicators on the image
+      if (content.indicators) {
+        const indicatorElements = renderIndicators(
+          content.indicators,
+          imageX + 4,
+          currentY + 4,
+          imageWidth - 8,
+          palette
+        )
+        elements.push(...indicatorElements)
+      }
 
-    currentY += imageHeight + 8
+      currentY += imageHeight + 8
+    }
   }
 
   // Item name (now with more space) - centered horizontally
+  const imageMode: ImageModeV2 = options.imageMode || 'stretch'
+  const isBackgroundMode = imageMode === 'background'
   const nameWidth = tile.width - (padding * 2)
   const nameFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xsm // Reduced to xsm (11pt) for better fit
   const nameMaxLines = tile.contentBudget?.nameLines ?? 3
@@ -859,7 +940,7 @@ function renderItemContent(
       fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
       lineHeight: baseLineHeight,
       maxLines: nameMaxLines,
-      color: palette.colors.itemTitle,
+      color: isBackgroundMode ? '#ffffff' : palette.colors.itemTitle,
       textAlign: 'center'
     }
   })
@@ -887,7 +968,7 @@ function renderItemContent(
         fontSize: descFontSize,
         lineHeight: descLineHeight,
         maxLines: descMaxLines,
-        color: palette.colors.itemDescription,
+        color: isBackgroundMode ? '#f5f5f5' : palette.colors.itemDescription,
         textAlign: 'center'
       }
     })
@@ -914,7 +995,7 @@ function renderItemContent(
       fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
       lineHeight: baseLineHeight,
       maxLines: 1,
-      color: palette.colors.itemPrice,
+      color: isBackgroundMode ? '#ffffff' : palette.colors.itemPrice,
       textAlign: 'center'
     }
   })
@@ -958,55 +1039,134 @@ function renderFeatureCardContent(
 
   // Featured image (larger than standard ITEM_CARD) - centered
   if (content.showImage) {
-    const imageHeight = tile.contentBudget?.imageBoxHeight ?? 100
-    const imageWidth = tile.width - (padding * 2)
-    const imageX = (tile.width - imageWidth) / 2 // Center horizontally
+    const imageMode: ImageModeV2 = options.imageMode || 'stretch'
     
-    if (content.imageUrl) {
-      elements.push({
-        type: 'image',
-        x: imageX,
-        y: currentY,
-        width: imageWidth,
-        height: imageHeight,
-        content: content.imageUrl,
-        style: {
-          borderRadius: 6,
-          objectFit: 'cover',
-          objectPosition: 'center'
-        }
-      })
+    if (imageMode === 'background') {
+      // Background mode: full-tile image with gradient overlay
+      if (content.imageUrl) {
+        // Full tile background image
+        elements.push({
+          type: 'image',
+          x: 0,
+          y: 0,
+          width: tile.width,
+          height: tile.height,
+          content: content.imageUrl,
+          style: {
+            borderRadius: 0,
+            objectFit: 'cover',
+            objectPosition: 'center'
+          }
+        })
+        
+        // Gradient overlay for text readability
+        elements.push({
+          type: 'background',
+          x: 0,
+          y: 0,
+          width: tile.width,
+          height: tile.height,
+          content: '',
+          style: {
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.5) 100%)',
+            borderRadius: 0
+          }
+        })
+      }
+      
+      // Overlay indicators on the background
+      if (content.indicators) {
+        const indicatorElements = renderIndicators(
+          content.indicators,
+          4,
+          4,
+          tile.width - 8,
+          palette
+        )
+        elements.push(...indicatorElements)
+      }
+      
+      // Don't advance currentY - text will render over the background
     } else {
-      elements.push({
-        type: 'background',
-        x: imageX,
-        y: currentY,
-        width: imageWidth,
-        height: imageHeight,
-        content: '',
-        style: {
-          backgroundColor: palette.colors.border.light,
-          borderRadius: 6
+      // Non-background modes: compute image dimensions based on mode
+      let imageWidth: number
+      let imageHeight: number
+      let imageX: number
+      let borderRadius: number = 6
+      
+      if (imageMode === 'compact-rect') {
+        // Compact rectangular: smaller image box, 4:3 aspect, centered
+        imageWidth = tile.width * 0.6
+        imageHeight = imageWidth * 0.75 // 4:3 aspect
+        const availableForImage = tile.height - padding - 10 - 80 // Reserve space for text
+        if (imageHeight > availableForImage) {
+          imageHeight = availableForImage
+          imageWidth = imageHeight / 0.75
         }
-      })
-    }
+        imageX = (tile.width - imageWidth) / 2
+      } else if (imageMode === 'compact-circle') {
+        // Compact circular: square crop with borderRadius 50%
+        const availableForImage = tile.height - padding - 10 - 80 // Reserve space for text
+        const diameter = Math.min(tile.width * 0.45, availableForImage)
+        imageWidth = diameter
+        imageHeight = diameter
+        imageX = (tile.width - imageWidth) / 2
+        borderRadius = diameter / 2 // 50% for circle
+      } else {
+        // stretch (default): current behavior
+        imageHeight = tile.contentBudget?.imageBoxHeight ?? 100
+        imageWidth = tile.width - (padding * 2)
+        imageX = (tile.width - imageWidth) / 2
+      }
+      
+      if (content.imageUrl) {
+        elements.push({
+          type: 'image',
+          x: imageX,
+          y: currentY,
+          width: imageWidth,
+          height: imageHeight,
+          content: content.imageUrl,
+          style: {
+            borderRadius,
+            objectFit: 'cover',
+            objectPosition: 'center'
+          }
+        })
+      } else {
+        elements.push({
+          type: 'background',
+          x: imageX,
+          y: currentY,
+          width: imageWidth,
+          height: imageHeight,
+          content: '',
+          style: {
+            backgroundColor: palette.colors.border.light,
+            borderRadius
+          }
+        })
+      }
 
-    // Overlay indicators on the image
-    if (content.indicators) {
-      const indicatorElements = renderIndicators(
-        content.indicators,
-        imageX + 4,
-        currentY + 4,
-        imageWidth - 8,
-        palette
-      )
-      elements.push(...indicatorElements)
-    }
+      // Overlay indicators on the image
+      if (content.indicators) {
+        const indicatorElements = renderIndicators(
+          content.indicators,
+          imageX + 4,
+          currentY + 4,
+          imageWidth - 8,
+          palette
+        )
+        elements.push(...indicatorElements)
+      }
 
-    currentY += imageHeight + 10
+      currentY += imageHeight + 10
+    }
   }
 
   // Item name — larger font for featured prominence - centered
+  const imageMode: ImageModeV2 = options.imageMode || 'stretch'
+  const isBackgroundMode = imageMode === 'background'
   const nameWidth = tile.width - (padding * 2)
   const nameFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.sm
   const nameMaxLines = tile.contentBudget?.nameLines ?? 2
@@ -1025,7 +1185,7 @@ function renderFeatureCardContent(
       fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
       lineHeight: baseLineHeight,
       maxLines: nameMaxLines,
-      color: palette.colors.itemTitle,
+      color: isBackgroundMode ? '#ffffff' : palette.colors.itemTitle,
       textAlign: 'center'
     }
   })
@@ -1051,7 +1211,7 @@ function renderFeatureCardContent(
         fontSize: descFontSize,
         lineHeight: descLineHeight,
         maxLines: descMaxLines,
-        color: palette.colors.itemDescription,
+        color: isBackgroundMode ? '#f5f5f5' : palette.colors.itemDescription,
         textAlign: 'center'
       }
     })
@@ -1077,7 +1237,7 @@ function renderFeatureCardContent(
       fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
       lineHeight: baseLineHeight,
       maxLines: 1,
-      color: palette.colors.itemPrice,
+      color: isBackgroundMode ? '#ffffff' : palette.colors.itemPrice,
       textAlign: 'center'
     }
   })

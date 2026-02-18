@@ -156,4 +156,144 @@ describe('V2 Renderer', () => {
       expect(scale1).toBe(1.0) // 1 point = 1 pixel
     })
   })
+
+  describe('Image Modes', () => {
+    const createItemTile = (imageMode?: string): TileInstanceV2 => ({
+      id: 'item-1',
+      type: 'ITEM_CARD',
+      regionId: 'body',
+      x: 0,
+      y: 0,
+      width: 180,
+      height: 200,
+      colSpan: 1,
+      rowSpan: 2,
+      gridRow: 0,
+      gridCol: 0,
+      layer: 'content',
+      content: {
+        type: 'ITEM_CARD',
+        itemId: 'item-1',
+        sectionId: 'section-1',
+        name: 'Test Item',
+        description: 'Test description',
+        price: 10.99,
+        imageUrl: 'https://example.com/image.jpg',
+        showImage: true,
+        currency: '$'
+      } as ItemContentV2
+    })
+
+    it('should render stretch mode (default) with full-width image', () => {
+      const tile = createItemTile()
+      const options: RenderOptionsV2 = {
+        ...defaultOptions,
+        imageMode: 'stretch'
+      }
+
+      const result = renderTileContent(tile, options)
+      const imageElement = result.elements.find(e => e.type === 'image')
+      
+      expect(imageElement).toBeDefined()
+      expect(imageElement?.width).toBeLessThanOrEqual(tile.width - 16) // Account for padding
+      expect(imageElement?.style.borderRadius).toBe(4)
+    })
+
+    it('should render compact-rect mode with smaller centered image', () => {
+      const tile = createItemTile()
+      const options: RenderOptionsV2 = {
+        ...defaultOptions,
+        imageMode: 'compact-rect'
+      }
+
+      const result = renderTileContent(tile, options)
+      const imageElement = result.elements.find(e => e.type === 'image')
+      
+      expect(imageElement).toBeDefined()
+      // Image should be smaller (60% of tile width)
+      expect(imageElement?.width).toBeLessThan(tile.width * 0.7)
+      // Should be centered (x position should center the image)
+      const expectedX = (tile.width - (imageElement?.width || 0)) / 2
+      expect(Math.abs((imageElement?.x || 0) - expectedX)).toBeLessThan(1)
+      // Height should maintain 4:3 aspect
+      const expectedHeight = (imageElement?.width || 0) * 0.75
+      expect(Math.abs((imageElement?.height || 0) - expectedHeight)).toBeLessThan(1)
+    })
+
+    it('should render compact-circle mode with circular image', () => {
+      const tile = createItemTile()
+      const options: RenderOptionsV2 = {
+        ...defaultOptions,
+        imageMode: 'compact-circle'
+      }
+
+      const result = renderTileContent(tile, options)
+      const imageElement = result.elements.find(e => e.type === 'image')
+      
+      expect(imageElement).toBeDefined()
+      // Should be square (width === height)
+      expect(imageElement?.width).toBe(imageElement?.height)
+      // BorderRadius should be 50% for circle
+      const expectedRadius = (imageElement?.width || 0) / 2
+      expect(imageElement?.style.borderRadius).toBe(expectedRadius)
+      // Should be centered
+      const expectedX = (tile.width - (imageElement?.width || 0)) / 2
+      expect(Math.abs((imageElement?.x || 0) - expectedX)).toBeLessThan(1)
+    })
+
+    it('should render background mode with full-tile image and gradient overlay', () => {
+      const tile = createItemTile()
+      const options: RenderOptionsV2 = {
+        ...defaultOptions,
+        imageMode: 'background'
+      }
+
+      const result = renderTileContent(tile, options)
+      
+      // Should have background image at full tile size
+      const bgImage = result.elements.find(e => e.type === 'image' && e.width === tile.width && e.height === tile.height)
+      expect(bgImage).toBeDefined()
+      expect(bgImage?.x).toBe(0)
+      expect(bgImage?.y).toBe(0)
+      
+      // Should have gradient overlay
+      const gradientOverlay = result.elements.find(e => 
+        e.type === 'background' && 
+        e.width === tile.width && 
+        e.height === tile.height &&
+        e.style.background?.includes('linear-gradient')
+      )
+      expect(gradientOverlay).toBeDefined()
+      
+      // Text should be white/light for readability
+      const textElements = result.elements.filter(e => e.type === 'text')
+      textElements.forEach(textEl => {
+        const color = textEl.style.color
+        expect(color).toMatch(/^#(fff|ffffff|f5f5f5|FFF|FFFFFF|F5F5F5)/i)
+      })
+    })
+
+    it('should ensure no elements exceed tile bounds', () => {
+      const modes: Array<'stretch' | 'compact-rect' | 'compact-circle' | 'background'> = 
+        ['stretch', 'compact-rect', 'compact-circle', 'background']
+      
+      modes.forEach(mode => {
+        const tile = createItemTile()
+        const options: RenderOptionsV2 = {
+          ...defaultOptions,
+          imageMode: mode
+        }
+
+        const result = renderTileContent(tile, options)
+        
+        result.elements.forEach(element => {
+          // Check that element doesn't exceed tile bounds
+          expect(element.x).toBeGreaterThanOrEqual(0)
+          expect(element.y).toBeGreaterThanOrEqual(0)
+          expect((element.x || 0) + (element.width || 0)).toBeLessThanOrEqual(tile.width)
+          expect((element.y || 0) + (element.height || 0)).toBeLessThanOrEqual(tile.height)
+        })
+      })
+    })
+  })
 })

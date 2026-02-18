@@ -91,7 +91,8 @@ async function handleNewTemplateEngine(
       fillersEnabled: finalConfiguration.fillersEnabled || false,
       texturesEnabled: finalConfiguration.texturesEnabled !== false, // default true
       showMenuTitle: finalConfiguration.showMenuTitle || false,
-      colourPaletteId: finalConfiguration.colourPaletteId || finalConfiguration.paletteId
+      colourPaletteId: finalConfiguration.colourPaletteId || finalConfiguration.paletteId,
+      imageMode: finalConfiguration.imageMode || 'stretch'
     },
     debug: false
   })
@@ -121,7 +122,8 @@ async function handleNewTemplateEngine(
     includePageNumbers: options.includePageNumbers !== false,
     printBackground: true,
     texturesEnabled: finalConfiguration.texturesEnabled !== false,
-    showRegionBounds: false
+    showRegionBounds: false,
+    imageMode: finalConfiguration.imageMode || 'stretch'
   })
   metricsBuilder.markExportEnd()
   

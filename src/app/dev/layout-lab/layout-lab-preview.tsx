@@ -25,6 +25,7 @@ interface LayoutLabPreviewProps {
   showRegionBounds: boolean
   showTileIds: boolean
   texturesEnabled: boolean
+  imageMode?: string
   isAutoGenerating?: boolean
 }
 
@@ -37,6 +38,7 @@ export function LayoutLabPreview({
   showRegionBounds,
   showTileIds,
   texturesEnabled,
+  imageMode = 'stretch',
   isAutoGenerating = false
 }: LayoutLabPreviewProps) {
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
@@ -255,6 +257,7 @@ export function LayoutLabPreview({
                   scale: 1.0,
                   palette,
                   texturesEnabled,
+                  imageMode: imageMode as any,
                   showGridOverlay,
                   showRegionBounds,
                   showTileIds,

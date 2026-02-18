@@ -362,6 +362,7 @@ export class JobProcessor {
           texturesEnabled: config?.texturesEnabled !== false,
           textOnly: config?.textOnly || false,
           showMenuTitle: config?.showMenuTitle || false,
+          imageMode: config?.imageMode || 'stretch',
         }
       })
 
@@ -377,6 +378,7 @@ export class JobProcessor {
       const result = await renderToPdf(optimizedLayout, {
         paletteId: config?.palette?.id || config?.colourPaletteId,
         texturesEnabled: config?.texturesEnabled !== false,
+        imageMode: config?.imageMode || 'stretch',
       })
 
       return Buffer.from(result.pdfBytes)

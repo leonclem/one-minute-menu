@@ -363,17 +363,32 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
       )
     
     case 'image':
+      const borderRadius = element.style.borderRadius ? element.style.borderRadius * scale : undefined
+      // Check if this is a circular image: borderRadius should be approximately half the width
+      // Account for scaling and allow small floating point differences
+      const imageWidth = typeof baseStyle.width === 'number' ? baseStyle.width : parseFloat(String(baseStyle.width || 0))
+      const imageHeight = typeof baseStyle.height === 'number' ? baseStyle.height : parseFloat(String(baseStyle.height || 0))
+      const isCircular = borderRadius && borderRadius > 0 && imageWidth > 0 && imageHeight > 0 &&
+        Math.abs(borderRadius - imageWidth / 2) < 2 && Math.abs(imageWidth - imageHeight) < 2
       return (
-        <img
-          src={element.content}
-          alt=""
+        <div
           style={{
             ...baseStyle,
-            objectFit: element.style.objectFit || 'cover',
-            objectPosition: 'center',
-            borderRadius: element.style.borderRadius ? element.style.borderRadius * scale : undefined
+            borderRadius,
+            overflow: isCircular ? 'hidden' : undefined
           }}
-        />
+        >
+          <img
+            src={element.content}
+            alt=""
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: element.style.objectFit || 'cover',
+              objectPosition: 'center'
+            }}
+          />
+        </div>
       )
     
     case 'indicator':
@@ -391,7 +406,12 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
     
     case 'background':
       return (
-        <div style={baseStyle} />
+        <div 
+          style={{
+            ...baseStyle,
+            background: element.style.background || element.style.backgroundColor || undefined
+          }} 
+        />
       )
     
     default:

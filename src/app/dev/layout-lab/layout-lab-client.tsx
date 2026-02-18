@@ -10,7 +10,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { LayoutLabControls } from './layout-lab-controls'
 import { LayoutLabPreview } from './layout-lab-preview'
-import type { LayoutDocumentV2 } from '@/lib/templates/v2/engine-types-v2'
+import type { LayoutDocumentV2, ImageModeV2 } from '@/lib/templates/v2/engine-types-v2'
 import type { EngineVersion } from '@/lib/templates/engine-selector'
 
 export interface LayoutLabState {
@@ -28,6 +28,7 @@ export interface LayoutLabState {
   textOnly: boolean
   texturesEnabled: boolean
   showMenuTitle: boolean
+  imageMode: ImageModeV2
   
   // Data
   layoutDocument: LayoutDocumentV2 | null
@@ -48,6 +49,7 @@ const initialState: LayoutLabState = {
   textOnly: false,
   texturesEnabled: true, // Enable textures by default to showcase the feature
   showMenuTitle: false, // Hide menu title by default
+  imageMode: 'stretch',
   layoutDocument: null,
   isGenerating: false,
   isAutoGenerating: false,
@@ -82,7 +84,8 @@ export function LayoutLabClient() {
             textOnly: currentState.textOnly,
             texturesEnabled: currentState.texturesEnabled,
             showRegionBounds: currentState.showRegionBounds,
-            showMenuTitle: currentState.showMenuTitle
+            showMenuTitle: currentState.showMenuTitle,
+            imageMode: currentState.imageMode
           }
         })
       })
@@ -242,6 +245,7 @@ export function LayoutLabClient() {
           showRegionBounds={state.showRegionBounds}
           showTileIds={state.showTileIds}
           texturesEnabled={state.texturesEnabled}
+          imageMode={state.imageMode}
         />
       </div>
     </div>
