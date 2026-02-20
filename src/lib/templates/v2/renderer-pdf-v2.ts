@@ -59,6 +59,8 @@ export interface PDFExportOptionsV2 {
   texturesEnabled?: boolean
   /** Image rendering mode */
   imageMode?: string
+  /** Enable vignette edge effect */
+  showVignette?: boolean
 }
 
 export interface PDFExportResultV2 {
@@ -138,7 +140,8 @@ export async function renderToPdf(
       showRegionBounds,
       paletteId: options.paletteId,
       texturesEnabled: options.texturesEnabled,
-      imageMode: options.imageMode
+      imageMode: options.imageMode,
+      showVignette: options.showVignette
     })
     logger.info(`[PDFRendererV2] HTML generated in ${Date.now() - htmlStartTime}ms (HTML length: ${htmlContent.length})`)
 
@@ -219,7 +222,7 @@ export async function renderToPdf(
 async function generatePDFHTML(
   document: LayoutDocumentV2, 
   customCSS: string = '',
-  options: { showRegionBounds?: boolean; paletteId?: string; texturesEnabled?: boolean; imageMode?: string } = {}
+  options: { showRegionBounds?: boolean; paletteId?: string; texturesEnabled?: boolean; imageMode?: string; showVignette?: boolean } = {}
 ): Promise<string> {
   // Use dynamic import to avoid Next.js static analysis issues with react-dom/server
   // in Route Handlers and Server Components.
@@ -261,6 +264,7 @@ async function generatePDFHTML(
     texturesEnabled: options.texturesEnabled,
     textureDataURL,
     imageMode: (options.imageMode as any) || 'stretch',
+    showVignette: options.showVignette,
     showGridOverlay: false,
     showRegionBounds: options.showRegionBounds || false,
     showTileIds: false,
@@ -491,6 +495,15 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string 
     .tile-v2 div {
       word-wrap: break-word;
       overflow-wrap: break-word;
+    }
+
+    /* Vignette overlay */
+    .vignette-overlay {
+      position: absolute;
+      inset: 0;
+      box-shadow: inset 0 0 80px rgba(0,0,0,0.08);
+      pointer-events: none;
+      z-index: 2;
     }
   `
 }

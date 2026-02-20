@@ -59,14 +59,15 @@ tiles:
         fontWeight: "semibold"
         textAlign: "left"
         lineHeight: "normal"
+        textTransform: "uppercase"
         color: "#696969"
       spacing:
         paddingLeft: 8
         paddingTop: 0
         paddingBottom: 0
       border:
-        width: 0.5
-        color: "#696969"
+        width: 3
+        color: "#D4AF37"
         style: "solid"
         sides: ["bottom"]
     contentBudget:
@@ -91,7 +92,21 @@ tiles:
   #   - No sparse layouts or wasted space
   ITEM_CARD:
     region: body
-    rowSpan: 2         # 2 rows = 148pt (2×70 + 1×8 gap)
+    rowSpan: 2
+    style:
+      typography:
+        name:
+          fontSet: "elegant-serif"
+          fontSize: "xsm"
+          fontWeight: "bold"
+        description:
+          fontSet: "modern-sans"
+          fontSize: "xxs"
+          fontWeight: "normal"
+        price:
+          fontSet: "modern-sans"
+          fontSize: "xs"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -99,11 +114,25 @@ tiles:
       imageBoxHeight: 70
       paddingTop: 8
       paddingBottom: 8
-      totalHeight: 148   # Must match: rowSpan * rowHeight + (rowSpan-1) * gapY
+      totalHeight: 148
 
   ITEM_TEXT_ROW:
     region: body
-    rowSpan: 1         # 1 row × 70pt = 70pt total
+    rowSpan: 1
+    style:
+      typography:
+        name:
+          fontSet: "elegant-serif"
+          fontSize: "xsm"
+          fontWeight: "bold"
+        description:
+          fontSet: "modern-sans"
+          fontSize: "xxs"
+          fontWeight: "normal"
+        price:
+          fontSet: "modern-sans"
+          fontSize: "xs"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -120,6 +149,20 @@ tiles:
     region: body
     colSpan: 2
     rowSpan: 3
+    style:
+      typography:
+        name:
+          fontSet: "elegant-serif"
+          fontSize: "sm"
+          fontWeight: "bold"
+        description:
+          fontSet: "modern-sans"
+          fontSize: "xsm"
+          fontWeight: "normal"
+        price:
+          fontSet: "modern-sans"
+          fontSize: "sm"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 3
@@ -128,6 +171,28 @@ tiles:
       paddingTop: 10
       paddingBottom: 10
       totalHeight: 226
+
+  FOOTER_INFO:
+    region: footer
+    style:
+      typography:
+        contact:
+          fontSet: "modern-sans"
+          fontSize: "xs"
+          fontWeight: "normal"
+      border:
+        width: 1
+        color: "#E5E7EB"
+        style: "solid"
+        sides: ["top"]
+    contentBudget:
+      nameLines: 0
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 4
+      paddingBottom: 4
+      totalHeight: 45
 
   # DECORATIVE_DIVIDER: full-width divider between sections
   # Height formula: 1 * 70 + 0 * 8 = 70pt

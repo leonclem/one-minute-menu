@@ -1,6 +1,6 @@
 # V2 Template Styling Guide
 
-This guide covers the comprehensive styling system available for V2 templates.
+This guide covers the styling system available for V2 templates (fonts, typography, spacing, borders, backgrounds). For template structure and content budget, see [TEMPLATE_AUTHORING_GUIDE.md](./TEMPLATE_AUTHORING_GUIDE.md). For what cannot be styled or overridden, see [LIMITATIONS.md](./LIMITATIONS.md).
 
 ## Font Sets
 
@@ -28,6 +28,8 @@ style:
     fontWeight: "semibold"        # Font weight token (see weights below)
     textAlign: "center"           # Text alignment: left, center, right
     lineHeight: "normal"          # Line height token (see line heights below)
+    textTransform: "uppercase"    # Text transform: none, uppercase, lowercase, capitalize
+    color: "#1E40AF"              # Text color override (hex, rgb, named colors)
 ```
 
 #### Font Size Tokens
@@ -48,11 +50,50 @@ style:
 - `medium`: 500
 - `semibold`: 600
 - `bold`: 700
+- `extrabold`: 800
 
 #### Line Height Tokens
 - `tight`: 1.2
 - `normal`: 1.4
 - `relaxed`: 1.6
+
+### Sub-Element Typography
+
+For tiles that contain multiple text elements, you can style each sub-element independently. Sub-elements and where they apply:
+
+- **`name`**, **`description`**, **`price`** — `ITEM_CARD`, `ITEM_TEXT_ROW`, `FEATURE_CARD`
+- **`label`** — `SECTION_HEADER` (section title text)
+- **`contact`** — `FOOTER_INFO` (address, phone, email, etc.)
+
+Each sub-element supports:
+- `fontSet`: Font set ID
+- `fontSize`: Font size token
+- `fontWeight`: Font weight token
+- `lineHeight`: Line height token
+
+**Example:**
+```yaml
+ITEM_CARD:
+  style:
+    typography:
+      name:
+        fontSet: "elegant-serif"
+        fontSize: "xsm"
+        fontWeight: "bold"
+      description:
+        fontSet: "modern-sans"
+        fontSize: "xxs"
+        fontWeight: "normal"
+      price:
+        fontSet: "modern-sans"
+        fontSize: "xs"
+        fontWeight: "bold"
+```
+
+### Renderer defaults (not in template schema)
+
+- **Image drop shadow** — The renderer applies a fixed drop shadow to item images (except in compact-circle mode). This is not configurable per template.
+- **Letter spacing** — When `textTransform: "uppercase"` is set, the renderer applies a small letter-spacing value automatically. Custom letter-spacing cannot be set in YAML.
 
 ### Spacing
 
@@ -114,7 +155,9 @@ style:
     borderRadius: 8       # Corner radius in points
 ```
 
-## Complete Example
+## Complete Examples
+
+### Section Header Example
 
 Here's a fully styled section header:
 
@@ -152,6 +195,94 @@ SECTION_HEADER:
     totalHeight: 40
 ```
 
+### ITEM_CARD Example
+
+Here's a complete example of an ITEM_CARD with sub-element typography and full styling:
+
+```yaml
+ITEM_CARD:
+  region: body
+  colSpan: 2
+  style:
+    typography:
+      name:
+        fontSet: "elegant-serif"
+        fontSize: "xsm"
+        fontWeight: "bold"
+        lineHeight: "tight"
+      description:
+        fontSet: "modern-sans"
+        fontSize: "xxs"
+        fontWeight: "normal"
+        lineHeight: "normal"
+      price:
+        fontSet: "modern-sans"
+        fontSize: "xs"
+        fontWeight: "bold"
+        color: "#D4AF37"
+    spacing:
+      paddingTop: 8
+      paddingBottom: 8
+      paddingLeft: 12
+      paddingRight: 12
+    border:
+      width: 1
+      color: "#E5E7EB"
+      style: "solid"
+      sides: ["bottom"]
+    background:
+      color: "#FFFFFF"
+      borderRadius: 4
+  contentBudget:
+    nameLines: 2
+    descLines: 3
+    indicatorAreaHeight: 0
+    imageBoxHeight: 0
+    paddingTop: 8
+    paddingBottom: 8
+    totalHeight: 60
+```
+
+### FOOTER_INFO Example
+
+Here's a complete example of FOOTER_INFO with template styling:
+
+```yaml
+FOOTER_INFO:
+  region: footer
+  colSpan: 4
+  style:
+    background:
+      color: "#1E40AF"
+      borderRadius: 0
+    border:
+      width: 0
+      color: "transparent"
+      style: "solid"
+      sides: []
+    spacing:
+      paddingTop: 16
+      paddingBottom: 16
+      paddingLeft: 24
+      paddingRight: 24
+    typography:
+      contact:
+        fontSet: "modern-sans"
+        fontSize: "xs"
+        fontWeight: "normal"
+        color: "#FFFFFF"
+        textAlign: "center"
+        lineHeight: "relaxed"
+  contentBudget:
+    nameLines: 0
+    descLines: 0
+    indicatorAreaHeight: 0
+    imageBoxHeight: 0
+    paddingTop: 16
+    paddingBottom: 16
+    totalHeight: 50
+```
+
 ## Color Recommendations
 
 ### Common Menu Colors
@@ -173,11 +304,13 @@ SECTION_HEADER:
 
 ## Tile Types That Support Styling
 
-Currently, styling is supported for:
+All tile types support styling, including:
 - `SECTION_HEADER` - Section headers with full styling support
 - `TITLE` - Menu title (typography styling)
-
-More tile types will support styling in future updates.
+- `ITEM_CARD` - Menu items with sub-element typography support
+- `FOOTER_INFO` - Footer information with background, border, and contact typography
+- `IMAGE` - Images with box shadow and other render style properties
+- And all other tile types in the V2 template system
 
 ## Tips
 

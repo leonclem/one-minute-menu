@@ -59,15 +59,16 @@ tiles:
         fontWeight: "semibold"
         textAlign: "left"
         lineHeight: "normal"
+        textTransform: "uppercase"
       spacing:
-        paddingLeft: 6
+        paddingLeft: 10
         paddingTop: 0
         paddingBottom: 0
       border:
-        width: 0.5
-        color: "#696969"
+        width: 3
+        color: "#333333"
         style: "solid"
-        sides: ["bottom"]
+        sides: ["left", "bottom"]
     contentBudget:
       nameLines: 1
       descLines: 0
@@ -83,6 +84,20 @@ tiles:
   ITEM_CARD:
     region: body
     rowSpan: 2
+    style:
+      typography:
+        name:
+          fontSet: "modern-sans"
+          fontSize: "xsm"
+          fontWeight: "semibold"
+        description:
+          fontSet: "modern-sans"
+          fontSize: "xxs"
+          fontWeight: "normal"
+        price:
+          fontSet: "modern-sans"
+          fontSize: "xs"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -95,6 +110,20 @@ tiles:
   ITEM_TEXT_ROW:
     region: body
     rowSpan: 1
+    style:
+      typography:
+        name:
+          fontSet: "modern-sans"
+          fontSize: "xsm"
+          fontWeight: "semibold"
+        description:
+          fontSet: "modern-sans"
+          fontSize: "xxs"
+          fontWeight: "normal"
+        price:
+          fontSet: "modern-sans"
+          fontSize: "xs"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -103,6 +132,28 @@ tiles:
       paddingTop: 8
       paddingBottom: 8
       totalHeight: 70
+
+  FOOTER_INFO:
+    region: footer
+    style:
+      typography:
+        contact:
+          fontSet: "modern-sans"
+          fontSize: "xs"
+          fontWeight: "normal"
+      border:
+        width: 1
+        color: "#D1D5DB"
+        style: "solid"
+        sides: ["top"]
+    contentBudget:
+      nameLines: 0
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 4
+      paddingBottom: 4
+      totalHeight: 45
 
 policies:
   lastRowBalancing: CENTER

@@ -65,8 +65,8 @@ tiles:
         paddingTop: 0
         paddingBottom: 0
       border:
-        width: 0.5
-        color: "#E8A8BA"
+        width: 2.5
+        color: "#C2185B"
         style: "solid"
         sides: ["bottom"]
     contentBudget:
@@ -81,6 +81,20 @@ tiles:
   ITEM_CARD:
     region: body
     rowSpan: 2
+    style:
+      typography:
+        name:
+          fontSet: "elegant-serif"
+          fontSize: "xsm"
+          fontWeight: "bold"
+        description:
+          fontSet: "friendly-rounded"
+          fontSize: "xxs"
+          fontWeight: "normal"
+        price:
+          fontSet: "friendly-rounded"
+          fontSize: "xs"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -93,6 +107,20 @@ tiles:
   ITEM_TEXT_ROW:
     region: body
     rowSpan: 1
+    style:
+      typography:
+        name:
+          fontSet: "elegant-serif"
+          fontSize: "xsm"
+          fontWeight: "bold"
+        description:
+          fontSet: "friendly-rounded"
+          fontSize: "xxs"
+          fontWeight: "normal"
+        price:
+          fontSet: "friendly-rounded"
+          fontSize: "xs"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -106,6 +134,20 @@ tiles:
     region: body
     colSpan: 2
     rowSpan: 3
+    style:
+      typography:
+        name:
+          fontSet: "elegant-serif"
+          fontSize: "sm"
+          fontWeight: "bold"
+        description:
+          fontSet: "friendly-rounded"
+          fontSize: "xsm"
+          fontWeight: "normal"
+        price:
+          fontSet: "friendly-rounded"
+          fontSize: "sm"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 3
@@ -127,6 +169,29 @@ tiles:
       paddingTop: 4
       paddingBottom: 4
       totalHeight: 70
+
+  FOOTER_INFO:
+    region: footer
+    style:
+      typography:
+        color: "#7A5060"
+        contact:
+          fontSet: "friendly-rounded"
+          fontSize: "xs"
+          fontWeight: "normal"
+      border:
+        width: 1
+        color: "#E8A8BA"
+        style: "solid"
+        sides: ["top"]
+    contentBudget:
+      nameLines: 0
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 4
+      paddingBottom: 4
+      totalHeight: 45
 
 dividers:
   enabled: true

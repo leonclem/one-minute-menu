@@ -64,26 +64,37 @@ tiles:
         fontSize: "2xl"
         fontWeight: "semibold"
         textAlign: "center"
-        lineHeight: "normal"
+        lineHeight: "relaxed"
       spacing:
         paddingLeft: 16
-        paddingTop: 8
-        paddingBottom: 8
-      background:
-        color: "#F5F2D0"
-        borderRadius: 8
+        paddingTop: 12
+        paddingBottom: 12
     contentBudget:
       nameLines: 1
       descLines: 0
       indicatorAreaHeight: 0
       imageBoxHeight: 0
-      paddingTop: 8
-      paddingBottom: 8
+      paddingTop: 12
+      paddingBottom: 12
       totalHeight: 40
 
   ITEM_CARD:
     region: body
     rowSpan: 2
+    style:
+      typography:
+        name:
+          fontSet: "elegant-serif"
+          fontSize: "xsm"
+          fontWeight: "bold"
+        description:
+          fontSet: "classic-professional"
+          fontSize: "xxs"
+          fontWeight: "normal"
+        price:
+          fontSet: "classic-professional"
+          fontSize: "xs"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -96,6 +107,20 @@ tiles:
   ITEM_TEXT_ROW:
     region: body
     rowSpan: 1
+    style:
+      typography:
+        name:
+          fontSet: "elegant-serif"
+          fontSize: "xsm"
+          fontWeight: "bold"
+        description:
+          fontSet: "classic-professional"
+          fontSize: "xxs"
+          fontWeight: "normal"
+        price:
+          fontSet: "classic-professional"
+          fontSize: "xs"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -104,6 +129,28 @@ tiles:
       paddingTop: 8
       paddingBottom: 8
       totalHeight: 70
+
+  FOOTER_INFO:
+    region: footer
+    style:
+      typography:
+        contact:
+          fontSet: "classic-professional"
+          fontSize: "xs"
+          fontWeight: "normal"
+      border:
+        width: 0.5
+        color: "#D4CFA3"
+        style: "solid"
+        sides: ["top"]
+    contentBudget:
+      nameLines: 0
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 4
+      paddingBottom: 4
+      totalHeight: 45
 
 policies:
   lastRowBalancing: CENTER

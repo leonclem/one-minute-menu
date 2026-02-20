@@ -59,13 +59,15 @@ tiles:
         fontWeight: "semibold"
         textAlign: "left"
         lineHeight: "normal"
+        textTransform: "uppercase"
+        color: "#696969"
       spacing:
         paddingLeft: 8
         paddingTop: 0
         paddingBottom: 0
       border:
-        width: 0.5
-        color: "#696969"
+        width: 3
+        color: "#D4AF37"
         style: "solid"
         sides: ["bottom"]
     contentBudget:
@@ -83,6 +85,20 @@ tiles:
   ITEM_CARD:
     region: body
     rowSpan: 2
+    style:
+      typography:
+        name:
+          fontSet: "elegant-serif"
+          fontSize: "xsm"
+          fontWeight: "bold"
+        description:
+          fontSet: "modern-sans"
+          fontSize: "xxs"
+          fontWeight: "normal"
+        price:
+          fontSet: "modern-sans"
+          fontSize: "xs"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -95,6 +111,20 @@ tiles:
   ITEM_TEXT_ROW:
     region: body
     rowSpan: 1
+    style:
+      typography:
+        name:
+          fontSet: "elegant-serif"
+          fontSize: "xsm"
+          fontWeight: "bold"
+        description:
+          fontSet: "modern-sans"
+          fontSize: "xxs"
+          fontWeight: "normal"
+        price:
+          fontSet: "modern-sans"
+          fontSize: "xs"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -103,6 +133,28 @@ tiles:
       paddingTop: 8
       paddingBottom: 8
       totalHeight: 65
+
+  FOOTER_INFO:
+    region: footer
+    style:
+      typography:
+        contact:
+          fontSet: "modern-sans"
+          fontSize: "xs"
+          fontWeight: "normal"
+      border:
+        width: 1
+        color: "#E5E7EB"
+        style: "solid"
+        sides: ["top"]
+    contentBudget:
+      nameLines: 0
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 4
+      paddingBottom: 4
+      totalHeight: 36
 
 policies:
   lastRowBalancing: CENTER

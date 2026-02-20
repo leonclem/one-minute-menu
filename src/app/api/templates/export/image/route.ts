@@ -81,6 +81,7 @@ async function handleV2TemplateEngine(
       fillersEnabled: configuration.fillersEnabled || false,
       texturesEnabled: configuration.texturesEnabled !== false,
       showMenuTitle: configuration.showMenuTitle || false,
+      showVignette: configuration.showVignette || false,
       colourPaletteId: configuration.colourPaletteId || configuration.paletteId,
       imageMode: configuration.imageMode || 'stretch'
     },
@@ -178,6 +179,7 @@ async function handleV2TemplateEngine(
       texturesEnabled: configuration.texturesEnabled !== false,
       textureDataURL,
       imageMode: configuration.imageMode || 'stretch',
+      showVignette: configuration.showVignette || false,
       showGridOverlay: false,
       showRegionBounds: false,
       showTileIds: false

@@ -441,6 +441,8 @@ export interface SelectionConfigV2 {
   colourPaletteId?: string
   /** Image rendering mode - defaults to 'stretch' */
   imageMode?: ImageModeV2
+  /** Enable vignette edge effect */
+  showVignette?: boolean
 }
 
 
@@ -507,6 +509,14 @@ export interface TemplateBodyConfigV2 {
 // Styling Types
 // =============================================================================
 
+/** Typography styling for a single sub-element (name, description, price, etc.) */
+export interface SubElementTypographyV2 {
+  fontSet?: string
+  fontSize?: string
+  fontWeight?: string
+  lineHeight?: string
+}
+
 /** Typography styling configuration */
 export interface TypographyStyleV2 {
   /** Font set ID (e.g., 'modern-sans', 'elegant-serif') */
@@ -519,6 +529,16 @@ export interface TypographyStyleV2 {
   textAlign?: 'left' | 'center' | 'right'
   /** Line height token (e.g., 'tight', 'normal', 'relaxed') */
   lineHeight?: string
+  /** CSS text-transform */
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'
+  /** Text color override (hex, rgb, etc.) */
+  color?: string
+  /** Per-sub-element typography overrides */
+  name?: SubElementTypographyV2
+  description?: SubElementTypographyV2
+  price?: SubElementTypographyV2
+  label?: SubElementTypographyV2
+  contact?: SubElementTypographyV2
 }
 
 /** Spacing styling configuration */
@@ -585,6 +605,7 @@ export interface TemplateTileVariantsV2 {
   FILLER?: TileVariantDefV2[]
   FEATURE_CARD?: TileVariantDefV2
   DECORATIVE_DIVIDER?: TileVariantDefV2
+  FOOTER_INFO?: TileVariantDefV2
 }
 
 /** Layout policies */

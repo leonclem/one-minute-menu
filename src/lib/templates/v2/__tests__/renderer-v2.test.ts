@@ -11,9 +11,20 @@ import {
   getDefaultScale,
   TYPOGRAPHY_TOKENS_V2,
   COLOR_TOKENS_V2,
+  SPACING_V2,
+  TEXTURE_REGISTRY,
   type RenderOptionsV2 
 } from '../renderer-v2'
-import type { TileInstanceV2, LogoContentV2, TitleContentV2, ItemContentV2 } from '../engine-types-v2'
+import type { 
+  TileInstanceV2, 
+  LogoContentV2, 
+  TitleContentV2, 
+  ItemContentV2,
+  SectionHeaderContentV2,
+  FooterInfoContentV2,
+  FeatureCardContentV2,
+  TileStyleV2
+} from '../engine-types-v2'
 
 describe('V2 Renderer', () => {
   const defaultOptions: RenderOptionsV2 = {
@@ -165,7 +176,7 @@ describe('V2 Renderer', () => {
       x: 0,
       y: 0,
       width: 180,
-      height: 200,
+      height: 220,
       colSpan: 1,
       rowSpan: 2,
       gridRow: 0,
@@ -196,7 +207,7 @@ describe('V2 Renderer', () => {
       
       expect(imageElement).toBeDefined()
       expect(imageElement?.width).toBeLessThanOrEqual(tile.width - 16) // Account for padding
-      expect(imageElement?.style.borderRadius).toBe(4)
+      expect(imageElement?.style.borderRadius).toBe(8)
     })
 
     it('should render compact-rect mode with smaller centered image', () => {
@@ -294,6 +305,371 @@ describe('V2 Renderer', () => {
           expect((element.y || 0) + (element.height || 0)).toBeLessThanOrEqual(tile.height)
         })
       })
+    })
+  })
+
+  describe('Sub-Element Typography', () => {
+    it('should apply sub-element typography from tile style overrides', () => {
+      const tile: TileInstanceV2 = {
+        id: 'item-styled-1',
+        type: 'ITEM_CARD',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 148,
+        colSpan: 1,
+        rowSpan: 2,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'ITEM_CARD',
+          itemId: 'item-1',
+          sectionId: 'section-1',
+          name: 'Styled Item',
+          description: 'With custom fonts',
+          price: 15.00,
+          showImage: false,
+          currency: '$',
+          indicators: { dietary: [], spiceLevel: null, allergens: [] }
+        } as ItemContentV2,
+        style: {
+          typography: {
+            name: { fontSet: 'elegant-serif', fontSize: 'sm', fontWeight: 'bold' },
+            description: { fontSet: 'modern-sans', fontSize: 'xs', fontWeight: 'normal' },
+            price: { fontSet: 'modern-sans', fontSize: 'sm', fontWeight: 'extrabold' },
+          }
+        } as TileStyleV2
+      }
+
+      const result = renderTileContent(tile, defaultOptions)
+      const textElements = result.elements.filter(e => e.type === 'text')
+
+      // Name element should use sm (12pt)
+      const nameEl = textElements.find(e => e.content === 'Styled Item')
+      expect(nameEl?.style.fontSize).toBe(TYPOGRAPHY_TOKENS_V2.fontSize.sm)
+      expect(nameEl?.style.fontWeight).toBe(TYPOGRAPHY_TOKENS_V2.fontWeight.bold)
+      expect(nameEl?.style.fontFamily).toContain('Playfair Display')
+
+      // Description element should use xs (10pt)
+      const descEl = textElements.find(e => e.content === 'With custom fonts')
+      expect(descEl?.style.fontSize).toBe(TYPOGRAPHY_TOKENS_V2.fontSize.xs)
+
+      // Price element should use sm (12pt) extrabold (800)
+      const priceEl = textElements.find(e => e.content?.includes('15'))
+      expect(priceEl?.style.fontSize).toBe(TYPOGRAPHY_TOKENS_V2.fontSize.sm)
+      expect(priceEl?.style.fontWeight).toBe(TYPOGRAPHY_TOKENS_V2.fontWeight.extrabold)
+    })
+
+    it('should fall back to defaults when sub-element typography is not set', () => {
+      const tile: TileInstanceV2 = {
+        id: 'item-unstyled-1',
+        type: 'ITEM_CARD',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 148,
+        colSpan: 1,
+        rowSpan: 2,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'ITEM_CARD',
+          itemId: 'item-1',
+          sectionId: 'section-1',
+          name: 'Default Item',
+          description: 'Default fonts',
+          price: 10.00,
+          showImage: false,
+          currency: '$',
+          indicators: { dietary: [], spiceLevel: null, allergens: [] }
+        } as ItemContentV2
+      }
+
+      const result = renderTileContent(tile, defaultOptions)
+      const textElements = result.elements.filter(e => e.type === 'text')
+
+      const nameEl = textElements.find(e => e.content === 'Default Item')
+      expect(nameEl?.style.fontSize).toBe(TYPOGRAPHY_TOKENS_V2.fontSize.xsm)
+      expect(nameEl?.style.fontWeight).toBe(TYPOGRAPHY_TOKENS_V2.fontWeight.semibold)
+    })
+  })
+
+  describe('Image Shadow', () => {
+    it('should apply boxShadow to non-circular images', () => {
+      const tile: TileInstanceV2 = {
+        id: 'item-img-1',
+        type: 'ITEM_CARD',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 200,
+        colSpan: 1,
+        rowSpan: 2,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'ITEM_CARD',
+          itemId: 'item-1',
+          sectionId: 'section-1',
+          name: 'Shadow Item',
+          price: 12.00,
+          imageUrl: 'https://example.com/image.jpg',
+          showImage: true,
+          currency: '$',
+          indicators: { dietary: [], spiceLevel: null, allergens: [] }
+        } as ItemContentV2
+      }
+
+      const result = renderTileContent(tile, { ...defaultOptions, imageMode: 'stretch' })
+      const imageEl = result.elements.find(e => e.type === 'image')
+      expect(imageEl?.style.boxShadow).toBe('0 2px 8px rgba(0,0,0,0.1)')
+    })
+
+    it('should not apply boxShadow to circular images', () => {
+      const tile: TileInstanceV2 = {
+        id: 'item-circle-1',
+        type: 'ITEM_CARD',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 200,
+        colSpan: 1,
+        rowSpan: 2,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'ITEM_CARD',
+          itemId: 'item-1',
+          sectionId: 'section-1',
+          name: 'Circle Item',
+          price: 12.00,
+          imageUrl: 'https://example.com/image.jpg',
+          showImage: true,
+          currency: '$',
+          indicators: { dietary: [], spiceLevel: null, allergens: [] }
+        } as ItemContentV2
+      }
+
+      const result = renderTileContent(tile, { ...defaultOptions, imageMode: 'compact-circle' })
+      const imageEl = result.elements.find(e => e.type === 'image')
+      expect(imageEl?.style.boxShadow).toBeUndefined()
+    })
+  })
+
+  describe('Footer Treatment', () => {
+    it('should render footer with background and top border', () => {
+      const tile: TileInstanceV2 = {
+        id: 'footer-1',
+        type: 'FOOTER_INFO',
+        regionId: 'footer',
+        x: 0,
+        y: 0,
+        width: 500,
+        height: 45,
+        colSpan: 1,
+        rowSpan: 1,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'FOOTER_INFO',
+          address: '123 Main St',
+          phone: '+1 555-0123'
+        } as FooterInfoContentV2
+      }
+
+      const result = renderTileContent(tile, defaultOptions)
+
+      // Should have background elements (bg block + border)
+      const bgElements = result.elements.filter(e => e.type === 'background')
+      expect(bgElements.length).toBeGreaterThanOrEqual(2)
+
+      // First should be full-width background
+      expect(bgElements[0].width).toBe(500)
+      expect(bgElements[0].height).toBe(45)
+
+      // Second should be top border (1pt height)
+      expect(bgElements[1].y).toBe(0)
+      expect(bgElements[1].height).toBe(1)
+
+      // Should have text elements for address and phone
+      const textElements = result.elements.filter(e => e.type === 'text')
+      expect(textElements.length).toBeGreaterThanOrEqual(2)
+
+      // Footer text should use xs font size by default
+      textElements.forEach(el => {
+        expect(el.style.fontSize).toBe(TYPOGRAPHY_TOKENS_V2.fontSize.xs)
+      })
+    })
+
+    it('should apply custom footer style from tile', () => {
+      const tile: TileInstanceV2 = {
+        id: 'footer-styled-1',
+        type: 'FOOTER_INFO',
+        regionId: 'footer',
+        x: 0,
+        y: 0,
+        width: 500,
+        height: 45,
+        colSpan: 1,
+        rowSpan: 1,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'FOOTER_INFO',
+          address: '456 Oak Ave'
+        } as FooterInfoContentV2,
+        style: {
+          typography: {
+            color: '#C4A882',
+            contact: { fontSet: 'elegant-serif', fontSize: 'xsm', fontWeight: 'normal' }
+          },
+          border: { width: 2, color: '#5C1A1A', style: 'solid', sides: ['top'] }
+        } as TileStyleV2
+      }
+
+      const result = renderTileContent(tile, defaultOptions)
+      const textElements = result.elements.filter(e => e.type === 'text')
+      
+      expect(textElements[0].style.color).toBe('#C4A882')
+      expect(textElements[0].style.fontSize).toBe(TYPOGRAPHY_TOKENS_V2.fontSize.xsm)
+      expect(textElements[0].style.fontFamily).toContain('Playfair Display')
+
+      // Border should use custom width
+      const bgElements = result.elements.filter(e => e.type === 'background')
+      const borderEl = bgElements.find(e => e.height === 2)
+      expect(borderEl).toBeDefined()
+      expect(borderEl?.style.backgroundColor).toBe('#5C1A1A')
+    })
+  })
+
+  describe('Section Header textTransform', () => {
+    it('should apply textTransform from tile style', () => {
+      const tile: TileInstanceV2 = {
+        id: 'header-1',
+        type: 'SECTION_HEADER',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: 500,
+        height: 30,
+        colSpan: 4,
+        rowSpan: 1,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'SECTION_HEADER',
+          sectionId: 'sec-1',
+          label: 'Appetizers',
+          isContinuation: false
+        } as SectionHeaderContentV2,
+        style: {
+          typography: {
+            fontSet: 'elegant-serif',
+            fontSize: '2xl',
+            fontWeight: 'semibold',
+            textTransform: 'uppercase'
+          }
+        } as TileStyleV2
+      }
+
+      const result = renderTileContent(tile, defaultOptions)
+      const textEl = result.elements.find(e => e.type === 'text' && e.content === 'Appetizers')
+
+      expect(textEl?.style.textTransform).toBe('uppercase')
+      expect(textEl?.style.letterSpacing).toBe(1.5)
+    })
+
+    it('should not apply letterSpacing when textTransform is not uppercase', () => {
+      const tile: TileInstanceV2 = {
+        id: 'header-2',
+        type: 'SECTION_HEADER',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: 500,
+        height: 30,
+        colSpan: 4,
+        rowSpan: 1,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'SECTION_HEADER',
+          sectionId: 'sec-1',
+          label: 'Main Courses',
+          isContinuation: false
+        } as SectionHeaderContentV2,
+        style: {
+          typography: {
+            textTransform: 'capitalize'
+          }
+        } as TileStyleV2
+      }
+
+      const result = renderTileContent(tile, defaultOptions)
+      const textEl = result.elements.find(e => e.type === 'text' && e.content === 'Main Courses')
+
+      expect(textEl?.style.textTransform).toBe('capitalize')
+      expect(textEl?.style.letterSpacing).toBeUndefined()
+    })
+  })
+
+  describe('Spacing Constants', () => {
+    it('should have SPACING_V2 with expected values', () => {
+      expect(SPACING_V2.nameToDesc).toBe(3)
+      expect(SPACING_V2.descToPrice).toBe(6)
+      expect(SPACING_V2.afterImage).toBe(6)
+      expect(SPACING_V2.tilePadding).toBe(8)
+    })
+  })
+
+  describe('extrabold Font Weight', () => {
+    it('should have extrabold weight token at 800', () => {
+      expect(TYPOGRAPHY_TOKENS_V2.fontWeight.extrabold).toBe(800)
+    })
+  })
+
+  describe('Light Palette Textures', () => {
+    it('should have textures registered for light palettes', () => {
+      const lightPalettes = ['elegant-cream', 'warm-earth', 'ocean-breeze', 'forest-green', 'valentines-rose', 'clean-modern']
+      
+      lightPalettes.forEach(paletteId => {
+        const config = TEXTURE_REGISTRY.get(paletteId)
+        expect(config).toBeDefined()
+        expect(config?.paletteId).toBe(paletteId)
+        expect(config?.backgroundColor).toBeTruthy()
+      })
+    })
+
+    it('should use SVG data-URI textures for light palettes', () => {
+      const config = TEXTURE_REGISTRY.get('elegant-cream')
+      const css = config?.webCss('')
+      expect(css?.backgroundImage).toContain('data:image/svg+xml')
+    })
+  })
+
+  describe('Vignette Option', () => {
+    it('should include showVignette in render options', () => {
+      const options: RenderOptionsV2 = {
+        ...defaultOptions,
+        showVignette: true
+      }
+      expect(options.showVignette).toBe(true)
+    })
+
+    it('should default showVignette to undefined', () => {
+      expect(defaultOptions.showVignette).toBeUndefined()
     })
   })
 })

@@ -66,6 +66,14 @@ Textures add a paper-like or premium feel to the page background. They're contro
 | `midnight-gold` | `dark-paper-2.png` | Dark paper with subtle gold gradient overlay |
 | `elegant-dark` | `dark-paper.png` | Dark paper texture |
 | `lunar-red-gold` | `dark-paper-2.png` | Dark paper with gold gradient overlay |
+| `elegant-cream` | Inline SVG data URI | Light cream paper texture |
+| `warm-earth` | Inline SVG data URI | Light earthy paper texture |
+| `ocean-breeze` | Inline SVG data URI | Light coastal paper texture |
+| `forest-green` | Inline SVG data URI | Light natural paper texture |
+| `valentines-rose` | Inline SVG data URI | Light romantic paper texture |
+| `clean-modern` | Inline SVG data URI | Light modern paper texture |
+
+Light palette textures use inline SVG data URIs for efficient rendering without external image files.
 
 ### How it works
 
@@ -426,9 +434,12 @@ interface SelectionConfigV2 {
   fillersEnabled?: boolean     // Enable filler tiles in empty grid cells
   texturesEnabled?: boolean    // Enable background textures (if palette supports it)
   showMenuTitle?: boolean      // Show/hide the title region
+  showVignette?: boolean       // Adds a subtle darkened edge effect to page borders
   colourPaletteId?: string     // Palette ID (falls back to midnight-gold)
 }
 ```
+
+**New Feature: Per-Sub-Element Typography** — Typography blocks now support per-sub-element font control (name, description, price, label, contact). Each sub-element can specify `fontSet`, `fontSize`, `fontWeight`, and `lineHeight` independently. Templates without sub-element typography continue to work — the renderer falls back to sensible defaults for all sub-elements.
 
 ### Layout Lab controls → SelectionConfigV2 mapping
 
@@ -439,6 +450,7 @@ interface SelectionConfigV2 {
 | "Text only (no images)" checkbox | `textOnly` |
 | "Fillers on/off" checkbox | `fillersEnabled` |
 | "Show menu title" checkbox | `showMenuTitle` |
+| "Show vignette" checkbox | `showVignette` |
 
 ### Template ID → YAML file mapping
 

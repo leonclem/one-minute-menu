@@ -189,6 +189,20 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
         ))}
       </div>
       
+      {/* Vignette overlay */}
+      {options.showVignette && (
+        <div
+          className="vignette-overlay"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            boxShadow: 'inset 0 0 80px rgba(0,0,0,0.08)',
+            pointerEvents: 'none',
+            zIndex: 2
+          }}
+        />
+      )}
+
       {/* Page overlays */}
       {options.showRegionBounds && (
         <RegionBoundsOverlay regions={page.regions} pageSpec={pageSpec} scale={scale} />
@@ -351,7 +365,10 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
     WebkitBoxOrient: element.style.maxLines && element.style.maxLines > 1 ? 'vertical' : undefined,
     overflow: element.style.maxLines ? 'hidden' : undefined,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    boxShadow: element.style.boxShadow,
+    textTransform: element.style.textTransform as React.CSSProperties['textTransform'],
+    letterSpacing: element.style.letterSpacing ? element.style.letterSpacing * scale : undefined
   }
 
   switch (element.type) {

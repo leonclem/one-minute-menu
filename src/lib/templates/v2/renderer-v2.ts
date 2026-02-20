@@ -22,6 +22,8 @@ import type {
   ItemIndicatorsV2,
   DietaryIndicator,
   TileStyleV2,
+  TypographyStyleV2,
+  SubElementTypographyV2,
   TextBlockContentV2,
   FooterInfoContentV2,
   FeatureCardContentV2,
@@ -55,6 +57,8 @@ export interface RenderOptionsV2 {
   showDebugInfo?: boolean
   /** Whether we are rendering for export (PDF/Image) */
   isExport?: boolean
+  /** Enable vignette edge effect */
+  showVignette?: boolean
 }
 
 // ============================================================================
@@ -154,13 +158,22 @@ export const TYPOGRAPHY_TOKENS_V2 = {
     normal: 400,
     medium: 500,
     semibold: 600,
-    bold: 700
+    bold: 700,
+    extrabold: 800
   },
   lineHeight: {
     tight: 1.2,
     normal: 1.4,
     relaxed: 1.6
   }
+} as const
+
+/** Spacing constants (in points) for consistent element gaps */
+export const SPACING_V2 = {
+  nameToDesc: 3,
+  descToPrice: 6,
+  afterImage: 6,
+  tilePadding: 8,
 } as const
 
 /** Font size type for template styling */
@@ -406,6 +419,35 @@ export interface TextureConfig {
   backgroundColor: string
 }
 
+// SVG data-URI textures for light palettes (inline, no external files)
+const SVG_TEXTURES = {
+  paperGrain: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="200" height="200" filter="url(#n)" opacity="0.04"/></svg>')}`,
+  linen: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><path d="M0 0h60v1H0zM0 15h60v0.5H0zM0 30h60v1H0zM0 45h60v0.5H0z" fill="#000" opacity="0.03"/><path d="M0 0v60h1V0zM15 0v60h0.5V0zM30 0v60h1V0zM45 0v60h0.5V0z" fill="#000" opacity="0.02"/></svg>')}`,
+  wave: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="60"><path d="M0 30 Q30 10 60 30 Q90 50 120 30" fill="none" stroke="#000" stroke-width="0.5" opacity="0.03"/><path d="M0 45 Q30 25 60 45 Q90 65 120 45" fill="none" stroke="#000" stroke-width="0.5" opacity="0.02"/></svg>')}`,
+  softPaper: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150"><filter id="p"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="150" height="150" filter="url(#p)" opacity="0.03"/></svg>')}`,
+  subtleNoise: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><filter id="s"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100" height="100" filter="url(#s)" opacity="0.02"/></svg>')}`,
+}
+
+function svgTextureConfig(paletteId: string, bgColor: string, svgDataUri: string): TextureConfig {
+  return {
+    paletteId,
+    webCss: () => ({
+      backgroundColor: bgColor,
+      backgroundImage: `url("${svgDataUri}")`,
+      backgroundRepeat: 'repeat',
+      backgroundSize: 'auto',
+    }),
+    webCssExport: () => ({
+      backgroundColor: bgColor,
+      backgroundImage: `url("${svgDataUri}")`,
+      backgroundRepeat: 'repeat',
+      backgroundSize: 'auto',
+    }),
+    pdfTextureFile: '',
+    backgroundColor: bgColor,
+  }
+}
+
 /** Registry mapping palette IDs to their texture configurations */
 export const TEXTURE_REGISTRY = new Map<string, TextureConfig>([
   ['midnight-gold', {
@@ -469,6 +511,12 @@ export const TEXTURE_REGISTRY = new Map<string, TextureConfig>([
     pdfTextureFile: 'dark-paper-2.png',
     backgroundColor: '#2B0A0A',
   }],
+  ['elegant-cream', svgTextureConfig('elegant-cream', '#FDFCF0', SVG_TEXTURES.paperGrain)],
+  ['warm-earth', svgTextureConfig('warm-earth', '#F5F0E8', SVG_TEXTURES.paperGrain)],
+  ['ocean-breeze', svgTextureConfig('ocean-breeze', '#F0F5F8', SVG_TEXTURES.wave)],
+  ['forest-green', svgTextureConfig('forest-green', '#F2F5F0', SVG_TEXTURES.linen)],
+  ['valentines-rose', svgTextureConfig('valentines-rose', '#FFF0F3', SVG_TEXTURES.softPaper)],
+  ['clean-modern', svgTextureConfig('clean-modern', '#FFFFFF', SVG_TEXTURES.subtleNoise)],
 ])
 
 // ============================================================================
@@ -562,6 +610,47 @@ export interface RenderStyle {
   borderRadius?: number
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down'
   objectPosition?: string
+  boxShadow?: string
+  textTransform?: string
+  letterSpacing?: number
+}
+
+// ============================================================================
+// Sub-Element Typography Resolution
+// ============================================================================
+
+interface ResolvedTypography {
+  fontSize: number
+  fontWeight: number
+  fontFamily: string
+  lineHeight: number
+}
+
+/** Resolve sub-element typography from tile YAML style with fallback defaults */
+function resolveSubElementTypography(
+  tileStyle: TileStyleV2 | undefined,
+  element: 'name' | 'description' | 'price' | 'label' | 'contact',
+  defaults: { fontSize: number; fontWeight: number; lineHeight: number }
+): ResolvedTypography {
+  const typo = tileStyle?.typography
+  const sub: SubElementTypographyV2 | undefined = typo?.[element]
+  const fontSetId = sub?.fontSet || typo?.fontSet || 'modern-sans'
+  const fontSizeToken = sub?.fontSize || undefined
+  const fontWeightToken = sub?.fontWeight || undefined
+  const lineHeightToken = sub?.lineHeight || undefined
+
+  return {
+    fontSize: fontSizeToken
+      ? (TYPOGRAPHY_TOKENS_V2.fontSize[fontSizeToken as FontSizeV2] ?? defaults.fontSize)
+      : defaults.fontSize,
+    fontWeight: fontWeightToken
+      ? (TYPOGRAPHY_TOKENS_V2.fontWeight[fontWeightToken as FontWeightV2] ?? defaults.fontWeight)
+      : defaults.fontWeight,
+    fontFamily: getFontFamily(fontSetId),
+    lineHeight: lineHeightToken
+      ? (TYPOGRAPHY_TOKENS_V2.lineHeight[lineHeightToken as LineHeightV2] ?? defaults.lineHeight)
+      : defaults.lineHeight,
+  }
 }
 
 // ============================================================================
@@ -743,6 +832,9 @@ function renderSectionHeaderContent(
     })
   }
   
+  // Apply textTransform from tile style
+  const textTransformVal = tileStyle?.typography?.textTransform || undefined
+
   // Add text element - centered horizontally
   const textWidth = tile.width
   const textX = 0 // Full width, centered via textAlign
@@ -756,9 +848,11 @@ function renderSectionHeaderContent(
       fontSize: TYPOGRAPHY_TOKENS_V2.fontSize[fontSize as FontSizeV2] || TYPOGRAPHY_TOKENS_V2.fontSize['2xl'],
       fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight[fontWeight as FontWeightV2] || TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
       lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight[lineHeight as LineHeightV2] || TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
-      color: palette.colors.sectionHeader,
+      color: tileStyle?.typography?.color || palette.colors.sectionHeader,
       textAlign: textAlign as TextAlignV2,
-      fontFamily
+      fontFamily,
+      textTransform: textTransformVal,
+      letterSpacing: textTransformVal === 'uppercase' ? 1.5 : undefined
     }
   })
 
@@ -772,32 +866,45 @@ function renderItemContent(
 ): TileRenderData {
   const elements: RenderElement[] = []
   const palette = getPalette(options)
-  const padding = 8
+  const padding = SPACING_V2.tilePadding
   let currentY = padding
 
-  const baseLineHeight = TYPOGRAPHY_TOKENS_V2.lineHeight.tight
-  const descLineHeight = TYPOGRAPHY_TOKENS_V2.lineHeight.normal
+  // Resolve per-sub-element typography from tile YAML style
+  const tileStyle = tile.style as TileStyleV2 | undefined
+  const nameTypo = resolveSubElementTypography(tileStyle, 'name', {
+    fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xsm,
+    fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.tight,
+  })
+  const descTypo = resolveSubElementTypography(tileStyle, 'description', {
+    fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xxs,
+    fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.normal,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
+  })
+  const priceTypo = resolveSubElementTypography(tileStyle, 'price', {
+    fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xxxs,
+    fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.tight,
+  })
+
+  const isCircularMode = (options.imageMode || 'stretch') === 'compact-circle'
+  const defaultImageBorderRadius = isCircularMode ? undefined : 8
 
   // Item image (for ITEM_CARD)
   if (content.type === 'ITEM_CARD' && content.showImage) {
     const imageMode: ImageModeV2 = options.imageMode || 'stretch'
     
-    // Compute how much vertical space text elements need below the image.
-    // This mirrors the layout: name (2 lines) + optional desc + price + gaps.
-    const nameReserve = (TYPOGRAPHY_TOKENS_V2.fontSize.xsm * baseLineHeight) * 2.0
+    const nameReserve = (nameTypo.fontSize * nameTypo.lineHeight) * 2.0
     const descReserve = content.description
-      ? (TYPOGRAPHY_TOKENS_V2.fontSize.xxs * descLineHeight * (tile.contentBudget?.descLines ?? 2)) + 4
+      ? (descTypo.fontSize * descTypo.lineHeight * (tile.contentBudget?.descLines ?? 2)) + SPACING_V2.nameToDesc
       : 0
-    const priceReserve = (TYPOGRAPHY_TOKENS_V2.fontSize.xxxs * baseLineHeight) + 4
+    const priceReserve = (priceTypo.fontSize * priceTypo.lineHeight) + SPACING_V2.descToPrice
     const textTotal = nameReserve + descReserve + priceReserve
     
-    // Available height for image = tile height minus top padding, image-bottom gap, and text below
-    const availableForImage = tile.height - padding - 8 - textTotal
+    const availableForImage = tile.height - padding - SPACING_V2.afterImage - textTotal
     
     if (imageMode === 'background') {
-      // Background mode: full-tile image with gradient overlay
       if (content.imageUrl) {
-        // Full tile background image
         elements.push({
           type: 'image',
           x: 0,
@@ -812,7 +919,6 @@ function renderItemContent(
           }
         })
         
-        // Gradient overlay for text readability
         elements.push({
           type: 'background',
           x: 0,
@@ -827,7 +933,6 @@ function renderItemContent(
         })
       }
       
-      // Overlay indicators on the background
       if (content.indicators) {
         const indicatorElements = renderIndicators(
           content.indicators,
@@ -838,41 +943,35 @@ function renderItemContent(
         )
         elements.push(...indicatorElements)
       }
-      
-      // Don't advance currentY - text will render over the background
-      // Text colors will be overridden to white/light below
     } else {
-      // Non-background modes: compute image dimensions based on mode
       let imageWidth: number
       let imageHeight: number
       let imageX: number
-      let borderRadius: number = 4
+      let borderRadius: number = defaultImageBorderRadius ?? 8
       
       if (imageMode === 'compact-rect') {
-        // Compact rectangular: smaller image box, 4:3 aspect, centered
         imageWidth = tile.width * 0.6
-        imageHeight = imageWidth * 0.75 // 4:3 aspect
-        // Cap by available space
+        imageHeight = imageWidth * 0.75
         if (imageHeight > availableForImage) {
           imageHeight = availableForImage
           imageWidth = imageHeight / 0.75
         }
         imageX = (tile.width - imageWidth) / 2
       } else if (imageMode === 'compact-circle') {
-        // Compact circular: square crop with borderRadius 50%
         const diameter = Math.min(tile.width * 0.45, availableForImage)
         imageWidth = diameter
         imageHeight = diameter
         imageX = (tile.width - imageWidth) / 2
-        borderRadius = diameter / 2 // 50% for circle
+        borderRadius = diameter / 2
       } else {
-        // stretch (default): current behavior
         imageWidth = tile.width - (padding * 2)
         const ideal4by3 = imageWidth * 0.75
         imageHeight = Math.max(40, Math.min(ideal4by3, availableForImage))
         imageX = (tile.width - imageWidth) / 2
       }
       
+      const imageShadow = imageMode !== 'compact-circle' ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
+
       if (content.imageUrl) {
         elements.push({
           type: 'image',
@@ -884,11 +983,11 @@ function renderItemContent(
           style: {
             borderRadius,
             objectFit: 'cover',
-            objectPosition: 'center'
+            objectPosition: 'center',
+            boxShadow: imageShadow
           }
         })
       } else {
-        // Placeholder for missing image to preserve grid effect
         elements.push({
           type: 'background',
           x: imageX,
@@ -903,7 +1002,6 @@ function renderItemContent(
         })
       }
 
-      // Overlay indicators on the image
       if (content.indicators) {
         const indicatorElements = renderIndicators(
           content.indicators,
@@ -915,18 +1013,16 @@ function renderItemContent(
         elements.push(...indicatorElements)
       }
 
-      currentY += imageHeight + 8
+      currentY += imageHeight + SPACING_V2.afterImage
     }
   }
 
-  // Item name (now with more space) - centered horizontally
   const imageMode: ImageModeV2 = options.imageMode || 'stretch'
   const isBackgroundMode = imageMode === 'background'
   const nameWidth = tile.width - (padding * 2)
-  const nameFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xsm // Reduced to xsm (11pt) for better fit
   const nameMaxLines = tile.contentBudget?.nameLines ?? 3
-  const nameLineHeight = nameFontSize * baseLineHeight
-  const nameX = (tile.width - nameWidth) / 2 // Center horizontally
+  const nameLineHeight = nameTypo.fontSize * nameTypo.lineHeight
+  const nameX = (tile.width - nameWidth) / 2
 
   elements.push({
     type: 'text',
@@ -936,26 +1032,23 @@ function renderItemContent(
     height: nameLineHeight * nameMaxLines,
     content: content.name,
     style: {
-      fontSize: nameFontSize,
-      fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
-      lineHeight: baseLineHeight,
+      fontSize: nameTypo.fontSize,
+      fontWeight: nameTypo.fontWeight,
+      fontFamily: nameTypo.fontFamily,
+      lineHeight: nameTypo.lineHeight,
       maxLines: nameMaxLines,
       color: isBackgroundMode ? '#ffffff' : palette.colors.itemTitle,
       textAlign: 'center'
     }
   })
 
-  // Increment Y by 2.0 lines of name height to reserve space for multi-line titles 
-  // and prevent overlap with the description row below.
-  currentY += (nameLineHeight * 2.0)
+  currentY += (nameLineHeight * 2.0) + SPACING_V2.nameToDesc
 
-  // Description - centered horizontally
   if (content.description) {
     const descMaxLines = tile.contentBudget?.descLines ?? 3
-    const descFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xxs // 7pt (30% reduction from 10pt)
-    const descHeight = descFontSize * descLineHeight * descMaxLines
+    const descHeight = descTypo.fontSize * descTypo.lineHeight * descMaxLines
     const descWidth = tile.width - (padding * 2)
-    const descX = (tile.width - descWidth) / 2 // Center horizontally
+    const descX = (tile.width - descWidth) / 2
     
     elements.push({
       type: 'text',
@@ -965,47 +1058,45 @@ function renderItemContent(
       height: descHeight,
       content: content.description,
       style: {
-        fontSize: descFontSize,
-        lineHeight: descLineHeight,
+        fontSize: descTypo.fontSize,
+        fontWeight: descTypo.fontWeight,
+        fontFamily: descTypo.fontFamily,
+        lineHeight: descTypo.lineHeight,
         maxLines: descMaxLines,
         color: isBackgroundMode ? '#f5f5f5' : palette.colors.itemDescription,
         textAlign: 'center'
       }
     })
-    // Reserve space for the full description height (3 lines) plus spacing
-    currentY += descHeight + 4
+    currentY += descHeight + SPACING_V2.descToPrice
   }
 
-  // Price (positioned after description) - centered horizontally
-  // Use Currency_Formatter for consistent formatting across all exports
   const currencyCode = content.currency || 'USD'
   const priceText = formatCurrency(content.price, currencyCode)
-  const priceFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xxxs // 6pt (50% reduction from 12pt)
   const priceWidth = tile.width - (padding * 2)
-  const priceX = (tile.width - priceWidth) / 2 // Center horizontally
+  const priceX = (tile.width - priceWidth) / 2
   elements.push({
     type: 'text',
     x: priceX,
     y: currentY,
     width: priceWidth,
-    height: priceFontSize * baseLineHeight,
+    height: priceTypo.fontSize * priceTypo.lineHeight,
     content: priceText,
     style: {
-      fontSize: priceFontSize,
-      fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
-      lineHeight: baseLineHeight,
+      fontSize: priceTypo.fontSize,
+      fontWeight: priceTypo.fontWeight,
+      fontFamily: priceTypo.fontFamily,
+      lineHeight: priceTypo.lineHeight,
       maxLines: 1,
       color: isBackgroundMode ? '#ffffff' : palette.colors.itemPrice,
       textAlign: 'center'
     }
   })
 
-  currentY += (priceFontSize * baseLineHeight) + 4
+  currentY += (priceTypo.fontSize * priceTypo.lineHeight) + 4
 
-  // Indicators fallback (if not already rendered overlayed on image) - centered
   if (content.indicators && !(content.type === 'ITEM_CARD' && content.showImage)) {
     const indicatorWidth = tile.width - (padding * 2)
-    const indicatorX = (tile.width - indicatorWidth) / 2 // Center horizontally
+    const indicatorX = (tile.width - indicatorWidth) / 2
     const indicatorElements = renderIndicators(
       content.indicators,
       indicatorX,
@@ -1034,17 +1125,30 @@ function renderFeatureCardContent(
   const padding = 12
   let currentY = padding
 
-  const baseLineHeight = TYPOGRAPHY_TOKENS_V2.lineHeight.tight
-  const descLineHeight = TYPOGRAPHY_TOKENS_V2.lineHeight.normal
+  const tileStyle = tile.style as TileStyleV2 | undefined
+  const nameTypo = resolveSubElementTypography(tileStyle, 'name', {
+    fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.sm,
+    fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.tight,
+  })
+  const descTypo = resolveSubElementTypography(tileStyle, 'description', {
+    fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xs,
+    fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.normal,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
+  })
+  const priceTypo = resolveSubElementTypography(tileStyle, 'price', {
+    fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xsm,
+    fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.tight,
+  })
 
-  // Featured image (larger than standard ITEM_CARD) - centered
+  const isCircularMode = (options.imageMode || 'stretch') === 'compact-circle'
+
   if (content.showImage) {
     const imageMode: ImageModeV2 = options.imageMode || 'stretch'
     
     if (imageMode === 'background') {
-      // Background mode: full-tile image with gradient overlay
       if (content.imageUrl) {
-        // Full tile background image
         elements.push({
           type: 'image',
           x: 0,
@@ -1059,7 +1163,6 @@ function renderFeatureCardContent(
           }
         })
         
-        // Gradient overlay for text readability
         elements.push({
           type: 'background',
           x: 0,
@@ -1074,7 +1177,6 @@ function renderFeatureCardContent(
         })
       }
       
-      // Overlay indicators on the background
       if (content.indicators) {
         const indicatorElements = renderIndicators(
           content.indicators,
@@ -1085,40 +1187,36 @@ function renderFeatureCardContent(
         )
         elements.push(...indicatorElements)
       }
-      
-      // Don't advance currentY - text will render over the background
     } else {
-      // Non-background modes: compute image dimensions based on mode
       let imageWidth: number
       let imageHeight: number
       let imageX: number
-      let borderRadius: number = 6
+      let borderRadius: number = isCircularMode ? 0 : 8
       
       if (imageMode === 'compact-rect') {
-        // Compact rectangular: smaller image box, 4:3 aspect, centered
         imageWidth = tile.width * 0.6
-        imageHeight = imageWidth * 0.75 // 4:3 aspect
-        const availableForImage = tile.height - padding - 10 - 80 // Reserve space for text
+        imageHeight = imageWidth * 0.75
+        const availableForImage = tile.height - padding - 10 - 80
         if (imageHeight > availableForImage) {
           imageHeight = availableForImage
           imageWidth = imageHeight / 0.75
         }
         imageX = (tile.width - imageWidth) / 2
       } else if (imageMode === 'compact-circle') {
-        // Compact circular: square crop with borderRadius 50%
-        const availableForImage = tile.height - padding - 10 - 80 // Reserve space for text
+        const availableForImage = tile.height - padding - 10 - 80
         const diameter = Math.min(tile.width * 0.45, availableForImage)
         imageWidth = diameter
         imageHeight = diameter
         imageX = (tile.width - imageWidth) / 2
-        borderRadius = diameter / 2 // 50% for circle
+        borderRadius = diameter / 2
       } else {
-        // stretch (default): current behavior
         imageHeight = tile.contentBudget?.imageBoxHeight ?? 100
         imageWidth = tile.width - (padding * 2)
         imageX = (tile.width - imageWidth) / 2
       }
       
+      const imageShadow = !isCircularMode ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
+
       if (content.imageUrl) {
         elements.push({
           type: 'image',
@@ -1130,7 +1228,8 @@ function renderFeatureCardContent(
           style: {
             borderRadius,
             objectFit: 'cover',
-            objectPosition: 'center'
+            objectPosition: 'center',
+            boxShadow: imageShadow
           }
         })
       } else {
@@ -1148,7 +1247,6 @@ function renderFeatureCardContent(
         })
       }
 
-      // Overlay indicators on the image
       if (content.indicators) {
         const indicatorElements = renderIndicators(
           content.indicators,
@@ -1160,18 +1258,16 @@ function renderFeatureCardContent(
         elements.push(...indicatorElements)
       }
 
-      currentY += imageHeight + 10
+      currentY += imageHeight + SPACING_V2.afterImage + 4
     }
   }
 
-  // Item name — larger font for featured prominence - centered
   const imageMode: ImageModeV2 = options.imageMode || 'stretch'
   const isBackgroundMode = imageMode === 'background'
   const nameWidth = tile.width - (padding * 2)
-  const nameFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.sm
   const nameMaxLines = tile.contentBudget?.nameLines ?? 2
-  const nameLineHeight = nameFontSize * baseLineHeight
-  const nameX = (tile.width - nameWidth) / 2 // Center horizontally
+  const nameLineHeight = nameTypo.fontSize * nameTypo.lineHeight
+  const nameX = (tile.width - nameWidth) / 2
 
   elements.push({
     type: 'text',
@@ -1181,24 +1277,23 @@ function renderFeatureCardContent(
     height: nameLineHeight * nameMaxLines,
     content: content.name,
     style: {
-      fontSize: nameFontSize,
-      fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
-      lineHeight: baseLineHeight,
+      fontSize: nameTypo.fontSize,
+      fontWeight: nameTypo.fontWeight,
+      fontFamily: nameTypo.fontFamily,
+      lineHeight: nameTypo.lineHeight,
       maxLines: nameMaxLines,
       color: isBackgroundMode ? '#ffffff' : palette.colors.itemTitle,
       textAlign: 'center'
     }
   })
 
-  currentY += nameLineHeight * 2.0
+  currentY += nameLineHeight * 2.0 + SPACING_V2.nameToDesc
 
-  // Description — slightly larger than standard items - centered
   if (content.description) {
     const descMaxLines = tile.contentBudget?.descLines ?? 3
-    const descFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xs
-    const descHeight = descFontSize * descLineHeight * descMaxLines
+    const descHeight = descTypo.fontSize * descTypo.lineHeight * descMaxLines
     const descWidth = tile.width - (padding * 2)
-    const descX = (tile.width - descWidth) / 2 // Center horizontally
+    const descX = (tile.width - descWidth) / 2
 
     elements.push({
       type: 'text',
@@ -1208,46 +1303,46 @@ function renderFeatureCardContent(
       height: descHeight,
       content: content.description,
       style: {
-        fontSize: descFontSize,
-        lineHeight: descLineHeight,
+        fontSize: descTypo.fontSize,
+        fontWeight: descTypo.fontWeight,
+        fontFamily: descTypo.fontFamily,
+        lineHeight: descTypo.lineHeight,
         maxLines: descMaxLines,
         color: isBackgroundMode ? '#f5f5f5' : palette.colors.itemDescription,
         textAlign: 'center'
       }
     })
-    currentY += descHeight + 6
+    currentY += descHeight + SPACING_V2.descToPrice
   }
 
-  // Price — larger and bolder for featured items - centered
   const currencyCode = content.currency || 'USD'
   const priceText = formatCurrency(content.price, currencyCode)
-  const priceFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xsm
   const priceWidth = tile.width - (padding * 2)
-  const priceX = (tile.width - priceWidth) / 2 // Center horizontally
+  const priceX = (tile.width - priceWidth) / 2
 
   elements.push({
     type: 'text',
     x: priceX,
     y: currentY,
     width: priceWidth,
-    height: priceFontSize * baseLineHeight,
+    height: priceTypo.fontSize * priceTypo.lineHeight,
     content: priceText,
     style: {
-      fontSize: priceFontSize,
-      fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
-      lineHeight: baseLineHeight,
+      fontSize: priceTypo.fontSize,
+      fontWeight: priceTypo.fontWeight,
+      fontFamily: priceTypo.fontFamily,
+      lineHeight: priceTypo.lineHeight,
       maxLines: 1,
       color: isBackgroundMode ? '#ffffff' : palette.colors.itemPrice,
       textAlign: 'center'
     }
   })
 
-  currentY += (priceFontSize * baseLineHeight) + 6
+  currentY += (priceTypo.fontSize * priceTypo.lineHeight) + SPACING_V2.descToPrice
 
-  // Indicators fallback (if not already rendered overlayed on image) - centered
   if (content.indicators && !content.showImage) {
     const indicatorWidth = tile.width - (padding * 2)
-    const indicatorX = (tile.width - indicatorWidth) / 2 // Center horizontally
+    const indicatorX = (tile.width - indicatorWidth) / 2
     const indicatorElements = renderIndicators(
       content.indicators,
       indicatorX,
@@ -1456,10 +1551,46 @@ function renderFooterInfoContent(
 ): TileRenderData {
   const elements: RenderElement[] = []
   const palette = getPalette(options)
-  const padding = 8
-  const fontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xxs
-  const lineHeight = 1.4
-  let currentY = padding
+  const tileStyle = tile.style as TileStyleV2 | undefined
+  const padding = SPACING_V2.tilePadding
+
+  // Footer background block
+  const bgColor = tileStyle?.background?.color || palette.colors.border.light
+  elements.push({
+    type: 'background',
+    x: 0,
+    y: 0,
+    width: tile.width,
+    height: tile.height,
+    content: '',
+    style: {
+      backgroundColor: bgColor,
+      opacity: tileStyle?.background?.color ? 1 : 0.08,
+      borderRadius: tileStyle?.background?.borderRadius || 0
+    }
+  })
+
+  // Top border
+  const borderColor = tileStyle?.border?.color || palette.colors.border.light
+  const borderWidth = tileStyle?.border?.width || 1
+  elements.push({
+    type: 'background',
+    x: 0,
+    y: 0,
+    width: tile.width,
+    height: borderWidth,
+    content: '',
+    style: { backgroundColor: borderColor }
+  })
+
+  const contactTypo = resolveSubElementTypography(tileStyle, 'contact', {
+    fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xs,
+    fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.normal,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
+  })
+  const fontSize = contactTypo.fontSize
+  const lineHeight = contactTypo.lineHeight
+  let currentY = padding + borderWidth + 2
 
   const addText = (text: string, bold = false) => {
     elements.push({
@@ -1470,8 +1601,10 @@ function renderFooterInfoContent(
       content: text,
       style: {
         fontSize,
-        fontWeight: bold ? TYPOGRAPHY_TOKENS_V2.fontWeight.semibold : TYPOGRAPHY_TOKENS_V2.fontWeight.normal,
-        color: palette.colors.textMuted,
+        fontWeight: bold ? TYPOGRAPHY_TOKENS_V2.fontWeight.semibold : contactTypo.fontWeight,
+        fontFamily: contactTypo.fontFamily,
+        lineHeight,
+        color: tileStyle?.typography?.color || palette.colors.textMuted,
         textAlign: 'center',
       }
     })

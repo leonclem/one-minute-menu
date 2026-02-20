@@ -86,14 +86,15 @@ async function handleNewTemplateEngine(
   const layoutDocument = await generateLayoutV2({
     menu: engineMenu,
     templateId,
-    selection: {
-      textOnly: finalConfiguration.textOnly || false,
-      fillersEnabled: finalConfiguration.fillersEnabled || false,
-      texturesEnabled: finalConfiguration.texturesEnabled !== false, // default true
-      showMenuTitle: finalConfiguration.showMenuTitle || false,
-      colourPaletteId: finalConfiguration.colourPaletteId || finalConfiguration.paletteId,
-      imageMode: finalConfiguration.imageMode || 'stretch'
-    },
+      selection: {
+        textOnly: finalConfiguration.textOnly || false,
+        fillersEnabled: finalConfiguration.fillersEnabled || false,
+        texturesEnabled: finalConfiguration.texturesEnabled !== false, // default true
+        showMenuTitle: finalConfiguration.showMenuTitle || false,
+        showVignette: finalConfiguration.showVignette || false,
+        colourPaletteId: finalConfiguration.colourPaletteId || finalConfiguration.paletteId,
+        imageMode: finalConfiguration.imageMode || 'stretch'
+      },
     debug: false
   })
   
@@ -123,7 +124,8 @@ async function handleNewTemplateEngine(
     printBackground: true,
     texturesEnabled: finalConfiguration.texturesEnabled !== false,
     showRegionBounds: false,
-    imageMode: finalConfiguration.imageMode || 'stretch'
+    imageMode: finalConfiguration.imageMode || 'stretch',
+    showVignette: finalConfiguration.showVignette || false
   })
   metricsBuilder.markExportEnd()
   

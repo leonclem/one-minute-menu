@@ -32,6 +32,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [textOnly, setTextOnly] = useState(false)
   const [texturesEnabled, setTexturesEnabled] = useState(true)
   const [showMenuTitle, setShowMenuTitle] = useState(false)
+  const [showVignette, setShowVignette] = useState(false)
   
   // Preview State
   const [layoutDocument, setLayoutDocument] = useState<LayoutDocumentV2 | null>(null)
@@ -119,6 +120,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               setTexturesEnabled(config.texturesEnabled !== false)
               setShowMenuTitle(config.showMenuTitle || false)
               setImageMode(config.imageMode || 'stretch')
+              setShowVignette(config.showVignette || false)
             }
           }
         } catch (e) {
@@ -177,6 +179,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         textOnly,
         texturesEnabled,
         showMenuTitle,
+        showVignette,
         engineVersion: 'v2'
       }
 
@@ -199,6 +202,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           textOnly: textOnly.toString(),
           texturesEnabled: texturesEnabled.toString(),
           showMenuTitle: showMenuTitle.toString(),
+          showVignette: showVignette.toString(),
           engineVersion: 'v2'
         })
         resp = await fetch(`/api/menus/${menuId}/layout?${params.toString()}`)
@@ -221,7 +225,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     } finally {
       setPreviewLoading(false)
     }
-  }, [menu, menuId, templateId, paletteId, imageMode, fillersEnabled, textOnly, texturesEnabled, showMenuTitle, isDemoUser, currentPageIndex])
+  }, [menu, menuId, templateId, paletteId, imageMode, fillersEnabled, textOnly, texturesEnabled, showMenuTitle, showVignette, isDemoUser, currentPageIndex])
 
   // Debounced preview update
   useEffect(() => {
@@ -244,6 +248,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         fillersEnabled,
         texturesEnabled,
         showMenuTitle,
+        showVignette,
         colourPaletteId: paletteId,
         imageMode
       }
@@ -307,6 +312,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         fillersEnabled,
         texturesEnabled,
         showMenuTitle,
+        showVignette,
         palette: palette,
         imageMode
       }
@@ -477,6 +483,15 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                       className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
                     />
                   </label>
+                  <label className="flex items-center justify-between cursor-pointer group">
+                    <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Vignette edges</span>
+                    <input
+                      type="checkbox"
+                      checked={showVignette}
+                      onChange={(e) => setShowVignette(e.target.checked)}
+                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
+                    />
+                  </label>
                 </div>
               </div>
             </div>
@@ -559,6 +574,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                       palette,
                       texturesEnabled,
                       imageMode,
+                      showVignette,
                       showGridOverlay: false,
                       showRegionBounds: false,
                       showTileIds: false,

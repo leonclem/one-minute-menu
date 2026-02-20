@@ -12,6 +12,16 @@ import { z } from 'zod'
 // =============================================================================
 
 /**
+ * Schema for per-sub-element typography (name, description, price, etc.)
+ */
+export const SubElementTypographySchemaV2 = z.object({
+  fontSet: z.string().optional(),
+  fontSize: z.string().optional(),
+  fontWeight: z.string().optional(),
+  lineHeight: z.string().optional()
+})
+
+/**
  * Schema for typography styling
  */
 export const TypographyStyleSchemaV2 = z.object({
@@ -19,7 +29,14 @@ export const TypographyStyleSchemaV2 = z.object({
   fontSize: z.string().optional(),
   fontWeight: z.string().optional(),
   textAlign: z.enum(['left', 'center', 'right']).optional(),
-  lineHeight: z.string().optional()
+  lineHeight: z.string().optional(),
+  textTransform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).optional(),
+  color: z.string().optional(),
+  name: SubElementTypographySchemaV2.optional(),
+  description: SubElementTypographySchemaV2.optional(),
+  price: SubElementTypographySchemaV2.optional(),
+  label: SubElementTypographySchemaV2.optional(),
+  contact: SubElementTypographySchemaV2.optional()
 })
 
 /**
@@ -179,6 +196,7 @@ export const TemplateSchemaV2 = z.object({
     FILLER: z.array(FillerTileSchemaV2).optional(),
     FEATURE_CARD: TileVariantSchemaV2.optional(),
     DECORATIVE_DIVIDER: TileVariantSchemaV2.optional(),
+    FOOTER_INFO: TileVariantSchemaV2.optional(),
   }),
   
   dividers: z.object({

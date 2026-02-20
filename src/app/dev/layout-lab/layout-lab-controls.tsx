@@ -299,6 +299,18 @@ export function LayoutLabControls({
           <p className="text-xs text-gray-500 ml-6">
             Display the menu name in the title region. When disabled, space is redistributed to menu items.
           </p>
+          
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.showVignette}
+              onChange={(e) => onStateChange({ showVignette: e.target.checked })}
+            />
+            <span className="text-sm">Vignette edges</span>
+          </label>
+          <p className="text-xs text-gray-500 ml-6">
+            Adds a subtle darkened edge effect to page borders for a premium feel.
+          </p>
         </CardContent>
       </Card>
       

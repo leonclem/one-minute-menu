@@ -29,6 +29,7 @@ interface GenerateRequest {
     textOnly?: boolean
     texturesEnabled?: boolean
     showMenuTitle?: boolean
+    showVignette?: boolean
     imageMode?: string
   }
 }
@@ -133,6 +134,7 @@ export async function POST(request: NextRequest) {
           fillersEnabled: options.fillersEnabled,
           texturesEnabled: options.texturesEnabled,
           showMenuTitle: options.showMenuTitle,
+          showVignette: options.showVignette,
           imageMode: options.imageMode as any || 'stretch'
         },
         debug: true // Enable debug info for Layout Lab

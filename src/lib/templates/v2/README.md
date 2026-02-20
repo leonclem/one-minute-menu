@@ -2,6 +2,17 @@
 
 The GridMenu V2 Layout Engine is a complete rewrite of the menu layout system with a PDF-first architecture. It introduces region-based page partitioning, streaming pagination, a declarative template DSL, and support for allergen/dietary indicators.
 
+## Documentation map
+
+| Doc | Purpose |
+|-----|--------|
+| **README.md** (this file) | Architecture, API, flow, and how to run/test. |
+| [**TEMPLATE_AUTHORING_GUIDE.md**](./TEMPLATE_AUTHORING_GUIDE.md) | How to create a new template: page, regions, grid, content budget, pitfalls. |
+| [**STYLING_GUIDE.md**](./STYLING_GUIDE.md) | Styling options: fonts, typography, sub-elements, spacing, borders, backgrounds. |
+| [**LIMITATIONS.md**](./LIMITATIONS.md) | What the engine cannot do (layout, styling, typography, export). Read this before designing a new template. |
+
+Start with this README for the big picture; use the authoring guide when creating or editing a template; use the styling guide for look-and-feel; use the limitations doc to avoid unsupported designs.
+
 ## Architecture Overview
 
 V2 replaces the capacity-based pre-calculation approach of V1 with streaming pagination: "place tiles until constraints are violated, then paginate." This eliminates complex capacity math that caused edge-case bugs in V1.
@@ -173,6 +184,10 @@ itemIndicators:
     vegetarian: "V"
     vegan: "VG"
 ```
+
+**Typography blocks now support per-sub-element font control (name, description, price, label, contact). Each sub-element can specify fontSet, fontSize, fontWeight, and lineHeight independently.**
+
+**Templates without sub-element typography continue to work - the renderer falls back to sensible defaults for all sub-elements.**
 
 ### Template Schema Validation
 
@@ -489,10 +504,11 @@ V2 coexists with V1 under feature flag:
 
 ### Adding New Templates
 
-1. Create YAML file in `templates/` directory
-2. Follow existing schema structure
-3. Test with Layout Lab
-4. Add to template selector
+1. Read [LIMITATIONS.md](./LIMITATIONS.md) so you know what is not possible.
+2. Use [TEMPLATE_AUTHORING_GUIDE.md](./TEMPLATE_AUTHORING_GUIDE.md) and copy an existing template from `templates/`.
+3. Set page, regions, body grid, and each tile’s `contentBudget` (for body tiles, `totalHeight` must equal footprint: `rowSpan × rowHeight + (rowSpan − 1) × gapY`).
+4. Optionally style tiles with [STYLING_GUIDE.md](./STYLING_GUIDE.md) (fonts, borders, backgrounds, sub-element typography).
+5. Test in Layout Lab and add to the template selector.
 
 ### Adding New Tile Types
 

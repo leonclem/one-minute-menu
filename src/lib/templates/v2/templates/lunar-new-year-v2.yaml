@@ -57,18 +57,17 @@ tiles:
         fontSet: "elegant-serif"
         fontSize: "xl"
         fontWeight: "bold"
-        textAlign: "left"
+        textAlign: "center"
         lineHeight: "normal"
+        textTransform: "uppercase"
         color: "#D4A017"
       spacing:
-        paddingLeft: 8
-        paddingTop: 0
-        paddingBottom: 0
-      border:
-        width: 0.5
-        color: "#7A2E2E"
-        style: "solid"
-        sides: ["bottom"]
+        paddingLeft: 0
+        paddingTop: 4
+        paddingBottom: 4
+      background:
+        color: "#5C1A1A"
+        borderRadius: 4
     contentBudget:
       nameLines: 1
       descLines: 0
@@ -81,6 +80,20 @@ tiles:
   ITEM_CARD:
     region: body
     rowSpan: 2
+    style:
+      typography:
+        name:
+          fontSet: "elegant-serif"
+          fontSize: "xsm"
+          fontWeight: "bold"
+        description:
+          fontSet: "modern-sans"
+          fontSize: "xxs"
+          fontWeight: "normal"
+        price:
+          fontSet: "modern-sans"
+          fontSize: "xs"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -93,6 +106,20 @@ tiles:
   ITEM_TEXT_ROW:
     region: body
     rowSpan: 1
+    style:
+      typography:
+        name:
+          fontSet: "elegant-serif"
+          fontSize: "xsm"
+          fontWeight: "bold"
+        description:
+          fontSet: "modern-sans"
+          fontSize: "xxs"
+          fontWeight: "normal"
+        price:
+          fontSet: "modern-sans"
+          fontSize: "xs"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
@@ -106,6 +133,20 @@ tiles:
     region: body
     colSpan: 2
     rowSpan: 3
+    style:
+      typography:
+        name:
+          fontSet: "elegant-serif"
+          fontSize: "sm"
+          fontWeight: "bold"
+        description:
+          fontSet: "modern-sans"
+          fontSize: "xsm"
+          fontWeight: "normal"
+        price:
+          fontSet: "modern-sans"
+          fontSize: "sm"
+          fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 3
@@ -127,6 +168,29 @@ tiles:
       paddingTop: 4
       paddingBottom: 4
       totalHeight: 70
+
+  FOOTER_INFO:
+    region: footer
+    style:
+      typography:
+        color: "#C4A882"
+        contact:
+          fontSet: "modern-sans"
+          fontSize: "xs"
+          fontWeight: "normal"
+      border:
+        width: 1
+        color: "#5C1A1A"
+        style: "solid"
+        sides: ["top"]
+    contentBudget:
+      nameLines: 0
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 4
+      paddingBottom: 4
+      totalHeight: 45
 
 dividers:
   enabled: true

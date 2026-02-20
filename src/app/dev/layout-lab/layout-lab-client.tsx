@@ -28,6 +28,7 @@ export interface LayoutLabState {
   textOnly: boolean
   texturesEnabled: boolean
   showMenuTitle: boolean
+  showVignette: boolean
   imageMode: ImageModeV2
   
   // Data
@@ -49,6 +50,7 @@ const initialState: LayoutLabState = {
   textOnly: false,
   texturesEnabled: true, // Enable textures by default to showcase the feature
   showMenuTitle: false, // Hide menu title by default
+  showVignette: false,
   imageMode: 'stretch',
   layoutDocument: null,
   isGenerating: false,
@@ -85,6 +87,7 @@ export function LayoutLabClient() {
             texturesEnabled: currentState.texturesEnabled,
             showRegionBounds: currentState.showRegionBounds,
             showMenuTitle: currentState.showMenuTitle,
+            showVignette: currentState.showVignette,
             imageMode: currentState.imageMode
           }
         })

@@ -362,6 +362,7 @@ export class JobProcessor {
           texturesEnabled: config?.texturesEnabled !== false,
           textOnly: config?.textOnly || false,
           showMenuTitle: config?.showMenuTitle || false,
+          showVignette: config?.showVignette || false,
           imageMode: config?.imageMode || 'stretch',
         }
       })
@@ -379,6 +380,7 @@ export class JobProcessor {
         paletteId: config?.palette?.id || config?.colourPaletteId,
         texturesEnabled: config?.texturesEnabled !== false,
         imageMode: config?.imageMode || 'stretch',
+        showVignette: config?.showVignette || false,
       })
 
       return Buffer.from(result.pdfBytes)

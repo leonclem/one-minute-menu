@@ -261,6 +261,8 @@ export function createFooterInfoTile(
   // Use footer region height from template if available, otherwise default to 40
   const height = template.regions.footer?.height || 40 
   
+  const footerVariant = template.tiles.FOOTER_INFO
+
   return {
     id: `footer-info-${menu.id}`,
     type: 'FOOTER_INFO',
@@ -277,6 +279,7 @@ export function createFooterInfoTile(
       email: menu.metadata.venueInfo?.email,
       socialMedia: menu.metadata.venueInfo?.socialMedia,
     },
+    style: footerVariant?.style,
   }
 }
 
@@ -600,13 +603,13 @@ export function applySectionLastRowCentering(
     }
     
     // For each row, check if it's incomplete and center it if needed
-    for (const [rowY, rowItems] of itemsByRow.entries()) {
+    itemsByRow.forEach((rowItems, rowY) => {
       // Calculate occupied columns in this row
       const occupiedCols = rowItems.reduce((sum, t) => sum + t.colSpan, 0)
       
       // If row is full, no centering needed
       if (occupiedCols >= cols) {
-        continue
+        return
       }
       
       // Calculate center offset for this incomplete row
@@ -615,7 +618,7 @@ export function applySectionLastRowCentering(
       const offsetXPts = fractionalOffset * (cellWidth + gapX)
       
       if (offsetXPts === 0) {
-        continue
+        return
       }
       
       // Apply offset to all items in this row.
@@ -625,7 +628,7 @@ export function applySectionLastRowCentering(
         tile.x = baseX + offsetXPts
         // Note: gridCol is not updated for fractional offsets
       }
-    }
+    })
   }
 }
 
