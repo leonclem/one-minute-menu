@@ -70,18 +70,22 @@ async function handleV2TemplateEngine(
   
   const configuration = selectionData?.configuration || {}
   
+  const rawImageMode = configuration.imageMode || 'stretch'
+  const imageModeForEngine = rawImageMode === 'none' ? 'stretch' : rawImageMode
+  const textOnly = configuration.textOnly || rawImageMode === 'none'
+
   // Generate V2 layout
   const layoutDocument = await generateLayoutV2({
     menu: engineMenu,
     templateId,
     selection: {
-      textOnly: configuration.textOnly || false,
-      fillersEnabled: configuration.fillersEnabled || false,
+      textOnly,
+      fillersEnabled: configuration.fillersEnabled !== false,
       texturesEnabled: configuration.texturesEnabled !== false,
       showMenuTitle: configuration.showMenuTitle || false,
-      showVignette: configuration.showVignette || false,
+      showVignette: configuration.showVignette !== false,
       colourPaletteId: configuration.colourPaletteId || configuration.paletteId,
-      imageMode: configuration.imageMode || 'stretch'
+      imageMode: imageModeForEngine
     },
     debug: false
   })
@@ -113,8 +117,13 @@ async function handleV2TemplateEngine(
       isExport: false, // Set to false to show page boundaries in web view
       texturesEnabled: configuration.texturesEnabled !== false,
       textureDataURL,
-      imageMode: configuration.imageMode || 'stretch',
-      showVignette: configuration.showVignette || false,
+      textureId: configuration.textureId,
+      imageMode: imageModeForEngine,
+      showVignette: configuration.showVignette !== false,
+      itemBorders: configuration.itemBorders === true,
+      itemDropShadow: configuration.itemDropShadow === true,
+      fillItemTiles: configuration.fillItemTiles === true,
+      spacerTilePatternId: configuration.spacerTilePatternId,
       showGridOverlay: false,
       showRegionBounds: false,
       showTileIds: false

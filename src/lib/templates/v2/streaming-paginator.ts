@@ -43,6 +43,7 @@ import {
   initPlacementContext,
 } from './tile-placer'
 import { calculateTileHeight, calculateMaxRows } from './engine-types-v2'
+import { getItemSlotPositions, hashString } from './filler-manager-v2'
 
 // =============================================================================
 // Placement Context Extension
@@ -175,8 +176,11 @@ export function fitsInCurrentPage(
 export function finalizePage(ctx: StreamingContext): void {
   logPlacement(ctx, 'finalize_page')
   
-  // Apply last row balancing to current page
-  applyLastRowBalancing(ctx.currentPage, ctx.template)
+  // When fillers are enabled (template or selection), do not center so empty cells remain for fillers
+  const fillersEnabled = ctx.selection?.fillersEnabled ?? ctx.template.filler.enabled
+  if (!fillersEnabled) {
+    applyLastRowBalancing(ctx.currentPage, ctx.template)
+  }
 }
 
 /**
@@ -473,12 +477,40 @@ export function streamingPaginate(
     // Advance to next row (section headers always start new rows)
     advanceToNextRow(ctx, headerTile.rowSpan)
     
+    const fillersEnabled = ctx.selection?.fillersEnabled ?? template.filler.enabled
+    const { cols, rowHeight, gapY } = template.body.container
+    const maxRows = calculateMaxRows(bodyRegion.height, rowHeight, gapY)
+
     // Process items in this section in sortOrder
     const sortedItems = [...section.items].sort((a, b) => a.sortOrder - b.sortOrder)
     const maxFeatured = template.policies.maxFeaturedPerSection
+
+    // Determine common item rowSpan for slot-based placement (card vs textOnly mode)
+    const commonItemRowSpan = selection?.textOnly
+      ? (template.tiles.ITEM_TEXT_ROW?.rowSpan ?? 1)
+      : (template.tiles.ITEM_CARD?.rowSpan ?? 1)
+
+    // Pre-scan: count how many items will be featured (multi-col FEATURE_CARDs
+    // are incompatible with single-cell slot grid, so fall back to sequential)
+    let previewFeaturedCount = 0
+    const hasFeaturedItems = sortedItems.some(item => {
+      if (!item.isFeatured || !template.tiles.FEATURE_CARD) return false
+      if (maxFeatured != null && previewFeaturedCount >= maxFeatured) return false
+      previewFeaturedCount++
+      return true
+    })
+
+    // Slot-based interspersion: enabled when fillers are on AND no featured items
+    // (featured items use multi-col/multi-row tiles that break the uniform slot grid)
+    const sectionBodyStartRow = ctx.currentRow
+    const itemSlots = fillersEnabled && !hasFeaturedItems
+      ? getItemSlotPositions(section.items.length, cols, hashString(`${menu.id}-${template.id}-${section.id}`))
+      : null
+    let logicalRowOffset = 0
+
     let featuredCount = 0
-    for (const item of sortedItems) {
-      // Enforce per-section featured limit: demote excess featured items to regular cards
+    for (let itemIndex = 0; itemIndex < sortedItems.length; itemIndex++) {
+      const item = sortedItems[itemIndex]
       let effectiveItem = item
       if (item.isFeatured && maxFeatured != null && featuredCount >= maxFeatured) {
         effectiveItem = { ...item, isFeatured: false }
@@ -487,44 +519,81 @@ export function streamingPaginate(
       if (effectiveItem.isFeatured && itemTile.type === 'FEATURE_CARD') {
         featuredCount++
       }
-      
-      // Check if item fits on current page (passing colSpan for accurate wrap prediction)
-      if (!fitsInCurrentPage(ctx, itemTile.height, itemTile.colSpan)) {
-        // Finalize current page and start new one
-        finalizePage(ctx)
-        startNewPage(ctx, 'CONTINUATION')
-        placeStaticTiles(ctx, menu, 'CONTINUATION')
-        
-        // Get body region from new page
-        const newBodyRegion = getBodyRegion(ctx.currentPage.regions)
-        
-        // Repeat section header if policy enabled
-        if (template.policies.repeatSectionHeaderOnContinuation) {
-          const contHeader = createSectionHeaderTile(section, template, true)
-          // Continuation headers also start new rows - should already be at start since it's a new page
-          const placedContHeader = placeTile(ctx, ctx.currentPage, contHeader, newBodyRegion, template)
-          logPlacement(ctx, 'placed', placedContHeader.id, 'Continuation header')
-          advanceToNextRow(ctx, contHeader.rowSpan)
+
+      if (itemSlots) {
+        // Slot-based: map logical slot row to actual body row
+        const slot = itemSlots[itemIndex]
+        const logicalRow = slot.row - logicalRowOffset
+        let actualRow = sectionBodyStartRow + logicalRow * commonItemRowSpan
+
+        // Handle page breaks when the target row exceeds page capacity
+        while (actualRow + commonItemRowSpan > maxRows) {
+          finalizePage(ctx)
+          startNewPage(ctx, 'CONTINUATION')
+          placeStaticTiles(ctx, menu, 'CONTINUATION')
+          const newBodyRegion = getBodyRegion(ctx.currentPage.regions)
+          let contHeaderRows = 0
+          if (template.policies.repeatSectionHeaderOnContinuation) {
+            const contHeader = createSectionHeaderTile(section, template, true)
+            if (ctx.currentCol !== 0) advanceToNextRow(ctx, ctx.currentRowMaxSpan)
+            const placedContHeader = placeTile(ctx, ctx.currentPage, contHeader, newBodyRegion, template)
+            logPlacement(ctx, 'placed', placedContHeader.id, 'Continuation header')
+            advanceToNextRow(ctx, contHeader.rowSpan)
+            contHeaderRows = contHeader.rowSpan
+          }
+          // Advance logical offset so remaining slots map to the new page
+          const logicalRowsOnPrevPage = Math.floor((maxRows - sectionBodyStartRow) / commonItemRowSpan)
+          logicalRowOffset += logicalRowsOnPrevPage
+          // New page: items start after continuation header
+          const newLogicalRow = slot.row - logicalRowOffset
+          actualRow = contHeaderRows + newLogicalRow * commonItemRowSpan
         }
-        
-        // Place item tile on new page
-        const placedItem = placeTile(ctx, ctx.currentPage, itemTile, newBodyRegion, template)
-        logPlacement(ctx, 'placed', placedItem.id, 'Item tile')
-        
-        // Advance position
-        advancePosition(ctx, placedItem, template)
-      } else {
-        // Place item tile on current page
+
+        ctx.currentRow = actualRow
+        ctx.currentCol = slot.col
+        ctx.currentRowTiles = []
+        ctx.currentRowMaxSpan = commonItemRowSpan
+
         const placedItem = placeTile(ctx, ctx.currentPage, itemTile, bodyRegion, template)
-        logPlacement(ctx, 'placed', placedItem.id, 'Item tile')
-        
-        // Advance position
-        advancePosition(ctx, placedItem, template)
+        logPlacement(ctx, 'placed', placedItem.id, 'Item tile (slot)')
+      } else {
+        // Sequential placement (no slots): original flow
+        if (!fitsInCurrentPage(ctx, itemTile.height, itemTile.colSpan)) {
+          finalizePage(ctx)
+          startNewPage(ctx, 'CONTINUATION')
+          placeStaticTiles(ctx, menu, 'CONTINUATION')
+          const newBodyRegion = getBodyRegion(ctx.currentPage.regions)
+          if (template.policies.repeatSectionHeaderOnContinuation) {
+            const contHeader = createSectionHeaderTile(section, template, true)
+            const placedContHeader = placeTile(ctx, ctx.currentPage, contHeader, newBodyRegion, template)
+            logPlacement(ctx, 'placed', placedContHeader.id, 'Continuation header')
+            advanceToNextRow(ctx, contHeader.rowSpan)
+          }
+          const placedItem = placeTile(ctx, ctx.currentPage, itemTile, newBodyRegion, template)
+          logPlacement(ctx, 'placed', placedItem.id, 'Item tile')
+          advancePosition(ctx, placedItem, template)
+        } else {
+          const placedItem = placeTile(ctx, ctx.currentPage, itemTile, bodyRegion, template)
+          logPlacement(ctx, 'placed', placedItem.id, 'Item tile')
+          advancePosition(ctx, placedItem, template)
+        }
       }
     }
-    
-    // Center-align items in this section's last row
-    applySectionLastRowCentering(ctx.pages, section.id, template)
+
+    // After slot-based placement, advance cursor past all section items
+    // so the next section's header doesn't overlap
+    if (itemSlots && sortedItems.length > 0) {
+      const logicalRows = Math.ceil(sortedItems.length / cols)
+      ctx.currentRow = sectionBodyStartRow + logicalRows * commonItemRowSpan
+      ctx.currentCol = 0
+      ctx.currentRowMaxSpan = 1
+      ctx.currentRowTiles = []
+    }
+
+    // When fillers are enabled, do not center — empty cells remain for fillers
+    if (!fillersEnabled) {
+      applySectionLastRowCentering(ctx.pages, section.id, template)
+    }
   }
   
   // Finalize last page

@@ -45,6 +45,8 @@ export interface RenderOptionsV2 {
   texturesEnabled?: boolean
   /** Pre-fetched data URL for texture (used in export mode to avoid relative path issues) */
   textureDataURL?: string
+  /** Optional texture ID (overrides palette-based texture when set) */
+  textureId?: string
   /** Image rendering mode - defaults to 'stretch' */
   imageMode?: ImageModeV2
   /** Show grid overlay for debugging */
@@ -59,6 +61,14 @@ export interface RenderOptionsV2 {
   isExport?: boolean
   /** Enable vignette edge effect */
   showVignette?: boolean
+  /** Add very subtle borders to every menu item tile */
+  itemBorders?: boolean
+  /** Add drop shadow to every menu item tile */
+  itemDropShadow?: boolean
+  /** Fill menu item tiles with the palette background colour */
+  fillItemTiles?: boolean
+  /** Override filler tile rendering with this pattern ID (from FILLER_PATTERN_REGISTRY); when set, all filler tiles use this pattern */
+  spacerTilePatternId?: string
 }
 
 // ============================================================================
@@ -198,6 +208,8 @@ export interface ColorPaletteV2 {
   name: string
   colors: {
     background: string
+    /** Optional surface colour for cards/item tiles; should work well with background. Falls back to background if omitted. */
+    surface?: string
     menuTitle: string
     sectionHeader: string
     itemTitle: string
@@ -247,6 +259,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
     name: 'Clean Modern',
     colors: {
       background: '#FFFFFF',
+      surface: '#F9FAFB',
       menuTitle: '#111827',
       sectionHeader: '#111827',
       itemTitle: '#111827',
@@ -267,6 +280,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
     name: 'Elegant Cream',
     colors: {
       background: '#FDFCF0', // Warm cream
+      surface: '#F5F2E8',
       menuTitle: '#2C2C2C',
       sectionHeader: '#2C2C2C',
       itemTitle: '#2C2C2C',
@@ -287,6 +301,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
     name: 'Midnight Gold',
     colors: {
       background: '#1A1A1A', // Dark charcoal
+      surface: '#252525',
       menuTitle: '#D4AF37', // Gold
       sectionHeader: '#D4AF37',
       itemTitle: '#FFFFFF',
@@ -307,6 +322,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
     name: 'Warm Earth',
     colors: {
       background: '#F5F0E8',
+      surface: '#EDE6DC',
       menuTitle: '#3E2C1C',
       sectionHeader: '#3E2C1C',
       itemTitle: '#3E2C1C',
@@ -327,6 +343,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
     name: 'Ocean Breeze',
     colors: {
       background: '#F0F5F8',
+      surface: '#E8EEF2',
       menuTitle: '#1B3A4B',
       sectionHeader: '#1B3A4B',
       itemTitle: '#1B3A4B',
@@ -347,6 +364,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
     name: 'Forest Green',
     colors: {
       background: '#F2F5F0',
+      surface: '#E8EDE5',
       menuTitle: '#1C3318',
       sectionHeader: '#1C3318',
       itemTitle: '#1C3318',
@@ -367,6 +385,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
     name: 'Blush Rose',
     colors: {
       background: '#FFF0F3',
+      surface: '#FCE4E9',
       menuTitle: '#8B1A4A',
       sectionHeader: '#8B1A4A',
       itemTitle: '#4A0E2B',
@@ -387,6 +406,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
     name: 'Lunar Red & Gold',
     colors: {
       background: '#2B0A0A',
+      surface: '#3d1515',
       menuTitle: '#D4A017',
       sectionHeader: '#D4A017',
       itemTitle: '#F5E6C8',
@@ -410,114 +430,267 @@ export const DEFAULT_PALETTE_V2 = PALETTES_V2.find(p => p.id === 'midnight-gold'
 // Texture Registry
 // ============================================================================
 
-/** Configuration for a palette's background texture */
+/** Configuration for a background texture pattern (palette-independent) */
 export interface TextureConfig {
-  paletteId: string
+  label: string
   webCss: (textureUrl: string) => Record<string, string>
   webCssExport: (textureUrl: string) => Record<string, string>
   pdfTextureFile: string
-  backgroundColor: string
 }
 
-// SVG data-URI textures for light palettes (inline, no external files)
+// SVG data-URI textures (inline, no external files needed).
+// All patterns use only vector shapes (no feTurbulence/filter) so they render reliably
+// as CSS background-image in browser and PDF.
+// Deterministic hash for tileable "random" patterns (same seed => same tile).
+function hash2(seed: number): number {
+  return ((seed * 31) ^ (seed >>> 16)) >>> 0
+}
+function randomDotsTile(options: {
+  width: number
+  height: number
+  cellSize: number
+  density: number
+  rMin: number
+  rMax: number
+  opacity: number
+}): string {
+  const { width, height, cellSize, density, rMin, rMax, opacity } = options
+  const circles: string[] = []
+  for (let i = 0; i < width; i += cellSize) {
+    for (let j = 0; j < height; j += cellSize) {
+      const seed = (i / cellSize) * 31 + (j / cellSize) * 17
+      const h = hash2(seed)
+      if ((h % 100) >= density) continue
+      const dx = (hash2(h + 1) % 100) / 100
+      const dy = (hash2(h + 2) % 100) / 100
+      const cx = i + dx * cellSize
+      const cy = j + dy * cellSize
+      const r = rMin + ((hash2(h + 3) % 100) / 100) * (rMax - rMin)
+      circles.push(`<circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${r.toFixed(2)}" fill="#000" opacity="${opacity.toFixed(2)}"/>`)
+    }
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${circles.join('')}</svg>`
+}
+
+// Subtle stripe patterns: tileable, low opacity for professionalism without distracting from content.
+const stripeHorizontalSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><path d="M0 0h40v0.5H0zM0 8h40v0.5H0zM0 16h40v0.5H0zM0 24h40v0.5H0zM0 32h40v0.5H0z" fill="#000" opacity="0.05"/></svg>'
+const stripeVerticalSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><path d="M0 0v40h0.5V0zM8 0v40h0.5V0zM16 0v40h0.5V0zM24 0v40h0.5V0zM32 0v40h0.5V0z" fill="#000" opacity="0.05"/></svg>'
+const stripeDiagonalSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M0 0 L16 16" stroke="#000" stroke-width="0.4" opacity="0.05" fill="none"/></svg>'
+
 const SVG_TEXTURES = {
-  paperGrain: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="200" height="200" filter="url(#n)" opacity="0.04"/></svg>')}`,
-  linen: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><path d="M0 0h60v1H0zM0 15h60v0.5H0zM0 30h60v1H0zM0 45h60v0.5H0z" fill="#000" opacity="0.03"/><path d="M0 0v60h1V0zM15 0v60h0.5V0zM30 0v60h1V0zM45 0v60h0.5V0z" fill="#000" opacity="0.02"/></svg>')}`,
-  wave: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="60"><path d="M0 30 Q30 10 60 30 Q90 50 120 30" fill="none" stroke="#000" stroke-width="0.5" opacity="0.03"/><path d="M0 45 Q30 25 60 45 Q90 65 120 45" fill="none" stroke="#000" stroke-width="0.5" opacity="0.02"/></svg>')}`,
-  softPaper: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150"><filter id="p"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="150" height="150" filter="url(#p)" opacity="0.03"/></svg>')}`,
-  subtleNoise: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><filter id="s"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100" height="100" filter="url(#s)" opacity="0.02"/></svg>')}`,
+  // Paper grain: fine random grain (formerly "Subtle Noise"); deterministic, non-uniform. Opacity here.
+  paperGrain: `data:image/svg+xml,${encodeURIComponent(randomDotsTile({ width: 60, height: 60, cellSize: 3, density: 62, rMin: 0.2, rMax: 0.45, opacity: 0.10 }))}`,
+  linen: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><path d="M0 0h60v1H0zM0 15h60v0.5H0zM0 30h60v1H0zM0 45h60v0.5H0z" fill="#000" opacity="0.04"/><path d="M0 0v60h1V0zM15 0v60h0.5V0zM30 0v60h1V0zM45 0v60h0.5V0z" fill="#000" opacity="0.03"/></svg>')}`,
+  wave: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="60"><path d="M0 30 Q30 10 60 30 Q90 50 120 30" fill="none" stroke="#000" stroke-width="0.5" opacity="0.04"/><path d="M0 45 Q30 25 60 45 Q90 65 120 45" fill="none" stroke="#000" stroke-width="0.5" opacity="0.03"/></svg>')}`,
+  subtleDots: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60">' +
+    [6, 18, 30, 42, 54].flatMap((x) => [6, 18, 30, 42, 54].map((y) =>
+      `<circle cx="${x}" cy="${y}" r="0.5" fill="#000" opacity="0.09"/>`)).join('') +
+    '</svg>')}`,
+  stripesHorizontal: `data:image/svg+xml,${encodeURIComponent(stripeHorizontalSvg)}`,
+  stripesVertical: `data:image/svg+xml,${encodeURIComponent(stripeVerticalSvg)}`,
+  stripesDiagonal: `data:image/svg+xml,${encodeURIComponent(stripeDiagonalSvg)}`,
 }
 
-function svgTextureConfig(paletteId: string, bgColor: string, svgDataUri: string): TextureConfig {
+function svgTexturePattern(svgDataUri: string): Pick<TextureConfig, 'webCss' | 'webCssExport' | 'pdfTextureFile'> {
   return {
-    paletteId,
     webCss: () => ({
-      backgroundColor: bgColor,
       backgroundImage: `url("${svgDataUri}")`,
       backgroundRepeat: 'repeat',
       backgroundSize: 'auto',
     }),
     webCssExport: () => ({
-      backgroundColor: bgColor,
       backgroundImage: `url("${svgDataUri}")`,
       backgroundRepeat: 'repeat',
       backgroundSize: 'auto',
     }),
     pdfTextureFile: '',
-    backgroundColor: bgColor,
   }
 }
 
-/** Registry mapping palette IDs to their texture configurations */
+/**
+ * Registry mapping texture pattern IDs to their configurations.
+ * Textures are palette-independent overlays applied on top of the selected colour palette.
+ */
 export const TEXTURE_REGISTRY = new Map<string, TextureConfig>([
-  ['midnight-gold', {
-    paletteId: 'midnight-gold',
+  ['dark-paper', {
+    label: 'Dark Paper',
     webCss: (url: string) => ({
-      backgroundColor: '#1A1A1A',
-      backgroundImage: `linear-gradient(135deg, rgba(212, 175, 55, 0.03) 0%, transparent 50%, rgba(212, 175, 55, 0.02) 100%), url('${url}')`,
-      backgroundSize: '100% 100%, cover',
-      backgroundRepeat: 'no-repeat, no-repeat',
-      backgroundPosition: 'center, center',
-      backgroundBlendMode: 'overlay, normal',
-    }),
-    webCssExport: (url: string) => ({
-      backgroundColor: '#1A1A1A',
-      backgroundImage: `url('${url}')`,
-      backgroundSize: 'cover',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center, center',
-      backgroundBlendMode: 'normal',
-    }),
-    pdfTextureFile: 'dark-paper-2.png',
-    backgroundColor: '#1A1A1A',
-  }],
-  ['elegant-dark', {
-    paletteId: 'elegant-dark',
-    webCss: (url: string) => ({
-      backgroundColor: '#0b0d11',
       backgroundImage: `url('${url}')`,
       backgroundSize: 'cover',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
     }),
     webCssExport: (url: string) => ({
-      backgroundColor: '#0b0d11',
       backgroundImage: `url('${url}')`,
       backgroundSize: 'cover',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
     }),
-    pdfTextureFile: 'dark-paper.png',
-    backgroundColor: '#0b0d11',
-  }],
-  ['lunar-red-gold', {
-    paletteId: 'lunar-red-gold',
-    webCss: (url: string) => ({
-      backgroundColor: '#2B0A0A',
-      backgroundImage: `linear-gradient(135deg, rgba(212, 160, 23, 0.04) 0%, transparent 50%, rgba(212, 160, 23, 0.03) 100%), url('${url}')`,
-      backgroundSize: '100% 100%, cover',
-      backgroundRepeat: 'no-repeat, no-repeat',
-      backgroundPosition: 'center, center',
-      backgroundBlendMode: 'overlay, normal',
-    }),
-    webCssExport: (url: string) => ({
-      backgroundColor: '#2B0A0A',
-      backgroundImage: `url('${url}')`,
-      backgroundSize: 'cover',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center, center',
-      backgroundBlendMode: 'normal',
-    }),
     pdfTextureFile: 'dark-paper-2.png',
-    backgroundColor: '#2B0A0A',
   }],
-  ['elegant-cream', svgTextureConfig('elegant-cream', '#FDFCF0', SVG_TEXTURES.paperGrain)],
-  ['warm-earth', svgTextureConfig('warm-earth', '#F5F0E8', SVG_TEXTURES.paperGrain)],
-  ['ocean-breeze', svgTextureConfig('ocean-breeze', '#F0F5F8', SVG_TEXTURES.wave)],
-  ['forest-green', svgTextureConfig('forest-green', '#F2F5F0', SVG_TEXTURES.linen)],
-  ['valentines-rose', svgTextureConfig('valentines-rose', '#FFF0F3', SVG_TEXTURES.softPaper)],
-  ['clean-modern', svgTextureConfig('clean-modern', '#FFFFFF', SVG_TEXTURES.subtleNoise)],
+  ['paper-grain', { label: 'Paper Grain', ...svgTexturePattern(SVG_TEXTURES.paperGrain) }],
+  // Legacy: old "Subtle Noise" ID; same effect as Paper Grain for saved configs
+  ['subtle-noise', { label: 'Paper Grain', ...svgTexturePattern(SVG_TEXTURES.paperGrain) }],
+  ['stripes-horizontal', { label: 'Stripes (horizontal)', ...svgTexturePattern(SVG_TEXTURES.stripesHorizontal) }],
+  ['stripes-vertical', { label: 'Stripes (vertical)', ...svgTexturePattern(SVG_TEXTURES.stripesVertical) }],
+  ['stripes-diagonal', { label: 'Stripes (diagonal)', ...svgTexturePattern(SVG_TEXTURES.stripesDiagonal) }],
+  ['waves', { label: 'Waves', ...svgTexturePattern(SVG_TEXTURES.wave) }],
+  ['linen', { label: 'Linen', ...svgTexturePattern(SVG_TEXTURES.linen) }],
+  ['subtle-dots', { label: 'Subtle Dots', ...svgTexturePattern(SVG_TEXTURES.subtleDots) }],
 ])
+
+/** Ordered list of texture pattern IDs for user selection dropdowns (3. Background texture) */
+export const TEXTURE_IDS: string[] = [
+  'subtle-dots',
+  'paper-grain',
+  'stripes-horizontal',
+  'stripes-vertical',
+  'stripes-diagonal',
+  'waves',
+  'linen',
+  'dark-paper',
+]
+
+// ============================================================================
+// Filler (Spacer Tile) Pattern Registry
+// ============================================================================
+
+/** Configuration for a palette-adaptive spacer tile pattern */
+export interface FillerPatternConfig {
+  label: string
+  /** Returns a tileable SVG as data URI using palette colors */
+  getSvgDataUri: (palette: ColorPaletteV2) => string
+}
+
+const FILLER_PATTERN_TILE_SIZE = 64
+
+/** Build tileable SVG data URI; optional viewBox scales pattern to tile size (e.g. "0 0 40 40"). */
+function fillerSvgDataUri(svgBody: string, viewBox?: string): string {
+  const vb = viewBox ? ` viewBox="${viewBox}"` : ''
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${FILLER_PATTERN_TILE_SIZE}" height="${FILLER_PATTERN_TILE_SIZE}"${vb}>${svgBody}</svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
+/** Palette-derived fills for spacer patterns: base (lightest), light, mid. */
+function fillerPalette(palette: ColorPaletteV2): { base: string; light: string; mid: string } {
+  return {
+    base: palette.colors.surface ?? palette.colors.border.light,
+    light: palette.colors.border.light,
+    mid: palette.colors.border.medium
+  }
+}
+
+/** Minimalist diagonal pinstripe (40×40 tile). */
+function diagonalPinstripeSvg(palette: ColorPaletteV2): string {
+  const { base, light } = fillerPalette(palette)
+  const body = [
+    '<defs>',
+    `<pattern id="diagonal-stripe" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">`,
+    `<rect width="20" height="40" fill="${base}"/>`,
+    `<rect x="20" width="20" height="40" fill="${light}"/>`,
+    '</pattern>',
+    '</defs>',
+    '<rect width="40" height="40" fill="url(#diagonal-stripe)"/>'
+  ].join('')
+  return fillerSvgDataUri(body, '0 0 40 40')
+}
+
+/** Modern Bauhaus check & circle (80×80 tile). */
+function bauhausCheckSvg(palette: ColorPaletteV2): string {
+  const { base, light, mid } = fillerPalette(palette)
+  const body = [
+    '<defs>',
+    '<pattern id="circle-check" width="80" height="80" patternUnits="userSpaceOnUse">',
+    `<rect width="80" height="80" fill="${base}"/>`,
+    `<rect width="40" height="40" fill="${light}"/>`,
+    `<rect x="40" y="40" width="40" height="40" fill="${light}"/>`,
+    `<circle cx="20" cy="60" r="12" fill="${mid}"/>`,
+    `<circle cx="60" cy="20" r="12" fill="${mid}"/>`,
+    '</pattern>',
+    '</defs>',
+    '<rect width="80" height="80" fill="url(#circle-check)"/>'
+  ].join('')
+  return fillerSvgDataUri(body, '0 0 80 80')
+}
+
+/** Overlapping rings / scallop (60×60 tile). */
+function overlappingRingsSvg(palette: ColorPaletteV2): string {
+  const { base, light, mid } = fillerPalette(palette)
+  const body = [
+    '<defs>',
+    '<pattern id="interlocking" width="60" height="60" patternUnits="userSpaceOnUse">',
+    `<rect width="60" height="60" fill="${base}"/>`,
+    `<circle cx="0" cy="0" r="40" fill="none" stroke="${light}" stroke-width="4"/>`,
+    `<circle cx="60" cy="0" r="40" fill="none" stroke="${light}" stroke-width="4"/>`,
+    `<circle cx="0" cy="60" r="40" fill="none" stroke="${light}" stroke-width="4"/>`,
+    `<circle cx="60" cy="60" r="40" fill="none" stroke="${light}" stroke-width="4"/>`,
+    `<circle cx="30" cy="30" r="40" fill="none" stroke="${mid}" stroke-width="4"/>`,
+    '</pattern>',
+    '</defs>',
+    '<rect width="60" height="60" fill="url(#interlocking)"/>'
+  ].join('')
+  return fillerSvgDataUri(body, '0 0 60 60')
+}
+
+/** Elegant windowpane grid (30×30 tile). */
+function windowpaneSvg(palette: ColorPaletteV2): string {
+  const { base, light } = fillerPalette(palette)
+  const body = [
+    '<defs>',
+    '<pattern id="windowpane" width="30" height="30" patternUnits="userSpaceOnUse">',
+    `<rect width="30" height="30" fill="${base}"/>`,
+    `<path d="M 30 0 L 0 0 0 30" fill="none" stroke="${light}" stroke-width="1.5"/>`,
+    '</pattern>',
+    '</defs>',
+    '<rect width="30" height="30" fill="url(#windowpane)"/>'
+  ].join('')
+  return fillerSvgDataUri(body, '0 0 30 30')
+}
+
+/** Matte paper grain: subtle 8×8 micro-stipple (palette-adaptive). */
+function mattePaperGrainSvg(palette: ColorPaletteV2): string {
+  const { base, light } = fillerPalette(palette)
+  const body = [
+    '<defs>',
+    '<pattern id="micro-stipple" width="8" height="8" patternUnits="userSpaceOnUse">',
+    `<rect width="8" height="8" fill="${base}"/>`,
+    `<circle cx="2" cy="2" r="0.75" fill="${light}"/>`,
+    `<circle cx="6" cy="6" r="0.75" fill="${light}"/>`,
+    '</pattern>',
+    '</defs>',
+    '<rect width="100%" height="100%" fill="url(#micro-stipple)"/>'
+  ].join('')
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${FILLER_PATTERN_TILE_SIZE}" height="${FILLER_PATTERN_TILE_SIZE}">${body}</svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
+/**
+ * Registry mapping spacer tile pattern IDs to their configurations.
+ * Patterns are palette-adaptive (base + accent from active palette).
+ */
+export const FILLER_PATTERN_REGISTRY = new Map<string, FillerPatternConfig>([
+  ['diagonal-pinstripe', { label: 'Diagonal Pinstripe', getSvgDataUri: diagonalPinstripeSvg }],
+  ['bauhaus-check', { label: 'Bauhaus Check & Circle', getSvgDataUri: bauhausCheckSvg }],
+  ['overlapping-rings', { label: 'Overlapping Rings', getSvgDataUri: overlappingRingsSvg }],
+  ['windowpane', { label: 'Windowpane Grid', getSvgDataUri: windowpaneSvg }],
+  ['matte-paper-grain', { label: 'Matte Paper Grain', getSvgDataUri: mattePaperGrainSvg }],
+])
+
+/** Ordered list of spacer tile pattern IDs for dropdowns */
+export const FILLER_PATTERN_IDS = Array.from(FILLER_PATTERN_REGISTRY.keys())
+
+/** Map palette IDs to their default texture pattern (used for legacy texturesEnabled fallback) */
+export const PALETTE_TEXTURE_MAP: Record<string, string> = {
+  'midnight-gold': 'dark-paper',
+  'elegant-dark': 'dark-paper',
+  'lunar-red-gold': 'dark-paper',
+  'elegant-cream': 'paper-grain',
+  'warm-earth': 'paper-grain',
+  'ocean-breeze': 'waves',
+  'forest-green': 'linen',
+  'valentines-rose': 'subtle-dots',
+  'clean-modern': 'subtle-noise',
+}
 
 // ============================================================================
 // Shared Rendering Primitives
@@ -605,7 +778,10 @@ export interface RenderStyle {
   backgroundColor?: string
   /** CSS background (e.g. linear-gradient for overlays) */
   background?: string
-  textAlign?: 'left' | 'center' | 'right'
+  /** Offset for repeating backgrounds so pattern aligns across tiles (region-space; applied as background-position). */
+  backgroundPositionX?: number
+  backgroundPositionY?: number
+  textAlign?: 'left' | 'center' | 'right' | 'justify'
   opacity?: number
   borderRadius?: number
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down'
@@ -624,6 +800,8 @@ interface ResolvedTypography {
   fontWeight: number
   fontFamily: string
   lineHeight: number
+  textAlign: 'left' | 'center' | 'right' | 'justify'
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'
 }
 
 /** Resolve sub-element typography from tile YAML style with fallback defaults */
@@ -638,6 +816,8 @@ function resolveSubElementTypography(
   const fontSizeToken = sub?.fontSize || undefined
   const fontWeightToken = sub?.fontWeight || undefined
   const lineHeightToken = sub?.lineHeight || undefined
+  const textAlign = sub?.textAlign || typo?.textAlign || 'center'
+  const textTransform = sub?.textTransform ?? typo?.textTransform
 
   return {
     fontSize: fontSizeToken
@@ -650,6 +830,8 @@ function resolveSubElementTypography(
     lineHeight: lineHeightToken
       ? (TYPOGRAPHY_TOKENS_V2.lineHeight[lineHeightToken as LineHeightV2] ?? defaults.lineHeight)
       : defaults.lineHeight,
+    textAlign,
+    textTransform,
   }
 }
 
@@ -970,7 +1152,8 @@ function renderItemContent(
         imageX = (tile.width - imageWidth) / 2
       }
       
-      const imageShadow = imageMode !== 'compact-circle' ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
+      const defaultItemShadow = imageMode !== 'compact-circle' ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
+      const imageShadow = tileStyle?.image?.boxShadow !== undefined ? tileStyle.image.boxShadow : defaultItemShadow
 
       if (content.imageUrl) {
         elements.push({
@@ -984,7 +1167,7 @@ function renderItemContent(
             borderRadius,
             objectFit: 'cover',
             objectPosition: 'center',
-            boxShadow: imageShadow
+            boxShadow: imageShadow || undefined
           }
         })
       } else {
@@ -1038,7 +1221,8 @@ function renderItemContent(
       lineHeight: nameTypo.lineHeight,
       maxLines: nameMaxLines,
       color: isBackgroundMode ? '#ffffff' : palette.colors.itemTitle,
-      textAlign: 'center'
+      textAlign: nameTypo.textAlign,
+      textTransform: nameTypo.textTransform
     }
   })
 
@@ -1064,7 +1248,8 @@ function renderItemContent(
         lineHeight: descTypo.lineHeight,
         maxLines: descMaxLines,
         color: isBackgroundMode ? '#f5f5f5' : palette.colors.itemDescription,
-        textAlign: 'center'
+        textAlign: descTypo.textAlign,
+        textTransform: descTypo.textTransform
       }
     })
     currentY += descHeight + SPACING_V2.descToPrice
@@ -1088,7 +1273,8 @@ function renderItemContent(
       lineHeight: priceTypo.lineHeight,
       maxLines: 1,
       color: isBackgroundMode ? '#ffffff' : palette.colors.itemPrice,
-      textAlign: 'center'
+      textAlign: priceTypo.textAlign,
+      textTransform: priceTypo.textTransform
     }
   })
 
@@ -1215,7 +1401,8 @@ function renderFeatureCardContent(
         imageX = (tile.width - imageWidth) / 2
       }
       
-      const imageShadow = !isCircularMode ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
+      const defaultFeatureShadow = !isCircularMode ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
+      const featureImageShadow = tileStyle?.image?.boxShadow !== undefined ? tileStyle.image.boxShadow : defaultFeatureShadow
 
       if (content.imageUrl) {
         elements.push({
@@ -1229,7 +1416,7 @@ function renderFeatureCardContent(
             borderRadius,
             objectFit: 'cover',
             objectPosition: 'center',
-            boxShadow: imageShadow
+            boxShadow: featureImageShadow || undefined
           }
         })
       } else {
@@ -1269,23 +1456,24 @@ function renderFeatureCardContent(
   const nameLineHeight = nameTypo.fontSize * nameTypo.lineHeight
   const nameX = (tile.width - nameWidth) / 2
 
-  elements.push({
-    type: 'text',
-    x: nameX,
-    y: currentY,
-    width: nameWidth,
-    height: nameLineHeight * nameMaxLines,
-    content: content.name,
-    style: {
-      fontSize: nameTypo.fontSize,
-      fontWeight: nameTypo.fontWeight,
-      fontFamily: nameTypo.fontFamily,
-      lineHeight: nameTypo.lineHeight,
-      maxLines: nameMaxLines,
-      color: isBackgroundMode ? '#ffffff' : palette.colors.itemTitle,
-      textAlign: 'center'
-    }
-  })
+    elements.push({
+      type: 'text',
+      x: nameX,
+      y: currentY,
+      width: nameWidth,
+      height: nameLineHeight * nameMaxLines,
+      content: content.name,
+      style: {
+        fontSize: nameTypo.fontSize,
+        fontWeight: nameTypo.fontWeight,
+        fontFamily: nameTypo.fontFamily,
+        lineHeight: nameTypo.lineHeight,
+        maxLines: nameMaxLines,
+        color: isBackgroundMode ? '#ffffff' : palette.colors.itemTitle,
+        textAlign: nameTypo.textAlign,
+        textTransform: nameTypo.textTransform
+      }
+    })
 
   currentY += nameLineHeight * 2.0 + SPACING_V2.nameToDesc
 
@@ -1309,7 +1497,8 @@ function renderFeatureCardContent(
         lineHeight: descTypo.lineHeight,
         maxLines: descMaxLines,
         color: isBackgroundMode ? '#f5f5f5' : palette.colors.itemDescription,
-        textAlign: 'center'
+        textAlign: descTypo.textAlign,
+        textTransform: descTypo.textTransform
       }
     })
     currentY += descHeight + SPACING_V2.descToPrice
@@ -1334,7 +1523,8 @@ function renderFeatureCardContent(
       lineHeight: priceTypo.lineHeight,
       maxLines: 1,
       color: isBackgroundMode ? '#ffffff' : palette.colors.itemPrice,
-      textAlign: 'center'
+      textAlign: priceTypo.textAlign,
+      textTransform: priceTypo.textTransform
     }
   })
 
@@ -1483,7 +1673,17 @@ function renderFillerContent(
   const elements: RenderElement[] = []
   const palette = getPalette(options)
 
-  // Simple background filler for MVP
+  // Resolve pattern: "mix" rotates through FILLER_PATTERN_IDS by fillerIndex; else user override; else template
+  const patternId =
+    options.spacerTilePatternId === 'mix'
+      ? FILLER_PATTERN_IDS[(content.fillerIndex ?? 0) % FILLER_PATTERN_IDS.length]
+      : options.spacerTilePatternId && FILLER_PATTERN_REGISTRY.has(options.spacerTilePatternId)
+        ? options.spacerTilePatternId
+        : content.style === 'pattern' && content.content && FILLER_PATTERN_REGISTRY.has(content.content)
+          ? content.content
+          : undefined
+
+  // Base background (half-opacity palette block)
   elements.push({
     type: 'background',
     x: 0,
@@ -1493,13 +1693,31 @@ function renderFillerContent(
     content: '',
     style: {
       backgroundColor: palette.colors.border.light,
-      opacity: 0.7,
+      opacity: 0.5,
       borderRadius: 4
     }
   })
 
-  // Optional icon or pattern based on filler style
-  if (content.style === 'icon' && content.content) {
+  if (patternId) {
+    const config = FILLER_PATTERN_REGISTRY.get(patternId)!
+    const dataUri = config.getSvgDataUri(palette)
+    const size = FILLER_PATTERN_TILE_SIZE
+    // Align pattern to region origin so it tessellates seamlessly across adjacent filler tiles
+    elements.push({
+      type: 'background',
+      x: 0,
+      y: 0,
+      width: tile.width,
+      height: tile.height,
+      content: '',
+      style: {
+        background: `url("${dataUri}") repeat 0 0 / ${size}px ${size}px`,
+        backgroundPositionX: -tile.x,
+        backgroundPositionY: -tile.y,
+        borderRadius: 4
+      }
+    })
+  } else if (content.style === 'icon' && content.content) {
     elements.push({
       type: 'text',
       x: tile.width / 2,

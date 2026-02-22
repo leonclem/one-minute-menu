@@ -6,7 +6,10 @@ import { transformMenuToV2, isEngineMenuV2 } from '@/lib/templates/v2/menu-trans
 import { generateLayoutWithVersion } from '@/lib/templates/engine-selector'
 import { TEMPLATE_REGISTRY } from '@/lib/templates/template-definitions'
 import type { MenuTemplateSelection } from '@/lib/templates/engine-types'
+import type { ImageModeV2 } from '@/lib/templates/v2/engine-types-v2'
 import { getMenuCurrency } from '@/lib/menu-currency-service'
+
+const VALID_IMAGE_MODES: readonly ImageModeV2[] = ['none', 'compact-rect', 'compact-circle', 'stretch', 'background']
 
 /**
  * Simple in-memory cache for layout instances
@@ -87,11 +90,18 @@ export async function GET(
     
     // V2 Options
     const fillersEnabled = searchParams.get('fillersEnabled') === 'true'
-    const textOnly = searchParams.get('textOnly') === 'true'
+    const spacerTilePatternId = searchParams.get('spacerTilePatternId') || undefined
+    const rawImageMode = searchParams.get('imageMode') || 'stretch'
+    const parsedImageMode: ImageModeV2 = (VALID_IMAGE_MODES as readonly string[]).includes(rawImageMode) ? (rawImageMode as ImageModeV2) : 'stretch'
+    const imageMode: ImageModeV2 = parsedImageMode === 'none' ? 'stretch' : parsedImageMode
+    const textOnly = searchParams.get('textOnly') === 'true' || rawImageMode === 'none'
     const texturesEnabled = searchParams.get('texturesEnabled') !== 'false' // default true
+    const textureId = searchParams.get('textureId') || undefined
+    const targetCellWidthPt = searchParams.get('targetCellWidthPt')
+      ? parseFloat(searchParams.get('targetCellWidthPt')!)
+      : undefined
     const showMenuTitle = searchParams.get('showMenuTitle') === 'true'
     const showVignette = searchParams.get('showVignette') === 'true'
-    const imageMode = (searchParams.get('imageMode') as any) || 'stretch'
     const engineVersion = (searchParams.get('engineVersion') as 'v1' | 'v2') || 'v2'
     
     if (!templateId) {
@@ -149,8 +159,11 @@ export async function GET(
       paletteId,
       imageMode,
       fillersEnabled,
+      spacerTilePatternId,
       textOnly,
       texturesEnabled,
+      textureId,
+      targetCellWidthPt,
       showMenuTitle,
       showVignette,
       engineVersion
@@ -189,7 +202,10 @@ export async function GET(
         selection: {
           textOnly,
           fillersEnabled,
+          spacerTilePatternId,
           texturesEnabled,
+          textureId,
+          targetCellWidthPt,
           showMenuTitle,
           showVignette,
           colourPaletteId: paletteId || undefined,
@@ -255,14 +271,19 @@ export async function POST(
     
     const {
       paletteId,
-      imageMode = 'stretch',
-      fillersEnabled = false,
-      textOnly = false,
+      imageMode: rawImageMode = 'stretch',
+      fillersEnabled = true,
+      spacerTilePatternId,
+      textOnly: configTextOnly = false,
       texturesEnabled = true,
+      textureId,
+      targetCellWidthPt,
       showMenuTitle = false,
-      showVignette = false,
+      showVignette = true,
       engineVersion = 'v2'
     } = configuration
+    const imageMode = rawImageMode === 'none' ? 'stretch' : rawImageMode
+    const textOnly = configTextOnly || rawImageMode === 'none'
     
     if (!menu) {
       return NextResponse.json(
@@ -289,7 +310,10 @@ export async function POST(
         selection: {
           textOnly,
           fillersEnabled,
+          spacerTilePatternId,
           texturesEnabled,
+          textureId,
+          targetCellWidthPt,
           showMenuTitle,
           showVignette,
           colourPaletteId: paletteId,

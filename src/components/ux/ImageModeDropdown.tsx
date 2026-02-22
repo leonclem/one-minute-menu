@@ -12,6 +12,11 @@ interface ImageModeOption {
 
 const IMAGE_MODE_OPTIONS: ImageModeOption[] = [
   {
+    value: 'none',
+    label: 'None',
+    description: 'Text only, no images'
+  },
+  {
     value: 'compact-rect',
     label: 'Compact (rectangular)',
     description: 'Smaller image, preserves aspect ratio'
@@ -39,13 +44,16 @@ interface ImageModeDropdownProps {
   className?: string
   /** Optional: use neutral/gray styling for admin (Layout Lab) vs primary for template page */
   variant?: 'primary' | 'neutral'
+  /** When false, only show labels (no description under each option). Default true. */
+  showDescription?: boolean
 }
 
 export function ImageModeDropdown({
   value,
   onChange,
   className,
-  variant = 'primary'
+  variant = 'primary',
+  showDescription = true
 }: ImageModeDropdownProps) {
   const [open, setOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(0)
@@ -54,7 +62,7 @@ export function ImageModeDropdown({
   const listId = useId()
   const triggerId = useId()
 
-  const selected = IMAGE_MODE_OPTIONS.find(o => o.value === value) ?? IMAGE_MODE_OPTIONS[2] // Default to 'stretch'
+  const selected = IMAGE_MODE_OPTIONS.find(o => o.value === value) ?? IMAGE_MODE_OPTIONS[3] // Default to 'stretch' (index 3 after adding 'none')
 
   // Close on outside click
   useEffect(() => {
@@ -103,7 +111,7 @@ export function ImageModeDropdown({
   useEffect(() => {
     if (open) {
       const idx = IMAGE_MODE_OPTIONS.findIndex(o => o.value === value)
-      setFocusedIndex(idx >= 0 ? idx : 2) // Default to 'stretch' index
+      setFocusedIndex(idx >= 0 ? idx : 3) // Default to 'stretch' index (3 after adding 'none')
       listRef.current?.focus()
     }
   }, [open, value])
@@ -136,12 +144,14 @@ export function ImageModeDropdown({
           )}>
             {selected.label}
           </div>
-          <div className={cn(
-            'text-xs mt-0.5',
-            variant === 'primary' ? 'text-ux-text/60' : 'text-gray-500'
-          )}>
-            {selected.description}
-          </div>
+          {showDescription && (
+            <div className={cn(
+              'text-xs mt-0.5',
+              variant === 'primary' ? 'text-ux-text/60' : 'text-gray-500'
+            )}>
+              {selected.description}
+            </div>
+          )}
         </div>
         <svg
           className={cn('h-5 w-5 shrink-0 transition-transform', open && 'rotate-180')}
@@ -191,12 +201,14 @@ export function ImageModeDropdown({
                 )}
               >
                 <span className="font-medium text-sm">{option.label}</span>
-                <span className={cn(
-                  'text-xs mt-0.5',
-                  variant === 'primary' ? 'text-ux-text/60' : 'text-gray-500'
-                )}>
-                  {option.description}
-                </span>
+                {showDescription && (
+                  <span className={cn(
+                    'text-xs mt-0.5',
+                    variant === 'primary' ? 'text-ux-text/60' : 'text-gray-500'
+                  )}>
+                    {option.description}
+                  </span>
+                )}
               </li>
             )
           })}

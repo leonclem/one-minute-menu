@@ -20,12 +20,15 @@ Read this before designing a new template so you know what is not possible and w
 
 - **Font sets must be registered in code** — `FONT_SETS_V2` in `renderer-v2.ts`; YAML cannot reference arbitrary Google Fonts
 - **Price alignment is always center** — No per-tile right-alignment without renderer changes
-- **Image drop shadow and letter-spacing** — Image shadow and letter-spacing (when uppercase) are fixed in the renderer; not configurable per template
+- **Image drop shadow** — Configurable per template via `style.imageDropShadow` on `ITEM_CARD` / `FEATURE_CARD` tiles
+- **Letter-spacing** — Letter-spacing (when uppercase) is fixed in the renderer; not configurable per template
 
 ## Texture Limitations
 
-- **Textures must be registered in code** — `TEXTURE_REGISTRY` in `renderer-v2.ts`; YAML cannot reference arbitrary textures
-- **Light palette textures use inline SVG** — Some complex texture effects may not reproduce identically in PDF
+- **Textures must be registered in code** — `TEXTURE_REGISTRY` in `renderer-v2.ts`; YAML cannot reference arbitrary textures. Textures are palette-independent overlays selected by pattern name (e.g., `dark-paper`, `waves`, `linen`).
+- **SVG textures use inline data URIs** — Some complex texture effects may not reproduce identically in PDF
+- **Filler interspersion disabled for featured items** — When a section contains FEATURE_CARD items (multi-col/multi-row), fillers fall back to trailing placement instead of semi-random interspersion
+- **Filler spread is best-effort** — The spread algorithm minimises horizontal adjacency and vertical stacking but does not guarantee a perfectly uniform distribution in all cases (e.g., when filler count approaches column count)
 
 ## Section Header Limitations
 
@@ -36,3 +39,7 @@ Read this before designing a new template so you know what is not possible and w
 
 - **PDF rendering depends on Puppeteer** — Font rendering may vary slightly between environments
 - **Image quality depends on source** — Low-resolution images will appear pixelated in print
+
+## Future enhancement ideas
+
+- **Alternating / chequerboard item fill** — Option to alternate item tile fill (e.g. surface vs background, or two surface tints) in a grid pattern for visual variety.

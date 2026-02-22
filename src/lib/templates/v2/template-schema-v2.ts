@@ -18,7 +18,9 @@ export const SubElementTypographySchemaV2 = z.object({
   fontSet: z.string().optional(),
   fontSize: z.string().optional(),
   fontWeight: z.string().optional(),
-  lineHeight: z.string().optional()
+  lineHeight: z.string().optional(),
+  textAlign: z.enum(['left', 'center', 'right', 'justify']).optional(),
+  textTransform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).optional()
 })
 
 /**
@@ -28,7 +30,7 @@ export const TypographyStyleSchemaV2 = z.object({
   fontSet: z.string().optional(),
   fontSize: z.string().optional(),
   fontWeight: z.string().optional(),
-  textAlign: z.enum(['left', 'center', 'right']).optional(),
+  textAlign: z.enum(['left', 'center', 'right', 'justify']).optional(),
   lineHeight: z.string().optional(),
   textTransform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).optional(),
   color: z.string().optional(),
@@ -68,13 +70,21 @@ export const BackgroundStyleSchemaV2 = z.object({
 })
 
 /**
+ * Schema for image styling (e.g. drop shadow)
+ */
+export const ImageStyleSchemaV2 = z.object({
+  boxShadow: z.string().optional()
+})
+
+/**
  * Schema for complete tile styling
  */
 export const TileStyleSchemaV2 = z.object({
   typography: TypographyStyleSchemaV2.optional(),
   spacing: SpacingStyleSchemaV2.optional(),
   border: BorderStyleSchemaV2.optional(),
-  background: BackgroundStyleSchemaV2.optional()
+  background: BackgroundStyleSchemaV2.optional(),
+  image: ImageStyleSchemaV2.optional()
 })
 
 // =============================================================================

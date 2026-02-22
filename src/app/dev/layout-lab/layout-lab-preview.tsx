@@ -21,12 +21,18 @@ interface LayoutLabPreviewProps {
   isGenerating: boolean
   error: string | null
   paletteId: string
+  textureId?: string | null
+  showVignette?: boolean
+  itemBorders?: boolean
+  itemDropShadow?: boolean
+  fillItemTiles?: boolean
   showGridOverlay: boolean
   showRegionBounds: boolean
   showTileIds: boolean
   texturesEnabled: boolean
   imageMode?: string
   isAutoGenerating?: boolean
+  spacerTilePatternId?: string
 }
 
 export function LayoutLabPreview({
@@ -34,12 +40,18 @@ export function LayoutLabPreview({
   isGenerating,
   error,
   paletteId,
+  textureId = null,
+  showVignette = true,
+  itemBorders = false,
+  itemDropShadow = false,
+  fillItemTiles = false,
   showGridOverlay,
   showRegionBounds,
   showTileIds,
   texturesEnabled,
   imageMode = 'stretch',
-  isAutoGenerating = false
+  isAutoGenerating = false,
+  spacerTilePatternId
 }: LayoutLabPreviewProps) {
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
   const [zoom, setZoom] = useState(0.9) // Default to 90%
@@ -257,11 +269,17 @@ export function LayoutLabPreview({
                   scale: 1.0,
                   palette,
                   texturesEnabled,
+                  textureId: textureId ?? undefined,
+                  showVignette,
+                  itemBorders,
+                  itemDropShadow,
+                  fillItemTiles,
                   imageMode: imageMode as any,
                   showGridOverlay,
                   showRegionBounds,
                   showTileIds,
-                  isExport: false
+                  isExport: false,
+                  spacerTilePatternId
                 }}
               />
             </div>

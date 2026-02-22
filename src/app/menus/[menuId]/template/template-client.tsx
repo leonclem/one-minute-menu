@@ -8,7 +8,7 @@ import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
 import { PageRenderer } from '@/lib/templates/v2/renderer-web-v2'
-import { PALETTES_V2, DEFAULT_PALETTE_V2 } from '@/lib/templates/v2/renderer-v2'
+import { PALETTES_V2, DEFAULT_PALETTE_V2, TEXTURE_IDS, TEXTURE_REGISTRY, FILLER_PATTERN_IDS, FILLER_PATTERN_REGISTRY } from '@/lib/templates/v2/renderer-v2'
 import type { LayoutDocumentV2, ImageModeV2 } from '@/lib/templates/v2/engine-types-v2'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
@@ -26,13 +26,19 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   
   // Selection State
   const [templateId, setTemplateId] = useState('classic-cards-v2')
-  const [paletteId, setPaletteId] = useState('midnight-gold')
-  const [imageMode, setImageMode] = useState<ImageModeV2>('stretch')
-  const [fillersEnabled, setFillersEnabled] = useState(false)
-  const [textOnly, setTextOnly] = useState(false)
-  const [texturesEnabled, setTexturesEnabled] = useState(true)
+  const [paletteId, setPaletteId] = useState('elegant-cream')
+  const [imageMode, setImageMode] = useState<ImageModeV2>('compact-rect')
+  /** 'template' = use template default fillers, 'none' = no fillers, otherwise pattern ID */
+  const [spacerTiles, setSpacerTiles] = useState<'template' | 'none' | string>('template')
+  /** Derived: when imageMode is 'none', layout is text-only (no images). */
+  const textOnly = imageMode === 'none'
+  // Texture is applied as overlay when textureId is set; no separate "textures enabled" toggle
+  const [textureId, setTextureId] = useState<string | null>('linen')
   const [showMenuTitle, setShowMenuTitle] = useState(false)
-  const [showVignette, setShowVignette] = useState(false)
+  const [showVignette, setShowVignette] = useState(true)
+  const [itemBorders, setItemBorders] = useState(true)
+  const [itemDropShadow, setItemDropShadow] = useState(true)
+  const [fillItemTiles, setFillItemTiles] = useState(true)
   
   // Preview State
   const [layoutDocument, setLayoutDocument] = useState<LayoutDocumentV2 | null>(null)
@@ -104,23 +110,20 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 
               setTemplateId(mappedTemplateId)
               
-              // Map legacy V1 palette IDs to V2
-              const savedPaletteId = config.colourPaletteId || config.paletteId || 'midnight-gold'
-              const mappedPaletteId = 
-                savedPaletteId === 'elegant-dark' ? 'midnight-gold' :
-                savedPaletteId === 'simple-dark' ? 'midnight-gold' :
-                savedPaletteId === 'elegant-warm' || savedPaletteId === 'classic-cream' || savedPaletteId === 'classic-ivory' ? 'elegant-cream' :
-                savedPaletteId === 'elegant-light' || savedPaletteId === 'classic-sage' || savedPaletteId === 'simple-clean' ? 'clean-modern' :
-                savedPaletteId;
-                
-              setPaletteId(mappedPaletteId)
-              
-              setFillersEnabled(config.fillersEnabled || false)
-              setTextOnly(config.textOnly || false)
-              setTexturesEnabled(config.texturesEnabled !== false)
+              // Styling defaults (palette, texture, imageMode, spacer tiles) are set
+              // via useState initializers and NOT restored from saved config —
+              // the page always opens with the product defaults.
+              // Only restore non-styling preferences from saved config.
+              // Spacer Tiles: default to "Template default" unless saved preference is present.
+              if (config.spacerTiles === 'none') setSpacerTiles('none')
+              else if (config.spacerTiles === 'mix') setSpacerTiles('mix')
+              else if (config.spacerTiles && FILLER_PATTERN_REGISTRY.has(config.spacerTiles)) setSpacerTiles(config.spacerTiles)
+              else if (config.spacerTilePatternId && FILLER_PATTERN_REGISTRY.has(config.spacerTilePatternId)) setSpacerTiles(config.spacerTilePatternId)
+              else setSpacerTiles('template')
+              if (config.imageMode === 'none' || config.textOnly) setImageMode('none')
+              else if (config.imageMode) setImageMode(config.imageMode as ImageModeV2)
               setShowMenuTitle(config.showMenuTitle || false)
-              setImageMode(config.imageMode || 'stretch')
-              setShowVignette(config.showVignette || false)
+              setShowVignette(config.showVignette !== false)
             }
           }
         } catch (e) {
@@ -175,9 +178,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       const config = {
         paletteId,
         imageMode,
-        fillersEnabled,
+        fillersEnabled: spacerTiles !== 'none',
+        spacerTilePatternId: (spacerTiles !== 'template' && spacerTiles !== 'none') ? spacerTiles : undefined,
         textOnly,
-        texturesEnabled,
+        texturesEnabled: !!textureId,
+        textureId: textureId ?? undefined,
         showMenuTitle,
         showVignette,
         engineVersion: 'v2'
@@ -198,9 +203,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           templateId,
           paletteId,
           imageMode,
-          fillersEnabled: fillersEnabled.toString(),
+          fillersEnabled: (spacerTiles !== 'none').toString(),
+          spacerTilePatternId: (spacerTiles !== 'template' && spacerTiles !== 'none') ? spacerTiles : '',
           textOnly: textOnly.toString(),
-          texturesEnabled: texturesEnabled.toString(),
+          texturesEnabled: (!!textureId).toString(),
+          ...(textureId ? { textureId } : {}),
           showMenuTitle: showMenuTitle.toString(),
           showVignette: showVignette.toString(),
           engineVersion: 'v2'
@@ -225,7 +232,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     } finally {
       setPreviewLoading(false)
     }
-  }, [menu, menuId, templateId, paletteId, imageMode, fillersEnabled, textOnly, texturesEnabled, showMenuTitle, showVignette, isDemoUser, currentPageIndex])
+  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, isDemoUser, currentPageIndex])
 
   // Debounced preview update
   useEffect(() => {
@@ -245,10 +252,16 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     try {
       const configuration = {
         textOnly,
-        fillersEnabled,
-        texturesEnabled,
+        fillersEnabled: spacerTiles !== 'none',
+        spacerTiles,
+        spacerTilePatternId: (spacerTiles !== 'template' && spacerTiles !== 'none') ? spacerTiles : undefined,
+        texturesEnabled: !!textureId,
+        textureId: textureId ?? undefined,
         showMenuTitle,
         showVignette,
+        itemBorders,
+        itemDropShadow,
+        fillItemTiles,
         colourPaletteId: paletteId,
         imageMode
       }
@@ -309,10 +322,16 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     try {
       const configuration = {
         textOnly,
-        fillersEnabled,
-        texturesEnabled,
+        fillersEnabled: spacerTiles !== 'none',
+        spacerTiles,
+        spacerTilePatternId: (spacerTiles !== 'template' && spacerTiles !== 'none') ? spacerTiles : undefined,
+        texturesEnabled: !!textureId,
+        textureId: textureId ?? undefined,
         showMenuTitle,
         showVignette,
+        itemBorders,
+        itemDropShadow,
+        fillItemTiles,
         palette: palette,
         imageMode
       }
@@ -412,12 +431,12 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
 
               {/* Template Selection */}
               <div className="space-y-3">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">1. Choose Template</h4>
+                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">1. Grid Layout</h4>
                 <TemplateDropdown
                   templates={V2_TEMPLATE_OPTIONS}
                   value={templateId}
                   onChange={setTemplateId}
-                  onSelectTemplate={(id) => { if (id === 'italian-v2') setTextOnly(false) }}
+                  onSelectTemplate={(id) => { if (id === 'italian-v2') setImageMode('compact-rect') }}
                   variant="primary"
                 />
               </div>
@@ -433,47 +452,57 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 />
               </div>
 
+              {/* Background texture (overlay on palette) */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">3. Background texture</h4>
+                <select
+                  value={textureId ?? ''}
+                  onChange={(e) => setTextureId(e.target.value || null)}
+                  className="w-full rounded border border-ux-border bg-white px-3 py-2 text-sm text-ux-text focus:ring-ux-primary focus:border-ux-primary"
+                >
+                  <option value="">None</option>
+                  {TEXTURE_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {TEXTURE_REGISTRY.get(id)?.label ?? id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Image Mode Selection */}
               <div className="space-y-3">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">3. Image Options</h4>
+                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">4. Image Options</h4>
                 <ImageModeDropdown
                   value={imageMode}
                   onChange={setImageMode}
                   variant="primary"
+                  showDescription={false}
                 />
+              </div>
+
+              {/* Spacer Tiles */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">5. Spacer Tiles</h4>
+                <select
+                  value={spacerTiles}
+                  onChange={(e) => setSpacerTiles(e.target.value as 'template' | 'none' | string)}
+                  className="w-full rounded border border-ux-border bg-white px-3 py-2 text-sm text-ux-text focus:ring-ux-primary focus:border-ux-primary"
+                >
+                  <option value="template">Template default</option>
+                  <option value="none">None</option>
+                  <option value="mix">Mix</option>
+                  {FILLER_PATTERN_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {FILLER_PATTERN_REGISTRY.get(id)?.label ?? id}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Display Options */}
               <div className="space-y-4">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">4. Display Options</h4>
+                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">6. Display Options</h4>
                 <div className="space-y-3">
-                  <label className="flex items-center justify-between cursor-pointer group">
-                    <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Fillers (decorative icons)</span>
-                    <input
-                      type="checkbox"
-                      checked={fillersEnabled}
-                      onChange={(e) => setFillersEnabled(e.target.checked)}
-                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between cursor-pointer group">
-                    <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Text only (no images)</span>
-                    <input
-                      type="checkbox"
-                      checked={textOnly}
-                      onChange={(e) => setTextOnly(e.target.checked)}
-                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between cursor-pointer group">
-                    <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Textured backgrounds</span>
-                    <input
-                      type="checkbox"
-                      checked={texturesEnabled}
-                      onChange={(e) => setTexturesEnabled(e.target.checked)}
-                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
-                    />
-                  </label>
                   <label className="flex items-center justify-between cursor-pointer group">
                     <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Show menu title</span>
                     <input
@@ -489,6 +518,33 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                       type="checkbox"
                       checked={showVignette}
                       onChange={(e) => setShowVignette(e.target.checked)}
+                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between cursor-pointer group">
+                    <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Fill item tiles</span>
+                    <input
+                      type="checkbox"
+                      checked={fillItemTiles}
+                      onChange={(e) => setFillItemTiles(e.target.checked)}
+                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between cursor-pointer group">
+                    <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Item borders</span>
+                    <input
+                      type="checkbox"
+                      checked={itemBorders}
+                      onChange={(e) => setItemBorders(e.target.checked)}
+                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between cursor-pointer group">
+                    <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Item drop shadow</span>
+                    <input
+                      type="checkbox"
+                      checked={itemDropShadow}
+                      onChange={(e) => setItemDropShadow(e.target.checked)}
                       className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
                     />
                   </label>
@@ -572,13 +628,18 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                     options={{
                       scale: 1.0,
                       palette,
-                      texturesEnabled,
-                      imageMode,
+                      texturesEnabled: !!textureId,
+                      textureId: textureId ?? undefined,
+                      imageMode: imageMode === 'none' ? 'stretch' : imageMode,
                       showVignette,
+                      itemBorders,
+                      itemDropShadow,
+                      fillItemTiles,
                       showGridOverlay: false,
                       showRegionBounds: false,
                       showTileIds: false,
-                      isExport: false
+                      isExport: false,
+                      spacerTilePatternId: (spacerTiles !== 'template' && spacerTiles !== 'none') ? spacerTiles : undefined
                     }}
                   />
                 </div>

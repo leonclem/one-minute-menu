@@ -55,7 +55,16 @@ const engineMenu = transformMenuToV2(existingMenu)
 const layoutDocument = await generateLayoutV2({
   menu: engineMenu,
   templateId: 'classic-cards-v2',
-  selection: { textOnly: false },
+  selection: {
+    fillersEnabled: true,   // UI: "Use spacer tiles"
+    showVignette: true,
+    showMenuTitle: false,
+    textOnly: false,        // or set true when imageMode is 'none' (UI: "4. Image Options" → "None")
+    imageMode: 'stretch',   // 'none' | 'compact-rect' | 'compact-circle' | 'stretch' | 'background'
+    itemBorders: true,
+    itemDropShadow: true,
+    fillItemTiles: true
+  },
   debug: true
 })
 
@@ -158,16 +167,17 @@ policies:
   sectionHeaderKeepWithNextItems: 1
 
 filler:
-  enabled: false
-  safeZones:
-    - startRow: LAST
-      endRow: LAST
+  enabled: true                    # on by default; user can toggle via selection.fillersEnabled (UI: "Use spacer tiles")
+  safeZones:                       # empty [] defaults to entire body grid
+    - startRow: 0
+      endRow: LAST_CONTENT
       startCol: 0
       endCol: 3
-  tiles:
+  tiles:                           # empty [] uses default half-opacity block matching ITEM_CARD rowSpan
     - id: filler-icon-1
       style: icon
       content: utensils
+      rowSpan: 2                   # should match ITEM_CARD rowSpan for visual consistency
   policy: SEQUENTIAL
 
 itemIndicators:
@@ -370,16 +380,24 @@ export async function loadTemplateV2(templateId: string): Promise<TemplateV2>
 
 ### Filler Manager (`filler-manager-v2.ts`)
 
-Safe-zone filler tile insertion:
+Section-scoped interspersed filler insertion with spread distribution:
 
 ```typescript
-export function insertFillers(
-  page: PageLayoutV2,
+export function insertInterspersedFillers(
+  document: LayoutDocumentV2,
   template: TemplateV2,
   menuId: string,
-  pageIndex: number
-): TileInstanceV2[]
+  enabledOverride?: boolean
+): void
+
+export function getItemSlotPositions(
+  itemCount: number,
+  cols: number,
+  seed: number
+): Array<{ row: number; col: number }>
 ```
+
+Fillers are placed **after** content pagination. `getItemSlotPositions` pre-computes item positions leaving gaps for fillers using spread guidance rules (avoid horizontal adjacency, avoid vertical stacking). `insertInterspersedFillers` fills the resulting empty cells per section.
 
 ### Invariant Validator (`invariant-validator.ts`)
 

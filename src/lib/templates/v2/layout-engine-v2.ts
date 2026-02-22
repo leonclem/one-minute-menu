@@ -10,10 +10,10 @@
 
 import { loadTemplateV2 } from './template-loader-v2'
 import { streamingPaginate } from './streaming-paginator'
-import { insertFillers } from './filler-manager-v2'
+import { insertInterspersedFillers } from './filler-manager-v2'
 import { validateInvariants } from './invariant-validator'
 import { InvariantViolationError } from './errors-v2'
-import { buildPageSpec, PAGE_DIMENSIONS } from './engine-types-v2'
+import { buildPageSpec, PAGE_DIMENSIONS, getEffectiveGapXAndCellWidth } from './engine-types-v2'
 import type {
   EngineMenuV2,
   TemplateV2,
@@ -78,33 +78,48 @@ export async function generateLayoutV2(
     template.page.size,
     template.page.margins
   )
+
+  // Step 2b: Apply target cell width override if provided (derives effective gapX)
+  const contentWidth = pageSpec.width - pageSpec.margins.left - pageSpec.margins.right
+  const { gapX: effectiveGapX } = getEffectiveGapXAndCellWidth(
+    contentWidth,
+    template.body.container.cols,
+    template.body.container.gapX,
+    input.selection?.targetCellWidthPt
+  )
+  const effectiveTemplate: TemplateV2 =
+    effectiveGapX !== template.body.container.gapX
+      ? {
+          ...template,
+          body: {
+            ...template.body,
+            container: {
+              ...template.body.container,
+              gapX: effectiveGapX,
+            },
+          },
+        }
+      : template
   
   // Step 3: Call streamingPaginate for main layout
   // This handles all content placement, pagination, and page type assignment
   const document = streamingPaginate(
     input.menu,
-    template,
+    effectiveTemplate,
     pageSpec,
     input.selection
   )
   
-  // Step 4: Call insertFillers for each page
-  // Fillers are added after main layout to avoid interfering with content
-  for (const page of document.pages) {
-    const fillers = insertFillers(
-      page,
-      template,
-      input.menu.id,
-      page.pageIndex,
-      input.selection?.fillersEnabled
-    )
-    page.tiles.push(...fillers)
+  // Step 4: Insert section-scoped interspersed fillers when enabled
+  const fillersEnabled = input.selection?.fillersEnabled ?? effectiveTemplate.filler.enabled
+  if (fillersEnabled) {
+    insertInterspersedFillers(document, effectiveTemplate, input.menu.id, fillersEnabled)
   }
   
   // Step 5: Call validateInvariants in dev mode or when debug=true
   // This catches layout bugs early with descriptive error messages
   if (process.env.NODE_ENV === 'development' || input.debug) {
-    const violations = validateInvariants(document, template)
+    const violations = validateInvariants(document, effectiveTemplate)
     if (violations.length > 0) {
       throw new InvariantViolationError(
         `Layout invariants violated: ${violations.length} violation(s) found`,

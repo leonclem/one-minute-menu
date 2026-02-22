@@ -27,6 +27,7 @@ import {
   PALETTES_V2,
   DEFAULT_PALETTE_V2,
   TEXTURE_REGISTRY,
+  PALETTE_TEXTURE_MAP,
   getFontSet,
   type RenderOptionsV2 
 } from './renderer-v2'
@@ -40,6 +41,8 @@ export interface PDFExportOptionsV2 {
   title?: string
   /** Color palette ID to use */
   paletteId?: string
+  /** Optional texture ID (overrides palette-based texture when set) */
+  textureId?: string
   /** Include page numbers in footer */
   includePageNumbers?: boolean
   /** Custom margins (overrides document pageSpec margins) */
@@ -61,6 +64,14 @@ export interface PDFExportOptionsV2 {
   imageMode?: string
   /** Enable vignette edge effect */
   showVignette?: boolean
+  /** Add very subtle borders to every menu item tile */
+  itemBorders?: boolean
+  /** Add drop shadow to every menu item tile */
+  itemDropShadow?: boolean
+  /** Fill menu item tiles with the palette background colour */
+  fillItemTiles?: boolean
+  /** Override spacer (filler) tile rendering with this pattern ID */
+  spacerTilePatternId?: string
 }
 
 export interface PDFExportResultV2 {
@@ -139,9 +150,14 @@ export async function renderToPdf(
     const htmlContent = await generatePDFHTML(document, customCSS, { 
       showRegionBounds,
       paletteId: options.paletteId,
+      textureId: options.textureId,
       texturesEnabled: options.texturesEnabled,
       imageMode: options.imageMode,
-      showVignette: options.showVignette
+      showVignette: options.showVignette,
+      itemBorders: options.itemBorders,
+      itemDropShadow: options.itemDropShadow,
+      fillItemTiles: options.fillItemTiles,
+      spacerTilePatternId: options.spacerTilePatternId
     })
     logger.info(`[PDFRendererV2] HTML generated in ${Date.now() - htmlStartTime}ms (HTML length: ${htmlContent.length})`)
 
@@ -222,29 +238,27 @@ export async function renderToPdf(
 async function generatePDFHTML(
   document: LayoutDocumentV2, 
   customCSS: string = '',
-  options: { showRegionBounds?: boolean; paletteId?: string; texturesEnabled?: boolean; imageMode?: string; showVignette?: boolean } = {}
+  options: { showRegionBounds?: boolean; paletteId?: string; textureId?: string; texturesEnabled?: boolean; imageMode?: string; showVignette?: boolean; itemBorders?: boolean; itemDropShadow?: boolean; fillItemTiles?: boolean; spacerTilePatternId?: string } = {}
 ): Promise<string> {
   // Use dynamic import to avoid Next.js static analysis issues with react-dom/server
   // in Route Handlers and Server Components.
   const { renderToString } = await import('react-dom/server')
 
   const palette = PALETTES_V2.find(p => p.id === options.paletteId) ?? DEFAULT_PALETTE_V2
+  // Resolve texture: direct textureId first, then palette-based fallback
+  const textureLookupId = options.textureId
+    || (options.texturesEnabled && palette.id ? PALETTE_TEXTURE_MAP[palette.id] : undefined)
 
-  // Pre-fetch texture data URL if enabled
   let textureDataURL: string | undefined = undefined
-  if (options.texturesEnabled) {
-    logger.info(`[PDFRendererV2] Textures enabled, fetching for palette: ${palette.id}`)
-    const textureConfig = TEXTURE_REGISTRY.get(palette.id)
+  if (textureLookupId) {
+    const textureConfig = TEXTURE_REGISTRY.get(textureLookupId)
     if (textureConfig) {
-      textureDataURL = await getTextureDataURL(textureConfig.pdfTextureFile) || undefined
-    }
-    
-    if (textureDataURL) {
-      logger.info(`[PDFRendererV2] Texture loaded successfully (length: ${textureDataURL.length})`)
-      
-      // If we have a data URL, we should use a simpler CSS for PDF to ensure it renders
-      // Puppeteer can sometimes struggle with complex multi-layer gradients + textures in a single property
-      customCSS += `
+      if (textureConfig.pdfTextureFile) {
+        logger.info(`[PDFRendererV2] Textures enabled, fetching for texture: ${textureLookupId}`)
+        textureDataURL = await getTextureDataURL(textureConfig.pdfTextureFile) || undefined
+        if (textureDataURL) {
+          logger.info(`[PDFRendererV2] Texture loaded successfully (length: ${textureDataURL.length})`)
+          customCSS += `
         .page-container-v2 {
           background-image: url('${textureDataURL}') !important;
           background-size: cover !important;
@@ -252,8 +266,25 @@ async function generatePDFHTML(
           background-blend-mode: normal !important;
         }
       `
-    } else if (textureConfig) {
-      logger.warn(`[PDFRendererV2] Failed to load texture for palette: ${palette.id}`)
+        } else {
+          logger.warn(`[PDFRendererV2] Failed to load texture for: ${textureLookupId}`)
+        }
+      } else {
+        // SVG / data-URI texture: inject CSS from webCssExport so PDF renders it
+        const cssProps = textureConfig.webCssExport('')
+        const bgColor = cssProps.backgroundColor ? `background-color: ${cssProps.backgroundColor} !important;` : ''
+        const bgImage = cssProps.backgroundImage ? `background-image: ${cssProps.backgroundImage} !important;` : ''
+        const bgRepeat = cssProps.backgroundRepeat ? `background-repeat: ${cssProps.backgroundRepeat} !important;` : ''
+        const bgSize = cssProps.backgroundSize ? `background-size: ${cssProps.backgroundSize} !important;` : ''
+        customCSS += `
+        .page-container-v2 {
+          ${bgColor}
+          ${bgImage}
+          ${bgRepeat}
+          ${bgSize}
+        }
+      `
+      }
     }
   }
 
@@ -263,8 +294,13 @@ async function generatePDFHTML(
     palette,
     texturesEnabled: options.texturesEnabled,
     textureDataURL,
+    textureId: options.textureId,
     imageMode: (options.imageMode as any) || 'stretch',
     showVignette: options.showVignette,
+    itemBorders: options.itemBorders,
+    itemDropShadow: options.itemDropShadow,
+    fillItemTiles: options.fillItemTiles,
+    spacerTilePatternId: options.spacerTilePatternId,
     showGridOverlay: false,
     showRegionBounds: options.showRegionBounds || false,
     showTileIds: false,

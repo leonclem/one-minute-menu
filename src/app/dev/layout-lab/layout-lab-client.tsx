@@ -18,17 +18,21 @@ export interface LayoutLabState {
   fixtureId: string
   templateId: string
   paletteId: string
+  textureId: string | null
   engineVersion: EngineVersion
   
   // Options
   showGridOverlay: boolean
   showRegionBounds: boolean
   showTileIds: boolean
-  fillersEnabled: boolean
-  textOnly: boolean
+  /** 'template' = use template default fillers, 'none' = no fillers, otherwise pattern ID from FILLER_PATTERN_REGISTRY */
+  spacerTiles: 'template' | 'none' | string
   texturesEnabled: boolean
   showMenuTitle: boolean
   showVignette: boolean
+  itemBorders: boolean
+  itemDropShadow: boolean
+  fillItemTiles: boolean
   imageMode: ImageModeV2
   
   // Data
@@ -42,15 +46,18 @@ const initialState: LayoutLabState = {
   fixtureId: 'tiny',
   templateId: 'classic-cards-v2',
   paletteId: 'midnight-gold',
+  textureId: null,
   engineVersion: 'v2',
   showGridOverlay: false,
   showRegionBounds: false,
   showTileIds: false,
-  fillersEnabled: false,
-  textOnly: false,
+  spacerTiles: 'template',
   texturesEnabled: true, // Enable textures by default to showcase the feature
   showMenuTitle: false, // Hide menu title by default
-  showVignette: false,
+  showVignette: true,
+  itemBorders: true,
+  itemDropShadow: true,
+  fillItemTiles: true,
   imageMode: 'stretch',
   layoutDocument: null,
   isGenerating: false,
@@ -82,9 +89,11 @@ export function LayoutLabClient() {
           paletteId: currentState.paletteId,
           engineVersion: currentState.engineVersion,
           options: {
-            fillersEnabled: currentState.fillersEnabled,
-            textOnly: currentState.textOnly,
-            texturesEnabled: currentState.texturesEnabled,
+            fillersEnabled: currentState.spacerTiles !== 'none',
+            spacerTilePatternId: (currentState.spacerTiles !== 'template' && currentState.spacerTiles !== 'none') ? currentState.spacerTiles : undefined,
+            textOnly: currentState.imageMode === 'none',
+            texturesEnabled: !!currentState.textureId || currentState.texturesEnabled,
+            textureId: currentState.textureId ?? undefined,
             showRegionBounds: currentState.showRegionBounds,
             showMenuTitle: currentState.showMenuTitle,
             showVignette: currentState.showVignette,
@@ -147,9 +156,10 @@ export function LayoutLabClient() {
     state.fixtureId, 
     state.templateId, 
     state.engineVersion, 
-    state.fillersEnabled, 
-    state.textOnly, 
+    state.spacerTiles, 
+    state.imageMode,
     state.texturesEnabled,
+    state.textureId,
     state.paletteId,
     state.showMenuTitle
     // Removed state.isGenerating from dependencies to prevent loops
@@ -179,11 +189,18 @@ export function LayoutLabClient() {
           paletteId: state.paletteId,
           engineVersion: state.engineVersion,
           options: {
-            fillersEnabled: state.fillersEnabled,
-            texturesEnabled: state.texturesEnabled,
-            textOnly: state.textOnly,
+            fillersEnabled: state.spacerTiles !== 'none',
+            spacerTilePatternId: (state.spacerTiles !== 'template' && state.spacerTiles !== 'none') ? state.spacerTiles : undefined,
+            texturesEnabled: !!state.textureId || state.texturesEnabled,
+            textureId: state.textureId ?? undefined,
+            textOnly: state.imageMode === 'none',
             showRegionBounds: state.showRegionBounds,
-            showMenuTitle: state.showMenuTitle
+            showMenuTitle: state.showMenuTitle,
+            showVignette: state.showVignette,
+            itemBorders: state.itemBorders,
+            itemDropShadow: state.itemDropShadow,
+            fillItemTiles: state.fillItemTiles,
+            imageMode: state.imageMode
           }
         })
       })
@@ -206,7 +223,7 @@ export function LayoutLabClient() {
         error: error instanceof Error ? error.message : 'Failed to export PDF'
       })
     }
-  }, [state.layoutDocument, state.fixtureId, state.templateId, state.engineVersion, state.fillersEnabled, state.textOnly, updateState])
+  }, [state.layoutDocument, state.fixtureId, state.templateId, state.engineVersion, state.spacerTiles, state.imageMode, state.textureId, state.texturesEnabled, state.showMenuTitle, state.showVignette, state.itemBorders, state.itemDropShadow, state.fillItemTiles, updateState])
   
   const downloadJson = useCallback(() => {
     if (!state.layoutDocument) return
@@ -244,11 +261,17 @@ export function LayoutLabClient() {
           isAutoGenerating={state.isAutoGenerating}
           error={state.error}
           paletteId={state.paletteId}
+          textureId={state.textureId}
+          showVignette={state.showVignette}
+          itemBorders={state.itemBorders}
+          itemDropShadow={state.itemDropShadow}
+          fillItemTiles={state.fillItemTiles}
           showGridOverlay={state.showGridOverlay}
           showRegionBounds={state.showRegionBounds}
           showTileIds={state.showTileIds}
-          texturesEnabled={state.texturesEnabled}
+          texturesEnabled={!!state.textureId || state.texturesEnabled}
           imageMode={state.imageMode}
+          spacerTilePatternId={(state.spacerTiles !== 'template' && state.spacerTiles !== 'none') ? state.spacerTiles : undefined}
         />
       </div>
     </div>

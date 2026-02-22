@@ -216,6 +216,8 @@ export interface FillerContentV2 {
   type: 'FILLER'
   style: 'color' | 'pattern' | 'icon'
   content?: string
+  /** 0-based index in document order (for "Mix" pattern rotation). Set by filler-manager. */
+  fillerIndex?: number
 }
 
 /** Text block tile content */
@@ -424,8 +426,8 @@ export interface EngineItemV2 {
 // Selection Config
 // =============================================================================
 
-/** Image rendering mode for menu item tiles */
-export type ImageModeV2 = 'compact-rect' | 'compact-circle' | 'stretch' | 'background'
+/** Image rendering mode for menu item tiles. 'none' = text only, no images (same as textOnly: true). */
+export type ImageModeV2 = 'none' | 'compact-rect' | 'compact-circle' | 'stretch' | 'background'
 
 /** User selection configuration for layout generation */
 export interface SelectionConfigV2 {
@@ -433,8 +435,12 @@ export interface SelectionConfigV2 {
   textOnly?: boolean
   /** Override filler enabled state */
   fillersEnabled?: boolean
+  /** Override filler tile style with this pattern ID (from FILLER_PATTERN_REGISTRY); when set, all filler tiles use this pattern */
+  spacerTilePatternId?: string
   /** Enable textured backgrounds for supported palettes */
   texturesEnabled?: boolean
+  /** Optional texture ID (overrides palette-based texture when set) */
+  textureId?: string
   /** Show menu title in title region */
   showMenuTitle?: boolean
   /** Optional custom colour palette ID */
@@ -443,6 +449,14 @@ export interface SelectionConfigV2 {
   imageMode?: ImageModeV2
   /** Enable vignette edge effect */
   showVignette?: boolean
+  /** Add very subtle borders to every menu item tile */
+  itemBorders?: boolean
+  /** Add drop shadow to every menu item tile */
+  itemDropShadow?: boolean
+  /** Fill menu item tiles with the palette background colour */
+  fillItemTiles?: boolean
+  /** Optional target cell width in points; when set, gapX is derived to achieve this width (clamped to per-cols min/max) */
+  targetCellWidthPt?: number
 }
 
 
@@ -515,6 +529,8 @@ export interface SubElementTypographyV2 {
   fontSize?: string
   fontWeight?: string
   lineHeight?: string
+  textAlign?: 'left' | 'center' | 'right' | 'justify'
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'
 }
 
 /** Typography styling configuration */
@@ -526,7 +542,7 @@ export interface TypographyStyleV2 {
   /** Font weight token (e.g., 'normal', 'semibold', 'bold') */
   fontWeight?: string
   /** Text alignment */
-  textAlign?: 'left' | 'center' | 'right'
+  textAlign?: 'left' | 'center' | 'right' | 'justify'
   /** Line height token (e.g., 'tight', 'normal', 'relaxed') */
   lineHeight?: string
   /** CSS text-transform */
@@ -573,6 +589,12 @@ export interface BackgroundStyleV2 {
   borderRadius?: number
 }
 
+/** Image styling configuration (e.g. drop shadow) */
+export interface ImageStyleV2 {
+  /** CSS box-shadow value */
+  boxShadow?: string
+}
+
 /** Complete tile styling configuration */
 export interface TileStyleV2 {
   /** Typography styling */
@@ -583,6 +605,8 @@ export interface TileStyleV2 {
   border?: BorderStyleV2
   /** Background styling */
   background?: BackgroundStyleV2
+  /** Image styling (e.g. drop shadow) */
+  image?: ImageStyleV2
 }
 
 /** Single tile variant definition */
@@ -740,4 +764,51 @@ export function calculateMaxRows(
   // Each subsequent row needs rowHeight + gapY
   // Formula: floor((bodyHeight + gapY) / (rowHeight + gapY))
   return Math.floor((bodyHeight + gapY) / (rowHeight + gapY))
+}
+
+/** Min/max cell width (points) per column count for target-cell-width clamping */
+export const CELL_WIDTH_CONSTRAINTS: Record<number, { min: number; max: number }> = {
+  1: { min: 200, max: 600 },
+  2: { min: 100, max: 350 },
+  3: { min: 80, max: 250 },
+  4: { min: 60, max: 200 },
+  5: { min: 55, max: 180 },
+  6: { min: 50, max: 160 },
+}
+
+/**
+ * Derive gapX from target cell width and body width.
+ * Formula: gapX = (bodyWidth - cols * targetCellWidth) / (cols - 1), or 0 when cols === 1.
+ */
+export function deriveGapXFromTargetCellWidth(
+  bodyWidth: number,
+  cols: number,
+  targetCellWidth: number
+): number {
+  if (cols <= 1) return 0
+  const gapX = (bodyWidth - cols * targetCellWidth) / (cols - 1)
+  return Math.max(0, gapX)
+}
+
+/**
+ * Compute effective gapX for body grid: either template gapX or derived from targetCellWidthPt (clamped).
+ * Returns the gapX to use and the resulting cell width (for callers that need it).
+ */
+export function getEffectiveGapXAndCellWidth(
+  bodyWidth: number,
+  cols: number,
+  templateGapX: number,
+  targetCellWidthPt?: number
+): { gapX: number; cellWidth: number } {
+  if (targetCellWidthPt == null || targetCellWidthPt <= 0) {
+    const cellWidth = calculateCellWidth(bodyWidth, cols, templateGapX)
+    return { gapX: templateGapX, cellWidth }
+  }
+  const constraints = CELL_WIDTH_CONSTRAINTS[cols]
+  const clamped = constraints
+    ? Math.max(constraints.min, Math.min(constraints.max, targetCellWidthPt))
+    : targetCellWidthPt
+  const gapX = deriveGapXFromTargetCellWidth(bodyWidth, cols, clamped)
+  const cellWidth = calculateCellWidth(bodyWidth, cols, gapX)
+  return { gapX, cellWidth }
 }

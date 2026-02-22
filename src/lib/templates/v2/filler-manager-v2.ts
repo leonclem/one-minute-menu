@@ -14,6 +14,7 @@
  */
 
 import type {
+  LayoutDocumentV2,
   PageLayoutV2,
   TemplateV2,
   TileInstanceV2,
@@ -23,6 +24,9 @@ import type {
   FillerContentV2,
 } from './engine-types-v2'
 import { calculateCellWidth, calculateMaxRows, calculateTileWidth, calculateTileHeight } from './engine-types-v2'
+
+/** Default filler when template has no filler.tiles: half-opacity block */
+const DEFAULT_FILLER_DEF: FillerTileDefV2 = { id: 'default-block', style: 'color', content: '' }
 
 // =============================================================================
 // Types
@@ -98,7 +102,7 @@ export function insertFillers(
     seed
   )
 
-  // Create filler tile instances
+  // Create filler tile instances (fillerIndex not set in insertFillers - only used by insertInterspersedFillers for "Mix")
   const cellWidth = calculateCellWidth(bodyRegion.width, cols, gapX)
   
   for (const { cell, filler } of selectedFillers) {
@@ -133,6 +137,157 @@ export function insertFillers(
   }
 
   return fillerTiles
+}
+
+// =============================================================================
+// Interspersed Fillers (section-scoped)
+// =============================================================================
+
+/**
+ * Insert filler tiles into empty cells per section (interspersed).
+ * Fillers are placed only in rows that belong to each section and within safe zones.
+ * Deterministic: same menu + template + menuId produces same fillers.
+ * Does not create new rows.
+ *
+ * @param document - Layout document to mutate (adds filler tiles to each page)
+ * @param template - Template configuration
+ * @param menuId - Menu ID for deterministic seeding
+ * @param enabledOverride - When true, insert fillers even if template.filler.enabled is false (e.g. from selection.fillersEnabled)
+ */
+export function insertInterspersedFillers(
+  document: LayoutDocumentV2,
+  template: TemplateV2,
+  menuId: string,
+  enabledOverride?: boolean
+): void {
+  const enabled = enabledOverride ?? template.filler.enabled
+  if (!enabled) {
+    return
+  }
+
+  // Use template fillers or a default block matching the primary item rowSpan
+  const defaultRowSpan = template.tiles.ITEM_CARD?.rowSpan ?? 1
+  const fillerDefs = template.filler.tiles.length > 0
+    ? template.filler.tiles
+    : [{ ...DEFAULT_FILLER_DEF, rowSpan: defaultRowSpan }]
+
+  let fillerIndex = 0
+  for (let pageIndex = 0; pageIndex < document.pages.length; pageIndex++) {
+    const page = document.pages[pageIndex]
+    const bodyRegion = page.regions.find(r => r.id === 'body')
+    if (!bodyRegion) continue
+
+    const { cols, rowHeight, gapX, gapY } = template.body.container
+    const maxRows = calculateMaxRows(bodyRegion.height, rowHeight, gapY)
+    const occupancy = buildOccupancyGrid(page, template, cols, maxRows)
+    const lastContentRow = findLastOccupiedRow(occupancy)
+    const cellWidth = calculateCellWidth(bodyRegion.width, cols, gapX)
+
+    const sectionIds = getSectionIdsOnPage(page)
+    for (const sectionId of sectionIds) {
+      const sectionRows = getSectionRowsOnPage(page, sectionId)
+      if (sectionRows.length === 0) continue
+
+      // When no safe zones are defined, default to the entire body grid
+      // so fillers can fill any empty cell in the section's rows
+      const safeZones = template.filler.safeZones.length > 0
+        ? template.filler.safeZones
+        : [{ startRow: 0, endRow: 'LAST_CONTENT' as const, startCol: 0, endCol: cols - 1 }]
+
+      const emptyCells = findEmptyCellsInSectionAndSafeZones(
+        occupancy,
+        sectionRows,
+        safeZones,
+        cols,
+        maxRows,
+        lastContentRow
+      )
+
+      const seed = hashString(`${menuId}-${template.id}-${pageIndex}-${sectionId}`)
+      const selected = selectFillers(emptyCells, fillerDefs, template.filler.policy, seed)
+
+      for (const { cell, filler } of selected) {
+        const fRowSpan = filler.rowSpan ?? 1
+        const fColSpan = filler.colSpan ?? 1
+        if (!isAreaEmpty(occupancy, cell.row, cell.col, fRowSpan, fColSpan)) continue
+
+        const tile: TileInstanceV2 = {
+          id: `filler-${pageIndex}-${sectionId}-${cell.row}-${cell.col}`,
+          type: 'FILLER',
+          regionId: 'body',
+          x: cell.col * (cellWidth + gapX),
+          y: cell.row * (rowHeight + gapY),
+          width: calculateTileWidth(fColSpan, cellWidth, gapX),
+          height: calculateTileHeight(fRowSpan, rowHeight, gapY),
+          colSpan: fColSpan,
+          rowSpan: fRowSpan,
+          gridRow: cell.row,
+          gridCol: cell.col,
+          layer: 'background',
+          content: {
+            type: 'FILLER',
+            style: filler.style,
+            content: filler.content ?? '',
+            fillerIndex: fillerIndex++,
+          } as FillerContentV2,
+        }
+        page.tiles.push(tile)
+        markAreaOccupied(occupancy, cell.row, cell.col, fRowSpan, fColSpan)
+      }
+    }
+  }
+}
+
+function getSectionIdsOnPage(page: PageLayoutV2): string[] {
+  const ids = new Set<string>()
+  for (const tile of page.tiles) {
+    if (tile.regionId !== 'body') continue
+    const c = tile.content as { sectionId?: string }
+    if (c?.sectionId) ids.add(c.sectionId)
+  }
+  return Array.from(ids)
+}
+
+function getSectionRowsOnPage(page: PageLayoutV2, sectionId: string): number[] {
+  const rows = new Set<number>()
+  for (const tile of page.tiles) {
+    if (tile.regionId !== 'body') continue
+    const c = tile.content as { sectionId?: string }
+    if (c?.sectionId !== sectionId) continue
+    for (let r = tile.gridRow; r < tile.gridRow + tile.rowSpan; r++) {
+      rows.add(r)
+    }
+  }
+  return Array.from(rows).sort((a, b) => a - b)
+}
+
+function findEmptyCellsInSectionAndSafeZones(
+  occupancy: boolean[][],
+  sectionRows: number[],
+  safeZones: SafeZoneV2[],
+  cols: number,
+  maxRows: number,
+  lastContentRow: number
+): EmptyCell[] {
+  const emptyCells: EmptyCell[] = []
+  const sectionRowSet = new Set(sectionRows)
+
+  for (const zone of safeZones) {
+    const startRow = resolveSafeZoneIndex(zone.startRow, maxRows, lastContentRow)
+    const endRow = resolveSafeZoneIndex(zone.endRow, maxRows, lastContentRow)
+    const startCol = zone.startCol
+    const endCol = Math.min(zone.endCol, cols - 1)
+
+    for (let row = startRow; row <= endRow && row < maxRows; row++) {
+      if (row < 0 || !sectionRowSet.has(row)) continue
+      for (let col = startCol; col <= endCol && col < cols; col++) {
+        if (!occupancy[row][col]) {
+          emptyCells.push({ row, col })
+        }
+      }
+    }
+  }
+  return emptyCells
 }
 
 // =============================================================================
@@ -440,4 +595,129 @@ function createSeededRandom(seed: number): () => number {
     state = (state * 16807) % 2147483647
     return (state - 1) / 2147483646
   }
+}
+
+/**
+ * Get (row, col) positions for item slots when fillers are interspersed.
+ * Deterministic: same itemCount, cols, seed → same positions.
+ *
+ * Guidance rules (best-effort, scored):
+ *  - Horizontal spread: avoid adjacent fillers in the same row
+ *  - Vertical spread: avoid fillers in the same column across consecutive rows
+ *
+ * @param itemCount - Number of menu items in the section
+ * @param cols - Grid columns
+ * @param seed - Seed for deterministic filler slot selection
+ * @returns Array of { row, col } in section body row space, length = itemCount
+ */
+export function getItemSlotPositions(
+  itemCount: number,
+  cols: number,
+  seed: number
+): Array<{ row: number; col: number }> {
+  const totalRows = Math.ceil(itemCount / cols)
+  const totalCells = totalRows * cols
+  const fillerCount = totalCells - itemCount
+  if (fillerCount <= 0) {
+    return Array.from({ length: itemCount }, (_, i) => ({
+      row: Math.floor(i / cols),
+      col: i % cols
+    }))
+  }
+
+  const rng = createSeededRandom(seed)
+
+  // Step 1: Distribute filler count across rows as evenly as possible
+  // Shuffle row assignment order for deterministic variety
+  const fillersPerRow = new Array(totalRows).fill(0)
+  const rowOrder = Array.from({ length: totalRows }, (_, i) => i)
+  for (let i = rowOrder.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[rowOrder[i], rowOrder[j]] = [rowOrder[j], rowOrder[i]]
+  }
+  for (let i = 0; i < fillerCount; i++) {
+    fillersPerRow[rowOrder[i % totalRows]]++
+  }
+
+  // Step 2: For each row, select filler columns that maximise spread
+  const fillerCells = new Set<string>()
+  let prevFillerCols = new Set<number>()
+
+  for (let row = 0; row < totalRows; row++) {
+    const count = fillersPerRow[row]
+    if (count === 0) {
+      prevFillerCols = new Set()
+      continue
+    }
+    const selected = selectSpreadColumns(cols, count, prevFillerCols, rng)
+    for (const col of selected) {
+      fillerCells.add(`${row}-${col}`)
+    }
+    prevFillerCols = new Set(selected)
+  }
+
+  // Step 3: Item positions = all cells NOT in fillerCells, in row-major order
+  const itemSlots: Array<{ row: number; col: number }> = []
+  for (let i = 0; i < totalCells && itemSlots.length < itemCount; i++) {
+    const row = Math.floor(i / cols)
+    const col = i % cols
+    if (!fillerCells.has(`${row}-${col}`)) {
+      itemSlots.push({ row, col })
+    }
+  }
+  return itemSlots
+}
+
+/**
+ * Select `count` columns from [0..cols) that minimise horizontal adjacency
+ * and vertical overlap with the previous row's filler columns.
+ * Uses brute-force subset enumeration (cols ≤ 6, so max C(6,3) = 20 subsets).
+ */
+function selectSpreadColumns(
+  cols: number,
+  count: number,
+  avoidCols: Set<number>,
+  rng: () => number
+): number[] {
+  if (count <= 0) return []
+  if (count >= cols) return Array.from({ length: cols }, (_, i) => i)
+
+  const subsets = enumerateSubsets(cols, count)
+
+  // Score each subset — lower is better
+  const scored = subsets.map(subset => {
+    let adjacentPairs = 0
+    let verticalOverlap = 0
+
+    const sorted = [...subset].sort((a, b) => a - b)
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i] === sorted[i - 1] + 1) adjacentPairs++
+    }
+    for (const col of subset) {
+      if (avoidCols.has(col)) verticalOverlap++
+    }
+
+    // Horizontal adjacency penalised more heavily than vertical overlap
+    return { subset, score: adjacentPairs * 10 + verticalOverlap }
+  })
+
+  scored.sort((a, b) => a.score - b.score)
+  const bestScore = scored[0].score
+  const best = scored.filter(s => s.score === bestScore)
+  return best[Math.floor(rng() * best.length)].subset
+}
+
+/** Enumerate all k-element subsets of [0..n). */
+function enumerateSubsets(n: number, k: number): number[][] {
+  const result: number[][] = []
+  function bt(start: number, cur: number[]) {
+    if (cur.length === k) { result.push([...cur]); return }
+    for (let i = start; i < n; i++) {
+      cur.push(i)
+      bt(i + 1, cur)
+      cur.pop()
+    }
+  }
+  bt(0, [])
+  return result
 }

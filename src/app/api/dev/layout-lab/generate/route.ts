@@ -26,8 +26,10 @@ interface GenerateRequest {
   engineVersion: 'v1' | 'v2'
   options?: {
     fillersEnabled?: boolean
+    spacerTilePatternId?: string
     textOnly?: boolean
     texturesEnabled?: boolean
+    textureId?: string
     showMenuTitle?: boolean
     showVignette?: boolean
     imageMode?: string
@@ -126,16 +128,22 @@ export async function POST(request: NextRequest) {
         menuV2 = transformMenuToV2(menuData)
       }
       
+      const rawImageMode = (options.imageMode as string) || 'stretch'
+      const imageModeForEngine = rawImageMode === 'none' ? 'stretch' : rawImageMode
+      const textOnly = options.textOnly || rawImageMode === 'none'
+
       layoutDocument = await generateLayoutWithVersion({
         menu: menuV2,
         templateId,
         selection: {
-          textOnly: options.textOnly || false,
-          fillersEnabled: options.fillersEnabled,
-          texturesEnabled: options.texturesEnabled,
+          textOnly,
+          fillersEnabled: options.fillersEnabled ?? true,
+          spacerTilePatternId: options.spacerTilePatternId,
+          texturesEnabled: options.texturesEnabled ?? !!options.textureId,
+          textureId: options.textureId,
           showMenuTitle: options.showMenuTitle,
-          showVignette: options.showVignette,
-          imageMode: options.imageMode as any || 'stretch'
+          showVignette: options.showVignette ?? true,
+          imageMode: imageModeForEngine as any
         },
         debug: true // Enable debug info for Layout Lab
       }, 'v2')

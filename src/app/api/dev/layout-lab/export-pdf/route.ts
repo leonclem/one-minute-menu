@@ -29,9 +29,16 @@ interface ExportPdfRequest {
   engineVersion: 'v1' | 'v2'
   options?: {
     fillersEnabled?: boolean
+    spacerTilePatternId?: string
     texturesEnabled?: boolean
+    textureId?: string
     showMenuTitle?: boolean
+    showVignette?: boolean
+    itemBorders?: boolean
+    itemDropShadow?: boolean
+    fillItemTiles?: boolean
     textOnly?: boolean
+    imageMode?: string
     showRegionBounds?: boolean
   }
 }
@@ -140,14 +147,22 @@ export async function POST(request: NextRequest) {
         menuV2 = transformMenuToV2(menuData)
       }
       
+      const rawImageMode = options.imageMode || 'stretch'
+      const imageModeForEngine = rawImageMode === 'none' ? 'stretch' : rawImageMode
+      const textOnly = options.textOnly || rawImageMode === 'none'
+
       const layoutDocument = await generateLayoutWithVersion({
         menu: menuV2,
         templateId,
         selection: {
-          textOnly: options.textOnly || false,
-          fillersEnabled: options.fillersEnabled,
-          texturesEnabled: options.texturesEnabled,
-          showMenuTitle: options.showMenuTitle
+          textOnly,
+          fillersEnabled: options.fillersEnabled ?? true,
+          spacerTilePatternId: options.spacerTilePatternId,
+          texturesEnabled: options.texturesEnabled ?? !!options.textureId,
+          textureId: options.textureId,
+          showMenuTitle: options.showMenuTitle,
+          showVignette: options.showVignette ?? true,
+          imageMode: imageModeForEngine as any
         },
         debug: false // No debug info needed for PDF
       }, 'v2') as LayoutDocumentV2
@@ -176,8 +191,15 @@ export async function POST(request: NextRequest) {
         paletteId,
         includePageNumbers: true,
         printBackground: true,
-        texturesEnabled: options.texturesEnabled,
-        showRegionBounds: options.showRegionBounds || false
+        texturesEnabled: options.texturesEnabled ?? !!options.textureId,
+        textureId: options.textureId,
+        showVignette: options.showVignette ?? true,
+        showRegionBounds: options.showRegionBounds || false,
+        itemBorders: options.itemBorders ?? false,
+        itemDropShadow: options.itemDropShadow ?? false,
+        fillItemTiles: options.fillItemTiles ?? false,
+        spacerTilePatternId: options.spacerTilePatternId,
+        imageMode: rawImageMode === 'none' ? 'stretch' : rawImageMode
       })
       
       // Extract buffer from result

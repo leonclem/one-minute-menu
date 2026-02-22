@@ -13,6 +13,10 @@ import {
   COLOR_TOKENS_V2,
   SPACING_V2,
   TEXTURE_REGISTRY,
+  FILLER_PATTERN_REGISTRY,
+  FILLER_PATTERN_IDS,
+  PALETTES_V2,
+  DEFAULT_PALETTE_V2,
   type RenderOptionsV2 
 } from '../renderer-v2'
 import type { 
@@ -23,6 +27,7 @@ import type {
   SectionHeaderContentV2,
   FooterInfoContentV2,
   FeatureCardContentV2,
+  FillerContentV2,
   TileStyleV2
 } from '../engine-types-v2'
 
@@ -640,22 +645,139 @@ describe('V2 Renderer', () => {
     })
   })
 
-  describe('Light Palette Textures', () => {
-    it('should have textures registered for light palettes', () => {
-      const lightPalettes = ['elegant-cream', 'warm-earth', 'ocean-breeze', 'forest-green', 'valentines-rose', 'clean-modern']
-      
-      lightPalettes.forEach(paletteId => {
-        const config = TEXTURE_REGISTRY.get(paletteId)
+  describe('Texture Patterns', () => {
+    it('should have all expected texture patterns registered', () => {
+      const expectedPatterns = [
+        'dark-paper', 'paper-grain', 'subtle-noise', 'stripes-horizontal', 'stripes-vertical', 'stripes-diagonal',
+        'waves', 'linen', 'subtle-dots'
+      ]
+      expectedPatterns.forEach(patternId => {
+        const config = TEXTURE_REGISTRY.get(patternId)
         expect(config).toBeDefined()
-        expect(config?.paletteId).toBe(paletteId)
-        expect(config?.backgroundColor).toBeTruthy()
+        expect(config?.label).toBeTruthy()
       })
     })
 
-    it('should use SVG data-URI textures for light palettes', () => {
-      const config = TEXTURE_REGISTRY.get('elegant-cream')
+    it('should use SVG data-URI textures for SVG patterns', () => {
+      const config = TEXTURE_REGISTRY.get('paper-grain')
       const css = config?.webCss('')
       expect(css?.backgroundImage).toContain('data:image/svg+xml')
+    })
+
+    it('should use file-based texture for dark-paper', () => {
+      const config = TEXTURE_REGISTRY.get('dark-paper')
+      expect(config?.pdfTextureFile).toBeTruthy()
+    })
+  })
+
+  describe('Filler (spacer) pattern registry', () => {
+    it('should have expected filler pattern IDs registered', () => {
+      const expected = ['diagonal-pinstripe', 'bauhaus-check', 'overlapping-rings', 'windowpane', 'matte-paper-grain']
+      expect(FILLER_PATTERN_IDS).toEqual(expected)
+      expected.forEach(id => {
+        const config = FILLER_PATTERN_REGISTRY.get(id)
+        expect(config).toBeDefined()
+        expect(config?.label).toBeTruthy()
+        expect(typeof config?.getSvgDataUri).toBe('function')
+      })
+    })
+
+    it('should return palette-adaptive SVG data URI for each pattern', () => {
+      const palette = PALETTES_V2[0] ?? DEFAULT_PALETTE_V2
+      const paletteColors = [
+        palette.colors.surface ?? palette.colors.border.light,
+        palette.colors.border.light,
+        palette.colors.border.medium
+      ].filter(Boolean)
+      for (const id of FILLER_PATTERN_IDS) {
+        const config = FILLER_PATTERN_REGISTRY.get(id)
+        const dataUri = config?.getSvgDataUri(palette)
+        expect(dataUri).toMatch(/^data:image\/svg\+xml,/)
+        const usesPalette = paletteColors.some(c => dataUri.includes(encodeURIComponent(c)))
+        expect(usesPalette).toBe(true)
+      }
+    })
+  })
+
+  describe('Filler tile rendering', () => {
+    const baseFillerTile: TileInstanceV2 = {
+      id: 'filler-0-0-0',
+      type: 'FILLER',
+      regionId: 'body',
+      x: 0,
+      y: 0,
+      width: 120,
+      height: 148,
+      colSpan: 1,
+      rowSpan: 2,
+      gridRow: 0,
+      gridCol: 0,
+      layer: 'content',
+      content: {
+        type: 'FILLER',
+        style: 'color',
+        content: ''
+      } as FillerContentV2
+    }
+
+    it('should render filler with pattern overlay when spacerTilePatternId is set', () => {
+      const options: RenderOptionsV2 = {
+        ...defaultOptions,
+        palette: DEFAULT_PALETTE_V2,
+        spacerTilePatternId: 'diagonal-pinstripe'
+      }
+      const result = renderTileContent(baseFillerTile, options)
+      expect(result.elements.length).toBeGreaterThanOrEqual(2)
+      const baseBg = result.elements[0]
+      expect(baseBg.type).toBe('background')
+      expect(baseBg.style.backgroundColor).toBeDefined()
+      const patternBg = result.elements.find(e => e.type === 'background' && e.style?.background)
+      expect(patternBg).toBeDefined()
+      expect(patternBg?.style?.background).toContain('url("data:image/svg+xml')
+      expect(patternBg?.style?.background).toContain('repeat')
+    })
+
+    it('should set pattern background position from tile position for seamless tessellation', () => {
+      const options: RenderOptionsV2 = {
+        ...defaultOptions,
+        palette: DEFAULT_PALETTE_V2,
+        spacerTilePatternId: 'windowpane'
+      }
+      const tileAtOffset = { ...baseFillerTile, x: 140, y: 200 }
+      const result = renderTileContent(tileAtOffset, options)
+      const patternBg = result.elements.find(e => e.type === 'background' && e.style?.background)
+      expect(patternBg).toBeDefined()
+      expect(patternBg?.style?.backgroundPositionX).toBe(-140)
+      expect(patternBg?.style?.backgroundPositionY).toBe(-200)
+    })
+
+    it('should render filler without pattern when spacerTilePatternId is unset', () => {
+      const result = renderTileContent(baseFillerTile, defaultOptions)
+      const withPattern = result.elements.filter(e => e.type === 'background' && e.style?.background)
+      expect(withPattern).toHaveLength(0)
+      expect(result.elements.some(e => e.type === 'background')).toBe(true)
+    })
+
+    it('should rotate patterns when spacerTilePatternId is "mix" by fillerIndex', () => {
+      const options: RenderOptionsV2 = {
+        ...defaultOptions,
+        palette: DEFAULT_PALETTE_V2,
+        spacerTilePatternId: 'mix'
+      }
+      const results = [0, 1, 2].map(fillerIndex =>
+        renderTileContent(
+          { ...baseFillerTile, content: { ...baseFillerTile.content, fillerIndex } as FillerContentV2 },
+          options
+        )
+      )
+      const getPatternBg = (r: { elements: any[] }) => r.elements.find((e: any) => e.type === 'background' && e.style?.background)?.style?.background
+      expect(getPatternBg(results[0])).toBeDefined()
+      expect(getPatternBg(results[1])).toBeDefined()
+      expect(getPatternBg(results[2])).toBeDefined()
+      // Different indices should produce different pattern SVGs (rotates through all 4 patterns)
+      expect(getPatternBg(results[0])).not.toBe(getPatternBg(results[1]))
+      expect(getPatternBg(results[1])).not.toBe(getPatternBg(results[2]))
+      expect(getPatternBg(results[0])).not.toBe(getPatternBg(results[2]))
     })
   })
 

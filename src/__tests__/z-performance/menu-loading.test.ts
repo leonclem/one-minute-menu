@@ -166,7 +166,7 @@ describe('Performance: Database Queries', () => {
   })
 
   it('should batch analytics updates', async () => {
-    const views = Array.from({ length: 100 }, (_, i) => ({
+    const views = Array.from({ length: 100 }, () => ({
       menuId: 'menu-123',
       timestamp: new Date(),
     }))

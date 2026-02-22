@@ -160,7 +160,7 @@ policies:
   sectionHeaderKeepWithNextItems: 1
 
 filler:
-  enabled: false
+  enabled: true
   safeZones:
     - startRow: 0
       endRow: LAST_CONTENT

@@ -95,6 +95,7 @@ export {
 // Filler manager
 export {
   insertFillers,
+  insertInterspersedFillers,
   buildOccupancyGrid,
   findEmptyCellsInSafeZones,
   resolveSafeZoneIndex,

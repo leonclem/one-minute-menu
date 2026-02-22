@@ -92,7 +92,7 @@ ITEM_CARD:
 
 ### Renderer defaults (not in template schema)
 
-- **Image drop shadow** — The renderer applies a fixed drop shadow to item images (except in compact-circle mode). This is not configurable per template.
+- **Image drop shadow** — Configurable per template via `style.imageDropShadow: true | false` on `ITEM_CARD` / `FEATURE_CARD` tiles. Defaults to `true` when not set. Does not apply in compact-circle image mode.
 - **Letter spacing** — When `textTransform: "uppercase"` is set, the renderer applies a small letter-spacing value automatically. Custom letter-spacing cannot be set in YAML.
 
 ### Spacing
@@ -154,6 +154,44 @@ style:
     color: "#F5F2D0"      # Background color (hex, rgb, named colors)
     borderRadius: 8       # Corner radius in points
 ```
+
+### Background Textures
+
+Textures are palette-independent overlays applied on top of the selected colour palette's background. They are selected by the user via a dropdown (not configured per template in YAML). The page background (colour + texture) is rendered on a dedicated layer behind all content (z-index), so item borders and drop shadows read clearly and do not conflict with the texture.
+
+Available texture patterns (`TEXTURE_REGISTRY` in `renderer-v2.ts`), in dropdown order:
+
+| Pattern ID | Label | Type | Notes |
+|-----------|-------|------|-------|
+| `subtle-dots` | Subtle Dots | Inline SVG | Uniform dot grid |
+| `paper-grain` | Paper Grain | Inline SVG | Fine random grain, works on any palette |
+| `stripes-horizontal` | Stripes (horizontal) | Inline SVG | Subtle horizontal lines |
+| `stripes-vertical` | Stripes (vertical) | Inline SVG | Subtle vertical lines |
+| `stripes-diagonal` | Stripes (diagonal) | Inline SVG | Subtle diagonal lines |
+| `waves` | Waves | Inline SVG | Gentle wave lines |
+| `linen` | Linen | Inline SVG | Crosshatch/grid pattern |
+| `dark-paper` | Dark Paper | PNG file | Opaque cover — best with dark palettes |
+
+The legacy ID `subtle-noise` is supported (resolves to Paper Grain) for saved configs. To add a new texture: register it in `TEXTURE_REGISTRY` and add its ID to `TEXTURE_IDS` in `renderer-v2.ts`. SVG textures use `svgTexturePattern()`; file-based textures specify a `pdfTextureFile`.
+
+### User display options (template / Layout Lab)
+
+The following options are set by the user in the UI. Section order: **1. Grid Layout**, **2. Color Palette**, **3. Background texture**, **4. Image Options**, **5. Spacer Tiles**, **6. Display Options**.
+
+- **Spacer Tiles** (section 5) — Dropdown: **Template default** (use the layout’s filler style from YAML), **None** (no fillers), or a pattern (e.g. Quatrefoil, Teardrop, Herringbone). When a pattern is selected, all filler tiles render with that palette-adaptive pattern (`selection.spacerTilePatternId`). When **None**, fillers are disabled (`selection.fillersEnabled: false`).
+- **Show menu title** (section 6) — Whether to show the menu name in the title region.
+- **Vignette edges** — Subtle darkened edge effect on page borders.
+- **Fill item tiles** — When enabled, each menu item tile (ITEM_CARD, ITEM_TEXT_ROW, FEATURE_CARD) is filled with the palette's **surface** colour when defined, otherwise the palette **background**. Palettes define an optional `surface` colour that works with the background (see `ColorPaletteV2` in `renderer-v2.ts`).
+- **Item borders** — Very subtle border on every menu item tile.
+- **Item drop shadow** — Subtle drop shadow on every menu item tile.
+
+**Image Options** (section 4) — Dropdown includes **None**, which renders all items as ITEM_TEXT_ROW with no images (same behaviour as the former "Text only (no images)" checkbox). Other options: Compact (rectangular), Compact (circular), Stretch fit, Background.
+
+### Filler (spacer) tile styling
+
+Filler tiles are decorative blocks placed in empty grid cells to fill gaps between menu items. The user chooses **Spacer Tiles** (section 5): **Template default**, **None**, or a pattern. When **Template default**, the template’s `filler.tiles` in YAML are used; when `tiles: []`, a default half-opacity colour block is generated matching the ITEM_CARD `rowSpan`. When a pattern is selected, all fillers render with that pattern (from `FILLER_PATTERN_REGISTRY` in `renderer-v2.ts`), which is palette-adaptive. Available patterns: **Diagonal Pinstripe**, **Bauhaus Check & Circle**, **Overlapping Rings**, **Windowpane Grid** (plus **Mix**, which rotates through them).
+
+Filler blocks (template default or when no pattern override) render at 50% opacity using the palette's muted/border colours. Custom filler styles (`icon`, `color`, `pattern`) are defined per template — see the filler YAML section in [README.md](./README.md).
 
 ## Complete Examples
 

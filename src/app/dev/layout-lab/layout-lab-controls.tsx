@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import type { LayoutLabState } from './layout-lab-client'
 import type { Menu } from '@/types'
-import { PALETTES_V2 } from '@/lib/templates/v2/renderer-v2'
+import { PALETTES_V2, TEXTURE_IDS, TEXTURE_REGISTRY, FILLER_PATTERN_IDS, FILLER_PATTERN_REGISTRY } from '@/lib/templates/v2/renderer-v2'
 import { V2_TEMPLATE_OPTIONS, V2_TEMPLATE_OPTIONS_EXTRA } from '@/lib/templates/v2/template-options'
 import { PaletteDropdown, TemplateDropdown, ImageModeDropdown } from '@/components/ux'
 
@@ -140,7 +140,7 @@ export function LayoutLabControls({
       {/* 1. Template Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>1. Choose Template</CardTitle>
+          <CardTitle>1. Grid Layout</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <TemplateDropdown
@@ -149,7 +149,7 @@ export function LayoutLabControls({
             onChange={(newTemplateId) => {
               const updates: Partial<LayoutLabState> = { templateId: newTemplateId }
               if (newTemplateId === 'italian-v2') {
-                updates.textOnly = false
+                updates.imageMode = 'stretch'
               }
               if (newTemplateId === 'valentines-v2') {
                 updates.paletteId = 'valentines-rose'
@@ -176,6 +176,28 @@ export function LayoutLabControls({
             onChange={(paletteId) => onStateChange({ paletteId })}
             variant="neutral"
           />
+        </CardContent>
+      </Card>
+
+      {/* 3. Background texture (overlay on palette) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>3. Background texture</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <select
+            value={state.textureId ?? ''}
+            onChange={(e) => onStateChange({ textureId: e.target.value || null })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">None</option>
+            {TEXTURE_IDS.map((id) => (
+              <option key={id} value={id}>
+                {TEXTURE_REGISTRY.get(id)?.label ?? id}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500">Overlays a pattern on the chosen palette.</p>
         </CardContent>
       </Card>
       
@@ -211,10 +233,10 @@ export function LayoutLabControls({
         </CardContent>
       </Card>
 
-      {/* 3. Image Options */}
+      {/* 4. Image Options */}
       <Card>
         <CardHeader>
-          <CardTitle>3. Image Options</CardTitle>
+          <CardTitle>4. Image Options</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <ImageModeDropdown
@@ -224,70 +246,39 @@ export function LayoutLabControls({
           />
         </CardContent>
       </Card>
-      
-      {/* 4. Display Options */}
+
+      {/* 5. Spacer Tiles */}
       <Card>
         <CardHeader>
-          <CardTitle>4. Display Options</CardTitle>
+          <CardTitle>5. Spacer Tiles</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <label className="flex items-center space-x-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={state.showGridOverlay}
-              onChange={(e) => onStateChange({ showGridOverlay: e.target.checked })}
-            />
-            <span className="text-sm">Grid/bounds overlay</span>
-          </label>
-          
-          <label className="flex items-center space-x-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={state.showRegionBounds}
-              onChange={(e) => onStateChange({ showRegionBounds: e.target.checked })}
-            />
-            <span className="text-sm">Region rectangles</span>
-          </label>
-          
-          <label className="flex items-center space-x-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={state.showTileIds}
-              onChange={(e) => onStateChange({ showTileIds: e.target.checked })}
-            />
-            <span className="text-sm">Tile IDs and coordinates</span>
-          </label>
-          
-          <label className="flex items-center space-x-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={state.fillersEnabled}
-              onChange={(e) => onStateChange({ fillersEnabled: e.target.checked })}
-            />
-            <span className="text-sm">Fillers on/off</span>
-          </label>
-          
-          <label className="flex items-center space-x-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={state.textOnly}
-              onChange={(e) => onStateChange({ textOnly: e.target.checked })}
-            />
-            <span className="text-sm">Text only (no images)</span>
-          </label>
-          
-          <label className="flex items-center space-x-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={state.texturesEnabled}
-              onChange={(e) => onStateChange({ texturesEnabled: e.target.checked })}
-            />
-            <span className="text-sm">Textured backgrounds</span>
-          </label>
-          <p className="text-xs text-gray-500 ml-6">
-            Applies paper textures to palettes that support them (Midnight Gold, Elegant Dark, Lunar Red &amp; Gold)
+          <select
+            value={state.spacerTiles}
+            onChange={(e) => onStateChange({ spacerTiles: e.target.value as 'template' | 'none' | string })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="template">Template default</option>
+            <option value="none">None</option>
+            <option value="mix">Mix</option>
+            {FILLER_PATTERN_IDS.map((id) => (
+              <option key={id} value={id}>
+                {FILLER_PATTERN_REGISTRY.get(id)?.label ?? id}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500">
+            Decorative tiles in empty grid cells. Template default uses the layout&apos;s filler style; choose a pattern to override.
           </p>
-          
+        </CardContent>
+      </Card>
+
+      {/* 6. Display Options */}
+      <Card>
+        <CardHeader>
+          <CardTitle>6. Display Options</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
           <label className="flex items-center space-x-3 cursor-pointer">
             <input
               type="checkbox"
@@ -299,7 +290,7 @@ export function LayoutLabControls({
           <p className="text-xs text-gray-500 ml-6">
             Display the menu name in the title region. When disabled, space is redistributed to menu items.
           </p>
-          
+
           <label className="flex items-center space-x-3 cursor-pointer">
             <input
               type="checkbox"
@@ -311,6 +302,66 @@ export function LayoutLabControls({
           <p className="text-xs text-gray-500 ml-6">
             Adds a subtle darkened edge effect to page borders for a premium feel.
           </p>
+
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.fillItemTiles}
+              onChange={(e) => onStateChange({ fillItemTiles: e.target.checked })}
+            />
+            <span className="text-sm">Fill item tiles</span>
+          </label>
+
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.itemBorders}
+              onChange={(e) => onStateChange({ itemBorders: e.target.checked })}
+            />
+            <span className="text-sm">Item borders</span>
+          </label>
+          <p className="text-xs text-gray-500 ml-6">
+            Adds a very subtle border to every menu item tile.
+          </p>
+
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.itemDropShadow}
+              onChange={(e) => onStateChange({ itemDropShadow: e.target.checked })}
+            />
+            <span className="text-sm">Item drop shadow</span>
+          </label>
+          <p className="text-xs text-gray-500 ml-6">
+            Adds a subtle drop shadow to every menu item tile.
+          </p>
+
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.showGridOverlay}
+              onChange={(e) => onStateChange({ showGridOverlay: e.target.checked })}
+            />
+            <span className="text-sm">Grid/bounds overlay</span>
+          </label>
+
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.showRegionBounds}
+              onChange={(e) => onStateChange({ showRegionBounds: e.target.checked })}
+            />
+            <span className="text-sm">Region rectangles</span>
+          </label>
+
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.showTileIds}
+              onChange={(e) => onStateChange({ showTileIds: e.target.checked })}
+            />
+            <span className="text-sm">Tile IDs and coordinates</span>
+          </label>
         </CardContent>
       </Card>
       

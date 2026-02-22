@@ -132,6 +132,33 @@ SECTION_HEADER:
       paddingBottom: 12
 ```
 
+### Filler (spacer tiles) configuration
+
+Filler tiles fill empty grid cells so that every cell is occupied. In the UI, **5. Spacer Tiles** offers: **Template default** (use the template’s filler definitions below), **None** (no fillers), or a pattern (e.g. Quatrefoil, Teardrop, Herringbone) to override filler appearance. Fillers are enabled by default when not **None** (via `selection.fillersEnabled`). The layout engine uses spread distribution rules to intersperse fillers among menu items rather than clustering them at the end.
+
+```yaml
+filler:
+  enabled: true                     # template-level default; user can override
+  safeZones:                        # regions where fillers may appear
+    - startRow: 0                   # empty [] defaults to entire body grid
+      endRow: LAST_CONTENT
+      startCol: 0
+      endCol: 3                     # should equal cols - 1
+  tiles:                            # empty [] uses a default block matching ITEM_CARD rowSpan
+    - id: filler-icon-1
+      style: icon                   # 'icon' or 'color'
+      content: utensils             # icon name (for style: icon)
+      rowSpan: 2                    # match ITEM_CARD rowSpan for visual consistency
+  policy: SEQUENTIAL                # SEQUENTIAL | RANDOM_SEEDED
+```
+
+**Key points:**
+- Filler `rowSpan` should match the primary item tile's `rowSpan` so fillers fill the full slot height.
+- When `tiles: []`, a default half-opacity colour block is generated with `rowSpan` matching `ITEM_CARD.rowSpan`.
+- When `safeZones: []`, fillers can go in any empty cell within a section's rows.
+- The spread algorithm avoids horizontally adjacent fillers and vertically stacked fillers across consecutive rows (best-effort).
+- Sections with FEATURE_CARD items (multi-col) fall back to trailing filler placement.
+
 ### Content Budget Calculation
 
 The template schema defines a **content budget** with these fields (all in points or line counts):
@@ -169,8 +196,11 @@ Example for ITEM_CARD with rowSpan 2, rowHeight 70, gapY 8:
 - [ ] Footer content is visible
 - [ ] PDF export matches web preview
 - [ ] Works with all colour palettes
-- [ ] Works in text-only mode
+- [ ] Works with background textures (dark-paper, waves, linen, etc.)
+- [ ] Works when Image Options is set to "None" (text only, no images)
 - [ ] Section headers are distinctive and legible
+- [ ] Spacer tiles (fillers) render correctly when enabled (check spread distribution)
+- [ ] Filler rowSpan matches ITEM_CARD rowSpan (no half-height gaps)
 
 ### Common Pitfalls
 

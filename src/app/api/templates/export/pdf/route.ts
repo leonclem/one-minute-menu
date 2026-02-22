@@ -82,18 +82,22 @@ async function handleNewTemplateEngine(
     finalConfiguration.colourPaletteId = 'midnight-gold'
   }
   
+  const rawImageMode = finalConfiguration.imageMode || 'stretch'
+  const imageModeForEngine = rawImageMode === 'none' ? 'stretch' : rawImageMode
+  const textOnly = finalConfiguration.textOnly || rawImageMode === 'none'
+
   // Generate V2 layout
   const layoutDocument = await generateLayoutV2({
     menu: engineMenu,
     templateId,
       selection: {
-        textOnly: finalConfiguration.textOnly || false,
-        fillersEnabled: finalConfiguration.fillersEnabled || false,
+        textOnly,
+        fillersEnabled: finalConfiguration.fillersEnabled !== false,
         texturesEnabled: finalConfiguration.texturesEnabled !== false, // default true
         showMenuTitle: finalConfiguration.showMenuTitle || false,
-        showVignette: finalConfiguration.showVignette || false,
+        showVignette: finalConfiguration.showVignette !== false,
         colourPaletteId: finalConfiguration.colourPaletteId || finalConfiguration.paletteId,
-        imageMode: finalConfiguration.imageMode || 'stretch'
+        imageMode: imageModeForEngine
       },
     debug: false
   })
@@ -120,12 +124,17 @@ async function handleNewTemplateEngine(
   const pdfResult = await renderToPdf(optimizedLayout, {
     title: options.title || menu.name,
     paletteId: finalConfiguration.colourPaletteId || finalConfiguration.paletteId,
+    textureId: finalConfiguration.textureId,
     includePageNumbers: options.includePageNumbers !== false,
     printBackground: true,
     texturesEnabled: finalConfiguration.texturesEnabled !== false,
     showRegionBounds: false,
-    imageMode: finalConfiguration.imageMode || 'stretch',
-    showVignette: finalConfiguration.showVignette || false
+    imageMode: imageModeForEngine,
+    showVignette: finalConfiguration.showVignette !== false,
+    itemBorders: finalConfiguration.itemBorders === true,
+    itemDropShadow: finalConfiguration.itemDropShadow === true,
+    fillItemTiles: finalConfiguration.fillItemTiles === true,
+    spacerTilePatternId: finalConfiguration.spacerTilePatternId
   })
   metricsBuilder.markExportEnd()
   

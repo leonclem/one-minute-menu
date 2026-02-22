@@ -28,6 +28,7 @@ import {
   getFontSet,
   FONT_SETS_V2,
   TEXTURE_REGISTRY,
+  PALETTE_TEXTURE_MAP,
   type RenderOptionsV2,
   type RenderElement 
 } from './renderer-v2'
@@ -137,19 +138,23 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
   const mutedTextColor = palette?.colors.textMuted || COLOR_TOKENS_V2.text.muted
   const borderColor = palette?.colors.border.light || COLOR_TOKENS_V2.border.light
   
-  // Apply textured background if enabled and palette supports it
+  // Background: palette color. When user selects a texture (textureId), overlay it on palette.
   let backgroundStyle: React.CSSProperties = {
     backgroundColor: bgColor
   }
-  
-  if (texturesEnabled && palette?.id) {
-    const textureConfig = TEXTURE_REGISTRY.get(palette.id)
+  // Resolve texture: direct textureId first, then palette-based fallback
+  const resolvedTextureId = options.textureId
+    || (texturesEnabled && palette?.id ? PALETTE_TEXTURE_MAP[palette.id] : undefined)
+  if (resolvedTextureId) {
+    const textureConfig = TEXTURE_REGISTRY.get(resolvedTextureId)
     if (textureConfig) {
-      const textureUrl = options.textureDataURL || `/textures/${textureConfig.pdfTextureFile}`
+      const textureUrl = textureConfig.pdfTextureFile
+        ? (options.textureDataURL || `/textures/${textureConfig.pdfTextureFile}`)
+        : ''
       const cssProps = isExport
         ? textureConfig.webCssExport(textureUrl)
         : textureConfig.webCss(textureUrl)
-      backgroundStyle = cssProps as React.CSSProperties
+      backgroundStyle = { ...backgroundStyle, ...cssProps as React.CSSProperties }
     }
   }
   
@@ -160,14 +165,23 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
         width: pageSpec.width * scale,
         height: pageSpec.height * scale,
         position: 'relative',
-        ...backgroundStyle,
         marginBottom: isExport ? 0 : 20 * scale,
         boxShadow: isExport ? 'none' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
         borderRadius: isExport ? 0 : 4,
         overflow: 'hidden'
       }}
     >
-      {/* Content box wrapper - applies margins ONCE */}
+      {/* Background layer (color + texture) - explicitly behind content so borders/shadows read clearly */}
+      <div
+        className="page-background-v2"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 0,
+          ...backgroundStyle
+        }}
+      />
+      {/* Content box wrapper - applies margins ONCE; above background */}
       <div
         className="content-box-v2"
         style={{
@@ -175,7 +189,8 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
           left: pageSpec.margins.left * scale,
           top: pageSpec.margins.top * scale,
           width: (pageSpec.width - pageSpec.margins.left - pageSpec.margins.right) * scale,
-          height: (pageSpec.height - pageSpec.margins.top - pageSpec.margins.bottom) * scale
+          height: (pageSpec.height - pageSpec.margins.top - pageSpec.margins.bottom) * scale,
+          zIndex: 1
         }}
       >
         {/* Regions */}
@@ -203,13 +218,17 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
         />
       )}
 
-      {/* Page overlays */}
+      {/* Page overlays - above content */}
       {options.showRegionBounds && (
-        <RegionBoundsOverlay regions={page.regions} pageSpec={pageSpec} scale={scale} />
+        <div style={{ position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'none' }}>
+          <RegionBoundsOverlay regions={page.regions} pageSpec={pageSpec} scale={scale} />
+        </div>
       )}
       
       {options.showGridOverlay && (
-        <GridOverlay page={page} pageSpec={pageSpec} scale={scale} />
+        <div style={{ position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'none' }}>
+          <GridOverlay page={page} pageSpec={pageSpec} scale={scale} />
+        </div>
       )}
       
       {/* Page info */}
@@ -225,7 +244,8 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
             backgroundColor: bgColor,
             padding: '2px 6px',
             borderRadius: 2,
-            border: `1px solid ${borderColor}`
+            border: `1px solid ${borderColor}`,
+            zIndex: 10
           }}
         >
           Page {page.pageIndex + 1} ({page.pageType})
@@ -280,10 +300,23 @@ interface TileRendererProps {
   options: RenderOptionsV2
 }
 
+const MENU_ITEM_TILE_TYPES = ['ITEM_CARD', 'ITEM_TEXT_ROW', 'FEATURE_CARD'] as const
+const SUBTLE_ITEM_BORDER = '1px solid rgba(0,0,0,0.06)'
+const SUBTLE_ITEM_SHADOW = '0 1px 3px rgba(0,0,0,0.08)'
+
 function TileRenderer({ tile, options }: TileRendererProps) {
-  const { scale } = options
+  const { scale, palette } = options
   const renderData = renderTileContent(tile, options)
-  
+  const isMenuItemTile = MENU_ITEM_TILE_TYPES.includes(tile.type as (typeof MENU_ITEM_TILE_TYPES)[number])
+  const subtleBorder = options.itemBorders && isMenuItemTile ? SUBTLE_ITEM_BORDER : undefined
+  const subtleShadow = options.itemDropShadow && isMenuItemTile ? SUBTLE_ITEM_SHADOW : undefined
+  const border = options.showTileIds ? `1px dashed ${COLOR_TOKENS_V2.border.medium}` : (subtleBorder || 'none')
+  const boxShadow = subtleShadow
+  const fillColor = options.fillItemTiles && isMenuItemTile
+    ? (palette?.colors?.surface ?? palette?.colors?.background ?? COLOR_TOKENS_V2.background.white)
+    : undefined
+  const backgroundColor = fillColor ?? 'transparent'
+
   return (
     <div
       className={`tile-v2 tile-${tile.type.toLowerCase()}`}
@@ -294,8 +327,9 @@ function TileRenderer({ tile, options }: TileRendererProps) {
         width: tile.width * scale,
         height: tile.height * scale,
         zIndex: tile.layer === 'background' ? 0 : 1,
-        backgroundColor: 'transparent',
-        border: options.showTileIds ? `1px dashed ${COLOR_TOKENS_V2.border.medium}` : 'none'
+        backgroundColor,
+        border,
+        ...(boxShadow ? { boxShadow } : {})
       }}
     >
       {/* Render tile content elements */}
@@ -357,7 +391,7 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
     lineHeight: element.style.lineHeight,
     color: element.style.color,
     backgroundColor: element.style.backgroundColor,
-    textAlign: 'center',
+    textAlign: (element.style.textAlign as React.CSSProperties['textAlign']) || 'center',
     opacity: element.style.opacity,
     borderRadius: element.style.borderRadius ? element.style.borderRadius * scale : undefined,
     display: element.style.maxLines && element.style.maxLines > 1 ? '-webkit-box' : 'flex',
@@ -421,15 +455,19 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
         </div>
       )
     
-    case 'background':
-      return (
-        <div 
-          style={{
-            ...baseStyle,
-            background: element.style.background || element.style.backgroundColor || undefined
-          }} 
-        />
-      )
+    case 'background': {
+      const bgStyle: React.CSSProperties = {
+        ...baseStyle,
+        background: element.style.background || element.style.backgroundColor || undefined
+      }
+      if (
+        element.style.backgroundPositionX != null &&
+        element.style.backgroundPositionY != null
+      ) {
+        bgStyle.backgroundPosition = `${element.style.backgroundPositionX * scale}px ${element.style.backgroundPositionY * scale}px`
+      }
+      return <div style={bgStyle} />
+    }
     
     default:
       return null

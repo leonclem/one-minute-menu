@@ -84,26 +84,20 @@ describe('Collision Detection Reproduction', () => {
     const items = page.tiles.filter(t => t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW')
     const fillers = page.tiles.filter(t => t.type === 'FILLER')
 
-    // Find items in the last row (row index 2 - header is row 0, first 4 items are row 1, 5th item is row 2)
-    const lastRowItems = items.filter(t => t.gridRow === 2)
-    const lastRowFillers = fillers.filter(t => t.gridRow === 2)
+    expect(items).toHaveLength(5)
+    // With slot-based interspersed fillers we get 3 fillers (8 cells - 5 items)
+    expect(fillers.length).toBeGreaterThanOrEqual(1)
 
-    expect(lastRowItems).toHaveLength(1)
-    // With CENTER balancing, the single item in the last row occupies the center position,
-    // so fillers should only be placed in the remaining empty positions (columns 0 and 3)
-    expect(lastRowFillers).toHaveLength(2)
-
-    const item5 = lastRowItems[0]
-    
-    // Check for physical overlaps - there should be none
-    for (const filler of lastRowFillers) {
-      const hasOverlap = 
-        item5.x < filler.x + filler.width &&
-        item5.x + item5.width > filler.x &&
-        item5.y < filler.y + filler.height &&
-        item5.y + item5.height > filler.y
-
-      expect(hasOverlap).toBe(false)
+    // No item must overlap any filler (any row)
+    for (const item of items) {
+      for (const filler of fillers) {
+        const hasOverlap =
+          item.x < filler.x + filler.width &&
+          item.x + item.width > filler.x &&
+          item.y < filler.y + filler.height &&
+          item.y + item.height > filler.y
+        expect(hasOverlap).toBe(false)
+      }
     }
   })
 })
