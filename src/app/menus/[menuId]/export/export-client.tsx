@@ -253,9 +253,13 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
       if (isDemo) {
         if (!demoMenu || !templateSelection) return
         
-        // Skip registry check for V2 templates used in demo flow
-        const isV2Template = templateSelection.templateId.endsWith('-v2')
-        
+        // Skip registry check for V2 templates used in demo flow.
+        // Template page stores IDs like '4-column-portrait' with templateVersion '2.0.0'
+        // (no '-v2' suffix), so we treat either as V2.
+        const isV2Template =
+          templateSelection.templateId.endsWith('-v2') ||
+          templateSelection.templateVersion === '2.0.0'
+
         if (!isV2Template) {
           // Generate styled export for demo users (Legacy engine check)
           const template = TEMPLATE_REGISTRY[templateSelection.templateId]
