@@ -32,15 +32,24 @@ const templateCache = new Map<string, TemplateV2>()
  * @returns Promise resolving to validated TemplateV2 object
  * @throws TemplateValidationError if template is invalid
  */
-export async function loadTemplateV2(templateId: string): Promise<TemplateV2> {
-  // Map legacy V1 IDs to V2 IDs for backward compatibility with saved selections
-  const effectiveId = templateId === 'classic-grid-cards' ? 'classic-cards-v2' :
-                     templateId === 'two-column-text' ? 'italian-v2' :
-                     templateId === 'simple-rows' ? 'classic-cards-v2' : 
-                     templateId;
+function resolveTemplateId(templateId: string): string {
+  // Legacy V1 IDs (saved selections)
+  if (templateId === 'classic-grid-cards' || templateId === 'simple-rows') return '4-column-portrait'
+  if (templateId === 'two-column-text') return '2-column-portrait'
+  // Old V2 IDs (saved selections, backward compat)
+  if (templateId === 'classic-cards-v2') return '4-column-portrait'
+  if (templateId === 'italian-v2') return '2-column-portrait'
+  if (templateId === 'three-column-modern-v2') return '3-column-portrait'
+  if (templateId === 'half-a4-tall-v2') return '1-column-tall'
+  if (templateId === 'classic-cards-v2-landscape') return '4-column-landscape'
+  return templateId
+}
 
-  // Check cache first
-  if (templateCache.has(effectiveId)) {
+export async function loadTemplateV2(templateId: string): Promise<TemplateV2> {
+  const effectiveId = resolveTemplateId(templateId)
+
+  // Skip cache in development so YAML file changes are picked up without a server restart
+  if (process.env.NODE_ENV !== 'development' && templateCache.has(effectiveId)) {
     return templateCache.get(effectiveId)!
   }
   
@@ -68,8 +77,10 @@ export async function loadTemplateV2(templateId: string): Promise<TemplateV2> {
     // Validate derived values (validate, don't compute)
     const template = validateDerivedValues(result.data, effectiveId)
     
-    // Cache the validated template
-    templateCache.set(effectiveId, template)
+    // Cache the validated template (skipped in development - see cache check above)
+    if (process.env.NODE_ENV !== 'development') {
+      templateCache.set(effectiveId, template)
+    }
     return template
     
   } catch (error) {
@@ -237,10 +248,7 @@ export function getTemplateCacheStats(): { size: number; keys: string[] } {
  * @returns Promise resolving to true if template file exists
  */
 export async function templateExists(templateId: string): Promise<boolean> {
-  const effectiveId = templateId === 'classic-grid-cards' ? 'classic-cards-v2' :
-                     templateId === 'two-column-text' ? 'italian-v2' :
-                     templateId === 'simple-rows' ? 'classic-cards-v2' : 
-                     templateId;
+  const effectiveId = resolveTemplateId(templateId)
   try {
     const yamlPath = path.join(
       process.cwd(), 

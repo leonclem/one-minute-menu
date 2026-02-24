@@ -9,7 +9,7 @@ const { fetchImageAsDataURL } = require('../../export/texture-utils')
 
 function makeDocWithItemImages(count: number) {
   return {
-    templateId: 'classic-cards-v2',
+    templateId: '4-column-portrait',
     templateVersion: '2.0',
     pageSpec: { width: 595, height: 842, margins: { top: 36, right: 36, bottom: 36, left: 36 } },
     pages: [

@@ -32,8 +32,11 @@ export const TypographyStyleSchemaV2 = z.object({
   fontWeight: z.string().optional(),
   textAlign: z.enum(['left', 'center', 'right', 'justify']).optional(),
   lineHeight: z.string().optional(),
+  letterSpacing: z.number().optional(),
   textTransform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).optional(),
   color: z.string().optional(),
+  decoration: z.enum(['bullet', 'diamond', 'dot', 'none']).optional(),
+  decorationColor: z.string().optional(),
   name: SubElementTypographySchemaV2.optional(),
   description: SubElementTypographySchemaV2.optional(),
   price: SubElementTypographySchemaV2.optional(),
@@ -213,6 +216,7 @@ export const TemplateSchemaV2 = z.object({
     enabled: z.boolean(),
     style: z.enum(['line', 'pattern', 'icon', 'ornament']),
     height: z.number().min(0),
+    lineThickness: z.number().min(0).optional(),
   }).optional(),
   
   policies: z.object({

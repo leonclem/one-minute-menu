@@ -326,7 +326,7 @@ describe('Interspersed Fillers', () => {
     }
 
     it('produces identical layout on two runs (determinism)', async () => {
-      const templateId = 'classic-cards-v2'
+      const templateId = '4-column-portrait'
       const run1 = await generateLayoutV2({
         menu: menuWithTwoSections,
         templateId,
@@ -367,10 +367,10 @@ describe('Interspersed Fillers', () => {
         metadata: { currency: '$', venueName: 'Test' },
       }
 
-      // classic-cards-v2: 4 cols, ITEM_CARD rowSpan 2 → 5 items need 2 logical rows (8 cells), 3 fillers
+      // 4-column-portrait: 4 cols, ITEM_CARD rowSpan 2 → 5 items need 2 logical rows (8 cells), 3 fillers
       const result = await generateLayoutV2({
         menu: menuFiveItems,
-        templateId: 'classic-cards-v2',
+        templateId: '4-column-portrait',
         selection: { fillersEnabled: true },
       })
 
@@ -411,10 +411,10 @@ describe('Interspersed Fillers', () => {
         metadata: { currency: '$' },
       }
 
-      // classic-cards-v2 has filler.enabled false; selection.fillersEnabled: true turns fillers on and disables centering
+      // 4-column-portrait has filler.enabled false; selection.fillersEnabled: true turns fillers on and disables centering
       const result = await generateLayoutV2({
         menu: menuOneSectionFiveItems,
-        templateId: 'classic-cards-v2',
+        templateId: '4-column-portrait',
         selection: { fillersEnabled: true },
       })
 

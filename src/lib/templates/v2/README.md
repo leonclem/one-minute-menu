@@ -54,7 +54,7 @@ const engineMenu = transformMenuToV2(existingMenu)
 // Generate layout
 const layoutDocument = await generateLayoutV2({
   menu: engineMenu,
-  templateId: 'classic-cards-v2',
+  templateId: '4-column-portrait',
   selection: {
     fillersEnabled: true,   // UI: "Use spacer tiles"
     showVignette: true,
@@ -83,7 +83,7 @@ import { generateLayoutWithVersion } from '../engine-selector'
 // Uses environment variable NEXT_PUBLIC_LAYOUT_ENGINE_VERSION
 const result = await generateLayoutWithVersion({
   menu: engineMenu,
-  templateId: 'classic-cards-v2'
+  templateId: '4-column-portrait'
 })
 
 // Or force specific version
@@ -95,8 +95,8 @@ const resultV2 = await generateLayoutWithVersion(input, 'v2')
 Templates are defined in YAML files stored in `src/lib/templates/v2/templates/`:
 
 ```yaml
-# classic-cards-v2.yaml
-id: classic-cards-v2
+# 4-column-portrait.yaml
+id: 4-column-portrait
 version: "2.0.0"
 name: Classic Cards V2
 
@@ -174,9 +174,9 @@ filler:
       startCol: 0
       endCol: 3
   tiles:                           # empty [] uses default half-opacity block matching ITEM_CARD rowSpan
-    - id: filler-icon-1
-      style: icon
-      content: utensils
+    - id: filler-blank
+      style: color
+      content: ''
       rowSpan: 2                   # should match ITEM_CARD rowSpan for visual consistency
   policy: SEQUENTIAL
 
@@ -208,10 +208,10 @@ import { TemplateSchemaV2 } from './template-schema-v2'
 import { loadTemplateV2 } from './template-loader-v2'
 
 // Load and validate template
-const template = await loadTemplateV2('classic-cards-v2')
+const template = await loadTemplateV2('4-column-portrait')
 
 // Templates are cached automatically
-const sameTemplate = await loadTemplateV2('classic-cards-v2') // From cache
+const sameTemplate = await loadTemplateV2('4-column-portrait') // From cache
 ```
 
 ## Feature Flag Configuration
@@ -432,7 +432,7 @@ fc.assert(
     async (menu) => {
       const result = await generateLayoutV2({ 
         menu, 
-        templateId: 'classic-cards-v2' 
+        templateId: '4-column-portrait' 
       })
       
       // Verify all tiles within region bounds
@@ -572,7 +572,7 @@ Enable detailed logging:
 ```typescript
 const result = await generateLayoutV2({
   menu,
-  templateId: 'classic-cards-v2',
+  templateId: '4-column-portrait',
   debug: true
 })
 

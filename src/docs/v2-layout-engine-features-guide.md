@@ -122,49 +122,44 @@ const spec = buildPageSpec('A3_PORTRAIT', {
 
 ## 4. Template Families
 
-Six production templates are available, each targeting a specific page size and column layout:
+Five production templates are available, named by column layout and orientation to match the template page dropdown:
 
-### Classic Cards V2 (`classic-cards-v2`)
+### 4 column (portrait) (`4-column-portrait`)
 - Page: A4 Portrait, 4 columns
 - The default template. Photo-forward grid with image cards.
 - Supports FEATURE_CARD and DECORATIVE_DIVIDER.
 
-### Classic Cards V2 Landscape (`classic-cards-v2-landscape`)
+### 4 column (landscape) (`4-column-landscape`)
 - Page: A4 Landscape, 4 columns
-- Wide-format version of Classic Cards. Good for bi-fold or placemat menus.
+- Wide-format version. Good for bi-fold or placemat menus.
 - `rowHeight: 65`, `gapX: 10`, `gapY: 8`
 
-### Two Column Classic (`two-column-classic-v2`)
-- Page: A4 Portrait, 2 columns
-- Wider columns with more space for descriptions and images.
-- `rowHeight: 80`, `gapX: 12`, `gapY: 10`
-- Section headers span full width (`colSpan: 2`).
-
-### Three Column Modern (`three-column-modern-v2`)
+### 3 column (portrait) (`3-column-portrait`)
 - Page: A4 Portrait, 3 columns
 - Balanced layout fitting more items per page than 2-column.
 - `rowHeight: 70`, `gapX: 10`, `gapY: 8`
 - Section headers span full width (`colSpan: 3`).
 
-### Half A4 Tall (`half-a4-tall-v2`)
+### 2 column (portrait) (`2-column-portrait`)
+- Page: A4 Portrait, 2 columns
+- Text-focused layout. Auto-enables stretch image mode in the Layout Lab.
+- Section headers span full width (`colSpan: 2`).
+
+### 1 column (tall) (`1-column-tall`)
 - Page: HALF_A4_TALL, 1 column
 - Narrow single-column format for table tent cards or slim menu holders.
 - `rowHeight: 60`, `gapY: 6`
 - Favours `ITEM_TEXT_ROW` (text-only) for the narrow format.
 
-### Italian Classic V2 (`italian-v2`)
-- Page: A4 Portrait, 2 columns
-- Text-focused layout. Auto-enables `textOnly` mode in the Layout Lab.
-
 ### Choosing a template
 
-In the Layout Lab, templates appear as radio buttons under "Template". Programmatically, pass the template ID when calling the generate API:
+In the template page and Layout Lab, templates appear under "Grid Layout". Programmatically, pass the template ID when calling the generate API:
 
 ```typescript
 const response = await fetch('/api/dev/layout-lab/generate', {
   method: 'POST',
   body: JSON.stringify({
-    templateId: 'two-column-classic-v2',
+    templateId: '4-column-portrait',
     // ...
   })
 })
@@ -302,9 +297,7 @@ In the database, this maps to `menu_items.is_featured` (added by migration `053_
 
 ### Templates with FEATURE_CARD support
 
-- `classic-cards-v2` — colSpan: 2, rowSpan: 3
-- `valentines-v2` — colSpan: 2, rowSpan: 3
-- `lunar-new-year-v2` — colSpan: 2, rowSpan: 3
+- `4-column-portrait` — colSpan: 2, rowSpan: 3
 
 ### Adding FEATURE_CARD to a custom template
 
@@ -350,9 +343,7 @@ Four visual styles are available, set via `dividers.style`:
 
 ### Templates with dividers enabled
 
-- `classic-cards-v2` — ornament style
-- `valentines-v2` — ornament style
-- `lunar-new-year-v2` — ornament style
+Production templates ship with dividers disabled. For testing or custom templates, enable `dividers.enabled` and add a `DECORATIVE_DIVIDER` tile (e.g. ornament style).
 
 ### Adding dividers to a custom template
 
@@ -379,46 +370,25 @@ tiles:
 
 ---
 
-## 7. Themed Menus
+## 7. Palettes and textures
 
-Themed menus are standard templates that bundle a specific palette, divider style, and visual treatment into a cohesive seasonal design. They don't introduce new engine primitives — they're just curated combinations of existing features.
-
-### Available themes
-
-#### Valentine's Day (`valentines-v2`)
-- Default palette: `valentines-rose` (soft pink background, deep rose accents)
-- Dividers: ornament style enabled
-- Section headers: elegant serif font, rose-colored text, pink bottom border
-- Page: A4 Portrait, 4 columns
-
-#### Lunar New Year (`lunar-new-year-v2`)
-- Default palette: `lunar-red-gold` (deep red background, gold accents)
-- Dividers: ornament style enabled
-- Section headers: elegant serif font, gold text, dark red bottom border
-- Page: A4 Portrait, 4 columns
-- Texture support: dark paper with gold gradient overlay
+You can achieve a themed look by combining any of the five templates with a palette and optional texture from the Layout Lab. Palettes such as `valentines-rose` and `lunar-red-gold` remain available in the Color Palette dropdown; textures (e.g. romantic paper, gold overlay) can be enabled and selected independently.
 
 ### Palette nudging
 
-Themed templates suggest a default palette, but you can override it. The template's decorative structure (divider style, typography, borders) is preserved while the colors come from whichever palette you select.
+Any template can use any palette. The template's layout and typography are preserved while colors come from the selected palette.
 
 ```typescript
-// Use the Lunar New Year template with a different palette
 const selection: SelectionConfigV2 = {
-  colourPaletteId: 'midnight-gold'  // Override the default lunar-red-gold
+  colourPaletteId: 'midnight-gold'
 }
 ```
 
-In the Layout Lab, simply select a different palette from the "Color Palette" panel while keeping the themed template selected.
+In the Layout Lab, select a template under "Grid Layout", then choose a palette from "Color Palette" and optionally a "Background texture".
 
-### Creating a new themed template
+### Creating a custom template
 
-A themed template is just a regular YAML template file. The "theme" is the combination of:
-- A palette designed for the occasion (add it to `PALETTES_V2` in `renderer-v2.ts`)
-- Divider style and section header styling that match the occasion
-- Optionally, a texture entry in `TEXTURE_REGISTRY`
-
-There's no special theme schema — it's all standard template + palette configuration.
+Templates are YAML files in `src/lib/templates/v2/templates/`. Add a palette to `PALETTES_V2` in `renderer-v2.ts` and optionally an entry in `TEXTURE_REGISTRY` to support a custom look. There is no separate "theme" schema — it's standard template + palette configuration.
 
 ---
 
@@ -456,14 +426,11 @@ interface SelectionConfigV2 {
 
 | Template ID | YAML File |
 |---|---|
-| `classic-cards-v2` | `templates/classic-cards-v2.yaml` |
-| `classic-cards-v2-landscape` | `templates/classic-cards-v2-landscape.yaml` |
-| `two-column-classic-v2` | `templates/two-column-classic-v2.yaml` |
-| `three-column-modern-v2` | `templates/three-column-modern-v2.yaml` |
-| `half-a4-tall-v2` | `templates/half-a4-tall-v2.yaml` |
-| `italian-v2` | `templates/italian-v2.yaml` |
-| `valentines-v2` | `templates/valentines-v2.yaml` |
-| `lunar-new-year-v2` | `templates/lunar-new-year-v2.yaml` |
+| `4-column-portrait` | `templates/4-column-portrait.yaml` |
+| `4-column-landscape` | `templates/4-column-landscape.yaml` |
+| `3-column-portrait` | `templates/3-column-portrait.yaml` |
+| `2-column-portrait` | `templates/2-column-portrait.yaml` |
+| `1-column-tall` | `templates/1-column-tall.yaml` |
 
 ### Key source files
 

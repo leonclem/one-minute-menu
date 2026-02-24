@@ -111,19 +111,16 @@ async function fetchTemplate(templateId: string): Promise<{
     'modern-minimal': { version: '1.0', name: 'Modern Minimal' },
     'classic-menu': { version: '1.0', name: 'Classic Menu' },
     'rustic-charm': { version: '1.0', name: 'Rustic Charm' },
-    'classic-cards-v2': { version: '2.0', name: 'Classic Cards V2' },
-    'italian-v2': { version: '2.0', name: 'Italian Classic V2' },
-    'two-column-classic-v2': { version: '2.0', name: 'Two Column Classic V2' },
-    'three-column-modern-v2': { version: '2.0', name: 'Three Column Modern V2' },
-    'half-a4-tall-v2': { version: '2.0', name: 'Half A4 Tall V2' },
-    'classic-cards-v2-landscape': { version: '2.0', name: 'Classic Cards V2 Landscape' },
-    'lunar-new-year-v2': { version: '2.0', name: 'Lunar New Year V2' },
-    'valentines-v2': { version: '2.0', name: 'Valentines V2' }
+    '4-column-portrait': { version: '2.0', name: '4 column (portrait)' },
+    '3-column-portrait': { version: '2.0', name: '3 column (portrait)' },
+    '2-column-portrait': { version: '2.0', name: '2 column (portrait)' },
+    '1-column-tall': { version: '2.0', name: '1 column (tall)' },
+    '4-column-landscape': { version: '2.0', name: '4 column (landscape)' }
   }
 
-  // Try template loader for V2 templates not in map
+  // Try template loader for V2 templates not in map (e.g. test-template, or legacy IDs resolved by loader)
   let template = templateMap[templateId]
-  if (!template && templateId.endsWith('-v2')) {
+  if (!template) {
     try {
       const { loadTemplateV2 } = await import('@/lib/templates/v2/template-loader-v2')
       const t = await loadTemplateV2(templateId)

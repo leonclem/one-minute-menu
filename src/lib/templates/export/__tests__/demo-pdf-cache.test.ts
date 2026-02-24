@@ -37,14 +37,14 @@ describe('demo PDF cache key', () => {
 
     const a = await computeDemoPdfCachePath({
       menu: base,
-      templateId: 'classic-cards-v2',
+      templateId: '4-column-portrait',
       configuration: { texturesEnabled: true, colourPaletteId: 'midnight-gold' },
       options: { includePageNumbers: true, title: 'Demo Menu' },
     })
 
     const b = await computeDemoPdfCachePath({
       menu: variant,
-      templateId: 'classic-cards-v2',
+      templateId: '4-column-portrait',
       configuration: { texturesEnabled: true, colourPaletteId: 'midnight-gold' },
       options: { includePageNumbers: true, title: 'Demo Menu' },
     })
@@ -64,14 +64,14 @@ describe('demo PDF cache key', () => {
 
     const a = await computeDemoPdfCachePath({
       menu: menu1,
-      templateId: 'classic-cards-v2',
+      templateId: '4-column-portrait',
       configuration: { texturesEnabled: true, colourPaletteId: 'midnight-gold' },
       options: { includePageNumbers: true, title: 'Demo Menu' },
     })
 
     const b = await computeDemoPdfCachePath({
       menu: menu2,
-      templateId: 'classic-cards-v2',
+      templateId: '4-column-portrait',
       configuration: { texturesEnabled: true, colourPaletteId: 'midnight-gold' },
       options: { includePageNumbers: true, title: 'Demo Menu' },
     })

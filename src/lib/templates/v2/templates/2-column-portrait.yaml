@@ -1,29 +1,29 @@
-id: two-column-classic-v2
+id: 2-column-portrait
 version: "2.0.0"
-name: Two Column Classic V2
+name: 2 column (portrait)
 
 page:
   size: A4_PORTRAIT
   margins:
-    top: 22.68
-    right: 25.51
-    bottom: 22.68
-    left: 25.51
+    top: 36
+    right: 36
+    bottom: 36
+    left: 36
 
 regions:
   header:
-    height: 60
+    height: 70
   title:
     height: 32
   footer:
-    height: 45
+    height: 32
 
 body:
   container:
     type: GRID
     cols: 2
-    rowHeight: 80
-    gapX: 12
+    rowHeight: 82      # Reduced from 90 to allow 3 rows of items (6 total) per page
+    gapX: 20
     gapY: 10
 
 tiles:
@@ -34,9 +34,9 @@ tiles:
       descLines: 0
       indicatorAreaHeight: 0
       imageBoxHeight: 50
-      paddingTop: 5
-      paddingBottom: 5
-      totalHeight: 60
+      paddingTop: 10
+      paddingBottom: 10
+      totalHeight: 70
 
   TITLE:
     region: title
@@ -45,8 +45,8 @@ tiles:
       descLines: 0
       indicatorAreaHeight: 0
       imageBoxHeight: 0
-      paddingTop: 4
-      paddingBottom: 4
+      paddingTop: 8
+      paddingBottom: 8
       totalHeight: 32
 
   SECTION_HEADER:
@@ -54,72 +54,77 @@ tiles:
     colSpan: 2
     style:
       typography:
-        fontSet: "elegant-serif"
-        fontSize: "xl"
-        fontWeight: "semibold"
-        textAlign: "center"
+        fontSet: "system-sans-bold"
+        fontSize: "5xl"
+        fontWeight: "bold"
+        textAlign: "left"
         lineHeight: "normal"
+        letterSpacing: 0.8
+        textTransform: "capitalize"
+        color: "#696969"
+        decoration: "bullet"
+        decorationColor: "#D4AF37"
       spacing:
-        paddingLeft: 0
-        paddingTop: 4
-        paddingBottom: 4
-      background:
-        color: "#E8E4C9"
-        borderRadius: 4
+        paddingLeft: 8
+        paddingTop: 24
+        paddingBottom: 0
+      border:
+        width: 0.6
+        color: "#D4AF37"
+        style: "solid"
+        sides: ["bottom"]
     contentBudget:
       nameLines: 1
       descLines: 0
       indicatorAreaHeight: 0
       imageBoxHeight: 0
-      paddingTop: 8
-      paddingBottom: 4
-      totalHeight: 24
+      paddingTop: 12
+      paddingBottom: 6
+      totalHeight: 32
 
-  # ITEM_CARD uses rowSpan: 2 for wider two-column layout
-  # Height formula: rowSpan * rowHeight + (rowSpan - 1) * gapY
-  #   = 2 * 80 + 1 * 10 = 170pt actual height
-  # Wider columns allow more description space and a larger image box
   ITEM_CARD:
     region: body
-    rowSpan: 2
+    rowSpan: 2         # 2 rows = 174pt (2x82 + 10 gap)
     style:
       typography:
         name:
-          fontSet: "elegant-serif"
+          fontSet: "system-sans"
           fontSize: "xsm"
           fontWeight: "bold"
+          textTransform: "capitalize"
         description:
-          fontSet: "classic-professional"
+          fontSet: "modern-sans"
           fontSize: "xxs"
           fontWeight: "normal"
         price:
-          fontSet: "classic-professional"
+          fontSet: "modern-sans"
           fontSize: "xs"
           fontWeight: "bold"
     contentBudget:
       nameLines: 2
-      descLines: 3
+      descLines: 2     # Reduced from 3 to ensure comfortable fit in 174pt
       indicatorAreaHeight: 18
-      imageBoxHeight: 75
+      imageBoxHeight: 75 # Reduced from 80
       paddingTop: 8
       paddingBottom: 8
-      totalHeight: 170
+      totalHeight: 174
 
   ITEM_TEXT_ROW:
     region: body
-    rowSpan: 1
+    rowSpan: 1         # Single row = 82pt
     style:
       typography:
         name:
-          fontSet: "elegant-serif"
+          fontSet: "system-sans"
           fontSize: "xsm"
           fontWeight: "bold"
+          textTransform: "capitalize"
         description:
-          fontSet: "classic-professional"
+          fontSet: "modern-sans"
           fontSize: "xxs"
           fontWeight: "normal"
         price:
-          fontSet: "classic-professional"
+          fontSet: "modern-sans"
           fontSize: "xs"
           fontWeight: "bold"
     contentBudget:
@@ -129,19 +134,19 @@ tiles:
       imageBoxHeight: 0
       paddingTop: 8
       paddingBottom: 8
-      totalHeight: 80
+      totalHeight: 82
 
   FOOTER_INFO:
     region: footer
     style:
       typography:
         contact:
-          fontSet: "classic-professional"
+          fontSet: "friendly-rounded"
           fontSize: "xs"
           fontWeight: "normal"
       border:
         width: 1
-        color: "#D4CFA3"
+        color: "#C9BAA3"
         style: "solid"
         sides: ["top"]
     contentBudget:
@@ -151,30 +156,18 @@ tiles:
       imageBoxHeight: 0
       paddingTop: 4
       paddingBottom: 4
-      totalHeight: 45
+      totalHeight: 32
 
 policies:
-  lastRowBalancing: CENTER
+  lastRowBalancing: LEFT
   showLogoOnPages: [FIRST, CONTINUATION, FINAL, SINGLE]
   repeatSectionHeaderOnContinuation: true
   sectionHeaderKeepWithNextItems: 1
 
 filler:
-  enabled: true
-  safeZones:
-    - startRow: 0
-      endRow: LAST_CONTENT
-      startCol: 0
-      endCol: 1
-  tiles:
-    - id: filler-icon-1
-      style: icon
-      content: utensils
-      rowSpan: 2
-    - id: filler-icon-2
-      style: icon
-      content: coffee
-      rowSpan: 2
+  enabled: false
+  safeZones: []
+  tiles: []
   policy: SEQUENTIAL
 
 itemIndicators:

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import type { LayoutLabState } from './layout-lab-client'
 import type { Menu } from '@/types'
-import { PALETTES_V2, TEXTURE_IDS, TEXTURE_REGISTRY, FILLER_PATTERN_IDS, FILLER_PATTERN_REGISTRY } from '@/lib/templates/v2/renderer-v2'
+import { PALETTES_V2, TEXTURE_IDS, TEXTURE_REGISTRY, FILLER_PATTERN_IDS, FILLER_PATTERN_REGISTRY, SPACER_BLANK_ID } from '@/lib/templates/v2/renderer-v2'
 import { V2_TEMPLATE_OPTIONS, V2_TEMPLATE_OPTIONS_EXTRA } from '@/lib/templates/v2/template-options'
 import { PaletteDropdown, TemplateDropdown, ImageModeDropdown } from '@/components/ux'
 
@@ -148,14 +148,8 @@ export function LayoutLabControls({
             value={state.templateId}
             onChange={(newTemplateId) => {
               const updates: Partial<LayoutLabState> = { templateId: newTemplateId }
-              if (newTemplateId === 'italian-v2') {
+              if (newTemplateId === '2-column-portrait') {
                 updates.imageMode = 'stretch'
-              }
-              if (newTemplateId === 'valentines-v2') {
-                updates.paletteId = 'valentines-rose'
-              } else if (newTemplateId === 'lunar-new-year-v2') {
-                updates.paletteId = 'lunar-red-gold'
-                updates.texturesEnabled = true
               }
               onStateChange(updates)
             }}
@@ -255,10 +249,10 @@ export function LayoutLabControls({
         <CardContent className="space-y-3">
           <select
             value={state.spacerTiles}
-            onChange={(e) => onStateChange({ spacerTiles: e.target.value as 'template' | 'none' | string })}
+            onChange={(e) => onStateChange({ spacerTiles: e.target.value as 'blank' | 'none' | string })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="template">Template default</option>
+            <option value={SPACER_BLANK_ID}>Blank</option>
             <option value="none">None</option>
             <option value="mix">Mix</option>
             {FILLER_PATTERN_IDS.map((id) => (
@@ -268,7 +262,7 @@ export function LayoutLabControls({
             ))}
           </select>
           <p className="text-xs text-gray-500">
-            Decorative tiles in empty grid cells. Template default uses the layout&apos;s filler style; choose a pattern to override.
+            Decorative tiles in empty grid cells. Blank shows a plain rectangle (alternating palette colours); choose a pattern to override.
           </p>
         </CardContent>
       </Card>

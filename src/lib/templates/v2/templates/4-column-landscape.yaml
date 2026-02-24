@@ -1,30 +1,30 @@
-id: classic-cards-v2
+id: 4-column-landscape
 version: "2.0.0"
-name: Classic Cards V2
+name: 4 column (landscape)
 
 page:
-  size: A4_PORTRAIT
+  size: A4_LANDSCAPE
   margins:
-    top: 22.68    # ~8mm in points (reduced by 60%)
-    right: 25.51  # ~9mm (reduced by 40%)
-    bottom: 22.68
-    left: 25.51
+    top: 20
+    right: 28
+    bottom: 20
+    left: 28
 
 regions:
   header:
-    height: 60
+    height: 50
   title:
-    height: 32
+    height: 28
   footer:
-    height: 45
+    height: 36
 
 body:
   container:
     type: GRID
     cols: 4
-    rowHeight: 70      # Base row height - ITEM_TEXT_ROW fits in 1 row
-    gapX: 8
-    gapY: 8
+    rowHeight: 68
+    gapX: 10
+    gapY: 6
 
 tiles:
   LOGO:
@@ -33,10 +33,10 @@ tiles:
       nameLines: 0
       descLines: 0
       indicatorAreaHeight: 0
-      imageBoxHeight: 50
+      imageBoxHeight: 40
       paddingTop: 5
       paddingBottom: 5
-      totalHeight: 60
+      totalHeight: 50
 
   TITLE:
     region: title
@@ -47,26 +47,29 @@ tiles:
       imageBoxHeight: 0
       paddingTop: 4
       paddingBottom: 4
-      totalHeight: 32
+      totalHeight: 28
 
   SECTION_HEADER:
     region: body
     colSpan: 4
     style:
       typography:
-        fontSet: "elegant-serif"
-        fontSize: "xl"
-        fontWeight: "semibold"
+        fontSet: "system-sans-bold"
+        fontSize: "5xl"
+        fontWeight: "bold"
         textAlign: "left"
         lineHeight: "normal"
-        textTransform: "uppercase"
+        letterSpacing: 0.8
+        textTransform: "capitalize"
         color: "#696969"
+        decoration: "bullet"
+        decorationColor: "#D4AF37"
       spacing:
         paddingLeft: 8
-        paddingTop: 0
+        paddingTop: 24
         paddingBottom: 0
       border:
-        width: 3
+        width: 0.6
         color: "#D4AF37"
         style: "solid"
         sides: ["bottom"]
@@ -75,30 +78,23 @@ tiles:
       descLines: 0
       indicatorAreaHeight: 0
       imageBoxHeight: 0
-      paddingTop: 8
+      paddingTop: 6
       paddingBottom: 4
-      totalHeight: 24
+      totalHeight: 22
 
-  # DESIGN DECISION (Issue #5): ITEM_CARD uses rowSpan: 2, ITEM_TEXT_ROW uses rowSpan: 1
-  # 
-  # The grid rowHeight is 70pt (matching ITEM_TEXT_ROW).
-  # ITEM_CARD needs ~140pt total, so it spans 2 rows.
+  # ITEM_CARD uses rowSpan: 2 for landscape layout
   # Height formula: rowSpan * rowHeight + (rowSpan - 1) * gapY
-  #   = 2 * 70 + 1 * 8 = 148pt actual height
-  # 
-  # This keeps the grid math clean:
-  #   - Text-only mode: all items use 1 row (70pt)
-  #   - Card mode: all items use 2 rows (148pt with gap)
-  #   - No sparse layouts or wasted space
+  #   = 2 * 68 + 1 * 6 = 142pt actual height
   ITEM_CARD:
     region: body
     rowSpan: 2
     style:
       typography:
         name:
-          fontSet: "elegant-serif"
+          fontSet: "system-sans"
           fontSize: "xsm"
           fontWeight: "bold"
+          textTransform: "capitalize"
         description:
           fontSet: "modern-sans"
           fontSize: "xxs"
@@ -111,10 +107,10 @@ tiles:
       nameLines: 2
       descLines: 2
       indicatorAreaHeight: 16
-      imageBoxHeight: 70
-      paddingTop: 8
-      paddingBottom: 8
-      totalHeight: 148
+      imageBoxHeight: 60
+      paddingTop: 6
+      paddingBottom: 6
+      totalHeight: 142
 
   ITEM_TEXT_ROW:
     region: body
@@ -122,9 +118,10 @@ tiles:
     style:
       typography:
         name:
-          fontSet: "elegant-serif"
+          fontSet: "system-sans"
           fontSize: "xsm"
           fontWeight: "bold"
+          textTransform: "capitalize"
         description:
           fontSet: "modern-sans"
           fontSize: "xxs"
@@ -138,39 +135,9 @@ tiles:
       descLines: 2
       indicatorAreaHeight: 16
       imageBoxHeight: 0
-      paddingTop: 8
-      paddingBottom: 8
-      totalHeight: 70
-
-  # FEATURE_CARD: multi-cell tile for featured menu items
-  # Spans 2 columns and 3 rows for visual prominence.
-  # Height formula: 3 * 70 + 2 * 8 = 226pt
-  FEATURE_CARD:
-    region: body
-    colSpan: 2
-    rowSpan: 3
-    style:
-      typography:
-        name:
-          fontSet: "elegant-serif"
-          fontSize: "sm"
-          fontWeight: "bold"
-        description:
-          fontSet: "modern-sans"
-          fontSize: "xsm"
-          fontWeight: "normal"
-        price:
-          fontSet: "modern-sans"
-          fontSize: "sm"
-          fontWeight: "bold"
-    contentBudget:
-      nameLines: 2
-      descLines: 3
-      indicatorAreaHeight: 20
-      imageBoxHeight: 100
-      paddingTop: 10
-      paddingBottom: 10
-      totalHeight: 226
+      paddingTop: 6
+      paddingBottom: 6
+      totalHeight: 68
 
   FOOTER_INFO:
     region: footer
@@ -192,34 +159,13 @@ tiles:
       imageBoxHeight: 0
       paddingTop: 4
       paddingBottom: 4
-      totalHeight: 45
-
-  # DECORATIVE_DIVIDER: full-width divider between sections
-  # Height formula: 1 * 70 + 0 * 8 = 70pt
-  DECORATIVE_DIVIDER:
-    region: body
-    colSpan: 4
-    rowSpan: 1
-    contentBudget:
-      nameLines: 0
-      descLines: 0
-      indicatorAreaHeight: 0
-      imageBoxHeight: 0
-      paddingTop: 4
-      paddingBottom: 4
-      totalHeight: 70
-
-dividers:
-  enabled: false
-  style: ornament
-  height: 24
+      totalHeight: 36
 
 policies:
   lastRowBalancing: CENTER
   showLogoOnPages: [FIRST, CONTINUATION, FINAL, SINGLE]
   repeatSectionHeaderOnContinuation: true
   sectionHeaderKeepWithNextItems: 1
-  maxFeaturedPerSection: 1
 
 filler:
   enabled: false
@@ -229,13 +175,9 @@ filler:
       startCol: 0
       endCol: 3
   tiles:
-    - id: filler-icon-1
-      style: icon
-      content: utensils
-      rowSpan: 2
-    - id: filler-icon-2
-      style: icon
-      content: coffee
+    - id: filler-blank
+      style: color
+      content: ''
       rowSpan: 2
   policy: SEQUENTIAL
 

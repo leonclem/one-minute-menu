@@ -8,7 +8,7 @@ import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
 import { PageRenderer } from '@/lib/templates/v2/renderer-web-v2'
-import { PALETTES_V2, DEFAULT_PALETTE_V2, TEXTURE_IDS, TEXTURE_REGISTRY, FILLER_PATTERN_IDS, FILLER_PATTERN_REGISTRY } from '@/lib/templates/v2/renderer-v2'
+import { PALETTES_V2, DEFAULT_PALETTE_V2, TEXTURE_IDS, TEXTURE_REGISTRY, FILLER_PATTERN_IDS, FILLER_PATTERN_REGISTRY, SPACER_BLANK_ID } from '@/lib/templates/v2/renderer-v2'
 import type { LayoutDocumentV2, ImageModeV2 } from '@/lib/templates/v2/engine-types-v2'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
@@ -25,11 +25,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [deliveryEmail, setDeliveryEmail] = useState<string | null>(null)
   
   // Selection State
-  const [templateId, setTemplateId] = useState('classic-cards-v2')
+  const [templateId, setTemplateId] = useState('4-column-portrait')
   const [paletteId, setPaletteId] = useState('elegant-cream')
   const [imageMode, setImageMode] = useState<ImageModeV2>('compact-rect')
-  /** 'template' = use template default fillers, 'none' = no fillers, otherwise pattern ID */
-  const [spacerTiles, setSpacerTiles] = useState<'template' | 'none' | string>('template')
+  /** 'blank' = plain rectangle fillers, 'none' = no fillers, otherwise pattern ID */
+  const [spacerTiles, setSpacerTiles] = useState<'blank' | 'none' | string>(SPACER_BLANK_ID)
   /** Derived: when imageMode is 'none', layout is text-only (no images). */
   const textOnly = imageMode === 'none'
   // Texture is applied as overlay when textureId is set; no separate "textures enabled" toggle
@@ -100,13 +100,15 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
             if (selectionData.data) {
               const config = selectionData.data.configuration || {}
               
-              // Map legacy V1 template IDs to V2 for UI consistency
-              const savedTemplateId = selectionData.data.templateId || 'classic-cards-v2'
-              const mappedTemplateId = 
-                savedTemplateId === 'classic-grid-cards' ? 'classic-cards-v2' :
-                savedTemplateId === 'two-column-text' ? 'italian-v2' :
-                savedTemplateId === 'simple-rows' ? 'classic-cards-v2' :
-                savedTemplateId;
+              // Map legacy/saved template IDs to current option IDs for dropdown
+              const savedTemplateId = selectionData.data.templateId || '4-column-portrait'
+              const mappedTemplateId =
+                savedTemplateId === 'classic-grid-cards' || savedTemplateId === 'simple-rows' || savedTemplateId === 'classic-cards-v2' ? '4-column-portrait' :
+                savedTemplateId === 'two-column-text' || savedTemplateId === 'italian-v2' ? '2-column-portrait' :
+                savedTemplateId === 'three-column-modern-v2' ? '3-column-portrait' :
+                savedTemplateId === 'half-a4-tall-v2' ? '1-column-tall' :
+                savedTemplateId === 'classic-cards-v2-landscape' ? '4-column-landscape' :
+                savedTemplateId
                 
               setTemplateId(mappedTemplateId)
               
@@ -114,12 +116,14 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               // via useState initializers and NOT restored from saved config —
               // the page always opens with the product defaults.
               // Only restore non-styling preferences from saved config.
-              // Spacer Tiles: default to "Template default" unless saved preference is present.
+              // Spacer Tiles: default to "Blank" unless saved preference is present.
               if (config.spacerTiles === 'none') setSpacerTiles('none')
               else if (config.spacerTiles === 'mix') setSpacerTiles('mix')
+              else if (config.spacerTiles === SPACER_BLANK_ID) setSpacerTiles(SPACER_BLANK_ID)
               else if (config.spacerTiles && FILLER_PATTERN_REGISTRY.has(config.spacerTiles)) setSpacerTiles(config.spacerTiles)
+              else if (config.spacerTilePatternId === SPACER_BLANK_ID) setSpacerTiles(SPACER_BLANK_ID)
               else if (config.spacerTilePatternId && FILLER_PATTERN_REGISTRY.has(config.spacerTilePatternId)) setSpacerTiles(config.spacerTilePatternId)
-              else setSpacerTiles('template')
+              else setSpacerTiles(SPACER_BLANK_ID)
               if (config.imageMode === 'none' || config.textOnly) setImageMode('none')
               else if (config.imageMode) setImageMode(config.imageMode as ImageModeV2)
               setShowMenuTitle(config.showMenuTitle || false)
@@ -179,7 +183,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         paletteId,
         imageMode,
         fillersEnabled: spacerTiles !== 'none',
-        spacerTilePatternId: (spacerTiles !== 'template' && spacerTiles !== 'none') ? spacerTiles : undefined,
+        spacerTilePatternId: (spacerTiles !== 'none' ? spacerTiles : undefined),
         textOnly,
         texturesEnabled: !!textureId,
         textureId: textureId ?? undefined,
@@ -204,7 +208,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           paletteId,
           imageMode,
           fillersEnabled: (spacerTiles !== 'none').toString(),
-          spacerTilePatternId: (spacerTiles !== 'template' && spacerTiles !== 'none') ? spacerTiles : '',
+          spacerTilePatternId: spacerTiles !== 'none' ? spacerTiles : '',
           textOnly: textOnly.toString(),
           texturesEnabled: (!!textureId).toString(),
           ...(textureId ? { textureId } : {}),
@@ -254,7 +258,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         textOnly,
         fillersEnabled: spacerTiles !== 'none',
         spacerTiles,
-        spacerTilePatternId: (spacerTiles !== 'template' && spacerTiles !== 'none') ? spacerTiles : undefined,
+        spacerTilePatternId: spacerTiles !== 'none' ? spacerTiles : undefined,
         texturesEnabled: !!textureId,
         textureId: textureId ?? undefined,
         showMenuTitle,
@@ -324,7 +328,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         textOnly,
         fillersEnabled: spacerTiles !== 'none',
         spacerTiles,
-        spacerTilePatternId: (spacerTiles !== 'template' && spacerTiles !== 'none') ? spacerTiles : undefined,
+        spacerTilePatternId: spacerTiles !== 'none' ? spacerTiles : undefined,
         texturesEnabled: !!textureId,
         textureId: textureId ?? undefined,
         showMenuTitle,
@@ -436,7 +440,6 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   templates={V2_TEMPLATE_OPTIONS}
                   value={templateId}
                   onChange={setTemplateId}
-                  onSelectTemplate={(id) => { if (id === 'italian-v2') setImageMode('compact-rect') }}
                   variant="primary"
                 />
               </div>
@@ -485,10 +488,10 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">5. Spacer Tiles</h4>
                 <select
                   value={spacerTiles}
-                  onChange={(e) => setSpacerTiles(e.target.value as 'template' | 'none' | string)}
+                  onChange={(e) => setSpacerTiles(e.target.value as 'blank' | 'none' | string)}
                   className="w-full rounded border border-ux-border bg-white px-3 py-2 text-sm text-ux-text focus:ring-ux-primary focus:border-ux-primary"
                 >
-                  <option value="template">Template default</option>
+                  <option value={SPACER_BLANK_ID}>Blank</option>
                   <option value="none">None</option>
                   <option value="mix">Mix</option>
                   {FILLER_PATTERN_IDS.map((id) => (
@@ -639,7 +642,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                       showRegionBounds: false,
                       showTileIds: false,
                       isExport: false,
-                      spacerTilePatternId: (spacerTiles !== 'template' && spacerTiles !== 'none') ? spacerTiles : undefined
+                      spacerTilePatternId: spacerTiles !== 'none' ? spacerTiles : undefined
                     }}
                   />
                 </div>

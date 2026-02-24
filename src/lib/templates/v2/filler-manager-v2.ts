@@ -158,17 +158,20 @@ export function insertInterspersedFillers(
   document: LayoutDocumentV2,
   template: TemplateV2,
   menuId: string,
-  enabledOverride?: boolean
+  enabledOverride?: boolean,
+  textOnly?: boolean
 ): void {
   const enabled = enabledOverride ?? template.filler.enabled
   if (!enabled) {
     return
   }
 
-  // Use template fillers or a default block matching the primary item rowSpan
-  const defaultRowSpan = template.tiles.ITEM_CARD?.rowSpan ?? 1
+  // In text-only mode, match filler rowSpan to ITEM_TEXT_ROW (not ITEM_CARD)
+  const defaultRowSpan = textOnly
+    ? (template.tiles.ITEM_TEXT_ROW?.rowSpan ?? 1)
+    : (template.tiles.ITEM_CARD?.rowSpan ?? 1)
   const fillerDefs = template.filler.tiles.length > 0
-    ? template.filler.tiles
+    ? template.filler.tiles.map(f => ({ ...f, rowSpan: textOnly ? Math.min(f.rowSpan ?? 1, defaultRowSpan) : (f.rowSpan ?? defaultRowSpan) }))
     : [{ ...DEFAULT_FILLER_DEF, rowSpan: defaultRowSpan }]
 
   let fillerIndex = 0

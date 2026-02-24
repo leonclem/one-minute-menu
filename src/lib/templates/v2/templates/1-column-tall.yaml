@@ -1,30 +1,30 @@
-id: elegant-serif-example
+id: 1-column-tall
 version: "2.0.0"
-name: Elegant Serif Example
+name: 1 column (tall)
 
 page:
-  size: A4_PORTRAIT
+  size: HALF_A4_TALL
   margins:
-    top: 22.68
-    right: 25.51
-    bottom: 22.68
-    left: 25.51
+    top: 20
+    right: 15
+    bottom: 20
+    left: 15
 
 regions:
   header:
-    height: 60
+    height: 50
   title:
-    height: 32
+    height: 28
   footer:
-    height: 45
+    height: 36
 
 body:
   container:
     type: GRID
-    cols: 4
+    cols: 1
     rowHeight: 70
-    gapX: 8
-    gapY: 8
+    gapX: 0
+    gapY: 6
 
 tiles:
   LOGO:
@@ -33,19 +33,13 @@ tiles:
       nameLines: 0
       descLines: 0
       indicatorAreaHeight: 0
-      imageBoxHeight: 50
+      imageBoxHeight: 40
       paddingTop: 5
       paddingBottom: 5
-      totalHeight: 60
+      totalHeight: 50
 
   TITLE:
     region: title
-    style:
-      typography:
-        fontSet: "elegant-serif"
-        fontSize: "3xl"
-        fontWeight: "bold"
-        textAlign: "center"
     contentBudget:
       nameLines: 1
       descLines: 0
@@ -53,81 +47,97 @@ tiles:
       imageBoxHeight: 0
       paddingTop: 4
       paddingBottom: 4
-      totalHeight: 32
+      totalHeight: 28
 
   SECTION_HEADER:
     region: body
-    colSpan: 4
+    colSpan: 1
     style:
       typography:
-        fontSet: "elegant-serif"
-        fontSize: "2xl"
-        fontWeight: "semibold"
-        textAlign: "center"
-        lineHeight: "relaxed"
+        fontSet: "system-sans-bold"
+        fontSize: "3xl"
+        fontWeight: "bold"
+        textAlign: "left"
+        lineHeight: "normal"
+        letterSpacing: 0.8
+        textTransform: "capitalize"
+        color: "#696969"
+        decoration: "bullet"
+        decorationColor: "#D4AF37"
       spacing:
-        paddingLeft: 16
-        paddingTop: 12
-        paddingBottom: 12
+        paddingLeft: 8
+        paddingTop: 24
+        paddingBottom: 0
+      border:
+        width: 0.6
+        color: "#D4AF37"
+        style: "solid"
+        sides: ["bottom"]
     contentBudget:
       nameLines: 1
       descLines: 0
       indicatorAreaHeight: 0
       imageBoxHeight: 0
-      paddingTop: 12
-      paddingBottom: 12
-      totalHeight: 40
+      paddingTop: 6
+      paddingBottom: 4
+      totalHeight: 20
 
+  # ITEM_CARD available but narrow format favours ITEM_TEXT_ROW
+  # Height formula: rowSpan * rowHeight + (rowSpan - 1) * gapY
+  #   = 2 * 70 + 1 * 6 = 146pt actual height
   ITEM_CARD:
     region: body
     rowSpan: 2
     style:
       typography:
         name:
-          fontSet: "elegant-serif"
+          fontSet: "system-sans"
           fontSize: "xsm"
           fontWeight: "bold"
+          textTransform: "capitalize"
         description:
-          fontSet: "classic-professional"
+          fontSet: "modern-sans"
           fontSize: "xxs"
           fontWeight: "normal"
         price:
-          fontSet: "classic-professional"
+          fontSet: "modern-sans"
           fontSize: "xs"
           fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
-      indicatorAreaHeight: 16
-      imageBoxHeight: 70
-      paddingTop: 8
-      paddingBottom: 8
-      totalHeight: 148
+      indicatorAreaHeight: 14
+      imageBoxHeight: 50
+      paddingTop: 6
+      paddingBottom: 6
+      totalHeight: 146
 
+  # Preferred tile type for narrow single-column format
   ITEM_TEXT_ROW:
     region: body
     rowSpan: 1
     style:
       typography:
         name:
-          fontSet: "elegant-serif"
+          fontSet: "system-sans"
           fontSize: "xsm"
           fontWeight: "bold"
+          textTransform: "capitalize"
         description:
-          fontSet: "classic-professional"
+          fontSet: "modern-sans"
           fontSize: "xxs"
           fontWeight: "normal"
         price:
-          fontSet: "classic-professional"
+          fontSet: "modern-sans"
           fontSize: "xs"
           fontWeight: "bold"
     contentBudget:
       nameLines: 2
       descLines: 2
-      indicatorAreaHeight: 16
+      indicatorAreaHeight: 14
       imageBoxHeight: 0
-      paddingTop: 8
-      paddingBottom: 8
+      paddingTop: 6
+      paddingBottom: 6
       totalHeight: 70
 
   FOOTER_INFO:
@@ -135,12 +145,12 @@ tiles:
     style:
       typography:
         contact:
-          fontSet: "classic-professional"
-          fontSize: "xs"
+          fontSet: "modern-sans"
+          fontSize: "xxs"
           fontWeight: "normal"
       border:
         width: 0.5
-        color: "#D4CFA3"
+        color: "#D1D5DB"
         style: "solid"
         sides: ["top"]
     contentBudget:
@@ -150,10 +160,10 @@ tiles:
       imageBoxHeight: 0
       paddingTop: 4
       paddingBottom: 4
-      totalHeight: 45
+      totalHeight: 36
 
 policies:
-  lastRowBalancing: CENTER
+  lastRowBalancing: LEFT
   showLogoOnPages: [FIRST, CONTINUATION, FINAL, SINGLE]
   repeatSectionHeaderOnContinuation: true
   sectionHeaderKeepWithNextItems: 1
@@ -164,19 +174,19 @@ filler:
     - startRow: 0
       endRow: LAST_CONTENT
       startCol: 0
-      endCol: 3
+      endCol: 0
   tiles:
-    - id: filler-icon-1
-      style: icon
-      content: utensils
-      rowSpan: 2
+    - id: filler-blank
+      style: color
+      content: ''
+      rowSpan: 1
   policy: SEQUENTIAL
 
 itemIndicators:
   mode: INLINE
   maxCount: 3
   style:
-    badgeSize: 14
+    badgeSize: 12
     iconSet: emoji
   spiceScale:
     1: "🌶"

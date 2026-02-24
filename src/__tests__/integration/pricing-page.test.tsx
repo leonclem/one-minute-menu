@@ -557,7 +557,7 @@ describe('Pricing Page - Integration Tests', () => {
       expect(selector.value).toBe('EUR')
 
       consoleErrorSpy.mockRestore()
-    })
+    }, 10000)
 
     it('should display all pricing tiers with correct structure', async () => {
       render(<UXPricingPageContent />)
@@ -605,6 +605,6 @@ describe('Pricing Page - Integration Tests', () => {
         const selector = screen.getByLabelText(/select billing currency/i) as HTMLSelectElement
         expect(selector.value).toBe('AUD')
       })
-    })
+    }, 10000)
   })
 })

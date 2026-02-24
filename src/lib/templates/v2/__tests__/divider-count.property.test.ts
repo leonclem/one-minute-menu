@@ -83,8 +83,8 @@ describe('Feature: gridmenu-v2-layout-enhancements, Property 6: Divider Count Eq
    * the layout produced by generateLayoutV2 SHALL contain exactly N-1
    * DECORATIVE_DIVIDER tiles across all pages.
    *
-   * Uses valentines-v2 which has dividers.enabled: true.
-   * (classic-cards-v2 now has dividers disabled)
+   * Uses test-template-dividers which has dividers.enabled: true.
+   * (4-column-portrait has dividers disabled; use test-template-dividers for divider tests)
    *
    * **Validates: Requirements 10.4**
    */
@@ -93,7 +93,7 @@ describe('Feature: gridmenu-v2-layout-enhancements, Property 6: Divider Count Eq
       fc.asyncProperty(arbMenuWithMultipleSections, async (menu) => {
         const doc = await generateLayoutV2({
           menu,
-          templateId: 'valentines-v2',
+          templateId: 'test-template-dividers',
           debug: true,
         })
 

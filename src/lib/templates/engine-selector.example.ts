@@ -26,7 +26,7 @@ export async function generateLayoutWithDefault(menu: any) {
   } else {
     const v2Input: LayoutEngineInputV2 = {
       menu,
-      templateId: 'classic-cards-v2' // V2 template ID
+      templateId: '4-column-portrait' // V2 template ID
     }
     return await generateLayoutWithVersion(v2Input)
   }
@@ -39,7 +39,7 @@ export async function generateLayoutWithDefault(menu: any) {
 export async function generateLayoutV2Explicitly(menu: any) {
   const v2Input: LayoutEngineInputV2 = {
     menu,
-    templateId: 'classic-cards-v2',
+    templateId: '4-column-portrait',
     debug: true
   }
   

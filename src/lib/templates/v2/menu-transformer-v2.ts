@@ -49,7 +49,7 @@ export interface TransformOptionsV2 {
  * const engineMenu = transformMenuToV2(databaseMenu)
  * const layout = await generateLayoutV2({
  *   menu: engineMenu,
- *   templateId: 'classic-cards-v2'
+ *   templateId: '4-column-portrait'
  * })
  * ```
  */

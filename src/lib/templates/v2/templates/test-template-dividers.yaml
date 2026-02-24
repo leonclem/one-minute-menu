@@ -1,22 +1,23 @@
-id: test-template
+# Test-only fixture: dividers enabled for divider tests. Not shown in UI.
+id: test-template-dividers
 version: "1.0.0"
-name: Test Template
+name: Test Template Dividers
 
 page:
   size: A4_PORTRAIT
   margins:
-    top: 56.69
-    right: 42.52
-    bottom: 56.69
-    left: 42.52
+    top: 22
+    right: 25
+    bottom: 22
+    left: 25
 
 regions:
   header:
     height: 60
   title:
-    height: 40
+    height: 32
   footer:
-    height: 30
+    height: 45
 
 body:
   container:
@@ -45,9 +46,9 @@ tiles:
       descLines: 0
       indicatorAreaHeight: 0
       imageBoxHeight: 0
-      paddingTop: 8
-      paddingBottom: 8
-      totalHeight: 40
+      paddingTop: 4
+      paddingBottom: 4
+      totalHeight: 32
 
   SECTION_HEADER:
     region: body
@@ -59,7 +60,7 @@ tiles:
       imageBoxHeight: 0
       paddingTop: 8
       paddingBottom: 4
-      totalHeight: 32
+      totalHeight: 24
 
   ITEM_CARD:
     region: body
@@ -85,6 +86,24 @@ tiles:
       paddingBottom: 8
       totalHeight: 70
 
+  DECORATIVE_DIVIDER:
+    region: body
+    colSpan: 4
+    rowSpan: 1
+    contentBudget:
+      nameLines: 0
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 4
+      paddingBottom: 4
+      totalHeight: 70
+
+dividers:
+  enabled: true
+  style: ornament
+  height: 24
+
 policies:
   lastRowBalancing: CENTER
   showLogoOnPages: [FIRST, CONTINUATION, FINAL, SINGLE]
@@ -93,15 +112,8 @@ policies:
 
 filler:
   enabled: false
-  safeZones:
-    - startRow: LAST
-      endRow: LAST
-      startCol: 0
-      endCol: 3
-  tiles:
-    - id: filler-blank
-      style: color
-      content: ''
+  safeZones: []
+  tiles: []
   policy: SEQUENTIAL
 
 itemIndicators:

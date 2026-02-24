@@ -25,8 +25,8 @@ export interface LayoutLabState {
   showGridOverlay: boolean
   showRegionBounds: boolean
   showTileIds: boolean
-  /** 'template' = use template default fillers, 'none' = no fillers, otherwise pattern ID from FILLER_PATTERN_REGISTRY */
-  spacerTiles: 'template' | 'none' | string
+  /** 'blank' = plain rectangle fillers, 'none' = no fillers, otherwise pattern ID from FILLER_PATTERN_REGISTRY */
+  spacerTiles: 'blank' | 'none' | string
   texturesEnabled: boolean
   showMenuTitle: boolean
   showVignette: boolean
@@ -44,14 +44,14 @@ export interface LayoutLabState {
 
 const initialState: LayoutLabState = {
   fixtureId: 'tiny',
-  templateId: 'classic-cards-v2',
+  templateId: '4-column-portrait',
   paletteId: 'midnight-gold',
   textureId: null,
   engineVersion: 'v2',
   showGridOverlay: false,
   showRegionBounds: false,
   showTileIds: false,
-  spacerTiles: 'template',
+  spacerTiles: 'blank',
   texturesEnabled: true, // Enable textures by default to showcase the feature
   showMenuTitle: false, // Hide menu title by default
   showVignette: true,
@@ -90,7 +90,7 @@ export function LayoutLabClient() {
           engineVersion: currentState.engineVersion,
           options: {
             fillersEnabled: currentState.spacerTiles !== 'none',
-            spacerTilePatternId: (currentState.spacerTiles !== 'template' && currentState.spacerTiles !== 'none') ? currentState.spacerTiles : undefined,
+            spacerTilePatternId: currentState.spacerTiles !== 'none' ? currentState.spacerTiles : undefined,
             textOnly: currentState.imageMode === 'none',
             texturesEnabled: !!currentState.textureId || currentState.texturesEnabled,
             textureId: currentState.textureId ?? undefined,
@@ -190,7 +190,7 @@ export function LayoutLabClient() {
           engineVersion: state.engineVersion,
           options: {
             fillersEnabled: state.spacerTiles !== 'none',
-            spacerTilePatternId: (state.spacerTiles !== 'template' && state.spacerTiles !== 'none') ? state.spacerTiles : undefined,
+            spacerTilePatternId: state.spacerTiles !== 'none' ? state.spacerTiles : undefined,
             texturesEnabled: !!state.textureId || state.texturesEnabled,
             textureId: state.textureId ?? undefined,
             textOnly: state.imageMode === 'none',
@@ -271,7 +271,7 @@ export function LayoutLabClient() {
           showTileIds={state.showTileIds}
           texturesEnabled={!!state.textureId || state.texturesEnabled}
           imageMode={state.imageMode}
-          spacerTilePatternId={(state.spacerTiles !== 'template' && state.spacerTiles !== 'none') ? state.spacerTiles : undefined}
+          spacerTilePatternId={state.spacerTiles !== 'none' ? state.spacerTiles : undefined}
         />
       </div>
     </div>

@@ -240,8 +240,8 @@ describe('Divider insertion with menu fixtures', () => {
 
   beforeAll(async () => {
     clearTemplateCache()
-    // Use valentines-v2 which has dividers enabled (classic-cards-v2 now has dividers disabled)
-    dividerTemplate = await loadTemplateV2('valentines-v2')
+    // Use test fixture with dividers enabled
+    dividerTemplate = await loadTemplateV2('test-template-dividers')
     pageSpec = buildPageSpec('A4_PORTRAIT', { top: 22, right: 25, bottom: 22, left: 25 })
   })
 
@@ -321,8 +321,8 @@ describe('Divider insertion with menu fixtures', () => {
 
   it('should not insert dividers when template has no dividers config', async () => {
     clearTemplateCache()
-    // Use a template without dividers (e.g., two-column-classic-v2)
-    const noDividerTemplate = await loadTemplateV2('two-column-classic-v2')
+    // Use a template without dividers
+    const noDividerTemplate = await loadTemplateV2('4-column-portrait')
 
     const result = streamingPaginate(multiSectionMenu, noDividerTemplate, pageSpec)
 
@@ -380,8 +380,8 @@ describe('Divider page overflow behavior', () => {
 
   beforeAll(async () => {
     clearTemplateCache()
-    // Use valentines-v2 which has dividers enabled (classic-cards-v2 now has dividers disabled)
-    dividerTemplate = await loadTemplateV2('valentines-v2')
+    // Use test fixture with dividers enabled
+    dividerTemplate = await loadTemplateV2('test-template-dividers')
     pageSpec = buildPageSpec('A4_PORTRAIT', { top: 22, right: 25, bottom: 22, left: 25 })
   })
 

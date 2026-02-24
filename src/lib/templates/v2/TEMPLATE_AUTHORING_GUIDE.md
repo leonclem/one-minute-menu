@@ -9,14 +9,14 @@ The V2 layout engine uses YAML-driven templates. New templates can be created wi
 ## Creating a new template
 
 1. **Read [LIMITATIONS.md](./LIMITATIONS.md)** — So you know what is not possible and where to make design concessions.
-2. **Copy an existing template** — From `src/lib/templates/v2/templates/` (e.g. `classic-cards-v2.yaml`).
+2. **Copy an existing template** — From `src/lib/templates/v2/templates/` (e.g. `4-column-portrait.yaml`).
 3. **Define structure** — Page size and margins, regions, body grid. For each body tile, set `totalHeight` to the footprint: `rowSpan × rowHeight + (rowSpan − 1) × gapY`. Use the **YAML Reference** and **Content Budget Calculation** sections below.
 4. **Style tiles** — Use [STYLING_GUIDE.md](./STYLING_GUIDE.md) for fonts, sub-element typography, spacing, borders, and backgrounds.
 5. **Test in Layout Lab** — `/dev/layout-lab` with different fixtures; export PDF and verify.
 
 ## Quick Start
 
-1. Copy an existing template (e.g., `classic-cards-v2.yaml`)
+1. Copy an existing template (e.g., `4-column-portrait.yaml`)
 2. Change `id`, `version`, and `name`
 3. Adjust page size, margins, regions, grid settings
 4. Configure tile styles with sub-element typography
@@ -79,7 +79,7 @@ ITEM_CARD:
         fontWeight: "bold"
 ```
 
-Available font sets: `modern-sans`, `elegant-serif`, `friendly-rounded`, `classic-professional`, `distinctive-sans`. Full details and which sub-elements apply to which tile types: [STYLING_GUIDE.md](./STYLING_GUIDE.md).
+Available font sets: `modern-sans`, `elegant-serif`, `friendly-rounded`, `classic-professional`, `distinctive-sans`, `system-sans` (Arial), `system-sans-bold` (Arial Black), `merriweather`, `raleway`, `lato`. Full details and which sub-elements apply to which tile types: [STYLING_GUIDE.md](./STYLING_GUIDE.md).
 
 Font size tokens: `xxxs` (6pt), `xxs` (7pt), `xs` (10pt), `xsm` (9pt), `sm` (12pt), `base` (14pt), `lg` (16pt), `xl` (18pt), `2xl` (20pt), `3xl` (24pt), `4xl` (28pt)
 
@@ -134,7 +134,7 @@ SECTION_HEADER:
 
 ### Filler (spacer tiles) configuration
 
-Filler tiles fill empty grid cells so that every cell is occupied. In the UI, **5. Spacer Tiles** offers: **Template default** (use the template’s filler definitions below), **None** (no fillers), or a pattern (e.g. Quatrefoil, Teardrop, Herringbone) to override filler appearance. Fillers are enabled by default when not **None** (via `selection.fillersEnabled`). The layout engine uses spread distribution rules to intersperse fillers among menu items rather than clustering them at the end.
+Filler tiles fill empty grid cells so that every cell is occupied. In the UI, **5. Spacer Tiles** offers: **Blank** (default; plain rectangles with alternating palette colours), **None** (no fillers), or a pattern to override filler appearance. Fillers are enabled by default when not **None** (via `selection.fillersEnabled`). The layout engine uses spread distribution rules to intersperse fillers among menu items rather than clustering them at the end.
 
 ```yaml
 filler:
@@ -145,9 +145,9 @@ filler:
       startCol: 0
       endCol: 3                     # should equal cols - 1
   tiles:                            # empty [] uses a default block matching ITEM_CARD rowSpan
-    - id: filler-icon-1
-      style: icon                   # 'icon' or 'color'
-      content: utensils             # icon name (for style: icon)
+    - id: filler-blank
+      style: color                  # 'color' for plain block (UI controls final look: Blank or pattern)
+      content: ''
       rowSpan: 2                    # match ITEM_CARD rowSpan for visual consistency
   policy: SEQUENTIAL                # SEQUENTIAL | RANDOM_SEEDED
 ```
@@ -163,7 +163,7 @@ filler:
 
 The template schema defines a **content budget** with these fields (all in points or line counts):
 
-- `nameLines`, `descLines` — max lines for name/description (used for text clamping)
+- `nameLines`, `descLines` — max lines for name/description (used for text clamping and layout; see **Text Truncation** below)
 - `indicatorAreaHeight` — space reserved for dietary/allergen indicators
 - `imageBoxHeight` — height of the image area (0 for text-only tiles)
 - `paddingTop`, `paddingBottom`
@@ -201,6 +201,25 @@ Example for ITEM_CARD with rowSpan 2, rowHeight 70, gapY 8:
 - [ ] Section headers are distinctive and legible
 - [ ] Spacer tiles (fillers) render correctly when enabled (check spread distribution)
 - [ ] Filler rowSpan matches ITEM_CARD rowSpan (no half-height gaps)
+
+### Text Truncation
+
+Descriptions and names are truncated by **line count**, not by character count:
+
+- The renderer uses CSS `WebkitLineClamp` (web preview) to cap text at `nameLines` / `descLines`.
+- Overflow text is hidden and an ellipsis (`...`) is appended.
+- The effective character limit depends on tile width and font size — narrower tiles show fewer characters per line.
+- The renderer estimates actual line usage to position elements compactly (content-aware layout), so short text doesn't leave large gaps.
+
+Approximate characters per line (at default font sizes):
+
+| Template | Approx. chars/line |
+|----------|-------------------|
+| 4-column-portrait | 25–35 |
+| 3-column-portrait | 30–42 |
+| 2-column-portrait | 40–55 |
+| 1-column-tall | 18–22 |
+| 4-column-landscape | 25–35 |
 
 ### Common Pitfalls
 

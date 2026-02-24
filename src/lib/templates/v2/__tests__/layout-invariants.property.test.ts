@@ -83,9 +83,9 @@ describe('Feature: gridmenu-v2-layout-enhancements, Property 4: Layout Invariant
   beforeAll(async () => {
     clearTemplateCache()
     const all = await listAvailableTemplates()
-    // Exclude the test-template fixture and elegant-serif-example (may have non-standard config)
+    // Exclude test fixtures (non-product templates)
     templateIds = all.filter(
-      id => id !== 'test-template' && id !== 'elegant-serif-example'
+      id => id !== 'test-template' && id !== 'test-template-dividers'
     )
     expect(templateIds.length).toBeGreaterThanOrEqual(5)
   })
@@ -95,12 +95,11 @@ describe('Feature: gridmenu-v2-layout-enhancements, Property 4: Layout Invariant
   })
 
   it.each([
-    'classic-cards-v2',
-    'classic-cards-v2-landscape',
-    'two-column-classic-v2',
-    'three-column-modern-v2',
-    'half-a4-tall-v2',
-    'italian-v2',
+    '4-column-portrait',
+    '4-column-landscape',
+    '3-column-portrait',
+    '2-column-portrait',
+    '1-column-tall',
   ])(
     'template "%s" should produce valid layouts for any random menu',
     async (templateId) => {

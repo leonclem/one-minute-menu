@@ -113,7 +113,8 @@ export async function generateLayoutV2(
   // Step 4: Insert section-scoped interspersed fillers when enabled
   const fillersEnabled = input.selection?.fillersEnabled ?? effectiveTemplate.filler.enabled
   if (fillersEnabled) {
-    insertInterspersedFillers(document, effectiveTemplate, input.menu.id, fillersEnabled)
+    const textOnly = input.selection?.textOnly || false
+    insertInterspersedFillers(document, effectiveTemplate, input.menu.id, fillersEnabled, textOnly)
   }
   
   // Step 5: Call validateInvariants in dev mode or when debug=true

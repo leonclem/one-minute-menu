@@ -20,7 +20,7 @@ import type {
 } from '../engine-types-v2'
 
 // Fixed template for MVP - no random template generation
-const FIXED_TEMPLATE_ID = 'classic-cards-v2'
+const FIXED_TEMPLATE_ID = '4-column-portrait'
 
 /**
  * Generate arbitrary EngineMenuV2 for property testing
@@ -271,7 +271,7 @@ describe('V2 Layout Engine Property Tests', () => {
             const maxY = Math.max(...itemTiles.map(t => t.y))
             const lastRowTiles = itemTiles.filter(t => t.y === maxY)
             
-            // If last row is partial (less than 4 items for classic-cards-v2)
+            // If last row is partial (less than 4 items for 4-column-portrait)
             if (lastRowTiles.length > 0 && lastRowTiles.length < 4) {
               // Check that tiles are centered (first tile should have positive x offset)
               const firstTile = [...lastRowTiles].sort((a, b) => a.x - b.x)[0]
@@ -298,7 +298,7 @@ describe('V2 Layout Engine Property Tests', () => {
       fc.asyncProperty(
         arbitraryEngineMenuV2({ maxSections: 2, maxItems: 6 }),
         async (menu) => {
-          // Note: For MVP, fillers are disabled in classic-cards-v2 template
+          // Note: For MVP, fillers are disabled in 4-column-portrait template
           // This test verifies that the filler system doesn't affect item placement
           // even when fillers are theoretically enabled
           
@@ -360,7 +360,7 @@ describe('V2 Layout Engine Property Tests', () => {
           for (const page of result.pages) {
             const fillerTiles = page.tiles.filter(t => t.type === 'FILLER')
             
-            // For MVP, fillers are disabled in classic-cards-v2, so should be empty
+            // For MVP, fillers are disabled in 4-column-portrait, so should be empty
             expect(fillerTiles).toHaveLength(0)
             
             // Future: When fillers are enabled, verify they're in safe zones
@@ -513,7 +513,7 @@ describe('V2 Layout Engine Property Tests', () => {
             templateId: FIXED_TEMPLATE_ID 
           })
 
-          // For classic-cards-v2, logo should appear on all pages
+          // For 4-column-portrait, logo should appear on all pages
           const expectedLogoPages = ['FIRST', 'CONTINUATION', 'FINAL', 'SINGLE']
 
           for (const page of result.pages) {

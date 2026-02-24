@@ -1,10 +1,10 @@
 /**
- * Unit tests for themed templates (Valentine's Day, Lunar New Year)
+ * Unit tests for V2 display-named templates (4-column-portrait, etc.)
  *
  * Tests:
- * - Themed templates load and validate against schema
- * - Palette nudging: themed template with different colourPaletteId
- * - Themed templates produce valid layouts with random menus
+ * - Templates load and validate against schema
+ * - Palette nudging: template with different colourPaletteId
+ * - Templates produce valid layouts with random menus
  *
  * _Requirements: 11.1, 11.2, 11.5, 11.6_
  */
@@ -24,7 +24,7 @@ import type {
 // Fixtures
 // =============================================================================
 
-const THEMED_TEMPLATE_IDS = ['valentines-v2', 'lunar-new-year-v2'] as const
+const V2_TEMPLATE_IDS = ['4-column-portrait', '3-column-portrait', '2-column-portrait', '1-column-tall', '4-column-landscape'] as const
 
 function makeSimpleMenu(sectionCount = 2, itemsPerSection = 3): EngineMenuV2 {
   const sections: EngineSectionV2[] = Array.from({ length: sectionCount }, (_, si) => ({
@@ -105,23 +105,20 @@ const arbMenu: fc.Arbitrary<EngineMenuV2> = fc
 // Tests
 // =============================================================================
 
-describe('Themed templates', () => {
+describe('V2 templates (display-named)', () => {
   beforeEach(() => {
     clearTemplateCache()
   })
 
-  describe.each(THEMED_TEMPLATE_IDS)('template "%s"', (templateId) => {
+  describe.each(V2_TEMPLATE_IDS)('template "%s"', (templateId) => {
     it('should load and validate against schema', async () => {
       const template = await loadTemplateV2(templateId)
 
       expect(template.id).toBe(templateId)
-      expect(template.version).toBe('2.0.0')
-      expect(template.page.size).toBe('A4_PORTRAIT')
-      expect(template.body.container.cols).toBe(4)
-      expect(template.dividers?.enabled).toBe(true)
-      expect(template.dividers?.style).toBe('ornament')
-      expect(template.tiles.FEATURE_CARD).toBeDefined()
-      expect(template.tiles.DECORATIVE_DIVIDER).toBeDefined()
+      expect(template.version).toBeDefined()
+      expect(template.page.size).toBeDefined()
+      expect(template.body.container.cols).toBeGreaterThan(0)
+      expect(template.tiles.ITEM_CARD ?? template.tiles.ITEM_TEXT_ROW).toBeDefined()
     })
 
     it('should produce a valid layout with a simple menu', async () => {
@@ -145,7 +142,7 @@ describe('Themed templates', () => {
   })
 
   describe('palette nudging', () => {
-    it.each(THEMED_TEMPLATE_IDS)(
+    it.each(V2_TEMPLATE_IDS)(
       'template "%s" should accept a different colourPaletteId without error',
       async (templateId) => {
         const menu = makeSimpleMenu(2, 3)

@@ -24,7 +24,7 @@ import nastyFixture from '../fixtures/nasty.json'
 async function generateLayout(menu: EngineMenuV2, debug = true): Promise<LayoutDocumentV2> {
   return generateLayoutV2({
     menu,
-    templateId: 'classic-cards-v2',
+    templateId: '4-column-portrait',
     debug
   })
 }
@@ -82,7 +82,7 @@ describe('Layout Engine V2 - Complete Flow', () => {
     const doc = await generateLayout(menu)
     
     expect(doc).toBeDefined()
-    expect(doc.templateId).toBe('classic-cards-v2')
+    expect(doc.templateId).toBe('4-column-portrait')
     expect(doc.pages.length).toBeGreaterThan(0)
     expect(doc.pages[0].regions).toHaveLength(4)
   })

@@ -33,6 +33,36 @@ import type {
 import { formatCurrency } from '../../currency-formatter'
 
 // ============================================================================
+// Text Transform Helpers
+// ============================================================================
+
+/** True title case: "SPINACH SALAD" → "Spinach Salad", "insalate" → "Insalate" */
+function toTitleCase(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/(?:^|\s)\S/g, ch => ch.toUpperCase())
+}
+
+/**
+ * Apply text transform in JS and return the transformed string.
+ * For 'capitalize' (title case) we transform in JS so the result is true
+ * title case regardless of the source casing. CSS text-transform: capitalize
+ * only uppercases the first letter — it doesn't lowercase the rest.
+ *
+ * Returns [transformedText, cssTextTransform] — the second value is undefined
+ * when the transform was applied in JS (no CSS needed).
+ */
+function applyTextTransform(
+  text: string,
+  transform: string | undefined
+): [string, string | undefined] {
+  if (!transform || transform === 'none') return [text, undefined]
+  if (transform === 'capitalize') return [toTitleCase(text), undefined]
+  // uppercase / lowercase — let CSS handle it
+  return [text, transform]
+}
+
+// ============================================================================
 // Render Options Interface
 // ============================================================================
 
@@ -81,6 +111,7 @@ export interface FontSetV2 {
   name: string
   primary: string
   fallback: string
+  /** Google Fonts API param (e.g. 'Inter:wght@400;600;700'). Empty for system fonts. */
   googleFonts: string
   description: string
 }
@@ -126,6 +157,46 @@ export const FONT_SETS_V2: FontSetV2[] = [
     fallback: 'system-ui, -apple-system, sans-serif',
     googleFonts: 'Poppins:wght@400;500;600;700',
     description: 'Modern, geometric, distinctive - ideal for trendy establishments'
+  },
+  {
+    id: 'system-sans',
+    name: 'System Sans (Arial)',
+    primary: 'Arial',
+    fallback: 'Helvetica, "Helvetica Neue", sans-serif',
+    googleFonts: '',
+    description: 'System sans-serif - clear, neutral, works everywhere'
+  },
+  {
+    id: 'system-sans-bold',
+    name: 'System Sans Bold (Arial Black)',
+    primary: 'Arial Black',
+    fallback: 'Arial, Helvetica, sans-serif',
+    googleFonts: '',
+    description: 'Heavy system sans - strong headings and titles'
+  },
+  {
+    id: 'merriweather',
+    name: 'Merriweather',
+    primary: 'Merriweather',
+    fallback: 'Georgia, serif',
+    googleFonts: 'Merriweather:wght@400;600;700',
+    description: 'Classic serif - elegant headings, editorial feel'
+  },
+  {
+    id: 'raleway',
+    name: 'Raleway',
+    primary: 'Raleway',
+    fallback: 'system-ui, sans-serif',
+    googleFonts: 'Raleway:wght@400;500;600;700',
+    description: 'Refined sans - clean and readable'
+  },
+  {
+    id: 'lato',
+    name: 'Lato',
+    primary: 'Lato',
+    fallback: 'system-ui, sans-serif',
+    googleFonts: 'Lato:wght@400;700',
+    description: 'Friendly sans - warm and approachable'
   }
 ]
 
@@ -162,7 +233,8 @@ export const TYPOGRAPHY_TOKENS_V2 = {
     xl: 18,    // 18pt
     '2xl': 20, // 20pt
     '3xl': 24, // 24pt
-    '4xl': 28  // 28pt
+    '4xl': 28, // 28pt
+    '5xl': 30  // 30pt - section headers, hero
   },
   fontWeight: {
     normal: 400,
@@ -178,13 +250,62 @@ export const TYPOGRAPHY_TOKENS_V2 = {
   }
 } as const
 
-/** Spacing constants (in points) for consistent element gaps */
+/** Spacing constants (in points) for consistent element gaps. Aligned with GridMenu-Typography-Spacing-Guide. */
 export const SPACING_V2 = {
-  nameToDesc: 3,
-  descToPrice: 6,
-  afterImage: 6,
-  tilePadding: 8,
+  nameToDesc: 8,  // 8px – name and description feel connected
+  descToPrice: 6, // 6px – price sits close to its item, same visual unit
+  afterImage: 16,  // 16px – moderate separation from image to name
+  tilePadding: 8,  // 8px base; templates may use larger via contentBudget
 } as const
+
+/**
+ * Background-mode text styling: applied to text overlaid on background images
+ * for readability. The shadow provides a crisp dark halo around letterforms
+ * while the gradient strengthens the image scrim behind the text zone.
+ * Name and price use lightened palette colours so they keep the colour scheme
+ * but contrast with the dark overlay; description stays light with shadow.
+ * Compatible with CSS (web preview + Puppeteer PDF export).
+ */
+export const BG_IMAGE_TEXT = {
+  shadow: '0 1px 3px rgba(0,0,0,0.7), 0 0 6px rgba(0,0,0,0.3)',
+  gradient: 'linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0.6) 100%)',
+  /** Description stays light for contrast on gradient. */
+  descColor: '#f0f0f0',
+  /** Blend factor (0–1) for item name: more white = lighter text on dark overlay. Names need most contrast. */
+  lightenBlendName: 0.82,
+  /** Blend factor (0–1) for item price: lighter than default palette but name is lightest. */
+  lightenBlendPrice: 0.72,
+  /** Font size bump (pt) for item name when Image Option is Background. */
+  nameSizeBump: 4,
+  /** Font size bump (pt) for item price when Image Option is Background. */
+  priceSizeBump: 3,
+  /** Max name fontSize (pt) in background mode. */
+  nameSizeMax: 20,
+  /** Max price fontSize (pt) in background mode. */
+  priceSizeMax: 14,
+} as const
+
+/**
+ * Lighten a hex colour by blending with white for use on dark overlays.
+ * Preserves hue while improving contrast. Returns hex in #RRGGBB form.
+ */
+export function lightenHexForDarkBackground(hex: string, whiteAmount: number): string {
+  const normalized = hex.replace('#', '').trim()
+  const value = normalized.length === 3
+    ? normalized.split('').map(c => c + c).join('')
+    : normalized
+  const num = parseInt(value, 16)
+  if (Number.isNaN(num)) return hex
+  const r = (num >> 16) & 255
+  const g = (num >> 8) & 255
+  const b = num & 255
+  const w = Math.max(0, Math.min(1, whiteAmount))
+  const r2 = Math.round(r * (1 - w) + 255 * w)
+  const g2 = Math.round(g * (1 - w) + 255 * w)
+  const b2 = Math.round(b * (1 - w) + 255 * w)
+  const toHex = (v: number) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')
+  return `#${toHex(r2)}${toHex(g2)}${toHex(b2)}`
+}
 
 /** Font size type for template styling */
 export type FontSizeV2 = keyof typeof TYPOGRAPHY_TOKENS_V2.fontSize
@@ -789,6 +910,7 @@ export interface RenderStyle {
   boxShadow?: string
   textTransform?: string
   letterSpacing?: number
+  textShadow?: string
 }
 
 // ============================================================================
@@ -923,12 +1045,14 @@ function renderSectionHeaderContent(
   const fontSet = tileStyle?.typography?.fontSet || 'modern-sans'
   const fontSize = tileStyle?.typography?.fontSize || '2xl'
   const fontWeight = tileStyle?.typography?.fontWeight || 'semibold'
-  const textAlign = 'center' // Always center section headers for consistency
+  const textAlign = tileStyle?.typography?.textAlign ?? 'center'
   const lineHeight = tileStyle?.typography?.lineHeight || 'normal'
+  const letterSpacingOverride = tileStyle?.typography?.letterSpacing
+  const decoration = tileStyle?.typography?.decoration
   
-  // Apply spacing styling - center horizontally
-  const paddingLeft = 0 // No left padding when centered
-  const paddingTop = tileStyle?.spacing?.paddingTop || 0
+  // Spacing: padding from template (e.g. 24px top for subtitle, 8px left with decoration)
+  const paddingLeft = tileStyle?.spacing?.paddingLeft ?? 0
+  const paddingTop = tileStyle?.spacing?.paddingTop ?? 0
   
   // Get font family from font set
   const fontFamily = getFontFamily(fontSet)
@@ -1014,27 +1138,79 @@ function renderSectionHeaderContent(
     })
   }
   
-  // Apply textTransform from tile style
+  // Apply textTransform and letterSpacing from tile style
   const textTransformVal = tileStyle?.typography?.textTransform || undefined
+  const letterSpacing =
+    letterSpacingOverride !== undefined
+      ? letterSpacingOverride
+      : textTransformVal === 'uppercase'
+        ? 1.5
+        : undefined
 
-  // Add text element - centered horizontally
-  const textWidth = tile.width
-  const textX = 0 // Full width, centered via textAlign
+  const resolvedFontSize = TYPOGRAPHY_TOKENS_V2.fontSize[fontSize as FontSizeV2] || TYPOGRAPHY_TOKENS_V2.fontSize['2xl']
+  const resolvedLineHeight = TYPOGRAPHY_TOKENS_V2.lineHeight[lineHeight as LineHeightV2] || TYPOGRAPHY_TOKENS_V2.lineHeight.normal
+
+  // Anchor text just above the bottom border so heading-to-divider proximity
+  // is consistent regardless of tile height (which varies with rowHeight).
+  const sectionTextLineHeight = resolvedFontSize * resolvedLineHeight
+  const hasBottomBorder = tileStyle?.border?.sides?.includes('bottom') && (tileStyle?.border?.width ?? 0) > 0
+  let textY: number
+  if (hasBottomBorder) {
+    const borderTopEdge = tile.height - (tileStyle!.border!.width ?? 0)
+    textY = Math.max(2, borderTopEdge - sectionTextLineHeight)
+  } else {
+    textY = paddingTop || tile.height / 2
+  }
+
+  const decorationWidth = 14
+  const showDecoration = decoration && decoration !== 'none'
+  const textStartX = paddingLeft + (showDecoration ? decorationWidth : 0)
+  const textWidth = tile.width - textStartX
+
+  if (showDecoration) {
+    const decorationChar = decoration === 'bullet' ? '•' : decoration === 'diamond' ? '◆' : '·'
+    const decorationFontSize = Math.round(Math.max(12, Math.min(18, resolvedFontSize * 0.55)))
+    const textLineHeight = resolvedFontSize * resolvedLineHeight
+    const decorationLineHeight = 1.2
+    const decorationHeight = decorationFontSize * decorationLineHeight
+    const textVerticalCenter = textY + textLineHeight / 2
+    const decorationY = textVerticalCenter - decorationHeight / 2
+    const decorationColor =
+      tileStyle?.typography?.decorationColor ??
+      tileStyle?.border?.color ??
+      palette.colors.itemPrice
+    elements.push({
+      type: 'text',
+      x: paddingLeft,
+      y: decorationY,
+      width: decorationWidth,
+      content: decorationChar,
+      style: {
+        fontSize: decorationFontSize,
+        fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight[fontWeight as FontWeightV2] || TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
+        color: decorationColor,
+        fontFamily,
+        textAlign: 'left'
+      }
+    })
+  }
+
+  const [labelText, labelCssTransform] = applyTextTransform(content.label, textTransformVal)
   elements.push({
     type: 'text',
-    x: textX,
-    y: paddingTop || tile.height / 2,
+    x: textStartX,
+    y: textY,
     width: textWidth,
-    content: content.label,
+    content: labelText,
     style: {
-      fontSize: TYPOGRAPHY_TOKENS_V2.fontSize[fontSize as FontSizeV2] || TYPOGRAPHY_TOKENS_V2.fontSize['2xl'],
+      fontSize: resolvedFontSize,
       fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight[fontWeight as FontWeightV2] || TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
       lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight[lineHeight as LineHeightV2] || TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
       color: tileStyle?.typography?.color || palette.colors.sectionHeader,
       textAlign: textAlign as TextAlignV2,
       fontFamily,
-      textTransform: textTransformVal,
-      letterSpacing: textTransformVal === 'uppercase' ? 1.5 : undefined
+      textTransform: labelCssTransform,
+      letterSpacing
     }
   })
 
@@ -1048,11 +1224,13 @@ function renderItemContent(
 ): TileRenderData {
   const elements: RenderElement[] = []
   const palette = getPalette(options)
-  const padding = SPACING_V2.tilePadding
-  let currentY = padding
-
-  // Resolve per-sub-element typography from tile YAML style
   const tileStyle = tile.style as TileStyleV2 | undefined
+
+  // Use template contentBudget padding when available, fall back to global default
+  const padTop = tile.contentBudget?.paddingTop ?? SPACING_V2.tilePadding
+  const padBottom = tile.contentBudget?.paddingBottom ?? SPACING_V2.tilePadding
+  const padH = SPACING_V2.tilePadding // horizontal padding unchanged
+
   const nameTypo = resolveSubElementTypography(tileStyle, 'name', {
     fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xsm,
     fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
@@ -1061,7 +1239,7 @@ function renderItemContent(
   const descTypo = resolveSubElementTypography(tileStyle, 'description', {
     fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xxs,
     fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.normal,
-    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.relaxed,
   })
   const priceTypo = resolveSubElementTypography(tileStyle, 'price', {
     fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xxxs,
@@ -1069,228 +1247,242 @@ function renderItemContent(
     lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.tight,
   })
 
-  const isCircularMode = (options.imageMode || 'stretch') === 'compact-circle'
+  const imageMode: ImageModeV2 = options.imageMode || 'stretch'
+  const isBackgroundMode = imageMode === 'background'
+  const isCircularMode = imageMode === 'compact-circle'
   const defaultImageBorderRadius = isCircularMode ? undefined : 8
 
-  // Item image (for ITEM_CARD)
-  if (content.type === 'ITEM_CARD' && content.showImage) {
-    const imageMode: ImageModeV2 = options.imageMode || 'stretch'
-    
-    const nameReserve = (nameTypo.fontSize * nameTypo.lineHeight) * 2.0
+  const nameFontSize = isBackgroundMode
+    ? Math.min(nameTypo.fontSize + BG_IMAGE_TEXT.nameSizeBump, BG_IMAGE_TEXT.nameSizeMax)
+    : nameTypo.fontSize
+  const priceFontSize = isBackgroundMode
+    ? Math.min(priceTypo.fontSize + BG_IMAGE_TEXT.priceSizeBump, BG_IMAGE_TEXT.priceSizeMax)
+    : priceTypo.fontSize
+  const nameLineHeight = nameFontSize * nameTypo.lineHeight
+  const nameMaxLines = tile.contentBudget?.nameLines ?? 3
+  const descMaxLines = tile.contentBudget?.descLines ?? 3
+  const textWidth = tile.width - (padH * 2)
+
+  // --- Content-aware height estimation ---
+  // Estimate actual line counts from content length rather than always reserving max lines.
+  // The CSS WebkitLineClamp still caps rendering; this only affects Y positioning.
+  const estNameLines = estimateLineCount(content.name, textWidth, nameFontSize, nameMaxLines)
+  const estDescLines = content.description
+    ? estimateLineCount(content.description, textWidth, descTypo.fontSize, descMaxLines)
+    : 0
+
+  const nameHeight = nameLineHeight * estNameLines
+  const descLineHeight = descTypo.fontSize * descTypo.lineHeight
+  const descHeight = descLineHeight * estDescLines
+  const priceLineHeight = priceFontSize * priceTypo.lineHeight
+  const hasDesc = estDescLines > 0
+
+  // Compute the image portion height (0 when no image or background mode)
+  let imageBlockHeight = 0
+  let imageComputedWidth = 0
+  let imageComputedHeight = 0
+  let imageComputedX = 0
+  let imageComputedBorderRadius = defaultImageBorderRadius ?? 8
+  const showImage = content.type === 'ITEM_CARD' && content.showImage && !isBackgroundMode
+
+  if (showImage) {
+    const nameReserve = nameLineHeight * 2.0
     const descReserve = content.description
-      ? (descTypo.fontSize * descTypo.lineHeight * (tile.contentBudget?.descLines ?? 2)) + SPACING_V2.nameToDesc
+      ? (descLineHeight * descMaxLines) + SPACING_V2.nameToDesc
       : 0
-    const priceReserve = (priceTypo.fontSize * priceTypo.lineHeight) + SPACING_V2.descToPrice
+    const priceReserve = priceLineHeight + SPACING_V2.descToPrice
     const textTotal = nameReserve + descReserve + priceReserve
-    
-    const availableForImage = tile.height - padding - SPACING_V2.afterImage - textTotal
-    
-    if (imageMode === 'background') {
-      if (content.imageUrl) {
-        elements.push({
-          type: 'image',
-          x: 0,
-          y: 0,
-          width: tile.width,
-          height: tile.height,
-          content: content.imageUrl,
-          style: {
-            borderRadius: 0,
-            objectFit: 'cover',
-            objectPosition: 'center'
-          }
-        })
-        
-        elements.push({
-          type: 'background',
-          x: 0,
-          y: 0,
-          width: tile.width,
-          height: tile.height,
-          content: '',
-          style: {
-            background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.5) 100%)',
-            borderRadius: 0
-          }
-        })
+    const availableForImage = tile.height - padTop - SPACING_V2.afterImage - textTotal
+
+    if (imageMode === 'compact-rect') {
+      imageComputedWidth = tile.width * 0.6
+      imageComputedHeight = imageComputedWidth * 0.75
+      if (imageComputedHeight > availableForImage) {
+        imageComputedHeight = availableForImage
+        imageComputedWidth = imageComputedHeight / 0.75
       }
-      
-      if (content.indicators) {
-        const indicatorElements = renderIndicators(
-          content.indicators,
-          4,
-          4,
-          tile.width - 8,
-          palette
-        )
-        elements.push(...indicatorElements)
-      }
+      imageComputedX = (tile.width - imageComputedWidth) / 2
+    } else if (isCircularMode) {
+      const diameter = Math.min(tile.width * 0.45, availableForImage)
+      imageComputedWidth = diameter
+      imageComputedHeight = diameter
+      imageComputedX = (tile.width - imageComputedWidth) / 2
+      imageComputedBorderRadius = diameter / 2
     } else {
-      let imageWidth: number
-      let imageHeight: number
-      let imageX: number
-      let borderRadius: number = defaultImageBorderRadius ?? 8
-      
-      if (imageMode === 'compact-rect') {
-        imageWidth = tile.width * 0.6
-        imageHeight = imageWidth * 0.75
-        if (imageHeight > availableForImage) {
-          imageHeight = availableForImage
-          imageWidth = imageHeight / 0.75
-        }
-        imageX = (tile.width - imageWidth) / 2
-      } else if (imageMode === 'compact-circle') {
-        const diameter = Math.min(tile.width * 0.45, availableForImage)
-        imageWidth = diameter
-        imageHeight = diameter
-        imageX = (tile.width - imageWidth) / 2
-        borderRadius = diameter / 2
-      } else {
-        imageWidth = tile.width - (padding * 2)
-        const ideal4by3 = imageWidth * 0.75
-        imageHeight = Math.max(40, Math.min(ideal4by3, availableForImage))
-        imageX = (tile.width - imageWidth) / 2
-      }
-      
-      const defaultItemShadow = imageMode !== 'compact-circle' ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
-      const imageShadow = tileStyle?.image?.boxShadow !== undefined ? tileStyle.image.boxShadow : defaultItemShadow
+      imageComputedWidth = tile.width - (padH * 2)
+      const ideal4by3 = imageComputedWidth * 0.75
+      imageComputedHeight = Math.max(40, Math.min(ideal4by3, availableForImage))
+      imageComputedX = (tile.width - imageComputedWidth) / 2
+    }
+    imageBlockHeight = imageComputedHeight + SPACING_V2.afterImage
+  }
 
-      if (content.imageUrl) {
-        elements.push({
-          type: 'image',
-          x: imageX,
-          y: currentY,
-          width: imageWidth,
-          height: imageHeight,
-          content: content.imageUrl,
-          style: {
-            borderRadius,
-            objectFit: 'cover',
-            objectPosition: 'center',
-            boxShadow: imageShadow || undefined
-          }
-        })
-      } else {
-        elements.push({
-          type: 'background',
-          x: imageX,
-          y: currentY,
-          width: imageWidth,
-          height: imageHeight,
-          content: '',
-          style: {
-            backgroundColor: palette.colors.border.light,
-            borderRadius
-          }
-        })
-      }
+  // Fit content within tile: compress gaps first, then reduce line estimates if needed
+  const usableHeight = tile.height - padTop - padBottom
+  let gapNameToDesc: number = hasDesc ? SPACING_V2.nameToDesc : 0
+  let gapDescToPrice: number = SPACING_V2.descToPrice
+  let fitNameHeight = nameHeight
+  let fitDescHeight = descHeight
+  let fitNameLines = estNameLines
+  let fitDescLines = estDescLines
 
-      if (content.indicators) {
-        const indicatorElements = renderIndicators(
-          content.indicators,
-          imageX + 4,
-          currentY + 4,
-          imageWidth - 8,
-          palette
-        )
-        elements.push(...indicatorElements)
-      }
+  const calcContent = () => imageBlockHeight + fitNameHeight + gapNameToDesc + fitDescHeight + gapDescToPrice + priceLineHeight
+  let contentHeight = calcContent()
 
-      currentY += imageHeight + SPACING_V2.afterImage
+  if (contentHeight > usableHeight) {
+    const fixedContent = imageBlockHeight + fitNameHeight + fitDescHeight + priceLineHeight
+    const totalGap = gapNameToDesc + gapDescToPrice
+    const availableForGaps = Math.max(0, usableHeight - fixedContent)
+    const scale = totalGap > 0 ? Math.min(1, availableForGaps / totalGap) : 0
+    gapNameToDesc = Math.max(2, gapNameToDesc * scale)
+    gapDescToPrice = Math.max(2, gapDescToPrice * scale)
+    contentHeight = calcContent()
+
+    // If still overflows after gap compression, reduce desc lines then name lines
+    while (contentHeight > usableHeight && fitDescLines > 1) {
+      fitDescLines--
+      fitDescHeight = descLineHeight * fitDescLines
+      contentHeight = calcContent()
+    }
+    while (contentHeight > usableHeight && fitNameLines > 1) {
+      fitNameLines--
+      fitNameHeight = nameLineHeight * fitNameLines
+      contentHeight = calcContent()
     }
   }
 
-  const imageMode: ImageModeV2 = options.imageMode || 'stretch'
-  const isBackgroundMode = imageMode === 'background'
-  const nameWidth = tile.width - (padding * 2)
-  const nameMaxLines = tile.contentBudget?.nameLines ?? 3
-  const nameLineHeight = nameTypo.fontSize * nameTypo.lineHeight
-  const nameX = (tile.width - nameWidth) / 2
+  // Top-align content within tile so names are consistently positioned across all tiles in the same row.
+  // Centering would cause names to float at different heights depending on description length.
+  const yOffset = padTop
+  let currentY = yOffset
 
+  // --- Background image mode (full-bleed, renders before text) ---
+  if (content.type === 'ITEM_CARD' && content.showImage && isBackgroundMode) {
+    if (content.imageUrl) {
+      elements.push({
+        type: 'image', x: 0, y: 0, width: tile.width, height: tile.height,
+        content: content.imageUrl,
+        style: { borderRadius: 0, objectFit: 'cover', objectPosition: 'center' }
+      })
+      elements.push({
+        type: 'background', x: 0, y: 0, width: tile.width, height: tile.height,
+        content: '',
+        style: { background: BG_IMAGE_TEXT.gradient, borderRadius: 0 }
+      })
+    }
+    if (content.indicators) {
+      elements.push(...renderIndicators(content.indicators, 4, 4, tile.width - 8, palette))
+    }
+  }
+
+  // --- Non-background image ---
+  if (showImage) {
+    const defaultItemShadow = !isCircularMode ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
+    const imageShadow = tileStyle?.image?.boxShadow !== undefined ? tileStyle.image.boxShadow : defaultItemShadow
+
+    if (content.imageUrl) {
+      elements.push({
+        type: 'image',
+        x: imageComputedX, y: currentY,
+        width: imageComputedWidth, height: imageComputedHeight,
+        content: content.imageUrl,
+        style: {
+          borderRadius: imageComputedBorderRadius,
+          objectFit: 'cover', objectPosition: 'center',
+          boxShadow: imageShadow || undefined
+        }
+      })
+    } else {
+      elements.push({
+        type: 'background',
+        x: imageComputedX, y: currentY,
+        width: imageComputedWidth, height: imageComputedHeight,
+        content: '',
+        style: { backgroundColor: palette.colors.border.light, borderRadius: imageComputedBorderRadius }
+      })
+    }
+    if (content.indicators) {
+      elements.push(...renderIndicators(content.indicators, imageComputedX + 4, currentY + 4, imageComputedWidth - 8, palette))
+    }
+    currentY += imageBlockHeight
+  }
+
+  // --- Name ---
+  const nameX = (tile.width - textWidth) / 2
   elements.push({
     type: 'text',
-    x: nameX,
-    y: currentY,
-    width: nameWidth,
-    height: nameLineHeight * nameMaxLines,
-    content: content.name,
+    x: nameX, y: currentY,
+    width: textWidth, height: nameLineHeight * nameMaxLines,
+    content: applyTextTransform(content.name, nameTypo.textTransform)[0],
     style: {
-      fontSize: nameTypo.fontSize,
+      fontSize: nameFontSize,
       fontWeight: nameTypo.fontWeight,
       fontFamily: nameTypo.fontFamily,
       lineHeight: nameTypo.lineHeight,
       maxLines: nameMaxLines,
-      color: isBackgroundMode ? '#ffffff' : palette.colors.itemTitle,
+      color: isBackgroundMode
+        ? lightenHexForDarkBackground(palette.colors.itemTitle, BG_IMAGE_TEXT.lightenBlendName)
+        : palette.colors.itemTitle,
       textAlign: nameTypo.textAlign,
-      textTransform: nameTypo.textTransform
+      textTransform: applyTextTransform(content.name, nameTypo.textTransform)[1],
+      textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
     }
   })
+  currentY += fitNameHeight + (hasDesc ? gapNameToDesc : gapDescToPrice)
 
-  currentY += (nameLineHeight * 2.0) + SPACING_V2.nameToDesc
-
-  if (content.description) {
-    const descMaxLines = tile.contentBudget?.descLines ?? 3
-    const descHeight = descTypo.fontSize * descTypo.lineHeight * descMaxLines
-    const descWidth = tile.width - (padding * 2)
-    const descX = (tile.width - descWidth) / 2
-    
+  // --- Description ---
+  if (hasDesc) {
+    const descX = (tile.width - textWidth) / 2
     elements.push({
       type: 'text',
-      x: descX,
-      y: currentY,
-      width: descWidth,
-      height: descHeight,
-      content: content.description,
+      x: descX, y: currentY,
+      width: textWidth, height: descLineHeight * fitDescLines,
+      content: applyTextTransform(content.description!, descTypo.textTransform)[0],
       style: {
         fontSize: descTypo.fontSize,
-        fontWeight: descTypo.fontWeight,
+        fontWeight: isBackgroundMode ? Math.max(descTypo.fontWeight, TYPOGRAPHY_TOKENS_V2.fontWeight.medium) : descTypo.fontWeight,
         fontFamily: descTypo.fontFamily,
         lineHeight: descTypo.lineHeight,
-        maxLines: descMaxLines,
-        color: isBackgroundMode ? '#f5f5f5' : palette.colors.itemDescription,
+        maxLines: fitDescLines,
+        color: isBackgroundMode ? BG_IMAGE_TEXT.descColor : palette.colors.itemDescription,
         textAlign: descTypo.textAlign,
-        textTransform: descTypo.textTransform
+        textTransform: applyTextTransform(content.description!, descTypo.textTransform)[1],
+        textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
       }
     })
-    currentY += descHeight + SPACING_V2.descToPrice
+    currentY += fitDescHeight + gapDescToPrice
   }
 
+  // --- Price ---
+  const priceX = (tile.width - textWidth) / 2
   const currencyCode = content.currency || 'USD'
   const priceText = formatCurrency(content.price, currencyCode)
-  const priceWidth = tile.width - (padding * 2)
-  const priceX = (tile.width - priceWidth) / 2
   elements.push({
     type: 'text',
-    x: priceX,
-    y: currentY,
-    width: priceWidth,
-    height: priceTypo.fontSize * priceTypo.lineHeight,
+    x: priceX, y: currentY,
+    width: textWidth, height: priceLineHeight,
     content: priceText,
     style: {
-      fontSize: priceTypo.fontSize,
+      fontSize: priceFontSize,
       fontWeight: priceTypo.fontWeight,
       fontFamily: priceTypo.fontFamily,
       lineHeight: priceTypo.lineHeight,
       maxLines: 1,
-      color: isBackgroundMode ? '#ffffff' : palette.colors.itemPrice,
+      color: isBackgroundMode
+        ? lightenHexForDarkBackground(palette.colors.itemPrice, BG_IMAGE_TEXT.lightenBlendPrice)
+        : palette.colors.itemPrice,
       textAlign: priceTypo.textAlign,
-      textTransform: priceTypo.textTransform
+      textTransform: priceTypo.textTransform,
+      textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
     }
   })
+  currentY += priceLineHeight + 4
 
-  currentY += (priceTypo.fontSize * priceTypo.lineHeight) + 4
-
+  // --- Indicators (only when no image shown on card) ---
   if (content.indicators && !(content.type === 'ITEM_CARD' && content.showImage)) {
-    const indicatorWidth = tile.width - (padding * 2)
+    const indicatorWidth = textWidth
     const indicatorX = (tile.width - indicatorWidth) / 2
-    const indicatorElements = renderIndicators(
-      content.indicators,
-      indicatorX,
-      currentY,
-      indicatorWidth,
-      palette
-    )
-    elements.push(...indicatorElements)
+    elements.push(...renderIndicators(content.indicators, indicatorX, currentY, indicatorWidth, palette))
   }
 
   return { elements }
@@ -1308,10 +1500,12 @@ function renderFeatureCardContent(
 ): TileRenderData {
   const elements: RenderElement[] = []
   const palette = getPalette(options)
-  const padding = 12
-  let currentY = padding
-
   const tileStyle = tile.style as TileStyleV2 | undefined
+
+  const padTop = tile.contentBudget?.paddingTop ?? 12
+  const padBottom = tile.contentBudget?.paddingBottom ?? 12
+  const padH = 12
+
   const nameTypo = resolveSubElementTypography(tileStyle, 'name', {
     fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.sm,
     fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
@@ -1320,7 +1514,7 @@ function renderFeatureCardContent(
   const descTypo = resolveSubElementTypography(tileStyle, 'description', {
     fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xs,
     fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.normal,
-    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.relaxed,
   })
   const priceTypo = resolveSubElementTypography(tileStyle, 'price', {
     fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xsm,
@@ -1328,219 +1522,195 @@ function renderFeatureCardContent(
     lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.tight,
   })
 
-  const isCircularMode = (options.imageMode || 'stretch') === 'compact-circle'
-
-  if (content.showImage) {
-    const imageMode: ImageModeV2 = options.imageMode || 'stretch'
-    
-    if (imageMode === 'background') {
-      if (content.imageUrl) {
-        elements.push({
-          type: 'image',
-          x: 0,
-          y: 0,
-          width: tile.width,
-          height: tile.height,
-          content: content.imageUrl,
-          style: {
-            borderRadius: 0,
-            objectFit: 'cover',
-            objectPosition: 'center'
-          }
-        })
-        
-        elements.push({
-          type: 'background',
-          x: 0,
-          y: 0,
-          width: tile.width,
-          height: tile.height,
-          content: '',
-          style: {
-            background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.5) 100%)',
-            borderRadius: 0
-          }
-        })
-      }
-      
-      if (content.indicators) {
-        const indicatorElements = renderIndicators(
-          content.indicators,
-          4,
-          4,
-          tile.width - 8,
-          palette
-        )
-        elements.push(...indicatorElements)
-      }
-    } else {
-      let imageWidth: number
-      let imageHeight: number
-      let imageX: number
-      let borderRadius: number = isCircularMode ? 0 : 8
-      
-      if (imageMode === 'compact-rect') {
-        imageWidth = tile.width * 0.6
-        imageHeight = imageWidth * 0.75
-        const availableForImage = tile.height - padding - 10 - 80
-        if (imageHeight > availableForImage) {
-          imageHeight = availableForImage
-          imageWidth = imageHeight / 0.75
-        }
-        imageX = (tile.width - imageWidth) / 2
-      } else if (imageMode === 'compact-circle') {
-        const availableForImage = tile.height - padding - 10 - 80
-        const diameter = Math.min(tile.width * 0.45, availableForImage)
-        imageWidth = diameter
-        imageHeight = diameter
-        imageX = (tile.width - imageWidth) / 2
-        borderRadius = diameter / 2
-      } else {
-        imageHeight = tile.contentBudget?.imageBoxHeight ?? 100
-        imageWidth = tile.width - (padding * 2)
-        imageX = (tile.width - imageWidth) / 2
-      }
-      
-      const defaultFeatureShadow = !isCircularMode ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
-      const featureImageShadow = tileStyle?.image?.boxShadow !== undefined ? tileStyle.image.boxShadow : defaultFeatureShadow
-
-      if (content.imageUrl) {
-        elements.push({
-          type: 'image',
-          x: imageX,
-          y: currentY,
-          width: imageWidth,
-          height: imageHeight,
-          content: content.imageUrl,
-          style: {
-            borderRadius,
-            objectFit: 'cover',
-            objectPosition: 'center',
-            boxShadow: featureImageShadow || undefined
-          }
-        })
-      } else {
-        elements.push({
-          type: 'background',
-          x: imageX,
-          y: currentY,
-          width: imageWidth,
-          height: imageHeight,
-          content: '',
-          style: {
-            backgroundColor: palette.colors.border.light,
-            borderRadius
-          }
-        })
-      }
-
-      if (content.indicators) {
-        const indicatorElements = renderIndicators(
-          content.indicators,
-          imageX + 4,
-          currentY + 4,
-          imageWidth - 8,
-          palette
-        )
-        elements.push(...indicatorElements)
-      }
-
-      currentY += imageHeight + SPACING_V2.afterImage + 4
-    }
-  }
-
   const imageMode: ImageModeV2 = options.imageMode || 'stretch'
   const isBackgroundMode = imageMode === 'background'
-  const nameWidth = tile.width - (padding * 2)
+  const isCircularMode = imageMode === 'compact-circle'
+
+  const nameFontSize = isBackgroundMode
+    ? Math.min(nameTypo.fontSize + BG_IMAGE_TEXT.nameSizeBump, BG_IMAGE_TEXT.nameSizeMax)
+    : nameTypo.fontSize
+  const priceFontSize = isBackgroundMode
+    ? Math.min(priceTypo.fontSize + BG_IMAGE_TEXT.priceSizeBump, BG_IMAGE_TEXT.priceSizeMax)
+    : priceTypo.fontSize
+  const nameLineHeight = nameFontSize * nameTypo.lineHeight
   const nameMaxLines = tile.contentBudget?.nameLines ?? 2
-  const nameLineHeight = nameTypo.fontSize * nameTypo.lineHeight
-  const nameX = (tile.width - nameWidth) / 2
+  const descMaxLines = tile.contentBudget?.descLines ?? 3
+  const textWidth = tile.width - (padH * 2)
 
-    elements.push({
-      type: 'text',
-      x: nameX,
-      y: currentY,
-      width: nameWidth,
-      height: nameLineHeight * nameMaxLines,
-      content: content.name,
-      style: {
-        fontSize: nameTypo.fontSize,
-        fontWeight: nameTypo.fontWeight,
-        fontFamily: nameTypo.fontFamily,
-        lineHeight: nameTypo.lineHeight,
-        maxLines: nameMaxLines,
-        color: isBackgroundMode ? '#ffffff' : palette.colors.itemTitle,
-        textAlign: nameTypo.textAlign,
-        textTransform: nameTypo.textTransform
-      }
-    })
+  const estNameLines = estimateLineCount(content.name, textWidth, nameFontSize, nameMaxLines)
+  const estDescLines = content.description
+    ? estimateLineCount(content.description, textWidth, descTypo.fontSize, descMaxLines)
+    : 0
+  const nameHeight = nameLineHeight * estNameLines
+  const descLineHeight = descTypo.fontSize * descTypo.lineHeight
+  const descHeight = descLineHeight * estDescLines
+  const priceLineHeight = priceFontSize * priceTypo.lineHeight
+  const hasDesc = estDescLines > 0
 
-  currentY += nameLineHeight * 2.0 + SPACING_V2.nameToDesc
+  // Compute image block height
+  let imageBlockHeight = 0
+  let imgW = 0, imgH = 0, imgX = 0, imgBR = isCircularMode ? 0 : 8
+  const showImage = content.showImage && !isBackgroundMode
 
-  if (content.description) {
-    const descMaxLines = tile.contentBudget?.descLines ?? 3
-    const descHeight = descTypo.fontSize * descTypo.lineHeight * descMaxLines
-    const descWidth = tile.width - (padding * 2)
-    const descX = (tile.width - descWidth) / 2
-
-    elements.push({
-      type: 'text',
-      x: descX,
-      y: currentY,
-      width: descWidth,
-      height: descHeight,
-      content: content.description,
-      style: {
-        fontSize: descTypo.fontSize,
-        fontWeight: descTypo.fontWeight,
-        fontFamily: descTypo.fontFamily,
-        lineHeight: descTypo.lineHeight,
-        maxLines: descMaxLines,
-        color: isBackgroundMode ? '#f5f5f5' : palette.colors.itemDescription,
-        textAlign: descTypo.textAlign,
-        textTransform: descTypo.textTransform
-      }
-    })
-    currentY += descHeight + SPACING_V2.descToPrice
+  if (showImage) {
+    if (imageMode === 'compact-rect') {
+      imgW = tile.width * 0.6
+      imgH = imgW * 0.75
+      const avail = tile.height - padTop - 10 - 80
+      if (imgH > avail) { imgH = avail; imgW = imgH / 0.75 }
+      imgX = (tile.width - imgW) / 2
+    } else if (isCircularMode) {
+      const avail = tile.height - padTop - 10 - 80
+      const d = Math.min(tile.width * 0.45, avail)
+      imgW = d; imgH = d; imgX = (tile.width - imgW) / 2; imgBR = d / 2
+    } else {
+      imgH = tile.contentBudget?.imageBoxHeight ?? 100
+      imgW = tile.width - (padH * 2)
+      imgX = (tile.width - imgW) / 2
+    }
+    imageBlockHeight = imgH + SPACING_V2.afterImage + 4
   }
 
-  const currencyCode = content.currency || 'USD'
-  const priceText = formatCurrency(content.price, currencyCode)
-  const priceWidth = tile.width - (padding * 2)
-  const priceX = (tile.width - priceWidth) / 2
+  const usableHeight = tile.height - padTop - padBottom
+  let gapNameToDesc: number = hasDesc ? SPACING_V2.nameToDesc : 0
+  let gapDescToPrice: number = SPACING_V2.descToPrice
+  let fitNameHeight = nameHeight
+  let fitDescHeight = descHeight
+  let fitNameLines = estNameLines
+  let fitDescLines = estDescLines
 
+  const calcContent = () => imageBlockHeight + fitNameHeight + gapNameToDesc + fitDescHeight + gapDescToPrice + priceLineHeight
+  let contentHeight = calcContent()
+
+  if (contentHeight > usableHeight) {
+    const fixedContent = imageBlockHeight + fitNameHeight + fitDescHeight + priceLineHeight
+    const totalGap = gapNameToDesc + gapDescToPrice
+    const availableForGaps = Math.max(0, usableHeight - fixedContent)
+    const scale = totalGap > 0 ? Math.min(1, availableForGaps / totalGap) : 0
+    gapNameToDesc = Math.max(2, gapNameToDesc * scale)
+    gapDescToPrice = Math.max(2, gapDescToPrice * scale)
+    contentHeight = calcContent()
+
+    while (contentHeight > usableHeight && fitDescLines > 1) {
+      fitDescLines--
+      fitDescHeight = descLineHeight * fitDescLines
+      contentHeight = calcContent()
+    }
+    while (contentHeight > usableHeight && fitNameLines > 1) {
+      fitNameLines--
+      fitNameHeight = nameLineHeight * fitNameLines
+      contentHeight = calcContent()
+    }
+  }
+
+  const yOffset = padTop + Math.max(0, (usableHeight - contentHeight) / 2)
+  let currentY = yOffset
+
+  // Background image mode
+  if (content.showImage && isBackgroundMode) {
+    if (content.imageUrl) {
+      elements.push({
+        type: 'image', x: 0, y: 0, width: tile.width, height: tile.height,
+        content: content.imageUrl,
+        style: { borderRadius: 0, objectFit: 'cover', objectPosition: 'center' }
+      })
+      elements.push({
+        type: 'background', x: 0, y: 0, width: tile.width, height: tile.height,
+        content: '',
+        style: { background: BG_IMAGE_TEXT.gradient, borderRadius: 0 }
+      })
+    }
+    if (content.indicators) {
+      elements.push(...renderIndicators(content.indicators, 4, 4, tile.width - 8, palette))
+    }
+  }
+
+  // Non-background image
+  if (showImage) {
+    const defaultFeatureShadow = !isCircularMode ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
+    const featureImageShadow = tileStyle?.image?.boxShadow !== undefined ? tileStyle.image.boxShadow : defaultFeatureShadow
+
+    if (content.imageUrl) {
+      elements.push({
+        type: 'image', x: imgX, y: currentY, width: imgW, height: imgH,
+        content: content.imageUrl,
+        style: { borderRadius: imgBR, objectFit: 'cover', objectPosition: 'center', boxShadow: featureImageShadow || undefined }
+      })
+    } else {
+      elements.push({
+        type: 'background', x: imgX, y: currentY, width: imgW, height: imgH,
+        content: '',
+        style: { backgroundColor: palette.colors.border.light, borderRadius: imgBR }
+      })
+    }
+    if (content.indicators) {
+      elements.push(...renderIndicators(content.indicators, imgX + 4, currentY + 4, imgW - 8, palette))
+    }
+    currentY += imageBlockHeight
+  }
+
+  // Name
+  const nameX = (tile.width - textWidth) / 2
   elements.push({
-    type: 'text',
-    x: priceX,
-    y: currentY,
-    width: priceWidth,
-    height: priceTypo.fontSize * priceTypo.lineHeight,
-    content: priceText,
+    type: 'text', x: nameX, y: currentY, width: textWidth,
+    height: nameLineHeight * fitNameLines,
+    content: applyTextTransform(content.name, nameTypo.textTransform)[0],
     style: {
-      fontSize: priceTypo.fontSize,
-      fontWeight: priceTypo.fontWeight,
-      fontFamily: priceTypo.fontFamily,
-      lineHeight: priceTypo.lineHeight,
-      maxLines: 1,
-      color: isBackgroundMode ? '#ffffff' : palette.colors.itemPrice,
-      textAlign: priceTypo.textAlign,
-      textTransform: priceTypo.textTransform
+      fontSize: nameFontSize, fontWeight: nameTypo.fontWeight,
+      fontFamily: nameTypo.fontFamily, lineHeight: nameTypo.lineHeight,
+      maxLines: fitNameLines,
+      color: isBackgroundMode ? lightenHexForDarkBackground(palette.colors.itemTitle, BG_IMAGE_TEXT.lightenBlendName) : palette.colors.itemTitle,
+      textAlign: nameTypo.textAlign,
+      textTransform: applyTextTransform(content.name, nameTypo.textTransform)[1],
+      textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
     }
   })
+  currentY += fitNameHeight + (hasDesc ? gapNameToDesc : gapDescToPrice)
 
-  currentY += (priceTypo.fontSize * priceTypo.lineHeight) + SPACING_V2.descToPrice
+  // Description
+  if (hasDesc) {
+    const descX = (tile.width - textWidth) / 2
+    elements.push({
+      type: 'text', x: descX, y: currentY, width: textWidth,
+      height: descLineHeight * fitDescLines,
+      content: applyTextTransform(content.description!, descTypo.textTransform)[0],
+      style: {
+        fontSize: descTypo.fontSize,
+        fontWeight: isBackgroundMode ? Math.max(descTypo.fontWeight, TYPOGRAPHY_TOKENS_V2.fontWeight.medium) : descTypo.fontWeight,
+        fontFamily: descTypo.fontFamily, lineHeight: descTypo.lineHeight,
+        maxLines: fitDescLines,
+        color: isBackgroundMode ? BG_IMAGE_TEXT.descColor : palette.colors.itemDescription,
+        textAlign: descTypo.textAlign,
+        textTransform: applyTextTransform(content.description!, descTypo.textTransform)[1],
+        textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
+      }
+    })
+    currentY += fitDescHeight + gapDescToPrice
+  }
 
+  // Price
+  const priceX = (tile.width - textWidth) / 2
+  const priceText = formatCurrency(content.price, content.currency || 'USD')
+  elements.push({
+    type: 'text', x: priceX, y: currentY, width: textWidth,
+    height: priceLineHeight,
+    content: priceText,
+    style: {
+      fontSize: priceFontSize, fontWeight: priceTypo.fontWeight,
+      fontFamily: priceTypo.fontFamily, lineHeight: priceTypo.lineHeight,
+      maxLines: 1,
+      color: isBackgroundMode ? lightenHexForDarkBackground(palette.colors.itemPrice, BG_IMAGE_TEXT.lightenBlendPrice) : palette.colors.itemPrice,
+      textAlign: priceTypo.textAlign, textTransform: priceTypo.textTransform,
+      textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
+    }
+  })
+  currentY += priceLineHeight + SPACING_V2.descToPrice
+
+  // Indicators (text-only mode)
   if (content.indicators && !content.showImage) {
-    const indicatorWidth = tile.width - (padding * 2)
+    const indicatorWidth = textWidth
     const indicatorX = (tile.width - indicatorWidth) / 2
-    const indicatorElements = renderIndicators(
-      content.indicators,
-      indicatorX,
-      currentY,
-      indicatorWidth,
-      palette
-    )
-    elements.push(...indicatorElements)
+    elements.push(...renderIndicators(content.indicators, indicatorX, currentY, indicatorWidth, palette))
   }
 
   return { elements }
@@ -1557,7 +1727,9 @@ function renderDividerContent(
 ): TileRenderData {
   const elements: RenderElement[] = []
   const palette = getPalette(options)
+  const lineThickness = content.lineThickness ?? 1
   const centerY = tile.height / 2
+  const lineY = centerY - lineThickness / 2
 
   switch (content.style) {
     case 'line':
@@ -1565,9 +1737,9 @@ function renderDividerContent(
       elements.push({
         type: 'background',
         x: tile.width * 0.1,
-        y: centerY - 0.5,
+        y: lineY,
         width: tile.width * 0.8,
-        height: 1,
+        height: lineThickness,
         content: '',
         style: {
           backgroundColor: palette.colors.border.medium,
@@ -1580,9 +1752,9 @@ function renderDividerContent(
       elements.push({
         type: 'background',
         x: tile.width * 0.05,
-        y: centerY - 0.5,
+        y: lineY,
         width: tile.width * 0.9,
-        height: 1,
+        height: lineThickness,
         content: '',
         style: {
           backgroundColor: palette.colors.border.light,
@@ -1596,9 +1768,9 @@ function renderDividerContent(
       elements.push({
         type: 'background',
         x: tile.width * 0.1,
-        y: centerY - 0.5,
+        y: lineY,
         width: tile.width * 0.35,
-        height: 1,
+        height: lineThickness,
         content: '',
         style: { backgroundColor: palette.colors.border.light }
       })
@@ -1618,9 +1790,9 @@ function renderDividerContent(
       elements.push({
         type: 'background',
         x: tile.width * 0.55,
-        y: centerY - 0.5,
+        y: lineY,
         width: tile.width * 0.35,
-        height: 1,
+        height: lineThickness,
         content: '',
         style: { backgroundColor: palette.colors.border.light }
       })
@@ -1631,9 +1803,9 @@ function renderDividerContent(
       elements.push({
         type: 'background',
         x: tile.width * 0.15,
-        y: centerY - 0.5,
+        y: lineY,
         width: tile.width * 0.3,
-        height: 1,
+        height: lineThickness,
         content: '',
         style: { backgroundColor: palette.colors.border.light }
       })
@@ -1653,9 +1825,9 @@ function renderDividerContent(
       elements.push({
         type: 'background',
         x: tile.width * 0.55,
-        y: centerY - 0.5,
+        y: lineY,
         width: tile.width * 0.3,
-        height: 1,
+        height: lineThickness,
         content: '',
         style: { backgroundColor: palette.colors.border.light }
       })
@@ -1665,6 +1837,9 @@ function renderDividerContent(
   return { elements }
 }
 
+/** When spacerTilePatternId is 'blank', fillers render as plain rectangles (no pattern/icon). */
+export const SPACER_BLANK_ID = 'blank'
+
 function renderFillerContent(
   content: FillerContentV2,
   tile: TileInstanceV2,
@@ -1672,16 +1847,35 @@ function renderFillerContent(
 ): TileRenderData {
   const elements: RenderElement[] = []
   const palette = getPalette(options)
+  const isBlank = options.spacerTilePatternId === SPACER_BLANK_ID
 
-  // Resolve pattern: "mix" rotates through FILLER_PATTERN_IDS by fillerIndex; else user override; else template
+  // Blank: plain rectangle only; alternating light vs mid with tuned opacity so neither is too faint nor too dark
+  if (isBlank) {
+    const { light, mid } = fillerPalette(palette)
+    const alt = (content.fillerIndex ?? 0) % 2
+    elements.push({
+      type: 'background',
+      x: 0,
+      y: 0,
+      width: tile.width,
+      height: tile.height,
+      content: '',
+      style: {
+        backgroundColor: alt === 0 ? light : mid,
+        opacity: alt === 0 ? 0.7 : 0.5,
+        borderRadius: 4
+      }
+    })
+    return { elements }
+  }
+
+  // Resolve pattern: "mix" rotates through FILLER_PATTERN_IDS by fillerIndex; else user override
   const patternId =
     options.spacerTilePatternId === 'mix'
       ? FILLER_PATTERN_IDS[(content.fillerIndex ?? 0) % FILLER_PATTERN_IDS.length]
       : options.spacerTilePatternId && FILLER_PATTERN_REGISTRY.has(options.spacerTilePatternId)
         ? options.spacerTilePatternId
-        : content.style === 'pattern' && content.content && FILLER_PATTERN_REGISTRY.has(content.content)
-          ? content.content
-          : undefined
+        : undefined
 
   // Base background (half-opacity palette block)
   elements.push({
@@ -1715,19 +1909,6 @@ function renderFillerContent(
         backgroundPositionX: -tile.x,
         backgroundPositionY: -tile.y,
         borderRadius: 4
-      }
-    })
-  } else if (content.style === 'icon' && content.content) {
-    elements.push({
-      type: 'text',
-      x: tile.width / 2,
-      y: tile.height / 2,
-      content: getFillerIcon(content.content),
-      style: {
-        fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xl,
-        color: palette.colors.textMuted,
-        textAlign: 'center',
-        opacity: 0.5
       }
     })
   }
@@ -1930,18 +2111,6 @@ function getDietaryColor(dietary: DietaryIndicator): string {
   return colors[dietary] || COLOR_TOKENS_V2.text.primary
 }
 
-function getFillerIcon(iconName: string): string {
-  const icons: Record<string, string> = {
-    utensils: '🍴',
-    coffee: '☕',
-    wine: '🍷',
-    leaf: '🍃',
-    star: '⭐',
-    heart: '❤️'
-  }
-  return icons[iconName] || '●'
-}
-
 // ============================================================================
 // Utility Functions
 // ============================================================================
@@ -1963,8 +2132,8 @@ export function calculateAbsolutePosition(
 }
 
 /**
- * Clamp text to fit within specified dimensions
- * Used for text truncation with ellipsis
+ * Clamp text to fit within specified dimensions.
+ * Used for text truncation with ellipsis.
  */
 export function clampText(
   text: string,
@@ -1972,7 +2141,6 @@ export function clampText(
   fontSize: number,
   maxLines: number = 1
 ): string {
-  // Simplified text clamping - in real implementation would measure actual text width
   const avgCharWidth = fontSize * 0.6
   const charsPerLine = Math.floor(maxWidth / avgCharWidth)
   const maxChars = charsPerLine * maxLines
@@ -1982,6 +2150,24 @@ export function clampText(
   }
 
   return text.substring(0, maxChars - 3) + '...'
+}
+
+/**
+ * Estimate the number of rendered lines a text string will occupy.
+ * Uses a simplified character-width heuristic (same as clampText).
+ * Result is clamped to [1, maxLines].
+ */
+export function estimateLineCount(
+  text: string | undefined | null,
+  availableWidth: number,
+  fontSize: number,
+  maxLines: number
+): number {
+  if (!text || text.length === 0) return 0
+  const avgCharWidth = fontSize * 0.6
+  const charsPerLine = Math.max(1, Math.floor(availableWidth / avgCharWidth))
+  const lines = Math.ceil(text.length / charsPerLine)
+  return Math.min(Math.max(1, lines), maxLines)
 }
 
 /**

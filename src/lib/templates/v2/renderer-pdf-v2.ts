@@ -359,13 +359,13 @@ function extractUsedFontSets(document: LayoutDocumentV2): string[] {
 /**
  * Generate Google Fonts import URL for multiple font sets
  */
-function generateGoogleFontsURL(fontSetIds: string[]): string {
+function generateGoogleFontsURL(fontSetIds: string[]): string | null {
   const fontSets = fontSetIds.map(id => getFontSet(id))
   const googleFontsParams = fontSets
     .map(set => set.googleFonts)
     .filter(Boolean)
     .join('&family=')
-  
+  if (!googleFontsParams) return null
   return `https://fonts.googleapis.com/css2?family=${googleFontsParams}&display=swap`
 }
 
@@ -377,6 +377,7 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string 
   const palette = PALETTES_V2.find(p => p.id === paletteId) ?? DEFAULT_PALETTE_V2
   const usedFontSets = extractUsedFontSets(document)
   const googleFontsURL = generateGoogleFontsURL(usedFontSets)
+  const fontImportCSS = googleFontsURL ? `\n    /* Font Loading */\n    @import url('${googleFontsURL}');` : ''
 
   return `
     /* CSS Reset for PDF */
@@ -391,10 +392,7 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string 
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-    }
-
-    /* Font Loading */
-    @import url('${googleFontsURL}');
+    }${fontImportCSS}
 
     /* Body and Document Styles */
     body {

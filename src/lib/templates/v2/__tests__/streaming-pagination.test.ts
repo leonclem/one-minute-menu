@@ -22,8 +22,8 @@ describe('Streaming Paginator', () => {
   let pageSpec: PageSpecV2
 
   beforeAll(async () => {
-    // Load the classic-cards-v2 template for all tests
-    template = await loadTemplateV2('classic-cards-v2')
+    // Load the 4-column-portrait template for all tests
+    template = await loadTemplateV2('4-column-portrait')
     pageSpec = buildPageSpec('A4_PORTRAIT', {
       top: 56.69,    // 20mm
       right: 42.52,  // 15mm
@@ -369,7 +369,7 @@ describe('Streaming Paginator', () => {
 
         // Basic validation
         expect(result.pages.length).toBeGreaterThan(0)
-        expect(result.templateId).toBe('classic-cards-v2')
+        expect(result.templateId).toBe('4-column-portrait')
         expect(result.pageSpec).toEqual(pageSpec)
 
         // Each page should have 4 regions
@@ -421,6 +421,54 @@ describe('Streaming Paginator', () => {
       }
 
       expect(normalize(result1)).toEqual(normalize(result2))
+    })
+  })
+
+  describe('1-column-tall text-only with fillers', () => {
+    let tallTemplate: TemplateV2
+    let tallPageSpec: PageSpecV2
+
+    beforeAll(async () => {
+      tallTemplate = await loadTemplateV2('1-column-tall')
+      tallPageSpec = buildPageSpec('HALF_A4_TALL', {
+        top: 20, right: 15, bottom: 20, left: 15,
+      })
+    })
+
+    it.each([
+      ['medium', mediumMenu],
+      ['large', largeMenu],
+      ['nasty', nastyMenu],
+    ])('should not create excessive pages for %s menu in textOnly + fillers mode', (_name, menu) => {
+      const result = streamingPaginate(
+        menu as EngineMenuV2,
+        tallTemplate,
+        tallPageSpec,
+        { textOnly: true, fillersEnabled: true }
+      )
+
+      const totalItems = (menu as EngineMenuV2).sections.reduce(
+        (sum, s) => sum + s.items.length, 0
+      )
+      // 1-col-tall: ~10 rows/page, each text item = 1 row. With headers taking 1 row each,
+      // 1-col-tall: ~10 rows/page, each text item = 1 row. With headers taking 1 row each,
+      // even worst case, pages should be roughly totalItems/5.
+      const maxReasonablePages = Math.ceil(totalItems / 5) + 1
+      expect(result.pages.length).toBeLessThanOrEqual(maxReasonablePages)
+
+      // Verify all items are placed
+      const totalPlacedItems = result.pages.reduce((sum, page) =>
+        sum + page.tiles.filter(t => t.type === 'ITEM_TEXT_ROW' || t.type === 'ITEM_CARD').length, 0
+      )
+      expect(totalPlacedItems).toBe(totalItems)
+
+      // No page should have zero items (except possibly the last page if only footer)
+      for (let i = 0; i < result.pages.length; i++) {
+        const itemCount = result.pages[i].tiles.filter(
+          t => t.type === 'ITEM_TEXT_ROW' || t.type === 'ITEM_CARD'
+        ).length
+        expect(itemCount).toBeGreaterThan(0)
+      }
     })
   })
 })

@@ -399,10 +399,13 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
     WebkitBoxOrient: element.style.maxLines && element.style.maxLines > 1 ? 'vertical' : undefined,
     overflow: element.style.maxLines ? 'hidden' : undefined,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: element.style.textAlign === 'left' ? 'flex-start'
+      : element.style.textAlign === 'right' ? 'flex-end'
+      : 'center',
     boxShadow: element.style.boxShadow,
     textTransform: element.style.textTransform as React.CSSProperties['textTransform'],
-    letterSpacing: element.style.letterSpacing ? element.style.letterSpacing * scale : undefined
+    letterSpacing: element.style.letterSpacing ? element.style.letterSpacing * scale : undefined,
+    textShadow: element.style.textShadow
   }
 
   switch (element.type) {

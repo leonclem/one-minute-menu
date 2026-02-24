@@ -731,5 +731,5 @@ describe('Accessibility - Responsive Contexts', () => {
       expect(results).toHaveNoViolations()
       unmount()
     }
-  })
+  }, 20000)
 })

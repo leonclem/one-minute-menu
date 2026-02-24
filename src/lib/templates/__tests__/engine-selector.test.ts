@@ -57,7 +57,7 @@ describe('Engine Selector', () => {
       
       const v2Input = {
         menu: {} as any,
-        templateId: 'classic-cards-v2'
+        templateId: '4-column-portrait'
       }
 
       expect(isV2Input(v1Input)).toBe(false)
@@ -71,7 +71,7 @@ describe('Engine Selector', () => {
       }
       
       const v2Output = {
-        templateId: 'classic-cards-v2',
+        templateId: '4-column-portrait',
         pages: []
       }
 

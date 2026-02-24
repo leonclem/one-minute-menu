@@ -15,8 +15,11 @@ import {
   TEXTURE_REGISTRY,
   FILLER_PATTERN_REGISTRY,
   FILLER_PATTERN_IDS,
+  SPACER_BLANK_ID,
   PALETTES_V2,
   DEFAULT_PALETTE_V2,
+  BG_IMAGE_TEXT,
+  lightenHexForDarkBackground,
   type RenderOptionsV2 
 } from '../renderer-v2'
 import type { 
@@ -152,6 +155,7 @@ describe('V2 Renderer', () => {
     it('should have consistent typography tokens', () => {
       expect(TYPOGRAPHY_TOKENS_V2.fontSize.base).toBe(14)
       expect(TYPOGRAPHY_TOKENS_V2.fontSize['3xl']).toBe(24)
+      expect(TYPOGRAPHY_TOKENS_V2.fontSize['5xl']).toBe(30)
       expect(TYPOGRAPHY_TOKENS_V2.fontWeight.bold).toBe(700)
       expect(TYPOGRAPHY_TOKENS_V2.lineHeight.normal).toBe(1.4)
     })
@@ -181,7 +185,7 @@ describe('V2 Renderer', () => {
       x: 0,
       y: 0,
       width: 180,
-      height: 220,
+      height: 240, // Enough for SPACING_V2 (nameToDesc 8, descToPrice 12, afterImage 16)
       colSpan: 1,
       rowSpan: 2,
       gridRow: 0,
@@ -281,11 +285,26 @@ describe('V2 Renderer', () => {
       )
       expect(gradientOverlay).toBeDefined()
       
-      // Text should be white/light for readability
+      // In background mode, name and price use lightened palette colours for contrast on dark overlay
+      const palette = DEFAULT_PALETTE_V2
       const textElements = result.elements.filter(e => e.type === 'text')
+      const [nameEl, descEl, priceEl] = textElements
+      const expectedNameColor = lightenHexForDarkBackground(palette.colors.itemTitle, BG_IMAGE_TEXT.lightenBlendName)
+      const expectedPriceColor = lightenHexForDarkBackground(palette.colors.itemPrice, BG_IMAGE_TEXT.lightenBlendPrice)
+      expect(nameEl?.style.color).toBe(expectedNameColor)
+      expect(priceEl?.style.color).toBe(expectedPriceColor)
+      if (descEl) {
+        expect(descEl.style.color).toBe(BG_IMAGE_TEXT.descColor)
+      }
+      // Name and price use larger font in background mode
+      const baseNameSize = TYPOGRAPHY_TOKENS_V2.fontSize.xsm
+      expect(nameEl?.style.fontSize).toBeGreaterThanOrEqual(baseNameSize)
+      const basePriceSize = TYPOGRAPHY_TOKENS_V2.fontSize.xxxs
+      expect(priceEl?.style.fontSize).toBeGreaterThanOrEqual(basePriceSize)
+
+      // All text should have text-shadow for legibility
       textElements.forEach(textEl => {
-        const color = textEl.style.color
-        expect(color).toMatch(/^#(fff|ffffff|f5f5f5|FFF|FFFFFF|F5F5F5)/i)
+        expect(textEl.style.textShadow).toBeDefined()
       })
     })
 
@@ -623,18 +642,114 @@ describe('V2 Renderer', () => {
       }
 
       const result = renderTileContent(tile, defaultOptions)
+      // 'capitalize' is now applied in JS as true title case, so CSS textTransform is undefined
       const textEl = result.elements.find(e => e.type === 'text' && e.content === 'Main Courses')
 
-      expect(textEl?.style.textTransform).toBe('capitalize')
+      expect(textEl?.style.textTransform).toBeUndefined()
       expect(textEl?.style.letterSpacing).toBeUndefined()
+    })
+
+    it('should use textAlign from tile style (e.g. left)', () => {
+      const tile: TileInstanceV2 = {
+        id: 'header-3',
+        type: 'SECTION_HEADER',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: 500,
+        height: 30,
+        colSpan: 4,
+        rowSpan: 1,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'SECTION_HEADER',
+          sectionId: 'sec-1',
+          label: 'Insalate',
+          isContinuation: false
+        } as SectionHeaderContentV2,
+        style: {
+          typography: { textAlign: 'left' },
+          spacing: { paddingLeft: 8, paddingTop: 24 }
+        } as TileStyleV2
+      }
+
+      const result = renderTileContent(tile, defaultOptions)
+      const labelEl = result.elements.find(e => e.type === 'text' && e.content === 'Insalate')
+      expect(labelEl?.style.textAlign).toBe('left')
+    })
+
+    it('should apply letterSpacing override from tile style', () => {
+      const tile: TileInstanceV2 = {
+        id: 'header-4',
+        type: 'SECTION_HEADER',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: 500,
+        height: 30,
+        colSpan: 4,
+        rowSpan: 1,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'SECTION_HEADER',
+          sectionId: 'sec-1',
+          label: 'Desserts',
+          isContinuation: false
+        } as SectionHeaderContentV2,
+        style: {
+          typography: { letterSpacing: 0.8, textTransform: 'none' }
+        } as TileStyleV2
+      }
+
+      const result = renderTileContent(tile, defaultOptions)
+      const labelEl = result.elements.find(e => e.type === 'text' && e.content === 'Desserts')
+      expect(labelEl?.style.letterSpacing).toBe(0.8)
+    })
+
+    it('should render decoration (bullet) before label when set', () => {
+      const tile: TileInstanceV2 = {
+        id: 'header-5',
+        type: 'SECTION_HEADER',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: 500,
+        height: 30,
+        colSpan: 4,
+        rowSpan: 1,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'SECTION_HEADER',
+          sectionId: 'sec-1',
+          label: 'Salads',
+          isContinuation: false
+        } as SectionHeaderContentV2,
+        style: {
+          typography: { decoration: 'bullet' },
+          spacing: { paddingLeft: 8 }
+        } as TileStyleV2
+      }
+
+      const result = renderTileContent(tile, defaultOptions)
+      const decorationEl = result.elements.find(e => e.type === 'text' && e.content === '•')
+      const labelEl = result.elements.find(e => e.type === 'text' && e.content === 'Salads')
+      expect(decorationEl).toBeDefined()
+      expect(labelEl).toBeDefined()
+      expect(labelEl?.style.fontSize).toBeDefined()
     })
   })
 
   describe('Spacing Constants', () => {
-    it('should have SPACING_V2 with expected values', () => {
-      expect(SPACING_V2.nameToDesc).toBe(3)
-      expect(SPACING_V2.descToPrice).toBe(6)
-      expect(SPACING_V2.afterImage).toBe(6)
+    it('should have SPACING_V2 with expected values (GridMenu guide)', () => {
+      expect(SPACING_V2.nameToDesc).toBe(8)
+      expect(SPACING_V2.descToPrice).toBe(12)
+      expect(SPACING_V2.afterImage).toBe(16)
       expect(SPACING_V2.tilePadding).toBe(8)
     })
   })
@@ -756,6 +871,40 @@ describe('V2 Renderer', () => {
       const withPattern = result.elements.filter(e => e.type === 'background' && e.style?.background)
       expect(withPattern).toHaveLength(0)
       expect(result.elements.some(e => e.type === 'background')).toBe(true)
+    })
+
+    it('should render blank filler as single background when spacerTilePatternId is "blank"', () => {
+      const options: RenderOptionsV2 = {
+        ...defaultOptions,
+        palette: DEFAULT_PALETTE_V2,
+        spacerTilePatternId: SPACER_BLANK_ID
+      }
+      const result = renderTileContent(baseFillerTile, options)
+      expect(result.elements.length).toBe(1)
+      expect(result.elements[0].type).toBe('background')
+      expect(result.elements[0].style?.backgroundColor).toBeDefined()
+      expect(result.elements[0].style?.background).toBeUndefined()
+    })
+
+    it('should alternate blank filler colours by fillerIndex when spacerTilePatternId is "blank"', () => {
+      const options: RenderOptionsV2 = {
+        ...defaultOptions,
+        palette: DEFAULT_PALETTE_V2,
+        spacerTilePatternId: SPACER_BLANK_ID
+      }
+      const result0 = renderTileContent(
+        { ...baseFillerTile, content: { ...baseFillerTile.content, fillerIndex: 0 } as FillerContentV2 },
+        options
+      )
+      const result1 = renderTileContent(
+        { ...baseFillerTile, content: { ...baseFillerTile.content, fillerIndex: 1 } as FillerContentV2 },
+        options
+      )
+      const bg0 = result0.elements[0]?.style?.backgroundColor
+      const bg1 = result1.elements[0]?.style?.backgroundColor
+      expect(bg0).toBeDefined()
+      expect(bg1).toBeDefined()
+      expect(bg0).not.toBe(bg1)
     })
 
     it('should rotate patterns when spacerTilePatternId is "mix" by fillerIndex', () => {

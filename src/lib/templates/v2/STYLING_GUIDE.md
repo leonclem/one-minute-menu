@@ -4,7 +4,7 @@ This guide covers the styling system available for V2 templates (fonts, typograp
 
 ## Font Sets
 
-Choose from 5 predefined font combinations optimized for menu design:
+Choose from 10 predefined font combinations optimized for menu design:
 
 ### Available Font Sets
 
@@ -15,6 +15,11 @@ Choose from 5 predefined font combinations optimized for menu design:
 | `friendly-rounded` | Nunito Sans | Approachable, warm, friendly | Cafes, family restaurants, breakfast spots |
 | `classic-professional` | Source Sans Pro | Professional, trustworthy, versatile | Business dining, corporate cafeterias |
 | `distinctive-sans` | Poppins | Modern, geometric, distinctive | Trendy cafes, modern bistros |
+| `system-sans` | Arial | System sans-serif, neutral | Clear, universal readability |
+| `system-sans-bold` | Arial Black | Heavy system sans | Strong headings, titles |
+| `merriweather` | Merriweather | Classic serif, editorial | Elegant headings |
+| `raleway` | Raleway | Refined sans | Clean, readable body or headings |
+| `lato` | Lato | Friendly sans | Warm, approachable menus |
 
 ## Styling Properties
 
@@ -29,7 +34,10 @@ style:
     textAlign: "center"           # Text alignment: left, center, right
     lineHeight: "normal"          # Line height token (see line heights below)
     textTransform: "uppercase"    # Text transform: none, uppercase, lowercase, capitalize
+    letterSpacing: 0.8            # Optional letter spacing in px (e.g. 0.8); default 1.5 when uppercase
     color: "#1E40AF"              # Text color override (hex, rgb, named colors)
+    decoration: "bullet"          # SECTION_HEADER only: bullet, diamond, dot, or none (small icon before label)
+    decorationColor: "#D4AF37"    # SECTION_HEADER only: colour for decoration (defaults to border colour or palette accent)
 ```
 
 #### Font Size Tokens
@@ -44,6 +52,7 @@ style:
 - `2xl`: 20pt
 - `3xl`: 24pt
 - `4xl`: 28pt
+- `5xl`: 30pt (section headers, hero)
 
 #### Font Weight Tokens
 - `normal`: 400
@@ -93,7 +102,7 @@ ITEM_CARD:
 ### Renderer defaults (not in template schema)
 
 - **Image drop shadow** — Configurable per template via `style.imageDropShadow: true | false` on `ITEM_CARD` / `FEATURE_CARD` tiles. Defaults to `true` when not set. Does not apply in compact-circle image mode.
-- **Letter spacing** — When `textTransform: "uppercase"` is set, the renderer applies a small letter-spacing value automatically. Custom letter-spacing cannot be set in YAML.
+- **Letter spacing** — When `textTransform: "uppercase"` is set, the renderer applies 1.5px letter-spacing by default. Override with `typography.letterSpacing` (number in px, e.g. `0.8`) in YAML.
 
 ### Spacing
 
@@ -178,7 +187,7 @@ The legacy ID `subtle-noise` is supported (resolves to Paper Grain) for saved co
 
 The following options are set by the user in the UI. Section order: **1. Grid Layout**, **2. Color Palette**, **3. Background texture**, **4. Image Options**, **5. Spacer Tiles**, **6. Display Options**.
 
-- **Spacer Tiles** (section 5) — Dropdown: **Template default** (use the layout’s filler style from YAML), **None** (no fillers), or a pattern (e.g. Quatrefoil, Teardrop, Herringbone). When a pattern is selected, all filler tiles render with that palette-adaptive pattern (`selection.spacerTilePatternId`). When **None**, fillers are disabled (`selection.fillersEnabled: false`).
+- **Spacer Tiles** (section 5) — Dropdown: **Blank** (plain rectangle, alternating palette colours), **None** (no fillers), or a pattern (e.g. Diagonal Pinstripe, Windowpane Grid). When a pattern is selected, all filler tiles render with that palette-adaptive pattern (`selection.spacerTilePatternId`). When **None**, fillers are disabled (`selection.fillersEnabled: false`).
 - **Show menu title** (section 6) — Whether to show the menu name in the title region.
 - **Vignette edges** — Subtle darkened edge effect on page borders.
 - **Fill item tiles** — When enabled, each menu item tile (ITEM_CARD, ITEM_TEXT_ROW, FEATURE_CARD) is filled with the palette's **surface** colour when defined, otherwise the palette **background**. Palettes define an optional `surface` colour that works with the background (see `ColorPaletteV2` in `renderer-v2.ts`).
@@ -189,9 +198,9 @@ The following options are set by the user in the UI. Section order: **1. Grid La
 
 ### Filler (spacer) tile styling
 
-Filler tiles are decorative blocks placed in empty grid cells to fill gaps between menu items. The user chooses **Spacer Tiles** (section 5): **Template default**, **None**, or a pattern. When **Template default**, the template’s `filler.tiles` in YAML are used; when `tiles: []`, a default half-opacity colour block is generated matching the ITEM_CARD `rowSpan`. When a pattern is selected, all fillers render with that pattern (from `FILLER_PATTERN_REGISTRY` in `renderer-v2.ts`), which is palette-adaptive. Available patterns: **Diagonal Pinstripe**, **Bauhaus Check & Circle**, **Overlapping Rings**, **Windowpane Grid** (plus **Mix**, which rotates through them).
+Filler tiles are decorative blocks placed in empty grid cells to fill gaps between menu items. The user chooses **Spacer Tiles** (section 5): **Blank**, **None**, or a pattern. **Blank** (default) renders plain rectangles at 50% opacity using the palette’s border/surface colours, alternating by position for a subtle grid effect. When a pattern is selected, all fillers render with that pattern (from `FILLER_PATTERN_REGISTRY` in `renderer-v2.ts`), which is palette-adaptive. Available patterns: **Diagonal Pinstripe**, **Bauhaus Check & Circle**, **Overlapping Rings**, **Windowpane Grid**, **Matte Paper Grain** (plus **Mix**, which rotates through them).
 
-Filler blocks (template default or when no pattern override) render at 50% opacity using the palette's muted/border colours. Custom filler styles (`icon`, `color`, `pattern`) are defined per template — see the filler YAML section in [README.md](./README.md).
+Template YAML `filler.tiles` define which filler *slots* are used (e.g. one or more `style: color` entries); the visual style is controlled by the UI choice (Blank or a pattern).
 
 ## Complete Examples
 

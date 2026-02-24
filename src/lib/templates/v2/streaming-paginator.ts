@@ -507,6 +507,8 @@ export function streamingPaginate(
       ? getItemSlotPositions(section.items.length, cols, hashString(`${menu.id}-${template.id}-${section.id}`))
       : null
     let logicalRowOffset = 0
+    // Track where items start on the current page (changes after page breaks)
+    let pageStartRow = sectionBodyStartRow
 
     let featuredCount = 0
     for (let itemIndex = 0; itemIndex < sortedItems.length; itemIndex++) {
@@ -521,10 +523,10 @@ export function streamingPaginate(
       }
 
       if (itemSlots) {
-        // Slot-based: map logical slot row to actual body row
+        // Slot-based: map logical slot row to actual body row on the current page
         const slot = itemSlots[itemIndex]
         const logicalRow = slot.row - logicalRowOffset
-        let actualRow = sectionBodyStartRow + logicalRow * commonItemRowSpan
+        let actualRow = pageStartRow + logicalRow * commonItemRowSpan
 
         // Handle page breaks when the target row exceeds page capacity
         while (actualRow + commonItemRowSpan > maxRows) {
@@ -541,12 +543,11 @@ export function streamingPaginate(
             advanceToNextRow(ctx, contHeader.rowSpan)
             contHeaderRows = contHeader.rowSpan
           }
-          // Advance logical offset so remaining slots map to the new page
-          const logicalRowsOnPrevPage = Math.floor((maxRows - sectionBodyStartRow) / commonItemRowSpan)
+          const logicalRowsOnPrevPage = Math.floor((maxRows - pageStartRow) / commonItemRowSpan)
           logicalRowOffset += logicalRowsOnPrevPage
-          // New page: items start after continuation header
+          pageStartRow = contHeaderRows
           const newLogicalRow = slot.row - logicalRowOffset
-          actualRow = contHeaderRows + newLogicalRow * commonItemRowSpan
+          actualRow = pageStartRow + newLogicalRow * commonItemRowSpan
         }
 
         ctx.currentRow = actualRow
@@ -580,11 +581,17 @@ export function streamingPaginate(
       }
     }
 
-    // After slot-based placement, advance cursor past all section items
-    // so the next section's header doesn't overlap
+    // After slot-based placement, advance cursor past the last tile on the CURRENT page.
+    // Using sectionBodyStartRow + logicalRows is wrong when a section spans multiple pages
+    // because sectionBodyStartRow refers to the first page's row position.
     if (itemSlots && sortedItems.length > 0) {
-      const logicalRows = Math.ceil(sortedItems.length / cols)
-      ctx.currentRow = sectionBodyStartRow + logicalRows * commonItemRowSpan
+      let maxRowEnd = 0
+      for (const tile of ctx.currentPage.tiles) {
+        if (tile.regionId === 'body') {
+          maxRowEnd = Math.max(maxRowEnd, tile.gridRow + tile.rowSpan)
+        }
+      }
+      ctx.currentRow = maxRowEnd
       ctx.currentCol = 0
       ctx.currentRowMaxSpan = 1
       ctx.currentRowTiles = []

@@ -23,12 +23,12 @@ describe('Template Loader V2', () => {
       expect(template.tiles.ITEM_CARD.rowSpan).toBe(2)
     })
 
-    it('should load and validate the classic-cards-v2 template', async () => {
-      const template = await loadTemplateV2('classic-cards-v2')
+    it('should load and validate the 4-column-portrait template', async () => {
+      const template = await loadTemplateV2('4-column-portrait')
       
-      expect(template.id).toBe('classic-cards-v2')
+      expect(template.id).toBe('4-column-portrait')
       expect(template.version).toBe('2.0.0')
-      expect(template.name).toBe('Classic Cards V2')
+      expect(template.name).toBe('4 column (portrait)')
       expect(template.page.size).toBe('A4_PORTRAIT')
       expect(template.body.container.cols).toBe(4)
       expect(template.body.container.rowHeight).toBe(70)
@@ -39,12 +39,17 @@ describe('Template Loader V2', () => {
       expect(template.itemIndicators.mode).toBe('INLINE')
     })
 
-    it('should load and validate the classic-cards-v2-landscape template', async () => {
-      const template = await loadTemplateV2('classic-cards-v2-landscape')
+    it('should resolve legacy id classic-cards-v2 to 4-column-portrait', async () => {
+      const template = await loadTemplateV2('classic-cards-v2')
+      expect(template.id).toBe('4-column-portrait')
+    })
+
+    it('should load and validate the 4-column-landscape template', async () => {
+      const template = await loadTemplateV2('4-column-landscape')
       
-      expect(template.id).toBe('classic-cards-v2-landscape')
+      expect(template.id).toBe('4-column-landscape')
       expect(template.version).toBe('2.0.0')
-      expect(template.name).toBe('Classic Cards V2 Landscape')
+      expect(template.name).toBe('4 column (landscape)')
       expect(template.page.size).toBe('A4_LANDSCAPE')
       expect(template.page.margins).toEqual({ top: 20, right: 28, bottom: 20, left: 28 })
       expect(template.body.container.cols).toBe(4)
@@ -57,27 +62,12 @@ describe('Template Loader V2', () => {
       expect(template.regions.footer.height).toBe(36)
     })
 
-    it('should load and validate the two-column-classic-v2 template', async () => {
-      const template = await loadTemplateV2('two-column-classic-v2')
+    it('should load and validate the 3-column-portrait template', async () => {
+      const template = await loadTemplateV2('3-column-portrait')
       
-      expect(template.id).toBe('two-column-classic-v2')
+      expect(template.id).toBe('3-column-portrait')
       expect(template.version).toBe('2.0.0')
-      expect(template.name).toBe('Two Column Classic V2')
-      expect(template.page.size).toBe('A4_PORTRAIT')
-      expect(template.body.container.cols).toBe(2)
-      expect(template.body.container.rowHeight).toBe(80)
-      expect(template.body.container.gapX).toBe(12)
-      expect(template.body.container.gapY).toBe(10)
-      expect(template.tiles.ITEM_CARD.rowSpan).toBe(2)
-      expect(template.tiles.SECTION_HEADER.colSpan).toBe(2)
-    })
-
-    it('should load and validate the three-column-modern-v2 template', async () => {
-      const template = await loadTemplateV2('three-column-modern-v2')
-      
-      expect(template.id).toBe('three-column-modern-v2')
-      expect(template.version).toBe('2.0.0')
-      expect(template.name).toBe('Three Column Modern V2')
+      expect(template.name).toBe('3 column (portrait)')
       expect(template.page.size).toBe('A4_PORTRAIT')
       expect(template.body.container.cols).toBe(3)
       expect(template.body.container.rowHeight).toBe(70)
@@ -87,12 +77,12 @@ describe('Template Loader V2', () => {
       expect(template.tiles.SECTION_HEADER.colSpan).toBe(3)
     })
 
-    it('should load and validate the half-a4-tall-v2 template', async () => {
-      const template = await loadTemplateV2('half-a4-tall-v2')
+    it('should load and validate the 1-column-tall template', async () => {
+      const template = await loadTemplateV2('1-column-tall')
       
-      expect(template.id).toBe('half-a4-tall-v2')
+      expect(template.id).toBe('1-column-tall')
       expect(template.version).toBe('2.0.0')
-      expect(template.name).toBe('Half A4 Tall V2')
+      expect(template.name).toBe('1 column (tall)')
       expect(template.page.size).toBe('HALF_A4_TALL')
       expect(template.page.margins).toEqual({ top: 20, right: 15, bottom: 20, left: 15 })
       expect(template.body.container.cols).toBe(1)

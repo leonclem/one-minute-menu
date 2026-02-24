@@ -305,7 +305,8 @@ export function createDividerTile(
   const width = calculateTileWidth(colSpan, cellWidth, gapX)
   
   const style = template.dividers?.style ?? 'line'
-  
+  const lineThickness = template.dividers?.lineThickness
+
   return {
     id: `divider-${sectionId}`,
     type: 'DECORATIVE_DIVIDER',
@@ -319,6 +320,7 @@ export function createDividerTile(
       type: 'DECORATIVE_DIVIDER',
       sectionId,
       style,
+      ...(lineThickness !== undefined && { lineThickness }),
     },
     contentBudget: dividerVariant?.contentBudget,
     style: dividerVariant?.style,

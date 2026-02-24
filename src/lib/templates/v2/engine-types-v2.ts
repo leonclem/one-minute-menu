@@ -262,6 +262,8 @@ export interface DividerContentV2 {
   type: 'DECORATIVE_DIVIDER'
   sectionId: string // section after the divider
   style: DividerStyleV2
+  /** Line thickness in px (default 1). Use e.g. 0.6 for a thinner rule. */
+  lineThickness?: number
 }
 
 /** Union of all tile content types */
@@ -495,6 +497,8 @@ export interface TemplateDividersConfigV2 {
   enabled: boolean
   style: DividerStyleV2
   height: number
+  /** Line thickness in px (default 1). Use e.g. 0.6 for a thinner rule. */
+  lineThickness?: number
 }
 
 /** Region definitions in template */
@@ -533,11 +537,14 @@ export interface SubElementTypographyV2 {
   textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'
 }
 
+/** Optional decoration before section header label (bullet, diamond, dot) */
+export type SectionHeaderDecorationV2 = 'bullet' | 'diamond' | 'dot' | 'none'
+
 /** Typography styling configuration */
 export interface TypographyStyleV2 {
   /** Font set ID (e.g., 'modern-sans', 'elegant-serif') */
   fontSet?: string
-  /** Font size token (e.g., 'xl', '2xl') */
+  /** Font size token (e.g., 'xl', '2xl', '5xl') */
   fontSize?: string
   /** Font weight token (e.g., 'normal', 'semibold', 'bold') */
   fontWeight?: string
@@ -545,10 +552,16 @@ export interface TypographyStyleV2 {
   textAlign?: 'left' | 'center' | 'right' | 'justify'
   /** Line height token (e.g., 'tight', 'normal', 'relaxed') */
   lineHeight?: string
+  /** Letter spacing in px (e.g. 0.8). When uppercase, default is 1.5 if not set. */
+  letterSpacing?: number
   /** CSS text-transform */
   textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'
   /** Text color override (hex, rgb, etc.) */
   color?: string
+  /** Section header only: small decoration before the label */
+  decoration?: SectionHeaderDecorationV2
+  /** Section header only: colour for decoration (defaults to border colour or palette accent) */
+  decorationColor?: string
   /** Per-sub-element typography overrides */
   name?: SubElementTypographyV2
   description?: SubElementTypographyV2
