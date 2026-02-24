@@ -102,6 +102,9 @@ const mockItemWithoutImage: LayoutItem = {
 // ============================================================================
 
 describe('Accessibility - Automated axe-core Tests', () => {
+  // axe-core can be slow on complex layouts; avoid timeout and "Axe is already running" cascades
+  jest.setTimeout(15000)
+
   describe('GridMenuLayout', () => {
     it('should have no accessibility violations with balanced preset', async () => {
       const { container } = render(

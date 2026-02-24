@@ -354,15 +354,18 @@ export class JobProcessor {
 
       // 2. Generate V2 Layout
       const config = snapshot.configuration as any
+      const resolvedPaletteId = config?.palette?.id || config?.colourPaletteId || config?.paletteId
       const layoutDocument = await generateLayoutV2({
         menu: engineMenu,
         templateId: snapshot.template_id,
         selection: {
-          colourPaletteId: config?.palette?.id || config?.colourPaletteId,
+          colourPaletteId: resolvedPaletteId,
           texturesEnabled: config?.texturesEnabled !== false,
+          textureId: config?.textureId,
           textOnly: config?.textOnly || false,
+          fillersEnabled: config?.fillersEnabled !== false,
           showMenuTitle: config?.showMenuTitle || false,
-          showVignette: config?.showVignette || false,
+          showVignette: config?.showVignette !== false,
           imageMode: config?.imageMode || 'stretch',
         }
       })
@@ -377,10 +380,15 @@ export class JobProcessor {
       // 4. Render to PDF
       logInfo('Rendering optimized layout to PDF', { job_id: job.id })
       const result = await renderToPdf(optimizedLayout, {
-        paletteId: config?.palette?.id || config?.colourPaletteId,
+        paletteId: resolvedPaletteId,
         texturesEnabled: config?.texturesEnabled !== false,
+        textureId: config?.textureId,
         imageMode: config?.imageMode || 'stretch',
-        showVignette: config?.showVignette || false,
+        showVignette: config?.showVignette !== false,
+        itemBorders: config?.itemBorders === true,
+        itemDropShadow: config?.itemDropShadow === true,
+        fillItemTiles: config?.fillItemTiles === true,
+        spacerTilePatternId: config?.spacerTilePatternId || (config?.spacerTiles !== 'none' ? config?.spacerTiles : undefined),
       })
 
       return Buffer.from(result.pdfBytes)

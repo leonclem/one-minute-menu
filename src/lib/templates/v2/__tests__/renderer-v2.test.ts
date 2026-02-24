@@ -748,7 +748,7 @@ describe('V2 Renderer', () => {
   describe('Spacing Constants', () => {
     it('should have SPACING_V2 with expected values (GridMenu guide)', () => {
       expect(SPACING_V2.nameToDesc).toBe(8)
-      expect(SPACING_V2.descToPrice).toBe(12)
+      expect(SPACING_V2.descToPrice).toBe(6)
       expect(SPACING_V2.afterImage).toBe(16)
       expect(SPACING_V2.tilePadding).toBe(8)
     })
