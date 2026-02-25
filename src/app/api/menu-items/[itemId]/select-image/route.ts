@@ -197,27 +197,40 @@ export async function POST(
         } else {
           const menuData = currentMenu.menu_data || {}
           const items = menuData.items || []
-          
-          // Update the specific item in the JSONB array
+          const imageUpdate = {
+            aiImageId: body.imageId,
+            imageSource: 'ai' as const,
+            customImageUrl: null as string | null // Will be populated by enrichMenuItemsWithImageUrls
+          }
+
+          // Update the specific item in the flat items array
           const updatedItems = items.map((item: any) => {
             if (item.id === itemId) {
-              return {
-                ...item,
-                aiImageId: body.imageId,
-                imageSource: 'ai',
-                customImageUrl: null // Will be populated by enrichMenuItemsWithImageUrls
-              }
+              return { ...item, ...imageUpdate }
             }
             return item
           })
-          
-          // Update the menu with the new items array
+
+          // Also update the same item inside categories (template preview uses categories when present)
+          const categories = menuData.categories || []
+          const updatedCategories = categories.map((cat: any) => {
+            if (!cat.items || !Array.isArray(cat.items)) return cat
+            return {
+              ...cat,
+              items: cat.items.map((item: any) =>
+                item.id === itemId ? { ...item, ...imageUpdate } : item
+              )
+            }
+          })
+
+          // Update the menu with both items and categories in sync
           const { error: updateError } = await supabase
             .from('menus')
             .update({
               menu_data: {
                 ...menuData,
-                items: updatedItems
+                items: updatedItems,
+                categories: updatedCategories
               },
               updated_at: new Date().toISOString()
             })

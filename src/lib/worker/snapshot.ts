@@ -52,12 +52,11 @@ function validateImageUrls(menu: any): void {
     imageUrls.push(menu.logo_url)
   }
   
-  // Collect item image URLs
+  // Collect item image URLs (customImageUrl after enrichment, or legacy image_url)
   if (menu.menu_data?.items) {
     for (const item of menu.menu_data.items) {
-      if (item.image_url) {
-        imageUrls.push(item.image_url)
-      }
+      const url = item.customImageUrl || item.image_url
+      if (url) imageUrls.push(url)
     }
   }
   
@@ -180,6 +179,64 @@ async function fetchMenuWithItems(menuId: string): Promise<any> {
 }
 
 /**
+ * Resolves AI image IDs to actual URLs so the snapshot has fetchable image_urls.
+ * Raw menu_data only has aiImageId; desktop_url comes from ai_generated_images.
+ */
+async function enrichMenuDataWithImageUrls(menu: any): Promise<void> {
+  const supabase = createWorkerSupabaseClient()
+  const menuData = menu.menu_data || {}
+  const aiImageIds: string[] = []
+
+  if (menuData.items) {
+    for (const item of menuData.items) {
+      if (item.aiImageId && item.imageSource === 'ai') aiImageIds.push(item.aiImageId)
+    }
+  }
+  if (menuData.categories) {
+    for (const cat of menuData.categories) {
+      if (cat.items) {
+        for (const item of cat.items) {
+          if (item.aiImageId && item.imageSource === 'ai') aiImageIds.push(item.aiImageId)
+        }
+      }
+    }
+  }
+  if (aiImageIds.length === 0) return
+
+  const { data: rows, error } = await supabase
+    .from('ai_generated_images')
+    .select('id, desktop_url')
+    .in('id', aiImageIds)
+
+  if (error || !rows?.length) return
+  const urlById = new Map<string, string>()
+  for (const row of rows) {
+    if (row.desktop_url) urlById.set(row.id, row.desktop_url)
+  }
+
+  if (menuData.items) {
+    for (const item of menuData.items) {
+      if (item.aiImageId && item.imageSource === 'ai') {
+        const url = urlById.get(item.aiImageId)
+        if (url) item.customImageUrl = url
+      }
+    }
+  }
+  if (menuData.categories) {
+    for (const cat of menuData.categories) {
+      if (cat.items) {
+        for (const item of cat.items) {
+          if (item.aiImageId && item.imageSource === 'ai') {
+            const url = urlById.get(item.aiImageId)
+            if (url) item.customImageUrl = url
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
  * Creates a frozen snapshot of menu state at job creation time
  * 
  * This function captures all data required to render a menu at the exact moment
@@ -216,6 +273,9 @@ export async function createRenderSnapshot(
   try {
     // Fetch menu data with all relations
     const menu = await fetchMenuWithItems(menuId)
+
+    // Resolve AI image IDs to full URLs (raw menu_data has aiImageId only; worker needs fetchable URLs)
+    await enrichMenuDataWithImageUrls(menu)
     
     // Fetch user's menu currency preference
     const { getMenuCurrency } = await import('@/lib/menu-currency-service')

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { UXSection, UXButton, UXCard, PaletteDropdown, TemplateDropdown, ImageModeDropdown } from '@/components/ux'
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
@@ -53,6 +53,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [exportSuccessModalOpen, setExportSuccessModalOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
   const { showToast } = useToast()
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
 
@@ -81,7 +82,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       } else {
         try {
           setIsDemoUser(false)
-          const resp = await fetch(`/api/menus/${menuId}`)
+          const resp = await fetch(`/api/menus/${menuId}`, { cache: 'no-store' })
           const data = await resp.json()
           if (!resp.ok) {
             if (resp.status === 401) {
@@ -143,7 +144,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     }
 
     loadMenuData()
-  }, [menuId, router, showToast])
+  }, [menuId, pathname, router, showToast])
 
   // Load user's email address for export notifications (best-effort)
   useEffect(() => {

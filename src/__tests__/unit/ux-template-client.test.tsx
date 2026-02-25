@@ -6,6 +6,7 @@ import '@testing-library/jest-dom'
 const mockRouter = { push: jest.fn() }
 jest.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
+  usePathname: () => '/menus/demo-123/template',
 }))
 
 // Mock toast hook

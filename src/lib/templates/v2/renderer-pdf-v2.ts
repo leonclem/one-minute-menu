@@ -187,11 +187,7 @@ export async function renderToPdf(
       height: `${(document.pageSpec.height / 72).toFixed(4)}in`,
       printBackground,
       margin: { top: 0, right: 0, bottom: 0, left: 0 },
-      displayHeaderFooter: includePageNumbers,
-      headerTemplate: '<div></div>',
-      footerTemplate: includePageNumbers
-        ? '<div style="font-size: 10px; text-align: center; width: 100%; color: #6B7280;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
-        : '<div></div>',
+      displayHeaderFooter: false,
       preferCSSPageSize: false // Use our explicit dimensions
     })
     logger.info(`[PDFRendererV2] Puppeteer PDF generated in ${Date.now() - pdfStartTime}ms`)

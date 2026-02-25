@@ -205,12 +205,10 @@ function transformItemToV2(
   fallbackOrder: number,
   itemsImageLookup: Map<string, MenuItem>
 ): EngineItemV2 {
-  // Get image URL from item or lookup
-  let imageUrl = getItemImageUrl(item)
-  if (!imageUrl && itemsImageLookup.has(item.id)) {
-    const lookupItem = itemsImageLookup.get(item.id)!
-    imageUrl = getItemImageUrl(lookupItem)
-  }
+  // Prefer flat items as source of truth for image selection (e.g. after "Use this" on extracted page)
+  const lookupItem = itemsImageLookup.get(item.id)
+  const imageUrl =
+    (lookupItem ? getItemImageUrl(lookupItem) : undefined) ?? getItemImageUrl(item)
 
   return {
     id: item.id,
