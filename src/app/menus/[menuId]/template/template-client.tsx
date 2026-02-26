@@ -14,6 +14,67 @@ import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
 import { V2_TEMPLATE_OPTIONS } from '@/lib/templates/v2/template-options'
 
+const TEMPLATE_DRAFT_KEY = (menuId: string) => `templateDraft-${menuId}`
+
+/** Build validated state from saved templateId + configuration (API or session draft). */
+function getRestoredState(
+  savedTemplateId: string,
+  config: Record<string, unknown>
+): {
+  templateId: string
+  paletteId: string
+  textureId: string | null
+  spacerTiles: 'blank' | 'none' | string
+  imageMode: ImageModeV2
+  showMenuTitle: boolean
+  showVignette: boolean
+  itemBorders: boolean
+  itemDropShadow: boolean
+  fillItemTiles: boolean
+} {
+  const mappedTemplateId =
+    savedTemplateId === 'classic-grid-cards' || savedTemplateId === 'simple-rows' || savedTemplateId === 'classic-cards-v2' ? '4-column-portrait' :
+    savedTemplateId === 'two-column-text' || savedTemplateId === 'italian-v2' ? '2-column-portrait' :
+    savedTemplateId === 'three-column-modern-v2' ? '3-column-portrait' :
+    savedTemplateId === 'half-a4-tall-v2' ? '1-column-tall' :
+    savedTemplateId === 'classic-cards-v2-landscape' ? '4-column-landscape' :
+    savedTemplateId || '4-column-portrait'
+
+  const paletteIdRaw = (config.colourPaletteId ?? config.paletteId) as string | undefined
+  const paletteId = paletteIdRaw && PALETTES_V2.some(p => p.id === paletteIdRaw)
+    ? paletteIdRaw
+    : DEFAULT_PALETTE_V2.id
+
+  const textureIdRaw = config.textureId as string | undefined
+  const textureId = textureIdRaw && TEXTURE_REGISTRY.has(textureIdRaw) ? textureIdRaw : null
+
+  let spacerTiles: 'blank' | 'none' | string = SPACER_BLANK_ID
+  if (config.spacerTiles === 'none') spacerTiles = 'none'
+  else if (config.spacerTiles === 'mix') spacerTiles = 'mix'
+  else if (config.spacerTiles === SPACER_BLANK_ID) spacerTiles = SPACER_BLANK_ID
+  else if (config.spacerTiles && FILLER_PATTERN_REGISTRY.has(config.spacerTiles as string)) spacerTiles = config.spacerTiles as string
+  else if (config.spacerTilePatternId === SPACER_BLANK_ID) spacerTiles = SPACER_BLANK_ID
+  else if (config.spacerTilePatternId && FILLER_PATTERN_REGISTRY.has(config.spacerTilePatternId as string)) spacerTiles = config.spacerTilePatternId as string
+
+  const imageMode: ImageModeV2 =
+    config.imageMode === 'none' || config.textOnly ? 'none' :
+    (config.imageMode && ['none', 'compact-rect', 'compact-circle', 'stretch', 'background'].includes(config.imageMode as string))
+      ? (config.imageMode as ImageModeV2) : 'compact-rect'
+
+  return {
+    templateId: mappedTemplateId,
+    paletteId,
+    textureId,
+    spacerTiles,
+    imageMode,
+    showMenuTitle: config.showMenuTitle === true,
+    showVignette: config.showVignette !== false,
+    itemBorders: config.itemBorders !== false,
+    itemDropShadow: config.itemDropShadow !== false,
+    fillItemTiles: config.fillItemTiles !== false
+  }
+}
+
 interface UXMenuTemplateClientProps {
   menuId: string
 }
@@ -56,6 +117,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const pathname = usePathname()
   const { showToast } = useToast()
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
+  const draftWriteTimeout = useRef<NodeJS.Timeout | null>(null)
+  const draftConfigRef = useRef<{ templateId: string; configuration: Record<string, unknown> } | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -72,6 +135,51 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           try {
             const parsedMenu = JSON.parse(storedDemoMenu)
             setMenu(parsedMenu)
+            // Restore template config: session draft first, then saved selection, else defaults
+            const draftRaw = sessionStorage.getItem(TEMPLATE_DRAFT_KEY(menuId))
+            if (draftRaw) {
+              try {
+                const draft = JSON.parse(draftRaw) as { templateId?: string; configuration?: Record<string, unknown> }
+                if (draft.templateId && draft.configuration) {
+                  const r = getRestoredState(draft.templateId, draft.configuration)
+                  setTemplateId(r.templateId)
+                  setPaletteId(r.paletteId)
+                  setTextureId(r.textureId)
+                  setSpacerTiles(r.spacerTiles)
+                  setImageMode(r.imageMode)
+                  setShowMenuTitle(r.showMenuTitle)
+                  setShowVignette(r.showVignette)
+                  setItemBorders(r.itemBorders)
+                  setItemDropShadow(r.itemDropShadow)
+                  setFillItemTiles(r.fillItemTiles)
+                  setLoading(false)
+                  return
+                }
+              } catch {
+                // ignore invalid draft
+              }
+            }
+            const selectionRaw = sessionStorage.getItem(`templateSelection-${menuId}`)
+            if (selectionRaw) {
+              try {
+                const sel = JSON.parse(selectionRaw) as { templateId?: string; configuration?: Record<string, unknown> }
+                if (sel.templateId && sel.configuration) {
+                  const r = getRestoredState(sel.templateId, sel.configuration)
+                  setTemplateId(r.templateId)
+                  setPaletteId(r.paletteId)
+                  setTextureId(r.textureId)
+                  setSpacerTiles(r.spacerTiles)
+                  setImageMode(r.imageMode)
+                  setShowMenuTitle(r.showMenuTitle)
+                  setShowVignette(r.showVignette)
+                  setItemBorders(r.itemBorders)
+                  setItemDropShadow(r.itemDropShadow)
+                  setFillItemTiles(r.fillItemTiles)
+                }
+              } catch {
+                // ignore invalid selection
+              }
+            }
           } catch (error) {
             console.error('Error parsing demo menu:', error)
             router.push('/demo/sample')
@@ -93,42 +201,50 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
             throw new Error(data?.error || 'Failed to load menu')
           }
           setMenu(data.data)
-          
-          // Load existing selection if any
+
+          // Session draft takes precedence so navigating template ↔ extracted preserves config
+          const draftRaw = sessionStorage.getItem(TEMPLATE_DRAFT_KEY(menuId))
+          if (draftRaw) {
+            try {
+              const draft = JSON.parse(draftRaw) as { templateId?: string; configuration?: Record<string, unknown> }
+              if (draft.templateId && draft.configuration) {
+                const r = getRestoredState(draft.templateId, draft.configuration)
+                setTemplateId(r.templateId)
+                setPaletteId(r.paletteId)
+                setTextureId(r.textureId)
+                setSpacerTiles(r.spacerTiles)
+                setImageMode(r.imageMode)
+                setShowMenuTitle(r.showMenuTitle)
+                setShowVignette(r.showVignette)
+                setItemBorders(r.itemBorders)
+                setItemDropShadow(r.itemDropShadow)
+                setFillItemTiles(r.fillItemTiles)
+                setLoading(false)
+                return
+              }
+            } catch {
+              // ignore invalid draft
+            }
+          }
+
+          // Else load saved selection from API (full restore including palette, texture, etc.)
           const selectionResp = await fetch(`/api/menus/${menuId}/template-selection`)
           if (selectionResp.ok) {
             const selectionData = await selectionResp.json()
             if (selectionData.data) {
               const config = selectionData.data.configuration || {}
-              
-              // Map legacy/saved template IDs to current option IDs for dropdown
               const savedTemplateId = selectionData.data.templateId || '4-column-portrait'
-              const mappedTemplateId =
-                savedTemplateId === 'classic-grid-cards' || savedTemplateId === 'simple-rows' || savedTemplateId === 'classic-cards-v2' ? '4-column-portrait' :
-                savedTemplateId === 'two-column-text' || savedTemplateId === 'italian-v2' ? '2-column-portrait' :
-                savedTemplateId === 'three-column-modern-v2' ? '3-column-portrait' :
-                savedTemplateId === 'half-a4-tall-v2' ? '1-column-tall' :
-                savedTemplateId === 'classic-cards-v2-landscape' ? '4-column-landscape' :
-                savedTemplateId
-                
-              setTemplateId(mappedTemplateId)
-              
-              // Styling defaults (palette, texture, imageMode, spacer tiles) are set
-              // via useState initializers and NOT restored from saved config —
-              // the page always opens with the product defaults.
-              // Only restore non-styling preferences from saved config.
-              // Spacer Tiles: default to "Blank" unless saved preference is present.
-              if (config.spacerTiles === 'none') setSpacerTiles('none')
-              else if (config.spacerTiles === 'mix') setSpacerTiles('mix')
-              else if (config.spacerTiles === SPACER_BLANK_ID) setSpacerTiles(SPACER_BLANK_ID)
-              else if (config.spacerTiles && FILLER_PATTERN_REGISTRY.has(config.spacerTiles)) setSpacerTiles(config.spacerTiles)
-              else if (config.spacerTilePatternId === SPACER_BLANK_ID) setSpacerTiles(SPACER_BLANK_ID)
-              else if (config.spacerTilePatternId && FILLER_PATTERN_REGISTRY.has(config.spacerTilePatternId)) setSpacerTiles(config.spacerTilePatternId)
-              else setSpacerTiles(SPACER_BLANK_ID)
-              if (config.imageMode === 'none' || config.textOnly) setImageMode('none')
-              else if (config.imageMode) setImageMode(config.imageMode as ImageModeV2)
-              setShowMenuTitle(config.showMenuTitle || false)
-              setShowVignette(config.showVignette !== false)
+              const r = getRestoredState(savedTemplateId, config)
+              setTemplateId(r.templateId)
+              setPaletteId(r.paletteId)
+              setTextureId(r.textureId)
+              setSpacerTiles(r.spacerTiles)
+              setImageMode(r.imageMode)
+              setShowMenuTitle(r.showMenuTitle)
+              setShowVignette(r.showVignette)
+              setItemBorders(r.itemBorders)
+              setItemDropShadow(r.itemDropShadow)
+              setFillItemTiles(r.fillItemTiles)
             }
           }
         } catch (e) {
@@ -250,6 +366,37 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     }
   }, [fetchLayoutPreview])
 
+  // Persist current config to session draft so template ↔ extracted preserves state
+  useEffect(() => {
+    if (!menu) return
+    const configuration = {
+      textOnly,
+      fillersEnabled: spacerTiles !== 'none',
+      spacerTiles,
+      spacerTilePatternId: spacerTiles !== 'none' ? spacerTiles : undefined,
+      texturesEnabled: !!textureId,
+      textureId: textureId ?? undefined,
+      showMenuTitle,
+      showVignette,
+      itemBorders,
+      itemDropShadow,
+      fillItemTiles,
+      colourPaletteId: paletteId,
+      imageMode
+    }
+    draftConfigRef.current = { templateId, configuration }
+    if (draftWriteTimeout.current) clearTimeout(draftWriteTimeout.current)
+    draftWriteTimeout.current = setTimeout(() => {
+      sessionStorage.setItem(TEMPLATE_DRAFT_KEY(menuId), JSON.stringify(draftConfigRef.current))
+    }, 500)
+    return () => {
+      if (draftWriteTimeout.current) clearTimeout(draftWriteTimeout.current)
+      if (draftConfigRef.current) {
+        sessionStorage.setItem(TEMPLATE_DRAFT_KEY(menuId), JSON.stringify(draftConfigRef.current))
+      }
+    }
+  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, itemBorders, itemDropShadow, fillItemTiles])
+
   const handleSelectTemplate = async () => {
     if (!menu) return
 
@@ -278,6 +425,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           templateVersion: '2.0.0',
           configuration
         }))
+        sessionStorage.removeItem(TEMPLATE_DRAFT_KEY(menuId))
         router.push(`/menus/${menuId}/export`)
       } else {
         const resp = await fetch(`/api/menus/${menuId}/template-selection`, {
@@ -294,6 +442,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           throw new Error(data?.error || 'Failed to save template selection')
         }
         markDashboardForRefresh()
+        sessionStorage.removeItem(TEMPLATE_DRAFT_KEY(menuId))
         router.push('/dashboard')
       }
     } catch (error) {
@@ -668,7 +817,28 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           variant="outline"
           size="lg"
           className="bg-white/20 border-white/40 text-white hover:bg-white/30 w-full sm:w-auto min-w-[200px]"
-          onClick={() => router.push(`/menus/${menuId}/extracted`)}
+          onClick={() => {
+            // Flush draft immediately so Back to Items always preserves current config
+            if (menu) {
+              const configuration = {
+                textOnly,
+                fillersEnabled: spacerTiles !== 'none',
+                spacerTiles,
+                spacerTilePatternId: spacerTiles !== 'none' ? spacerTiles : undefined,
+                texturesEnabled: !!textureId,
+                textureId: textureId ?? undefined,
+                showMenuTitle,
+                showVignette,
+                itemBorders,
+                itemDropShadow,
+                fillItemTiles,
+                colourPaletteId: paletteId,
+                imageMode
+              }
+              sessionStorage.setItem(TEMPLATE_DRAFT_KEY(menuId), JSON.stringify({ templateId, configuration }))
+            }
+            router.push(`/menus/${menuId}/extracted`)
+          }}
           disabled={isSaving || isExporting}
         >
           ← Back to Items
