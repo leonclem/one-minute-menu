@@ -266,19 +266,17 @@ async function generatePDFHTML(
           logger.warn(`[PDFRendererV2] Failed to load texture for: ${textureLookupId}`)
         }
       } else {
-        // SVG / data-URI texture: inject CSS from webCssExport so PDF renders it
+        // CSS gradient / data-URI texture: inject all CSS props from webCssExport
         const cssProps = textureConfig.webCssExport('')
-        const bgColor = cssProps.backgroundColor ? `background-color: ${cssProps.backgroundColor} !important;` : ''
-        const bgImage = cssProps.backgroundImage ? `background-image: ${cssProps.backgroundImage} !important;` : ''
-        const bgRepeat = cssProps.backgroundRepeat ? `background-repeat: ${cssProps.backgroundRepeat} !important;` : ''
-        const bgSize = cssProps.backgroundSize ? `background-size: ${cssProps.backgroundSize} !important;` : ''
+        const rules = Object.entries(cssProps)
+          .map(([prop, val]) => {
+            const cssProp = prop.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)
+            return `${cssProp}: ${val} !important;`
+          })
+          .join('\n          ')
         customCSS += `
-        .page-container-v2 {
-          ${bgColor}
-          ${bgImage}
-          ${bgRepeat}
-          ${bgSize}
-        }
+        .page-container-v2 { ${rules} }
+        .page-background-v2 { ${rules} }
       `
       }
     }
@@ -463,8 +461,7 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string 
 
     .tile-item_card,
     .tile-item_text_row {
-      background: transparent;
-      padding: 8px;
+      padding: 0;
     }
 
     .tile-filler {
@@ -527,11 +524,16 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string 
       overflow-wrap: break-word;
     }
 
-    /* Vignette overlay */
+    /* Vignette overlay – uses gradients for PDF because Puppeteer does not
+       render inset box-shadow into its PDF raster */
     .vignette-overlay {
       position: absolute;
       inset: 0;
-      box-shadow: inset 0 0 80px rgba(0,0,0,0.08);
+      background:
+        linear-gradient(to right,  rgba(0,0,0,0.14), transparent 15%),
+        linear-gradient(to left,   rgba(0,0,0,0.14), transparent 15%),
+        linear-gradient(to bottom, rgba(0,0,0,0.12), transparent 15%),
+        linear-gradient(to top,    rgba(0,0,0,0.12), transparent 15%) !important;
       pointer-events: none;
       z-index: 2;
     }

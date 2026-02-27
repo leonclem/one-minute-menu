@@ -743,6 +743,59 @@ describe('V2 Renderer', () => {
       expect(labelEl).toBeDefined()
       expect(labelEl?.style.fontSize).toBeDefined()
     })
+
+    it('should approximately center section header with decoration when textAlign is center', () => {
+      const tile: TileInstanceV2 = {
+        id: 'header-6',
+        type: 'SECTION_HEADER',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: 500,
+        height: 40,
+        colSpan: 1,
+        rowSpan: 1,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'SECTION_HEADER',
+          sectionId: 'sec-1',
+          label: 'Antojitos',
+          isContinuation: false
+        } as SectionHeaderContentV2,
+        style: {
+          typography: {
+            fontSize: '2xl',
+            textAlign: 'center',
+            decoration: 'bullet'
+          },
+          spacing: { paddingLeft: 8, paddingTop: 24 }
+        } as TileStyleV2
+      }
+
+      const result = renderTileContent(tile, defaultOptions)
+      const decorationEl = result.elements.find(e => e.type === 'text' && e.content === '•')
+      const labelEl = result.elements.find(e => e.type === 'text' && e.content === 'Antojitos')
+
+      expect(decorationEl).toBeDefined()
+      expect(labelEl).toBeDefined()
+
+      // Bullet should sit to the left of the label
+      expect((decorationEl as any).x).toBeLessThan((labelEl as any).x)
+
+      // The combined group (bullet + label) should be approximately centered
+      const resolvedFontSize = TYPOGRAPHY_TOKENS_V2.fontSize['2xl']
+      const approxCharWidth = resolvedFontSize * 0.55
+      const approxLabelWidth = 'Antojitos'.length * approxCharWidth
+      const decorationWidth = 14
+      const decorationGap = 4
+      const groupLeft = (decorationEl as any).x
+      const groupRight = groupLeft + decorationWidth + decorationGap + approxLabelWidth
+      const groupCenter = (groupLeft + groupRight) / 2
+
+      expect(Math.abs(groupCenter - tile.width / 2)).toBeLessThan(10)
+    })
   })
 
   describe('Spacing Constants', () => {

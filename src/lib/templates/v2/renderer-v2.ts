@@ -598,21 +598,61 @@ const stripeHorizontalSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" 
 const stripeVerticalSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><path d="M0 0v40h0.5V0zM8 0v40h0.5V0zM16 0v40h0.5V0zM24 0v40h0.5V0zM32 0v40h0.5V0z" fill="#000" opacity="0.05"/></svg>'
 const stripeDiagonalSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M0 0 L16 16" stroke="#000" stroke-width="0.4" opacity="0.05" fill="none"/></svg>'
 
+// Base64-encode an SVG string for Puppeteer PDF rendering.
+// Percent-encoded SVG data URIs don't render in Chromium's PDF raster; base64 does.
+function svgToBase64DataUri(rawSvg: string): string {
+  const b64 = typeof globalThis.Buffer !== 'undefined'
+    ? globalThis.Buffer.from(rawSvg).toString('base64')
+    : btoa(rawSvg)
+  return `data:image/svg+xml;base64,${b64}`
+}
+
+// Raw SVG strings (used to produce both preview and export data URIs)
+const paperGrainSvg = randomDotsTile({ width: 60, height: 60, cellSize: 3, density: 62, rMin: 0.2, rMax: 0.45, opacity: 0.10 })
+const linenSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><path d="M0 0h60v1H0zM0 15h60v0.5H0zM0 30h60v1H0zM0 45h60v0.5H0z" fill="#000" opacity="0.04"/><path d="M0 0v60h1V0zM15 0v60h0.5V0zM30 0v60h1V0zM45 0v60h0.5V0z" fill="#000" opacity="0.03"/></svg>'
+const waveSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="60"><path d="M0 30 Q30 10 60 30 Q90 50 120 30" fill="none" stroke="#000" stroke-width="0.5" opacity="0.04"/><path d="M0 45 Q30 25 60 45 Q90 65 120 45" fill="none" stroke="#000" stroke-width="0.5" opacity="0.03"/></svg>'
+const subtleDotsSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60">' +
+  [6, 18, 30, 42, 54].flatMap((x) => [6, 18, 30, 42, 54].map((y) =>
+    `<circle cx="${x}" cy="${y}" r="0.5" fill="#000" opacity="0.09"/>`)).join('') +
+  '</svg>'
+
+// Export-specific SVGs: Puppeteer at 2x DPR still aliases sub-pixel strokes/circles.
+// Wider strokes, larger dots, and higher opacity produce clean anti-aliased output.
+const paperGrainExportSvg = randomDotsTile({ width: 60, height: 60, cellSize: 3, density: 62, rMin: 0.4, rMax: 0.8, opacity: 0.10 })
+const linenExportSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><path d="M0 0h60v1.2H0zM0 15h60v0.8H0zM0 30h60v1.2H0zM0 45h60v0.8H0z" fill="#000" opacity="0.07"/><path d="M0 0v60h1.2V0zM15 0v60h0.8V0zM30 0v60h1.2V0zM45 0v60h0.8V0z" fill="#000" opacity="0.05"/></svg>'
+const waveExportSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="60"><path d="M0 30 Q30 10 60 30 Q90 50 120 30" fill="none" stroke="#000" stroke-width="0.9" opacity="0.07"/><path d="M0 45 Q30 25 60 45 Q90 65 120 45" fill="none" stroke="#000" stroke-width="0.9" opacity="0.05"/></svg>'
+const subtleDotsExportSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60">' +
+  [6, 18, 30, 42, 54].flatMap((x) => [6, 18, 30, 42, 54].map((y) =>
+    `<circle cx="${x}" cy="${y}" r="0.9" fill="#000" opacity="0.12"/>`)).join('') +
+  '</svg>'
+const stripeHorizontalExportSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><path d="M0 0h40v0.9H0zM0 8h40v0.9H0zM0 16h40v0.9H0zM0 24h40v0.9H0zM0 32h40v0.9H0z" fill="#000" opacity="0.08"/></svg>'
+const stripeVerticalExportSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><path d="M0 0v40h0.9V0zM8 0v40h0.9V0zM16 0v40h0.9V0zM24 0v40h0.9V0zM32 0v40h0.9V0z" fill="#000" opacity="0.08"/></svg>'
+const stripeDiagonalExportSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M0 0 L16 16" stroke="#000" stroke-width="0.8" opacity="0.08" fill="none"/></svg>'
+
+// Percent-encoded SVG data URIs for web preview (browser renders these natively)
 const SVG_TEXTURES = {
-  // Paper grain: fine random grain (formerly "Subtle Noise"); deterministic, non-uniform. Opacity here.
-  paperGrain: `data:image/svg+xml,${encodeURIComponent(randomDotsTile({ width: 60, height: 60, cellSize: 3, density: 62, rMin: 0.2, rMax: 0.45, opacity: 0.10 }))}`,
-  linen: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><path d="M0 0h60v1H0zM0 15h60v0.5H0zM0 30h60v1H0zM0 45h60v0.5H0z" fill="#000" opacity="0.04"/><path d="M0 0v60h1V0zM15 0v60h0.5V0zM30 0v60h1V0zM45 0v60h0.5V0z" fill="#000" opacity="0.03"/></svg>')}`,
-  wave: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="60"><path d="M0 30 Q30 10 60 30 Q90 50 120 30" fill="none" stroke="#000" stroke-width="0.5" opacity="0.04"/><path d="M0 45 Q30 25 60 45 Q90 65 120 45" fill="none" stroke="#000" stroke-width="0.5" opacity="0.03"/></svg>')}`,
-  subtleDots: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60">' +
-    [6, 18, 30, 42, 54].flatMap((x) => [6, 18, 30, 42, 54].map((y) =>
-      `<circle cx="${x}" cy="${y}" r="0.5" fill="#000" opacity="0.09"/>`)).join('') +
-    '</svg>')}`,
+  paperGrain: `data:image/svg+xml,${encodeURIComponent(paperGrainSvg)}`,
+  linen: `data:image/svg+xml,${encodeURIComponent(linenSvg)}`,
+  wave: `data:image/svg+xml,${encodeURIComponent(waveSvg)}`,
+  subtleDots: `data:image/svg+xml,${encodeURIComponent(subtleDotsSvg)}`,
   stripesHorizontal: `data:image/svg+xml,${encodeURIComponent(stripeHorizontalSvg)}`,
   stripesVertical: `data:image/svg+xml,${encodeURIComponent(stripeVerticalSvg)}`,
   stripesDiagonal: `data:image/svg+xml,${encodeURIComponent(stripeDiagonalSvg)}`,
 }
 
-function svgTexturePattern(svgDataUri: string): Pick<TextureConfig, 'webCss' | 'webCssExport' | 'pdfTextureFile'> {
+// Base64-encoded SVG data URIs for PDF export (Puppeteer renders base64 reliably).
+// Each uses the export-specific SVG with boosted stroke/radius/opacity for clean PDF output.
+const SVG_TEXTURES_EXPORT = {
+  paperGrain: svgToBase64DataUri(paperGrainExportSvg),
+  linen: svgToBase64DataUri(linenExportSvg),
+  wave: svgToBase64DataUri(waveExportSvg),
+  subtleDots: svgToBase64DataUri(subtleDotsExportSvg),
+  stripesHorizontal: svgToBase64DataUri(stripeHorizontalExportSvg),
+  stripesVertical: svgToBase64DataUri(stripeVerticalExportSvg),
+  stripesDiagonal: svgToBase64DataUri(stripeDiagonalExportSvg),
+}
+
+function svgTexturePattern(svgDataUri: string, exportDataUri: string): Pick<TextureConfig, 'webCss' | 'webCssExport' | 'pdfTextureFile'> {
   return {
     webCss: () => ({
       backgroundImage: `url("${svgDataUri}")`,
@@ -620,7 +660,7 @@ function svgTexturePattern(svgDataUri: string): Pick<TextureConfig, 'webCss' | '
       backgroundSize: 'auto',
     }),
     webCssExport: () => ({
-      backgroundImage: `url("${svgDataUri}")`,
+      backgroundImage: `url("${exportDataUri}")`,
       backgroundRepeat: 'repeat',
       backgroundSize: 'auto',
     }),
@@ -649,15 +689,15 @@ export const TEXTURE_REGISTRY = new Map<string, TextureConfig>([
     }),
     pdfTextureFile: 'dark-paper-2.png',
   }],
-  ['paper-grain', { label: 'Paper Grain', ...svgTexturePattern(SVG_TEXTURES.paperGrain) }],
+  ['paper-grain', { label: 'Paper Grain', ...svgTexturePattern(SVG_TEXTURES.paperGrain, SVG_TEXTURES_EXPORT.paperGrain) }],
   // Legacy: old "Subtle Noise" ID; same effect as Paper Grain for saved configs
-  ['subtle-noise', { label: 'Paper Grain', ...svgTexturePattern(SVG_TEXTURES.paperGrain) }],
-  ['stripes-horizontal', { label: 'Stripes (horizontal)', ...svgTexturePattern(SVG_TEXTURES.stripesHorizontal) }],
-  ['stripes-vertical', { label: 'Stripes (vertical)', ...svgTexturePattern(SVG_TEXTURES.stripesVertical) }],
-  ['stripes-diagonal', { label: 'Stripes (diagonal)', ...svgTexturePattern(SVG_TEXTURES.stripesDiagonal) }],
-  ['waves', { label: 'Waves', ...svgTexturePattern(SVG_TEXTURES.wave) }],
-  ['linen', { label: 'Linen', ...svgTexturePattern(SVG_TEXTURES.linen) }],
-  ['subtle-dots', { label: 'Subtle Dots', ...svgTexturePattern(SVG_TEXTURES.subtleDots) }],
+  ['subtle-noise', { label: 'Paper Grain', ...svgTexturePattern(SVG_TEXTURES.paperGrain, SVG_TEXTURES_EXPORT.paperGrain) }],
+  ['stripes-horizontal', { label: 'Stripes (horizontal)', ...svgTexturePattern(SVG_TEXTURES.stripesHorizontal, SVG_TEXTURES_EXPORT.stripesHorizontal) }],
+  ['stripes-vertical', { label: 'Stripes (vertical)', ...svgTexturePattern(SVG_TEXTURES.stripesVertical, SVG_TEXTURES_EXPORT.stripesVertical) }],
+  ['stripes-diagonal', { label: 'Stripes (diagonal)', ...svgTexturePattern(SVG_TEXTURES.stripesDiagonal, SVG_TEXTURES_EXPORT.stripesDiagonal) }],
+  ['waves', { label: 'Waves', ...svgTexturePattern(SVG_TEXTURES.wave, SVG_TEXTURES_EXPORT.wave) }],
+  ['linen', { label: 'Linen', ...svgTexturePattern(SVG_TEXTURES.linen, SVG_TEXTURES_EXPORT.linen) }],
+  ['subtle-dots', { label: 'Subtle Dots', ...svgTexturePattern(SVG_TEXTURES.subtleDots, SVG_TEXTURES_EXPORT.subtleDots) }],
 ])
 
 /** Ordered list of texture pattern IDs for user selection dropdowns (3. Background texture) */
@@ -1163,9 +1203,34 @@ function renderSectionHeaderContent(
   }
 
   const decorationWidth = 14
+  const decorationGap = 4
   const showDecoration = decoration && decoration !== 'none'
-  const textStartX = paddingLeft + (showDecoration ? decorationWidth : 0)
-  const textWidth = tile.width - textStartX
+
+  // Default: left-aligned label with optional decoration directly before it
+  let decorationX = paddingLeft
+  let textStartX = paddingLeft + (showDecoration ? decorationWidth + decorationGap : 0)
+  let textWidth = tile.width - textStartX
+
+  // When a decoration is present and textAlign is "center", treat the
+  // bullet + label as a single group and approximate-center that group
+  // within the tile. This keeps the bullet visually near the left-most
+  // character while centering the heading as a whole.
+  if (showDecoration && textAlign === 'center') {
+    const label = content.label || ''
+    const approxCharWidth = resolvedFontSize * 0.55
+    const approxLabelWidthRaw = label.length * approxCharWidth
+
+    // Constrain the estimated width to avoid overshooting the tile
+    const maxLabelWidth = Math.max(0, tile.width - 2 * paddingLeft - decorationWidth - decorationGap)
+    const approxLabelWidth = Math.min(Math.max(0, approxLabelWidthRaw), maxLabelWidth)
+
+    const groupWidth = decorationWidth + decorationGap + approxLabelWidth
+    const groupLeft = Math.max(paddingLeft, (tile.width - groupWidth) / 2)
+
+    decorationX = groupLeft
+    textStartX = groupLeft + decorationWidth + decorationGap
+    textWidth = approxLabelWidth
+  }
 
   if (showDecoration) {
     const decorationChar = decoration === 'bullet' ? '•' : decoration === 'diamond' ? '◆' : '·'
@@ -1181,7 +1246,7 @@ function renderSectionHeaderContent(
       palette.colors.itemPrice
     elements.push({
       type: 'text',
-      x: paddingLeft,
+      x: decorationX,
       y: decorationY,
       width: decorationWidth,
       content: decorationChar,
@@ -1207,7 +1272,10 @@ function renderSectionHeaderContent(
       fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight[fontWeight as FontWeightV2] || TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
       lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight[lineHeight as LineHeightV2] || TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
       color: tileStyle?.typography?.color || palette.colors.sectionHeader,
-      textAlign: textAlign as TextAlignV2,
+      // For centered headings with a decoration, we approximate-center the
+      // bullet + label group via geometry, so the label's own textAlign
+      // remains left-aligned to keep the bullet close to the first letter.
+      textAlign: (showDecoration && textAlign === 'center' ? 'left' : textAlign) as TextAlignV2,
       fontFamily,
       textTransform: labelCssTransform,
       letterSpacing

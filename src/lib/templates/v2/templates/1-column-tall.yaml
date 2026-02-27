@@ -55,14 +55,14 @@ tiles:
     style:
       typography:
         fontSet: "system-sans-bold"
-        fontSize: "3xl"
+        fontSize: "2xl"
         fontWeight: "bold"
-        textAlign: "left"
+        textAlign: "center"
         lineHeight: "normal"
         letterSpacing: 0.8
         textTransform: "capitalize"
         color: "#696969"
-        decoration: "bullet"
+        decoration: "none"
         decorationColor: "#D4AF37"
       spacing:
         paddingLeft: 8
