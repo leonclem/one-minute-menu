@@ -6,6 +6,7 @@ import { UXWrapper, UXSection, UXCard, UXButton, UXProgressSteps } from '@/compo
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
+import { normalizeDemoMenu } from '@/lib/demo-menu-normalizer'
 
 interface SampleMenu {
   id: string
@@ -145,11 +146,11 @@ export default function DemoSampleClient() {
         throw new Error(result.error || 'Failed to create demo menu')
       }
 
-      const menu: Menu = result.data
+      const menu: Menu = normalizeDemoMenu(result.data) as Menu
       const flowMenuId = menu.id?.startsWith('demo-') ? menu.id : `demo-${menu.id}`
 
       // Store demo menu data in sessionStorage for the demo flow, include imageUrl for preview consistency
-      const demoWithImage = { ...result.data, imageUrl: sampleMenu.imageUrl }
+      const demoWithImage = { ...menu, imageUrl: sampleMenu.imageUrl }
       sessionStorage.setItem('demoMenu', JSON.stringify(demoWithImage))
 
       trackConversionEvent({

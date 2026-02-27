@@ -7,6 +7,7 @@ import { UXSection, UXButton, UXCard, PaletteDropdown, TemplateDropdown, ImageMo
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
+import { normalizeDemoMenu } from '@/lib/demo-menu-normalizer'
 import { PageRenderer } from '@/lib/templates/v2/renderer-web-v2'
 import { PALETTES_V2, DEFAULT_PALETTE_V2, TEXTURE_IDS, TEXTURE_REGISTRY, FILLER_PATTERN_IDS, FILLER_PATTERN_REGISTRY, SPACER_BLANK_ID } from '@/lib/templates/v2/renderer-v2'
 import type { LayoutDocumentV2, ImageModeV2 } from '@/lib/templates/v2/engine-types-v2'
@@ -134,7 +135,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         if (storedDemoMenu) {
           try {
             const parsedMenu = JSON.parse(storedDemoMenu)
-            setMenu(parsedMenu)
+            const normalized = normalizeDemoMenu(parsedMenu) as Menu
+            setMenu(normalized)
             // Restore template config: session draft first, then saved selection, else defaults
             const draftRaw = sessionStorage.getItem(TEMPLATE_DRAFT_KEY(menuId))
             if (draftRaw) {

@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui'
 import type { Menu } from '@/types'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { TEMPLATE_REGISTRY } from '@/lib/templates/template-definitions'
+import { normalizeDemoMenu } from '@/lib/demo-menu-normalizer'
 
 /**
  * Escape HTML special characters
@@ -131,7 +132,8 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           if (storedDemoMenu) {
             try {
               const parsedMenu = JSON.parse(storedDemoMenu)
-              setDemoMenu(parsedMenu)
+              const normalized = normalizeDemoMenu(parsedMenu) as Menu
+              setDemoMenu(normalized)
               
               // Check for demo template selection in sessionStorage
               const storedSelection = sessionStorage.getItem(`templateSelection-${menuId}`)
@@ -188,7 +190,8 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           if (storedDemoMenu) {
             try {
               const parsedMenu = JSON.parse(storedDemoMenu)
-              setDemoMenu(parsedMenu)
+              const normalized = normalizeDemoMenu(parsedMenu) as Menu
+              setDemoMenu(normalized)
               
               // Check for demo template selection in sessionStorage
               const storedSelection = sessionStorage.getItem(`templateSelection-${menuId}`)

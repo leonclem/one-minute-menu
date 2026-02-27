@@ -15,6 +15,7 @@ import { createRenderSnapshot, createRenderSnapshotFromMenuData, SnapshotCreatio
 import { StorageClient } from '@/lib/worker/storage-client'
 import { computeDemoPdfCachePath } from '@/lib/templates/export/demo-pdf-cache'
 import type { ExportJobMetadata } from '@/types'
+import { normalizeDemoMenu } from '@/lib/demo-menu-normalizer'
 
 /**
  * Rate limit configuration
@@ -345,9 +346,11 @@ async function handleDemoExportJob(
   request: NextRequest,
   body: CreateDemoExportJobRequest
 ): Promise<NextResponse> {
+  const normalizedMenu = normalizeDemoMenu(body.menu as any) ?? body.menu
+
   const options = {
     orientation: (body.options?.orientation || 'portrait') as 'portrait' | 'landscape',
-    title: body.options?.title || body.menu?.name || 'Demo Menu',
+    title: body.options?.title || normalizedMenu?.name || 'Demo Menu',
     includePageNumbers: body.options?.includePageNumbers !== false
   }
 
@@ -364,7 +367,7 @@ async function handleDemoExportJob(
 
   try {
     const { cachePath, filenameBase } = await computeDemoPdfCachePath({
-      menu: body.menu,
+      menu: normalizedMenu,
       templateId: body.templateId,
       configuration: body.configuration,
       options
@@ -414,7 +417,7 @@ async function handleDemoExportJob(
       console.info('[API] Demo export: cache miss or SKIP_DEMO_PDF_CACHE=true, creating job for worker')
     }
     const snapshot = await createRenderSnapshotFromMenuData(
-      body.menu,
+      normalizedMenu,
       body.templateId,
       {
         template_id: body.templateId,

@@ -2057,6 +2057,7 @@ function renderFooterInfoContent(
   })
   const fontSize = contactTypo.fontSize
   const lineHeight = contactTypo.lineHeight
+  const defaultTextColor = tileStyle?.typography?.color || palette.colors.textMuted
   let currentY = padding + borderWidth + 2
 
   const addText = (text: string, bold = false) => {
@@ -2071,7 +2072,7 @@ function renderFooterInfoContent(
         fontWeight: bold ? TYPOGRAPHY_TOKENS_V2.fontWeight.semibold : contactTypo.fontWeight,
         fontFamily: contactTypo.fontFamily,
         lineHeight,
-        color: tileStyle?.typography?.color || palette.colors.textMuted,
+        color: defaultTextColor,
         textAlign: 'center',
       }
     })

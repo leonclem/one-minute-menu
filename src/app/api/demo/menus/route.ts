@@ -72,9 +72,8 @@ export async function POST(request: NextRequest) {
         phone: '+1 (555) 123-4567',
         email: 'hello@gridmenu.ai',
         socialMedia: {
-          instagram: '@gridmenu_demo',
-          facebook: 'gridmenu.demo',
-          x: '@gridmenu_demo',
+          facebook: 'facebook.com/gridmenu',
+          x: '@gridmenu',
           website: 'https://gridmenu.ai'
         }
       }

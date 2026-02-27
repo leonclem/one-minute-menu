@@ -6,9 +6,14 @@ import { generateSlug } from '@/lib/utils'
  * Goal: avoid regenerating identical demo PDFs over and over.
  * We compute a deterministic cache path from the (normalized) demo menu payload,
  * template selection, and export options.
+ *
+ * Version history:
+ * - 1: Initial cache key (no footer / older footer styles)
+ * - 2: Footer rendering updated (venue info + social). Bump to ensure
+ *      new PDFs are generated with the latest footer semantics.
  */
 
-const DEMO_PDF_CACHE_VERSION = 1
+const DEMO_PDF_CACHE_VERSION = 2
 
 function stableStringify(value: any): string {
   // Match JSON semantics as closely as possible but with stable object key ordering.

@@ -8,6 +8,7 @@ import { useToast, ConfirmDialog } from '@/components/ui'
 import { formatCurrency } from '@/lib/currency-formatter'
 import { supabase } from '@/lib/supabase'
 import type { Menu, MenuItem, MenuCategory } from '@/types'
+import { normalizeDemoMenu } from '@/lib/demo-menu-normalizer'
 import type { ExtractionResultType as Stage1ExtractionResult } from '@/lib/extraction/schema-stage1'
 import type { ExtractionResultV2Type as Stage2ExtractionResult } from '@/lib/extraction/schema-stage2'
 import { ImageUp, Sparkles, QrCode, Pencil } from 'lucide-react'
@@ -240,8 +241,9 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       if (storedDemoMenu) {
         try {
           const parsedMenu = JSON.parse(storedDemoMenu)
-          setDemoMenu(parsedMenu)
-          setLogoUrl(parsedMenu?.logoUrl ?? null)
+          const normalized = normalizeDemoMenu(parsedMenu) as Menu
+          setDemoMenu(normalized)
+          setLogoUrl(normalized?.logoUrl ?? null)
         } catch (error) {
           console.error('Error parsing demo menu:', error)
           router.push('/demo/sample')
