@@ -225,8 +225,9 @@ export const TYPOGRAPHY_TOKENS_V2 = {
   fontSize: {
     xxxs: 6,   // 6pt
     xxs: 7,    // 7pt
-    xs: 10,    // 10pt
+    xss: 8,    // 8pt (compact footer / microcopy)
     xsm: 9,    // 9pt (Reduced from 11pt)
+    xs: 10,    // 10pt
     sm: 12,    // 12pt
     base: 14,  // 14pt
     lg: 16,    // 16pt
@@ -2019,7 +2020,9 @@ function renderFooterInfoContent(
   const elements: RenderElement[] = []
   const palette = getPalette(options)
   const tileStyle = tile.style as TileStyleV2 | undefined
-  const padding = SPACING_V2.tilePadding
+  const paddingH = SPACING_V2.tilePadding
+  // Use template contentBudget for vertical padding when present (allows tighter footer and less gap below text)
+  const paddingTop = tile.contentBudget?.paddingTop ?? SPACING_V2.tilePadding
 
   // Footer background block
   const bgColor = tileStyle?.background?.color || palette.colors.border.light
@@ -2058,14 +2061,14 @@ function renderFooterInfoContent(
   const fontSize = contactTypo.fontSize
   const lineHeight = contactTypo.lineHeight
   const defaultTextColor = tileStyle?.typography?.color || palette.colors.textMuted
-  let currentY = padding + borderWidth + 2
+  let currentY = paddingTop + borderWidth
 
   const addText = (text: string, bold = false) => {
     elements.push({
       type: 'text',
-      x: padding,
+      x: paddingH,
       y: currentY,
-      width: tile.width - (padding * 2),
+      width: tile.width - (paddingH * 2),
       content: text,
       style: {
         fontSize,

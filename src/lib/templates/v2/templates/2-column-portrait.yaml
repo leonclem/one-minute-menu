@@ -16,7 +16,7 @@ regions:
   title:
     height: 32
   footer:
-    height: 32
+    height: 26
 
 body:
   container:
@@ -141,12 +141,12 @@ tiles:
     style:
       typography:
         contact:
-          fontSet: "friendly-rounded"
-          fontSize: "xs"
+          fontSet: "modern-sans"
+          fontSize: "xss"
           fontWeight: "normal"
       border:
         width: 1
-        color: "#C9BAA3"
+        color: "#E5E7EB"
         style: "solid"
         sides: ["top"]
     contentBudget:
@@ -155,8 +155,8 @@ tiles:
       indicatorAreaHeight: 0
       imageBoxHeight: 0
       paddingTop: 4
-      paddingBottom: 4
-      totalHeight: 32
+      paddingBottom: 0
+      totalHeight: 26
 
 policies:
   lastRowBalancing: LEFT

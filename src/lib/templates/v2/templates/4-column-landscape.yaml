@@ -16,7 +16,7 @@ regions:
   title:
     height: 28
   footer:
-    height: 36
+    height: 30
 
 body:
   container:
@@ -145,7 +145,7 @@ tiles:
       typography:
         contact:
           fontSet: "modern-sans"
-          fontSize: "xs"
+          fontSize: "xss"
           fontWeight: "normal"
       border:
         width: 1
@@ -158,8 +158,8 @@ tiles:
       indicatorAreaHeight: 0
       imageBoxHeight: 0
       paddingTop: 4
-      paddingBottom: 4
-      totalHeight: 36
+      paddingBottom: 0
+      totalHeight: 30
 
 policies:
   lastRowBalancing: CENTER

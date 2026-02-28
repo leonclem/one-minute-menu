@@ -43,8 +43,9 @@ style:
 #### Font Size Tokens
 - `xxxs`: 6pt
 - `xxs`: 7pt  
-- `xs`: 10pt
+- `xss`: 8pt   <!-- ultra-small footer / microcopy -->
 - `xsm`: 9pt
+- `xs`: 10pt
 - `sm`: 12pt
 - `base`: 14pt
 - `lg`: 16pt

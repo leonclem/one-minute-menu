@@ -743,8 +743,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               )}
 
               <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <span className="text-[10px] font-bold text-ux-text-secondary uppercase">Zoom</span>
+              <div className="flex items-center space-x-2">
+              <span className="text-[8px] font-bold text-ux-text-secondary uppercase">Zoom</span>
                   <input
                     type="range"
                     min="0.3"
@@ -754,7 +754,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                     onChange={(e) => setZoom(parseFloat(e.target.value))}
                     className="w-24 h-1.5 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-ux-primary"
                   />
-                  <span className="text-[10px] font-mono w-8">{Math.round(zoom * 100)}%</span>
+                  <span className="text-[8px] font-mono w-8">{Math.round(zoom * 100)}%</span>
                 </div>
               </div>
             </div>
@@ -807,7 +807,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
             </div>
           </UXCard>
           
-          <div className="text-center text-[10px] text-white/50 uppercase tracking-widest py-2">
+          <div className="text-center text-[8px] text-white/50 uppercase tracking-widest py-2">
             The preview accurately represents your final PDF export
           </div>
         </div>

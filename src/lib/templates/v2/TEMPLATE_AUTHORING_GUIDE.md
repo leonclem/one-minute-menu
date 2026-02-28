@@ -81,7 +81,7 @@ ITEM_CARD:
 
 Available font sets: `modern-sans`, `elegant-serif`, `friendly-rounded`, `classic-professional`, `distinctive-sans`, `system-sans` (Arial), `system-sans-bold` (Arial Black), `merriweather`, `raleway`, `lato`. Full details and which sub-elements apply to which tile types: [STYLING_GUIDE.md](./STYLING_GUIDE.md).
 
-Font size tokens: `xxxs` (6pt), `xxs` (7pt), `xs` (10pt), `xsm` (9pt), `sm` (12pt), `base` (14pt), `lg` (16pt), `xl` (18pt), `2xl` (20pt), `3xl` (24pt), `4xl` (28pt)
+Font size tokens: `xxxs` (6pt), `xxs` (7pt), `xss` (8pt), `xsm` (9pt), `xs` (10pt), `sm` (12pt), `base` (14pt), `lg` (16pt), `xl` (18pt), `2xl` (20pt), `3xl` (24pt), `4xl` (28pt)
 
 Font weight tokens: `normal` (400), `medium` (500), `semibold` (600), `bold` (700), `extrabold` (800)
 

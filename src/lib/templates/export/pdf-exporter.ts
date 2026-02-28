@@ -123,7 +123,7 @@ export async function exportToPDF(
       displayHeaderFooter: includePageNumbers,
       headerTemplate: '<div></div>',
       footerTemplate: includePageNumbers
-        ? '<div style="font-size: 10px; text-align: center; width: 100%;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
+        ? '<div style="font-size: 8px; text-align: center; width: 100%;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
         : '<div></div>'
     })
 
