@@ -1481,14 +1481,14 @@ function renderItemContent(
   elements.push({
     type: 'text',
     x: nameX, y: currentY,
-    width: textWidth, height: nameLineHeight * nameMaxLines,
+    width: textWidth, height: nameLineHeight * fitNameLines,
     content: applyTextTransform(content.name, nameTypo.textTransform)[0],
     style: {
       fontSize: nameFontSize,
       fontWeight: nameTypo.fontWeight,
       fontFamily: nameTypo.fontFamily,
       lineHeight: nameTypo.lineHeight,
-      maxLines: nameMaxLines,
+      maxLines: fitNameLines,
       color: isBackgroundMode
         ? lightenHexForDarkBackground(palette.colors.itemTitle, BG_IMAGE_TEXT.lightenBlendName)
         : palette.colors.itemTitle,

@@ -548,6 +548,9 @@ export default function ItemManagementModal({
                   autoFocus
                   disabled={loading === 'update'}
                 />
+                <p className="text-[10px] text-secondary-500 mt-1">
+                  Aim for ~90–110 characters for best results in grid layouts.
+                </p>
               </div>
             ) : (
               <div className="group relative">
@@ -568,6 +571,9 @@ export default function ItemManagementModal({
                 </button>
               </div>
             )}
+            <p className="text-[10px] text-secondary-500 mt-1">
+              Aim for ~90–110 characters for best results in grid layouts.
+            </p>
           </div>
           <div className="flex items-center gap-1 ml-2 flex-wrap justify-end">
             {dailyStats && (

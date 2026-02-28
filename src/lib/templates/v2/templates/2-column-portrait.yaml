@@ -96,15 +96,16 @@ tiles:
           fontSet: "modern-sans"
           fontSize: "xxs"
           fontWeight: "normal"
+          lineHeight: "normal"
         price:
           fontSet: "modern-sans"
           fontSize: "xs"
           fontWeight: "bold"
     contentBudget:
       nameLines: 2
-      descLines: 2     # Reduced from 3 to ensure comfortable fit in 174pt
+      descLines: 3
       indicatorAreaHeight: 18
-      imageBoxHeight: 75 # Reduced from 80
+      imageBoxHeight: 75
       paddingTop: 8
       paddingBottom: 8
       totalHeight: 174
@@ -123,13 +124,14 @@ tiles:
           fontSet: "modern-sans"
           fontSize: "xxs"
           fontWeight: "normal"
+          lineHeight: "normal"
         price:
           fontSet: "modern-sans"
           fontSize: "xs"
           fontWeight: "bold"
     contentBudget:
       nameLines: 2
-      descLines: 2
+      descLines: 3
       indicatorAreaHeight: 18
       imageBoxHeight: 0
       paddingTop: 8

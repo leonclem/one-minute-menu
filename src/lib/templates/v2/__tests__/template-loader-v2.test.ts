@@ -59,7 +59,7 @@ describe('Template Loader V2', () => {
       expect(template.tiles.SECTION_HEADER.colSpan).toBe(4)
       expect(template.regions.header.height).toBe(50)
       expect(template.regions.title.height).toBe(28)
-      expect(template.regions.footer.height).toBe(36)
+      expect(template.regions.footer.height).toBe(30)
     })
 
     it('should load and validate the 3-column-portrait template', async () => {

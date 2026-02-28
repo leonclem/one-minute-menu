@@ -105,15 +105,16 @@ tiles:
           textTransform: "capitalize"
         description:
           fontSet: "modern-sans"
-          fontSize: "xxs"
+          fontSize: "xxxs"
           fontWeight: "normal"
+          lineHeight: "normal"
         price:
           fontSet: "modern-sans"
           fontSize: "xs"
           fontWeight: "bold"
     contentBudget:
       nameLines: 2
-      descLines: 2
+      descLines: 3
       indicatorAreaHeight: 16
       imageBoxHeight: 70
       paddingTop: 8
@@ -132,15 +133,16 @@ tiles:
           textTransform: "capitalize"
         description:
           fontSet: "modern-sans"
-          fontSize: "xxs"
+          fontSize: "xxxs"
           fontWeight: "normal"
+          lineHeight: "normal"
         price:
           fontSet: "modern-sans"
           fontSize: "xs"
           fontWeight: "bold"
     contentBudget:
       nameLines: 2
-      descLines: 2
+      descLines: 3
       indicatorAreaHeight: 16
       imageBoxHeight: 0
       paddingTop: 8
@@ -164,6 +166,7 @@ tiles:
           fontSet: "modern-sans"
           fontSize: "xsm"
           fontWeight: "normal"
+          lineHeight: "normal"
         price:
           fontSet: "modern-sans"
           fontSize: "sm"

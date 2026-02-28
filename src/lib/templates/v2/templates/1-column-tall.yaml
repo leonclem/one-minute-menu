@@ -99,13 +99,14 @@ tiles:
           fontSet: "modern-sans"
           fontSize: "xxs"
           fontWeight: "normal"
+          lineHeight: "normal"
         price:
           fontSet: "modern-sans"
           fontSize: "xs"
           fontWeight: "bold"
     contentBudget:
       nameLines: 2
-      descLines: 2
+      descLines: 3
       indicatorAreaHeight: 14
       imageBoxHeight: 50
       paddingTop: 6
@@ -127,13 +128,14 @@ tiles:
           fontSet: "modern-sans"
           fontSize: "xxs"
           fontWeight: "normal"
+          lineHeight: "normal"
         price:
           fontSet: "modern-sans"
           fontSize: "xs"
           fontWeight: "bold"
     contentBudget:
       nameLines: 2
-      descLines: 2
+      descLines: 3
       indicatorAreaHeight: 14
       imageBoxHeight: 0
       paddingTop: 6

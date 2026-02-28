@@ -2582,6 +2582,9 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                     onChange={(e) => setNewItemData(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Brief description of the item"
                   />
+                  <p className="text-xs text-ux-text-secondary mt-1">
+                    Aim for ~90–110 characters for best results in grid layouts.
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-ux-text mb-2">
@@ -2681,6 +2684,9 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                     onChange={(e) => setEditItemData(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Brief description of the item"
                   />
+                  <p className="text-xs text-ux-text-secondary mt-1">
+                    Aim for ~90–110 characters for best results in grid layouts.
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-ux-text mb-2">

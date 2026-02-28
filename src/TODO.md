@@ -1,70 +1,40 @@
 # Roadmap
 
-## "What's New?" page
-- [ ] "What's New?" page
-- [ ] Coming soon...
-- [ ] Add popup banner to /dashboard 
+## Outbound Email
+- [x] Upgrade SendGrid plan to Pro to prevent IP address sharing (with potential spammers)
+- [x] Create Google Workspace account to enable outgoing @gridmenu.ai email addresses
+- [ ] *NEXT* Switch provider away from SendGrid
+- [ ] Determine and document all emails sent
+- [ ] Update style and content
+
+## /extracted
+- [ ] Menu Control Panel > Download Menu pages (PDF)
+- [ ] *NEXT* Renaming a category pushes it to the bottom
 
 ## Deployment
 - [x] Upgrade Vercel package
 - [ ] Determine UAT requirements
 - [ ] Determine if database backup strategy exists (Supabase / Vercel)
 
-## Allergens / Spice level / etc
-- [x] Determine list (V2 supports dietary indicators: vegetarian, vegan, halal, kosher, gluten-free)
-- [x] Consider design impact (V2 renders indicators within item tiles using INLINE mode)
-- [x] Implement (V2 has full ItemIndicatorsV2 support with configurable rendering modes)
-- [ ] Extend indicator taxonomy for additional dietary restrictions
-- [ ] Add custom allergen management via /extracted page
-
-## Railway
-- [ ] Monitoring of workers in the Admin dashboard (particularly keen to understand turnaround times for extraction and export tasks)
-
-## Outbound Email
-- [x] Upgrade SendGrid plan to Pro to prevent IP address sharing (with potential spammers)
-- [x] Create Google Workspace account to enable outgoing @gridmenu.ai email addresses
-- [ ] Switch provider away from SendGrid
-- [ ] Determine and document all emails sent
-- [ ] Decide on style and content
-- [ ] Implement changes
-
-## /extracted
-- [ ] Menu Control Panel > Download Menu pages (PDF)
-- [ ] Menu Control Panel > Download Menu pages (PNG zip)
-- [ ] Menu Control Panel > Download Menu Images (PNG zip)
-- [ ] Move item up or down
-- [ ] Capability for "Don't display images for this category".
-
 ## /template
-- [ ] Sometimes not enough space for menu item description.  We need to limit the characters in the /extracted screen for menu item creation.
-- [ ] Preserve last configuration per menu (save button and "save before exit"?)
-- [ ] Develop presets
-- [ ] In /template, if no images for category (or item?), render as text-only layout.
 - [ ] Clarify - do we separate structure and styling?  This should allow us to bring in bolder colours.
 - [ ] Investigation into new design integration (without redeployment). Explanation of architecture (e.g. Pinterest -> Gemini -> "make this")
 - [ ] Move image up or down within tile "viewport"
-- [ ] Menu design, e.g. paint splashes, food ingredients, etc. (overlay)
-- [ ] Alternating colour tiles (i.e. menu items, not spacers).
-- [ ] For "6. Display Options", only show images for feature items
-- [ ] Logo as special filler tile
+
+## Production Monitoring
+- [ ] Install Vercel analytics
+
+## Allergens / Spice level / etc
+- [ ] Extend indicator taxonomy for additional dietary restrictions
+- [ ] Add custom allergen management via /extracted page
+
+## "What's New?" page
+- [ ] "What's New?" page
+- [ ] Coming soon...
+- [ ] Add popup banner to /dashboard
 
 ## Exports
-- [x] Investigate examples of low-res images in PDFs with consideration to file size
-- [ ] Page number displaying on export and overlaying footer info
 - [ ] Verify "print ready"
-
-### Payment QR
-- [ ] Add capability to add a payment QR code via the /extracted page (and reflect on pricing page)
-
-## Demo
-- [x] More clarity on demo input menu as it stands before implementing changes
-- [ ] Show menu and image outputs on home page
-- [x] Lloyd feedback: input menu is confusing, looks like output
-- [ ] Lloyd feedback: Give an option to email the PDF menu or send to printers (order x amount)
-- [x] Include sample logo, address, etc.
-
-## Stripe
-- [ ] Verify that webhooks are in place to detect recurring payments, failures, etc. (as per Gemini chat)
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> GO TO MARKET >>>>>>>>>>>>>
@@ -83,12 +53,47 @@
 ## Market awareness
 - [x] Create Facebook page (https://www.facebook.com/gridmenu/)
 - [x] Create X account (https://x.com/gridmenu)
-- [ ] Add links to footer
+- [x] Add links to footer
 - [ ] Create blog / comparison pages (https://www.upmenu.com/blog/menu-making-apps/)
 - [ ] Reddit community posting
 - [ ] Google "Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required."
 
+## /extracted
+- [ ] Menu Control Panel > Download Menu pages (PNG zip)
+- [ ] Menu Control Panel > Download Menu Images (PNG zip)
+- [ ] Sometimes not enough space for menu item description.  We need to limit the characters for menu item creation.
+- [ ] Capability for "Don't display images for this category".
+- [ ] Rename this page to menu curator
+- [ ] Move item up or down
+
+### Payment QR
+- [ ] Add capability to add a payment QR code via the /extracted page (and reflect on pricing page)
+
+## /template
+- [ ] If no images for category (or item?), render as text-only layout.
+- [ ] Images too dark, perhaps only darken lower half (assuming top half has text)
+- [ ] Menu design, e.g. paint splashes, food ingredients, etc. (overlay)
+- [ ] Alternating colour tiles (i.e. menu items, not spacers).
+- [ ] For "6. Display Options": new options to only show images for feature items
+- [ ] Introduce A3 variants to create more space for menu items and menu item components
+- [ ] Logo as special filler tile
+- [ ] Develop presets
+
+## Railway
+- [ ] Monitoring of workers in the Admin dashboard (particularly keen to understand turnaround times for extraction and export tasks)
+
+## Demo Flow
+- [ ] Show menu and image outputs on home page
+
+## Stripe
+- [ ] Verify that webhooks are in place to detect recurring payments, failures, etc. (as per Gemini chat)
+
 ## Unclassified
+- [ ] Lloyd feedback: Give an option to email the PDF menu or send to printers (order x amount)
+- [ ] Social media: 4 images in grid block - guess the real one!
+- [ ] Image creation "guidance icons" to reduce complexity in panel
+- [ ] Grid+Premium option to suggest descriptions, etc.
+- [ ] Footer should use real social media handles (with icons)
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 - [ ] Disable but don't delete images for item or category
 - [ ] Image resolutions - 1k for Creator Pack, 2k for GridMenu, 4k for GridMenu+
@@ -196,14 +201,35 @@
 - [x] Prices should be right-justified to avoid clashing with menu item titles
 - [x] V2 tech as default for general use
 
+### GridMenu V2 Layout Engine Enhancements
+- [x] Additional template families (two-, three-, four-column)
+- [x] A4 landscape and A3 page size support
+- [x] Amit feedback: "Column-style" pages (e.g. "half-A4, tall")
+- [x] Amit feedback: Only selected "specials" have photos
+- [x] Flourishes / section dividers (e.g. design-inspiration-7.png)
+- [x] Multi-cell filler tiles / Mosaic layouts (currently 1x1 only), e.g. design-inspiration-5.jpg
+- [x] Themed menus, e.g. Superbowl, Valentine's, CNY, etc.
+- [x] Swap colour palettes
+- [x] Additional background colours and textures
+- [x] "Full-tile image" variants
+
+## /template
+- [x] Preserve last configuration per menu (save button and "save before exit"?)
+- [x] "3. Background texture" too faint in exports
+- [x] Centre category headings for "1 column (tall)" setting under "1. Grid Layout"
+- [x] Not enough room for many menu item descriptions in some templates
+
 ## Export
 - [x] Resolution (V2 uses points-based system for consistent PDF output)
 - [x] Fixed sizes, e.g. A4 (V2 supports A4 portrait/landscape with configurable margins)
+
 ### Logo placement
 - [x] Needs to be at the top and smaller
 - [x] Remove dotted line
 - [x] Option for if no logo was provided
 - [x] Consistent across template and exports
+- [x] Investigate examples of low-res images in PDFs with consideration to file size
+- [x] Page number displaying on export and overlaying footer info
 
 ## SendGrid
 - [x] Set up account (add domain gridmenu.ai)
@@ -229,6 +255,11 @@
 
 ## Sign up
 - [x] Capture name and optional profile information
+
+## Demo Flow
+- [x] More clarity on demo input menu as it stands before implementing changes
+- [x] Lloyd feedback: input menu is confusing, looks like output
+- [x] Include sample logo, address, etc.
 
 ## Resolve paths
 - [x] Create sitemap.xml (if not generated by Vercel)
@@ -261,17 +292,10 @@
 - [x] Currency Support (for appearing on menus)
 - [x] Currency Support (for package pricing / Stripe)
 
-### GridMenu V2 Layout Engine Enhancements
-- [x] Additional template families (two-, three-, four-column)
-- [x] A4 landscape and A3 page size support
-- [x] Amit feedback: "Column-style" pages (e.g. "half-A4, tall")
-- [x] Amit feedback: Only selected "specials" have photos
-- [x] Flourishes / section dividers (e.g. design-inspiration-7.png)
-- [x] Multi-cell filler tiles / Mosaic layouts (currently 1x1 only), e.g. design-inspiration-5.jpg
-- [x] Themed menus, e.g. Superbowl, Valentine's, CNY, etc.
-- [x] Swap colour palettes
-- [x] Additional background colours and textures
-- [x] "Full-tile image" variants
+## Allergens / Spice level / etc
+- [x] Determine list (V2 supports dietary indicators: vegetarian, vegan, halal, kosher, gluten-free)
+- [x] Consider design impact (V2 renders indicators within item tiles using INLINE mode)
+- [x] Implement (V2 has full ItemIndicatorsV2 support with configurable rendering modes)
 
 ## Misc.
 - [x] Updates FAQ with battle card Qs
@@ -279,6 +303,8 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+> Are these changes reflected in the files @src/lib/templates/v2/README.md, @src/lib/templates/v2/STYLING_GUIDE.md, @src/lib/templates/v2/TEMPLATE_AUTHORING_GUIDE.md, @src/lib/templates/v2/LIMITATIONS.md (if appropriate to do so)?
 
 > Re-add QR code generation from:
 > http://localhost:3000/dashboard/menus/[menu-id]

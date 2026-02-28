@@ -66,7 +66,7 @@ tiles:
     rowSpan: 2
     contentBudget:
       nameLines: 2
-      descLines: 2
+      descLines: 3
       indicatorAreaHeight: 16
       imageBoxHeight: 70
       paddingTop: 8
@@ -78,7 +78,7 @@ tiles:
     rowSpan: 1
     contentBudget:
       nameLines: 2
-      descLines: 2
+      descLines: 3
       indicatorAreaHeight: 16
       imageBoxHeight: 0
       paddingTop: 8
