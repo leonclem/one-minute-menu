@@ -2,8 +2,11 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getCurrentUser } from '@/lib/auth-utils'
-import { UXHeader, UXFooter, UXCard } from '@/components/ux'
+import { UXHeader, UXFooter } from '@/components/ux'
 import { CurrencySettings } from './_components/CurrencySettings'
+import { BillingSettings } from './_components/BillingSettings'
+import { getBillingCurrency, canChangeBillingCurrency } from '@/lib/billing-currency-service'
+import { getMenuCurrency } from '@/lib/menu-currency-service'
 
 export default async function SettingsPage() {
   const supabase = createServerSupabaseClient()
@@ -16,6 +19,13 @@ export default async function SettingsPage() {
 
   const currentUser = await getCurrentUser()
   const isAdmin = currentUser?.role === 'admin'
+
+  // Fetch all settings server-side to avoid client loading flash
+  const [menuCurrency, billingCurrency, billingCanChange] = await Promise.all([
+    getMenuCurrency(user.id),
+    getBillingCurrency(user.id),
+    canChangeBillingCurrency(user.id),
+  ])
 
   return (
     <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
@@ -47,7 +57,18 @@ export default async function SettingsPage() {
           </div>
 
           {/* Currency Settings */}
-          <CurrencySettings userId={user.id} />
+          <CurrencySettings
+            userId={user.id}
+            initialMenuCurrency={menuCurrency}
+          />
+
+          {/* Billing Settings */}
+          <BillingSettings
+            userId={user.id}
+            initialBillingCurrency={billingCurrency}
+            initialCanChangeBilling={billingCanChange.allowed}
+            initialBillingChangeReason={billingCanChange.reason}
+          />
         </div>
       </main>
 

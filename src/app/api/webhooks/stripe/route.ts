@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe, getWebhookSecret } from '@/lib/stripe-config'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createAdminSupabaseClient } from '@/lib/supabase-server'
 import Stripe from 'stripe'
 import { webhookRateLimiter } from '@/lib/stripe-rate-limiter'
 import { getRateLimitHeaders } from '@/lib/templates/rate-limiter'
@@ -81,7 +81,8 @@ export async function POST(request: NextRequest) {
     console.log(`[webhook:${requestId}] Received event: ${event.type} (${event.id})`)
 
     // 4. Log webhook event for audit (Requirement 4.9)
-    const supabase = createServerSupabaseClient()
+    // Must use admin client (service role) - webhooks have no user session, so RLS would block inserts
+    const supabase = createAdminSupabaseClient()
     
     // Check if this event was already received (get existing retry_count)
     const { data: existingEvent } = await supabase

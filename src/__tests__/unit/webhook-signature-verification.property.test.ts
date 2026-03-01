@@ -24,10 +24,19 @@ process.env.STRIPE_PRICE_ID_CREATOR_PACK = 'price_mock_creator_pack'
 // Mock dependencies BEFORE importing the route
 jest.mock('@/lib/supabase-server')
 jest.mock('@/lib/stripe-webhook-processor')
+jest.mock('@/lib/security', () => ({
+  logSecurityEvent: jest.fn().mockResolvedValue(undefined),
+  logRateLimitViolation: jest.fn().mockResolvedValue(undefined),
+}))
+jest.mock('@/lib/stripe-rate-limiter', () => ({
+  webhookRateLimiter: {
+    check: jest.fn().mockReturnValue({ allowed: true }),
+  },
+}))
 
 import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/webhooks/stripe/route'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createAdminSupabaseClient } from '@/lib/supabase-server'
 import * as webhookProcessor from '@/lib/stripe-webhook-processor'
 import fc from 'fast-check'
 import Stripe from 'stripe'
@@ -44,7 +53,7 @@ const mockSupabase = {
 describe('Feature: stripe-payment-integration - Webhook Signature Verification', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(createServerSupabaseClient as jest.Mock).mockReturnValue(mockSupabase)
+    ;(createAdminSupabaseClient as jest.Mock).mockReturnValue(mockSupabase)
     
     // Mock all processor functions to succeed by default
     ;(webhookProcessor.processCheckoutCompleted as jest.Mock).mockResolvedValue(undefined)

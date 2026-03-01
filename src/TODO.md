@@ -3,9 +3,10 @@
 ## Outbound Email
 - [x] Upgrade SendGrid plan to Pro to prevent IP address sharing (with potential spammers)
 - [x] Create Google Workspace account to enable outgoing @gridmenu.ai email addresses
-- [ ] *NEXT* Switch provider from SendGrid to Postmark
+- [x] Switch provider from SendGrid to Postmark
 - [x] Determine and document all emails sent
-- [ ] Update style and content
+- [x] Update style and content
+- [ ] Upgrade to Postmark 10,000 plan ($15)
 
 ## /extracted
 - [ ] Menu Control Panel > Download Menu pages (PDF)
@@ -91,6 +92,7 @@
 - [ ] Verify that webhooks are in place to detect recurring payments, failures, etc. (as per Gemini chat)
 
 ## Unclassified
+- [ ] Track payment failures and cancellations
 - [ ] Lloyd feedback: Give an option to email the PDF menu or send to printers (order x amount)
 - [ ] Social media: 4 images in grid block - guess the real one!
 - [ ] Image creation "guidance icons" to reduce complexity in panel

@@ -70,8 +70,8 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
 STORAGE_BUCKET=export-files
 
 # Email
-SENDGRID_API_KEY=SG.xxx
-SENDGRID_FROM_EMAIL=exports@example.com
+POSTMARK_SERVER_TOKEN=your-postmark-server-token
+FROM_EMAIL=noreply@gridmenu.ai
 
 # Worker Configuration
 WORKER_ID=worker-1
@@ -123,8 +123,8 @@ ENABLE_CIRCUIT_BREAKER=true
    railway variables set SUPABASE_URL="https://..."
    railway variables set SUPABASE_SERVICE_ROLE_KEY="..."
    railway variables set STORAGE_BUCKET="export-files"
-   railway variables set SENDGRID_API_KEY="SG...."
-   railway variables set SENDGRID_FROM_EMAIL="exports@example.com"
+   railway variables set POSTMARK_SERVER_TOKEN="your-postmark-server-token"
+   railway variables set FROM_EMAIL="noreply@gridmenu.ai"
    railway variables set WORKER_ID="worker-1"
    railway variables set PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
    railway variables set NODE_ENV="production"

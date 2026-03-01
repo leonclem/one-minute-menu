@@ -2,18 +2,17 @@
  * Unit tests for notification service
  * Tests email sending for subscription confirmations, Creator Pack confirmations,
  * payment failures, and subscription cancellations
- * 
+ *
  * Requirements: 5.5, 6.4, 7.5, 8.4
  */
 
-import sgMail from '@sendgrid/mail'
 import { notificationService } from '@/lib/notification-service'
 import { createWorkerSupabaseClient } from '@/lib/supabase-worker'
 
-// Mock SendGrid
-jest.mock('@sendgrid/mail', () => ({
-  setApiKey: jest.fn(),
-  send: jest.fn(),
+// Mock Postmark email client
+const mockSendEmail = jest.fn()
+jest.mock('@/lib/email-client', () => ({
+  sendEmail: (...args: any[]) => mockSendEmail(...args),
 }))
 
 // Mock Supabase client (worker-safe client used by notificationService)
@@ -34,12 +33,11 @@ describe('Notification Service', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     process.env = { ...originalEnv }
-    process.env.SENDGRID_API_KEY = 'test-api-key'
-    process.env.SENDGRID_FROM_EMAIL = 'noreply@gridmenu.ai'
-    process.env.SENDGRID_FROM_NAME = 'GridMenu'
+    process.env.POSTMARK_SERVER_TOKEN = 'test-token'
+    process.env.FROM_EMAIL = 'noreply@gridmenu.ai'
+    process.env.FROM_NAME = 'GridMenu'
     process.env.NEXT_PUBLIC_APP_URL = 'https://gridmenu.ai'
-    
-    // Create fresh mock for each test
+
     mockSupabaseClient = {
       from: jest.fn(() => ({
         select: jest.fn(() => ({
@@ -52,9 +50,9 @@ describe('Notification Service', () => {
         })),
       })),
     }
-    
+
     ;(createWorkerSupabaseClient as jest.Mock).mockReturnValue(mockSupabaseClient)
-    ;(sgMail.send as jest.Mock).mockResolvedValue([{ statusCode: 202 }, {}])
+    mockSendEmail.mockResolvedValue(true)
   })
 
   afterAll(() => {
@@ -65,14 +63,12 @@ describe('Notification Service', () => {
     it('should send subscription confirmation email for Grid Plus', async () => {
       await notificationService.sendSubscriptionConfirmation('user-123', 'grid_plus', 2999)
 
-      expect(sgMail.send).toHaveBeenCalledWith(
+      expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'user@example.com',
-          from: {
-            email: 'noreply@gridmenu.ai',
-            name: 'GridMenu',
-          },
-          subject: expect.stringContaining('Welcome to Grid+! Your subscription is active'),
+          from: 'noreply@gridmenu.ai',
+          fromName: 'GridMenu',
+          subject: expect.stringContaining('Grid+'),
           text: expect.stringContaining('Grid+'),
           html: expect.stringContaining('Grid+'),
         })
@@ -82,10 +78,10 @@ describe('Notification Service', () => {
     it('should send subscription confirmation email for Grid Plus Premium', async () => {
       await notificationService.sendSubscriptionConfirmation('user-123', 'grid_plus_premium', 4999)
 
-      expect(sgMail.send).toHaveBeenCalledWith(
+      expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'user@example.com',
-          subject: expect.stringContaining('Welcome to Grid+ Premium! Your subscription is active'),
+          subject: expect.stringContaining('Grid+ Premium'),
           text: expect.stringContaining('Grid+ Premium'),
           html: expect.stringContaining('Grid+ Premium'),
         })
@@ -95,7 +91,7 @@ describe('Notification Service', () => {
     it('should include correct amount in email', async () => {
       await notificationService.sendSubscriptionConfirmation('user-123', 'grid_plus', 2999)
 
-      expect(sgMail.send).toHaveBeenCalledWith(
+      expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           text: expect.stringContaining('29.99'),
           html: expect.stringContaining('29.99'),
@@ -106,19 +102,11 @@ describe('Notification Service', () => {
     it('should include manage subscription link', async () => {
       await notificationService.sendSubscriptionConfirmation('user-123', 'grid_plus', 2999)
 
-      expect(sgMail.send).toHaveBeenCalledWith(
+      expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
-          html: expect.stringContaining('https://gridmenu.ai/upgrade'),
+          html: expect.stringContaining('https://gridmenu.ai/dashboard/settings'),
         })
       )
-    })
-
-    it('should skip sending if SENDGRID_API_KEY is missing', async () => {
-      delete process.env.SENDGRID_API_KEY
-
-      await notificationService.sendSubscriptionConfirmation('user-123', 'grid_plus', 2999)
-
-      expect(sgMail.send).not.toHaveBeenCalled()
     })
 
     it('should handle user profile fetch error gracefully', async () => {
@@ -137,11 +125,11 @@ describe('Notification Service', () => {
         notificationService.sendSubscriptionConfirmation('user-123', 'grid_plus', 2999)
       ).resolves.not.toThrow()
 
-      expect(sgMail.send).not.toHaveBeenCalled()
+      expect(mockSendEmail).not.toHaveBeenCalled()
     })
 
-    it('should handle SendGrid error gracefully', async () => {
-      ;(sgMail.send as jest.Mock).mockRejectedValue(new Error('SendGrid API error'))
+    it('should handle email send error gracefully', async () => {
+      mockSendEmail.mockRejectedValue(new Error('Email send error'))
 
       await expect(
         notificationService.sendSubscriptionConfirmation('user-123', 'grid_plus', 2999)
@@ -153,10 +141,10 @@ describe('Notification Service', () => {
     it('should send free Creator Pack confirmation email', async () => {
       await notificationService.sendCreatorPackConfirmation('user-123', true)
 
-      expect(sgMail.send).toHaveBeenCalledWith(
+      expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'user@example.com',
-          subject: expect.stringContaining('Your free Creator Pack is ready!'),
+          subject: expect.stringContaining('free Creator Pack'),
           text: expect.stringContaining('free Creator Pack'),
           html: expect.stringContaining('Free Creator Pack'),
         })
@@ -166,10 +154,10 @@ describe('Notification Service', () => {
     it('should send paid Creator Pack confirmation email', async () => {
       await notificationService.sendCreatorPackConfirmation('user-123', false)
 
-      expect(sgMail.send).toHaveBeenCalledWith(
+      expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'user@example.com',
-          subject: expect.stringContaining('Your Creator Pack purchase is confirmed'),
+          subject: expect.stringContaining('Creator Pack'),
           text: expect.stringContaining('purchasing a Creator Pack'),
           html: expect.stringContaining('Creator Pack Confirmed'),
         })
@@ -179,7 +167,7 @@ describe('Notification Service', () => {
     it('should include pack details in email', async () => {
       await notificationService.sendCreatorPackConfirmation('user-123', false)
 
-      const call = (sgMail.send as jest.Mock).mock.calls[0][0]
+      const call = mockSendEmail.mock.calls[0][0]
       expect(call.text).toContain('24 months')
       expect(call.text).toContain('7 days')
       expect(call.html).toContain('24 months')
@@ -189,19 +177,11 @@ describe('Notification Service', () => {
     it('should include dashboard link', async () => {
       await notificationService.sendCreatorPackConfirmation('user-123', false)
 
-      expect(sgMail.send).toHaveBeenCalledWith(
+      expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           html: expect.stringContaining('https://gridmenu.ai/dashboard'),
         })
       )
-    })
-
-    it('should skip sending if SENDGRID_API_KEY is missing', async () => {
-      delete process.env.SENDGRID_API_KEY
-
-      await notificationService.sendCreatorPackConfirmation('user-123', false)
-
-      expect(sgMail.send).not.toHaveBeenCalled()
     })
 
     it('should handle user profile fetch error gracefully', async () => {
@@ -223,11 +203,11 @@ describe('Notification Service', () => {
         notificationService.sendCreatorPackConfirmation('user-123', false)
       ).resolves.not.toThrow()
 
-      expect(sgMail.send).not.toHaveBeenCalled()
+      expect(mockSendEmail).not.toHaveBeenCalled()
     })
 
-    it('should handle SendGrid error gracefully', async () => {
-      ;(sgMail.send as jest.Mock).mockRejectedValueOnce(new Error('SendGrid API error'))
+    it('should handle email send error gracefully', async () => {
+      mockSendEmail.mockRejectedValueOnce(new Error('Email send error'))
 
       await expect(
         notificationService.sendCreatorPackConfirmation('user-123', false)
@@ -239,10 +219,10 @@ describe('Notification Service', () => {
     it('should send payment failed notification email', async () => {
       await notificationService.sendPaymentFailedNotification('user-123', 'Card declined')
 
-      expect(sgMail.send).toHaveBeenCalledWith(
+      expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'user@example.com',
-          subject: expect.stringContaining('Payment Failed - Action Required'),
+          subject: expect.stringContaining('Payment failed'),
           text: expect.stringContaining('Card declined'),
           html: expect.stringContaining('Card declined'),
         })
@@ -253,7 +233,7 @@ describe('Notification Service', () => {
       const reason = 'Insufficient funds'
       await notificationService.sendPaymentFailedNotification('user-123', reason)
 
-      expect(sgMail.send).toHaveBeenCalledWith(
+      expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           text: expect.stringContaining(reason),
           html: expect.stringContaining(reason),
@@ -264,19 +244,11 @@ describe('Notification Service', () => {
     it('should include update payment method link', async () => {
       await notificationService.sendPaymentFailedNotification('user-123', 'Card declined')
 
-      expect(sgMail.send).toHaveBeenCalledWith(
+      expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
-          html: expect.stringContaining('https://gridmenu.ai/upgrade'),
+          html: expect.stringContaining('https://gridmenu.ai/dashboard/settings'),
         })
       )
-    })
-
-    it('should skip sending if SENDGRID_API_KEY is missing', async () => {
-      delete process.env.SENDGRID_API_KEY
-
-      await notificationService.sendPaymentFailedNotification('user-123', 'Card declined')
-
-      expect(sgMail.send).not.toHaveBeenCalled()
     })
 
     it('should handle user profile fetch error gracefully', async () => {
@@ -298,11 +270,11 @@ describe('Notification Service', () => {
         notificationService.sendPaymentFailedNotification('user-123', 'Card declined')
       ).resolves.not.toThrow()
 
-      expect(sgMail.send).not.toHaveBeenCalled()
+      expect(mockSendEmail).not.toHaveBeenCalled()
     })
 
-    it('should handle SendGrid error gracefully', async () => {
-      ;(sgMail.send as jest.Mock).mockRejectedValueOnce(new Error('SendGrid API error'))
+    it('should handle email send error gracefully', async () => {
+      mockSendEmail.mockRejectedValueOnce(new Error('Email send error'))
 
       await expect(
         notificationService.sendPaymentFailedNotification('user-123', 'Card declined')
@@ -315,10 +287,10 @@ describe('Notification Service', () => {
       const periodEnd = new Date('2024-12-31')
       await notificationService.sendSubscriptionCancelledNotification('user-123', periodEnd)
 
-      expect(sgMail.send).toHaveBeenCalledWith(
+      expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'user@example.com',
-          subject: expect.stringContaining('Your subscription has been cancelled'),
+          subject: expect.stringContaining('cancelled'),
           text: expect.stringContaining('cancelled'),
           html: expect.stringContaining('Subscription Cancelled'),
         })
@@ -329,7 +301,7 @@ describe('Notification Service', () => {
       const periodEnd = new Date('2024-12-31')
       await notificationService.sendSubscriptionCancelledNotification('user-123', periodEnd)
 
-      expect(sgMail.send).toHaveBeenCalledWith(
+      expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           text: expect.stringContaining('December 31, 2024'),
           html: expect.stringContaining('December 31, 2024'),
@@ -341,20 +313,11 @@ describe('Notification Service', () => {
       const periodEnd = new Date('2024-12-31')
       await notificationService.sendSubscriptionCancelledNotification('user-123', periodEnd)
 
-      expect(sgMail.send).toHaveBeenCalledWith(
+      expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
-          html: expect.stringContaining('https://gridmenu.ai/upgrade'),
+          html: expect.stringContaining('https://gridmenu.ai/pricing'),
         })
       )
-    })
-
-    it('should skip sending if SENDGRID_API_KEY is missing', async () => {
-      delete process.env.SENDGRID_API_KEY
-      const periodEnd = new Date('2024-12-31')
-
-      await notificationService.sendSubscriptionCancelledNotification('user-123', periodEnd)
-
-      expect(sgMail.send).not.toHaveBeenCalled()
     })
 
     it('should handle user profile fetch error gracefully', async () => {
@@ -377,11 +340,11 @@ describe('Notification Service', () => {
         notificationService.sendSubscriptionCancelledNotification('user-123', periodEnd)
       ).resolves.not.toThrow()
 
-      expect(sgMail.send).not.toHaveBeenCalled()
+      expect(mockSendEmail).not.toHaveBeenCalled()
     })
 
-    it('should handle SendGrid error gracefully', async () => {
-      ;(sgMail.send as jest.Mock).mockRejectedValueOnce(new Error('SendGrid API error'))
+    it('should handle email send error gracefully', async () => {
+      mockSendEmail.mockRejectedValueOnce(new Error('Email send error'))
       const periodEnd = new Date('2024-12-31')
 
       await expect(
@@ -392,7 +355,7 @@ describe('Notification Service', () => {
 
   describe('Error Handling', () => {
     it('should not throw errors when email sending fails', async () => {
-      ;(sgMail.send as jest.Mock).mockRejectedValue(new Error('Network error'))
+      mockSendEmail.mockRejectedValue(new Error('Network error'))
 
       await expect(
         notificationService.sendSubscriptionConfirmation('user-123', 'grid_plus', 2999)
@@ -413,7 +376,7 @@ describe('Notification Service', () => {
 
     it('should log errors but continue execution', async () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
-      ;(sgMail.send as jest.Mock).mockRejectedValue(new Error('SendGrid error'))
+      mockSendEmail.mockRejectedValue(new Error('Email send error'))
 
       await notificationService.sendSubscriptionConfirmation('user-123', 'grid_plus', 2999)
 

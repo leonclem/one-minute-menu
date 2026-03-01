@@ -31,8 +31,8 @@ Use this checklist to track your setup progress.
 - [ ] Set `SUPABASE_URL` (from Supabase Dashboard → Settings → API)
 - [ ] Set `SUPABASE_SERVICE_ROLE_KEY` (from Supabase Dashboard → Settings → API)
 - [ ] Set `STORAGE_BUCKET=export-files`
-- [ ] Set `SENDGRID_API_KEY` (or set to `disabled` for testing)
-- [ ] Set `SENDGRID_FROM_EMAIL`
+- [ ] Set `POSTMARK_SERVER_TOKEN` (use `POSTMARK_API_TEST` for local testing)
+- [ ] Set `FROM_EMAIL=noreply@gridmenu.ai`
 - [ ] Set `WORKER_ID=local-worker-1`
 - [ ] Set `NODE_ENV=development`
 - [ ] Set `LOG_LEVEL=debug`

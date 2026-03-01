@@ -24,6 +24,16 @@ jest.mock('@/lib/supabase-server', () => ({
     maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
     single: jest.fn().mockResolvedValue({ data: null, error: null }),
   })),
+  createAdminSupabaseClient: jest.fn(() => ({
+    from: jest.fn().mockReturnThis(),
+    insert: jest.fn().mockResolvedValue({ data: null, error: null }),
+    upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
+    update: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+    single: jest.fn().mockResolvedValue({ data: null, error: null }),
+  })),
 }))
 
 jest.mock('@/lib/stripe-config', () => ({
@@ -47,6 +57,12 @@ jest.mock('@/lib/stripe-webhook-processor', () => ({
   processSubscriptionDeleted: jest.fn().mockResolvedValue(undefined),
   processInvoicePaymentSucceeded: jest.fn().mockResolvedValue(undefined),
   processInvoicePaymentFailed: jest.fn().mockResolvedValue(undefined),
+}))
+
+jest.mock('@/lib/stripe-rate-limiter', () => ({
+  webhookRateLimiter: {
+    check: jest.fn().mockReturnValue({ allowed: true }),
+  },
 }))
 
 import fc from 'fast-check'

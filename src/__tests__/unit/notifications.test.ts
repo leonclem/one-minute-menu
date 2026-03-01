@@ -1,11 +1,10 @@
-import sgMail from '@sendgrid/mail'
 import { sendAdminNewUserAlert } from '@/lib/notifications'
 import { User } from '@/types'
 
-// Mock SendGrid
-jest.mock('@sendgrid/mail', () => ({
-  setApiKey: jest.fn(),
-  send: jest.fn(),
+// Mock Postmark email client
+const mockSendEmail = jest.fn()
+jest.mock('@/lib/email-client', () => ({
+  sendEmail: (...args: any[]) => mockSendEmail(...args),
 }))
 
 describe('Notifications: sendAdminNewUserAlert', () => {
@@ -36,35 +35,35 @@ describe('Notifications: sendAdminNewUserAlert', () => {
     process.env = originalEnv
   })
 
-  it('should return false if SENDGRID_API_KEY is missing', async () => {
-    delete process.env.SENDGRID_API_KEY
+  it('should return false if POSTMARK_SERVER_TOKEN is missing', async () => {
+    delete process.env.POSTMARK_SERVER_TOKEN
+    mockSendEmail.mockResolvedValue(false)
     
     const result = await sendAdminNewUserAlert(mockUser)
     
     expect(result).toBe(false)
-    expect(sgMail.send).not.toHaveBeenCalled()
   })
 
   it('should return true if email is sent successfully', async () => {
-    process.env.SENDGRID_API_KEY = 'test-api-key'
-    ;(sgMail.send as jest.Mock).mockResolvedValue([{ statusCode: 202 }, {}])
+    process.env.POSTMARK_SERVER_TOKEN = 'test-token'
+    mockSendEmail.mockResolvedValue(true)
     
     const result = await sendAdminNewUserAlert(mockUser)
     
     expect(result).toBe(true)
-    expect(sgMail.send).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockSendEmail).toHaveBeenCalledWith(expect.objectContaining({
       to: expect.any(String),
       subject: expect.stringContaining(mockUser.email),
     }))
   })
 
   it('should return false if email sending fails', async () => {
-    process.env.SENDGRID_API_KEY = 'test-api-key'
-    ;(sgMail.send as jest.Mock).mockRejectedValue(new Error('SendGrid error'))
+    process.env.POSTMARK_SERVER_TOKEN = 'test-token'
+    mockSendEmail.mockResolvedValue(false)
     
     const result = await sendAdminNewUserAlert(mockUser)
     
     expect(result).toBe(false)
-    expect(sgMail.send).toHaveBeenCalled()
+    expect(mockSendEmail).toHaveBeenCalled()
   })
 })

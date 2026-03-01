@@ -40,7 +40,12 @@ export async function POST(request: NextRequest) {
     let returnUrl: string | undefined
     try {
       const body: CustomerPortalRequest = await request.json()
-      returnUrl = body.returnUrl
+      if (body.returnUrl) {
+        // Ensure returnUrl is absolute — Stripe requires a full URL
+        returnUrl = body.returnUrl.startsWith('http')
+          ? body.returnUrl
+          : `${request.nextUrl.origin}${body.returnUrl.startsWith('/') ? '' : '/'}${body.returnUrl}`
+      }
     } catch {
       // Body is optional, use default return URL
     }

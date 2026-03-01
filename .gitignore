@@ -55,3 +55,6 @@ pids
 
 # Kiro
 .kiro/
+
+# Stripe
+stripe.exe

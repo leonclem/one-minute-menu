@@ -2,6 +2,7 @@ import Stripe from 'stripe'
 import { createAdminSupabaseClient } from './supabase-server'
 import { purchaseLogger } from './purchase-logger'
 import { notificationService } from './notification-service'
+import { PLAN_CONFIGS } from '@/types'
 
 /**
  * Webhook Event Processor
@@ -142,13 +143,19 @@ export async function processSubscriptionCreated(
     return
   }
 
+  // current_period_end moved to items in Stripe SDK v17+
+  // Fall back to top-level field for backwards compatibility
+  const periodEndTs = subscription.items?.data?.[0]?.current_period_end
+    ?? (subscription as any).current_period_end
+  const periodEnd = periodEndTs ? new Date(periodEndTs * 1000).toISOString() : null
+
   // Update subscription status
   const { error: updateError } = await supabase
     .from('profiles')
     .update({
       stripe_subscription_id: subscription.id,
       subscription_status: subscription.status,
-      subscription_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+      ...(periodEnd && { subscription_period_end: periodEnd }),
     })
     .eq('id', profile.id)
 
@@ -203,13 +210,18 @@ export async function processSubscriptionUpdated(
     )
   }
 
+  // current_period_end moved to items in Stripe SDK v17+
+  // Fall back to top-level field for backwards compatibility
+  const periodEndTs = subscription.items?.data?.[0]?.current_period_end
+    ?? (subscription as any).current_period_end
+
   // Update subscription status and period end
   // Note: We do NOT update billing_currency here - subscription currency is immutable
   const { error: updateError } = await supabase
     .from('profiles')
     .update({
       subscription_status: subscription.status,
-      subscription_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+      ...(periodEndTs && { subscription_period_end: new Date(periodEndTs * 1000).toISOString() }),
     })
     .eq('id', profile.id)
 
@@ -222,6 +234,13 @@ export async function processSubscriptionUpdated(
     `[webhook:${requestId}] Subscription ${subscription.id} updated for user ${profile.id}. ` +
     `Currency: ${subscriptionCurrency} (immutable)`
   )
+
+  // Send cancellation-scheduled email when cancel_at_period_end is set
+  if (subscription.cancel_at_period_end && periodEndTs) {
+    const periodEndDate = new Date(periodEndTs * 1000)
+    await notificationService.sendCancellationScheduledNotification(profile.id, periodEndDate)
+    console.log(`[webhook:${requestId}] Cancellation scheduled notification sent for user ${profile.id}`)
+  }
 }
 
 /**
@@ -251,12 +270,26 @@ export async function processSubscriptionDeleted(
     return
   }
 
-  // Update subscription status to canceled
-  // Note: Access is maintained until period_end (handled by subscription_period_end field)
-  const periodEnd = new Date((subscription as any).current_period_end * 1000)
+  // current_period_end moved to items in Stripe SDK v17+
+  // Fall back to top-level field for backwards compatibility
+  const periodEndTs = subscription.items?.data?.[0]?.current_period_end
+    ?? (subscription as any).current_period_end
+  const periodEnd = periodEndTs
+    ? new Date(periodEndTs * 1000)
+    : new Date((subscription as any).canceled_at * 1000 || Date.now())
+
+  // Downgrade plan to free and reset limits
+  const freeLimits = PLAN_CONFIGS.free
   const { error: updateError } = await supabase
     .from('profiles')
     .update({
+      plan: 'free',
+      plan_limits: {
+        menus: freeLimits.menus,
+        items: freeLimits.menuItems,
+        monthly_uploads: freeLimits.monthlyUploads,
+        ai_image_generations: freeLimits.aiImageGenerations,
+      },
       subscription_status: 'canceled',
       subscription_period_end: periodEnd.toISOString(),
     })
