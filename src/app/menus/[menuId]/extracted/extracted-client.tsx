@@ -11,7 +11,7 @@ import type { Menu, MenuItem, MenuCategory } from '@/types'
 import { normalizeDemoMenu } from '@/lib/demo-menu-normalizer'
 import type { ExtractionResultType as Stage1ExtractionResult } from '@/lib/extraction/schema-stage1'
 import type { ExtractionResultV2Type as Stage2ExtractionResult } from '@/lib/extraction/schema-stage2'
-import { ImageUp, Sparkles, QrCode, Pencil } from 'lucide-react'
+import { ImageUp, Sparkles, Pencil } from 'lucide-react'
 import AIImageGeneration from '@/components/AIImageGeneration'
 import BatchAIImageGeneration from '@/components/BatchAIImageGeneration'
 import ItemManagementModal from '@/components/ItemManagementModal'
@@ -775,6 +775,18 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         
         const result = await response.json()
         console.log('Update result:', result)
+      }
+
+      // Update the categories array to rename the entry, preserving its order
+      if (authMenu?.categories && authMenu.categories.length > 0) {
+        const updatedCategories = authMenu.categories.map(c =>
+          c.name === oldName ? { ...c, name: normalizedNewName } : c
+        )
+        await fetch(`/api/menus/${menuId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: authMenu.name, categories: updatedCategories }),
+        })
       }
 
       await refreshMenu()
@@ -1619,37 +1631,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                       ? 'Try out our AI image generation tools. In the full version, you can customize styles and regenerate images until they are perfect.'
                       : 'Shortcuts to update your menu image or open the full editor for batch photos, item tools, and QR codes.'}
                   </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <p className="text-xs text-ux-text-secondary">
-                      {selectedCount > 0
-                        ? `${selectedCount} item${selectedCount === 1 ? '' : 's'} selected.`
-                        : 'No items selected yet.'}
-                    </p>
-                    {!isDemo && totalItems > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleToggleSelectAll}
-                        className="text-xs font-medium text-ux-primary hover:text-ux-primary/80 transition-colors flex items-center gap-1.5"
-                        aria-label={selectedCount === totalItems ? "Deselect all items" : "Select all items"}
-                      >
-                        {selectedCount === totalItems ? (
-                          <>
-                            <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-[3px] bg-ux-primary text-white">
-                              <svg className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            </span>
-                            Deselect all
-                          </>
-                        ) : (
-                          <>
-                            <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-[3px] border border-ux-primary/50"></span>
-                            Select all
-                          </>
-                        )}
-                      </button>
-                    )}
-                  </div>
+
                 </div>
                 <button
                   type="button"
@@ -1761,33 +1743,20 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                               Add Category
                             </UXButton>
                             <UXButton
-                              variant="warning"
+                              variant="outline"
                               size="md"
-                              onClick={() => router.push(`/dashboard/menus/${menuId}`)}
-                              disabled={loading}
+                              onClick={() => selectedCount > 0 ? setShowBulkDelete(true) : undefined}
+                              disabled={loading || isReadOnly || selectedCount === 0}
+                              className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 disabled:opacity-40"
                             >
-                              <QrCode className="hidden sm:inline-block h-4 w-4 mr-2" />
-                              Add QR / manage items
+                              <svg className="hidden sm:inline-block h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              {selectedCount > 0 ? `Delete Selected (${selectedCount})` : 'Delete Selected'}
                             </UXButton>
                           </>
                         )}
                       </div>
-                      {selectedCount > 0 && (
-                        <div className="flex justify-end">
-                          <UXButton
-                            variant="outline"
-                            size="md"
-                            onClick={() => setShowBulkDelete(true)}
-                            disabled={loading || isReadOnly}
-                            className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
-                          >
-                            <svg className="hidden sm:inline-block h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            Delete Selected ({selectedCount})
-                          </UXButton>
-                        </div>
-                      )}
                       <div className="hidden">{/* Close the grid div properly */}
                       </div>
                     </>
@@ -1914,6 +1883,42 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                           )}
                         </span>
                       )}
+                      {!isDemo && !isReadOnly && items.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const allKeys = items.map((item, index) => makeItemKey(category, item, index))
+                            const allSelected = allKeys.every(k => selectedItemKeys.has(k))
+                            setSelectedItemKeys(prev => {
+                              const next = new Set(prev)
+                              if (allSelected) {
+                                allKeys.forEach(k => next.delete(k))
+                              } else {
+                                allKeys.forEach(k => next.add(k))
+                              }
+                              return next
+                            })
+                          }}
+                          className="text-xs font-medium text-ux-primary hover:text-ux-primary/80 transition-colors flex items-center gap-1.5"
+                          aria-label={selectedInCategory === items.length ? `Deselect all in ${category}` : `Select all in ${category}`}
+                        >
+                          {selectedInCategory === items.length ? (
+                            <>
+                              <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-[3px] bg-ux-primary text-white">
+                                <svg className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              </span>
+                              Deselect all
+                            </>
+                          ) : (
+                            <>
+                              <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-[3px] border border-ux-primary/50"></span>
+                              Select all
+                            </>
+                          )}
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="inline-flex h-7 w-7 items-center justify-center rounded-full text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-primary transition-colors"
@@ -2035,6 +2040,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                           )}
                           <div className="flex flex-col gap-2">
                             <div className="flex items-start gap-2">
+                              {!isDemo && (
                               <button
                                 type="button"
                                 role="checkbox"
@@ -2069,6 +2075,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                                   </svg>
                                 )}
                               </button>
+                              )}
                               <div className="flex-1 min-w-0">
                                 <h4 className="font-medium text-ux-text leading-tight flex items-center gap-1">
                                   {raw.name}
@@ -2079,7 +2086,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                               </div>
                             </div>
                             {raw.description && (
-                              <p className="text-xs text-ux-text-secondary leading-relaxed line-clamp-3 mt-1 pl-6">
+                              <p className={`text-xs text-ux-text-secondary leading-relaxed line-clamp-3 mt-1 ${isDemo ? '' : 'pl-6'}`}>
                                 {raw.description}
                               </p>
                             )}

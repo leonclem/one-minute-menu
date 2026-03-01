@@ -3,13 +3,16 @@
 ## Outbound Email
 - [x] Upgrade SendGrid plan to Pro to prevent IP address sharing (with potential spammers)
 - [x] Create Google Workspace account to enable outgoing @gridmenu.ai email addresses
-- [ ] *NEXT* Switch provider away from SendGrid
-- [ ] Determine and document all emails sent
+- [ ] *NEXT* Switch provider from SendGrid to Postmark
+- [x] Determine and document all emails sent
 - [ ] Update style and content
 
 ## /extracted
 - [ ] Menu Control Panel > Download Menu pages (PDF)
-- [ ] *NEXT* Renaming a category pushes it to the bottom
+- [x] Renaming a category pushes it to the bottom
+- [ ] Disable but don't delete images for item or category
+- [x] "Select all" in category but not all in menu
+- [x] Remove "Add QR / manage items" button from control panel
 
 ## Deployment
 - [x] Upgrade Vercel package
@@ -62,7 +65,6 @@
 - [ ] Menu Control Panel > Download Menu pages (PNG zip)
 - [ ] Menu Control Panel > Download Menu Images (PNG zip)
 - [ ] Sometimes not enough space for menu item description.  We need to limit the characters for menu item creation.
-- [ ] Capability for "Don't display images for this category".
 - [ ] Rename this page to menu curator
 - [ ] Move item up or down
 
@@ -70,7 +72,7 @@
 - [ ] Add capability to add a payment QR code via the /extracted page (and reflect on pricing page)
 
 ## /template
-- [ ] If no images for category (or item?), render as text-only layout.
+- [ ] If no/disabled images for category (or item?), render as text-only layout.
 - [ ] Images too dark, perhaps only darken lower half (assuming top half has text)
 - [ ] Menu design, e.g. paint splashes, food ingredients, etc. (overlay)
 - [ ] Alternating colour tiles (i.e. menu items, not spacers).
@@ -95,8 +97,7 @@
 - [ ] Grid+Premium option to suggest descriptions, etc.
 - [ ] Footer should use real social media handles (with icons)
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
-- [ ] Disable but don't delete images for item or category
-- [ ] Image resolutions - 1k for Creator Pack, 2k for GridMenu, 4k for GridMenu+
+- [ ] Image resolutions - 1k for Creator Pack, 2k for GridMenu, 4k for GridMenu+.  Consider Nano Banana 2.
 - [ ] Batch 
 - [ ] Add FAQ "I didn't receive my menu?", check junk/spam folders, etc.
 - [ ] Dashboard should provide download link/button if menu already exported (consider modal wording changes when clicking export from /template page)
@@ -121,7 +122,6 @@
 - [ ] Advanced menu options: Edit order of categories
 - [ ] Logging
 - [ ] Admin dashboard enhancements
-- [ ] Review "select all" in category on /extracted page
 - [ ] Watermark images in Creator Pack
 - [ ] QA to ensure pricing matches reality
 - [ ] Show preview picture of menu (if design template chosen) embedded in Dashboard menus
