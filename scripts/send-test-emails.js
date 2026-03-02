@@ -90,12 +90,12 @@ const SAMPLE = {
 function emailShell(body) {
   return `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-      <div style="background-color: #01B3BF; padding: 24px 32px; border-radius: 8px 8px 0 0; text-align: center;">
+      <div style="background-color: #ffffff; padding: 24px 32px; border-radius: 8px 8px 0 0; text-align: center; border: 1px solid #01B3BF; border-bottom: 3px solid #01B3BF;">
         <img src="${LOGO_URL}" alt="${COMPANY_NAME}" width="160" height="auto"
              style="display: block; margin: 0 auto; max-width: 160px;"
              onerror="this.style.display='none'" />
       </div>
-      <div style="padding: 32px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+      <div style="padding: 32px; border: 1px solid #01B3BF; border-top: none; border-radius: 0 0 8px 8px;">
         ${body}
       </div>
     </div>`
