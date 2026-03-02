@@ -205,6 +205,30 @@ const faqs: Array<{ q: string; a: ReactNode; aPlainText: string }> = [
       </div>
     ),
   },
+  {
+    q: 'How long are my exported files kept, and can I re-download them?',
+    aPlainText:
+      'Yes — exported files are stored securely and available to re-download directly from your dashboard, without needing to go back to your inbox. The storage period depends on your plan: Creator Pack users have 30 days, Grid+ users have 90 days, and Grid+Premium users have 180 days. After this period the file is automatically removed, but you can always re-export your menu at any time to generate a fresh copy. The download link sent by email is valid for 7 days, but the file itself remains available on your dashboard for the full retention period.',
+    a: (
+      <div className="space-y-3">
+        <p>
+          Yes — exported files are stored securely and available to re-download directly from your dashboard, without
+          needing to go back to your inbox.
+        </p>
+        <p>The storage period depends on your plan:</p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>Creator Pack: 30 days</li>
+          <li>Grid+: 90 days</li>
+          <li>Grid+Premium: 180 days</li>
+        </ul>
+        <p>
+          After this period the file is automatically removed, but you can always re-export your menu at any time to
+          generate a fresh copy. The download link sent by email is valid for 7 days, but the file itself remains
+          available on your dashboard for the full retention period.
+        </p>
+      </div>
+    ),
+  },
 ]
 
 /** FAQPage schema for SEO (schema.org). Generated from the same FAQ data as the visible list. */

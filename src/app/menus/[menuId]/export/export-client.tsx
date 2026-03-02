@@ -727,6 +727,14 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
               )
             })}
           </div>
+
+          {/* Retention notice for authenticated users */}
+          {!isDemo && (
+            <p className="mt-4 text-center text-xs text-white/70">
+              Exported files are stored securely and available to re-download from your dashboard.
+              Creator Pack: 30 days · Grid+: 90 days · Grid+Premium: 180 days.
+            </p>
+          )}
         </div>
 
         {/* Conversion Incentives (improved contrast) - Only show for demo users */}

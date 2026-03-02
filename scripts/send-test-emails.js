@@ -216,7 +216,7 @@ function buildEmails() {
       label: 'User — Creator Pack Confirmation (paid)',
       to: recipient,
       subject: `${COMPANY_NAME} — Your Creator Pack purchase is confirmed`,
-      text: `Thank you for purchasing a Creator Pack!\n\nYou can now create one additional menu with full editing capabilities.\n\nPack Details:\n- Valid for: 24 months\n- Edit window: 7 days from creation\n- Additional menus: 1\n\nStart creating: ${APP_URL}/dashboard\n\nThank you for choosing ${COMPANY_NAME}!`,
+      text: `Thank you for purchasing a Creator Pack!\n\nYou can now create one additional menu with full editing capabilities.\n\nPack Details:\n- Valid for: 24 months\n- Edit window: 7 days from creation\n- Additional menus: 1\n- Exported PDF menu storage: 30 days\n\nStart creating: ${APP_URL}/dashboard\n\nThank you for choosing ${COMPANY_NAME}!`,
       html: emailShell(`
         <h2 style="color: #1a202c; margin-top: 0;">Creator Pack Confirmed</h2>
         <p style="color: #4a5568; font-size: 16px;">Thank you for purchasing a Creator Pack!</p>
@@ -226,6 +226,7 @@ function buildEmails() {
           <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Valid for:</strong> 24 months</p>
           <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Edit window:</strong> 7 days from creation</p>
           <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Additional menus:</strong> 1</p>
+          <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Exported PDF menu storage:</strong> 30 days</p>
         `)}
         ${primaryButton(`${APP_URL}/dashboard`, 'Start Creating')}
         ${signOff()}
@@ -238,7 +239,7 @@ function buildEmails() {
       label: 'User — Creator Pack Confirmation (free)',
       to: recipient,
       subject: `${COMPANY_NAME} — Your free Creator Pack is ready!`,
-      text: `Your free Creator Pack has been added to your account!\n\nYou can now create one additional menu with full editing capabilities.\n\nPack Details:\n- Valid for: 24 months\n- Edit window: 7 days from creation\n- Additional menus: 1\n\nStart creating: ${APP_URL}/dashboard\n\nThank you for choosing ${COMPANY_NAME}!`,
+      text: `Your free Creator Pack has been added to your account!\n\nYou can now create one additional menu with full editing capabilities.\n\nPack Details:\n- Valid for: 24 months\n- Edit window: 7 days from creation\n- Additional menus: 1\n- Exported PDF menu storage: 30 days\n\nStart creating: ${APP_URL}/dashboard\n\nThank you for choosing ${COMPANY_NAME}!`,
       html: emailShell(`
         <h2 style="color: #1a202c; margin-top: 0;">Your Free Creator Pack is Ready!</h2>
         <p style="color: #4a5568; font-size: 16px;">Your free Creator Pack has been added to your account!</p>
@@ -248,6 +249,7 @@ function buildEmails() {
           <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Valid for:</strong> 24 months</p>
           <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Edit window:</strong> 7 days from creation</p>
           <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Additional menus:</strong> 1</p>
+          <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Exported PDF menu storage:</strong> 30 days</p>
         `)}
         ${primaryButton(`${APP_URL}/dashboard`, 'Start Creating')}
         ${signOff()}
@@ -315,18 +317,20 @@ function buildEmails() {
       label: 'User — Export Ready (PDF)',
       to: recipient,
       subject: `${COMPANY_NAME} — Your PDF export is ready: ${exp.menuName}`,
-      text: `Your PDF export for "${exp.menuName}" is ready!\n\nDownload your file using the link below. This link is valid for 7 days.\n\nDownload: ${exp.downloadUrl}\n\nMenu: ${exp.menuName}\nType: PDF\n\nThank you for using ${COMPANY_NAME}!`,
+      text: `Your PDF export for "${exp.menuName}" is ready!\n\nDownload your file using the link below. This link is valid for 7 days. Your file is stored for 30 days — you can re-download it from your dashboard at any time during that period.\n\nDownload: ${exp.downloadUrl}\n\nMenu: ${exp.menuName}\nType: PDF\n\nThank you for using ${COMPANY_NAME}!`,
       html: emailShell(`
         <h2 style="color: #1a202c; margin-top: 0;">Your Export is Ready!</h2>
         <p style="color: #4a5568; font-size: 16px;">Your PDF export for <strong>"${exp.menuName}"</strong> has been successfully generated.</p>
         ${infoBox(`
           <p style="margin: 0; color: #4a5568;"><strong>Menu:</strong> ${exp.menuName}</p>
           <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Type:</strong> PDF</p>
+          <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>File stored for:</strong> 30 days</p>
         `)}
         <p style="color: #4a5568; font-size: 16px;">Click below to download your file. This link is valid for 7 days.</p>
         ${primaryButton(exp.downloadUrl, 'Download PDF')}
         <p style="color: #718096; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
         <p style="color: #01B3BF; font-size: 14px; word-break: break-all;">${exp.downloadUrl}</p>
+        <p style="color: #718096; font-size: 14px;">You can also re-download this file from your dashboard for up to <strong>30 days</strong> after export.</p>
         ${signOff()}
       `),
     },
@@ -337,18 +341,20 @@ function buildEmails() {
       label: 'User — Export Ready (Image)',
       to: recipient,
       subject: `${COMPANY_NAME} — Your Image export is ready: ${exp.menuName}`,
-      text: `Your Image export for "${exp.menuName}" is ready!\n\nDownload your file using the link below. This link is valid for 7 days.\n\nDownload: ${exp.downloadUrl}\n\nMenu: ${exp.menuName}\nType: Image\n\nThank you for using ${COMPANY_NAME}!`,
+      text: `Your Image export for "${exp.menuName}" is ready!\n\nDownload your file using the link below. This link is valid for 7 days. Your file is stored for 30 days — you can re-download it from your dashboard at any time during that period.\n\nDownload: ${exp.downloadUrl}\n\nMenu: ${exp.menuName}\nType: Image\n\nThank you for using ${COMPANY_NAME}!`,
       html: emailShell(`
         <h2 style="color: #1a202c; margin-top: 0;">Your Export is Ready!</h2>
         <p style="color: #4a5568; font-size: 16px;">Your Image export for <strong>"${exp.menuName}"</strong> has been successfully generated.</p>
         ${infoBox(`
           <p style="margin: 0; color: #4a5568;"><strong>Menu:</strong> ${exp.menuName}</p>
           <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Type:</strong> Image</p>
+          <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>File stored for:</strong> 30 days</p>
         `)}
         <p style="color: #4a5568; font-size: 16px;">Click below to download your file. This link is valid for 7 days.</p>
         ${primaryButton(exp.downloadUrl, 'Download Image')}
         <p style="color: #718096; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
         <p style="color: #01B3BF; font-size: 14px; word-break: break-all;">${exp.downloadUrl}</p>
+        <p style="color: #718096; font-size: 14px;">You can also re-download this file from your dashboard for up to <strong>30 days</strong> after export.</p>
         ${signOff()}
       `),
     },

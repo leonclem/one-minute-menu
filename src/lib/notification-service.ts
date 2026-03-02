@@ -166,7 +166,7 @@ export const notificationService = {
         from: FROM_EMAIL,
         fromName: FROM_NAME,
         subject: withCompanyPrefix(subject),
-        text: `${greeting}\n\nYou can now create one additional menu with full editing capabilities.\n\nPack Details:\n- Valid for: 24 months\n- Edit window: 7 days from creation\n- Additional menus: 1\n\nStart creating: ${APP_URL}/dashboard\n\nThank you for choosing ${COMPANY_NAME}!${renderComplianceFooterText()}`,
+        text: `${greeting}\n\nYou can now create one additional menu with full editing capabilities.\n\nPack Details:\n- Valid for: 24 months\n- Edit window: 7 days from creation\n- Additional menus: 1\n- Exported PDF menu storage: 30 days\n\nStart creating: ${APP_URL}/dashboard\n\nThank you for choosing ${COMPANY_NAME}!${renderComplianceFooterText()}`,
         html: emailShell(`
           <h2 style="color: #1a202c; margin-top: 0;">${isFree ? 'Your Free Creator Pack is Ready!' : 'Creator Pack Confirmed'}</h2>
           <p style="color: #4a5568; font-size: 16px;">${greeting}</p>
@@ -176,6 +176,7 @@ export const notificationService = {
             <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Valid for:</strong> 24 months</p>
             <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Edit window:</strong> 7 days from creation</p>
             <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Additional menus:</strong> 1</p>
+            <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Exported PDF menu storage:</strong> 30 days</p>
           `)}
           ${primaryButton(`${APP_URL}/dashboard`, 'Start Creating')}
           ${signOff()}
@@ -297,7 +298,8 @@ export const notificationService = {
     userId: string,
     downloadUrl: string,
     menuName: string,
-    exportType: 'pdf' | 'image'
+    exportType: 'pdf' | 'image',
+    retentionDays: number = 30
   ): Promise<void> {
     try {
       const supabase = getServiceClient()
@@ -306,6 +308,7 @@ export const notificationService = {
       if (error || !profile) { console.error('[notification-service] Failed to fetch profile:', error); return }
 
       const exportTypeLabel = exportType === 'pdf' ? 'PDF' : 'Image'
+      const retentionNote = `This link is valid for 7 days. Your file is stored for ${retentionDays} days — you can re-download it from your dashboard at any time during that period.`
 
       await sendEmail({
         to: profile.email,
@@ -314,18 +317,20 @@ export const notificationService = {
         subject: withCompanyPrefix(`Your ${exportTypeLabel} export is ready: ${menuName}`),
         // Disable click tracking — Outlook/Edge flags tracked download redirects as unsafe
         disableClickTracking: true,
-        text: `Your ${exportTypeLabel} export for "${menuName}" is ready!\n\nDownload your file using the link below. This link is valid for 7 days.\n\nDownload: ${downloadUrl}\n\nMenu: ${menuName}\nType: ${exportTypeLabel}\n\nThank you for using ${COMPANY_NAME}!${renderComplianceFooterText()}`,
+        text: `Your ${exportTypeLabel} export for "${menuName}" is ready!\n\nDownload your file using the link below. ${retentionNote}\n\nDownload: ${downloadUrl}\n\nMenu: ${menuName}\nType: ${exportTypeLabel}\n\nThank you for using ${COMPANY_NAME}!${renderComplianceFooterText()}`,
         html: emailShell(`
           <h2 style="color: #1a202c; margin-top: 0;">Your Export is Ready!</h2>
           <p style="color: #4a5568; font-size: 16px;">Your ${exportTypeLabel} export for <strong>"${menuName}"</strong> has been successfully generated.</p>
           ${infoBox(`
             <p style="margin: 0; color: #4a5568;"><strong>Menu:</strong> ${menuName}</p>
             <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Type:</strong> ${exportTypeLabel}</p>
+            <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>File stored for:</strong> ${retentionDays} days</p>
           `)}
           <p style="color: #4a5568; font-size: 16px;">Click below to download your file. This link is valid for 7 days.</p>
           ${primaryButton(downloadUrl, `Download ${exportTypeLabel}`)}
           <p style="color: #718096; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
           <p style="color: #01B3BF; font-size: 14px; word-break: break-all;">${downloadUrl}</p>
+          <p style="color: #718096; font-size: 14px;">You can also re-download this file from your dashboard for up to <strong>${retentionDays} days</strong> after export.</p>
           ${signOff()}
           ${renderComplianceFooterHtml()}
         `),

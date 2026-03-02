@@ -760,7 +760,8 @@ describe('JobProcessor Property-Based Tests', () => {
               input.user_id,
               mockSignedUrl,
               input.menu_name,
-              input.export_type
+              input.export_type,
+              expect.any(Number)
             )
             
             // Failure email should NOT be sent
@@ -867,7 +868,8 @@ describe('JobProcessor Property-Based Tests', () => {
               input.user_id,
               mockSignedUrl,
               input.menu_name, // Menu name must be passed
-              input.export_type // Export type must be passed
+              input.export_type, // Export type must be passed
+              expect.any(Number) // retentionDays
             )
             
             // The notification service itself formats the subject as:

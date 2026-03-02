@@ -15,6 +15,8 @@ interface MenuCardProps {
    * This drives label/CTA behavior; server APIs still enforce permissions.
    */
   isEditLocked?: boolean
+  /** Most recent export job for this menu, if any */
+  latestExportJob?: { status: string; file_url: string | null; export_type: string; job_id: string } | null
 }
 
 /**
@@ -28,11 +30,12 @@ interface MenuCardProps {
  * - Handle menu deletion with API call
  * - Smart routing based on menu state
  */
-export function MenuCard({ menu, isEditLocked = false }: MenuCardProps) {
+export function MenuCard({ menu, isEditLocked = false, latestExportJob }: MenuCardProps) {
   const router = useRouter()
   const { showToast } = useToast()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   // Smart routing logic based on menu state (Requirements: 22.2, 22.3, 22.4, 22.5)
   const getEditUrl = () => {
@@ -54,6 +57,35 @@ export function MenuCard({ menu, isEditLocked = false }: MenuCardProps) {
 
   const handleDeleteClick = () => {
     setShowDeleteDialog(true)
+  }
+
+  const handleDownload = async () => {
+    if (!latestExportJob || latestExportJob.status !== 'completed') return
+    setIsDownloading(true)
+    try {
+      const resp = await fetch(`/api/export/jobs/${latestExportJob.job_id}/download-url`, {
+        method: 'POST',
+      })
+      const data = await resp.json().catch(() => ({}))
+      if (!resp.ok) {
+        if (resp.status === 404 || data?.code === 'JOB_NOT_FOUND' || data?.code === 'STORAGE_PATH_MISSING') {
+          showToast({
+            type: 'info',
+            title: 'Export expired',
+            description: 'This export is no longer available. Re-export your menu to generate a fresh copy.',
+          })
+        } else {
+          showToast({ type: 'error', title: 'Download failed', description: data?.error || 'Please try again.' })
+        }
+        return
+      }
+      // Open the fresh signed URL
+      window.open(data.file_url, '_blank', 'noopener,noreferrer')
+    } catch {
+      showToast({ type: 'error', title: 'Download failed', description: 'Please try again.' })
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   const handleDeleteCancel = () => {
@@ -138,12 +170,12 @@ export function MenuCard({ menu, isEditLocked = false }: MenuCardProps) {
           
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-ux-text">Items:</span>
-              <span className="text-ux-text">{menu.items?.length || 0}</span>
+              <span className="text-ux-text">Categories:</span>
+              <span className="text-ux-text">{menu.categories?.length || 0}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-ux-text">Version:</span>
-              <span className="text-ux-text">v{menu.version}</span>
+              <span className="text-ux-text">Items:</span>
+              <span className="text-ux-text">{menu.items?.length || 0}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-ux-text">Last updated:</span>
@@ -151,15 +183,44 @@ export function MenuCard({ menu, isEditLocked = false }: MenuCardProps) {
                 {menu.updatedAt ? menu.updatedAt.toLocaleDateString() : '—'}
               </span>
             </div>
-            <div className="pt-3 flex justify-center">
+            <div className="pt-3 flex flex-col gap-2">
               <Link
                 href={getEditUrl()}
-                className="inline-block w-full sm:w-auto"
+                className="inline-block w-full"
               >
-                <span className="inline-flex items-center justify-center font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ux-primary focus:ring-offset-2 btn-ux-primary px-5 py-2.5 text-sm rounded-full text-soft-shadow w-full sm:w-auto">
+                <span className="inline-flex items-center justify-center font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ux-primary focus:ring-offset-2 btn-ux-primary px-5 py-2.5 text-sm rounded-full text-soft-shadow w-full">
                   {isEditLocked ? 'View Menu' : 'Edit menu'}
                 </span>
               </Link>
+              {latestExportJob && latestExportJob.status === 'completed' ? (
+                <button
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  className="inline-flex items-center justify-center gap-1.5 w-full px-5 py-2.5 text-sm font-semibold rounded-full border border-ux-primary text-ux-primary hover:bg-ux-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-ux-primary focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isDownloading ? (
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  )}
+                  {isDownloading ? 'Preparing…' : `Download ${latestExportJob.export_type.toUpperCase()}`}
+                </button>
+              ) : latestExportJob && (latestExportJob.status === 'pending' || latestExportJob.status === 'processing') ? (
+                <span
+                  className="inline-flex items-center justify-center gap-1.5 w-full px-5 py-2.5 text-sm font-semibold rounded-full border border-ux-border text-ux-text-secondary cursor-not-allowed opacity-60"
+                  title="Export is being prepared"
+                  aria-disabled="true"
+                >
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Preparing export…
+                </span>
+              ) : null}
             </div>
           </div>
         </div>

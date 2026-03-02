@@ -142,13 +142,13 @@ export class FileCleanup {
    * Run a single cleanup cycle
    * 
    * This method:
-   * 1. Queries for completed jobs > retention period old
+   * 1. Queries for completed jobs past their plan-specific retention window
    * 2. Deletes files from Supabase Storage
    * 3. Deletes job records from database
    * 4. Logs cleanup statistics
    * 
    * Requirements:
-   * - 9.4: Automatically delete files older than 30 days
+   * - 9.4: Automatically delete files past their retention window
    */
   private async runCleanup(): Promise<void> {
     const startTime = Date.now()
@@ -158,12 +158,8 @@ export class FileCleanup {
         retentionDays: this.config.retentionDays,
       })
 
-      // Calculate cutoff date
-      const cutoffDate = new Date()
-      cutoffDate.setDate(cutoffDate.getDate() - this.config.retentionDays)
-
-      // Find old completed jobs
-      const oldJobs = await findOldCompletedJobs(cutoffDate)
+      // Find old completed jobs using per-plan retention windows
+      const oldJobs = await findOldCompletedJobs()
 
       if (oldJobs.length === 0) {
         this.config.logger.info('No old files found to clean up')
@@ -172,7 +168,6 @@ export class FileCleanup {
 
       this.config.logger.info('Found old jobs to clean up', {
         count: oldJobs.length,
-        cutoffDate: cutoffDate.toISOString(),
       })
 
       // Delete files from storage
@@ -198,7 +193,8 @@ export class FileCleanup {
       }
 
       // Delete job records from database
-      const jobsDeleted = await deleteOldCompletedJobs(cutoffDate)
+      const jobIds = oldJobs.map(j => j.id)
+      const jobsDeleted = await deleteOldCompletedJobs(jobIds)
 
       const duration = Date.now() - startTime
 
@@ -208,7 +204,6 @@ export class FileCleanup {
         fileDeleteErrors,
         jobsDeleted,
         durationMs: duration,
-        cutoffDate: cutoffDate.toISOString(),
       })
     } catch (error) {
       const duration = Date.now() - startTime
@@ -238,10 +233,7 @@ export class FileCleanup {
     this.config.logger.info('Manual cleanup triggered')
 
     try {
-      const cutoffDate = new Date()
-      cutoffDate.setDate(cutoffDate.getDate() - this.config.retentionDays)
-
-      const oldJobs = await findOldCompletedJobs(cutoffDate)
+      const oldJobs = await findOldCompletedJobs()
 
       if (oldJobs.length === 0) {
         return {
@@ -269,7 +261,8 @@ export class FileCleanup {
       }
 
       // Delete job records
-      const jobsDeleted = await deleteOldCompletedJobs(cutoffDate)
+      const jobIds = oldJobs.map(j => j.id)
+      const jobsDeleted = await deleteOldCompletedJobs(jobIds)
 
       this.config.logger.info('Manual cleanup completed', {
         oldJobsFound: oldJobs.length,

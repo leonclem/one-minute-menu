@@ -972,50 +972,73 @@ export async function getQueueStats(): Promise<QueueStats> {
 }
 
 /**
- * Task 21.1: Find old completed jobs
- * 
- * Identifies completed jobs older than the specified date.
- * 
- * @param olderThan - Date threshold for old jobs
- * @returns Array of old job IDs with their storage paths
+ * Retention windows in days per plan.
+ * Creator Pack (free/one-time): 30 days
+ * Grid+: 90 days
+ * Grid+Premium: 180 days
+ * Admins / unknown: treated as Grid+Premium (180 days, safest default)
  */
-export async function findOldCompletedJobs(
-  olderThan: Date
-): Promise<Array<{ id: string; storage_path: string | null }>> {
+export const EXPORT_RETENTION_DAYS: Record<string, number> = {
+  free: 30,
+  creator_pack: 30,
+  grid_plus: 90,
+  grid_plus_premium: 180,
+  premium: 180,       // legacy alias
+  enterprise: 180,    // legacy alias
+}
+
+export const DEFAULT_RETENTION_DAYS = 180
+
+export function getRetentionDaysForPlan(plan: string | null | undefined): number {
+  if (!plan) return DEFAULT_RETENTION_DAYS
+  return EXPORT_RETENTION_DAYS[plan] ?? DEFAULT_RETENTION_DAYS
+}
+
+export async function findOldCompletedJobs(): Promise<Array<{ id: string; storage_path: string | null }>> {
   return databaseClient.withRetry(async () => {
     const client = databaseClient.getClient()
 
+    // Fetch completed jobs joined with the user's current plan so we can apply
+    // per-plan retention windows (30 / 90 / 180 days).
     const { data, error } = await client
       .from('export_jobs')
-      .select('id, storage_path')
+      .select('id, storage_path, created_at, user_id, profiles(plan)')
       .eq('status', 'completed')
-      .lt('created_at', olderThan.toISOString())
+      // Pre-filter: nothing younger than the shortest window (30 days) can ever be eligible
+      .lt('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
 
     if (error) {
       throw new Error(`Failed to find old completed jobs: ${error.message}`)
     }
 
-    return data || []
+    const now = Date.now()
+    return (data || []).filter((job: any) => {
+      const plan = job.profiles?.plan ?? null
+      const retentionMs = getRetentionDaysForPlan(plan) * 24 * 60 * 60 * 1000
+      const createdAt = new Date(job.created_at).getTime()
+      return now - createdAt > retentionMs
+    })
   }, 'findOldCompletedJobs')
 }
 
 /**
  * Task 21.1: Delete old completed jobs
- * 
- * Deletes completed job records older than the specified date.
- * 
- * @param olderThan - Date threshold for old jobs
+ *
+ * Deletes completed job records by explicit job IDs (plan-aware retention
+ * means we can no longer use a single date cutoff).
+ *
+ * @param jobIds - IDs of jobs to delete
  * @returns Number of jobs deleted
  */
-export async function deleteOldCompletedJobs(olderThan: Date): Promise<number> {
+export async function deleteOldCompletedJobs(jobIds: string[]): Promise<number> {
+  if (jobIds.length === 0) return 0
   return databaseClient.withRetry(async () => {
     const client = databaseClient.getClient()
 
     const { data, error } = await client
       .from('export_jobs')
       .delete()
-      .eq('status', 'completed')
-      .lt('created_at', olderThan.toISOString())
+      .in('id', jobIds)
       .select('id')
 
     if (error) {

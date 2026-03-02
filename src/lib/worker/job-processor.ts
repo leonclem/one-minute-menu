@@ -23,10 +23,11 @@ import {
   ExtractionJob,
   updateJobToCompleted,
   updateJobToFailed,
-  resetJobToPendingWithBackoff,
   updateJobStatus,
+  resetJobToPendingWithBackoff,
   updateExtractionJobToCompleted,
   updateExtractionJobToFailed,
+  getRetentionDaysForPlan,
 } from './database-client'
 import { notificationService } from '@/lib/notification-service'
 import { createMenuExtractionService } from '@/lib/extraction/menu-extraction-service'
@@ -202,11 +203,22 @@ export class JobProcessor {
       // Step 9: Send completion notification email (skip for demo jobs)
       if (job.user_id) {
         const menuName = job.metadata.menu_name || 'Your Menu'
+        // Fetch user plan to include the correct retention window in the email
+        let retentionDays = 30
+        try {
+          const supabase = createWorkerSupabaseClient()
+          const { data: profile } = await supabase
+            .from('profiles').select('plan').eq('id', job.user_id).single()
+          retentionDays = getRetentionDaysForPlan(profile?.plan)
+        } catch {
+          // best-effort; fall back to minimum retention
+        }
         await notificationService.sendExportCompletionEmail(
           job.user_id,
           signedUrl,
           menuName,
-          job.export_type
+          job.export_type,
+          retentionDays
         )
         logInfo('Sent completion email', { job_id: job.id })
       }

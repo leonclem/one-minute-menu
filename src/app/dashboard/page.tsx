@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   }
 
   // Get user profile, menus, and check if user is admin
-  const [profile, menus, currentUser, creatorPackData] = await Promise.all([
+  const [profile, menus, currentUser, creatorPackData, latestExportJobs] = await Promise.all([
     userOperations.getProfile(user.id),
     menuOperations.getUserMenus(user.id),
     getCurrentUser(),
@@ -54,6 +54,22 @@ export default async function DashboardPage() {
         count: countablePacks.length, 
         latestEditWindowEnd 
       }
+    })(),
+    // Fetch the most recent completed export job per menu for the download button
+    (async () => {
+      const { data: jobs } = await supabase
+        .from('export_jobs')
+        .select('id, menu_id, status, file_url, export_type, created_at')
+        .eq('user_id', user.id)
+        .not('menu_id', 'is', null)
+        .order('created_at', { ascending: false })
+      if (!jobs) return {} as Record<string, { status: string; file_url: string | null; export_type: string; job_id: string }>
+      // Keep only the most recent job per menu_id
+      const byMenu: Record<string, { status: string; file_url: string | null; export_type: string; job_id: string }> = {}
+      for (const job of jobs) {
+        if (!byMenu[job.menu_id]) byMenu[job.menu_id] = { status: job.status, file_url: job.file_url, export_type: job.export_type, job_id: job.id }
+      }
+      return byMenu
     })()
   ])
   
@@ -273,7 +289,7 @@ export default async function DashboardPage() {
                   </Link>
                 )}
                 {menus.map((menu) => (
-                  <MenuCard key={menu.id} menu={menu} isEditLocked={isEditWindowExpired} />
+                  <MenuCard key={menu.id} menu={menu} isEditLocked={isEditWindowExpired} latestExportJob={latestExportJobs[menu.id]} />
                 ))}
               </div>
             ) : (

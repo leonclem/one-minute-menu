@@ -53,7 +53,7 @@ export default function UXPricingPageContent({
     },
     {
       q: 'Does my Creator Pack ever expire?',
-      a: 'Creator Packs are valid for 24 months from purchase. You can export and use your menu during this period.'
+      a: 'Creator Packs are valid for 24 months from purchase. You can export and use your menu during this period. Exported files are stored for 30 days and available to re-download from your dashboard. Grid+ and Grid+Premium subscribers get 90 and 180 days of export storage respectively.'
     },
     {
       q: 'Can I upgrade later?',
