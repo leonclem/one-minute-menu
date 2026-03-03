@@ -102,6 +102,7 @@ export async function GET(
       : undefined
     const showMenuTitle = searchParams.get('showMenuTitle') === 'true'
     const showVignette = searchParams.get('showVignette') === 'true'
+    const showCategoryTitles = searchParams.get('showCategoryTitles') !== 'false' // default true
     const engineVersion = (searchParams.get('engineVersion') as 'v1' | 'v2') || 'v2'
     
     if (!templateId) {
@@ -166,6 +167,7 @@ export async function GET(
       targetCellWidthPt,
       showMenuTitle,
       showVignette,
+      showCategoryTitles,
       engineVersion
     }
     
@@ -208,6 +210,7 @@ export async function GET(
           targetCellWidthPt,
           showMenuTitle,
           showVignette,
+          showCategoryTitles,
           colourPaletteId: paletteId || undefined,
           imageMode
         },
@@ -280,6 +283,7 @@ export async function POST(
       targetCellWidthPt,
       showMenuTitle = false,
       showVignette = true,
+      showCategoryTitles = true,
       engineVersion = 'v2'
     } = configuration
     const imageMode = rawImageMode === 'none' ? 'stretch' : rawImageMode
@@ -316,6 +320,7 @@ export async function POST(
           targetCellWidthPt,
           showMenuTitle,
           showVignette,
+          showCategoryTitles,
           colourPaletteId: paletteId,
           imageMode
         },

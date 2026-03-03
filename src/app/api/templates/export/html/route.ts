@@ -84,6 +84,7 @@ async function handleV2TemplateEngine(
       texturesEnabled: configuration.texturesEnabled !== false,
       showMenuTitle: configuration.showMenuTitle || false,
       showVignette: configuration.showVignette !== false,
+      showCategoryTitles: configuration.showCategoryTitles !== false,
       colourPaletteId: configuration.colourPaletteId || configuration.paletteId,
       imageMode: imageModeForEngine
     },

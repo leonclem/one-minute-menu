@@ -376,8 +376,10 @@ export class JobProcessor {
           textureId: config?.textureId,
           textOnly: config?.textOnly || false,
           fillersEnabled: config?.fillersEnabled !== false,
+          spacerTilePatternId: config?.spacerTilePatternId || (config?.spacerTiles !== 'none' ? config?.spacerTiles : undefined),
           showMenuTitle: config?.showMenuTitle || false,
           showVignette: config?.showVignette !== false,
+          showCategoryTitles: config?.showCategoryTitles !== false,
           imageMode: config?.imageMode || 'stretch',
         }
       })

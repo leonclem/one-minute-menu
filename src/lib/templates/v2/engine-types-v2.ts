@@ -457,6 +457,8 @@ export interface SelectionConfigV2 {
   itemDropShadow?: boolean
   /** Fill menu item tiles with the palette background colour */
   fillItemTiles?: boolean
+  /** Show category/section title headers (defaults to true) */
+  showCategoryTitles?: boolean
   /** Optional target cell width in points; when set, gapX is derived to achieve this width (clamped to per-cols min/max) */
   targetCellWidthPt?: number
 }

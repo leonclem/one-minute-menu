@@ -112,12 +112,6 @@ export function TemplateDropdown({
         )}>
           {selected.name}
         </span>
-        <span className={cn(
-          'text-xs',
-          variant === 'primary' ? 'text-ux-text-secondary' : 'text-gray-500'
-        )}>
-          {selected.description}
-        </span>
         <svg
           className={cn('absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 shrink-0 transition-transform', open && 'rotate-180')}
           fill="none"
@@ -167,12 +161,6 @@ export function TemplateDropdown({
                 )}
               >
                 <span className="font-bold text-sm">{t.name}</span>
-                <span className={cn(
-                  'text-xs',
-                  variant === 'primary' ? 'text-ux-text-secondary' : 'text-gray-500'
-                )}>
-                  {t.description}
-                </span>
               </li>
             )
           })}

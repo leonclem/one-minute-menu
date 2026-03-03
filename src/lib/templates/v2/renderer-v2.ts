@@ -97,6 +97,8 @@ export interface RenderOptionsV2 {
   itemDropShadow?: boolean
   /** Fill menu item tiles with the palette background colour */
   fillItemTiles?: boolean
+  /** Show category/section title headers (defaults to true) */
+  showCategoryTitles?: boolean
   /** Override filler tile rendering with this pattern ID (from FILLER_PATTERN_REGISTRY); when set, all filler tiles use this pattern */
   spacerTilePatternId?: string
 }
@@ -722,6 +724,8 @@ export interface FillerPatternConfig {
   label: string
   /** Returns a tileable SVG as data URI using palette colors */
   getSvgDataUri: (palette: ColorPaletteV2) => string
+  /** Override background-size in px (defaults to FILLER_PATTERN_TILE_SIZE) */
+  tileSize?: number
 }
 
 const FILLER_PATTERN_TILE_SIZE = 64
@@ -794,19 +798,19 @@ function overlappingRingsSvg(palette: ColorPaletteV2): string {
   return fillerSvgDataUri(body, '0 0 60 60')
 }
 
-/** Elegant windowpane grid (30×30 tile). */
+/** Elegant windowpane grid (28×28 tile). */
 function windowpaneSvg(palette: ColorPaletteV2): string {
   const { base, light } = fillerPalette(palette)
   const body = [
     '<defs>',
-    '<pattern id="windowpane" width="30" height="30" patternUnits="userSpaceOnUse">',
-    `<rect width="30" height="30" fill="${base}"/>`,
-    `<path d="M 30 0 L 0 0 0 30" fill="none" stroke="${light}" stroke-width="1.5"/>`,
+    '<pattern id="windowpane" width="28" height="28" patternUnits="userSpaceOnUse">',
+    `<rect width="28" height="28" fill="${base}"/>`,
+    `<path d="M 28 0 L 0 0 0 28" fill="none" stroke="${light}" stroke-width="1"/>`,
     '</pattern>',
     '</defs>',
-    '<rect width="30" height="30" fill="url(#windowpane)"/>'
+    '<rect width="28" height="28" fill="url(#windowpane)"/>'
   ].join('')
-  return fillerSvgDataUri(body, '0 0 30 30')
+  return fillerSvgDataUri(body, '0 0 28 28')
 }
 
 /** Matte paper grain: subtle 8×8 micro-stipple (palette-adaptive). */
@@ -834,7 +838,7 @@ export const FILLER_PATTERN_REGISTRY = new Map<string, FillerPatternConfig>([
   ['diagonal-pinstripe', { label: 'Diagonal Pinstripe', getSvgDataUri: diagonalPinstripeSvg }],
   ['bauhaus-check', { label: 'Bauhaus Check & Circle', getSvgDataUri: bauhausCheckSvg }],
   ['overlapping-rings', { label: 'Overlapping Rings', getSvgDataUri: overlappingRingsSvg }],
-  ['windowpane', { label: 'Windowpane Grid', getSvgDataUri: windowpaneSvg }],
+  ['windowpane', { label: 'Windowpane Grid', getSvgDataUri: windowpaneSvg, tileSize: 28 }],
   ['matte-paper-grain', { label: 'Matte Paper Grain', getSvgDataUri: mattePaperGrainSvg }],
 ])
 
@@ -1964,7 +1968,8 @@ function renderFillerContent(
   if (patternId) {
     const config = FILLER_PATTERN_REGISTRY.get(patternId)!
     const dataUri = config.getSvgDataUri(palette)
-    const size = FILLER_PATTERN_TILE_SIZE
+    const scale = options.scale ?? 1
+    const size = (config.tileSize ?? FILLER_PATTERN_TILE_SIZE) * scale
     // Align pattern to region origin so it tessellates seamlessly across adjacent filler tiles
     elements.push({
       type: 'background',
@@ -1975,8 +1980,8 @@ function renderFillerContent(
       content: '',
       style: {
         background: `url("${dataUri}") repeat 0 0 / ${size}px ${size}px`,
-        backgroundPositionX: -tile.x,
-        backgroundPositionY: -tile.y,
+        backgroundPositionX: -tile.x * scale,
+        backgroundPositionY: -tile.y * scale,
         borderRadius: 4
       }
     })

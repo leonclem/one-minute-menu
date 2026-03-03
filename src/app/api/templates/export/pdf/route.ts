@@ -96,6 +96,7 @@ async function handleNewTemplateEngine(
         texturesEnabled: finalConfiguration.texturesEnabled !== false, // default true
         showMenuTitle: finalConfiguration.showMenuTitle || false,
         showVignette: finalConfiguration.showVignette !== false,
+        showCategoryTitles: finalConfiguration.showCategoryTitles !== false,
         colourPaletteId: finalConfiguration.colourPaletteId || finalConfiguration.paletteId,
         imageMode: imageModeForEngine
       },

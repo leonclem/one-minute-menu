@@ -70,6 +70,22 @@ export interface StreamingContext extends PlacementContext {
 // Context Management
 // =============================================================================
 
+const BODY_TOP_PADDING_NO_HEADERS = 20 // pts of breathing room when category titles are hidden
+
+/**
+ * When category titles are hidden, nudge the body region down slightly so items
+ * don't sit flush against the logo/header. Reduces body height by the same amount
+ * so the footer anchor is unaffected.
+ */
+function applyBodyTopPadding(regions: RegionV2[], selection?: SelectionConfigV2): void {
+  const showCategoryTitles = selection?.showCategoryTitles !== false // default true
+  if (showCategoryTitles) return
+  const body = regions.find(r => r.id === 'body')
+  if (!body) return
+  body.y += BODY_TOP_PADDING_NO_HEADERS
+  body.height -= BODY_TOP_PADDING_NO_HEADERS
+}
+
 /**
  * Initialize streaming context for pagination.
  *
@@ -85,6 +101,7 @@ export function initContext(
 ): StreamingContext {
   const showMenuTitle = selection?.showMenuTitle !== false // Default to true
   const regions = calculateRegions(pageSpec, template, showMenuTitle)
+  applyBodyTopPadding(regions, selection)
   
   const initialPage: PageLayoutV2 = {
     pageIndex: 0,
@@ -192,6 +209,7 @@ export function finalizePage(ctx: StreamingContext): void {
 export function startNewPage(ctx: StreamingContext, pageType: PageTypeV2): void {
   const showMenuTitle = ctx.selection?.showMenuTitle !== false // Default to true
   const regions = calculateRegions(ctx.pageSpec, ctx.template, showMenuTitle)
+  applyBodyTopPadding(regions, ctx.selection)
   
   const newPage: PageLayoutV2 = {
     pageIndex: ctx.pages.length,
@@ -442,40 +460,49 @@ export function streamingPaginate(
 
     nonEmptySectionIndex++
 
-    // Create section header tile with FOOTPRINT height
-    const headerTile = createSectionHeaderTile(section, template, false)
-    
-    // Check keep-with-next: header + required items must fit
-    if (!canPlaceHeaderWithItems(ctx, section, headerTile)) {
-      // Finalize current page and start new one
-      finalizePage(ctx)
-      startNewPage(ctx, 'CONTINUATION')
-      placeStaticTiles(ctx, menu, 'CONTINUATION')
+    // Conditionally place section header tile (skipped when showCategoryTitles is false)
+    const showCategoryTitles = selection?.showCategoryTitles !== false // Default to true
+    if (showCategoryTitles) {
+      // Create section header tile with FOOTPRINT height
+      const headerTile = createSectionHeaderTile(section, template, false)
       
-      // Get body region from new page
-      const newBodyRegion = getBodyRegion(ctx.currentPage.regions)
-      
-      // Section headers always start new rows - force new row if not at start
-      if (ctx.currentCol !== 0) {
-        advanceToNextRow(ctx, ctx.currentRowMaxSpan)
+      // Check keep-with-next: header + required items must fit
+      if (!canPlaceHeaderWithItems(ctx, section, headerTile)) {
+        // Finalize current page and start new one
+        finalizePage(ctx)
+        startNewPage(ctx, 'CONTINUATION')
+        placeStaticTiles(ctx, menu, 'CONTINUATION')
+        
+        // Get body region from new page
+        const newBodyRegion = getBodyRegion(ctx.currentPage.regions)
+        
+        // Section headers always start new rows - force new row if not at start
+        if (ctx.currentCol !== 0) {
+          advanceToNextRow(ctx, ctx.currentRowMaxSpan)
+        }
+        
+        // Place section header on new page
+        const placedHeader = placeTile(ctx, ctx.currentPage, headerTile, newBodyRegion, template)
+        logPlacement(ctx, 'placed', placedHeader.id, 'Section header')
+      } else {
+        // Section headers always start new rows - force new row if not at start
+        if (ctx.currentCol !== 0) {
+          advanceToNextRow(ctx, ctx.currentRowMaxSpan)
+        }
+        
+        // Place section header on current page
+        const placedHeader = placeTile(ctx, ctx.currentPage, headerTile, bodyRegion, template)
+        logPlacement(ctx, 'placed', placedHeader.id, 'Section header')
       }
       
-      // Place section header on new page
-      const placedHeader = placeTile(ctx, ctx.currentPage, headerTile, newBodyRegion, template)
-      logPlacement(ctx, 'placed', placedHeader.id, 'Section header')
+      // Advance to next row (section headers always start new rows)
+      advanceToNextRow(ctx, headerTile.rowSpan)
     } else {
-      // Section headers always start new rows - force new row if not at start
+      // No section header - still ensure items start on a new row
       if (ctx.currentCol !== 0) {
         advanceToNextRow(ctx, ctx.currentRowMaxSpan)
       }
-      
-      // Place section header on current page
-      const placedHeader = placeTile(ctx, ctx.currentPage, headerTile, bodyRegion, template)
-      logPlacement(ctx, 'placed', placedHeader.id, 'Section header')
     }
-    
-    // Advance to next row (section headers always start new rows)
-    advanceToNextRow(ctx, headerTile.rowSpan)
     
     const fillersEnabled = ctx.selection?.fillersEnabled ?? template.filler.enabled
     const { cols, rowHeight, gapY } = template.body.container
@@ -535,7 +562,7 @@ export function streamingPaginate(
           placeStaticTiles(ctx, menu, 'CONTINUATION')
           const newBodyRegion = getBodyRegion(ctx.currentPage.regions)
           let contHeaderRows = 0
-          if (template.policies.repeatSectionHeaderOnContinuation) {
+          if (template.policies.repeatSectionHeaderOnContinuation && showCategoryTitles) {
             const contHeader = createSectionHeaderTile(section, template, true)
             if (ctx.currentCol !== 0) advanceToNextRow(ctx, ctx.currentRowMaxSpan)
             const placedContHeader = placeTile(ctx, ctx.currentPage, contHeader, newBodyRegion, template)
@@ -564,7 +591,7 @@ export function streamingPaginate(
           startNewPage(ctx, 'CONTINUATION')
           placeStaticTiles(ctx, menu, 'CONTINUATION')
           const newBodyRegion = getBodyRegion(ctx.currentPage.regions)
-          if (template.policies.repeatSectionHeaderOnContinuation) {
+          if (template.policies.repeatSectionHeaderOnContinuation && showCategoryTitles) {
             const contHeader = createSectionHeaderTile(section, template, true)
             const placedContHeader = placeTile(ctx, ctx.currentPage, contHeader, newBodyRegion, template)
             logPlacement(ctx, 'placed', placedContHeader.id, 'Continuation header')

@@ -32,6 +32,7 @@ function getRestoredState(
   itemBorders: boolean
   itemDropShadow: boolean
   fillItemTiles: boolean
+  showCategoryTitles: boolean
 } {
   const mappedTemplateId =
     savedTemplateId === 'classic-grid-cards' || savedTemplateId === 'simple-rows' || savedTemplateId === 'classic-cards-v2' ? '4-column-portrait' :
@@ -72,7 +73,8 @@ function getRestoredState(
     showVignette: config.showVignette !== false,
     itemBorders: config.itemBorders !== false,
     itemDropShadow: config.itemDropShadow !== false,
-    fillItemTiles: config.fillItemTiles !== false
+    fillItemTiles: config.fillItemTiles !== false,
+    showCategoryTitles: config.showCategoryTitles !== false
   }
 }
 
@@ -101,6 +103,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [itemBorders, setItemBorders] = useState(true)
   const [itemDropShadow, setItemDropShadow] = useState(true)
   const [fillItemTiles, setFillItemTiles] = useState(true)
+  const [showCategoryTitles, setShowCategoryTitles] = useState(true)
   
   // Preview State
   const [layoutDocument, setLayoutDocument] = useState<LayoutDocumentV2 | null>(null)
@@ -154,6 +157,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   setItemBorders(r.itemBorders)
                   setItemDropShadow(r.itemDropShadow)
                   setFillItemTiles(r.fillItemTiles)
+                  setShowCategoryTitles(r.showCategoryTitles)
                   setLoading(false)
                   return
                 }
@@ -177,6 +181,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   setItemBorders(r.itemBorders)
                   setItemDropShadow(r.itemDropShadow)
                   setFillItemTiles(r.fillItemTiles)
+                  setShowCategoryTitles(r.showCategoryTitles)
                 }
               } catch {
                 // ignore invalid selection
@@ -221,6 +226,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 setItemBorders(r.itemBorders)
                 setItemDropShadow(r.itemDropShadow)
                 setFillItemTiles(r.fillItemTiles)
+                setShowCategoryTitles(r.showCategoryTitles)
                 setLoading(false)
                 return
               }
@@ -247,6 +253,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               setItemBorders(r.itemBorders)
               setItemDropShadow(r.itemDropShadow)
               setFillItemTiles(r.fillItemTiles)
+              setShowCategoryTitles(r.showCategoryTitles)
             }
           }
         } catch (e) {
@@ -308,6 +315,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         textureId: textureId ?? undefined,
         showMenuTitle,
         showVignette,
+        showCategoryTitles,
         engineVersion: 'v2'
       }
 
@@ -333,6 +341,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           ...(textureId ? { textureId } : {}),
           showMenuTitle: showMenuTitle.toString(),
           showVignette: showVignette.toString(),
+          showCategoryTitles: showCategoryTitles.toString(),
           engineVersion: 'v2'
         })
         resp = await fetch(`/api/menus/${menuId}/layout?${params.toString()}`)
@@ -355,7 +364,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     } finally {
       setPreviewLoading(false)
     }
-  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, isDemoUser, currentPageIndex])
+  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, showCategoryTitles, isDemoUser, currentPageIndex])
 
   // Debounced preview update
   useEffect(() => {
@@ -383,6 +392,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       itemBorders,
       itemDropShadow,
       fillItemTiles,
+      showCategoryTitles,
       colourPaletteId: paletteId,
       imageMode
     }
@@ -397,7 +407,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         sessionStorage.setItem(TEMPLATE_DRAFT_KEY(menuId), JSON.stringify(draftConfigRef.current))
       }
     }
-  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, itemBorders, itemDropShadow, fillItemTiles])
+  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, itemBorders, itemDropShadow, fillItemTiles, showCategoryTitles])
 
   const handleSelectTemplate = async () => {
     if (!menu) return
@@ -416,6 +426,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         itemBorders,
         itemDropShadow,
         fillItemTiles,
+        showCategoryTitles,
         colourPaletteId: paletteId,
         imageMode
       }
@@ -488,6 +499,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         itemBorders,
         itemDropShadow,
         fillItemTiles,
+        showCategoryTitles,
         palette: palette,
         imageMode
       }
@@ -668,6 +680,15 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                     />
                   </label>
                   <label className="flex items-center justify-between cursor-pointer group">
+                    <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Show category title(s)</span>
+                    <input
+                      type="checkbox"
+                      checked={showCategoryTitles}
+                      onChange={(e) => setShowCategoryTitles(e.target.checked)}
+                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between cursor-pointer group">
                     <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Vignette edges</span>
                     <input
                       type="checkbox"
@@ -790,6 +811,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                       itemBorders,
                       itemDropShadow,
                       fillItemTiles,
+                      showCategoryTitles,
                       showGridOverlay: false,
                       showRegionBounds: false,
                       showTileIds: false,
@@ -834,6 +856,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 itemBorders,
                 itemDropShadow,
                 fillItemTiles,
+                showCategoryTitles,
                 colourPaletteId: paletteId,
                 imageMode
               }
