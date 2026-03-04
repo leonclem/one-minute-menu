@@ -327,7 +327,17 @@ export async function createRenderSnapshot(
           price: item.price,
           currency: userMenuCurrency, // Use user's menu currency preference
           category: item.category,
-          image_url: item.customImageUrl || item.aiImageId, // Use custom or AI image
+          // Only set image_url when the item has a usable image.
+          // imageSource 'none' means the user deselected the image;
+          // 'ai' items get customImageUrl populated by enrichMenuDataWithImageUrls;
+          // falling back to raw aiImageId (a UUID) would make hasImages true incorrectly.
+          image_url: item.imageSource === 'none'
+            ? undefined
+            : item.imageSource === 'custom'
+              ? item.customImageUrl
+              : item.imageSource === 'ai'
+                ? item.customImageUrl  // enriched URL; undefined if enrichment failed
+                : undefined,
           display_order: item.order ?? index,
           
           // Include modifiers if present

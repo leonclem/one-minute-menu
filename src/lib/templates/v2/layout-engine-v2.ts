@@ -114,7 +114,16 @@ export async function generateLayoutV2(
   const fillersEnabled = input.selection?.fillersEnabled ?? effectiveTemplate.filler.enabled
   if (fillersEnabled) {
     const textOnly = input.selection?.textOnly || false
-    insertInterspersedFillers(document, effectiveTemplate, input.menu.id, fillersEnabled, textOnly)
+    // Collect section IDs where no items have images (per-category text-only override)
+    const textOnlySectionIds = new Set<string>()
+    if (!textOnly) {
+      for (const section of input.menu.sections) {
+        if (section.hasImages === false) {
+          textOnlySectionIds.add(section.id)
+        }
+      }
+    }
+    insertInterspersedFillers(document, effectiveTemplate, input.menu.id, fillersEnabled, textOnly, textOnlySectionIds)
   }
   
   // Step 5: Call validateInvariants in dev mode or when debug=true

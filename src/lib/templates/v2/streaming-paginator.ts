@@ -460,6 +460,13 @@ export function streamingPaginate(
 
     nonEmptySectionIndex++
 
+    // Per-section image override: if this section has no images at all,
+    // force text-only layout for its items regardless of the global imageMode.
+    // This avoids empty placeholder image slots in image-less categories.
+    const sectionSelection = (section.hasImages === false && !selection?.textOnly)
+      ? { ...selection, textOnly: true }
+      : selection
+
     // Conditionally place section header tile (skipped when showCategoryTitles is false)
     const showCategoryTitles = selection?.showCategoryTitles !== false // Default to true
     if (showCategoryTitles) {
@@ -513,7 +520,7 @@ export function streamingPaginate(
     const maxFeatured = template.policies.maxFeaturedPerSection
 
     // Determine common item rowSpan for slot-based placement (card vs textOnly mode)
-    const commonItemRowSpan = selection?.textOnly
+    const commonItemRowSpan = sectionSelection?.textOnly
       ? (template.tiles.ITEM_TEXT_ROW?.rowSpan ?? 1)
       : (template.tiles.ITEM_CARD?.rowSpan ?? 1)
 
@@ -544,7 +551,7 @@ export function streamingPaginate(
       if (item.isFeatured && maxFeatured != null && featuredCount >= maxFeatured) {
         effectiveItem = { ...item, isFeatured: false }
       }
-      const itemTile = createItemTile(effectiveItem, section.id, template, menu.metadata.currency, selection)
+      const itemTile = createItemTile(effectiveItem, section.id, template, menu.metadata.currency, sectionSelection)
       if (effectiveItem.isFeatured && itemTile.type === 'FEATURE_CARD') {
         featuredCount++
       }

@@ -13,10 +13,11 @@ interface ImageVariationsManagerProps {
 }
 
 export default function ImageVariationsManager({ itemId, itemName, onClose }: ImageVariationsManagerProps) {
-  const [loading, setLoading] = useState<'init' | 'select' | 'delete' | 'upload' | null>('init')
+  const [loading, setLoading] = useState<'init' | 'select' | 'delete' | 'upload' | 'deselect' | null>('init')
   const [error, setError] = useState<string | null>(null)
   const [variations, setVariations] = useState<GeneratedImage[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [noneSelected, setNoneSelected] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [compareId, setCompareId] = useState<string | null>(null)
 
@@ -33,7 +34,10 @@ export default function ImageVariationsManager({ itemId, itemName, onClose }: Im
         if (!mounted) return
         const list: GeneratedImage[] = json?.data?.variations || []
         setVariations(list)
-        setSelectedId(json?.data?.selectedImageId || null)
+        const selId = json?.data?.selectedImageId || null
+        setSelectedId(selId)
+        // If no AI image is selected, treat as "none" (image disabled)
+        if (!selId) setNoneSelected(true)
       } catch (e: any) {
         if (!mounted) return
         setError(e?.message || 'Failed to load variations')
@@ -56,8 +60,29 @@ export default function ImageVariationsManager({ itemId, itemName, onClose }: Im
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Failed to select image')
       setSelectedId(imageId)
+      setNoneSelected(false)
     } catch (e: any) {
       setError(e?.message || 'Failed to select image')
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const deselectImage = async () => {
+    setLoading('deselect')
+    setError(null)
+    try {
+      const res = await fetch(`/api/menu-items/${itemId}/select-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageSource: 'none' })
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || 'Failed to deselect image')
+      setSelectedId(null)
+      setNoneSelected(true)
+    } catch (e: any) {
+      setError(e?.message || 'Failed to deselect image')
     } finally {
       setLoading(null)
     }
@@ -182,8 +207,29 @@ export default function ImageVariationsManager({ itemId, itemName, onClose }: Im
           ) : variations.length === 0 ? (
             <div className="text-sm text-secondary-600">No AI-generated images yet.</div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {variations.map(v => (
+            <>
+              <p className="text-xs text-secondary-500 mb-2">Generated Images:</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {/* "None" tile — deselect all images */}
+                <div className={`border rounded overflow-hidden ${noneSelected ? 'ring-2 ring-primary-500' : ''}`}>
+                  <div className="w-full h-32 bg-secondary-100 flex flex-col items-center justify-center text-secondary-400">
+                    <svg className="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                    <span className="text-xs">No image</span>
+                  </div>
+                  <div className="p-2 flex items-center justify-center">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={deselectImage}
+                      disabled={loading === 'deselect' || noneSelected}
+                    >
+                      {noneSelected ? 'Selected' : 'None'}
+                    </Button>
+                  </div>
+                </div>
+                {variations.map(v => (
                 <div key={v.id} className={`border rounded overflow-hidden ${v.id === selectedId ? 'ring-2 ring-primary-500' : ''}`}>
                   <button type="button" className="block w-full" onClick={() => setCompareId(v.id)} aria-label="Preview variation">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -215,7 +261,8 @@ export default function ImageVariationsManager({ itemId, itemName, onClose }: Im
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            </>
           )}
         </div>
 

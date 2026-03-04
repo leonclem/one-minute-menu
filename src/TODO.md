@@ -1,19 +1,7 @@
 # Roadmap
 
-## Outbound Email
-- [x] Upgrade SendGrid plan to Pro to prevent IP address sharing (with potential spammers)
-- [x] Create Google Workspace account to enable outgoing @gridmenu.ai email addresses
-- [x] Switch provider from SendGrid to Postmark
-- [x] Determine and document all emails sent
-- [x] Update style and content
-- [ ] Upgrade to Postmark 10,000 plan ($15)
-
-## /extracted
-- [x] Menu Control Panel > Download Menu pages (PDF)
-- [x] Renaming a category pushes it to the bottom
-- [ ] Disable but don't delete images for item or category
-- [x] "Select all" in category but not all in menu
-- [x] Remove "Add QR / manage items" button from control panel
+## Market awareness
+- [ ] Create Instagram account and add link icon to footer
 
 ## Deployment
 - [x] Upgrade Vercel package
@@ -42,6 +30,9 @@
 
 ## Exports
 - [ ] Verify "print ready"
+
+## /extracted
+- [ ] Sometimes not enough space for menu item description.  We need to limit the characters for menu item creation.
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> GO TO MARKET >>>>>>>>>>>>>
@@ -77,7 +68,6 @@
 - [ ] Crop for large menus text extraction
 
 ## /extracted
-- [ ] Sometimes not enough space for menu item description.  We need to limit the characters for menu item creation.
 - [ ] Menu Control Panel > Download Menu pages (PNG zip)
 - [ ] Menu Control Panel > Download Menu Images (PNG zip)
 - [ ] Rename this page to menu curator
@@ -94,6 +84,8 @@
 - [ ] Logo as special filler tile
 - [ ] Develop presets
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
+- [ ] "Polaroid" / angled effect.  Perhaps with "marker pen" headings?
+- [ ] Should still leave a space between categories even if category titles toggled off 
 
 ## /pricing
 - [ ] Image resolutions - 1k for Creator Pack, 2k for GridMenu, 4k for GridMenu+.  Consider Nano Banana 2.
@@ -177,6 +169,11 @@
 - [x] Can't edit title, description, price, etc. for menu item
 - [x] Advanced menu options: Edit order of categories
 - [x] If the first time a user lands on /extracted, and they have used an image to create items - display a modal that asks them to review all the details.
+- [x] Menu Control Panel > Download Menu pages (PDF)
+- [x] Renaming a category pushes it to the bottom
+- [x] Disable but don't delete images for item or category
+- [x] "Select all" in category but not all in menu
+- [x] Remove "Add QR / manage items" button from control panel
 
 ## Image Generation Test Harness
 - [x] Reference image
@@ -239,11 +236,17 @@
 - [x] Investigate examples of low-res images in PDFs with consideration to file size
 - [x] Page number displaying on export and overlaying footer info
 
-## SendGrid
-- [x] Set up account (add domain gridmenu.ai)
+## Outbound Email
+- [x] Set up SendGrid account (add domain gridmenu.ai)
 - [x] Get the SMTP credentials provided
 - [x] Toggle "Enable Custom SMTP" to ON in Supabase prod and paste SMTP credentials in
 - [x] Set up Admin auth emails via SendGrid and Vercel Env vars
+- [x] Upgrade SendGrid plan to Pro to prevent IP address sharing (with potential spammers)
+- [x] Create Google Workspace account to enable outgoing @gridmenu.ai email addresses
+- [x] Switch provider from SendGrid to Postmark
+- [x] Determine and document all emails sent
+- [x] Update style and content
+- [x] Upgrade to Postmark 10,000 plan ($15)
 
 ## Review Pricing
 - [x] Determine pricing tiers

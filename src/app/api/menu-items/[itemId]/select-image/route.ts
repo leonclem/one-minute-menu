@@ -34,11 +34,16 @@ export async function POST(
     
     // Parse request body
     const body = await request.json() as {
-      imageId: string
-      imageSource?: 'ai' | 'custom'
+      imageId?: string | null
+      imageSource?: 'ai' | 'custom' | 'none'
     }
     
     logger.debug('📝 [Select Image API] Request:', { itemId, imageId: body.imageId, imageSource: body.imageSource })
+    
+    // Handle "none" — deselect all images without deleting them
+    if (body.imageSource === 'none') {
+      return await handleDeselectImage(supabase, user.id, itemId)
+    }
     
     if (!body.imageId) {
       return NextResponse.json(
@@ -302,7 +307,7 @@ export async function POST(
     }
     
     return NextResponse.json(
-      { error: 'Invalid image source. Must be "ai" or "custom"' },
+      { error: 'Invalid image source. Must be "ai", "custom", or "none"' },
       { status: 400 }
     )
     
@@ -313,4 +318,91 @@ export async function POST(
       { status: 500 }
     )
   }
+}
+
+/**
+ * Deselect all images for a menu item (set imageSource to 'none')
+ * without deleting any generated images — they remain available for re-selection.
+ */
+async function handleDeselectImage(
+  supabase: ReturnType<typeof createServerSupabaseClient>,
+  userId: string,
+  itemId: string
+) {
+  // Find the menu item in the relational table
+  const { data: menuItem, error: itemError } = await supabase
+    .from('menu_items')
+    .select('id, menu_id, menus!inner(user_id)')
+    .eq('id', itemId)
+    .single()
+
+  if (itemError || !menuItem) {
+    return NextResponse.json({ error: 'Menu item not found' }, { status: 404 })
+  }
+
+  if ((menuItem.menus as any).user_id !== userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  }
+
+  // Unselect all AI images for this item (keep them for future re-selection)
+  await supabase
+    .from('ai_generated_images')
+    .update({ selected: false })
+    .eq('menu_item_id', itemId)
+
+  // Set image_source to 'none' in relational table
+  const { error: updateError } = await supabase
+    .from('menu_items')
+    .update({
+      image_source: 'none',
+      ai_image_id: null,
+    })
+    .eq('id', itemId)
+
+  if (updateError) {
+    logger.error('❌ [Select Image API] Failed to deselect image:', updateError)
+    return NextResponse.json({ error: 'Failed to deselect image' }, { status: 500 })
+  }
+
+  // Update JSONB data to keep in sync
+  const { data: currentMenu } = await supabase
+    .from('menus')
+    .select('menu_data')
+    .eq('id', menuItem.menu_id)
+    .single()
+
+  if (currentMenu) {
+    const menuData = currentMenu.menu_data || {}
+    const imageUpdate = { imageSource: 'none' as const, aiImageId: null, customImageUrl: null }
+
+    const updatedItems = (menuData.items || []).map((item: any) =>
+      item.id === itemId ? { ...item, ...imageUpdate } : item
+    )
+    const updatedCategories = (menuData.categories || []).map((cat: any) => ({
+      ...cat,
+      items: (cat.items || []).map((item: any) =>
+        item.id === itemId ? { ...item, ...imageUpdate } : item
+      ),
+    }))
+
+    await supabase
+      .from('menus')
+      .update({
+        menu_data: { ...menuData, items: updatedItems, categories: updatedCategories },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', menuItem.menu_id)
+  }
+
+  logger.info('✅ [Select Image API] Image deselected for item:', itemId)
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      menuItemId: itemId,
+      selectedImageId: null,
+      imageSource: 'none',
+      message: 'Image deselected successfully. Generated images are preserved.',
+    },
+  })
 }

@@ -427,36 +427,42 @@ export class JobProcessor {
    * Transforms flat snapshot items into EngineSectionV2 structure
    */
   private transformToSections(items: any[]): any[] {
-    const sectionsMap = new Map<string, any>()
-    
-    items.forEach((item, index) => {
-      const categoryName = item.category || 'General'
-      if (!sectionsMap.has(categoryName)) {
-        sectionsMap.set(categoryName, {
-          id: `section-${categoryName.toLowerCase().replace(/\s+/g, '-')}`,
-          name: categoryName,
-          sortOrder: sectionsMap.size,
-          items: []
-        })
-      }
-      
-      sectionsMap.get(categoryName).items.push({
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        price: item.price,
-        imageUrl: item.image_url,
-        sortOrder: item.display_order ?? index,
-        indicators: item.indicators || {
-          dietary: [],
-          spiceLevel: null,
-          allergens: []
+      const sectionsMap = new Map<string, any>()
+
+      items.forEach((item, index) => {
+        const categoryName = item.category || 'General'
+        if (!sectionsMap.has(categoryName)) {
+          sectionsMap.set(categoryName, {
+            id: `section-${categoryName.toLowerCase().replace(/\s+/g, '-')}`,
+            name: categoryName,
+            sortOrder: sectionsMap.size,
+            items: []
+          })
         }
+
+        sectionsMap.get(categoryName).items.push({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          price: item.price,
+          imageUrl: item.image_url,
+          sortOrder: item.display_order ?? index,
+          indicators: item.indicators || {
+            dietary: [],
+            spiceLevel: null,
+            allergens: []
+          }
+        })
       })
-    })
-    
-    return Array.from(sectionsMap.values())
-  }
+
+      // Compute hasImages per section (needed for per-category text-only fallback)
+      const sections = Array.from(sectionsMap.values())
+      for (const section of sections) {
+        section.hasImages = section.items.some((i: any) => !!i.imageUrl)
+      }
+      return sections
+    }
+
 
   /**
    * Generate HTML from render snapshot

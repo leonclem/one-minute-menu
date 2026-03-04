@@ -153,26 +153,38 @@ export function insertFillers(
  * @param template - Template configuration
  * @param menuId - Menu ID for deterministic seeding
  * @param enabledOverride - When true, insert fillers even if template.filler.enabled is false (e.g. from selection.fillersEnabled)
+ * @param textOnly - Global text-only mode (no images for any section)
+ * @param textOnlySectionIds - Set of section IDs that should use text-only filler sizing (no images in that category)
  */
 export function insertInterspersedFillers(
   document: LayoutDocumentV2,
   template: TemplateV2,
   menuId: string,
   enabledOverride?: boolean,
-  textOnly?: boolean
+  textOnly?: boolean,
+  textOnlySectionIds?: Set<string>
 ): void {
   const enabled = enabledOverride ?? template.filler.enabled
   if (!enabled) {
     return
   }
 
-  // In text-only mode, match filler rowSpan to ITEM_TEXT_ROW (not ITEM_CARD)
-  const defaultRowSpan = textOnly
-    ? (template.tiles.ITEM_TEXT_ROW?.rowSpan ?? 1)
-    : (template.tiles.ITEM_CARD?.rowSpan ?? 1)
-  const fillerDefs = template.filler.tiles.length > 0
-    ? template.filler.tiles.map(f => ({ ...f, rowSpan: textOnly ? Math.min(f.rowSpan ?? 1, defaultRowSpan) : (f.rowSpan ?? defaultRowSpan) }))
-    : [{ ...DEFAULT_FILLER_DEF, rowSpan: defaultRowSpan }]
+  // Pre-compute filler defs for image-mode and text-only-mode
+  const cardRowSpan = template.tiles.ITEM_CARD?.rowSpan ?? 1
+  const textRowSpan = template.tiles.ITEM_TEXT_ROW?.rowSpan ?? 1
+
+  const buildFillerDefs = (isTextOnly: boolean) => {
+    const defaultRowSpan = isTextOnly ? textRowSpan : cardRowSpan
+    return template.filler.tiles.length > 0
+      ? template.filler.tiles.map(f => ({ ...f, rowSpan: isTextOnly ? Math.min(f.rowSpan ?? 1, defaultRowSpan) : (f.rowSpan ?? defaultRowSpan) }))
+      : [{ ...DEFAULT_FILLER_DEF, rowSpan: defaultRowSpan }]
+  }
+
+  const globalFillerDefs = buildFillerDefs(!!textOnly)
+  // Only build text-only defs if we actually have per-section overrides and they differ from global
+  const textOnlyFillerDefs = (textOnlySectionIds && textOnlySectionIds.size > 0 && !textOnly)
+    ? buildFillerDefs(true)
+    : null
 
   let fillerIndex = 0
   for (let pageIndex = 0; pageIndex < document.pages.length; pageIndex++) {
@@ -190,6 +202,10 @@ export function insertInterspersedFillers(
     for (const sectionId of sectionIds) {
       const sectionRows = getSectionRowsOnPage(page, sectionId)
       if (sectionRows.length === 0) continue
+
+      // Use text-only filler sizing for sections with no images
+      const sectionIsTextOnly = textOnlySectionIds?.has(sectionId) ?? false
+      const fillerDefs = (sectionIsTextOnly && textOnlyFillerDefs) ? textOnlyFillerDefs : globalFillerDefs
 
       // When no safe zones are defined, default to the entire body grid
       // so fillers can fill any empty cell in the section's rows

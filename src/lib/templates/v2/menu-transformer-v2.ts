@@ -80,13 +80,13 @@ export function transformMenuToV2(
     categoryItemCount !== flatItemCount
 
   // Create image lookup map from flat items array
+  // Only include items that have a usable image (imageSource is 'ai' or 'custom' with a URL)
   const itemsImageLookup = new Map<string, MenuItem>()
   if (menu.items) {
     menu.items.forEach((item) => {
       if (
-        item.imageSource !== 'none' ||
-        item.aiImageId ||
-        item.customImageUrl
+        (item.imageSource === 'ai' && (item.aiImageId || item.customImageUrl)) ||
+        (item.imageSource === 'custom' && item.customImageUrl)
       ) {
         itemsImageLookup.set(item.id, item)
       }
@@ -144,15 +144,18 @@ function transformCategoryToV2(
   fallbackOrder: number,
   itemsImageLookup: Map<string, MenuItem>
 ): EngineSectionV2 {
+  const items = category.items
+    .map((item, idx) =>
+      transformItemToV2(item, idx, itemsImageLookup)
+    )
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+
   return {
     id: category.id,
     name: category.name,
     sortOrder: category.order ?? fallbackOrder,
-    items: category.items
-      .map((item, idx) =>
-        transformItemToV2(item, idx, itemsImageLookup)
-      )
-      .sort((a, b) => a.sortOrder - b.sortOrder),
+    items,
+    hasImages: items.some(i => !!i.imageUrl),
   }
 }
 
@@ -183,15 +186,18 @@ function createSectionsFromFlatItems(
       const isImplicitSection =
         categoryGroups.size === 1 && categoryName === 'Menu'
 
+      const items = categoryItems
+        .map((item, itemIdx) =>
+          transformItemToV2(item, itemIdx, new Map())
+        )
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+
       return {
         id: isImplicitSection ? 'implicit-section' : `section-${idx}`,
         name: categoryName,
         sortOrder: idx,
-        items: categoryItems
-          .map((item, itemIdx) =>
-            transformItemToV2(item, itemIdx, new Map())
-          )
-          .sort((a, b) => a.sortOrder - b.sortOrder),
+        items,
+        hasImages: items.some(i => !!i.imageUrl),
       }
     }
   )

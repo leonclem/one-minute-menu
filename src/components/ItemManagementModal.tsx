@@ -29,10 +29,11 @@ export default function ItemManagementModal({
   onClose,
   onImageSelected
 }: ItemManagementModalProps) {
-  const [loading, setLoading] = useState<'init' | 'select' | 'delete' | 'upload' | 'update' | null>('init')
+  const [loading, setLoading] = useState<'init' | 'select' | 'delete' | 'upload' | 'update' | 'deselect' | null>('init')
   const [error, setError] = useState<string | null>(null)
   const [variations, setVariations] = useState<GeneratedImage[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [noneSelected, setNoneSelected] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
 
@@ -92,7 +93,9 @@ export default function ItemManagementModal({
         if (!mounted) return
         const list: GeneratedImage[] = json?.data?.variations || []
         setVariations(list)
-        setSelectedId(json?.data?.selectedImageId || null)
+        const selId = json?.data?.selectedImageId || null
+        setSelectedId(selId)
+        if (!selId) setNoneSelected(true)
         if (json?.data?.dailyStats) {
           setDailyStats(json.data.dailyStats)
         }
@@ -224,6 +227,7 @@ export default function ItemManagementModal({
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Failed to select image')
       setSelectedId(imageId)
+      setNoneSelected(false)
       
       console.log('Image selected successfully:', { itemId, imageId, response: json })
       
@@ -248,6 +252,28 @@ export default function ItemManagementModal({
         title: 'Selection failed',
         description: 'Please try again.',
       })
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const deselectImage = async () => {
+    setLoading('deselect')
+    setError(null)
+    try {
+      const res = await fetch(`/api/menu-items/${itemId}/select-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageSource: 'none' })
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || 'Failed to deselect image')
+      setSelectedId(null)
+      setNoneSelected(true)
+      if (onImageSelected) onImageSelected(itemId, '')
+      showToast({ type: 'success', title: 'Image removed', description: 'No image will show for this item.' })
+    } catch (e: any) {
+      setError(e?.message || 'Failed to deselect image')
     } finally {
       setLoading(null)
     }
@@ -951,6 +977,33 @@ export default function ItemManagementModal({
                 <div className="space-y-3">
                   <div className="text-sm font-medium text-secondary-900">Generated images ({variations.length}):</div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {/* "None" tile — deselect without deleting */}
+                    <div className={`relative border rounded overflow-hidden transition-all ${
+                      noneSelected ? 'ring-2 ring-primary-500 bg-primary-50' : 'hover:border-secondary-300'
+                    }`}>
+                      {noneSelected && (
+                        <div className="absolute top-2 left-2 z-10 bg-primary-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                          Selected
+                        </div>
+                      )}
+                      <div className="w-full h-24 sm:h-32 bg-secondary-100 flex flex-col items-center justify-center text-secondary-400">
+                        <svg className="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                        <span className="text-xs">No image</span>
+                      </div>
+                      <div className="p-2 flex items-center gap-1">
+                        <Button
+                          variant={noneSelected ? 'outline' : 'primary'}
+                          size="sm"
+                          onClick={deselectImage}
+                          disabled={loading === 'deselect' || noneSelected}
+                          className="flex-1 text-[10px] px-1"
+                        >
+                          {noneSelected ? '✓ Selected' : 'None'}
+                        </Button>
+                      </div>
+                    </div>
                     {variations.map(v => (
                       <div key={v.id} className={`relative border rounded overflow-hidden transition-all ${
                         v.id === selectedId 

@@ -410,7 +410,10 @@ export interface EngineSectionV2 {
   name: string
   sortOrder: number
   items: EngineItemV2[]
+  /** True when at least one item in this section has an image URL. Computed during transformation. */
+  hasImages?: boolean
 }
+
 
 /** Item with indicator support */
 export interface EngineItemV2 {
