@@ -1,8 +1,5 @@
 # Roadmap
 
-## Market awareness
-- [ ] Create Instagram account and add link icon to footer
-
 ## Deployment
 - [x] Upgrade Vercel package
 - [ ] Determine UAT requirements
@@ -51,7 +48,9 @@
 ## Market awareness
 - [x] Create Facebook page (https://www.facebook.com/gridmenu/)
 - [x] Create X account (https://x.com/gridmenu)
+- [x] Create Instagram account (https://www.instagram.com/gridmenu/)
 - [x] Add links to footer
+- [x] Create Instagram account and add link icon to footer
 - [ ] Create blog / comparison pages (https://www.upmenu.com/blog/menu-making-apps/)
 - [ ] Reddit community posting
 - [ ] Google "Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required."
@@ -98,6 +97,7 @@
 - [ ] Monitoring of workers in the Admin dashboard (particularly keen to understand turnaround times for extraction and export tasks)
 
 ## Demo Flow
+- [ ] Replace "breakfast blackboard" photo with MS Word photo version
 - [ ] Show menu and image outputs on home page
 - [ ] Demo flow - don't allow users to proceed beyond /extracted until all images generated
 

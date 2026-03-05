@@ -2092,13 +2092,24 @@ function renderFooterInfoContent(
   let contactLine = ''
   if (content.phone) contactLine += content.phone
   if (content.email) contactLine += (contactLine ? ' • ' : '') + content.email
+  if (content.socialMedia?.website) {
+    // Format website URL to be more user-friendly (www.example.com instead of https://example.com)
+    let websiteDisplay = content.socialMedia.website
+    if (websiteDisplay.startsWith('https://')) {
+      websiteDisplay = 'www.' + websiteDisplay.substring(8)
+    } else if (websiteDisplay.startsWith('http://')) {
+      websiteDisplay = 'www.' + websiteDisplay.substring(7)
+    } else if (!websiteDisplay.startsWith('www.')) {
+      websiteDisplay = 'www.' + websiteDisplay
+    }
+    contactLine += (contactLine ? ' • ' : '') + websiteDisplay
+  }
   if (contactLine) addText(contactLine)
 
   let socialLine = ''
   if (content.socialMedia?.instagram) socialLine += `Instagram: ${content.socialMedia.instagram}`
   if (content.socialMedia?.facebook) socialLine += (socialLine ? ' • ' : '') + `Facebook: ${content.socialMedia.facebook}`
   if (content.socialMedia?.x) socialLine += (socialLine ? ' • ' : '') + `X: ${content.socialMedia.x}`
-  if (content.socialMedia?.website) socialLine += (socialLine ? ' • ' : '') + content.socialMedia.website
   if (socialLine) addText(socialLine)
 
   return { elements }

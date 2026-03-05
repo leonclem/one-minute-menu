@@ -37,14 +37,13 @@ export function normalizeDemoMenu(menu: LegacyDemoMenu | null | undefined): Menu
     ...(currentSocial as any),
   }
 
-  // Hide legacy Instagram handle used in early demos
-  if (social.instagram === '@gridmenu_demo') {
-    delete social.instagram
+  // Use current public handles by default if legacy placeholders are present
+  if (!social.instagram || social.instagram === '@gridmenu_demo') {
+    social.instagram = '@gridmenu'
   }
 
-  // Use current public handles by default if legacy placeholders are present
-  if (!social.facebook || social.facebook === 'gridmenu.demo') {
-    social.facebook = 'facebook.com/gridmenu'
+  if (!social.facebook || social.facebook === 'gridmenu.demo' || social.facebook === 'facebook.com/gridmenu') {
+    social.facebook = '@gridmenu'
   }
 
   if (!social.x || social.x === '@gridmenu_demo') {

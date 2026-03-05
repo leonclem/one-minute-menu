@@ -64,6 +64,27 @@ export function UXFooter() {
                   />
                 </svg>
               </a>
+              <a
+                href="https://www.instagram.com/gridmenu/"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="GridMenu on Instagram"
+                className="inline-flex h-5 w-5 items-center justify-center opacity-80 hover:opacity-100 transition-opacity"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="10" fill="#ffffff" />
+                  <path
+                    fill="rgb(var(--ux-primary))"
+                    d="M12 8.8c-1.8 0-3.2 1.4-3.2 3.2s1.4 3.2 3.2 3.2 3.2-1.4 3.2-3.2-1.4-3.2-3.2-3.2zm0 5.3c-1.1 0-2.1-.9-2.1-2.1s.9-2.1 2.1-2.1 2.1.9 2.1 2.1-.9 2.1-2.1 2.1zm4.1-5.4c0 .4-.3.8-.8.8s-.8-.3-.8-.8.3-.8.8-.8.8.4.8.8zM14.8 7H9.2C8 7 7 8 7 9.2v5.6C7 16 8 17 9.2 17h5.6c1.2 0 2.2-1 2.2-2.2V9.2C17 8 16 7 14.8 7zm1.1 7.8c0 .6-.5 1.1-1.1 1.1H9.2c-.6 0-1.1-.5-1.1-1.1V9.2c0-.6.5-1.1 1.1-1.1h5.6c.6 0 1.1.5 1.1 1.1v5.6z"
+                  />
+                </svg>
+              </a>
             </div>
           </div>
         </div>

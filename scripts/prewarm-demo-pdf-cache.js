@@ -127,7 +127,13 @@ function buildMenu(sample) {
     venueInfo: {
       address: '123 Gourmet Avenue, Food City, FC 12345',
       phone: '+1 (555) 123-4567',
-      email: 'hello@gridmenu.ai'
+      email: 'hello@gridmenu.ai',
+      socialMedia: {
+        instagram: '@gridmenu',
+        facebook: '@gridmenu',
+        x: '@gridmenu',
+        website: 'https://gridmenu.ai'
+      }
     },
     items
   }

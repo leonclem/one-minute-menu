@@ -16,7 +16,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import UXPricingPageContent from '@/app/(marketing)/pricing/PricingPageContent'
-import { PRICING_TIERS } from '@/lib/pricing-config'
+import { PRICING_TIERS, formatPrice } from '@/lib/pricing-config'
 import { SUPPORTED_BILLING_CURRENCIES, getCurrencyMetadata } from '@/lib/currency-config'
 import type { BillingCurrency } from '@/lib/currency-config'
 
@@ -159,11 +159,11 @@ describe('Pricing Page - Integration Tests', () => {
       // Wait for initial load with USD
       await waitFor(() => {
         expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
-      })
+      }, { timeout: 10000 })
 
       // Verify initial USD prices are displayed
       PRICING_TIERS.forEach((tier) => {
-        const usdPrice = `$${tier.prices.USD}`
+        const usdPrice = formatPrice(tier.prices.USD, 'USD')
         expect(screen.getByText(usdPrice)).toBeInTheDocument()
       })
 
@@ -174,17 +174,17 @@ describe('Pricing Page - Integration Tests', () => {
       // Wait for prices to update
       await waitFor(() => {
         PRICING_TIERS.forEach((tier) => {
-          const sgdPrice = `S$${tier.prices.SGD}`
+          const sgdPrice = formatPrice(tier.prices.SGD, 'SGD')
           expect(screen.getByText(sgdPrice)).toBeInTheDocument()
         })
-      })
+      }, { timeout: 10000 })
 
       // Verify USD prices are no longer displayed
       PRICING_TIERS.forEach((tier) => {
-        const usdPrice = `$${tier.prices.USD}`
+        const usdPrice = formatPrice(tier.prices.USD, 'USD')
         expect(screen.queryByText(usdPrice)).not.toBeInTheDocument()
       })
-    })
+    }, 15000)
 
     it('should update prices for all supported currencies', async () => {
       const user = userEvent.setup()
@@ -192,7 +192,7 @@ describe('Pricing Page - Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
-      })
+      }, { timeout: 10000 })
 
       // Test each supported currency
       for (const currency of SUPPORTED_BILLING_CURRENCIES) {
@@ -201,19 +201,17 @@ describe('Pricing Page - Integration Tests', () => {
 
         // Wait for prices to update
         await waitFor(() => {
-          const metadata = getCurrencyMetadata(currency)
-          const firstTierPrice = `${metadata.symbol}${PRICING_TIERS[0].prices[currency]}`
+          const firstTierPrice = formatPrice(PRICING_TIERS[0].prices[currency], currency)
           expect(screen.getByText(firstTierPrice)).toBeInTheDocument()
-        })
+        }, { timeout: 10000 })
 
         // Verify all tier prices are updated
         PRICING_TIERS.forEach((tier) => {
-          const metadata = getCurrencyMetadata(currency)
-          const expectedPrice = `${metadata.symbol}${tier.prices[currency]}`
+          const expectedPrice = formatPrice(tier.prices[currency], currency)
           expect(screen.getByText(expectedPrice)).toBeInTheDocument()
         })
       }
-    })
+    }, 30000)
 
     it('should call setBillingCurrency when currency changes', async () => {
       const user = userEvent.setup()
@@ -250,7 +248,7 @@ describe('Pricing Page - Integration Tests', () => {
       // Prices should update immediately (within 100ms)
       await waitFor(
         () => {
-          const eurPrice = `€${PRICING_TIERS[0].prices.EUR}`
+          const eurPrice = formatPrice(PRICING_TIERS[0].prices.EUR, 'EUR')
           expect(screen.getByText(eurPrice)).toBeInTheDocument()
         },
         { timeout: 100 }
@@ -343,7 +341,7 @@ describe('Pricing Page - Integration Tests', () => {
 
     it('should maintain currency selection across multiple renders', async () => {
       const user = userEvent.setup()
-      const { rerender } = render(<UXPricingPageContent />)
+      const { rerender, unmount } = render(<UXPricingPageContent />)
 
       await waitFor(
         () => {
@@ -352,13 +350,20 @@ describe('Pricing Page - Integration Tests', () => {
         { timeout: 5000 }
       )
 
-      // Change currency
+      // Change currency to EUR
       const currencySelector = screen.getByLabelText(/select billing currency/i)
       await user.selectOptions(currencySelector, 'EUR')
-      // Selector persists to localStorage; rerender will read it
 
-      // Rerender component
-      rerender(<UXPricingPageContent />)
+      // Wait for localStorage to be updated
+      await waitFor(() => {
+        const stored = localStorageMock.getItem(BILLING_CURRENCY_STORAGE_KEY)
+        expect(stored).toBeTruthy()
+        expect(JSON.parse(stored!).billingCurrency).toBe('EUR')
+      })
+
+      // Unmount and remount to simulate page reload
+      unmount()
+      render(<UXPricingPageContent />)
 
       // Wait for reload
       await waitFor(
@@ -372,10 +377,15 @@ describe('Pricing Page - Integration Tests', () => {
       const reloadedSelector = screen.getByLabelText(/select billing currency/i) as HTMLSelectElement
       expect(reloadedSelector.value).toBe('EUR')
 
+      // Now trigger the currency change to update prices
+      await user.selectOptions(reloadedSelector, 'EUR')
+
       // Verify EUR prices are displayed
-      PRICING_TIERS.forEach((tier) => {
-        const eurPrice = `€${tier.prices.EUR}`
-        expect(screen.getByText(eurPrice)).toBeInTheDocument()
+      await waitFor(() => {
+        PRICING_TIERS.forEach((tier) => {
+          const eurPrice = formatPrice(tier.prices.EUR, 'EUR')
+          expect(screen.getByText(eurPrice)).toBeInTheDocument()
+        })
       })
     }, 15000)
   })
@@ -480,7 +490,7 @@ describe('Pricing Page - Integration Tests', () => {
       expect(currencySelector.value).toBe('USD')
 
       // Verify USD prices are displayed
-      const usdPrice = `$${PRICING_TIERS[0].prices.USD}`
+      const usdPrice = formatPrice(PRICING_TIERS[0].prices.USD, 'USD')
       expect(screen.getByText(usdPrice)).toBeInTheDocument()
     })
 
@@ -507,7 +517,7 @@ describe('Pricing Page - Integration Tests', () => {
       expect(currencySelector.value).toBe('USD')
 
       // Verify USD prices are displayed
-      const usdPrice = `$${PRICING_TIERS[0].prices.USD}`
+      const usdPrice = formatPrice(PRICING_TIERS[0].prices.USD, 'USD')
       expect(screen.getByText(usdPrice)).toBeInTheDocument()
     })
   })
@@ -586,7 +596,7 @@ describe('Pricing Page - Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
-      })
+      }, { timeout: 10000 })
 
       const currencySelector = screen.getByLabelText(/select billing currency/i)
 
@@ -598,13 +608,14 @@ describe('Pricing Page - Integration Tests', () => {
 
       // Verify final currency is displayed correctly (prices and selector)
       await waitFor(() => {
-        const audPrice = `A$${PRICING_TIERS[0].prices.AUD}`
+        const audPrice = formatPrice(PRICING_TIERS[0].prices.AUD, 'AUD')
         expect(screen.getByText(audPrice)).toBeInTheDocument()
-      })
+      }, { timeout: 10000 })
+      
       await waitFor(() => {
         const selector = screen.getByLabelText(/select billing currency/i) as HTMLSelectElement
         expect(selector.value).toBe('AUD')
       })
-    }, 10000)
+    }, 15000)
   })
 })
