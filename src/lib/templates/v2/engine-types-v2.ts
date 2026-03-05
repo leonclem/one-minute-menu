@@ -236,6 +236,7 @@ export interface FooterInfoContentV2 {
     instagram?: string
     facebook?: string
     x?: string
+    tiktok?: string
     website?: string
   }
 }

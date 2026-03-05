@@ -5,8 +5,10 @@ import { getCurrentUser } from '@/lib/auth-utils'
 import { UXHeader, UXFooter } from '@/components/ux'
 import { CurrencySettings } from './_components/CurrencySettings'
 import { BillingSettings } from './_components/BillingSettings'
+import { RestaurantSettings } from './_components/RestaurantSettings'
 import { getBillingCurrency, canChangeBillingCurrency } from '@/lib/billing-currency-service'
 import { getMenuCurrency } from '@/lib/menu-currency-service'
+import { userOperations } from '@/lib/database'
 
 export default async function SettingsPage() {
   const supabase = createServerSupabaseClient()
@@ -21,7 +23,8 @@ export default async function SettingsPage() {
   const isAdmin = currentUser?.role === 'admin'
 
   // Fetch all settings server-side to avoid client loading flash
-  const [menuCurrency, billingCurrency, billingCanChange] = await Promise.all([
+  const [profile, menuCurrency, billingCurrency, billingCanChange] = await Promise.all([
+    userOperations.getProfile(user.id),
     getMenuCurrency(user.id),
     getBillingCurrency(user.id),
     canChangeBillingCurrency(user.id),
@@ -37,7 +40,8 @@ export default async function SettingsPage() {
           backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.45)), url(/backgrounds/kung-pao-chicken.png)`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center 30%'
+          backgroundPosition: 'center 30%',
+          backgroundAttachment: 'fixed'
         }}
       />
 
@@ -55,6 +59,16 @@ export default async function SettingsPage() {
               Manage your currency preferences and account settings
             </p>
           </div>
+
+          {/* Restaurant Details */}
+          <RestaurantSettings
+            userId={user.id}
+            initialRestaurantName={profile?.restaurantName}
+            initialEstablishmentType={profile?.establishmentType}
+            initialPrimaryCuisine={profile?.primaryCuisine}
+            initialUsername={profile?.username}
+            initialDefaultVenueInfo={profile?.defaultVenueInfo}
+          />
 
           {/* Currency Settings */}
           <CurrencySettings

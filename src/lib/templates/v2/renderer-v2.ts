@@ -2110,6 +2110,7 @@ function renderFooterInfoContent(
   if (content.socialMedia?.instagram) socialLine += `Instagram: ${content.socialMedia.instagram}`
   if (content.socialMedia?.facebook) socialLine += (socialLine ? ' • ' : '') + `Facebook: ${content.socialMedia.facebook}`
   if (content.socialMedia?.x) socialLine += (socialLine ? ' • ' : '') + `X: ${content.socialMedia.x}`
+  if (content.socialMedia?.tiktok) socialLine += (socialLine ? ' • ' : '') + `TikTok: ${content.socialMedia.tiktok}`
   if (socialLine) addText(socialLine)
 
   return { elements }

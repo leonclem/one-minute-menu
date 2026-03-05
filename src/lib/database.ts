@@ -125,6 +125,7 @@ export const userOperations = {
       restaurantName: data.restaurant_name || undefined,
       establishmentType: data.establishment_type || undefined,
       primaryCuisine: data.primary_cuisine || undefined,
+      defaultVenueInfo: data.default_venue_info || undefined,
     }
   },
 
@@ -155,6 +156,7 @@ export const userOperations = {
     if (updates.restaurantName !== undefined) updateData.restaurant_name = updates.restaurantName
     if (updates.establishmentType !== undefined) updateData.establishment_type = updates.establishmentType
     if (updates.primaryCuisine !== undefined) updateData.primary_cuisine = updates.primaryCuisine
+    if (updates.defaultVenueInfo !== undefined) updateData.default_venue_info = updates.defaultVenueInfo
     
     const { data, error } = await supabase
       .from('profiles')
@@ -183,6 +185,7 @@ export const userOperations = {
       restaurantName: data.restaurant_name || undefined,
       establishmentType: data.establishment_type || undefined,
       primaryCuisine: data.primary_cuisine || undefined,
+      defaultVenueInfo: data.default_venue_info || undefined,
     }
   },
 

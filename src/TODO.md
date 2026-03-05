@@ -1,10 +1,5 @@
 # Roadmap
 
-## Deployment
-- [x] Upgrade Vercel package
-- [ ] Determine UAT requirements
-- [ ] Determine if database backup strategy exists (Supabase / Vercel)
-
 ## /template
 - [x] Show/hide category title
 - [ ] Move image up or down within tile "viewport"
@@ -31,8 +26,13 @@
 ## /extracted
 - [ ] Sometimes not enough space for menu item description.  We need to limit the characters for menu item creation.
 
+## Deployment
+- [x] Upgrade Vercel package
+- [ ] Determine UAT requirements
+- [ ] Determine if database backup strategy exists (Supabase / Vercel)
+
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
->>>>>>>>> GO TO MARKET >>>>>>>>>>>>>
+>>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Security
@@ -59,7 +59,7 @@
 - [ ] Show preview picture of menu (if design template chosen) embedded in Dashboard menus
 
 ## /dashboard/settings
-- [ ] Update restaurant details
+- [x] Capability to update restaurant name, details, etc. (that are collected at onboarding)
 - [ ] Display/update email address
 
 ## /extract
@@ -96,9 +96,12 @@
 ## Railway
 - [ ] Monitoring of workers in the Admin dashboard (particularly keen to understand turnaround times for extraction and export tasks)
 
+## Home Page
+- [x] Update text to be less American
+- [ ] Show menu and image outputs examples
+
 ## Demo Flow
 - [ ] Replace "breakfast blackboard" photo with MS Word photo version
-- [ ] Show menu and image outputs on home page
 - [ ] Demo flow - don't allow users to proceed beyond /extracted until all images generated
 
 ## Stripe

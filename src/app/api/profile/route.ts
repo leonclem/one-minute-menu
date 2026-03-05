@@ -57,6 +57,7 @@ export async function PATCH(request: NextRequest) {
       restaurantName: body.restaurantName,
       establishmentType: body.establishmentType,
       primaryCuisine: body.primaryCuisine,
+      defaultVenueInfo: body.defaultVenueInfo,
     }
     
     // Remove undefined fields

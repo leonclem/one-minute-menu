@@ -103,8 +103,11 @@ export default function HomePage() {
           <h1 className="text-4xl md:text-6xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
             Ready to create your new beautiful menu in under 5 minutes?
           </h1>
-          <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto text-hero-shadow mt-4 md:mt-6">
-            Transform your menu into a print- and mobile-friendly, flexible digital menu. Instant price changes, 86&apos;ing and much more.
+          <p className="text-white/80 max-w-2xl mx-auto text-hero-shadow mt-4 md:mt-6" style={{ fontSize: '1.1rem' }}>
+            Enter your dishes and prices, choose a menu style, and GridMenu does the rest - layout, food photos, and a finished menu delivered straight to your inbox.
+          </p>
+          <p className="text-base md:text-lg text-white/90 max-w-2xl mx-auto text-hero-shadow mt-3 md:mt-4 font-medium">
+            No designer. No photographer. No complicated tools.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-6 md:mt-8">
             <Link href={user ? '/dashboard' : '/register'} className="w-full sm:w-auto" onClick={handlePrimaryClick}>

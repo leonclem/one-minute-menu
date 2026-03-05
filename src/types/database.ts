@@ -31,6 +31,7 @@ export interface Database {
           restaurant_name: string | null
           establishment_type: string | null
           primary_cuisine: string | null
+          default_venue_info: any
         }
         Insert: {
           id: string
@@ -49,6 +50,7 @@ export interface Database {
           restaurant_name?: string | null
           establishment_type?: string | null
           primary_cuisine?: string | null
+          default_venue_info?: any
         }
         Update: {
           id?: string
@@ -67,6 +69,7 @@ export interface Database {
           restaurant_name?: string | null
           establishment_type?: string | null
           primary_cuisine?: string | null
+          default_venue_info?: any
         }
       }
       menus: {

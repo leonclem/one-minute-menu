@@ -19,6 +19,7 @@ export interface User {
   restaurantName?: string
   establishmentType?: string
   primaryCuisine?: string
+  defaultVenueInfo?: VenueInfo
 }
 
 export interface PlanLimits {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { menuOperations, DatabaseError } from '@/lib/database'
+import { menuOperations, userOperations, DatabaseError } from '@/lib/database'
 import { validateCreateMenu, generateSlugFromName } from '@/lib/validation'
 import { sanitizeMenuPayload } from '@/lib/security'
 import type { CreateMenuFormData } from '@/types'
@@ -61,6 +61,9 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // Get user profile to use default venue info if not provided
+    const profile = await userOperations.getProfile(user.id)
+    
     // Generate slug if not provided
     const slug = body.slug || generateSlugFromName(body.name)
     
@@ -70,9 +73,9 @@ export async function POST(request: NextRequest) {
     const menu = await menuOperations.createMenu(user.id, {
       name: body.name,
       slug: uniqueSlug,
-      establishmentType: body.establishmentType,
-      primaryCuisine: body.primaryCuisine,
-      venueInfo: body.venueInfo,
+      establishmentType: body.establishmentType || profile?.establishmentType,
+      primaryCuisine: body.primaryCuisine || profile?.primaryCuisine,
+      venueInfo: body.venueInfo || profile?.defaultVenueInfo || {},
     })
 
     // Ensure dashboard reflects newly created menu on next client navigation
