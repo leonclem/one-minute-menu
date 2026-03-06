@@ -23,7 +23,6 @@
     "deploy:vercel": "vercel --prod",
     "scan:secrets": "node scripts/scan-secrets.js",
     "prewarm:demo-pdf": "node scripts/prewarm-demo-pdf-cache.js",
-    "test:emails": "node scripts/send-test-emails.js --to",
     "test:emails:only": "node scripts/send-test-emails.js --to"
   },
   "dependencies": {
@@ -75,6 +74,7 @@
     "@typescript-eslint/eslint-plugin": "^6.13.1",
     "@typescript-eslint/parser": "^6.13.1",
     "axe-core": "^4.11.0",
+    "baseline-browser-mapping": "^2.10.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.15",
     "fast-check": "^4.5.1",
