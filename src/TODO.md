@@ -2,11 +2,14 @@
 
 ## /template
 - [x] Show/hide category title
-- [ ] Move image up or down within tile "viewport"
+- [ ] Capability to mark image "centre point" (facilitates centring within tile "viewport")
 - [ ] Chequerboard designs
 - [ ] Clarify - do we separate structure and styling?  This should allow us to bring in bolder colours.
 - [ ] Investigation into new design integration (without redeployment). Explanation of architecture (e.g. Pinterest -> Gemini -> "make this")
-- [ ] If no/disabled images for category (or item?), render as text-only layout
+- [x] If no/disabled images for category, render as text-only layout
+
+## Demo Flow
+- [x] Replace "breakfast blackboard" photo with MS Word photo version
 
 ## Production Monitoring
 - [ ] Install Vercel analytics
@@ -76,7 +79,8 @@
 
 ## /template
 - [ ] Images too dark, perhaps only darken lower half (assuming top half has text)
-- [ ] Menu design, e.g. paint splashes, food ingredients, etc. (overlay)
+- [ ] Design flourishes, e.g. paint splashes, food ingredients, etc. (overlay)
+- [ ] Upload branding colours
 - [ ] Alternating colour tiles (i.e. menu items, not spacers).
 - [ ] For "6. Display Options": new options to only show images for feature items
 - [ ] Introduce A3 variants to create more space for menu items and menu item components
@@ -84,7 +88,7 @@
 - [ ] Develop presets
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 - [ ] "Polaroid" / angled effect.  Perhaps with "marker pen" headings?
-- [ ] Should still leave a space between categories even if category titles toggled off 
+- [ ] Should still leave a space between categories even if category titles toggled off
 
 ## /pricing
 - [ ] Image resolutions - 1k for Creator Pack, 2k for GridMenu, 4k for GridMenu+.  Consider Nano Banana 2.
