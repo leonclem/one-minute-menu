@@ -116,6 +116,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [isExporting, setIsExporting] = useState(false)
   const [exportStatus, setExportStatus] = useState<string | null>(null)
   const [exportSuccessModalOpen, setExportSuccessModalOpen] = useState(false)
+  const [cooldownResetAt, setCooldownResetAt] = useState<Date | null>(null)
+  const [cooldownRemaining, setCooldownRemaining] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
@@ -128,7 +130,27 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     setMounted(true)
   }, [])
 
-  // Load menu data
+  // Cooldown countdown timer for export rate limiting
+  useEffect(() => {
+    if (!cooldownResetAt) {
+      setCooldownRemaining(null)
+      return
+    }
+    const tick = () => {
+      const diff = cooldownResetAt.getTime() - Date.now()
+      if (diff <= 0) {
+        setCooldownResetAt(null)
+        setCooldownRemaining(null)
+        return
+      }
+      const mins = Math.floor(diff / 60_000)
+      const secs = Math.ceil((diff % 60_000) / 1000)
+      setCooldownRemaining(mins > 0 ? `${mins}m ${secs}s` : `${secs}s`)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [cooldownResetAt])  // Load menu data
   useEffect(() => {
     const loadMenuData = async () => {
       setLoading(true)
@@ -522,6 +544,17 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
 
       if (!jobResp.ok) {
         const data = await jobResp.json()
+        if (jobResp.status === 429) {
+          if (data.resetAt) setCooldownResetAt(new Date(data.resetAt))
+          showToast({
+            type: 'info',
+            title: 'Export limit reached',
+            description: data?.error || 'Please wait and try again.',
+          })
+          setIsExporting(false)
+          setExportStatus(null)
+          return
+        }
         throw new Error(data?.error || 'Failed to create export job')
       }
 
@@ -876,13 +909,13 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
             className="w-full sm:w-auto min-w-[200px] shadow-lg"
             onClick={handleExportPDF}
             loading={isExporting}
-            disabled={!layoutDocument || !!previewError || isSaving || isExporting}
+            disabled={!layoutDocument || !!previewError || isSaving || isExporting || !!cooldownRemaining}
           >
             <span className="flex items-center gap-2">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              {exportStatus || 'Export PDF'}
+              {cooldownRemaining ? `Available in ${cooldownRemaining}` : (exportStatus || 'Export PDF')}
             </span>
           </UXButton>
         )}

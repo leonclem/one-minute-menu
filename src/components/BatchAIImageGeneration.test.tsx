@@ -9,15 +9,37 @@ jest.mock('@/lib/batch-generation', () => ({
   }),
 }))
 
+// Mock fetch to return batch limits
+const mockFetch = jest.fn()
+global.fetch = mockFetch
+
 function makeItems(n: number) {
   return Array.from({ length: n }, (_, i) => ({ id: `item-${i + 1}`, name: `Item ${i + 1}` }))
 }
 
 describe('BatchAIImageGeneration', () => {
-  it('limits processing to first 20 selected items and informs the user', async () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    // Default: return free plan batch limits
+    mockFetch.mockImplementation((url: string) => {
+      if (url === '/api/batch-limits') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ maxBatchSize: 5, delayMs: 3000 }),
+        })
+      }
+      // For generate-image calls
+      return Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({ error: 'nope' }),
+      })
+    })
+  })
+
+  it('limits processing to plan-based batch size (free=5) and informs the user', async () => {
     const onClose = jest.fn()
     const onItemImageGenerated = jest.fn()
-    const items = makeItems(25)
+    const items = makeItems(10)
 
     render(
       <ToastProvider>
@@ -30,24 +52,73 @@ describe('BatchAIImageGeneration', () => {
       </ToastProvider>
     )
 
-    expect(
-      screen.getByText('Create Photos for 20 of 25 Selected Items')
-    ).toBeInTheDocument()
+    // Wait for batch limits to be fetched
+    await waitFor(() => {
+      expect(screen.getByText('Create Photos for 5 of 10 Selected Items')).toBeInTheDocument()
+    })
 
-    // The list should only show 20 items
-    expect(screen.getByText('Item 20')).toBeInTheDocument()
-    expect(screen.queryByText('Item 21')).not.toBeInTheDocument()
+    // The list should only show 5 items
+    expect(screen.getByText('Item 5')).toBeInTheDocument()
+    expect(screen.queryByText('Item 6')).not.toBeInTheDocument()
+  })
 
-    // Start the batch
+  it('uses higher batch limit for paid plans', async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url === '/api/batch-limits') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ maxBatchSize: 15, delayMs: 1000 }),
+        })
+      }
+      return Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({ error: 'nope' }),
+      })
+    })
+
+    const items = makeItems(20)
+
+    render(
+      <ToastProvider>
+        <BatchAIImageGeneration
+          menuId="menu-1"
+          items={items}
+          onClose={jest.fn()}
+          onItemImageGenerated={jest.fn()}
+        />
+      </ToastProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Create Photos for 15 of 20 Selected Items')).toBeInTheDocument()
+    })
+  })
+
+  it('passes delayMs to batch runner', async () => {
+    const items = makeItems(3)
+
+    render(
+      <ToastProvider>
+        <BatchAIImageGeneration
+          menuId="menu-1"
+          items={items}
+          onClose={jest.fn()}
+          onItemImageGenerated={jest.fn()}
+        />
+      </ToastProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Create Photos for 3 Selected Items')).toBeInTheDocument()
+    })
+
     fireEvent.click(screen.getByRole('button', { name: /Create Photos/i }))
 
-    // The mocked runner should receive only 20 items
     const { runBatchGenerationSequential } = require('@/lib/batch-generation')
     await waitFor(() => {
       expect(runBatchGenerationSequential).toHaveBeenCalled()
     })
-    const args = (runBatchGenerationSequential as jest.Mock).mock.calls[0]
-    expect(args[1]).toHaveLength(20)
+    const opts = (runBatchGenerationSequential as jest.Mock).mock.calls[0][2]
+    expect(opts.delayMs).toBe(3000)
   })
 })
-

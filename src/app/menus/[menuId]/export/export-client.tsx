@@ -116,6 +116,9 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
   const [exportingFormat, setExportingFormat] = useState<string | null>(null)
   const [completedExports, setCompletedExports] = useState<Set<string>>(new Set())
   const [canEdit, setCanEdit] = useState(true)
+  const [cooldownResetAt, setCooldownResetAt] = useState<Date | null>(null)
+  const [cooldownRemaining, setCooldownRemaining] = useState<string | null>(null)
+  const [exportLimit, setExportLimit] = useState<{ remaining: number; limit: number } | null>(null)
   const router = useRouter()
   const { showToast } = useToast()
 
@@ -219,6 +222,29 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
   const isDemo = menuId.startsWith('demo-')
   const isReadOnly = !isDemo && canEdit === false
 
+  // Cooldown countdown timer
+  useEffect(() => {
+    if (!cooldownResetAt) {
+      setCooldownRemaining(null)
+      return
+    }
+    const tick = () => {
+      const diff = cooldownResetAt.getTime() - Date.now()
+      if (diff <= 0) {
+        setCooldownResetAt(null)
+        setCooldownRemaining(null)
+        setExportLimit(null)
+        return
+      }
+      const mins = Math.floor(diff / 60_000)
+      const secs = Math.ceil((diff % 60_000) / 1000)
+      setCooldownRemaining(mins > 0 ? `${mins}m ${secs}s` : `${secs}s`)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [cooldownResetAt])
+
   useEffect(() => {
     if (isDemo) return
     let mounted = true
@@ -298,6 +324,18 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
             const filename = `${demoMenu.name.replace(/\s+/g, '-').toLowerCase()}-menu.pdf`
 
             if (!resp.ok) {
+              if (resp.status === 429) {
+                if (data.resetAt) setCooldownResetAt(new Date(data.resetAt))
+                if (typeof data.remaining === 'number' && typeof data.limit === 'number') {
+                  setExportLimit({ remaining: data.remaining, limit: data.limit })
+                }
+                showToast({
+                  type: 'info',
+                  title: 'Export limit reached',
+                  description: data.error || `Try again in ${data.retryAfter ?? 60}s.`,
+                })
+                return
+              }
               throw new Error(data?.error || 'Export failed')
             }
 
@@ -470,6 +508,21 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
             description: 'Create an account to export your real menu.'
           })
           router.push('/register')
+          return
+        }
+        if (resp.status === 429) {
+          const errData = await resp.json().catch(() => ({}))
+          if (errData.resetAt) {
+            setCooldownResetAt(new Date(errData.resetAt))
+          }
+          if (typeof errData.remaining === 'number' && typeof errData.limit === 'number') {
+            setExportLimit({ remaining: errData.remaining, limit: errData.limit })
+          }
+          showToast({
+            type: 'info',
+            title: 'Export limit reached',
+            description: errData.error || `Try again in ${errData.retryAfter ?? 60}s.`,
+          })
           return
         }
         const errText = await resp.text().catch(() => 'Export failed')
@@ -699,6 +752,22 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                         </svg>
                         Downloaded
+                      </div>
+                    ) : cooldownRemaining && !isDemo ? (
+                      <div className="space-y-1">
+                        <UXButton
+                          variant="primary"
+                          size="sm"
+                          disabled
+                          className="w-full"
+                        >
+                          Available in {cooldownRemaining}
+                        </UXButton>
+                        {exportLimit && (
+                          <p className="text-xs text-ux-text-secondary text-center">
+                            {exportLimit.remaining} of {exportLimit.limit} exports remaining
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <UXButton

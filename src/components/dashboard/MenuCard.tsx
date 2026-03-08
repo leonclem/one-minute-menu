@@ -15,6 +15,8 @@ interface MenuCardProps {
    * This drives label/CTA behavior; server APIs still enforce permissions.
    */
   isEditLocked?: boolean
+  /** Whether the user can delete menus (false for Free plan) */
+  canDelete?: boolean
   /** Most recent export job for this menu, if any */
   latestExportJob?: { status: string; file_url: string | null; export_type: string; job_id: string } | null
 }
@@ -30,7 +32,7 @@ interface MenuCardProps {
  * - Handle menu deletion with API call
  * - Smart routing based on menu state
  */
-export function MenuCard({ menu, isEditLocked = false, latestExportJob }: MenuCardProps) {
+export function MenuCard({ menu, isEditLocked = false, canDelete = true, latestExportJob }: MenuCardProps) {
   const router = useRouter()
   const { showToast } = useToast()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -111,6 +113,16 @@ export function MenuCard({ menu, isEditLocked = false, latestExportJob }: MenuCa
           setIsDeleting(false)
           return
         }
+        if (error?.code === 'FEATURE_NOT_AVAILABLE') {
+          showToast({
+            type: 'info',
+            title: 'Not available on Free plan',
+            description: 'Menu deletion is available on Grid+ and above.',
+          })
+          setShowDeleteDialog(false)
+          setIsDeleting(false)
+          return
+        }
         throw new Error(error.error || 'Failed to delete menu')
       }
 
@@ -145,6 +157,7 @@ export function MenuCard({ menu, isEditLocked = false, latestExportJob }: MenuCa
             <h3 className="text-lg font-semibold text-ux-text flex-1 mr-2">
               {menu.name}
             </h3>
+            {canDelete && (
             <button
               onClick={handleDeleteClick}
               disabled={isDeleting}
@@ -166,6 +179,7 @@ export function MenuCard({ menu, isEditLocked = false, latestExportJob }: MenuCa
                 />
               </svg>
             </button>
+            )}
           </div>
           
           <div className="space-y-2">

@@ -21,7 +21,9 @@ const STYLE_PRESETS = [
   { id: 'casual', name: 'Casual', description: 'Relaxed, everyday dining' },
 ] as const
 
-const MAX_BATCH_ITEMS = 20
+/** Fallback batch limits (Free plan defaults) */
+const DEFAULT_MAX_BATCH_ITEMS = 5
+const DEFAULT_DELAY_MS = 3000
 
 export default function BatchAIImageGeneration({ menuId, items, onClose, onItemImageGenerated }: BatchAIImageGenerationProps) {
   const { showToast } = useToast()
@@ -44,8 +46,22 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
   const [progress, setProgress] = useState<Record<string, BatchProgressUpdate['status']>>({})
   const [results, setResults] = useState<BatchGenerationResult[] | null>(null)
 
+  // Plan-based batch limits (fetched on mount)
+  const [maxBatchItems, setMaxBatchItems] = useState(DEFAULT_MAX_BATCH_ITEMS)
+  const [batchDelayMs, setBatchDelayMs] = useState(DEFAULT_DELAY_MS)
+
+  useEffect(() => {
+    fetch('/api/batch-limits')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.maxBatchSize) setMaxBatchItems(data.maxBatchSize)
+        if (typeof data?.delayMs === 'number') setBatchDelayMs(data.delayMs)
+      })
+      .catch(() => { /* use defaults */ })
+  }, [])
+
   const totalSelected = items.length
-  const itemsToProcess = useMemo(() => items.slice(0, MAX_BATCH_ITEMS), [items])
+  const itemsToProcess = useMemo(() => items.slice(0, maxBatchItems), [items, maxBatchItems])
   const limitedCount = itemsToProcess.length
   const isLimited = totalSelected > limitedCount
 
@@ -53,12 +69,14 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
   const completedCount = useMemo(() => Object.values(progress).filter(s => s === 'completed' || s === 'failed').length, [progress])
   const failedCount = useMemo(() => Object.values(progress).filter(s => s === 'failed').length, [progress])
 
+  // Stable list of item IDs to process — only changes when maxBatchItems changes (after fetch)
+  const itemIdsToProcess = useMemo(() => items.slice(0, maxBatchItems).map(it => it.id), [items.length, maxBatchItems]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
-    // Initialize progress map
     const initial: Record<string, BatchProgressUpdate['status']> = {}
-    for (const it of itemsToProcess) initial[it.id] = 'queued'
+    for (const id of itemIdsToProcess) initial[id] = 'queued'
     setProgress(initial)
-  }, [itemsToProcess])
+  }, [itemIdsToProcess])
 
   const startBatch = async () => {
     setRunning(true)
@@ -77,13 +95,14 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
         showToast({
           type: 'info',
           title: 'Selection limited',
-          description: `You selected ${totalSelected} items. We'll generate photos for the first ${limitedCount}.`,
+          description: `You have selected ${totalSelected} items. Generating photos for the first ${limitedCount}.`,
         })
       }
 
       const batchResults = await runBatchGenerationSequential(menuId, itemsToProcess, {
         styleParams,
         numberOfVariations: 1,
+        delayMs: batchDelayMs,
         referenceImages: referenceImages.map(img => ({
           dataUrl: img.dataUrl,
           comment: img.comment,
@@ -95,7 +114,6 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
         },
       })
 
-      // Apply successful images to items
       for (const r of batchResults) {
         if (r.status === 'success' && r.imageUrl) {
           try {
@@ -110,33 +128,99 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
       setResults(batchResults)
       const successes = batchResults.filter(r => r.status === 'success').length
       const failures = batchResults.length - successes
-      
-      // Check if batch stopped due to quota exceeded
+
       const quotaExceeded = batchResults.some(r => r.errorCode === 'QUOTA_EXCEEDED')
       const editWindowExpired = batchResults.some(r => r.errorCode === 'EDIT_WINDOW_EXPIRED')
-      
+
       if (editWindowExpired) {
         const first = batchResults.find(r => r.errorCode === 'EDIT_WINDOW_EXPIRED')
-        showToast({ 
-          type: 'info', 
-          title: 'Edits locked', 
-          description: first?.error || 'Your edit window has expired. Purchase a Creator Pack or subscribe to Grid+ to continue.' 
+        showToast({
+          type: 'info',
+          title: 'Edits locked',
+          description: first?.error || 'Your edit window has expired. Purchase a Creator Pack or subscribe to Grid+ to continue.'
         })
       } else if (quotaExceeded) {
-        showToast({ 
-          type: 'info', 
-          title: 'Monthly limit reached', 
-          description: 'Upgrade to generate more images this month.' 
+        showToast({
+          type: 'info',
+          title: 'Monthly limit reached',
+          description: 'Upgrade to generate more images this month.'
         })
       } else {
-        showToast({ 
-          type: failures > 0 ? 'info' : 'success', 
-          title: 'Batch complete', 
-          description: `${successes} succeeded, ${failures} failed` 
+        showToast({
+          type: failures > 0 ? 'info' : 'success',
+          title: 'Batch complete',
+          description: `${successes} succeeded, ${failures} failed`
         })
       }
     } catch (e) {
       showToast({ type: 'error', title: 'Batch failed', description: e instanceof Error ? e.message : 'Please try again.' })
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const retryFailed = async () => {
+    if (!results) return
+    const failedItems = itemsToProcess.filter(it =>
+      results.some(r => r.itemId === it.id && r.status === 'failed')
+    )
+    if (failedItems.length === 0) return
+
+    setRunning(true)
+    // Reset progress for failed items
+    setProgress(prev => {
+      const next = { ...prev }
+      for (const it of failedItems) next[it.id] = 'queued'
+      return next
+    })
+    setResults(null)
+
+    try {
+      const styleParams: ImageGenerationParams = {
+        style: selectedStyle as any,
+        presentation: advancedParams.presentation || 'white_plate',
+        lighting: advancedParams.lighting || 'natural',
+        negativePrompt: advancedParams.negativePrompt || '',
+        customPromptAdditions: advancedParams.customPromptAdditions || '',
+        hasReferenceImage: referenceImages.length > 0,
+      }
+
+      const retryResults = await runBatchGenerationSequential(menuId, failedItems, {
+        styleParams,
+        numberOfVariations: 1,
+        delayMs: batchDelayMs,
+        referenceImages: referenceImages.map(img => ({
+          dataUrl: img.dataUrl,
+          comment: img.comment,
+          name: img.name,
+          role: img.role,
+        })),
+        onProgress: (update) => {
+          setProgress(prev => ({ ...prev, [update.itemId]: update.status }))
+        },
+      })
+
+      for (const r of retryResults) {
+        if (r.status === 'success' && r.imageUrl) {
+          try {
+            const targetId = r.itemIdNormalized || r.itemId
+            await onItemImageGenerated(targetId, r.imageUrl)
+          } catch {
+            // keep result as success
+          }
+        }
+      }
+
+      setResults(retryResults)
+      const successes = retryResults.filter(r => r.status === 'success').length
+      const failures = retryResults.length - successes
+      showToast({
+        type: failures > 0 ? 'info' : 'success',
+        title: 'Retry complete',
+        description: `${successes} succeeded, ${failures} failed`,
+      })
+    } catch (e) {
+      showToast({ type: 'error', title: 'Retry failed', description: e instanceof Error ? e.message : 'Please try again.' })
     } finally {
       setRunning(false)
     }
@@ -167,7 +251,7 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
 
           {isLimited && (
             <div className="mb-6 p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-800">
-              You selected <strong>{totalSelected}</strong> items. To keep things fast and predictable, we’ll generate photos for the first <strong>{limitedCount}</strong>.
+              You have selected <strong>{totalSelected}</strong> items. The free plan allows batch creation of up to <strong>{limitedCount}</strong> items at a time. <a href="/pricing" className="underline font-medium">Upgrade</a> for larger batches.
             </div>
           )}
 
@@ -244,47 +328,24 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
 
                 <div className="border-t border-gray-200 pt-4 mt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Reference Photos ({referenceImages.length}/3)
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">Reference Photos ({referenceImages.length}/3)</label>
                     {referenceImages.length < 3 && (
                       <div className="relative">
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp"
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0]
-                            if (!file) return
-                            if (file.size > 7 * 1024 * 1024) {
-                              showToast({ type: 'error', title: 'File too large', description: 'Max size is 7MB' })
-                              return
-                            }
-                            const reader = new FileReader()
-                                reader.onload = () => {
-                                  setReferenceImages(prev => [
-                                    ...prev,
-                                    {
-                                      id: `upload_${Date.now()}`,
-                                      dataUrl: reader.result as string,
-                                      name: file.name,
-                                      comment: '',
-                                      role: 'scene'
-                                    }
-                                  ])
-                                  // Auto-switch to "None / Use Reference" when a photo is added
-                                  setAdvancedParams(prev => ({ ...prev, presentation: 'none' }))
-                                }
-                            reader.readAsDataURL(file)
-                          }}
-                        />
-                        <UXButton variant="outline" size="sm" className="text-xs">
-                          Add Photo
-                        </UXButton>
+                        <input type="file" accept="image/png,image/jpeg,image/webp" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          if (file.size > 7 * 1024 * 1024) { showToast({ type: 'error', title: 'File too large', description: 'Max size is 7MB' }); return }
+                          const reader = new FileReader()
+                          reader.onload = () => {
+                            setReferenceImages(prev => [...prev, { id: `upload_${Date.now()}`, dataUrl: reader.result as string, name: file.name, comment: '', role: 'scene' }])
+                            setAdvancedParams(prev => ({ ...prev, presentation: 'none' }))
+                          }
+                          reader.readAsDataURL(file)
+                        }} />
+                        <UXButton variant="outline" size="sm" className="text-xs">Add Photo</UXButton>
                       </div>
                     )}
                   </div>
-                  
                   {referenceImages.length > 0 ? (
                     <div className="space-y-3">
                       {referenceImages.map((ref) => (
@@ -292,52 +353,22 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
                           <div className="flex flex-col sm:flex-row gap-3">
                             <div className="relative w-full sm:w-16 h-24 sm:h-16 flex-shrink-0">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img 
-                                src={ref.dataUrl} 
-                                alt={ref.name}
-                                className="w-full h-full object-cover rounded-md border border-gray-100" 
-                              />
+                              <img src={ref.dataUrl} alt={ref.name} className="w-full h-full object-cover rounded-md border border-gray-100" />
                             </div>
                             <div className="flex-1 flex flex-col justify-between gap-2">
                               <div className="flex items-center justify-between gap-2">
-                                <select
-                                  value={ref.role}
-                                  onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, role: e.target.value } : r))}
-                                  className="text-[10px] px-2 py-1 border border-gray-200 rounded bg-white font-medium text-gray-700 w-full sm:w-auto"
-                                  disabled={running}
-                                >
+                                <select value={ref.role} onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, role: e.target.value } : r))} className="text-[10px] px-2 py-1 border border-gray-200 rounded bg-white font-medium text-gray-700 w-full sm:w-auto" disabled={running}>
                                   <option value="dish">Dish / Subject</option>
                                   <option value="scene">Table / Scene</option>
                                   <option value="style">Style / Lighting</option>
                                   <option value="layout">Plating / Layout</option>
                                   <option value="other">Other</option>
                                 </select>
-                                <button
-                                  onClick={() => setReferenceImages(prev => prev.filter(r => r.id !== ref.id))}
-                                  className="text-[10px] text-red-500 hover:text-red-700 font-medium uppercase sm:hidden"
-                                  disabled={running}
-                                >
-                                  Remove
-                                </button>
+                                <button onClick={() => setReferenceImages(prev => prev.filter(r => r.id !== ref.id))} className="text-[10px] text-red-500 hover:text-red-700 font-medium uppercase sm:hidden" disabled={running}>Remove</button>
                               </div>
-                              <div className="relative flex-1">
-                                <textarea
-                                  placeholder="e.g., use this plate, match the lighting, remove herbs"
-                                  value={ref.comment}
-                                  onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, comment: e.target.value } : r))}
-                                  className="w-full text-xs p-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-ux-primary focus:border-ux-primary resize-none bg-white/80"
-                                  rows={1}
-                                  disabled={running}
-                                />
-                              </div>
+                              <textarea placeholder="e.g., use this plate, match the lighting, remove herbs" value={ref.comment} onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, comment: e.target.value } : r))} className="w-full text-xs p-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-ux-primary focus:border-ux-primary resize-none bg-white/80" rows={1} disabled={running} />
                               <div className="hidden sm:flex justify-end">
-                                <button
-                                  onClick={() => setReferenceImages(prev => prev.filter(r => r.id !== ref.id))}
-                                  className="text-[10px] text-red-500 hover:text-red-700 font-medium uppercase tracking-wider transition-colors"
-                                  disabled={running}
-                                >
-                                  Remove
-                                </button>
+                                <button onClick={() => setReferenceImages(prev => prev.filter(r => r.id !== ref.id))} className="text-[10px] text-red-500 hover:text-red-700 font-medium uppercase tracking-wider transition-colors" disabled={running}>Remove</button>
                               </div>
                             </div>
                           </div>
@@ -346,10 +377,7 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
                     </div>
                   ) : (
                     <div className="text-center py-6 border-2 border-dashed border-gray-200 rounded-lg">
-                      <p className="text-xs text-gray-400">
-                        No reference photos added.<br/>
-                        Upload one to guide the generation.
-                      </p>
+                      <p className="text-xs text-gray-400">No reference photos added.<br/>Upload one to guide the generation.</p>
                     </div>
                   )}
                 </div>
@@ -384,22 +412,54 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
           {/* Summary when done */}
           {results && (
             <div className="mb-4 p-3 bg-gray-50 rounded">
-              <div className="text-sm text-gray-800">Completed {completedCount}/{total}. Failed {failedCount}.</div>
+              <div className="text-sm text-gray-800">
+                Completed {completedCount}/{total}.{' '}
+                {failedCount > 0 ? (
+                  <span className="text-red-600">Failed {failedCount}.</span>
+                ) : (
+                  <span className="text-green-600">All succeeded.</span>
+                )}
+              </div>
+              {failedCount > 0 && results.filter(r => r.status === 'failed').length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {results.filter(r => r.status === 'failed').map(r => {
+                    const item = itemsToProcess.find(it => it.id === r.itemId)
+                    return (
+                      <div key={r.itemId} className="text-xs text-red-600 flex items-start gap-1">
+                        <span className="font-medium truncate max-w-[200px]">{item?.name ?? r.itemId}:</span>
+                        <span className="text-red-500">{r.error || 'Unknown error'}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 
           {/* Actions */}
           <div className="flex gap-3">
             <UXButton variant="outline" onClick={onClose} disabled={running} className="flex-1">Close</UXButton>
-            <UXButton 
-              variant="primary" 
-              onClick={startBatch} 
-              loading={running} 
-              disabled={running || !!results || (advancedParams.presentation === 'none' && referenceImages.length === 0)}
-              className="flex-1"
-            >
-              {results ? 'Batch Completed' : (running ? 'Creating…' : 'Create Photos')}
-            </UXButton>
+            {results && failedCount > 0 ? (
+              <UXButton
+                variant="primary"
+                onClick={retryFailed}
+                loading={running}
+                disabled={running}
+                className="flex-1"
+              >
+                Retry Failed ({failedCount})
+              </UXButton>
+            ) : (
+              <UXButton
+                variant="primary"
+                onClick={startBatch}
+                loading={running}
+                disabled={running || !!results || (advancedParams.presentation === 'none' && referenceImages.length === 0)}
+                className="flex-1"
+              >
+                {results ? 'Batch Completed' : (running ? 'Creating…' : 'Create Photos')}
+              </UXButton>
+            )}
           </div>
         </div>
       </div>
@@ -407,5 +467,3 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
     document.body
   )
 }
-
-

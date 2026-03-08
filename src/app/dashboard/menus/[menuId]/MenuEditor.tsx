@@ -24,9 +24,10 @@ import type { Category, MenuItem as ExtractedMenuItem } from '@/lib/extraction/s
 
 interface MenuEditorProps {
   menu: Menu
+  canDelete?: boolean
 }
 
-export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
+export default function MenuEditor({ menu: initialMenu, canDelete = true }: MenuEditorProps) {
   // Merge very similar hex colors (e.g., #FC6B02 vs #FD6E05) into a single entry
   const dedupeSimilarColors = (colors: string[], threshold: number = 24): string[] => {
     const unique: string[] = []
@@ -1347,8 +1348,9 @@ export default function MenuEditor({ menu: initialMenu }: MenuEditorProps) {
                 size="sm"
                 className="text-red-600 hover:text-red-700"
                 onClick={handleDeleteMenu}
-                disabled={loading !== null || publishing}
+                disabled={loading !== null || publishing || !canDelete}
                 aria-label="Delete menu"
+                title={canDelete ? 'Delete menu' : 'Menu deletion is available on Grid+ and above'}
               >
                 Delete
               </Button>

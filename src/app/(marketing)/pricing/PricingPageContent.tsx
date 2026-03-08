@@ -203,8 +203,9 @@ export default function UXPricingPageContent({
         {/* Fair Use Disclaimer */}
         <div className="max-w-4xl mx-auto text-center mb-16">
           <p className="text-sm text-white/80 italic">
-            *Fair-use limits apply to prevent abuse and ensure service quality. 
-            Automated throttling may occur during peak periods.
+            *Fair-use limits apply. See our{' '}
+            <a href="/rate-limits" className="underline hover:text-white/95">rate limits &amp; fair use policy</a>{' '}
+            for details.
           </p>
         </div>
 

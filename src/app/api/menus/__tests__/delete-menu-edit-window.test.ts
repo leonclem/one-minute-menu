@@ -33,6 +33,9 @@ jest.mock('@/lib/database', () => ({
     getMenu: jest.fn(),
     updateMenu: jest.fn(),
   },
+  userOperations: {
+    getProfile: jest.fn().mockResolvedValue({ id: 'user-1', plan: 'grid_plus', role: 'user' }),
+  },
 }))
 
 describe('DELETE /api/menus/[menuId] - edit window expired', () => {

@@ -37,6 +37,10 @@ export interface RunBatchOptions {
   }>
   onProgress?: (update: BatchProgressUpdate) => void
   /**
+   * Inter-item delay in ms (plan-dependent). Defaults to 0 (no delay).
+   */
+  delayMs?: number
+  /**
    * Override fetch implementation for testing.
    */
   fetchImpl?: typeof fetch
@@ -67,6 +71,11 @@ export async function runBatchGenerationSequential(
 
   for (let index = 0; index < items.length; index++) {
     const item = items[index]
+
+    // Inter-item delay (plan-dependent) to prevent rapid-fire abuse
+    if (index > 0 && options.delayMs && options.delayMs > 0) {
+      await sleep(options.delayMs)
+    }
 
     options.onProgress?.({ index, total, itemId: item.id, status: 'queued' })
 

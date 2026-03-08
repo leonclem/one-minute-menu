@@ -29,6 +29,11 @@ jest.mock('@/lib/supabase-server')
 jest.mock('@/lib/database')
 jest.mock('@/lib/worker/snapshot')
 jest.mock('@/lib/worker/storage-client')
+jest.mock('@/lib/rate-limiting', () => ({
+  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 10, limit: 10, resetAt: new Date() }),
+  getExportLimits: jest.fn(),
+  getBatchLimits: jest.fn(),
+}))
 
 import { POST, GET as GET_LIST } from '@/app/api/export/jobs/route'
 import { GET } from '@/app/api/export/jobs/[jobId]/route'

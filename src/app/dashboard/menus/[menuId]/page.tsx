@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 export const dynamic = 'force-dynamic'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { menuOperations } from '@/lib/database'
+import { menuOperations, userOperations } from '@/lib/database'
 import MenuEditor from './MenuEditor'
 
 interface MenuPageProps {
@@ -19,12 +19,18 @@ export default async function MenuPage({ params }: MenuPageProps) {
     redirect('/auth/signin')
   }
 
-  // Get the menu
-  const menu = await menuOperations.getMenu(params.menuId, user.id)
+  // Get the menu and profile in parallel
+  const [menu, profile] = await Promise.all([
+    menuOperations.getMenu(params.menuId, user.id),
+    userOperations.getProfile(user.id),
+  ])
   
   if (!menu) {
     redirect('/dashboard')
   }
 
-  return <MenuEditor menu={menu} />
+  const isSubscriber = ['grid_plus', 'grid_plus_premium', 'premium', 'enterprise'].includes(profile?.plan ?? 'free')
+  const isAdmin = profile?.role === 'admin'
+
+  return <MenuEditor menu={menu} canDelete={isSubscriber || isAdmin} />
 }

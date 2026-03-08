@@ -7,6 +7,7 @@ import { getPromptConstructionService } from '@/lib/prompt-construction'
 import { imageProcessingService } from '@/lib/image-processing'
 import { DatabaseError, assertUserCanEditMenu, userOperations } from '@/lib/database'
 import { getItemDailyGenerationLimit } from '@/lib/image-generation-limits'
+import { checkRateLimit, getBatchLimits } from '@/lib/rate-limiting'
 import type { 
   ImageGenerationRequest, 
   NanoBananaParams,
@@ -211,6 +212,21 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // Enforce per-minute rate limit (database-backed, plan-based)
+    const plan = (profile?.plan ?? 'free') as any
+    const rateLimitCheck = await checkRateLimit(user.id, 'image_generation', plan)
+    if (!rateLimitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Please wait a moment before generating more images.',
+          code: 'RATE_LIMIT_EXCEEDED',
+          retryAfter: rateLimitCheck.retryAfterSeconds,
+          resetAt: rateLimitCheck.resetAt.toISOString(),
+        },
+        { status: 429 }
+      )
+    }
+
     // Enforce per-item daily regeneration limit (plan-based)
     const startOfToday = new Date()
     startOfToday.setHours(0, 0, 0, 0)
@@ -221,7 +237,6 @@ export async function POST(request: NextRequest) {
       .eq('menu_item_id', normalizedMenuItemId)
       .gte('created_at', startOfToday.toISOString())
 
-    const plan = (profile?.plan ?? 'free') as any
     const DAILY_LIMIT = getItemDailyGenerationLimit(plan, profile?.role)
     const remainingForToday = Math.max(0, DAILY_LIMIT - (todaysAttempts || 0))
 

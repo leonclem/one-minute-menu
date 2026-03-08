@@ -1,5 +1,16 @@
 # Roadmap
 
+## misc
+- [x] Free plan is allowing as many images as I like!!!
+- [ ] Supabase login/register emails still look terrible
+
+## /extracted - Image Generation
+- [ ] Understand what's required and pricing to switch to NB2
+- [ ] Determine best practices for prompting
+- [ ] Investigate how prompting is currently constructed (Admin area should reveal details)
+- [ ] Overhaul prompting modal interface to simplify for non-technical
+- [ ] When using a reference image from those already generated, preserve the details that were used to create it somehow(?)
+
 ## /template
 - [x] Show/hide category title
 - [ ] Capability to mark image "centre point" (facilitates centring within tile "viewport")
@@ -41,6 +52,7 @@
 ## Security
 - [ ] Address Next.js DoS vulnerabilities (see `SECURITY_NEXTJS_VULNERABILITIES.md`)
 - [ ] Ensure MFA is set on email accounts
+- [ ] Emsure choosing own username during onboarding 
 
 ## Tech debt
 - [ ] Review code

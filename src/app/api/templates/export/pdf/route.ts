@@ -243,18 +243,29 @@ export async function POST(request: NextRequest) {
       user = authUser
       metricsBuilder.setUserId(user.id)
       
-      // Apply rate limiting for authenticated users
-      const rateLimit = applyRateLimit(pdfExportLimiter, user.id)
-      if (!rateLimit.allowed) {
+      // Apply database-backed rate limiting (plan-aware with cooldown)
+      const { checkRateLimit } = await import('@/lib/rate-limiting')
+      const { userOperations } = await import('@/lib/database')
+      const profile = await userOperations.getProfile(user.id)
+      const userPlan = (profile?.plan ?? 'free') as import('@/types').UserPlan
+      const dbRateLimit = await checkRateLimit(user.id, 'export', userPlan)
+      if (!dbRateLimit.allowed) {
         return NextResponse.json(
           { 
-            error: 'Rate limit exceeded',
-            code: ERROR_CODES.CONCURRENCY_LIMIT,
-            retryAfter: rateLimit.retryAfter
+            error: `Export limit reached. Try again in ${dbRateLimit.retryAfterSeconds}s.`,
+            code: 'RATE_LIMIT_EXCEEDED',
+            retryAfter: dbRateLimit.retryAfterSeconds,
+            resetAt: dbRateLimit.resetAt.toISOString(),
+            remaining: 0,
+            limit: dbRateLimit.limit,
           },
           { 
             status: 429,
-            headers: rateLimit.headers
+            headers: {
+              'Retry-After': String(dbRateLimit.retryAfterSeconds ?? 60),
+              'X-RateLimit-Remaining': '0',
+              'X-RateLimit-Reset': String(Math.ceil(dbRateLimit.resetAt.getTime() / 1000)),
+            }
           }
         )
       }

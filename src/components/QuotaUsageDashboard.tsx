@@ -128,11 +128,13 @@ export default function QuotaUsageDashboard({
 
   const { quota, usage } = data
   const isUnlimited = quota.limit === -1
+  const isFreeOrCreatorPack = quota.plan === 'free'
   const percentUsed = quota.limit > 0 ? Math.min(100, Math.round((quota.used / quota.limit) * 100)) : 0
   const approachingLimit = !isUnlimited && quota.used >= quota.warningThreshold && quota.remaining > 0
   const exceeded = !isUnlimited && quota.remaining === 0
   const limitDisplay = isUnlimited ? '∞' : quota.limit
   const remainingDisplay = isUnlimited ? '∞' : quota.remaining
+  const usageLabel = isFreeOrCreatorPack ? 'Used' : 'Used this month'
 
   if (variant === 'summary') {
     return (
@@ -144,7 +146,7 @@ export default function QuotaUsageDashboard({
           <div className="flex items-center justify-between">
             <div>
               <div className="text-lg font-semibold text-secondary-900">{quota.used}/{limitDisplay}</div>
-              <div className="text-xs text-secondary-600">Used this month</div>
+              <div className="text-xs text-secondary-600">{usageLabel}</div>
             </div>
             <div className="w-40">
               <div className="h-2 w-full overflow-hidden rounded bg-secondary-100">
@@ -153,7 +155,9 @@ export default function QuotaUsageDashboard({
                   style={{ width: `${percentUsed}%` }}
                 />
               </div>
-              <div className="mt-1 text-right text-xs text-secondary-600">Resets {new Date(quota.resetDate).toLocaleDateString()}</div>
+              {!isFreeOrCreatorPack && (
+                <div className="mt-1 text-right text-xs text-secondary-600">Resets {new Date(quota.resetDate).toLocaleDateString()}</div>
+              )}
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between text-xs">
@@ -178,7 +182,7 @@ export default function QuotaUsageDashboard({
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-lg font-semibold text-secondary-900">{quota.used}/{limitDisplay}</div>
-                <div className="text-xs text-secondary-600">Used this month</div>
+                <div className="text-xs text-secondary-600">{usageLabel}</div>
               </div>
               <div className="w-40">
                 <div className="h-2 w-full overflow-hidden rounded bg-secondary-100">
@@ -187,7 +191,9 @@ export default function QuotaUsageDashboard({
                     style={{ width: `${percentUsed}%` }}
                   />
                 </div>
-                <div className="mt-1 text-right text-xs text-secondary-600">Resets {new Date(quota.resetDate).toLocaleDateString()}</div>
+                {!isFreeOrCreatorPack && (
+                  <div className="mt-1 text-right text-xs text-secondary-600">Resets {new Date(quota.resetDate).toLocaleDateString()}</div>
+                )}
               </div>
             </div>
             <div className="mt-3 flex items-center justify-between text-xs">
@@ -219,7 +225,7 @@ export default function QuotaUsageDashboard({
           <div className="flex items-center justify-between">
             <div>
               <div className="text-2xl font-bold text-secondary-900">{quota.used}/{limitDisplay}</div>
-              <div className="text-xs text-secondary-600">Used this month</div>
+              <div className="text-xs text-secondary-600">{usageLabel}</div>
             </div>
             <div className="text-right">
               <div className="text-lg font-semibold text-secondary-900">{remainingDisplay}</div>
@@ -236,7 +242,9 @@ export default function QuotaUsageDashboard({
           </div>
           <div className="flex justify-between text-xs text-secondary-600">
             <span>{percentUsed}% used</span>
-            <span>Resets on {new Date(quota.resetDate).toLocaleDateString()}</span>
+            {!isFreeOrCreatorPack && (
+              <span>Resets on {new Date(quota.resetDate).toLocaleDateString()}</span>
+            )}
           </div>
 
           {/* Current Month Stats */}

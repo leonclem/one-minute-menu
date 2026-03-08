@@ -16,7 +16,7 @@ describe('Notifications: sendAdminNewUserAlert', () => {
       menus: 1,
       menuItems: 40,
       monthlyUploads: 5,
-      aiImageGenerations: 20,
+      aiImageGenerations: 50,
     },
     createdAt: new Date(),
     role: 'user',

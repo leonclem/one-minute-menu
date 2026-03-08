@@ -41,7 +41,7 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       '1 Fully customisable menu',
       'Unlimited menu edits for 1 week',
-      'Unlimited image regenerations (fair-use capped*)',
+      '200 AI image generations',
       'All templates included',
       'Print-ready PDF Menu Export',
       'Exported PDF menu storage for 30 days',
@@ -65,7 +65,7 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       'Up to 5 active menus',
       'Unlimited menu edits',
-      'Unlimited image regenerations (fair-use capped*)',
+      '300 AI image generations per month',
       'All templates included',
       'Priority support',
       'Print-ready PDF Menu Export',
@@ -92,7 +92,7 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       'Unlimited active menus',
       'Unlimited menu edits',
-      'Unlimited image regenerations (fair-use capped*)',
+      '1,000 AI image generations per month',
       'All templates included',
       'Priority support',
       'Print-ready PDF Menu Export',

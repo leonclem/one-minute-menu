@@ -621,6 +621,31 @@ export async function POST(request: NextRequest) {
       }
       throw e
     }
+
+    // Database-backed per-minute rate limiting (plan-aware with cooldown)
+    const { checkRateLimit } = await import('@/lib/rate-limiting')
+    const userPlan = (profile.plan ?? 'free') as import('@/types').UserPlan
+    const dbRateLimit = await checkRateLimit(userId, 'export', userPlan)
+    if (!dbRateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: `Export limit reached. Try again in ${dbRateLimit.retryAfterSeconds}s.`,
+          code: 'RATE_LIMIT_EXCEEDED',
+          retryAfter: dbRateLimit.retryAfterSeconds,
+          resetAt: dbRateLimit.resetAt.toISOString(),
+          remaining: 0,
+          limit: dbRateLimit.limit,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(dbRateLimit.retryAfterSeconds ?? 60),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(Math.ceil(dbRateLimit.resetAt.getTime() / 1000)),
+          },
+        }
+      )
+    }
     
     const isSubscriber = SUBSCRIBER_PLANS.includes(profile.plan) || profile.role === 'admin'
     

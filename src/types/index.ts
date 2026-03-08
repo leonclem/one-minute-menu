@@ -35,13 +35,13 @@ export const PLAN_CONFIGS: Record<User['plan'], PlanLimits> = {
     menus: 1, // First menu is free
     menuItems: 40,
     monthlyUploads: 5,
-    aiImageGenerations: 20,
+    aiImageGenerations: 50,
   },
   grid_plus: {
     menus: 5,
     menuItems: 500,
     monthlyUploads: 100,
-    aiImageGenerations: 100,
+    aiImageGenerations: 300,
   },
   grid_plus_premium: {
     menus: -1, // unlimited
@@ -54,7 +54,7 @@ export const PLAN_CONFIGS: Record<User['plan'], PlanLimits> = {
     menus: 10,
     menuItems: 500,
     monthlyUploads: 100,
-    aiImageGenerations: 100,
+    aiImageGenerations: 300,
   },
   enterprise: {
     menus: -1, // unlimited

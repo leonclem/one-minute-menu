@@ -289,7 +289,7 @@ export default async function DashboardPage() {
                   </Link>
                 )}
                 {menus.map((menu) => (
-                  <MenuCard key={menu.id} menu={menu} isEditLocked={isEditWindowExpired} latestExportJob={latestExportJobs[menu.id]} />
+                  <MenuCard key={menu.id} menu={menu} isEditLocked={isEditWindowExpired} canDelete={isSubscriber || isAdmin} latestExportJob={latestExportJobs[menu.id]} />
                 ))}
               </div>
             ) : (

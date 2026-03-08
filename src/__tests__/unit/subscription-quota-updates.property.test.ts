@@ -71,7 +71,7 @@ describe('Property 14: Subscription Fulfillment Updates Quotas', () => {
           expect(mockFrom).toHaveBeenCalledWith('generation_quotas')
           
           // Verify: Correct monthly_limit based on plan
-          const expectedMonthlyLimit = plan === 'grid_plus_premium' ? 1000 : 100
+          const expectedMonthlyLimit = plan === 'grid_plus_premium' ? 1000 : 300
           
           expect(mockUpsert).toHaveBeenCalledWith(
             expect.objectContaining({

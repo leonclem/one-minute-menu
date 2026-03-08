@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { menuOperations, DatabaseError } from '@/lib/database'
+import { menuOperations, DatabaseError, userOperations } from '@/lib/database'
 import { validateMenu } from '@/lib/validation'
 import { sanitizeMenuPayload } from '@/lib/security'
 import type { MenuFormData, ColorPalette, Menu } from '@/types'
@@ -185,6 +185,23 @@ export async function DELETE(
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Free plan users cannot delete menus
+    const profile = await userOperations.getProfile(user.id)
+    if (profile?.plan === 'free') {
+      return NextResponse.json(
+        {
+          error: 'Menu deletion is available on Grid+ and above. Your menu remains viewable but is locked for editing after the edit window expires.',
+          code: 'FEATURE_NOT_AVAILABLE',
+          upgrade: {
+            cta: 'Upgrade to Grid+',
+            href: '/pricing',
+            reason: 'Unlock menu deletion and manage up to 5 menus.',
+          },
+        },
+        { status: 403 }
+      )
     }
     
     await menuOperations.deleteMenu(params.menuId, user.id)

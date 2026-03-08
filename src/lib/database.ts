@@ -266,8 +266,10 @@ export const userOperations = {
         if (resource === 'menus') {
           limit = limit + activePacksCount
         } else if (resource === 'aiImageGenerations') {
-          // Each Creator Pack grants 100 generations (aligned with free trial)
-          limit = limit + (activePacksCount * 100)
+          // Paid Creator Packs grant 200 generations each.
+          // Free trial packs grant 0 extra (the base plan limit already covers them).
+          const paidPacks = activePacks.filter(pack => !pack.is_free_trial)
+          limit = limit + (paidPacks.length * 200)
         }
       }
     }

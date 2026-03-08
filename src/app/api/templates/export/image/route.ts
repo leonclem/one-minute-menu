@@ -478,18 +478,29 @@ export async function POST(request: NextRequest) {
     
     metricsBuilder.setUserId(user.id)
     
-    // Apply rate limiting
-    const rateLimit = applyRateLimit(imageExportLimiter, user.id)
-    if (!rateLimit.allowed) {
+    // Apply database-backed rate limiting (plan-aware with cooldown)
+    const { checkRateLimit } = await import('@/lib/rate-limiting')
+    const { userOperations } = await import('@/lib/database')
+    const profile = await userOperations.getProfile(user.id)
+    const userPlan = (profile?.plan ?? 'free') as import('@/types').UserPlan
+    const dbRateLimit = await checkRateLimit(user.id, 'export', userPlan)
+    if (!dbRateLimit.allowed) {
       return NextResponse.json(
         { 
-          error: 'Rate limit exceeded',
-          code: ERROR_CODES.CONCURRENCY_LIMIT,
-          retryAfter: rateLimit.retryAfter
+          error: `Export limit reached. Try again in ${dbRateLimit.retryAfterSeconds}s.`,
+          code: 'RATE_LIMIT_EXCEEDED',
+          retryAfter: dbRateLimit.retryAfterSeconds,
+          resetAt: dbRateLimit.resetAt.toISOString(),
+          remaining: 0,
+          limit: dbRateLimit.limit,
         },
         { 
           status: 429,
-          headers: rateLimit.headers
+          headers: {
+            'Retry-After': String(dbRateLimit.retryAfterSeconds ?? 60),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(Math.ceil(dbRateLimit.resetAt.getTime() / 1000)),
+          }
         }
       )
     }
@@ -577,7 +588,6 @@ export async function POST(request: NextRequest) {
     }
 
     // If edits are locked, exporting is locked too (view-only mode)
-    const profile = await userOperations.getProfile(user.id, supabase)
     try {
       await assertUserCanEditMenu({
         userId: user.id,

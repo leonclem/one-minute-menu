@@ -181,6 +181,26 @@ const faqs: Array<{ q: string; a: ReactNode; aPlainText: string }> = [
     ),
   },
   {
+    q: 'What are the rate limits?',
+    aPlainText:
+      'GridMenu applies fair-use rate limits to maintain service quality. Limits vary by plan and cover image generation, exports, and batch operations. See our Rate Limits & Fair Use Policy page for a full breakdown by plan.',
+    a: (
+      <div className="space-y-3">
+        <p>
+          GridMenu applies fair-use rate limits to maintain service quality. Limits vary by plan
+          and cover image generation, exports, and batch operations.
+        </p>
+        <p>
+          See our{' '}
+          <a href="/rate-limits" className="text-ux-primary hover:opacity-90 font-medium">
+            Rate Limits &amp; Fair Use Policy
+          </a>{' '}
+          for a full breakdown by plan.
+        </p>
+      </div>
+    ),
+  },
+  {
     q: 'Can I change my billing currency after subscribing?',
     aPlainText:
       'Once you have an active subscription, the billing currency is locked for that subscription period to maintain consistent billing and accounting. If you need to change your billing currency, you would need to cancel your current subscription and create a new one with your preferred currency. Your subscription will remain active until the end of your current billing period. If you need assistance with this process, please contact us at support@gridmenu.ai and we can help guide you through the transition.',
