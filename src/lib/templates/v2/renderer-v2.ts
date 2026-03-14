@@ -545,6 +545,27 @@ export const PALETTES_V2: ColorPaletteV2[] = [
       },
       textMuted: '#8A6A5A'
     }
+  },
+  {
+    id: 'sunny-market',
+    name: 'Sunny Market',
+    colors: {
+      background: '#F8BC02', // GridMenu signature yellow
+      surface: '#F5B200',
+      menuTitle: '#1A1200',
+      sectionHeader: '#1A1200',
+      itemTitle: '#1A1200',
+      itemPrice: '#5C3D00', // Deep amber-brown
+      itemDescription: '#4A3800',
+      itemIndicators: {
+        background: '#F8BC02'
+      },
+      border: {
+        light: '#E5A800',
+        medium: '#C98F00'
+      },
+      textMuted: '#7A5C00'
+    }
   }
 ]
 
@@ -1365,7 +1386,9 @@ function renderItemContent(
       : 0
     const priceReserve = priceLineHeight + SPACING_V2.descToPrice
     const textTotal = nameReserve + descReserve + priceReserve
-    const availableForImage = tile.height - padTop - SPACING_V2.afterImage - textTotal
+    // stretch mode: image starts at y:0 so padTop is not subtracted; afterImage gap is also removed
+    const stretchOverhead = imageMode === 'stretch' ? 0 : padTop + SPACING_V2.afterImage
+    const availableForImage = tile.height - stretchOverhead - textTotal
 
     if (imageMode === 'compact-rect') {
       imageComputedWidth = tile.width * 0.6
@@ -1382,12 +1405,15 @@ function renderItemContent(
       imageComputedX = (tile.width - imageComputedWidth) / 2
       imageComputedBorderRadius = diameter / 2
     } else {
-      imageComputedWidth = tile.width - (padH * 2)
-      const ideal4by3 = imageComputedWidth * 0.75
+      // stretch mode: full-width (minus 2px to avoid border overflow), edge-to-edge, viewport anchored 70% down
+      imageComputedWidth = tile.width - 2
+      const ideal4by3 = imageComputedWidth * 0.9
       imageComputedHeight = Math.max(40, Math.min(ideal4by3, availableForImage))
-      imageComputedX = (tile.width - imageComputedWidth) / 2
+      imageComputedX = 0
+      imageComputedBorderRadius = 0
     }
-    imageBlockHeight = imageComputedHeight + SPACING_V2.afterImage
+    // stretch mode: no afterImage gap — text starts immediately below the image
+    imageBlockHeight = imageComputedHeight + (imageMode === 'stretch' ? 0 : SPACING_V2.afterImage)
   }
 
   // Fit content within tile: compress gaps first, then reduce line estimates if needed
@@ -1452,23 +1478,25 @@ function renderItemContent(
   if (showImage) {
     const defaultItemShadow = !isCircularMode ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
     const imageShadow = tileStyle?.image?.boxShadow !== undefined ? tileStyle.image.boxShadow : defaultItemShadow
+    // Stretch mode: image starts at y:0 (edge-to-edge top), text starts below at padTop
+    const imageY = imageMode === 'stretch' ? 0 : currentY
 
     if (content.imageUrl) {
       elements.push({
         type: 'image',
-        x: imageComputedX, y: currentY,
+        x: imageComputedX, y: imageY,
         width: imageComputedWidth, height: imageComputedHeight,
         content: content.imageUrl,
         style: {
           borderRadius: imageComputedBorderRadius,
-          objectFit: 'cover', objectPosition: 'center',
+          objectFit: 'cover', objectPosition: imageMode === 'stretch' ? 'center 75%' : 'center',
           boxShadow: imageShadow || undefined
         }
       })
     } else {
       elements.push({
         type: 'background',
-        x: imageComputedX, y: currentY,
+        x: imageComputedX, y: imageY,
         width: imageComputedWidth, height: imageComputedHeight,
         content: '',
         style: { backgroundColor: palette.colors.border.light, borderRadius: imageComputedBorderRadius }
@@ -1637,11 +1665,14 @@ function renderFeatureCardContent(
       const d = Math.min(tile.width * 0.45, avail)
       imgW = d; imgH = d; imgX = (tile.width - imgW) / 2; imgBR = d / 2
     } else {
-      imgH = tile.contentBudget?.imageBoxHeight ?? 100
-      imgW = tile.width - (padH * 2)
-      imgX = (tile.width - imgW) / 2
+      // stretch mode: full-width (minus 2px to avoid border overflow), edge-to-edge, viewport anchored 70% down
+      imgH = tile.contentBudget?.imageBoxHeight ?? 120
+      imgW = tile.width - 2
+      imgX = 0
+      imgBR = 0
     }
-    imageBlockHeight = imgH + SPACING_V2.afterImage + 4
+    // stretch mode: no afterImage gap — text starts immediately below the image
+    imageBlockHeight = imgH + (imageMode === 'stretch' ? 0 : SPACING_V2.afterImage + 4)
   }
 
   const usableHeight = tile.height - padTop - padBottom
@@ -1702,22 +1733,23 @@ function renderFeatureCardContent(
   if (showImage) {
     const defaultFeatureShadow = !isCircularMode ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
     const featureImageShadow = tileStyle?.image?.boxShadow !== undefined ? tileStyle.image.boxShadow : defaultFeatureShadow
+    const imageY = imageMode === 'stretch' ? 0 : currentY
 
     if (content.imageUrl) {
       elements.push({
-        type: 'image', x: imgX, y: currentY, width: imgW, height: imgH,
+        type: 'image', x: imgX, y: imageY, width: imgW, height: imgH,
         content: content.imageUrl,
-        style: { borderRadius: imgBR, objectFit: 'cover', objectPosition: 'center', boxShadow: featureImageShadow || undefined }
+        style: { borderRadius: imgBR, objectFit: 'cover', objectPosition: imageMode === 'stretch' ? 'center 75%' : 'center', boxShadow: featureImageShadow || undefined }
       })
     } else {
       elements.push({
-        type: 'background', x: imgX, y: currentY, width: imgW, height: imgH,
+        type: 'background', x: imgX, y: imageY, width: imgW, height: imgH,
         content: '',
         style: { backgroundColor: palette.colors.border.light, borderRadius: imgBR }
       })
     }
     if (content.indicators) {
-      elements.push(...renderIndicators(content.indicators, imgX + 4, currentY + 4, imgW - 8, palette))
+      elements.push(...renderIndicators(content.indicators, imgX + 4, imageY + 4, imgW - 8, palette))
     }
     currentY += imageBlockHeight
   }

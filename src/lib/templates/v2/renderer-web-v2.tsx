@@ -439,7 +439,7 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
               width: '100%',
               height: '100%',
               objectFit: element.style.objectFit || 'cover',
-              objectPosition: 'center'
+              objectPosition: element.style.objectPosition || 'center'
             }}
           />
         </div>

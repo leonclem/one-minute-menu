@@ -475,7 +475,6 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string 
       max-width: 100%;
       height: auto;
       object-fit: cover;
-      object-position: center !important;
       border-radius: 4px;
     }
 

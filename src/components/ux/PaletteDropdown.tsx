@@ -16,6 +16,13 @@ export function getPaletteSwatchColors(palette: ColorPaletteV2): [string, string
       palette.colors.itemPrice
     ]
   }
+  if (palette.id === 'sunny-market') {
+    return [
+      palette.colors.background,
+      palette.colors.itemPrice,
+      palette.colors.menuTitle
+    ]
+  }
   return [
     palette.colors.background,
     palette.colors.itemTitle,

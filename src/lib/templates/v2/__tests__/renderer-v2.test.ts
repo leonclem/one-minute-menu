@@ -215,8 +215,8 @@ describe('V2 Renderer', () => {
       const imageElement = result.elements.find(e => e.type === 'image')
       
       expect(imageElement).toBeDefined()
-      expect(imageElement?.width).toBeLessThanOrEqual(tile.width - 16) // Account for padding
-      expect(imageElement?.style.borderRadius).toBe(8)
+      expect(imageElement?.width).toBeGreaterThanOrEqual(tile.width - 2) // Stretch is edge-to-edge (minus 2px border overflow)
+      expect(imageElement?.style.borderRadius).toBe(0) // No border radius in stretch/full-bleed mode
     })
 
     it('should render compact-rect mode with smaller centered image', () => {
