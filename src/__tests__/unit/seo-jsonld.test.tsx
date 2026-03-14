@@ -2,20 +2,19 @@ import React from 'react'
 import { render } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
-import UXHomePage from '@/app/(marketing)/page'
+import HomePageContent from '@/app/(marketing)/HomePageContent'
 import SupportPage from '@/app/support/page'
 
 // For JSON-LD we just care that a script tag with the right type exists and is parseable.
 
 // Mock conversion tracking to avoid any network calls when rendering UX pages in tests
 jest.mock('@/lib/conversion-tracking', () => ({
-  getABVariant: () => 'A',
   trackConversionEvent: () => {},
 }))
 
 describe('SEO JSON-LD', () => {
   it('renders JSON-LD script on the marketing page', () => {
-    render(<UXHomePage />)
+    render(<HomePageContent initialUser={null} />)
 
     const script = document.querySelector('script[type="application/ld+json"]')
     expect(script).not.toBeNull()

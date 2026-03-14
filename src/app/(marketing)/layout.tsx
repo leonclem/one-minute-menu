@@ -8,7 +8,6 @@ export const metadata: Metadata = {
   title: 'Create Your Digital Menu | GridMenu',
   description:
     'Ready to create your new beautiful menu in under 5 minutes?',
-  keywords: ['QR menu', 'digital menu', 'restaurant menu', 'mobile menu', 'QR code menu'],
   openGraph: {
     title: 'Create Your Digital Menu | GridMenu',
     description: 'Ready to create your new beautiful menu in under 5 minutes?',

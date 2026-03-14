@@ -157,3 +157,13 @@ if (typeof HTMLCanvasElement !== 'undefined') {
   // @ts-ignore
   HTMLCanvasElement.prototype.getContext = jest.fn(() => ({ }))
 }
+
+// jsdom does not implement IntersectionObserver; provide a no-op stub
+if (typeof global.IntersectionObserver === 'undefined') {
+  global.IntersectionObserver = class IntersectionObserver {
+    constructor(cb) { this._cb = cb }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}

@@ -1,128 +1,37 @@
-'use client'
+import type { Metadata } from 'next'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
+import HomePageContent from './HomePageContent'
 
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { UXButton } from '@/components/ux'
-import { getABVariant, trackConversionEvent } from '@/lib/conversion-tracking'
-import { supabase } from '@/lib/supabase'
-
-export default function HomePage() {
-  // Start with 'A' to match server-side rendering, then update on client
-  const [ctaVariant, setCtaVariant] = useState<string>('A')
-  const [user, setUser] = useState<any>(null)
-
-  useEffect(() => {
-    // Get the actual variant on client-side only (after hydration)
-    const variant = getABVariant('ux_home_primary_cta', ['A', 'B'])
-    setCtaVariant(variant)
-
-    // Check if user is signed in
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-    }
-    checkUser()
-
-    // Track landing page view with the correct variant
-    trackConversionEvent({
-      event: 'landing_view',
-      metadata: {
-        path: '/',
-        ctaVariant: variant,
-      },
-    })
-  }, [])
-
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || 'https://gridmenu.ai'
-
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'GridMenu',
-    url: siteUrl,
+export const metadata: Metadata = {
+  title: 'Restaurant Menu Maker | Create a Digital Menu in Minutes | GridMenu',
+  description:
+    'Create a restaurant menu online in minutes with GridMenu. Add dishes and prices, choose a style, and generate polished digital or PDF-ready menus with AI food photos.',
+  openGraph: {
+    title: 'Restaurant Menu Maker | Create a Digital Menu in Minutes | GridMenu',
     description:
-      'Transform your restaurant menu into a mobile-friendly QR code menu in under 5 minutes. No tech skills required.',
-  }
-
-  const primaryCtaLabel =
-    ctaVariant === 'B' ? '✨ Start with my menu' : '✨ Transform My Menu'
-
-  const handlePrimaryClick = () => {
-    const destination = user ? '/dashboard' : '/register'
-    trackConversionEvent({
-      event: 'cta_click_primary',
-      metadata: {
-        path: '/',
-        ctaVariant,
-        destination,
+      'Create a restaurant menu online in minutes with GridMenu. Add dishes and prices, choose a style, and generate polished digital or PDF-ready menus with AI food photos.',
+    type: 'website',
+    url: process.env.NEXT_PUBLIC_SITE_URL || 'https://gridmenu.ai',
+    images: [
+      {
+        url: '/logos/social-1200x630.png',
+        width: 1200,
+        height: 630,
+        alt: 'GridMenu — restaurant menu maker for digital and PDF-ready menus',
       },
-    })
-    if (!user) {
-      trackConversionEvent({
-        event: 'registration_start',
-        metadata: {
-          path: '/',
-          ctaVariant,
-          source: 'hero_primary',
-        },
-      })
-    }
-  }
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/logos/social-1200x630.png'],
+  },
+}
 
-  const handleSecondaryClick = () => {
-    trackConversionEvent({
-      event: 'cta_click_secondary',
-      metadata: {
-        path: '/',
-        ctaVariant,
-        destination: '/demo/sample',
-        source: 'hero_secondary',
-      },
-    })
-    trackConversionEvent({
-      event: 'demo_start',
-      metadata: {
-        path: '/',
-        ctaVariant,
-        source: 'hero_secondary',
-      },
-    })
-  }
+export default async function HomePage() {
+  const supabase = createServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  return (
-    <div className="w-full h-full flex items-center justify-center">
-      <section className="relative w-full">
-        <div className="container-ux mx-auto max-w-4xl px-6 py-8 md:py-12 text-center">
-          {/* JSON-LD structured data specific to the landing */}
-          <script
-            type="application/ld+json"
-            suppressHydrationWarning
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-          />
-          <h1 className="text-4xl md:text-6xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
-            Ready to create your new beautiful menu in under 5 minutes?
-          </h1>
-          <p className="text-white/80 max-w-2xl mx-auto text-hero-shadow mt-4 md:mt-6" style={{ fontSize: '1.1rem' }}>
-            Enter your dishes and prices, choose a menu style, and GridMenu does the rest - layout, food photos, and a finished menu delivered straight to your inbox.
-          </p>
-          <p className="text-base md:text-lg text-white/90 max-w-2xl mx-auto text-hero-shadow mt-3 md:mt-4 font-medium">
-            No designer. No photographer. No complicated tools.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-6 md:mt-8">
-            <Link href={user ? '/dashboard' : '/register'} className="w-full sm:w-auto" onClick={handlePrimaryClick}>
-              <UXButton variant="primary" size="lg" className="w-full sm:w-auto min-w-[240px]">
-                {primaryCtaLabel}
-              </UXButton>
-            </Link>
-            <Link href="/demo/sample" className="w-full sm:w-auto" onClick={handleSecondaryClick}>
-              <UXButton variant="warning" size="lg" className="w-full sm:w-auto min-w-[240px]">
-                Try a Demo Menu
-              </UXButton>
-            </Link>
-          </div>
-        </div>
-      </section>
-    </div>
-  )
+  return <HomePageContent initialUser={user} />
 }
