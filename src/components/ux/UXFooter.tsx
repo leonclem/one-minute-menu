@@ -20,6 +20,9 @@ export function UXFooter() {
               <Link href="/support" className="ux-footer-link">
                 Contact Us
               </Link>
+              <Link href="/blog" className="ux-footer-link">
+                Blog
+              </Link>
             </div>
             <div className="flex items-center gap-3">
               <a

@@ -1,27 +1,16 @@
 # Roadmap
 
+### /extracted - Image Generation - "cutout" dishes image style
+- [ ] Develop plan for cutout mechanism
+- [ ] Test in Layout Lab
+- [ ] Roll out to /templates
+
 ## /extracted - Image Generation
-- [ ] Understand what's required and pricing to switch to NB2
-- [ ] Determine best practices for prompting
-- [ ] Investigate how prompting is currently constructed (Admin area should reveal details)
+- [x] Understand what's required and pricing to switch to NB2
+- [x] Determine best practices for prompting
+- [x] Investigate how prompting is currently constructed (Admin area should reveal details)
 - [ ] Overhaul prompting modal interface to simplify for non-technical
 - [ ] When using a reference image from those already generated, preserve the details that were used to create it somehow(?)
-
-## Social Media
-- [ ] Create 9:16 shorthand version of menu creation demo
-
-## Bugs
-- [ ] Adding more reference photos during generation in /extracted (singular) leads to JSON error
-- [x] If generating multiple photos, latest generated isn't selected afterwards
-- [ ] If removing images from menu items, they still display in the menu item thumbnail
-- [ ] Extraction from more than one image only extracts the first before page loads
-- [ ] Pricing keeps defaulting to USD
-
-## /template
-- [ ] Capability to mark image "centre point" (facilitates centring within tile "viewport")
-- [ ] Chequerboard designs
-- [ ] Clarify - do we separate structure and styling?  This should allow us to bring in bolder colours.
-- [ ] Investigation into new design integration (without redeployment). Explanation of architecture (e.g. Pinterest -> Gemini -> "make this")
 
 ## Production Monitoring
 - [ ] Install Vercel analytics
@@ -50,6 +39,14 @@
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+## Bugs
+- [ ] Adding more reference photos during generation in /extracted (singular) leads to JSON error
+- [ ] If generating multiple photos, latest generated isn't selected afterwards
+- [ ] If removing images from menu items, they still display in the menu item thumbnail
+- [ ] Extraction from more than one image only extracts the first before page loads
+- [ ] Pricing keeps defaulting to USD
+- [ ] Register email still looks horribly basic
+
 ## Security
 - [ ] Address Next.js DoS vulnerabilities (see `SECURITY_NEXTJS_VULNERABILITIES.md`)
 - [ ] Ensure MFA is set on email accounts
@@ -67,9 +64,19 @@
 - [x] Create Instagram account (https://www.instagram.com/gridmenu/)
 - [x] Add links to footer
 - [x] Create Instagram account and add link icon to footer
-- [ ] Create blog / comparison pages (https://www.upmenu.com/blog/menu-making-apps/)
 - [ ] Reddit community posting
 - [ ] Google "Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required."
+
+### Blogs
+- [x] Create blogs section of site
+- [x] Digital vs paper menu
+- [ ] Admin tool to add blogs
+- [ ] Grow sales with better images
+- [ ] Use better descriptions to boost sales
+- [ ] Menu design tips and tricks
+- [ ] Menu engineering
+- [ ] Z-read pattern
+- [ ] Comparison page (https://www.upmenu.com/blog/menu-making-apps/)
 
 ## /dashboard
 - [ ] Show preview picture of menu (if design template chosen) embedded in Dashboard menus
@@ -87,21 +94,26 @@
 - [ ] Menu Control Panel > Download Menu Images (PNG zip)
 - [ ] Rename this page to menu curator
 - [ ] Move item up or down
-- [ ] Image creation "guidance icons" to reduce complexity in panel
 - [ ] Existing menu extract: Message "This may take a few minutes. Leave this page open while the key is being added." and checkbox with "Email me instead".
+- [ ] Cartoon/stylised food images
+- [ ] Description creator or "stylist"
+- [ ] Rate my description
+- [ ] Boost my description
 
 ## /template
+- [ ] Introduce A3 variants to create more space for menu items and menu item components
+- [ ] Hand tool to navigate preview pane
 - [ ] Images too dark, perhaps only darken lower half (assuming top half has text)
 - [ ] Design flourishes, e.g. paint splashes, food ingredients, etc. (overlay)
 - [ ] Upload branding colours
 - [ ] Alternating colour tiles (i.e. menu items, not spacers).
 - [ ] For "6. Display Options": new options to only show images for feature items
-- [ ] Introduce A3 variants to create more space for menu items and menu item components
 - [ ] Logo as special filler tile
 - [ ] Develop presets
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 - [ ] "Polaroid" / angled effect.  Perhaps with "marker pen" headings?
 - [ ] Should still leave a space between categories even if category titles toggled off
+- [ ] Drag and drop tiles
 
 ## /pricing
 - [ ] Image resolutions - 1k for Creator Pack, 2k for GridMenu, 4k for GridMenu+.  Consider Nano Banana 2.
@@ -120,6 +132,7 @@
 ## Demo Flow
 - [ ] Replace "breakfast blackboard" photo with MS Word photo version
 - [ ] Demo flow - don't allow users to proceed beyond /extracted until all images generated
+- [ ] Remove "Extract items" step - not necessary for demo flow (extra click)
 
 ## Stripe
 - [ ] Verify that webhooks are in place to detect recurring payments, failures, etc. (as per Gemini chat)
@@ -129,7 +142,6 @@
 - [ ] Change primary email logins to admin@gridmenu.ai (e.g. SendGrid, NameCheap, Railway, Supabase, etc.)
 - [ ] Remove LOG_LEVEL="debug" from Railway variables
 - [ ] Integrate Posthog
-- [ ] SEO optimisation
 - [ ] Consolidate documentation so as to be intuitive and useful (for both me and AI dev)
 - [ ] Cyber attack protection plan
 - [ ] Power user, i.e. "login as user X" (support)
@@ -289,6 +301,7 @@
 
 ## Sign up
 - [x] Capture name and optional profile information
+- [x] Register email still looks horribly basic
 
 ## Demo Flow
 - [x] More clarity on demo input menu as it stands before implementing changes
@@ -338,6 +351,15 @@
 - [x] Footer should use real social media handles (with icons)
 - [x] Advanced menu options: Currency selection
 - [x] Free plan is allowing as many images as I like!!!
+
+## SEO optimisation
+- [x] Update content keywords "QR menu,digital menu,restaurant menu,mobile menu,QR code menu"
+- [x] Review Home page title
+- [x] Review page headings and subheadings
+- [x] Review slugs (for internal links)
+- [x] Ensure image file names are relevant to search
+- [x] Ensure image file alt text are relevant to search (be descriptive, and avoid keyword stuffing)
+- [x] Use Open Graph (OG) meta tags for social media sharing
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>
