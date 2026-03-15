@@ -350,28 +350,67 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <StaggerChildren visible={visible}>
                   <div className="card-ux p-6">
-                    <h3 className="text-xl font-semibold text-ux-text mb-2">AI food photos — no photographer needed</h3>
-                    <p className="text-ux-text-secondary">
-                      Every dish gets an appetizing AI-generated photo. Your menu looks polished and professional without a photo shoot.
-                    </p>
+                    <div className="flex items-start gap-4">
+                      <div className="w-8 h-8 flex-shrink-0 mt-1 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold text-ux-text mb-2">AI food photos — no photographer needed</h3>
+                        <p className="text-ux-text-secondary">
+                          Every dish gets an appetizing AI-generated photo. Your menu looks polished and professional without a photo shoot.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   <div className="card-ux p-6">
-                    <h3 className="text-xl font-semibold text-ux-text mb-2">Save time on menu creation</h3>
-                    <p className="text-ux-text-secondary">
-                      Go from a list of dishes to a finished, professional menu in minutes — not hours. No back-and-forth with a designer.
-                    </p>
+                    <div className="flex items-start gap-4">
+                      <div className="w-8 h-8 flex-shrink-0 mt-1 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold text-ux-text mb-2">Save time on menu creation</h3>
+                        <p className="text-ux-text-secondary">
+                          Go from a list of dishes to a finished, professional menu in minutes — not hours. No back-and-forth with a designer.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   <div className="card-ux p-6">
-                    <h3 className="text-xl font-semibold text-ux-text mb-2">No design skills required</h3>
-                    <p className="text-ux-text-secondary">
-                      GridMenu handles typography, layout, and spacing automatically. You just focus on your food and prices.
-                    </p>
+                    <div className="flex items-start gap-4">
+                      <div className="w-8 h-8 flex-shrink-0 mt-1 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold text-ux-text mb-2">No design skills required</h3>
+                        <p className="text-ux-text-secondary">
+                          GridMenu handles typography, layout, and spacing automatically. You just focus on your food and prices.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   <div className="card-ux p-6">
-                    <h3 className="text-xl font-semibold text-ux-text mb-2">Digital and PDF-ready output</h3>
-                    <p className="text-ux-text-secondary">
-                      Share your menu as a link customers can open on any device, or export a print-ready PDF for physical menus.
-                    </p>
+                    <div className="flex items-start gap-4">
+                      <div className="w-8 h-8 flex-shrink-0 mt-1 bg-gradient-to-br from-green-400 to-emerald-600 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          <polyline points="13 3 13 8 18 8" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold text-ux-text mb-2">Digital and PDF-ready output</h3>
+                        <p className="text-ux-text-secondary">
+                          Share your menu as a link customers can open on any device, or export a print-ready PDF for physical menus.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </StaggerChildren>
               </div>
@@ -419,7 +458,7 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                 {/* Right image — same height as left */}
                 <div className="w-[32%] shrink-0">
                   <Image
-                    src="/marketing/hannahs-cafe.png"
+                    src="/marketing/hannahs-cafe-warm-earth.png"
                     alt="Hannah's Café menu created with GridMenu — the finished result after extracting and styling a menu"
                     width={600}
                     height={800}
@@ -441,7 +480,7 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                   <path d="M0 28 H62 V8 L110 45 L62 82 V62 H0 Z" fill="rgb(255, 193, 7)" filter="drop-shadow(0 4px 12px rgba(0,0,0,0.35))" />
                 </svg>
                 <Image
-                  src="/marketing/hannahs-cafe.png"
+                  src="/marketing/hannahs-cafe-warm-earth.png"
                   alt="Hannah's Café menu created with GridMenu — the finished result after extracting and styling a menu"
                   width={600}
                   height={800}
