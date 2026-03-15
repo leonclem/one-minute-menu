@@ -307,7 +307,7 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
               <h2 className="text-3xl md:text-4xl font-bold text-white text-center text-hero-shadow mb-4">
                 Choose a menu style that fits your brand
               </h2>
-              <p className="text-white/90 text-center max-w-2xl mx-auto mb-10" style={{ fontSize: '1.05rem' }}>
+              <p className="text-white/90 text-center max-w-2xl mx-auto mb-10" style={{ fontSize: '1.05rem', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
                 Every restaurant has its own personality. GridMenu offers thousands of style combinations so your menu looks exactly right for your venue.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -387,7 +387,7 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
               <h2 className="text-3xl md:text-4xl font-bold text-white text-center text-hero-shadow mb-6">
                 Start from scratch — or use an existing menu as a starting point
               </h2>
-              <p className="text-white/90 text-center max-w-2xl mx-auto mb-10" style={{ fontSize: '1.05rem' }}>
+              <p className="text-white/90 text-center max-w-2xl mx-auto mb-10" style={{ fontSize: '1.05rem', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
                 Already have a menu? Take a photo and GridMenu will extract your dishes and prices automatically. Or start fresh and build from the ground up — either way takes just minutes.
               </p>
               <div className="relative hidden md:flex gap-9 items-center justify-center">
@@ -470,7 +470,7 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                         ▾
                       </span>
                     </summary>
-                    <div className="mt-2 text-sm text-ux-text-secondary leading-relaxed">{faq.answer}</div>
+                    <div className="mt-2 text-sm leading-relaxed" style={{ color: 'rgb(55 65 81)' }}>{faq.answer}</div>
                   </details>
                 ))}
               </div>
