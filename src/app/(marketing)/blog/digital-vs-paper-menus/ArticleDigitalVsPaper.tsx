@@ -4,6 +4,31 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { UXWrapper } from '@/components/ux'
 
+const articleJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: 'Paper Menus for Guests, Digital Control for Operators',
+  description:
+    'Are paper menus still better for restaurants? This guide explores paper vs digital menus, what diners prefer, and why many operators now need both.',
+  datePublished: '2026-03-15',
+  author: {
+    '@type': 'Organization',
+    name: 'GridMenu',
+    url: 'https://gridmenu.ai',
+  },
+  publisher: {
+    '@type': 'Organization',
+    name: 'GridMenu',
+    url: 'https://gridmenu.ai',
+    logo: {
+      '@type': 'ImageObject',
+      url: 'https://gridmenu.ai/logos/social-1200x630.png',
+    },
+  },
+  image: 'https://gridmenu.ai/logos/social-1200x630.png',
+  url: 'https://gridmenu.ai/blog/digital-vs-paper-menus',
+}
+
 /** Floated inline image — half-width with text wrapping around it */
 function InlineImage({
   src,
@@ -82,6 +107,11 @@ const SOURCES = {
 export default function ArticleDigitalVsPaper() {
   return (
     <UXWrapper className="py-12 sm:py-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+        suppressHydrationWarning
+      />
       <div className="max-w-3xl mx-auto">
 
         {/* Breadcrumb */}
