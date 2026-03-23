@@ -3,11 +3,11 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import HomePageContent from './HomePageContent'
 
 export const metadata: Metadata = {
-  title: 'Restaurant Menu Maker | Create a Digital Menu in Minutes | GridMenu',
+  title: 'Restaurant Menu Maker | Digital & Print-ready Menus | GridMenu',
   description:
     'Create a restaurant menu online in minutes with GridMenu. Add dishes and prices, choose a style, and generate polished digital or PDF-ready menus with AI food photos.',
   openGraph: {
-    title: 'Restaurant Menu Maker | Create a Digital Menu in Minutes | GridMenu',
+    title: 'Restaurant Menu Maker | Digital & Print-ready Menus | GridMenu',
     description:
       'Create a restaurant menu online in minutes with GridMenu. Add dishes and prices, choose a style, and generate polished digital or PDF-ready menus with AI food photos.',
     type: 'website',
