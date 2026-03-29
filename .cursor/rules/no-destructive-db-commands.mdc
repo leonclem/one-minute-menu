@@ -1,0 +1,28 @@
+---
+description: Prevents destructive database commands that wipe data
+alwaysApply: true
+---
+
+# No Destructive Database Commands
+
+NEVER run any of these commands without the user's explicit, prior approval:
+
+- `supabase db reset`
+- `DROP TABLE`, `DROP DATABASE`, `DROP SCHEMA`
+- `TRUNCATE`
+- `DELETE FROM <table>` without a WHERE clause
+- Any command that wipes or recreates the local database
+
+When a migration needs to be applied locally, run it directly:
+
+```bash
+npx supabase db query "$(cat supabase/migrations/XXX_migration_name.sql)"
+```
+
+Or push pending migrations without resetting:
+
+```bash
+npx supabase db push
+```
+
+If a reset genuinely seems necessary, **ask the user first** and explain why.

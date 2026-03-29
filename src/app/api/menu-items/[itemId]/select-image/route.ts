@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { logger } from '@/lib/logger'
+import { isCutoutFeatureEnabled } from '@/lib/background-removal/feature-flag'
+import { getBackgroundRemovalProvider } from '@/lib/background-removal/provider-factory'
+import { CutoutGenerationService } from '@/lib/background-removal/cutout-service'
 
 // POST /api/menu-items/[itemId]/select-image - Select an image variation for a menu item
 export async function POST(
@@ -277,6 +280,33 @@ export async function POST(
         .update({ selected: false })
         .eq('menu_item_id', itemId)
       
+      // Invalidate cutouts for AI images on this item — user is replacing with uploaded image (Requirement 10.2)
+      try {
+        const cutoutEnabled = isCutoutFeatureEnabled()
+        if (cutoutEnabled) {
+          const { data: aiImages } = await supabase
+            .from('ai_generated_images')
+            .select('id, cutout_status')
+            .eq('menu_item_id', itemId)
+            .neq('cutout_status', 'not_requested')
+
+          if (aiImages && aiImages.length > 0) {
+            const cutoutProvider = getBackgroundRemovalProvider()
+            const cutoutService = new CutoutGenerationService(cutoutProvider, supabase)
+            for (const img of aiImages) {
+              try {
+                await cutoutService.invalidateCutout(img.id)
+                logger.info(`✂️ [Select Image API] Invalidated cutout for image ${img.id} (replaced by custom upload)`)
+              } catch (invErr) {
+                logger.warn(`⚠️ [Select Image API] Failed to invalidate cutout for image ${img.id}`, invErr)
+              }
+            }
+          }
+        }
+      } catch (invErr) {
+        logger.warn('⚠️ [Select Image API] Cutout invalidation error (non-blocking)', invErr)
+      }
+
       // Update menu item to use custom image
       const { error: updateError } = await supabase
         .from('menu_items')

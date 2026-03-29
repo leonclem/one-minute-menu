@@ -161,8 +161,50 @@ export interface MenuItem {
   // AI Image Generation fields
   aiImageId?: string
   customImageUrl?: string
-  imageSource: 'none' | 'ai' | 'custom'
+  imageSource: 'none' | 'ai' | 'custom' | 'cutout'
   generationParams?: ImageGenerationParams
+
+  // Cut-out image fields (populated from ai_generated_images when imageSource = 'ai')
+  cutoutUrl?: string | null
+  cutoutStatus?: CutoutStatus
+
+  // Per-item image transforms keyed by image mode (zoom + reposition) applied in template preview and PDF export
+  imageTransform?: ImageTransformRecord
+}
+
+/**
+ * Per-item image transform for repositioning and zooming an image within its tile viewport.
+ *
+ * - offsetX / offsetY: shift in percentage points from the mode's default focal point.
+ *   e.g. offsetY = -10 moves the focal point 10pp upward, showing more of the top of the image.
+ * - scale: zoom multiplier. 1.0 = default cover fit. Cutout allows down to 0.4; others floor at 1.0.
+ * - Undefined / null means "use mode default" (no transform applied).
+ */
+export interface ImageTransform {
+  offsetX: number
+  offsetY: number
+  scale: number
+}
+
+/**
+ * Per-image-mode transform record. Keys are ImageModeV2 values
+ * (e.g. 'stretch', 'cutout', 'compact-rect', 'compact-circle', 'background').
+ *
+ * Backward compat: old data may be a flat ImageTransform object (pre-per-mode).
+ * Use normalizeImageTransformRecord() to handle both shapes.
+ */
+export type ImageTransformRecord = Record<string, ImageTransform>
+
+/** Normalise legacy flat ImageTransform or new per-mode record into a consistent record. */
+export function normalizeImageTransformRecord(
+  raw: unknown
+): ImageTransformRecord | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const obj = raw as Record<string, unknown>
+  if (typeof obj.offsetX === 'number' && typeof obj.offsetY === 'number' && typeof obj.scale === 'number') {
+    return { stretch: obj as unknown as ImageTransform }
+  }
+  return obj as ImageTransformRecord
 }
 
 // Stage 2 Menu Item Extensions
@@ -860,6 +902,12 @@ export interface RenderSnapshot {
         spiceLevel: number | null
         allergens: string[]
       }
+
+      // Cutout (transparent background) image URL, when available
+      cutout_url?: string
+
+      // Per-mode image positioning (zoom/pan) for PDF export
+      imageTransform?: ImageTransformRecord
     }>
     
     // Categories for organization
@@ -991,4 +1039,47 @@ export interface ErrorClassification {
   should_retry: boolean
   user_message: string // Friendly message for user
   internal_message: string // Detailed message for logs
+}
+
+// ─── Cut-Out Image Types ────────────────────────────────────────────────────
+
+export type CutoutStatus = 'not_requested' | 'pending' | 'succeeded' | 'failed' | 'timed_out'
+
+export interface CutoutMetadata {
+  cutoutUrl: string | null
+  cutoutStatus: CutoutStatus
+  cutoutProvider: string | null
+  cutoutModelVersion: string | null
+  cutoutRequestedAt: string | null
+  cutoutCompletedAt: string | null
+  cutoutFailureReason: string | null
+}
+
+export interface CutoutGenerationLog {
+  id: string
+  userId: string | null
+  menuId: string | null
+  menuItemId: string | null
+  imageId: string | null
+  sourceImageType: 'ai_generated' | 'user_uploaded'
+  providerName: string
+  providerModelVersion: string | null
+  status: 'pending' | 'succeeded' | 'failed' | 'timed_out'
+  processingDurationMs: number | null
+  outputAssetCreated: boolean
+  errorCategory: string | null
+  errorCode: string | null
+  errorMessage: string | null
+  requestedAt: string
+  completedAt: string | null
+}
+
+export interface RenderUsageRecord {
+  id: string
+  menuId: string | null
+  menuItemId: string | null
+  templateId: string
+  imageSourceUsed: 'cutout' | 'original'
+  fallbackReason: string | null
+  renderedAt: string
 }

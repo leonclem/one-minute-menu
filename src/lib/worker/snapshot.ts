@@ -179,6 +179,24 @@ async function fetchMenuWithItems(menuId: string): Promise<any> {
 }
 
 /**
+ * Fetches image_transform from menu_items table (source of truth for zoom/pan).
+ */
+async function fetchImageTransformsForMenu(menuId: string): Promise<Map<string, any>> {
+  const supabase = createWorkerSupabaseClient()
+  const { data: rows, error } = await supabase
+    .from('menu_items')
+    .select('id, image_transform')
+    .eq('menu_id', menuId)
+
+  if (error || !rows?.length) return new Map()
+  const map = new Map<string, any>()
+  for (const row of rows) {
+    if (row.image_transform) map.set(row.id, row.image_transform)
+  }
+  return map
+}
+
+/**
  * Resolves AI image IDs to actual URLs so the snapshot has fetchable image_urls.
  * Raw menu_data only has aiImageId; desktop_url comes from ai_generated_images.
  */
@@ -205,32 +223,39 @@ async function enrichMenuDataWithImageUrls(menu: any): Promise<void> {
 
   const { data: rows, error } = await supabase
     .from('ai_generated_images')
-    .select('id, desktop_url')
+    .select('id, desktop_url, cutout_url, cutout_status')
     .in('id', aiImageIds)
 
   if (error || !rows?.length) return
-  const urlById = new Map<string, string>()
+  const imageById = new Map<string, { desktopUrl: string; cutoutUrl: string | null; cutoutStatus: string | null }>()
   for (const row of rows) {
-    if (row.desktop_url) urlById.set(row.id, row.desktop_url)
+    if (row.desktop_url) {
+      imageById.set(row.id, {
+        desktopUrl: row.desktop_url,
+        cutoutUrl: row.cutout_url ?? null,
+        cutoutStatus: row.cutout_status ?? null,
+      })
+    }
+  }
+
+  const applyImageData = (item: any) => {
+    if (item.aiImageId && item.imageSource === 'ai') {
+      const data = imageById.get(item.aiImageId)
+      if (data) {
+        item.customImageUrl = data.desktopUrl
+        item.cutoutUrl = data.cutoutUrl
+        item.cutoutStatus = data.cutoutStatus
+      }
+    }
   }
 
   if (menuData.items) {
-    for (const item of menuData.items) {
-      if (item.aiImageId && item.imageSource === 'ai') {
-        const url = urlById.get(item.aiImageId)
-        if (url) item.customImageUrl = url
-      }
-    }
+    for (const item of menuData.items) applyImageData(item)
   }
   if (menuData.categories) {
     for (const cat of menuData.categories) {
       if (cat.items) {
-        for (const item of cat.items) {
-          if (item.aiImageId && item.imageSource === 'ai') {
-            const url = urlById.get(item.aiImageId)
-            if (url) item.customImageUrl = url
-          }
-        }
+        for (const item of cat.items) applyImageData(item)
       }
     }
   }
@@ -290,13 +315,21 @@ export async function createRenderSnapshot(
     // Extract menu_data from the menu record
     const menuData = menu.menu_data || {}
     
-    console.log(`[Snapshot] Creating snapshot for menu ${menuId}. Items count: ${menuData.items?.length || 0}`)
-    if (menuData.items && menuData.items.length > 0) {
+    // Flatten items: use menuData.items if present, else flatten from categories
+    const flatItems: any[] = (menuData.items && menuData.items.length > 0)
+      ? menuData.items
+      : (menuData.categories || []).flatMap((cat: any) => (cat.items || []).map((item: any) => ({ ...item, category: item.category || cat.name })))
+    
+    // Fetch image_transform from menu_items (source of truth for positioning)
+    const transformById = await fetchImageTransformsForMenu(menuId)
+    
+    console.log(`[Snapshot] Creating snapshot for menu ${menuId}. Items count: ${flatItems.length}`)
+    if (flatItems.length > 0) {
       console.log(`[Snapshot] First item sample:`, JSON.stringify({
-        name: menuData.items[0].name,
-        price: menuData.items[0].price,
-        description: menuData.items[0].description?.substring(0, 20),
-        indicators: menuData.items[0].indicators
+        name: flatItems[0].name,
+        price: flatItems[0].price,
+        description: flatItems[0].description?.substring(0, 20),
+        indicators: flatItems[0].indicators
       }))
     }
 
@@ -319,8 +352,9 @@ export async function createRenderSnapshot(
         // Include full venue info for V2 footer rendering (address/phone/email/social links)
         venue_info: menu.venue_info,
         
-        // Map items with full details
-        items: (menuData.items || []).map((item: any, index: number) => ({
+        // Map items with full details (flattened, with image_transform from menu_items)
+        // Only include items that are available (available !== false)
+        items: flatItems.filter((item: any) => item.available !== false).map((item: any, index: number) => ({
           id: item.id,
           name: item.name,
           description: item.description,
@@ -362,7 +396,14 @@ export async function createRenderSnapshot(
             dietary: [],
             spiceLevel: null,
             allergens: []
-          }
+          },
+
+          // Cutout (transparent background) image URL, when available.
+          // Populated by enrichMenuDataWithImageUrls from ai_generated_images.cutout_url.
+          cutout_url: item.cutoutUrl ?? undefined,
+
+          // Per-mode image positioning (zoom/pan) for PDF export — prefer menu_items
+          imageTransform: transformById.get(item.id) ?? item.imageTransform
         })),
         
         // Map categories if present
@@ -481,7 +522,13 @@ export async function createRenderSnapshotFromMenuData(
             dietary: [],
             spiceLevel: null,
             allergens: []
-          }
+          },
+
+          // Cutout (transparent background) image URL, when available
+          cutout_url: item.cutoutUrl ? resolveUrl(item.cutoutUrl) : undefined,
+
+          // Per-mode image positioning (zoom/pan) for PDF export
+          imageTransform: item.imageTransform
         })),
 
         categories:

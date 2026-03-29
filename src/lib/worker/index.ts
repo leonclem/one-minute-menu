@@ -20,7 +20,7 @@
  * - Start polling for jobs
  */
 
-import { initializeDatabaseClient } from './database-client'
+import { initializeDatabaseClient, resolveSupabaseUrlForWorker } from './database-client'
 import { StorageClient } from './storage-client'
 import { PuppeteerRenderer } from './puppeteer-renderer'
 import { JobProcessor } from './job-processor'
@@ -152,8 +152,9 @@ async function main() {
 
     // Step 3: Initialize storage client
     logInfo('Initializing storage client')
+    const resolvedSupabaseUrl = resolveSupabaseUrlForWorker() || config.supabaseUrl
     const storageClient = new StorageClient({
-      supabase_url: config.supabaseUrl,
+      supabase_url: resolvedSupabaseUrl,
       supabase_service_role_key: config.supabaseServiceRoleKey,
       storage_bucket: config.storageBucket,
     })

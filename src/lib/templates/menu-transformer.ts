@@ -191,6 +191,7 @@ export function toEngineMenu(menu: Menu): EngineMenu {
     const categoryGroups = new Map<string, MenuItem[]>()
     
     menu.items!.forEach(item => {
+      if (item.available === false) return
       const categoryName = item.category && item.category.trim() ? item.category.trim() : 'Menu'
       if (!categoryGroups.has(categoryName)) {
         categoryGroups.set(categoryName, [])
@@ -276,6 +277,7 @@ function transformCategoryWithImageLookup(
     name: category.name,
     sortOrder: category.order ?? fallbackOrder,
     items: category.items
+      .filter(item => item.available !== false)
       .map((item, idx) => transformItemWithImageLookup(item, idx, itemsImageLookup))
       .sort((a, b) => a.sortOrder - b.sortOrder)
   }

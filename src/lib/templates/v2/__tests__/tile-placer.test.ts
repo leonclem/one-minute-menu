@@ -256,6 +256,40 @@ describe('Tile Placer', () => {
       expect(tile.rowSpan).toBe(1)
       expect(tile.height).toBe(70)
     })
+
+    it('uses correct rowSpan for 4-column portrait ITEM_TEXT_ROW in textOnly mode', () => {
+      const fourColTemplate: TemplateV2 = {
+        ...mockTemplate,
+        id: '4-column-portrait',
+        body: {
+          container: { type: 'GRID', cols: 4, rowHeight: 70, gapX: 8, gapY: 8 },
+        },
+        tiles: {
+          ...mockTemplate.tiles,
+          ITEM_TEXT_ROW: {
+            ...mockTemplate.tiles.ITEM_TEXT_ROW,
+            rowSpan: 1,
+            contentBudget: {
+              ...mockTemplate.tiles.ITEM_TEXT_ROW.contentBudget!,
+              totalHeight: 70,
+            },
+          },
+        },
+      }
+
+      const tile = createItemTile(
+        mockItem,
+        'section-1',
+        fourColTemplate,
+        '$',
+        { textOnly: true }
+      )
+
+      expect(tile.type).toBe('ITEM_TEXT_ROW')
+      expect(tile.rowSpan).toBe(1)
+      expect(tile.height).toBe(70) // 1 * 70
+      expect(tile.contentBudget?.totalHeight).toBe(70)
+    })
   })
 
   describe('selectItemVariant', () => {

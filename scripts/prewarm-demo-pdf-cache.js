@@ -12,28 +12,44 @@ const BASE_URL = process.env.PREWARM_APP_URL || 'http://localhost:3000'
 
 const DEMO_IMAGES = {
   breakfast: {
-    'Breakfast Sandwich': '/sample-menus/generated/breakfast/breakfast-sandwich.webp',
-    'Country Tartine': '/sample-menus/generated/breakfast/country-tartine.webp',
-    'Eggs Benedict': '/sample-menus/generated/breakfast/eggs-benedict.webp',
-    'French Toast': '/sample-menus/generated/breakfast/french-toast.webp',
-    'Le Parfait': '/sample-menus/generated/breakfast/le-parfait.webp',
-    'Morning Tartine': '/sample-menus/generated/breakfast/morning-tartine.webp',
-    'Parisian Omelette': '/sample-menus/generated/breakfast/parisian-omelette.webp',
-    "Provençal Eggs": '/sample-menus/generated/breakfast/provencal-eggs.webp',
-    'Three Organic Eggs Your Way!': '/sample-menus/generated/breakfast/three-organic-eggs-your-way.webp',
-    "Two Soft-Boiled Eggs & 'Mouillettes'": '/sample-menus/generated/breakfast/two-soft-boiled-eggs-mouillettes.webp'
+    'Breakfast Sandwich': '/sample-menus/generated/breakfast/standard/breakfast-sandwich.webp',
+    'Country Tartine': '/sample-menus/generated/breakfast/standard/country-tartine.webp',
+    'Eggs Benedict': '/sample-menus/generated/breakfast/standard/eggs-benedict.webp',
+    'French Toast': '/sample-menus/generated/breakfast/standard/french-toast.webp',
+    'Le Parfait': '/sample-menus/generated/breakfast/standard/le-parfait.webp',
+    'Morning Tartine': '/sample-menus/generated/breakfast/standard/morning-tartine.webp',
+    'Parisian Omelette': '/sample-menus/generated/breakfast/standard/parisian-omelette.webp',
+    "Provençal Eggs": '/sample-menus/generated/breakfast/standard/provencal-eggs.webp',
+    'Three Organic Eggs Your Way!': '/sample-menus/generated/breakfast/standard/three-eggs-your-way.webp',
+    "Two Soft-Boiled Eggs & 'Mouillettes'": '/sample-menus/generated/breakfast/standard/two-soft-boiled-eggs-and-mouilettes.webp'
   },
   fine_dining: {
-    'Crispy Duck in Port Cherry Sauce': '/sample-menus/generated/fine-dining/crispy-duck-in-port-cherry-sauce.webp',
-    'Grilled Faroe Island Salmon': '/sample-menus/generated/fine-dining/grilled-faroe-island-salmon.webp',
-    'House Made Ice Cream': '/sample-menus/generated/fine-dining/house-made-ice-cream.webp',
-    'Key Lime Pudding': '/sample-menus/generated/fine-dining/key-lime-pudding.webp',
-    'Marinated Local Oyster Mushroom Salad': '/sample-menus/generated/fine-dining/marinated-local-oyster-mushroom-salad.webp',
-    'Pan Roasted Duck Breast': '/sample-menus/generated/fine-dining/pan-roasted-duck-breast.webp',
-    'Rutabaga and Toasted Hazelnut Soup': '/sample-menus/generated/fine-dining/rutabaga-and-toasted-hazelnut-soup.webp',
-    'Tenderloin of Beef Wellington': '/sample-menus/generated/fine-dining/tenderloin-of-beef-wellington.webp',
-    'Tres Leches Cake': '/sample-menus/generated/fine-dining/tres-leches-cake.webp'
+    'Crispy Duck in Port Cherry Sauce': '/sample-menus/generated/fine-dining/standard/crispy-duck-in-port-cherry-sauce.webp',
+    'Grilled Faroe Island Salmon': '/sample-menus/generated/fine-dining/standard/grilled-faroe-island-salmon.webp',
+    'House Made Ice Cream': '/sample-menus/generated/fine-dining/standard/house-made-ice-cream.jpg',
+    'Key Lime Pudding': '/sample-menus/generated/fine-dining/standard/key-lime-pudding.jpg',
+    'Marinated Local Oyster Mushroom Salad': '/sample-menus/generated/fine-dining/standard/marinated-local-oyster-mushroom-salad.webp',
+    'Pan Roasted Duck Breast': '/sample-menus/generated/fine-dining/standard/pan-roasted-duck-breast.webp',
+    'Rutabaga and Toasted Hazelnut Soup': '/sample-menus/generated/fine-dining/standard/rutabaga-and-toasted-hazelnut-soup.webp',
+    'Tenderloin of Beef Wellington': '/sample-menus/generated/fine-dining/standard/tenderloin-of-beef-wellington.webp',
+    'Tres Leches Cake': '/sample-menus/generated/fine-dining/standard/tres-leches-cake.webp'
   }
+}
+
+const DEMO_CUTOUT_IMAGES = {
+  breakfast: {
+    'Breakfast Sandwich': '/sample-menus/generated/breakfast/cutout/breakfast-sandwich.png',
+    'Country Tartine': '/sample-menus/generated/breakfast/cutout/country-tartine.png',
+    'Eggs Benedict': '/sample-menus/generated/breakfast/cutout/eggs-benedict.png',
+    'French Toast': '/sample-menus/generated/breakfast/cutout/french-toast.png',
+    'Le Parfait': '/sample-menus/generated/breakfast/cutout/le-parfait.png',
+    'Morning Tartine': '/sample-menus/generated/breakfast/cutout/morning-tartine.png',
+    'Parisian Omelette': '/sample-menus/generated/breakfast/cutout/parisian-omelette.png',
+    "Provençal Eggs": '/sample-menus/generated/breakfast/cutout/provencal-eggs.png',
+    'Three Organic Eggs Your Way!': '/sample-menus/generated/breakfast/cutout/three-eggs-your-way.png',
+    "Two Soft-Boiled Eggs & 'Mouillettes'": '/sample-menus/generated/breakfast/cutout/two-soft-boiled-eggs-and-mouilettes.png'
+  },
+  fine_dining: {}
 }
 
 const SAMPLE_MENUS = [
@@ -52,7 +68,8 @@ const SAMPLE_MENUS = [
       { name: 'Breakfast Sandwich', price: 10.5, description: 'Scrambled eggs & BLT', category: 'BREAKFAST' },
       { name: 'French Toast', price: 9.5, description: 'With maple syrup, homemade jam & whipped cream', category: 'BREAKFAST' }
     ],
-    imageMap: DEMO_IMAGES.breakfast
+    imageMap: DEMO_IMAGES.breakfast,
+    cutoutMap: DEMO_CUTOUT_IMAGES.breakfast
   },
   {
     id: 'prewarm-fine-dining',
@@ -68,7 +85,8 @@ const SAMPLE_MENUS = [
       { name: 'Key Lime Pudding', price: 8, description: 'Chantilly cream & wafer cookies', category: 'DESSERTS' },
       { name: 'House Made Ice Cream', price: 9, description: 'Black raspberry', category: 'DESSERTS' }
     ],
-    imageMap: DEMO_IMAGES.fine_dining
+    imageMap: DEMO_IMAGES.fine_dining,
+    cutoutMap: DEMO_CUTOUT_IMAGES.fine_dining
   }
 ]
 
@@ -111,15 +129,22 @@ async function pollJob(jobId) {
 }
 
 function buildMenu(sample) {
-  const items = sample.items.map((item, i) => ({
-    id: `item-${i}`,
-    name: item.name,
-    price: item.price,
-    description: item.description,
-    category: item.category,
-    customImageUrl: sample.imageMap[item.name] || null,
-    display_order: i
-  }))
+  const items = sample.items.map((item, i) => {
+    const cutoutUrl = sample.cutoutMap?.[item.name] || null
+    return {
+      id: `item-${i}`,
+      name: item.name,
+      price: item.price,
+      description: item.description,
+      category: item.category,
+      customImageUrl: sample.imageMap[item.name] || null,
+      cutoutUrl,
+      imageSource: 'ai',
+      ...(cutoutUrl ? { cutoutStatus: 'succeeded' } : {}),
+      ...(cutoutUrl ? { imageTransform: { cutout: { scale: 0.65, offsetX: 0, offsetY: 15 } } } : {}),
+      display_order: i
+    }
+  })
   return {
     id: sample.id,
     name: sample.name,

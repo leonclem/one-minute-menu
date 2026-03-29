@@ -1,7 +1,8 @@
 /**
  * Template Components Index
  * 
- * Exports all template-related components for easy importing
+ * Re-exports template components still used by the legacy dashboard preview.
+ * The V2 layout engine uses renderer-web-v2.tsx directly.
  */
 
 export { default as GridMenuLayout, ResponsiveGridMenuLayout } from './GridMenuLayout'
@@ -15,12 +16,3 @@ export type { MetadataOverlayProps, LightMetadataOverlayProps, SolidMetadataOver
 
 export { default as FillerTile } from './FillerTile'
 export type { FillerTileProps } from './FillerTile'
-
-export { default as TextOnlyLayout, CompactTextOnlyLayout, TwoColumnTextOnlyLayout } from './TextOnlyLayout'
-export type { TextOnlyLayoutProps, CompactTextOnlyLayoutProps, TwoColumnTextOnlyLayoutProps } from './TextOnlyLayout'
-
-export { default as CompatibilityBadge } from './CompatibilityBadge'
-export type { CompatibilityBadgeProps } from './CompatibilityBadge'
-
-export { default as ItemImageFallback } from './ItemImageFallback'
-export type { ItemImageFallbackProps } from './ItemImageFallback'

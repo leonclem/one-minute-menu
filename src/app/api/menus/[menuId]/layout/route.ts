@@ -8,8 +8,11 @@ import { TEMPLATE_REGISTRY } from '@/lib/templates/template-definitions'
 import type { MenuTemplateSelection } from '@/lib/templates/engine-types'
 import type { ImageModeV2 } from '@/lib/templates/v2/engine-types-v2'
 import { getMenuCurrency } from '@/lib/menu-currency-service'
+import { isCutoutFeatureEnabled } from '@/lib/background-removal/feature-flag'
+import type { ItemCutoutContext } from '@/lib/templates/v2/menu-transformer-v2'
+import type { MenuItem } from '@/types'
 
-const VALID_IMAGE_MODES: readonly ImageModeV2[] = ['none', 'compact-rect', 'compact-circle', 'stretch', 'background']
+const VALID_IMAGE_MODES: readonly ImageModeV2[] = ['none', 'compact-rect', 'compact-circle', 'stretch', 'background', 'cutout']
 
 /**
  * Simple in-memory cache for layout instances
@@ -18,6 +21,7 @@ const VALID_IMAGE_MODES: readonly ImageModeV2[] = ['none', 'compact-rect', 'comp
 const layoutCache = new Map<string, { layout: any; timestamp: number }>()
 const CACHE_TTL = 3600000 // 1 hour in milliseconds
 const MAX_CACHE_SIZE = 100
+const LAYOUT_CACHE_VERSION = 'v8'
 
 /**
  * Generate a cache key for a layout
@@ -33,7 +37,7 @@ function generateCacheKey(
   const configHash = configuration ? JSON.stringify(configuration) : 'default'
   const menuVersion = menuUpdatedAt.getTime()
   const currencyPart = menuCurrency || 'default'
-  return `${menuId}-${templateId}-${menuVersion}-${configHash}-${currencyPart}`
+  return `${LAYOUT_CACHE_VERSION}-${menuId}-${templateId}-${menuVersion}-${configHash}-${currencyPart}`
 }
 
 /**
@@ -195,8 +199,38 @@ export async function GET(
     
     let layout
     if (engineVersion === 'v2') {
+      // Build cutout context when cutout mode is active
+      let cutoutOptions: Parameters<typeof transformMenuToV2>[1] = { currency: menuCurrency, imageModeIsCutout: imageMode === 'cutout' }
+      if (imageMode === 'cutout') {
+        const featureEnabled = isCutoutFeatureEnabled()
+        const allItems: MenuItem[] = [
+          ...(menu.items ?? []),
+          ...(menu.categories?.flatMap(c => c.items) ?? []),
+        ]
+        const itemCutouts = new Map<string, ItemCutoutContext>()
+        allItems.forEach(item => {
+          if (item.cutoutUrl !== undefined || item.cutoutStatus !== undefined) {
+            itemCutouts.set(item.id, {
+              cutoutUrl: item.cutoutUrl ?? null,
+              cutoutStatus: item.cutoutStatus ?? 'not_requested',
+            })
+          }
+        })
+        cutoutOptions = {
+          ...cutoutOptions,
+          cutout: {
+            featureEnabled,
+            templateSupportsCutouts: true, // user explicitly chose cutout mode
+            itemCutouts,
+            menuId: params.menuId,
+            templateId,
+            isExport: false,
+          },
+        }
+      }
+
       // Transform to EngineMenuV2 with user's currency preference
-      const menuV2 = transformMenuToV2(menu, { currency: menuCurrency })
+      const menuV2 = transformMenuToV2(menu, cutoutOptions)
       
       layout = await generateLayoutWithVersion({
         menu: menuV2,
@@ -305,8 +339,32 @@ export async function POST(
     
     let layout
     if (engineVersion === 'v2') {
+      // Build cutout context when cutout mode is active (mirrors GET handler)
+      let demoTransformOptions: Parameters<typeof transformMenuToV2>[1] = { imageModeIsCutout: imageMode === 'cutout' }
+      if (imageMode === 'cutout') {
+        const featureEnabled = isCutoutFeatureEnabled()
+        const allItems: any[] = Array.isArray(menu.items) ? menu.items : []
+        const itemCutouts = new Map<string, ItemCutoutContext>()
+        allItems.forEach((item: any) => {
+          if (item.cutoutUrl !== undefined || item.cutoutStatus !== undefined) {
+            itemCutouts.set(item.id, {
+              cutoutUrl: item.cutoutUrl ?? null,
+              cutoutStatus: item.cutoutStatus ?? 'not_requested',
+            })
+          }
+        })
+        demoTransformOptions = {
+          ...demoTransformOptions,
+          cutout: {
+            featureEnabled,
+            templateSupportsCutouts: true,
+            itemCutouts,
+          },
+        }
+      }
+
       // Transform to EngineMenuV2 if needed
-      const menuV2 = isEngineMenuV2(menu) ? menu : transformMenuToV2(menu)
+      const menuV2 = isEngineMenuV2(menu) ? menu : transformMenuToV2(menu, demoTransformOptions)
       
       layout = await generateLayoutWithVersion({
         menu: menuV2,

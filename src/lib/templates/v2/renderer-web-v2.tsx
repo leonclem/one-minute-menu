@@ -19,6 +19,7 @@ import type {
   RegionV2,
   PageSpecV2 
 } from './engine-types-v2'
+import type { ItemContentV2, FeatureCardContentV2 } from './engine-types-v2'
 import { 
   renderTileContent, 
   calculateAbsolutePosition,
@@ -32,6 +33,7 @@ import {
   type RenderOptionsV2,
   type RenderElement 
 } from './renderer-v2'
+import { ImageTransformOverlay } from '@/components/ImageTransformOverlay'
 
 // ============================================================================
 // Font Loading Utilities
@@ -304,6 +306,8 @@ const MENU_ITEM_TILE_TYPES = ['ITEM_CARD', 'ITEM_TEXT_ROW', 'FEATURE_CARD'] as c
 const SUBTLE_ITEM_BORDER = '1px solid rgba(0,0,0,0.06)'
 const SUBTLE_ITEM_SHADOW = '0 1px 3px rgba(0,0,0,0.08)'
 
+const IMAGE_TILE_TYPES = ['ITEM_CARD', 'FEATURE_CARD'] as const
+
 function TileRenderer({ tile, options }: TileRendererProps) {
   const { scale, palette } = options
   const renderData = renderTileContent(tile, options)
@@ -317,6 +321,49 @@ function TileRenderer({ tile, options }: TileRendererProps) {
     : undefined
   const backgroundColor = fillColor ?? 'transparent'
 
+  // Resolve overlay: only for image tiles in edit mode
+  const isImageTile = IMAGE_TILE_TYPES.includes(tile.type as (typeof IMAGE_TILE_TYPES)[number])
+  const tileContent = tile.content as (ItemContentV2 | FeatureCardContentV2) | undefined
+  const hasImage = isImageTile && !!(tileContent as ItemContentV2 | FeatureCardContentV2)?.imageUrl
+  const showOverlay = options.imageEditMode && hasImage && !!options.onImageTransformChange
+  const overlayItemId = showOverlay ? (tileContent as ItemContentV2 | FeatureCardContentV2).itemId : undefined
+  const overlayImageElement = showOverlay
+    ? renderData.elements.find((element) => element.type === 'image' && element.width != null && element.height != null)
+    : undefined
+
+  let overlayFrame: { left: number; top: number; width: number; height: number; borderRadius?: number } | undefined
+  let overlayHighlightFrame: { left: number; top: number; width: number; height: number; borderRadius?: number } | undefined
+
+  if (overlayImageElement) {
+    if (options.imageMode === 'cutout') {
+      // For cutout, the image can protrude significantly outside the tile.
+      // If we make the grab area cover the protruding image, the invisible bounding boxes
+      // of adjacent tiles will heavily overlap, causing unpredictable hover states.
+      // Instead, we strictly bind the grab area and the glow effect to the menu tile itself.
+      // This ensures 100% predictable collision detection with zero overlap.
+      overlayFrame = {
+        left: 0,
+        top: 0,
+        width: tile.width * scale,
+        height: tile.height * scale,
+        borderRadius: 8 * scale,
+      }
+      overlayHighlightFrame = undefined // Glow matches the frame exactly
+    } else {
+      overlayFrame = {
+        left: overlayImageElement.x * scale,
+        top: overlayImageElement.y * scale,
+        width: overlayImageElement.width! * scale,
+        height: overlayImageElement.height! * scale,
+        borderRadius: overlayImageElement.style.borderRadius != null
+          ? overlayImageElement.style.borderRadius * scale
+          : undefined,
+      }
+    }
+  }
+  const isCutoutTile = hasImage && options.imageMode === 'cutout'
+  const tileZIndex = tile.layer === 'background' ? 0 : isCutoutTile ? 5 : 1
+
   return (
     <div
       className={`tile-v2 tile-${tile.type.toLowerCase()}`}
@@ -326,10 +373,11 @@ function TileRenderer({ tile, options }: TileRendererProps) {
         top: tile.y * scale,
         width: tile.width * scale,
         height: tile.height * scale,
-        zIndex: tile.layer === 'background' ? 0 : 1,
+        zIndex: tileZIndex,
         backgroundColor,
         border,
-        ...(boxShadow ? { boxShadow } : {})
+        ...(boxShadow ? { boxShadow } : {}),
+        ...(isCutoutTile ? { overflow: 'visible' } : {})
       }}
     >
       {/* Render tile content elements */}
@@ -340,6 +388,18 @@ function TileRenderer({ tile, options }: TileRendererProps) {
           scale={scale}
         />
       ))}
+
+      {/* Image edit mode overlay */}
+      {showOverlay && overlayItemId && options.onImageTransformChange && (
+        <ImageTransformOverlay
+          itemId={overlayItemId}
+          imageMode={options.imageMode}
+          currentTransform={options.imageTransforms?.get(overlayItemId)}
+          onChange={options.onImageTransformChange}
+          frame={overlayFrame}
+          highlightFrame={overlayHighlightFrame}
+        />
+      )}
       
       {/* Tile ID overlay */}
       {options.showTileIds && (
@@ -394,18 +454,19 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
     textAlign: (element.style.textAlign as React.CSSProperties['textAlign']) || 'center',
     opacity: element.style.opacity,
     borderRadius: element.style.borderRadius ? element.style.borderRadius * scale : undefined,
-    display: element.style.maxLines && element.style.maxLines > 1 ? '-webkit-box' : 'flex',
+    display: element.style.maxLines ? '-webkit-box' : 'flex',
     WebkitLineClamp: element.style.maxLines,
-    WebkitBoxOrient: element.style.maxLines && element.style.maxLines > 1 ? 'vertical' : undefined,
+    WebkitBoxOrient: element.style.maxLines ? 'vertical' : undefined,
     overflow: element.style.maxLines ? 'hidden' : undefined,
-    alignItems: 'center',
+    alignItems: element.style.maxLines ? undefined : 'center',
     justifyContent: element.style.textAlign === 'left' ? 'flex-start'
       : element.style.textAlign === 'right' ? 'flex-end'
       : 'center',
     boxShadow: element.style.boxShadow,
     textTransform: element.style.textTransform as React.CSSProperties['textTransform'],
     letterSpacing: element.style.letterSpacing ? element.style.letterSpacing * scale : undefined,
-    textShadow: element.style.textShadow
+    textShadow: element.style.textShadow,
+    pointerEvents: 'none'
   }
 
   switch (element.type) {
@@ -424,12 +485,16 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
       const imageHeight = typeof baseStyle.height === 'number' ? baseStyle.height : parseFloat(String(baseStyle.height || 0))
       const isCircular = borderRadius && borderRadius > 0 && imageWidth > 0 && imageHeight > 0 &&
         Math.abs(borderRadius - imageWidth / 2) < 2 && Math.abs(imageWidth - imageHeight) < 2
+      const isCutoutImage = element.style.zIndex != null
+      const hasTransform = !!element.style.transform
+      const imgOverflow = isCutoutImage ? 'visible' : (isCircular || hasTransform) ? 'hidden' : 'visible'
       return (
         <div
           style={{
             ...baseStyle,
             borderRadius,
-            overflow: isCircular ? 'hidden' : undefined
+            overflow: imgOverflow,
+            zIndex: element.style.zIndex,
           }}
         >
           <img
@@ -439,7 +504,10 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
               width: '100%',
               height: '100%',
               objectFit: element.style.objectFit || 'cover',
-              objectPosition: element.style.objectPosition || 'center'
+              objectPosition: element.style.objectPosition || 'center',
+              background: isCutoutImage ? 'transparent' : undefined,
+              transform: element.style.transform,
+              transformOrigin: element.style.transformOrigin,
             }}
           />
         </div>

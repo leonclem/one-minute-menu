@@ -1,7 +1,7 @@
 /**
  * Test: Per-section text-only override for image-less categories.
  * Verifies that sections with no images get text-only tiles AND
- * correctly-sized filler tiles (1-row, not 2-row).
+ * correctly-sized filler tiles (match ITEM_TEXT_ROW rowSpan, not ITEM_CARD).
  */
 import { generateLayoutV2 } from '../layout-engine-v2'
 import type { EngineMenuV2, EngineSectionV2, EngineItemV2, ItemIndicatorsV2 } from '../engine-types-v2'
@@ -17,7 +17,7 @@ function makeSection(id: string, items: EngineItemV2[], hasImages: boolean): Eng
 }
 
 describe('Per-section text-only filler sizing', () => {
-  it('uses 1-row fillers for sections with hasImages=false', async () => {
+  it('uses text-row-sized fillers for sections with hasImages=false', async () => {
     const sectionWithImages = makeSection('with-images', [
       makeItem('a1', 'https://example.com/img.jpg'),
       makeItem('a2', 'https://example.com/img2.jpg'),
@@ -62,12 +62,12 @@ describe('Per-section text-only filler sizing', () => {
         (t.content as any).sectionId === 'no-images'
     )
 
-    // Section with images should use ITEM_CARD (2-row)
+    // Section with images should use ITEM_CARD
     expect(itemTilesWithImages.length).toBeGreaterThan(0)
     expect(itemTilesWithImages.every(t => t.type === 'ITEM_CARD')).toBe(true)
     expect(itemTilesWithImages[0].rowSpan).toBe(2)
 
-    // Section without images should use ITEM_TEXT_ROW (1-row)
+    // Section without images should use ITEM_TEXT_ROW
     expect(itemTilesNoImages.length).toBeGreaterThan(0)
     expect(itemTilesNoImages.every(t => t.type === 'ITEM_TEXT_ROW')).toBe(true)
     expect(itemTilesNoImages[0].rowSpan).toBe(1)
@@ -78,7 +78,7 @@ describe('Per-section text-only filler sizing', () => {
 
     const fillerTiles = allTiles.filter(t => t.type === 'FILLER')
     
-    // Fillers in the no-images section rows should be 1-row
+    // Fillers in the no-images section should match ITEM_TEXT_ROW rowSpan
     const fillersInNoImageSection = fillerTiles.filter(t => {
       const content = t.content as any
       return content.sectionId === 'no-images' || 

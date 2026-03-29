@@ -209,6 +209,7 @@ export interface ItemContentV2 {
   showImage: boolean
   currency: string
   indicators: ItemIndicatorsV2
+  imageTransform?: import('@/types').ImageTransformRecord
 }
 
 /** Filler tile content */
@@ -253,6 +254,7 @@ export interface FeatureCardContentV2 {
   showImage: boolean
   currency: string
   indicators: ItemIndicatorsV2
+  imageTransform?: import('@/types').ImageTransformRecord
 }
 
 /** Divider style options */
@@ -426,6 +428,7 @@ export interface EngineItemV2 {
   sortOrder: number
   indicators: ItemIndicatorsV2
   isFeatured?: boolean
+  imageTransform?: import('@/types').ImageTransformRecord
 }
 
 // =============================================================================
@@ -433,7 +436,7 @@ export interface EngineItemV2 {
 // =============================================================================
 
 /** Image rendering mode for menu item tiles. 'none' = text only, no images (same as textOnly: true). */
-export type ImageModeV2 = 'none' | 'compact-rect' | 'compact-circle' | 'stretch' | 'background'
+export type ImageModeV2 = 'none' | 'compact-rect' | 'compact-circle' | 'stretch' | 'background' | 'cutout'
 
 /** User selection configuration for layout generation */
 export interface SelectionConfigV2 {
@@ -473,6 +476,10 @@ export interface SelectionConfigV2 {
 // =============================================================================
 
 /** Parsed template from YAML */
+export interface TemplateCapabilitiesV2 {
+  supportsCutouts?: boolean
+}
+
 export interface TemplateV2 {
   id: string
   version: string
@@ -485,6 +492,7 @@ export interface TemplateV2 {
   policies: TemplatePoliciesV2
   filler: TemplateFillerConfigV2
   itemIndicators: TemplateIndicatorConfigV2
+  capabilities?: TemplateCapabilitiesV2
 }
 
 /** Page configuration */

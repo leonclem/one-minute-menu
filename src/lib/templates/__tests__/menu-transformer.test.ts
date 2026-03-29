@@ -468,5 +468,48 @@ describe('menu-transformer', () => {
         expect(engineMenu.sections[1].sortOrder).toBe(1)
       })
     })
+
+    describe('Out of Stock Items', () => {
+      it('should exclude items with available: false from flat items', () => {
+        const menu = createTestMenu({
+          items: [
+            createTestItem({ id: 'item-1', name: 'Available Item', available: true }),
+            createTestItem({ id: 'item-2', name: 'Out of Stock Item', available: false }),
+          ],
+        })
+
+        const engineMenu = toEngineMenu(menu)
+
+        const allItems = engineMenu.sections.flatMap(s => s.items)
+        expect(allItems).toHaveLength(1)
+        expect(allItems[0].name).toBe('Available Item')
+      })
+
+      it('should exclude items with available: false from categorized menus', () => {
+        const menu = createTestMenu({
+          categories: [
+            createTestCategory({
+              id: 'cat-1',
+              name: 'Starters',
+              order: 0,
+              items: [
+                createTestItem({ id: 'item-1', name: 'Available Starter', available: true }),
+                createTestItem({ id: 'item-2', name: 'Out of Stock Starter', available: false }),
+              ],
+            }),
+          ],
+          items: [
+            createTestItem({ id: 'item-1', name: 'Available Starter', available: true }),
+            createTestItem({ id: 'item-2', name: 'Out of Stock Starter', available: false }),
+          ],
+        })
+
+        const engineMenu = toEngineMenu(menu)
+
+        const allItems = engineMenu.sections.flatMap(s => s.items)
+        expect(allItems).toHaveLength(1)
+        expect(allItems[0].name).toBe('Available Starter')
+      })
+    })
   })
 })

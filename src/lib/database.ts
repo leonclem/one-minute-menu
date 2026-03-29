@@ -1034,7 +1034,40 @@ async function transformMenuFromDB(dbMenu: any): Promise<Menu> {
   })))
   
   // Ensure backward compatibility between items and categories
-  return ensureBackwardCompatibility(menu)
+  const compatibleMenu = ensureBackwardCompatibility(menu)
+
+  // Merge image_transform from menu_items (source of truth for positioning)
+  await enrichMenuItemsWithImageTransform(compatibleMenu, dbMenu.id)
+
+  return compatibleMenu
+}
+
+/**
+ * Enriches menu items with image_transform from menu_items table (source of truth for zoom/pan).
+ */
+async function enrichMenuItemsWithImageTransform(menu: Menu, menuId: string): Promise<void> {
+  const supabase = createServerSupabaseClient()
+  const { data: rows, error } = await supabase
+    .from('menu_items')
+    .select('id, image_transform')
+    .eq('menu_id', menuId)
+
+  if (error || !rows?.length) return
+
+  const transformById = new Map<string, any>()
+  for (const row of rows) {
+    if (row.image_transform) {
+      transformById.set(row.id, row.image_transform)
+    }
+  }
+  if (transformById.size === 0) return
+
+  const applyTransform = (item: MenuItem) => {
+    const t = transformById.get(item.id)
+    if (t) (item as any).imageTransform = t
+  }
+  menu.items?.forEach(applyTransform)
+  menu.categories?.forEach(cat => cat.items.forEach(applyTransform))
 }
 
 /**
@@ -1077,7 +1110,7 @@ async function enrichMenuItemsWithImageUrls(menu: Menu): Promise<void> {
   // Fetch all AI image URLs in one query
   const { data: aiImages, error } = await supabase
     .from('ai_generated_images')
-    .select('id, desktop_url')
+    .select('id, desktop_url, cutout_url, cutout_status')
     .in('id', aiImageIds)
   
   if (error) {
@@ -1088,10 +1121,14 @@ async function enrichMenuItemsWithImageUrls(menu: Menu): Promise<void> {
   console.log('🖼️ [Enrich Images] Fetched AI images:', aiImages)
   
   // Create a lookup map
-  const imageUrlMap = new Map<string, string>()
+  const imageUrlMap = new Map<string, { desktopUrl: string; cutoutUrl: string | null; cutoutStatus: string | null }>()
   aiImages?.forEach(img => {
     if (img.desktop_url) {
-      imageUrlMap.set(img.id, img.desktop_url)
+      imageUrlMap.set(img.id, {
+        desktopUrl: img.desktop_url,
+        cutoutUrl: img.cutout_url ?? null,
+        cutoutStatus: img.cutout_status ?? null,
+      })
     }
   })
   
@@ -1099,18 +1136,20 @@ async function enrichMenuItemsWithImageUrls(menu: Menu): Promise<void> {
   if (menu.items) {
     menu.items.forEach(item => {
       if (item.aiImageId && item.imageSource === 'ai') {
-        const url = imageUrlMap.get(item.aiImageId)
+        const imgData = imageUrlMap.get(item.aiImageId)
         console.log('🖼️ [Enrich Images] Processing item:', {
           itemId: item.id,
           itemName: item.name,
           aiImageId: item.aiImageId,
           imageSource: item.imageSource,
-          foundUrl: url,
+          foundUrl: imgData?.desktopUrl,
           mapSize: imageUrlMap.size
         })
-        if (url) {
-          item.customImageUrl = url
-          console.log('🖼️ [Enrich Images] Set customImageUrl for', item.name, ':', url)
+        if (imgData) {
+          item.customImageUrl = imgData.desktopUrl
+          item.cutoutUrl = imgData.cutoutUrl
+          item.cutoutStatus = (imgData.cutoutStatus as import('@/types').CutoutStatus) ?? undefined
+          console.log('🖼️ [Enrich Images] Set customImageUrl for', item.name, ':', imgData.desktopUrl)
         }
       }
     })
@@ -1121,9 +1160,11 @@ async function enrichMenuItemsWithImageUrls(menu: Menu): Promise<void> {
     menu.categories.forEach(category => {
       category.items.forEach(item => {
         if (item.aiImageId && item.imageSource === 'ai') {
-          const url = imageUrlMap.get(item.aiImageId)
-          if (url) {
-            item.customImageUrl = url
+          const imgData = imageUrlMap.get(item.aiImageId)
+          if (imgData) {
+            item.customImageUrl = imgData.desktopUrl
+            item.cutoutUrl = imgData.cutoutUrl
+            item.cutoutStatus = (imgData.cutoutStatus as import('@/types').CutoutStatus) ?? undefined
           }
         }
       })

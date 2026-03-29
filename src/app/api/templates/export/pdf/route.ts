@@ -33,34 +33,6 @@ async function handleNewTemplateEngine(
   const { optimizeLayoutDocumentImages } = await import('@/lib/templates/v2/image-optimizer-v2')
   const { getMenuCurrency } = await import('@/lib/menu-currency-service')
   
-  // Transform menu to EngineMenuV2 with user's menu currency preference
-  metricsBuilder.markCalculationStart()
-  const menuCurrency = userId ? await getMenuCurrency(userId) : 'USD'
-  const engineMenu = transformMenuToV2(menu, { currency: menuCurrency })
-
-  // Calculate menu characteristics for metrics
-  // ... metrics calculation ...
-  const sectionCount = engineMenu.sections.length
-  const totalItems = engineMenu.sections.reduce((sum, section) => sum + section.items.length, 0)
-  const itemsWithImages = engineMenu.sections.reduce((sum, section) => 
-    sum + section.items.filter(item => !!item.imageUrl).length, 0)
-  const imageRatio = totalItems > 0 ? (itemsWithImages / totalItems) * 100 : 0
-  
-  const totalNameLength = engineMenu.sections.reduce((sum, section) => 
-    sum + section.items.reduce((s, i) => s + i.name.length, 0), 0)
-  const avgNameLength = totalItems > 0 ? totalNameLength / totalItems : 0
-  
-  const hasDescriptions = engineMenu.sections.some(section => 
-    section.items.some(item => !!item.description && item.description.length > 0))
-
-  metricsBuilder.setMenuCharacteristics({
-    sectionCount,
-    totalItems,
-    imageRatio,
-    avgNameLength,
-    hasDescriptions
-  })
-  
   // Resolve configuration: priority is passed configuration > database > menu object
   let finalConfiguration = configuration || {}
   
@@ -85,6 +57,37 @@ async function handleNewTemplateEngine(
   const rawImageMode = finalConfiguration.imageMode || 'stretch'
   const imageModeForEngine = rawImageMode === 'none' ? 'stretch' : rawImageMode
   const textOnly = finalConfiguration.textOnly || rawImageMode === 'none'
+
+  // Transform menu to EngineMenuV2 with user's menu currency preference
+  metricsBuilder.markCalculationStart()
+  const menuCurrency = userId ? await getMenuCurrency(userId) : 'USD'
+  const engineMenu = transformMenuToV2(menu, {
+    currency: menuCurrency,
+    imageModeIsCutout: rawImageMode === 'cutout',
+  })
+
+  // Calculate menu characteristics for metrics
+  // ... metrics calculation ...
+  const sectionCount = engineMenu.sections.length
+  const totalItems = engineMenu.sections.reduce((sum, section) => sum + section.items.length, 0)
+  const itemsWithImages = engineMenu.sections.reduce((sum, section) => 
+    sum + section.items.filter(item => !!item.imageUrl).length, 0)
+  const imageRatio = totalItems > 0 ? (itemsWithImages / totalItems) * 100 : 0
+  
+  const totalNameLength = engineMenu.sections.reduce((sum, section) => 
+    sum + section.items.reduce((s, i) => s + i.name.length, 0), 0)
+  const avgNameLength = totalItems > 0 ? totalNameLength / totalItems : 0
+  
+  const hasDescriptions = engineMenu.sections.some(section => 
+    section.items.some(item => !!item.description && item.description.length > 0))
+
+  metricsBuilder.setMenuCharacteristics({
+    sectionCount,
+    totalItems,
+    imageRatio,
+    avgNameLength,
+    hasDescriptions
+  })
 
   // Generate V2 layout
   const layoutDocument = await generateLayoutV2({

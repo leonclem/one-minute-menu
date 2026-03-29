@@ -52,6 +52,33 @@ const faqs: Array<{ q: string; a: ReactNode; aPlainText: string }> = [
     ),
   },
   {
+    q: 'What is the Cutout image option, and why does it say Beta?',
+    aPlainText:
+      'Cutout mode removes the background from your AI-generated food photos so dishes appear to float naturally on the menu design. Because both the original photos and the background removal are AI-generated processes, results vary by dish — some look great, others less so. We label it Beta to be upfront that it will not be perfect every time. If a cutout does not look right for a particular dish, simply switch back to a standard image style on the template page. If you regenerate the original image for a dish, a new cutout will be generated automatically from the updated photo. Keep in mind that image generation counts towards your plan allowance, so regenerating multiple images at once is worth doing thoughtfully.',
+    a: (
+      <div className="space-y-3">
+        <p>
+          Cutout mode removes the background from your AI-generated food photos so dishes appear to float naturally on
+          the menu design.
+        </p>
+        <p>
+          Because both the original photos and the background removal are AI-generated processes, results vary by
+          dish — some look great, others less so. We label it <strong>Beta</strong> to be upfront that it will not be
+          perfect every time.
+        </p>
+        <p>
+          If a cutout does not look right for a particular dish, simply switch back to a standard image style on the
+          template page — no content is lost when switching styles.
+        </p>
+        <p>
+          If you regenerate the original image for a dish, a new cutout will be generated automatically from the
+          updated photo. Keep in mind that image generation counts towards your plan allowance, so it is worth being
+          selective if you are regenerating several dishes at once.
+        </p>
+      </div>
+    ),
+  },
+  {
     q: 'Will my menu look generic?',
     aPlainText:
       'No. GridMenu uses professionally designed menu templates to ensure clarity and visual balance, while allowing your content, imagery, and layout choices to define the final look. Templates exist to prevent poor design outcomes, not to limit creativity.',

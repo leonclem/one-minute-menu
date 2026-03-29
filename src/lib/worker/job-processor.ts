@@ -46,7 +46,7 @@ import {
 import { generateLayoutV2 } from '@/lib/templates/v2/layout-engine-v2'
 import { renderToPdf } from '@/lib/templates/v2/renderer-pdf-v2'
 import { optimizeLayoutDocumentImages } from '@/lib/templates/v2/image-optimizer-v2'
-import type { EngineMenuV2 } from '@/lib/templates/v2/engine-types-v2'
+import type { EngineMenuV2, ImageModeV2 } from '@/lib/templates/v2/engine-types-v2'
 
 export interface JobProcessorConfig {
   renderer: PuppeteerRenderer
@@ -331,9 +331,29 @@ export class JobProcessor {
         return rewriteLocalhostUrlForDocker(url)
       }
 
+      // 2. Read configuration up-front (needed for image mode and layout options)
+      const config = snapshot.configuration as any
+      const requestedImageMode: ImageModeV2 = config?.imageMode || 'stretch'
+      const isCutoutRequested = requestedImageMode === 'cutout'
+
+      // If cutout mode was requested but none of the snapshot items actually have a cutout URL
+      // (e.g. menu was never processed by the cutout service, or all cutouts failed), downgrade
+      // silently to stretch so standard images appear normally rather than all showing as blank.
+      const hasCutoutImages = isCutoutRequested &&
+        snapshot.menu_data.items.some(item => !!(item as any).cutout_url)
+      const effectiveImageMode = (isCutoutRequested && !hasCutoutImages) ? 'stretch' : requestedImageMode
+      const isCutoutMode = effectiveImageMode === 'cutout'
+
       const translatedItems = snapshot.menu_data.items.map(item => ({
         ...item,
-        image_url: translateUrl(item.image_url)
+        // In effective cutout mode: use the transparent PNG when available; otherwise undefined
+        // (blank placeholder — consistent with what transformMenuToV2 returns for items without
+        // a successful cutout). Safe to use undefined here because hasCutoutImages guarantees
+        // at least some items have cutout_url when we're in this branch.
+        // In all other modes: use the standard image_url.
+        image_url: isCutoutMode
+          ? ((item as any).cutout_url ? translateUrl((item as any).cutout_url) : undefined)
+          : translateUrl(item.image_url)
       }))
       const translatedLogoUrl = translateUrl(snapshot.menu_data.logo_url)
 
@@ -364,8 +384,7 @@ export class JobProcessor {
         }
       }
 
-      // 2. Generate V2 Layout
-      const config = snapshot.configuration as any
+      // Generate V2 Layout
       const resolvedPaletteId = config?.palette?.id || config?.colourPaletteId || config?.paletteId
       const layoutDocument = await generateLayoutV2({
         menu: engineMenu,
@@ -380,7 +399,7 @@ export class JobProcessor {
           showMenuTitle: config?.showMenuTitle || false,
           showVignette: config?.showVignette !== false,
           showCategoryTitles: config?.showCategoryTitles !== false,
-          imageMode: config?.imageMode || 'stretch',
+          imageMode: effectiveImageMode,
         }
       })
 
@@ -388,7 +407,8 @@ export class JobProcessor {
       logInfo('Optimizing images for PDF embedding', { job_id: job.id })
       const optimizedLayout = await optimizeLayoutDocumentImages(layoutDocument, {
         maxWidth: 1000,
-        quality: 75
+        quality: 75,
+        preserveTransparencyForItems: isCutoutMode  // only true when items actually have cutout PNGs
       })
 
       // 4. Render to PDF
@@ -397,7 +417,7 @@ export class JobProcessor {
         paletteId: resolvedPaletteId,
         texturesEnabled: config?.texturesEnabled !== false,
         textureId: config?.textureId,
-        imageMode: config?.imageMode || 'stretch',
+        imageMode: effectiveImageMode,
         showVignette: config?.showVignette !== false,
         itemBorders: config?.itemBorders === true,
         itemDropShadow: config?.itemDropShadow === true,
@@ -451,7 +471,8 @@ export class JobProcessor {
             dietary: [],
             spiceLevel: null,
             allergens: []
-          }
+          },
+          imageTransform: (item as any).imageTransform
         })
       })
 

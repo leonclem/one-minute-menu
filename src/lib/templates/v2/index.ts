@@ -104,7 +104,7 @@ export {
 } from './filler-manager-v2'
 
 // Menu transformer
-export type { TransformOptionsV2 } from './menu-transformer-v2'
+export type { TransformOptionsV2, ItemCutoutContext } from './menu-transformer-v2'
 export {
   transformMenuToV2,
   isEngineMenuV2,

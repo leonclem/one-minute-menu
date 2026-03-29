@@ -271,7 +271,7 @@ export function initializeDatabaseClient(): void {
   })
 }
 
-function resolveSupabaseUrlForWorker(): string | undefined {
+export function resolveSupabaseUrlForWorker(): string | undefined {
   const isDocker = isRunningInDocker()
 
   const internal =

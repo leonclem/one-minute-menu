@@ -26,11 +26,20 @@
       ]
     }
   ],
+  "crons": [
+    {
+      "path": "/api/admin/cutout-worker",
+      "schedule": "* * * * *"
+    }
+  ],
   "functions": {
     "src/app/api/extraction/submit/route.ts": {
       "maxDuration": 120
     },
     "src/app/api/extraction/status/[jobId]/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/admin/cutout-worker/route.ts": {
       "maxDuration": 120
     }
   }

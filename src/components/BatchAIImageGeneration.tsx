@@ -11,7 +11,7 @@ interface BatchAIImageGenerationProps {
   menuId: string
   items: BatchGenerationItem[]
   onClose: () => void
-  onItemImageGenerated: (itemId: string, imageUrl: string) => Promise<void> | void
+  onItemImageGenerated: (itemId: string, imageUrl: string, imageId?: string) => Promise<void> | void
 }
 
 const STYLE_PRESETS = [
@@ -118,7 +118,7 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
         if (r.status === 'success' && r.imageUrl) {
           try {
             const targetId = r.itemIdNormalized || r.itemId
-            await onItemImageGenerated(targetId, r.imageUrl)
+            await onItemImageGenerated(targetId, r.imageUrl, r.imageId)
           } catch {
             // If updating item fails, keep result as success but user will see image later
           }
@@ -204,7 +204,7 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
         if (r.status === 'success' && r.imageUrl) {
           try {
             const targetId = r.itemIdNormalized || r.itemId
-            await onItemImageGenerated(targetId, r.imageUrl)
+            await onItemImageGenerated(targetId, r.imageUrl, r.imageId)
           } catch {
             // keep result as success
           }

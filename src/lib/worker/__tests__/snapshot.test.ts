@@ -245,6 +245,46 @@ describe('createRenderSnapshot', () => {
     expect(snapshot.export_options.include_images).toBe(true)
     expect(snapshot.export_options.include_prices).toBe(true)
   })
+
+  it('should exclude out-of-stock items (available: false) from the snapshot', async () => {
+    const mockMenu = {
+      id: 'menu-123',
+      name: 'Test Menu',
+      user_id: 'user-123',
+      logo_url: null,
+      menu_data: {
+        items: [
+          {
+            id: 'item-1',
+            name: 'Available Item',
+            price: 10.00,
+            category: 'Mains',
+            order: 0,
+            available: true
+          },
+          {
+            id: 'item-2',
+            name: 'Out of Stock Item',
+            price: 12.00,
+            category: 'Mains',
+            order: 1,
+            available: false
+          }
+        ]
+      }
+    }
+
+    mockSingle.mockResolvedValue({ data: mockMenu, error: null })
+
+    const snapshot = await createRenderSnapshot(
+      'menu-123',
+      'elegant-dark',
+      { template_id: 'elegant-dark' }
+    )
+
+    expect(snapshot.menu_data.items).toHaveLength(1)
+    expect(snapshot.menu_data.items[0].name).toBe('Available Item')
+  })
 })
 
 describe('getRenderSnapshot', () => {

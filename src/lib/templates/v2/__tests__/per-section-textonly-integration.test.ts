@@ -7,6 +7,13 @@ import { transformMenuToV2 } from '../menu-transformer-v2'
 import { generateLayoutV2 } from '../layout-engine-v2'
 import type { Menu, MenuItem, MenuCategory } from '@/types'
 
+// Mock local-image-proxy to avoid @google-cloud/storage ESM import issues
+jest.mock('@/lib/background-removal/local-image-proxy', () => ({
+  resolvePublicImageUrl: jest.fn().mockImplementation((url: string) =>
+    Promise.resolve({ url, cleanup: jest.fn().mockResolvedValue(undefined) })
+  ),
+}))
+
 function makeMenuItem(overrides: Partial<MenuItem> & { id: string; name: string }): MenuItem {
   return {
     price: 10,
@@ -108,13 +115,13 @@ describe('Per-section text-only integration (Menu → transformMenuToV2 → gene
     console.log('Entrantes fillers:', entrantesFillers.map(f => ({ id: f.id, rowSpan: f.rowSpan, height: f.height })))
 
     if (bebidasFillers.length > 0) {
-      // Fillers in Bebidas (no images) should be 1-row (height = 70)
+      // Fillers in Bebidas (no images) match ITEM_TEXT_ROW: 1*70 = 70pt
       expect(bebidasFillers.every(f => f.rowSpan === 1)).toBe(true)
       expect(bebidasFillers.every(f => f.height === 70)).toBe(true)
     }
 
     if (entrantesFillers.length > 0) {
-      // Fillers in Entrantes (has images) should be 2-row (height = 148)
+      // Fillers in Entrantes (has images) match ITEM_CARD: 2*70+8 = 148pt
       expect(entrantesFillers.every(f => f.rowSpan === 2)).toBe(true)
       expect(entrantesFillers.every(f => f.height === 148)).toBe(true)
     }

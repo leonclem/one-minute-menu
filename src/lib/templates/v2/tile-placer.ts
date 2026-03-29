@@ -128,9 +128,9 @@ export function createItemTile(
   const { variant, tileType } = selectItemVariant(item, template, selection)
   const { rowHeight, gapY, cols, gapX } = template.body.container
   
-  const rowSpan = variant.rowSpan ?? 1
+  let rowSpan = variant.rowSpan ?? 1
   const colSpan = variant.colSpan ?? 1
-  
+
   // CRITICAL: Use FOOTPRINT height, not contentBudget.totalHeight
   const height = calculateTileHeight(rowSpan, rowHeight, gapY)
   
@@ -154,6 +154,7 @@ export function createItemTile(
         showImage,
         currency: currency || '$',
         indicators: item.indicators,
+        imageTransform: item.imageTransform,
       }
     : {
         type: tileType as 'ITEM_CARD' | 'ITEM_TEXT_ROW',
@@ -166,6 +167,7 @@ export function createItemTile(
         showImage,
         currency: currency || '$',
         indicators: item.indicators,
+        imageTransform: item.imageTransform,
       }
   
   return {

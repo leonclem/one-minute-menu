@@ -6,7 +6,8 @@ import { useRouter, usePathname } from 'next/navigation'
 import { UXSection, UXButton, UXCard, PaletteDropdown, TemplateDropdown, ImageModeDropdown } from '@/components/ux'
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
-import type { Menu } from '@/types'
+import type { Menu, ImageTransform, ImageTransformRecord } from '@/types'
+import { normalizeImageTransformRecord } from '@/types'
 import { normalizeDemoMenu } from '@/lib/demo-menu-normalizer'
 import { PageRenderer } from '@/lib/templates/v2/renderer-web-v2'
 import { PALETTES_V2, DEFAULT_PALETTE_V2, TEXTURE_IDS, TEXTURE_REGISTRY, FILLER_PATTERN_IDS, FILLER_PATTERN_REGISTRY, SPACER_BLANK_ID } from '@/lib/templates/v2/renderer-v2'
@@ -16,6 +17,21 @@ import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
 import { V2_TEMPLATE_OPTIONS } from '@/lib/templates/v2/template-options'
 
 const TEMPLATE_DRAFT_KEY = (menuId: string) => `templateDraft-${menuId}`
+
+/** Default settings used for the demo flow — applied on load and restored by the Reset button. */
+const DEMO_DEFAULTS = {
+  templateId: '3-column-portrait',
+  paletteId: 'warm-earth',
+  imageMode: 'stretch' as ImageModeV2,
+  spacerTiles: 'matte-paper-grain',
+  textureId: 'linen' as string | null,
+  showMenuTitle: false,
+  showVignette: true,
+  itemBorders: true,
+  itemDropShadow: true,
+  fillItemTiles: true,
+  showCategoryTitles: false,
+}
 
 /** Build validated state from saved templateId + configuration (API or session draft). */
 function getRestoredState(
@@ -60,7 +76,7 @@ function getRestoredState(
 
   const imageMode: ImageModeV2 =
     config.imageMode === 'none' || config.textOnly ? 'none' :
-    (config.imageMode && ['none', 'compact-rect', 'compact-circle', 'stretch', 'background'].includes(config.imageMode as string))
+    (config.imageMode && ['none', 'compact-rect', 'compact-circle', 'stretch', 'background', 'cutout'].includes(config.imageMode as string))
       ? (config.imageMode as ImageModeV2) : 'compact-rect'
 
   return {
@@ -87,30 +103,38 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [loading, setLoading] = useState(true)
   const [isDemoUser, setIsDemoUser] = useState(false)
   const [deliveryEmail, setDeliveryEmail] = useState<string | null>(null)
-  
-  // Selection State
-  const [templateId, setTemplateId] = useState('4-column-portrait')
-  const [paletteId, setPaletteId] = useState('elegant-cream')
-  const [imageMode, setImageMode] = useState<ImageModeV2>('compact-rect')
+
+  const isDemo = menuId.startsWith('demo-')
+
+  // Selection State — demo users get curated defaults for best first impression
+  const [templateId, setTemplateId] = useState(isDemo ? DEMO_DEFAULTS.templateId : '4-column-portrait')
+  const [paletteId, setPaletteId] = useState(isDemo ? DEMO_DEFAULTS.paletteId : 'elegant-cream')
+  const [imageMode, setImageMode] = useState<ImageModeV2>(isDemo ? DEMO_DEFAULTS.imageMode : 'compact-rect')
   /** 'blank' = plain rectangle fillers, 'none' = no fillers, otherwise pattern ID */
-  const [spacerTiles, setSpacerTiles] = useState<'blank' | 'none' | string>(SPACER_BLANK_ID)
+  const [spacerTiles, setSpacerTiles] = useState<'blank' | 'none' | string>(isDemo ? DEMO_DEFAULTS.spacerTiles : SPACER_BLANK_ID)
   /** Derived: when imageMode is 'none', layout is text-only (no images). */
   const textOnly = imageMode === 'none'
   // Texture is applied as overlay when textureId is set; no separate "textures enabled" toggle
-  const [textureId, setTextureId] = useState<string | null>('linen')
-  const [showMenuTitle, setShowMenuTitle] = useState(false)
-  const [showVignette, setShowVignette] = useState(true)
-  const [itemBorders, setItemBorders] = useState(true)
-  const [itemDropShadow, setItemDropShadow] = useState(true)
-  const [fillItemTiles, setFillItemTiles] = useState(true)
-  const [showCategoryTitles, setShowCategoryTitles] = useState(true)
+  const [textureId, setTextureId] = useState<string | null>(isDemo ? DEMO_DEFAULTS.textureId : 'linen')
+  const [showMenuTitle, setShowMenuTitle] = useState(isDemo ? DEMO_DEFAULTS.showMenuTitle : false)
+  const [showVignette, setShowVignette] = useState(isDemo ? DEMO_DEFAULTS.showVignette : true)
+  const [itemBorders, setItemBorders] = useState(isDemo ? DEMO_DEFAULTS.itemBorders : true)
+  const [itemDropShadow, setItemDropShadow] = useState(isDemo ? DEMO_DEFAULTS.itemDropShadow : true)
+  const [fillItemTiles, setFillItemTiles] = useState(isDemo ? DEMO_DEFAULTS.fillItemTiles : true)
+  const [showCategoryTitles, setShowCategoryTitles] = useState(isDemo ? DEMO_DEFAULTS.showCategoryTitles : true)
   
   // Preview State
   const [layoutDocument, setLayoutDocument] = useState<LayoutDocumentV2 | null>(null)
   const [isPreviewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
-  const [zoom, setZoom] = useState(0.8)
+  const [zoom, setZoom] = useState(1.0)
+
+  // Image Edit State — per-item, per-mode transform records
+  const [imageEditUnlocked, setImageEditUnlocked] = useState(false)
+  const [imageTransformRecords, setImageTransformRecords] = useState<Map<string, ImageTransformRecord>>(new Map())
+  const imageTransformSaveTimeout = useRef<Map<string, NodeJS.Timeout>>(new Map())
+  const imageTransformRecordsRef = useRef<Map<string, ImageTransformRecord>>(new Map())
   
   const [isSaving, setIsSaving] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -119,6 +143,43 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [cooldownResetAt, setCooldownResetAt] = useState<Date | null>(null)
   const [cooldownRemaining, setCooldownRemaining] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+
+  // Initialize imageTransformRecords from menu items when menu changes
+  useEffect(() => {
+    if (!menu) return
+    const allItems = [
+      ...(menu.items ?? []),
+      ...(menu.categories?.flatMap(c => c.items) ?? []),
+    ]
+    const recordsMap = new Map<string, ImageTransformRecord>()
+    for (const item of allItems) {
+      const normalized = normalizeImageTransformRecord(item.imageTransform)
+      if (normalized) {
+        recordsMap.set(item.id, normalized)
+      }
+    }
+    setImageTransformRecords(recordsMap)
+    imageTransformRecordsRef.current = recordsMap
+  }, [menu])
+
+  // Keep ref in sync for flush-on-unmount
+  useEffect(() => {
+    imageTransformRecordsRef.current = imageTransformRecords
+  }, [imageTransformRecords])
+
+  // Derive a flat Map<itemId, ImageTransform> for the current mode (passed to renderer)
+  const imageTransforms = (() => {
+    const resolved = new Map<string, ImageTransform>()
+    const mode = imageMode === 'none' ? 'stretch' : imageMode
+    const entries = Array.from(imageTransformRecords.entries())
+    for (let i = 0; i < entries.length; i++) {
+      const [itemId, record] = entries[i]
+      const t = record[mode as keyof ImageTransformRecord]
+      if (t) resolved.set(itemId, t)
+    }
+    return resolved
+  })()
+
   const router = useRouter()
   const pathname = usePathname()
   const { showToast } = useToast()
@@ -295,7 +356,6 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
 
   // Load user's email address for export notifications (best-effort)
   useEffect(() => {
-    if (menuId.startsWith('demo-')) return
     let mounted = true
 
     ;(async () => {
@@ -388,6 +448,118 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     }
   }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, showCategoryTitles, isDemoUser, currentPageIndex])
 
+  const handleImageTransformChange = useCallback((itemId: string, transform: ImageTransform) => {
+    const mode = imageMode === 'none' ? 'stretch' : imageMode
+
+    setImageTransformRecords(prev => {
+      const next = new Map(prev)
+      const existing = next.get(itemId) ?? {}
+      next.set(itemId, { ...existing, [mode]: transform })
+      return next
+    })
+
+    // Debounced save (per item)
+    const existingTimeout = imageTransformSaveTimeout.current.get(itemId)
+    if (existingTimeout) clearTimeout(existingTimeout)
+
+    const timeout = setTimeout(async () => {
+      imageTransformSaveTimeout.current.delete(itemId)
+      try {
+        if (isDemoUser) {
+          const storedDemoMenu = sessionStorage.getItem('demoMenu')
+          if (storedDemoMenu) {
+            const parsed = JSON.parse(storedDemoMenu)
+            const mergeTransform = (items: Array<Record<string, unknown>>) =>
+              items.map(item => {
+                if (item.id !== itemId) return item
+                const existing = normalizeImageTransformRecord(item.imageTransform) ?? {}
+                return { ...item, imageTransform: { ...existing, [mode]: transform } }
+              })
+            if (Array.isArray(parsed.items)) parsed.items = mergeTransform(parsed.items)
+            if (Array.isArray(parsed.categories)) {
+              parsed.categories = parsed.categories.map((cat: Record<string, unknown>) => ({
+                ...cat,
+                items: Array.isArray(cat.items) ? mergeTransform(cat.items as Array<Record<string, unknown>>) : cat.items
+              }))
+            }
+            sessionStorage.setItem('demoMenu', JSON.stringify(parsed))
+          }
+        } else {
+          await fetch(`/api/menu-items/${itemId}/image-transform`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode, ...transform })
+          })
+        }
+      } catch {
+        // best-effort save; local state already updated
+      }
+    }, 500)
+
+    imageTransformSaveTimeout.current.set(itemId, timeout)
+  }, [isDemoUser, imageMode])
+
+  /** Flush any pending image transform saves before navigation so positioning is preserved */
+  const flushImageTransformSaves = useCallback(async () => {
+    const pendingItemIds = Array.from(imageTransformSaveTimeout.current.keys())
+    if (pendingItemIds.length === 0) return
+
+    for (const id of pendingItemIds) {
+      clearTimeout(imageTransformSaveTimeout.current.get(id)!)
+      imageTransformSaveTimeout.current.delete(id)
+    }
+
+    const mode = imageMode === 'none' ? 'stretch' : imageMode
+    const records = imageTransformRecordsRef.current
+
+    for (const itemId of pendingItemIds) {
+      const record = records.get(itemId)
+      const transform = record?.[mode]
+      if (!transform) continue
+
+      try {
+        if (isDemoUser) {
+          const storedDemoMenu = sessionStorage.getItem('demoMenu')
+          if (storedDemoMenu) {
+            const parsed = JSON.parse(storedDemoMenu)
+            const mergeTransform = (items: Array<Record<string, unknown>>) =>
+              items.map(item => {
+                if (item.id !== itemId) return item
+                const existing = normalizeImageTransformRecord(item.imageTransform) ?? {}
+                return { ...item, imageTransform: { ...existing, [mode]: transform } }
+              })
+            if (Array.isArray(parsed.items)) parsed.items = mergeTransform(parsed.items)
+            if (Array.isArray(parsed.categories)) {
+              parsed.categories = parsed.categories.map((cat: Record<string, unknown>) => ({
+                ...cat,
+                items: Array.isArray(cat.items) ? mergeTransform(cat.items as Array<Record<string, unknown>>) : cat.items
+              }))
+            }
+            sessionStorage.setItem('demoMenu', JSON.stringify(parsed))
+          }
+        } else {
+          await fetch(`/api/menu-items/${itemId}/image-transform`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode, ...transform })
+          })
+        }
+      } catch {
+        // best-effort
+      }
+    }
+  }, [isDemoUser, imageMode])
+
+  // Flush pending image transforms on unmount (e.g. browser back, tab close)
+  useEffect(() => {
+    return () => {
+      if (imageTransformSaveTimeout.current.size > 0) {
+        // Fire-and-forget: attempt to save before page unload (best-effort)
+        flushImageTransformSaves()
+      }
+    }
+  }, [flushImageTransformSaves])
+
   // Debounced preview update
   useEffect(() => {
     if (debounceTimeout.current) clearTimeout(debounceTimeout.current)
@@ -436,6 +608,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
 
     setIsSaving(true)
     try {
+      await flushImageTransformSaves()
       const configuration = {
         textOnly,
         fillersEnabled: spacerTiles !== 'none',
@@ -497,6 +670,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
 
     setIsExporting(true)
     setExportStatus('Submitting...')
+    await flushImageTransformSaves()
     
     // Track export start
     trackConversionEvent({
@@ -624,10 +798,31 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               {/* Menu Summary */}
               <div className="flex items-center space-x-4 border-b pb-6">
                 <MenuThumbnailBadge imageUrl={menu?.imageUrl} size="sm" />
-                <div>
+                <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-ux-text">{menu?.name}</h3>
                   <p className="text-xs text-ux-text-secondary">{menu?.items?.length || 0} items ready</p>
                 </div>
+                {isDemoUser && (
+                  <button
+                    onClick={() => {
+                      setTemplateId(DEMO_DEFAULTS.templateId)
+                      setPaletteId(DEMO_DEFAULTS.paletteId)
+                      setImageMode(DEMO_DEFAULTS.imageMode)
+                      setSpacerTiles(DEMO_DEFAULTS.spacerTiles)
+                      setTextureId(DEMO_DEFAULTS.textureId)
+                      setShowMenuTitle(DEMO_DEFAULTS.showMenuTitle)
+                      setShowVignette(DEMO_DEFAULTS.showVignette)
+                      setItemBorders(DEMO_DEFAULTS.itemBorders)
+                      setItemDropShadow(DEMO_DEFAULTS.itemDropShadow)
+                      setFillItemTiles(DEMO_DEFAULTS.fillItemTiles)
+                      setShowCategoryTitles(DEMO_DEFAULTS.showCategoryTitles)
+                    }}
+                    className="shrink-0 text-xs text-ux-text-secondary hover:text-ux-primary border border-ux-border hover:border-ux-primary rounded px-2 py-1 transition-colors"
+                    title="Reset all settings to defaults"
+                  >
+                    ↺ Reset
+                  </button>
+                )}
               </div>
 
               {/* Template Selection */}
@@ -677,7 +872,20 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   onChange={setImageMode}
                   variant="primary"
                   showDescription={false}
+                  cutoutAvailable={(() => {
+                    const allItems = [
+                      ...(menu?.items ?? []),
+                      ...(menu?.categories?.flatMap(c => c.items) ?? []),
+                    ]
+                    return allItems.some(item => item.cutoutStatus === 'succeeded')
+                  })()}
                 />
+                {imageMode === 'cutout' && (
+                  <div className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    <span className="shrink-0 mt-0.5">⚠</span>
+                    <span>Cutout is a beta feature. Results vary by dish — if a cutout looks off, try a different image style.</span>
+                  </div>
+                )}
               </div>
 
               {/* Spacer Tiles */}
@@ -797,12 +1005,40 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               )}
 
               <div className="flex items-center space-x-4">
+                {/* Image Edit Lock toggle — only shown when an image mode is active */}
+                {imageMode !== 'none' && (
+                  <button
+                    onClick={() => setImageEditUnlocked(v => !v)}
+                    title={imageEditUnlocked ? 'Lock image edits' : 'Unlock image edits (drag to reposition, scroll to zoom)'}
+                    className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                      imageEditUnlocked
+                        ? 'bg-teal-500 text-white hover:bg-teal-600'
+                        : 'bg-neutral-200 text-ux-text-secondary hover:bg-neutral-300'
+                    }`}
+                  >
+                    {imageEditUnlocked ? (
+                      <>
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 018 0v4M5 11h14a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7a2 2 0 012-2z" />
+                        </svg>
+                        Image Edit On
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        Image Edit
+                      </>
+                    )}
+                  </button>
+                )}
               <div className="flex items-center space-x-2">
               <span className="text-[8px] font-bold text-ux-text-secondary uppercase">Zoom</span>
                   <input
                     type="range"
-                    min="0.3"
-                    max="1.5"
+                    min="0.5"
+                    max="2.0"
                     step="0.05"
                     value={zoom}
                     onChange={(e) => setZoom(parseFloat(e.target.value))}
@@ -813,45 +1049,60 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-8 flex justify-center items-start bg-neutral-200/50 relative">
+            <div className="flex-1 overflow-auto p-8 bg-neutral-200/50 relative">
               {previewError ? (
-                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md text-center">
-                  <div className="text-4xl mb-4">⚠️</div>
-                  <h3 className="text-lg font-bold text-red-600 mb-2">Preview Generation Failed</h3>
-                  <p className="text-sm text-ux-text-secondary mb-6">{previewError}</p>
-                  <UXButton variant="outline" size="sm" onClick={fetchLayoutPreview}>Try Again</UXButton>
+                <div className="flex justify-center items-start h-full">
+                  <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md text-center">
+                    <div className="text-4xl mb-4">⚠️</div>
+                    <h3 className="text-lg font-bold text-red-600 mb-2">Preview Generation Failed</h3>
+                    <p className="text-sm text-ux-text-secondary mb-6">{previewError}</p>
+                    <UXButton variant="outline" size="sm" onClick={fetchLayoutPreview}>Try Again</UXButton>
+                  </div>
                 </div>
               ) : layoutDocument?.pageSpec && currentPage ? (
-                <div 
-                  className="shadow-2xl bg-white origin-top transition-all duration-300 ease-out"
+                <div
+                  className="transition-all duration-300 ease-out"
                   style={{
-                    width: layoutDocument.pageSpec.width,
-                    height: layoutDocument.pageSpec.height,
-                    transform: `scale(${zoom})`,
-                    marginBottom: `-${(1 - zoom) * 100}%`
+                    width: layoutDocument.pageSpec.width * zoom,
+                    height: layoutDocument.pageSpec.height * zoom,
+                    margin: '0 auto',
+                    flexShrink: 0,
                   }}
                 >
-                  <PageRenderer
-                    page={currentPage}
-                    pageSpec={layoutDocument.pageSpec}
-                    options={{
-                      scale: 1.0,
-                      palette,
-                      texturesEnabled: !!textureId,
-                      textureId: textureId ?? undefined,
-                      imageMode: imageMode === 'none' ? 'stretch' : imageMode,
-                      showVignette,
-                      itemBorders,
-                      itemDropShadow,
-                      fillItemTiles,
-                      showCategoryTitles,
-                      showGridOverlay: false,
-                      showRegionBounds: false,
-                      showTileIds: false,
-                      isExport: false,
-                      spacerTilePatternId: spacerTiles !== 'none' ? spacerTiles : undefined
+                  <div 
+                    className="shadow-2xl bg-white"
+                    style={{
+                      width: layoutDocument.pageSpec.width,
+                      height: layoutDocument.pageSpec.height,
+                      transform: `scale(${zoom})`,
+                      transformOrigin: 'top left',
                     }}
-                  />
+                  >
+                    <PageRenderer
+                      page={currentPage}
+                      pageSpec={layoutDocument.pageSpec}
+                      options={{
+                        scale: 1.0,
+                        palette,
+                        texturesEnabled: !!textureId,
+                        textureId: textureId ?? undefined,
+                        imageMode: imageMode === 'none' ? 'stretch' : imageMode,
+                        showVignette,
+                        itemBorders,
+                        itemDropShadow,
+                        fillItemTiles,
+                        showCategoryTitles,
+                        showGridOverlay: false,
+                        showRegionBounds: false,
+                        showTileIds: false,
+                        isExport: false,
+                        spacerTilePatternId: spacerTiles !== 'none' ? spacerTiles : undefined,
+                        imageEditMode: imageEditUnlocked,
+                        imageTransforms,
+                        onImageTransformChange: imageEditUnlocked ? handleImageTransformChange : undefined
+                      }}
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full opacity-40 py-20">
@@ -874,7 +1125,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           variant="outline"
           size="lg"
           className="bg-white/20 border-white/40 text-white hover:bg-white/30 w-full sm:w-auto min-w-[200px]"
-          onClick={() => {
+          onClick={async () => {
+            await flushImageTransformSaves()
             // Flush draft immediately so Back to Items always preserves current config
             if (menu) {
               const configuration = {
@@ -944,9 +1196,10 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
             <div className="px-4 py-3 border-t flex justify-end gap-2 bg-gray-50/50">
               <button
                 className="px-3 py-2 text-sm rounded-md text-white shadow-sm bg-primary-600 hover:bg-primary-700"
-                onClick={() => {
+                onClick={async () => {
                   setExportSuccessModalOpen(false)
                   setIsExporting(false)
+                  await flushImageTransformSaves()
                   router.push('/dashboard')
                 }}
               >

@@ -1100,22 +1100,31 @@ export default function MenuEditor({ menu: initialMenu, canDelete = true }: Menu
   }
 
   // Handle AI image generation for menu items
-  const handleAIImageGenerated = async (itemId: string, imageUrl: string) => {
+  const handleAIImageGenerated = async (itemId: string, imageUrl: string, imageId?: string) => {
     try {
-      // Update the menu item with the new AI image
-      const success = await handleUpdateItem(itemId, {
-        customImageUrl: imageUrl,
-        imageSource: 'ai'
-      })
-      
-      if (success) {
-        setShowAIGeneration(null)
-        showToast({
-          type: 'success',
-          title: 'Photo added',
-          description: 'AI-generated image has been added to your menu item.',
+      if (imageId) {
+        // Use select-image endpoint so aiImageId is properly set (enables cutout enrichment)
+        const response = await fetch(`/api/menu-items/${itemId}/select-image`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageId, imageSource: 'ai' }),
+        })
+        const json = await response.json()
+        if (!response.ok) throw new Error(json?.error || 'Failed to select image')
+        setMenu(json.data as Menu)
+      } else {
+        // Fallback: update item directly (no aiImageId — cutout enrichment won't work)
+        await handleUpdateItem(itemId, {
+          customImageUrl: imageUrl,
+          imageSource: 'ai'
         })
       }
+      setShowAIGeneration(null)
+      showToast({
+        type: 'success',
+        title: 'Photo added',
+        description: 'AI-generated image has been added to your menu item.',
+      })
     } catch (error) {
       console.error('Error updating item with AI image:', error)
       showToast({
@@ -1919,8 +1928,8 @@ export default function MenuEditor({ menu: initialMenu, canDelete = true }: Menu
                 setShowBatchGeneration(false)
                 setSelectedItemIds(new Set())
               }}
-              onItemImageGenerated={async (itemId, imageUrl) => {
-                await handleAIImageGenerated(itemId, imageUrl)
+              onItemImageGenerated={async (itemId, imageUrl, imageId) => {
+                await handleAIImageGenerated(itemId, imageUrl, imageId)
               }}
             />
           )}

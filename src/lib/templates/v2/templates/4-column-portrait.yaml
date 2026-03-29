@@ -22,7 +22,7 @@ body:
   container:
     type: GRID
     cols: 4
-    rowHeight: 70      # Base row height - ITEM_TEXT_ROW fits in 1 row
+    rowHeight: 70
     gapX: 8
     gapY: 8
 
@@ -79,17 +79,10 @@ tiles:
       paddingBottom: 4
       totalHeight: 24
 
-  # DESIGN DECISION (Issue #5): ITEM_CARD uses rowSpan: 2, ITEM_TEXT_ROW uses rowSpan: 1
-  # 
-  # The grid rowHeight is 70pt (matching ITEM_TEXT_ROW).
-  # ITEM_CARD needs ~140pt total, so it spans 2 rows.
-  # Height formula: rowSpan * rowHeight + (rowSpan - 1) * gapY
-  #   = 2 * 70 + 1 * 8 = 148pt actual height
-  # 
-  # This keeps the grid math clean:
-  #   - Text-only mode: all items use 1 row (70pt)
-  #   - Card mode: all items use 2 rows (148pt with gap)
-  #   - No sparse layouts or wasted space
+  # Grid math (rowHeight=70, gapY=8):
+  #   ITEM_TEXT_ROW: 1 row  → 1×70             = 70pt   (text-only items)
+  #   ITEM_CARD:     2 rows → 2×70 + 1×8       = 148pt  (items with images)
+  #   FEATURE_CARD:  3 rows → 3×70 + 2×8       = 226pt  (featured items)
   ITEM_CARD:
     region: body
     rowSpan: 2

@@ -519,10 +519,21 @@ export function streamingPaginate(
     const sortedItems = [...section.items].sort((a, b) => a.sortOrder - b.sortOrder)
     const maxFeatured = template.policies.maxFeaturedPerSection
 
-    // Determine common item rowSpan for slot-based placement (card vs textOnly mode)
-    const commonItemRowSpan = sectionSelection?.textOnly
-      ? (template.tiles.ITEM_TEXT_ROW?.rowSpan ?? 1)
-      : (template.tiles.ITEM_CARD?.rowSpan ?? 1)
+    // Determine common item rowSpan for slot-based placement from the actual
+    // tile factory output so slot math stays aligned with effective overrides.
+    const commonItemRowSpan = sortedItems.length > 0
+      ? createItemTile(
+          sortedItems[0],
+          section.id,
+          template,
+          menu.metadata.currency,
+          sectionSelection
+        ).rowSpan
+      : (
+          sectionSelection?.textOnly
+            ? (template.tiles.ITEM_TEXT_ROW?.rowSpan ?? 1)
+            : (template.tiles.ITEM_CARD?.rowSpan ?? 1)
+        )
 
     // Pre-scan: count how many items will be featured (multi-col FEATURE_CARDs
     // are incompatible with single-cell slot grid, so fall back to sequential)

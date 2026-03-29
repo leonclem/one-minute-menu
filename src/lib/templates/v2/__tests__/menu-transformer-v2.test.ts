@@ -5,6 +5,13 @@
 import { transformMenuToV2, isEngineMenuV2 } from '../menu-transformer-v2'
 import type { Menu, MenuItem } from '@/types'
 
+// Mock local-image-proxy to avoid @google-cloud/storage ESM import issues
+jest.mock('@/lib/background-removal/local-image-proxy', () => ({
+  resolvePublicImageUrl: jest.fn().mockImplementation((url: string) =>
+    Promise.resolve({ url, cleanup: jest.fn().mockResolvedValue(undefined) })
+  ),
+}))
+
 describe('Menu Transformer V2', () => {
   const mockMenuItem: MenuItem = {
     id: 'item-1',
@@ -210,6 +217,45 @@ describe('Menu Transformer V2', () => {
       const result2 = transformMenuToV2(mockMenu)
 
       expect(result1).toEqual(result2)
+    })
+
+    it('should exclude out-of-stock items (available: false) from flat items', () => {
+      const menuWithOutOfStock: Menu = {
+        ...mockMenu,
+        items: [
+          { ...mockMenuItem, id: 'item-1', name: 'Available Item', available: true },
+          { ...mockMenuItem, id: 'item-2', name: 'Out of Stock Item', available: false },
+        ],
+      }
+
+      const result = transformMenuToV2(menuWithOutOfStock)
+
+      const allItems = result.sections.flatMap(s => s.items)
+      expect(allItems).toHaveLength(1)
+      expect(allItems[0].name).toBe('Available Item')
+    })
+
+    it('should exclude out-of-stock items (available: false) from categorized menus', () => {
+      const category = {
+        id: 'cat-1',
+        name: 'Starters',
+        order: 0,
+        items: [
+          { ...mockMenuItem, id: 'item-1', name: 'Available Starter', available: true },
+          { ...mockMenuItem, id: 'item-2', name: 'Out of Stock Starter', available: false },
+        ],
+      }
+      const menuWithCategories: Menu = {
+        ...mockMenu,
+        items: category.items,
+        categories: [category],
+      }
+
+      const result = transformMenuToV2(menuWithCategories)
+
+      const allItems = result.sections.flatMap(s => s.items)
+      expect(allItems).toHaveLength(1)
+      expect(allItems[0].name).toBe('Available Starter')
     })
   })
 

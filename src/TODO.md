@@ -1,9 +1,16 @@
 # Roadmap
 
 ### /extracted - Image Generation - "cutout" dishes image style
-- [ ] Develop plan for cutout mechanism
-- [ ] Test in Layout Lab
-- [ ] Roll out to /templates
+- [x] Develop plan for cutout mechanism
+- [x] Implement and roll out to /templates
+- [x] Ensure demo images are run through replicate too
+- [ ] What happens if cutouts are pending?  Maybe all pending image generation could asynchronously populate
+- [ ] ISSUE: "Request...failed with status 429 Too Many Requests..."
+- [ ] Need indicator of cutout status per menu item image
+- [ ] If cutout doesn't exist or its pending, use generic placeholder cutout
+
+### /template - preview page and image handling
+- [ ] Drag and zoom individual menu item images in-place (determine applicable image options types)
 
 ## /extracted - Image Generation
 - [x] Understand what's required and pricing to switch to NB2
@@ -45,7 +52,6 @@
 - [ ] If removing images from menu items, they still display in the menu item thumbnail
 - [ ] Extraction from more than one image only extracts the first before page loads
 - [ ] Pricing keeps defaulting to USD
-- [ ] Register email still looks horribly basic
 
 ## Security
 - [ ] Address Next.js DoS vulnerabilities (see `SECURITY_NEXTJS_VULNERABILITIES.md`)
@@ -114,6 +120,7 @@
 - [ ] "Polaroid" / angled effect.  Perhaps with "marker pen" headings?
 - [ ] Should still leave a space between categories even if category titles toggled off
 - [ ] Drag and drop tiles
+- [ ] Hand tool to navigate preview pane
 
 ## /pricing
 - [ ] Image resolutions - 1k for Creator Pack, 2k for GridMenu, 4k for GridMenu+.  Consider Nano Banana 2.

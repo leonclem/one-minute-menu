@@ -53,6 +53,7 @@ function normalizeDemoMenuForCache(menu: any) {
     category: item?.category ?? null,
     displayOrder: item?.display_order ?? item?.displayOrder ?? index,
     customImageUrl: item?.customImageUrl ?? null,
+    cutoutUrl: item?.cutoutUrl ?? null,
     aiImageId: item?.aiImageId ?? null,
     imageUrl: item?.imageUrl ?? null,
     imageSource: item?.imageSource ?? null,

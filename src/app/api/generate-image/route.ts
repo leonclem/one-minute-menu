@@ -14,6 +14,10 @@ import type {
   MenuItem 
 } from '@/types'
 import { logger } from '@/lib/logger'
+import { isCutoutFeatureEnabled } from '@/lib/background-removal/feature-flag'
+import { getBackgroundRemovalProvider } from '@/lib/background-removal/provider-factory'
+import { CutoutGenerationService } from '@/lib/background-removal/cutout-service'
+import { createAdminSupabaseClient } from '@/lib/supabase-server'
 
 export const runtime = 'nodejs'
 
@@ -383,6 +387,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Invalidate existing cutouts for this menu item before generating new images
+    // This ensures stale cutouts are not used after image regeneration (Requirement 10.1)
+    try {
+      const cutoutEnabled = isCutoutFeatureEnabled()
+      if (cutoutEnabled) {
+        const { data: existingImages } = await supabase
+          .from('ai_generated_images')
+          .select('id, cutout_status')
+          .eq('menu_item_id', normalizedMenuItemId)
+          .neq('cutout_status', 'not_requested')
+
+        if (existingImages && existingImages.length > 0) {
+          const cutoutProvider = getBackgroundRemovalProvider()
+          const cutoutService = new CutoutGenerationService(cutoutProvider, createAdminSupabaseClient())
+          for (const img of existingImages) {
+            try {
+              await cutoutService.invalidateCutout(img.id)
+              logger.info(`✂️ [Generate Image] Invalidated cutout for existing image ${img.id}`)
+            } catch (invErr) {
+              logger.warn(`⚠️ [Generate Image] Failed to invalidate cutout for image ${img.id}`, invErr)
+            }
+          }
+        }
+      }
+    } catch (invErr) {
+      logger.warn('⚠️ [Generate Image] Cutout invalidation error (non-blocking)', invErr)
+    }
+
     const startTime = Date.now()
     const genResult = await getNanoBananaClient().generateImage(apiParams)
     const processingTime = Date.now() - startTime
@@ -436,6 +468,31 @@ export async function POST(request: NextRequest) {
         completed_at: new Date().toISOString()
       })
       .eq('id', jobRow.id)
+
+    // Create pending cutout jobs for generated images (best-effort, never blocks response)
+    try {
+      const cutoutEnabled = isCutoutFeatureEnabled()
+      if (cutoutEnabled) {
+        const cutoutProvider = getBackgroundRemovalProvider()
+        const cutoutService = new CutoutGenerationService(cutoutProvider, createAdminSupabaseClient())
+        for (const image of images) {
+          try {
+            await cutoutService.requestCutout({
+              imageId: image.id,
+              imageUrl: image.originalUrl,
+              userId: user.id,
+              menuId: body.menuId,
+              menuItemId: normalizedMenuItemId,
+            })
+            logger.info(`✂️ [Generate Image] Cutout job created for image ${image.id}`)
+          } catch (cutoutErr) {
+            logger.warn(`⚠️ [Generate Image] Failed to create cutout job for image ${image.id}`, cutoutErr)
+          }
+        }
+      }
+    } catch (cutoutErr) {
+      logger.warn('⚠️ [Generate Image] Cutout integration error (non-blocking)', cutoutErr)
+    }
 
     // Record generation analytics (best-effort)
     try {

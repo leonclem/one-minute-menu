@@ -8,6 +8,7 @@ interface ImageModeOption {
   value: ImageModeV2
   label: string
   description: string
+  requiresCutout?: boolean
 }
 
 const IMAGE_MODE_OPTIONS: ImageModeOption[] = [
@@ -35,6 +36,12 @@ const IMAGE_MODE_OPTIONS: ImageModeOption[] = [
     value: 'background',
     label: 'Background',
     description: 'Full-tile image with text overlay'
+  },
+  {
+    value: 'cutout',
+    label: 'Cutout',
+    description: 'Transparent background cut-out images (beta)',
+    requiresCutout: true
   }
 ]
 
@@ -46,6 +53,8 @@ interface ImageModeDropdownProps {
   variant?: 'primary' | 'neutral'
   /** When false, only show labels (no description under each option). Default true. */
   showDescription?: boolean
+  /** When true, the "Cutout" option is enabled; otherwise it's greyed out */
+  cutoutAvailable?: boolean
 }
 
 export function ImageModeDropdown({
@@ -53,7 +62,8 @@ export function ImageModeDropdown({
   onChange,
   className,
   variant = 'primary',
-  showDescription = true
+  showDescription = true,
+  cutoutAvailable = false
 }: ImageModeDropdownProps) {
   const [open, setOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(0)
@@ -97,7 +107,8 @@ export function ImageModeDropdown({
       if (e.key === 'Enter') {
         e.preventDefault()
         const option = IMAGE_MODE_OPTIONS[focusedIndex]
-        if (option) {
+        const isDisabled = option?.requiresCutout && !cutoutAvailable
+        if (option && !isDisabled) {
           onChange(option.value)
           setOpen(false)
         }
@@ -139,10 +150,13 @@ export function ImageModeDropdown({
       >
         <div className="flex-1">
           <div className={cn(
-            'font-medium',
+            'font-medium flex items-center gap-1.5',
             variant === 'primary' ? 'text-sm text-ux-text' : 'text-sm text-gray-900'
           )}>
             {selected.label}
+            {selected.requiresCutout && (
+              <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700">Beta</span>
+            )}
           </div>
           {showDescription && (
             <div className={cn(
@@ -181,26 +195,36 @@ export function ImageModeDropdown({
           {IMAGE_MODE_OPTIONS.map((option, index) => {
             const isSelected = option.value === value
             const isFocused = index === focusedIndex
+            const isDisabled = option.requiresCutout && !cutoutAvailable
             return (
               <li
                 key={option.value}
                 id={`option-${option.value}`}
                 role="option"
                 aria-selected={isSelected}
+                aria-disabled={isDisabled}
                 tabIndex={-1}
                 onClick={() => {
+                  if (isDisabled) return
                   onChange(option.value)
                   setOpen(false)
                 }}
-                onMouseEnter={() => setFocusedIndex(index)}
+                onMouseEnter={() => !isDisabled && setFocusedIndex(index)}
                 className={cn(
                   'flex cursor-pointer flex-col px-3 py-2.5 transition-colors',
-                  isSelected && selectedOptionClass,
-                  isFocused && !isSelected && (variant === 'primary' ? 'bg-neutral-50' : 'bg-gray-50'),
+                  isDisabled && 'cursor-not-allowed opacity-40',
+                  !isDisabled && isSelected && selectedOptionClass,
+                  !isDisabled && isFocused && !isSelected && (variant === 'primary' ? 'bg-neutral-50' : 'bg-gray-50'),
                   variant === 'primary' ? 'text-ux-text' : 'text-gray-900'
                 )}
               >
-                <span className="font-medium text-sm">{option.label}</span>
+                <span className="font-medium text-sm flex items-center gap-1.5">
+                  {option.label}
+                  {option.requiresCutout && !isDisabled && (
+                    <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700">Beta</span>
+                  )}
+                  {isDisabled && <span className="ml-1.5 text-xs font-normal opacity-60">(no cutouts available)</span>}
+                </span>
                 {showDescription && (
                   <span className={cn(
                     'text-xs mt-0.5',

@@ -234,6 +234,10 @@ export const TemplateSchemaV2 = z.object({
     policy: z.enum(['SEQUENTIAL', 'BY_PAGE_TYPE', 'RANDOM_SEEDED'])
   }),
   
+  capabilities: z.object({
+    supportsCutouts: z.boolean().optional()
+  }).optional(),
+  
   itemIndicators: z.object({
     mode: z.enum(['IMAGE_OVERLAY', 'INLINE', 'INLINE_AFTER_NAME', 'IN_DESCRIPTION']),
     maxCount: z.number().int().min(1).max(10),

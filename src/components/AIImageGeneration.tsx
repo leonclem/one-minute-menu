@@ -10,7 +10,7 @@ import type { MenuItem, ImageGenerationParams, ImageGenerationJob, GeneratedImag
 interface AIImageGenerationProps {
   menuItem: MenuItem
   menuId: string
-  onImageGenerated: (itemId: string, imageUrl: string) => void
+  onImageGenerated: (itemId: string, imageUrl: string, imageId?: string) => void
   onCancel: () => void
 }
 
@@ -239,7 +239,7 @@ export default function AIImageGeneration({
     try {
       // Directly apply the generated image URL to the menu item via parent callback
       if (stableItemId) {
-        onImageGenerated(stableItemId, image.originalUrl)
+        onImageGenerated(stableItemId, image.originalUrl, image.id)
       }
       showToast({
         type: 'success',

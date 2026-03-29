@@ -207,31 +207,48 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     return () => { mounted = false }
   }, [isDemo])
 
-  // Demo image assets
+  // Demo image assets — standard versions shown in extraction step cards
   const DEMO_IMAGES = {
     breakfast: {
-      'Breakfast Sandwich': '/sample-menus/generated/breakfast/breakfast-sandwich.webp',
-      'Country Tartine': '/sample-menus/generated/breakfast/country-tartine.webp',
-      'Eggs Benedict': '/sample-menus/generated/breakfast/eggs-benedict.webp',
-      'French Toast': '/sample-menus/generated/breakfast/french-toast.webp',
-      'Le Parfait': '/sample-menus/generated/breakfast/le-parfait.webp',
-      'Morning Tartine': '/sample-menus/generated/breakfast/morning-tartine.webp',
-      'Parisian Omelette': '/sample-menus/generated/breakfast/parisian-omelette.webp',
-      'Provençal Eggs': '/sample-menus/generated/breakfast/provencal-eggs.webp',
-      'Three Organic Eggs Your Way!': '/sample-menus/generated/breakfast/three-organic-eggs-your-way.webp',
-      'Two Soft-Boiled Eggs & \'Mouillettes\'': '/sample-menus/generated/breakfast/two-soft-boiled-eggs-mouillettes.webp'
+      'Breakfast Sandwich': '/sample-menus/generated/breakfast/standard/breakfast-sandwich.webp',
+      'Country Tartine': '/sample-menus/generated/breakfast/standard/country-tartine.webp',
+      'Eggs Benedict': '/sample-menus/generated/breakfast/standard/eggs-benedict.webp',
+      'French Toast': '/sample-menus/generated/breakfast/standard/french-toast.webp',
+      'Le Parfait': '/sample-menus/generated/breakfast/standard/le-parfait.webp',
+      'Morning Tartine': '/sample-menus/generated/breakfast/standard/morning-tartine.webp',
+      'Parisian Omelette': '/sample-menus/generated/breakfast/standard/parisian-omelette.webp',
+      'Provençal Eggs': '/sample-menus/generated/breakfast/standard/provencal-eggs.webp',
+      'Three Organic Eggs Your Way!': '/sample-menus/generated/breakfast/standard/three-eggs-your-way.webp',
+      'Two Soft-Boiled Eggs & \'Mouillettes\'': '/sample-menus/generated/breakfast/standard/two-soft-boiled-eggs-and-mouilettes.webp'
     },
     fine_dining: {
-      'Crispy Duck in Port Cherry Sauce': '/sample-menus/generated/fine-dining/crispy-duck-in-port-cherry-sauce.webp',
-      'Grilled Faroe Island Salmon': '/sample-menus/generated/fine-dining/grilled-faroe-island-salmon.webp',
-      'House Made Ice Cream': '/sample-menus/generated/fine-dining/house-made-ice-cream.webp',
-      'Key Lime Pudding': '/sample-menus/generated/fine-dining/key-lime-pudding.webp',
-      'Marinated Local Oyster Mushroom Salad': '/sample-menus/generated/fine-dining/marinated-local-oyster-mushroom-salad.webp',
-      'Pan Roasted Duck Breast': '/sample-menus/generated/fine-dining/pan-roasted-duck-breast.webp',
-      'Rutabaga and Toasted Hazelnut Soup': '/sample-menus/generated/fine-dining/rutabaga-and-toasted-hazelnut-soup.webp',
-      'Tenderloin of Beef Wellington': '/sample-menus/generated/fine-dining/tenderloin-of-beef-wellington.webp',
-      'Tres Leches Cake': '/sample-menus/generated/fine-dining/tres-leches-cake.webp'
+      'Crispy Duck in Port Cherry Sauce': '/sample-menus/generated/fine-dining/standard/crispy-duck-in-port-cherry-sauce.webp',
+      'Grilled Faroe Island Salmon': '/sample-menus/generated/fine-dining/standard/grilled-faroe-island-salmon.webp',
+      'House Made Ice Cream': '/sample-menus/generated/fine-dining/standard/house-made-ice-cream.jpg',
+      'Key Lime Pudding': '/sample-menus/generated/fine-dining/standard/key-lime-pudding.jpg',
+      'Marinated Local Oyster Mushroom Salad': '/sample-menus/generated/fine-dining/standard/marinated-local-oyster-mushroom-salad.webp',
+      'Pan Roasted Duck Breast': '/sample-menus/generated/fine-dining/standard/pan-roasted-duck-breast.webp',
+      'Rutabaga and Toasted Hazelnut Soup': '/sample-menus/generated/fine-dining/standard/rutabaga-and-toasted-hazelnut-soup.webp',
+      'Tenderloin of Beef Wellington': '/sample-menus/generated/fine-dining/standard/tenderloin-of-beef-wellington.webp',
+      'Tres Leches Cake': '/sample-menus/generated/fine-dining/standard/tres-leches-cake.webp'
     }
+  }
+
+  // Cutout versions (transparent background) — used in template preview and PDF export
+  const DEMO_CUTOUT_IMAGES = {
+    breakfast: {
+      'Breakfast Sandwich': '/sample-menus/generated/breakfast/cutout/breakfast-sandwich.png',
+      'Country Tartine': '/sample-menus/generated/breakfast/cutout/country-tartine.png',
+      'Eggs Benedict': '/sample-menus/generated/breakfast/cutout/eggs-benedict.png',
+      'French Toast': '/sample-menus/generated/breakfast/cutout/french-toast.png',
+      'Le Parfait': '/sample-menus/generated/breakfast/cutout/le-parfait.png',
+      'Morning Tartine': '/sample-menus/generated/breakfast/cutout/morning-tartine.png',
+      'Parisian Omelette': '/sample-menus/generated/breakfast/cutout/parisian-omelette.png',
+      'Provençal Eggs': '/sample-menus/generated/breakfast/cutout/provencal-eggs.png',
+      'Three Organic Eggs Your Way!': '/sample-menus/generated/breakfast/cutout/three-eggs-your-way.png',
+      'Two Soft-Boiled Eggs & \'Mouillettes\'': '/sample-menus/generated/breakfast/cutout/two-soft-boiled-eggs-and-mouilettes.png'
+    } as Record<string, string>,
+    fine_dining: {} as Record<string, string>
   }
 
   useEffect(() => {
@@ -545,7 +562,8 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     // Determine which image set to use based on menu name/content
     const isBreakfast = demoMenu.name.toLowerCase().includes('breakfast')
     const images = isBreakfast ? DEMO_IMAGES.breakfast : DEMO_IMAGES.fine_dining
-    
+    const cutoutImages = isBreakfast ? DEMO_CUTOUT_IMAGES.breakfast : DEMO_CUTOUT_IMAGES.fine_dining
+
     // Select all items to generate images for
     const itemsToUpdate = [...(demoMenu.items || [])]
     const updatedItems = [...itemsToUpdate]
@@ -556,15 +574,25 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       await new Promise(r => setTimeout(r, 800 + Math.random() * 1200))
       
       const item = itemsToUpdate[i]
-      // Look up specific image for this item
-      // @ts-ignore - we know the keys exist for demo data
-      const imageUrl = images[item.name]
+      const imageUrl = images[item.name as keyof typeof images]
+      const cutoutUrl = cutoutImages[item.name as keyof typeof cutoutImages]
       
       if (imageUrl) {
         updatedItems[i] = {
           ...item,
           customImageUrl: imageUrl,
-          imageSource: 'ai'
+          cutoutUrl: cutoutUrl ?? undefined,
+          imageSource: 'ai' as const,
+          ...(cutoutUrl ? { cutoutStatus: 'succeeded' as const } : {}),
+          // Default cutout-mode transform: scaled down and nudged down so the food
+          // sits within the tile. Works with cutoutScale=1.5 in the renderer.
+          // Adjustable via the transform overlay on the template page.
+          ...(cutoutUrl ? {
+            imageTransform: {
+              ...((item.imageTransform as Record<string, unknown>) ?? {}),
+              cutout: { scale: 0.65, offsetX: 0, offsetY: 15 }
+            }
+          } : {})
         }
         
         // Update state incrementally to show progress
@@ -1094,14 +1122,24 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const applyAIImageToMenuItem = async (
     itemId: string,
     imageUrl: string,
-    opts?: { silent?: boolean; closeModal?: boolean }
+    opts?: { silent?: boolean; closeModal?: boolean; imageId?: string }
   ) => {
     try {
-      const response = await fetch(`/api/menus/${menuId}/items/${itemId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customImageUrl: imageUrl, imageSource: 'ai' }),
-      })
+      let response: Response
+      if (opts?.imageId) {
+        // Use select-image endpoint so aiImageId is properly set (enables cutout enrichment)
+        response = await fetch(`/api/menu-items/${itemId}/select-image`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageId: opts.imageId, imageSource: 'ai' }),
+        })
+      } else {
+        response = await fetch(`/api/menus/${menuId}/items/${itemId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customImageUrl: imageUrl, imageSource: 'ai' }),
+        })
+      }
       const json = await response.json()
       if (!response.ok) {
         const message = (json?.error as string | undefined) || 'Failed to update item image'
@@ -1110,7 +1148,16 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         ;(err as any).code = code
         throw err
       }
-      setAuthMenu(json.data as Menu)
+      if (opts?.imageId) {
+        // select-image returns only a partial response (not a full Menu), so we must not
+        // call setAuthMenu with it. For non-silent (single-item) use, refresh to get the
+        // updated menu. For silent/batch use the batch modal calls refreshMenu on close.
+        if (!opts?.silent) {
+          await refreshMenu()
+        }
+      } else {
+        setAuthMenu(json.data as Menu)
+      }
       if (!opts?.silent) {
         showToast({
           type: 'success',
@@ -1134,8 +1181,8 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     }
   }
 
-  const handleAIImageGenerated = async (itemId: string, imageUrl: string) => {
-    await applyAIImageToMenuItem(itemId, imageUrl, { closeModal: true })
+  const handleAIImageGenerated = async (itemId: string, imageUrl: string, imageId?: string) => {
+    await applyAIImageToMenuItem(itemId, imageUrl, { closeModal: true, imageId })
   }
 
   // Helper: compute items grouped by category for menus
@@ -2241,7 +2288,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             await refreshMenu()
           }}
           // In batch mode, avoid per-item toasts; the batch modal provides summary feedback.
-          onItemImageGenerated={(itemId, imageUrl) => applyAIImageToMenuItem(itemId, imageUrl, { silent: true, closeModal: false })}
+          onItemImageGenerated={(itemId, imageUrl, imageId) => applyAIImageToMenuItem(itemId, imageUrl, { silent: true, closeModal: false, imageId })}
         />
       )}
 

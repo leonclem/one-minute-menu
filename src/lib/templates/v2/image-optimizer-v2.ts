@@ -26,6 +26,9 @@ export interface ImageOptimizationOptions {
   timeout?: number
   /** Request headers for internal fetches */
   headers?: Record<string, string>
+  /** When true, item images with an alpha channel are kept as PNG instead of being converted to JPEG.
+   *  Required for cutout mode where transparent PNGs must not be composited onto black. */
+  preserveTransparencyForItems?: boolean
 }
 
 /**
@@ -48,7 +51,8 @@ export async function optimizeLayoutDocumentImages(
     concurrency = 3,
     // Default per-image timeout. Serverless routes can override to a lower value.
     timeout = 60000,
-    headers
+    headers,
+    preserveTransparencyForItems = false
   } = options
 
   // Deep clone the document to avoid side effects
@@ -107,14 +111,15 @@ export async function optimizeLayoutDocumentImages(
     await Promise.all(
       batch.map(async (task) => {
         try {
-          // fetchImageAsDataURL handles compression internally using sharp
-          // Pass preserveTransparency=true for logos
+          // fetchImageAsDataURL handles compression internally using sharp.
+          // Logos always preserve transparency; item images do so only in cutout mode
+          // (otherwise transparent PNGs are composited onto black when converted to JPEG).
           const dataURL = await fetchImageAsDataURL(
-            task.url, 
-            headers, 
-            timeout, 
-            true, 
-            task.type === 'LOGO'
+            task.url,
+            headers,
+            timeout,
+            true,
+            task.type === 'LOGO' || (task.type === 'ITEM' && preserveTransparencyForItems)
           )
           if (dataURL) {
             task.update(dataURL)

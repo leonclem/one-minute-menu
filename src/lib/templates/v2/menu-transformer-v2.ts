@@ -12,13 +12,24 @@
  * 3. Graceful handling of missing/null fields with sensible defaults
  */
 
-import type { Menu, MenuItem, MenuCategory } from '@/types'
+import type { Menu, MenuItem, MenuCategory, CutoutStatus } from '@/types'
+import { normalizeImageTransformRecord } from '@/types'
 import type {
   EngineMenuV2,
   EngineSectionV2,
   EngineItemV2,
   ItemIndicatorsV2,
 } from './engine-types-v2'
+import { CutoutGenerationService } from '@/lib/background-removal/cutout-service'
+import { trackRenderUsage } from '@/lib/background-removal/render-tracking'
+
+/**
+ * Per-item cutout metadata used during image resolution.
+ */
+export interface ItemCutoutContext {
+  cutoutUrl: string | null
+  cutoutStatus: CutoutStatus
+}
 
 /**
  * Options for menu transformation
@@ -32,6 +43,27 @@ export interface TransformOptionsV2 {
   venueAddress?: string
   /** Override logo URL */
   logoUrl?: string
+  /** Cutout resolution context — omit entirely to preserve current behavior */
+  cutout?: {
+    /** Whether the cutout feature flag is enabled */
+    featureEnabled: boolean
+    /** Whether the active template supports cutouts */
+    templateSupportsCutouts: boolean
+    /** Per-item cutout metadata keyed by menu item ID */
+    itemCutouts: Map<string, ItemCutoutContext>
+    /** Template ID for render tracking */
+    templateId?: string
+    /** Menu ID for render tracking */
+    menuId?: string
+    /** True when called from an export/publish code path (triggers render tracking) */
+    isExport?: boolean
+  }
+  /**
+   * When true, all items are rendered in explicit cutout mode:
+   * items with a succeeded cutout return cutout_url, others return null (blank placeholder).
+   * Corresponds to imageMode === 'cutout' in the UI.
+   */
+  imageModeIsCutout?: boolean
 }
 
 /**
@@ -80,13 +112,14 @@ export function transformMenuToV2(
     categoryItemCount !== flatItemCount
 
   // Create image lookup map from flat items array
-  // Only include items that have a usable image (imageSource is 'ai' or 'custom' with a URL)
+  // Include items that have a usable image (imageSource is 'ai', 'custom', or 'cutout' with a URL)
   const itemsImageLookup = new Map<string, MenuItem>()
   if (menu.items) {
     menu.items.forEach((item) => {
       if (
         (item.imageSource === 'ai' && (item.aiImageId || item.customImageUrl)) ||
-        (item.imageSource === 'custom' && item.customImageUrl)
+        (item.imageSource === 'custom' && item.customImageUrl) ||
+        (item.imageSource === 'cutout' && (item.cutoutUrl || item.customImageUrl))
       ) {
         itemsImageLookup.set(item.id, item)
       }
@@ -100,13 +133,13 @@ export function transformMenuToV2(
     sections = menu
       .categories!.filter((cat) => cat.items && cat.items.length > 0)
       .map((cat, idx) =>
-        transformCategoryToV2(cat, idx, itemsImageLookup)
+        transformCategoryToV2(cat, idx, itemsImageLookup, options)
       )
       .sort((a, b) => a.sortOrder - b.sortOrder)
   }
   // Otherwise, create sections from flat items grouped by category
   else if (hasValidItems) {
-    sections = createSectionsFromFlatItems(menu.items!)
+    sections = createSectionsFromFlatItems(menu.items!, options)
   }
   // Fallback: empty menu with single empty section
   else {
@@ -142,11 +175,13 @@ export function transformMenuToV2(
 function transformCategoryToV2(
   category: MenuCategory,
   fallbackOrder: number,
-  itemsImageLookup: Map<string, MenuItem>
+  itemsImageLookup: Map<string, MenuItem>,
+  options?: TransformOptionsV2
 ): EngineSectionV2 {
   const items = category.items
+    .filter((item) => item.available !== false)
     .map((item, idx) =>
-      transformItemToV2(item, idx, itemsImageLookup)
+      transformItemToV2(item, idx, itemsImageLookup, options)
     )
     .sort((a, b) => a.sortOrder - b.sortOrder)
 
@@ -163,12 +198,14 @@ function transformCategoryToV2(
  * Create sections from flat items array grouped by category
  */
 function createSectionsFromFlatItems(
-  items: MenuItem[]
+  items: MenuItem[],
+  options?: TransformOptionsV2
 ): EngineSectionV2[] {
   // Group items by category
   const categoryGroups = new Map<string, MenuItem[]>()
 
   items.forEach((item) => {
+    if (item.available === false) return
     const categoryName =
       item.category && item.category.trim()
         ? item.category.trim()
@@ -188,7 +225,7 @@ function createSectionsFromFlatItems(
 
       const items = categoryItems
         .map((item, itemIdx) =>
-          transformItemToV2(item, itemIdx, new Map())
+          transformItemToV2(item, itemIdx, new Map(), options)
         )
         .sort((a, b) => a.sortOrder - b.sortOrder)
 
@@ -209,12 +246,48 @@ function createSectionsFromFlatItems(
 function transformItemToV2(
   item: MenuItem,
   fallbackOrder: number,
-  itemsImageLookup: Map<string, MenuItem>
+  itemsImageLookup: Map<string, MenuItem>,
+  options?: TransformOptionsV2
 ): EngineItemV2 {
   // Prefer flat items as source of truth for image selection (e.g. after "Use this" on extracted page)
   const lookupItem = itemsImageLookup.get(item.id)
-  const imageUrl =
+  let imageUrl =
     (lookupItem ? getItemImageUrl(lookupItem) : undefined) ?? getItemImageUrl(item)
+
+  // Resolve cutout URL when cutout context is provided
+  const cutoutCtx = options?.cutout
+  if (imageUrl && cutoutCtx) {
+    const itemCutout = cutoutCtx.itemCutouts.get(item.id)
+    const resolvedUrl = CutoutGenerationService.resolveImageUrl({
+      originalUrl: imageUrl,
+      cutoutUrl: itemCutout?.cutoutUrl ?? null,
+      cutoutStatus: itemCutout?.cutoutStatus ?? 'not_requested',
+      templateSupportsCutouts: cutoutCtx.templateSupportsCutouts,
+      featureEnabled: cutoutCtx.featureEnabled,
+      itemUsesCutout: options?.imageModeIsCutout === true,
+    })
+
+    // Best-effort render tracking — only on export/publish code paths
+    if (cutoutCtx.isExport && cutoutCtx.templateId && cutoutCtx.menuId) {
+      const usedCutout = resolvedUrl !== null && resolvedUrl !== imageUrl
+      const fallbackReason = !usedCutout
+        ? determineFallbackReason(cutoutCtx, itemCutout)
+        : undefined
+
+      // Fire-and-forget — never blocks rendering
+      trackRenderUsage({
+        menuId: cutoutCtx.menuId,
+        menuItemId: item.id,
+        templateId: cutoutCtx.templateId,
+        imageSourceUsed: usedCutout ? 'cutout' : 'original',
+        fallbackReason,
+      }).catch(() => {})
+    }
+
+    // resolvedUrl may be null in explicit cutout mode when cutout is unavailable
+    // (null signals a blank placeholder — intentional, not a fallback to original)
+    imageUrl = resolvedUrl ?? undefined
+  }
 
   return {
     id: item.id,
@@ -225,6 +298,7 @@ function transformItemToV2(
     sortOrder: item.order ?? fallbackOrder,
     indicators: transformIndicators(item),
     isFeatured: item.isFeatured ?? false,
+    imageTransform: normalizeImageTransformRecord(item.imageTransform),
   }
 }
 
@@ -250,6 +324,11 @@ function transformIndicators(item: MenuItem): ItemIndicatorsV2 {
  * Get the image URL for a menu item based on its imageSource
  */
 function getItemImageUrl(item: MenuItem): string | undefined {
+  if (item.imageSource === 'cutout') {
+    // Cutout images: prefer cutoutUrl if available, fall back to customImageUrl
+    return item.cutoutUrl ?? item.customImageUrl
+  }
+
   if (item.imageSource === 'ai') {
     // AI-generated images - URL is populated in customImageUrl
     return item.customImageUrl
@@ -259,6 +338,23 @@ function getItemImageUrl(item: MenuItem): string | undefined {
     return item.customImageUrl
   }
 
+  return undefined
+}
+
+/**
+ * Determine why the original image was used instead of the cutout.
+ */
+function determineFallbackReason(
+  cutoutCtx: NonNullable<TransformOptionsV2['cutout']>,
+  itemCutout: ItemCutoutContext | undefined
+): 'no_cutout' | 'cutout_pending' | 'cutout_failed' | 'template_unsupported' | 'feature_disabled' | undefined {
+  if (!cutoutCtx.featureEnabled) return 'feature_disabled'
+  if (!cutoutCtx.templateSupportsCutouts) return 'template_unsupported'
+  if (!itemCutout) return 'no_cutout'
+  if (itemCutout.cutoutStatus === 'pending') return 'cutout_pending'
+  if (itemCutout.cutoutStatus === 'failed' || itemCutout.cutoutStatus === 'timed_out') return 'cutout_failed'
+  if (itemCutout.cutoutStatus === 'not_requested') return 'no_cutout'
+  if (!itemCutout.cutoutUrl) return 'no_cutout'
   return undefined
 }
 

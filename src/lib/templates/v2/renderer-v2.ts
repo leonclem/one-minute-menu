@@ -101,6 +101,12 @@ export interface RenderOptionsV2 {
   showCategoryTitles?: boolean
   /** Override filler tile rendering with this pattern ID (from FILLER_PATTERN_REGISTRY); when set, all filler tiles use this pattern */
   spacerTilePatternId?: string
+  /** Per-item image transform overrides (itemId → transform). Applied at render time for live preview without re-fetching layout. */
+  imageTransforms?: Map<string, import('@/types').ImageTransform>
+  /** When true, image tiles show the interactive edit overlay */
+  imageEditMode?: boolean
+  /** Callback when user adjusts a per-item image transform via the overlay */
+  onImageTransformChange?: (itemId: string, transform: import('@/types').ImageTransform) => void
 }
 
 // ============================================================================
@@ -263,15 +269,17 @@ export const SPACING_V2 = {
 
 /**
  * Background-mode text styling: applied to text overlaid on background images
- * for readability. The shadow provides a crisp dark halo around letterforms
- * while the gradient strengthens the image scrim behind the text zone.
+ * for readability. The shadow provides a crisp dark halo around letterforms.
+ * The gradient is darkest at the top (where text sits) and fades to transparent
+ * at the bottom so the food image remains visible and vibrant.
  * Name and price use lightened palette colours so they keep the colour scheme
  * but contrast with the dark overlay; description stays light with shadow.
  * Compatible with CSS (web preview + Puppeteer PDF export).
  */
 export const BG_IMAGE_TEXT = {
   shadow: '0 1px 3px rgba(0,0,0,0.7), 0 0 6px rgba(0,0,0,0.3)',
-  gradient: 'linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0.6) 100%)',
+  /** Darkest at top (text zone) for contrast; fades to transparent at bottom to reveal image. */
+  gradient: 'linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.25) 45%, rgba(0,0,0,0) 100%)',
   /** Description stays light for contrast on gradient. */
   descColor: '#f0f0f0',
   /** Blend factor (0–1) for item name: more white = lighter text on dark overlay. Names need most contrast. */
@@ -977,6 +985,61 @@ export interface RenderStyle {
   textTransform?: string
   letterSpacing?: number
   textShadow?: string
+  zIndex?: number
+  /** CSS transform string (e.g. 'scale(1.5)') for per-item image zoom */
+  transform?: string
+  /** CSS transform-origin string (e.g. '50% 70%') paired with transform */
+  transformOrigin?: string
+}
+
+// ============================================================================
+// Image Transform Helpers
+// ============================================================================
+
+/** Pick the single ImageTransform for the active image mode from a per-mode record. */
+function resolveTransformForMode(
+  record: import('@/types').ImageTransformRecord | undefined,
+  mode: string
+): import('@/types').ImageTransform | undefined {
+  if (!record) return undefined
+  return record[mode]
+}
+
+/**
+ * Compute objectPosition, transform, and transformOrigin CSS values from an ImageTransform.
+ * baseX/baseY are the default focal percentages for the current image mode (e.g. 50 and 70 for stretch).
+ * Returns only the fields that differ from the default (no transform when scale === 1.0).
+ */
+function computeImageTransformStyle(
+  imageTransform: import('@/types').ImageTransform | undefined,
+  baseX: number,
+  baseY: number,
+  isCutoutMode?: boolean
+): Pick<RenderStyle, 'objectPosition' | 'transform' | 'transformOrigin'> {
+  if (!imageTransform) {
+    const basePos = baseX === 50 && baseY === 50 ? 'center' : `center ${baseY}%`
+    return { objectPosition: basePos }
+  }
+  const { offsetX = 0, offsetY = 0, scale = 1.0 } = imageTransform
+
+  if (isCutoutMode) {
+    // For cutout, we use translate to allow free movement independent of aspect ratio.
+    // The image element size matches the oversized container, so % translates work perfectly.
+    const transform = `translate(${offsetX}%, ${offsetY}%) scale(${scale})`
+    return { 
+      objectPosition: 'center',
+      transform,
+      transformOrigin: 'center'
+    }
+  }
+
+  const posX = offsetX === 0 ? (baseX === 50 ? 'center' : `${baseX}%`) : `calc(${baseX}% + ${offsetX} * 1%)`
+  const posY = offsetY === 0 ? (baseY === 50 ? 'center' : `${baseY}%`) : `calc(${baseY}% + ${offsetY} * 1%)`
+  const objectPosition = `${posX} ${posY}`
+  if (scale !== 1.0) {
+    return { objectPosition, transform: `scale(${scale})`, transformOrigin: objectPosition }
+  }
+  return { objectPosition }
 }
 
 // ============================================================================
@@ -1344,6 +1407,7 @@ function renderItemContent(
   const imageMode: ImageModeV2 = options.imageMode || 'stretch'
   const isBackgroundMode = imageMode === 'background'
   const isCircularMode = imageMode === 'compact-circle'
+  const isCutoutMode = imageMode === 'cutout'
   const defaultImageBorderRadius = isCircularMode ? undefined : 8
 
   const nameFontSize = isBackgroundMode
@@ -1370,6 +1434,107 @@ function renderItemContent(
   const descHeight = descLineHeight * estDescLines
   const priceLineHeight = priceFontSize * priceTypo.lineHeight
   const hasDesc = estDescLines > 0
+  const isTextRowTile = tile.type === 'ITEM_TEXT_ROW'
+
+  // ITEM_TEXT_ROW: fixed-slot layout with top-aligned content group.
+  // All tiles of the same height get identical descY and priceY positions,
+  // preventing wrapped titles from squashing descriptions and keeping
+  // vertical alignment uniform across tiles in the same row.
+  if (isTextRowTile) {
+    const nameReservedLines = nameMaxLines
+    const nameReservedHeight = nameReservedLines * nameLineHeight
+    const usableHeight = tile.height - padTop - padBottom
+
+    // Prefer full SPACING_V2 gaps; fall back to compact gaps when it unlocks more desc lines
+    let gapNameToDesc: number = SPACING_V2.nameToDesc
+    let gapDescToPrice: number = SPACING_V2.descToPrice
+    const spaceFullGaps = usableHeight - nameReservedHeight - gapNameToDesc - gapDescToPrice - priceLineHeight
+    const descLinesFullGaps = Math.max(0, Math.floor(spaceFullGaps / descLineHeight))
+    if (descLinesFullGaps < 2 && hasDesc) {
+      const compactSpace = usableHeight - nameReservedHeight - 4 - 4 - priceLineHeight
+      const descLinesCompact = Math.max(0, Math.floor(compactSpace / descLineHeight))
+      if (descLinesCompact > descLinesFullGaps) {
+        gapNameToDesc = 4
+        gapDescToPrice = 4
+      }
+    }
+
+    // How many desc lines fit after reserving name + gaps + price?
+    const spaceForDesc = usableHeight - nameReservedHeight - gapNameToDesc - gapDescToPrice - priceLineHeight
+    const maxDescFromSpace = Math.max(0, Math.floor(spaceForDesc / descLineHeight))
+    const descReservedLines = Math.min(maxDescFromSpace, 2)
+    const descReservedHeight = descReservedLines * descLineHeight
+    const descLinesToRender = hasDesc ? Math.min(estDescLines, descReservedLines) : 0
+
+    const nameX = (tile.width - textWidth) / 2
+    const nameY = padTop
+    const descY = nameY + nameReservedHeight + gapNameToDesc
+    const priceY = descY + descReservedHeight + gapDescToPrice
+
+    const currencyCode = content.currency || 'USD'
+    const priceText = formatCurrency(content.price, currencyCode)
+
+    elements.push({
+      type: 'text',
+      x: nameX,
+      y: nameY,
+      width: textWidth,
+      height: nameReservedHeight,
+      content: applyTextTransform(content.name, nameTypo.textTransform)[0],
+      style: {
+        fontSize: nameFontSize,
+        fontWeight: nameTypo.fontWeight,
+        fontFamily: nameTypo.fontFamily,
+        lineHeight: nameTypo.lineHeight,
+        maxLines: nameReservedLines,
+        color: palette.colors.itemTitle,
+        textAlign: nameTypo.textAlign,
+        textTransform: applyTextTransform(content.name, nameTypo.textTransform)[1],
+      }
+    })
+
+    if (descLinesToRender > 0 && content.description) {
+      elements.push({
+        type: 'text',
+        x: nameX,
+        y: descY,
+        width: textWidth,
+        height: descLineHeight * descLinesToRender,
+        content: applyTextTransform(content.description, descTypo.textTransform)[0],
+        style: {
+          fontSize: descTypo.fontSize,
+          fontWeight: descTypo.fontWeight,
+          fontFamily: descTypo.fontFamily,
+          lineHeight: descTypo.lineHeight,
+          maxLines: descLinesToRender,
+          color: palette.colors.itemDescription,
+          textAlign: descTypo.textAlign,
+          textTransform: applyTextTransform(content.description, descTypo.textTransform)[1],
+        }
+      })
+    }
+
+    elements.push({
+      type: 'text',
+      x: nameX,
+      y: priceY,
+      width: textWidth,
+      height: priceLineHeight,
+      content: priceText,
+      style: {
+        fontSize: priceFontSize,
+        fontWeight: priceTypo.fontWeight,
+        fontFamily: priceTypo.fontFamily,
+        lineHeight: priceTypo.lineHeight,
+        maxLines: 1,
+        color: palette.colors.itemPrice,
+        textAlign: priceTypo.textAlign,
+        textTransform: priceTypo.textTransform,
+      }
+    })
+
+    return { elements }
+  }
 
   // Compute the image portion height (0 when no image or background mode)
   let imageBlockHeight = 0
@@ -1386,8 +1551,8 @@ function renderItemContent(
       : 0
     const priceReserve = priceLineHeight + SPACING_V2.descToPrice
     const textTotal = nameReserve + descReserve + priceReserve
-    // stretch mode: image starts at y:0 so padTop is not subtracted; afterImage gap is also removed
-    const stretchOverhead = imageMode === 'stretch' ? 0 : padTop + SPACING_V2.afterImage
+    // stretch/cutout mode: image starts at y:0 so padTop is not subtracted; afterImage gap is also removed
+    const stretchOverhead = (imageMode === 'stretch' || isCutoutMode) ? 0 : padTop + SPACING_V2.afterImage
     const availableForImage = tile.height - stretchOverhead - textTotal
 
     if (imageMode === 'compact-rect') {
@@ -1398,6 +1563,17 @@ function renderItemContent(
         imageComputedWidth = imageComputedHeight / 0.75
       }
       imageComputedX = (tile.width - imageComputedWidth) / 2
+    } else if (isCutoutMode) {
+      // Cutout: container is modestly larger than the tile so the dish can protrude
+      // slightly on all sides while keeping the drag/edit area predictably small.
+      // object-fit: contain shows the full transparent PNG; overflow:visible on the
+      // tile lets the dish extend beyond tile bounds; z-index keeps it above neighbours.
+      const cutoutScale = 1.5
+      const layoutHeight = Math.min(availableForImage, tile.width * 0.85)
+      imageComputedWidth = tile.width * cutoutScale
+      imageComputedHeight = layoutHeight * cutoutScale
+      imageComputedX = (tile.width - imageComputedWidth) / 2
+      imageComputedBorderRadius = 0
     } else if (isCircularMode) {
       const diameter = Math.min(tile.width * 0.45, availableForImage)
       imageComputedWidth = diameter
@@ -1413,17 +1589,25 @@ function renderItemContent(
       imageComputedBorderRadius = 0
     }
     // stretch mode: no afterImage gap — text starts immediately below the image
-    imageBlockHeight = imageComputedHeight + (imageMode === 'stretch' ? 0 : SPACING_V2.afterImage)
+    // cutout mode: use original layout height for text positioning (dish is oversized via cutoutScale)
+    if (isCutoutMode) {
+      imageBlockHeight = Math.min(availableForImage, tile.width * 0.85)
+    } else {
+      imageBlockHeight = imageComputedHeight + (imageMode === 'stretch' ? 0 : SPACING_V2.afterImage)
+    }
   }
 
-  // Fit content within tile: compress gaps first, then reduce line estimates if needed
+  // Fit content within tile: compress gaps first, then reduce line estimates if needed.
+  // Reserve fixed line counts for name AND description so all tiles of the same height
+  // get identical desc-Y and price-Y, regardless of actual text length.
   const usableHeight = tile.height - padTop - padBottom
   let gapNameToDesc: number = hasDesc ? SPACING_V2.nameToDesc : 0
   let gapDescToPrice: number = SPACING_V2.descToPrice
-  let fitNameHeight = nameHeight
-  let fitDescHeight = descHeight
-  let fitNameLines = estNameLines
-  let fitDescLines = estDescLines
+  const descReservedLines = hasDesc ? Math.min(descMaxLines, 2) : 0
+  let fitNameHeight = nameLineHeight * nameMaxLines
+  let fitDescHeight = descLineHeight * descReservedLines
+  let fitNameLines = nameMaxLines
+  let fitDescLines = descReservedLines
 
   const calcContent = () => imageBlockHeight + fitNameHeight + gapNameToDesc + fitDescHeight + gapDescToPrice + priceLineHeight
   let contentHeight = calcContent()
@@ -1458,10 +1642,13 @@ function renderItemContent(
   // --- Background image mode (full-bleed, renders before text) ---
   if (content.type === 'ITEM_CARD' && content.showImage && isBackgroundMode) {
     if (content.imageUrl) {
+      const persistedBgTransform = resolveTransformForMode(content.imageTransform, imageMode)
+      const effectiveTransform = options.imageTransforms?.get(content.itemId) ?? persistedBgTransform
+      const bgTransformStyle = computeImageTransformStyle(effectiveTransform, 50, 50)
       elements.push({
         type: 'image', x: 0, y: 0, width: tile.width, height: tile.height,
         content: content.imageUrl,
-        style: { borderRadius: 0, objectFit: 'cover', objectPosition: 'center' }
+        style: { borderRadius: 0, objectFit: 'cover', ...bgTransformStyle }
       })
       elements.push({
         type: 'background', x: 0, y: 0, width: tile.width, height: tile.height,
@@ -1478,10 +1665,18 @@ function renderItemContent(
   if (showImage) {
     const defaultItemShadow = !isCircularMode ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
     const imageShadow = tileStyle?.image?.boxShadow !== undefined ? tileStyle.image.boxShadow : defaultItemShadow
-    // Stretch mode: image starts at y:0 (edge-to-edge top), text starts below at padTop
-    const imageY = imageMode === 'stretch' ? 0 : currentY
+    // Stretch mode: image starts at y:0 (edge-to-edge top)
+    // Cutout mode: align oversized container bottom with text start so dish floats upward
+    const imageY = isCutoutMode
+      ? (imageBlockHeight - imageComputedHeight)
+      : (imageMode === 'stretch') ? 0 : currentY
 
     if (content.imageUrl) {
+      const itemBaseX = 50
+      const itemBaseY = (imageMode === 'stretch' || isCutoutMode) ? 70 : 50
+      const persistedItemTransform = resolveTransformForMode(content.imageTransform, imageMode)
+      const effectiveItemTransform = options.imageTransforms?.get(content.itemId) ?? persistedItemTransform
+      const itemTransformStyle = computeImageTransformStyle(effectiveItemTransform, itemBaseX, itemBaseY, isCutoutMode)
       elements.push({
         type: 'image',
         x: imageComputedX, y: imageY,
@@ -1489,18 +1684,23 @@ function renderItemContent(
         content: content.imageUrl,
         style: {
           borderRadius: imageComputedBorderRadius,
-          objectFit: 'cover', objectPosition: imageMode === 'stretch' ? 'center 75%' : 'center',
-          boxShadow: imageShadow || undefined
+          objectFit: isCutoutMode ? 'contain' : 'cover',
+          ...itemTransformStyle,
+          boxShadow: isCutoutMode ? undefined : (imageShadow || undefined),
+          zIndex: isCutoutMode ? 10 : undefined,
         }
       })
     } else {
-      elements.push({
-        type: 'background',
-        x: imageComputedX, y: imageY,
-        width: imageComputedWidth, height: imageComputedHeight,
-        content: '',
-        style: { backgroundColor: palette.colors.border.light, borderRadius: imageComputedBorderRadius }
-      })
+      // No placeholder background for cutout mode — transparent is intentional
+      if (!isCutoutMode) {
+        elements.push({
+          type: 'background',
+          x: imageComputedX, y: imageY,
+          width: imageComputedWidth, height: imageComputedHeight,
+          content: '',
+          style: { backgroundColor: palette.colors.border.light, borderRadius: imageComputedBorderRadius }
+        })
+      }
     }
     if (content.indicators) {
       elements.push(...renderIndicators(content.indicators, imageComputedX + 4, currentY + 4, imageComputedWidth - 8, palette))
@@ -1713,10 +1913,13 @@ function renderFeatureCardContent(
   // Background image mode
   if (content.showImage && isBackgroundMode) {
     if (content.imageUrl) {
+      const persistedFeatureBgTransform = resolveTransformForMode(content.imageTransform, imageMode)
+      const effectiveFeatureBgTransform = options.imageTransforms?.get(content.itemId) ?? persistedFeatureBgTransform
+      const featureBgTransformStyle = computeImageTransformStyle(effectiveFeatureBgTransform, 50, 50)
       elements.push({
         type: 'image', x: 0, y: 0, width: tile.width, height: tile.height,
         content: content.imageUrl,
-        style: { borderRadius: 0, objectFit: 'cover', objectPosition: 'center' }
+        style: { borderRadius: 0, objectFit: 'cover', ...featureBgTransformStyle }
       })
       elements.push({
         type: 'background', x: 0, y: 0, width: tile.width, height: tile.height,
@@ -1736,10 +1939,14 @@ function renderFeatureCardContent(
     const imageY = imageMode === 'stretch' ? 0 : currentY
 
     if (content.imageUrl) {
+      const featureBaseY = imageMode === 'stretch' ? 75 : 50
+      const persistedFeatureTransform = resolveTransformForMode(content.imageTransform, imageMode)
+      const effectiveFeatureTransform = options.imageTransforms?.get(content.itemId) ?? persistedFeatureTransform
+      const featureTransformStyle = computeImageTransformStyle(effectiveFeatureTransform, 50, featureBaseY)
       elements.push({
         type: 'image', x: imgX, y: imageY, width: imgW, height: imgH,
         content: content.imageUrl,
-        style: { borderRadius: imgBR, objectFit: 'cover', objectPosition: imageMode === 'stretch' ? 'center 75%' : 'center', boxShadow: featureImageShadow || undefined }
+        style: { borderRadius: imgBR, objectFit: 'cover', ...featureTransformStyle, boxShadow: featureImageShadow || undefined }
       })
     } else {
       elements.push({

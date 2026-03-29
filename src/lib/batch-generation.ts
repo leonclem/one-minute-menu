@@ -14,6 +14,8 @@ export type BatchGenerationResult = {
   itemIdNormalized?: string
   status: 'success' | 'failed'
   imageUrl?: string
+  /** The ai_generated_images row ID (needed for select-image / cutout enrichment). */
+  imageId?: string
   error?: string
   errorCode?: string
 }
@@ -125,10 +127,11 @@ export async function runBatchGenerationSequential(
       // Synchronous images path
       if (result?.data?.images?.length) {
         const imgUrl: string | undefined = result.data.images[0]?.originalUrl
+        const imgId: string | undefined = result.data.images[0]?.id
         const normalizedId: string | undefined = result?.data?.menuItemId
         if (imgUrl) {
           options.onProgress?.({ index, total, itemId: item.id, status: 'completed' })
-          results.push({ itemId: item.id, itemIdNormalized: normalizedId, status: 'success', imageUrl: imgUrl })
+          results.push({ itemId: item.id, itemIdNormalized: normalizedId, status: 'success', imageUrl: imgUrl, imageId: imgId })
           continue
         }
       }
@@ -139,6 +142,7 @@ export async function runBatchGenerationSequential(
         let polls = 0
         let success = false
         let imageUrl: string | undefined
+        let imageId: string | undefined
         let lastError: string | undefined
         let normalizedId: string | undefined
 
@@ -155,6 +159,7 @@ export async function runBatchGenerationSequential(
           const images = json?.data?.images || []
           if (job?.status === 'completed' && images.length > 0) {
             imageUrl = images[0]?.originalUrl
+            imageId = images[0]?.id
             success = !!imageUrl
             break
           }
@@ -167,7 +172,7 @@ export async function runBatchGenerationSequential(
 
         if (success && imageUrl) {
           options.onProgress?.({ index, total, itemId: item.id, status: 'completed' })
-          results.push({ itemId: item.id, itemIdNormalized: normalizedId, status: 'success', imageUrl })
+          results.push({ itemId: item.id, itemIdNormalized: normalizedId, status: 'success', imageUrl, imageId })
         } else {
           const err = lastError || 'Generation timed out'
           options.onProgress?.({ index, total, itemId: item.id, status: 'failed', error: err })
