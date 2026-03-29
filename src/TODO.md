@@ -4,6 +4,7 @@
 - [x] Develop plan for cutout mechanism
 - [x] Implement and roll out to /templates
 - [x] Ensure demo images are run through replicate too
+- [x] Add a cutout image menu to the home page
 - [ ] What happens if cutouts are pending?  Maybe all pending image generation could asynchronously populate
 - [ ] ISSUE: "Request...failed with status 429 Too Many Requests..."
 - [ ] Need indicator of cutout status per menu item image

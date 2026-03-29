@@ -313,22 +313,22 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StaggerChildren visible={visible}>
                   <Image
-                    src="/marketing/hannahs-cafe.png"
-                    alt="Hannah's Café menu created with GridMenu — a warm, café-style menu design"
-                    width={600}
-                    height={800}
-                    className="rounded-lg w-full h-auto"
-                  />
-                  <Image
                     src="/marketing/fonde-de-la-noche.png"
-                    alt="Fonde de la Noche menu created with GridMenu — a rich, moody restaurant menu design"
+                    alt="Fonde de la Noche menu created with GridMenu — a vibrant, Mexican fiesta design"
                     width={600}
                     height={800}
                     className="rounded-lg w-full h-auto"
                   />
                   <Image
-                    src="/marketing/duck-fat-combined.png"
-                    alt="Duck Fat restaurant menu created with GridMenu — a premium, modern menu design"
+                    src="/marketing/breakfast-3-col-dark-cutout.png"
+                    alt="Breakfast menu created with GridMenu — a striking, elegant menu design"
+                    width={600}
+                    height={800}
+                    className="rounded-lg w-full h-auto"
+                  />
+                  <Image
+                    src="/marketing/indian-4-col-stretch-fit.png"
+                    alt="Indian restaurant menu created with GridMenu — a showcase for grid-based menu design"
                     width={600}
                     height={800}
                     className="rounded-lg w-full h-auto"
