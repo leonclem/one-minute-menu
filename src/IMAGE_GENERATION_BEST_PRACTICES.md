@@ -1,7 +1,7 @@
 # GridMenu — AI Food Photography: Best Practices & Prompting Guide
 
 > Internal reference for optimising image generation quality, cost, subscriber value, and UI design.
-> Last updated: March 2026
+> Last updated: April 2026
 
 ---
 
@@ -131,6 +131,8 @@ These variables inform prompt construction behind the scenes. They do not need t
 | Bright daylight | Fresh salads, drinks, brunch |
 | Golden hour | Warm, lifestyle-feel shots |
 
+> **Implementation note (April 2026):** `buildPromptV2()` currently implements three lighting options: `natural`, `studio`, and `moody`. The proposed modal design (Section 9) shows four icon buttons including Warm and Golden Hour — these are not yet wired up in the type system or prompt construction. Do not add them until the unified modal redesign is underway.
+
 ### Background
 | Background | Best for |
 |---|---|
@@ -139,6 +141,8 @@ These variables inform prompt construction behind the scenes. They do not need t
 | Dark slate | Fine dining, meats, rich sauces |
 | Warm wood table | Casual dining, comfort food |
 | Restaurant table setting | Composite/contextual shots |
+
+> **Implementation note (April 2026):** "Neutral / clean" has been retired as the default. Dark slate is now the universal default surface in `buildPromptV2()` for all establishment types except those with an explicit override (cafe-brunch → warm wood, bakery-dessert → marble, hawker-foodcourt → stainless steel). The rationale: our standard plate is a warm beige circular ceramic, and dark slate provides the contrast needed for clean cutout segmentation. "Neutral clean surface" produced flat, low-contrast results that made background removal unreliable. There is no scenario where we should fall back to a neutral surface — it's either dark slate, an establishment-specific surface, or a user-supplied reference scene.
 
 ---
 
@@ -154,6 +158,17 @@ Cuisine context is woven into prompt construction automatically from the user's 
 | Fine dining (any) | "elegant plating with intentional negative space, premium restaurant setting" |
 | Bakery / Desserts | "soft pastel tones, warm oven light, tempting textures, bakery display style" |
 | Street food / Casual | "vibrant, fresh, approachable, bright natural light" |
+
+### What's currently wired up (April 2026)
+
+| Signal | Source | Used in prompt? |
+|---|---|---|
+| Establishment type | `menus.establishment_type` | Yes — drives surface selection |
+| Primary cuisine | `menus.primary_cuisine` | Yes — drives cuisine context clause |
+| Item category | `menu_items.category` | Yes (fixed April 2026) — drives form factor hint |
+| Country / location | User profile | No — not yet wired up |
+
+**Item category is the most important signal for ambiguous item names.** "Buttermilk Chicken" on a plate is a perfectly reasonable interpretation without context — but in a "Burgers" category it should be in a bun. `getCategoryContext()` in `prompt-construction.ts` maps common category names (Burgers, Pizza, Pasta, Soup, Salad, Desserts, Drinks, Starters, etc.) to form-factor hints injected into the subject clause. Unknown categories fall back to `"From the {category} section of the menu."` which still provides useful context.
 
 ---
 

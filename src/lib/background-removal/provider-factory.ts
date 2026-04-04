@@ -29,7 +29,8 @@ export function getBackgroundRemovalProvider(): BackgroundRemovalProvider {
       default:
         throw new Error(
           `Unknown background removal provider: "${providerName}". ` +
-            'Available providers: replicate'
+            'Available providers: replicate. ' +
+            'To switch Replicate models, set REPLICATE_BACKGROUND_MODEL (e.g. 851-labs, codeplugtech).'
         )
     }
   }

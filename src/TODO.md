@@ -1,8 +1,5 @@
 # Roadmap
 
-### /extracted - cutout images
-- [ ] Capability to switch to alternative providers
-
 ## Production Monitoring
 - [ ] Install Vercel analytics
 
@@ -24,6 +21,9 @@
 - [x] Upgrade Vercel package
 - [ ] Determine UAT requirements
 - [ ] Determine if database backup strategy exists (Supabase / Vercel)
+
+### /extracted - cutout images
+- [ ] Overhead isn't always directly overhead - can we be more explicit with our prompt?
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
@@ -206,6 +206,7 @@
 - [x] Overhaul prompting modal interface to simplify for non-technical
 - [x] ISSUE: "Request...failed with status 429 Too Many Requests..."
 - [x] Need indicator of cutout status per menu item image
+- [x] Capability to switch to alternative Replicate providers
 
 ## Menu templates
 

@@ -436,33 +436,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Invalidate existing cutouts for this menu item before generating new images
-    // This ensures stale cutouts are not used after image regeneration (Requirement 10.1)
-    try {
-      const cutoutEnabled = isCutoutFeatureEnabled()
-      if (cutoutEnabled) {
-        const { data: existingImages } = await supabase
-          .from('ai_generated_images')
-          .select('id, cutout_status')
-          .eq('menu_item_id', normalizedMenuItemId)
-          .neq('cutout_status', 'not_requested')
-
-        if (existingImages && existingImages.length > 0) {
-          const cutoutProvider = getBackgroundRemovalProvider()
-          const cutoutService = new CutoutGenerationService(cutoutProvider, createAdminSupabaseClient())
-          for (const img of existingImages) {
-            try {
-              await cutoutService.invalidateCutout(img.id)
-              logger.info(`✂️ [Generate Image] Invalidated cutout for existing image ${img.id}`)
-            } catch (invErr) {
-              logger.warn(`⚠️ [Generate Image] Failed to invalidate cutout for image ${img.id}`, invErr)
-            }
-          }
-        }
-      }
-    } catch (invErr) {
-      logger.warn('⚠️ [Generate Image] Cutout invalidation error (non-blocking)', invErr)
-    }
+    // Note: we deliberately do NOT invalidate cutouts on existing images for this menu item.
+    // Each ai_generated_image is independent — generating a new image has no effect on the
+    // pixel content of existing images, so their cutouts remain valid and should be preserved.
 
     const startTime = Date.now()
     const genResult = await getNanoBananaClient().generateImage(apiParams)

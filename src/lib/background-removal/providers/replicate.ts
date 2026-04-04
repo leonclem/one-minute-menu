@@ -6,9 +6,36 @@ import type {
   BackgroundRemovalError,
 } from '../types'
 
-const MODEL_ID =
-  '851-labs/background-remover:a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc' as const
-const MODEL_VERSION = '851-labs/background-remover'
+/**
+ * Model registry — add new Replicate background-removal models here.
+ * Key = value used in REPLICATE_BACKGROUND_MODEL env var.
+ * modelId = full versioned model string passed to replicate.run().
+ * modelVersion = human-readable label stored in cutout_generation_logs.
+ */
+const MODEL_REGISTRY: Record<string, { modelId: string; modelVersion: string }> = {
+  '851-labs': {
+    modelId: '851-labs/background-remover:a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc',
+    modelVersion: '851-labs/background-remover',
+  },
+  codeplugtech: {
+    modelId: 'codeplugtech/background_remover:37ff2aa89897c0de4a140a3d50969dc62b663ea467e1e2bde18008e3d3731b2b',
+    modelVersion: 'codeplugtech/background_remover',
+  },
+}
+
+const DEFAULT_MODEL_KEY = '851-labs'
+
+function resolveModel(): { modelId: string; modelVersion: string } {
+  const key = process.env.REPLICATE_BACKGROUND_MODEL || DEFAULT_MODEL_KEY
+  const entry = MODEL_REGISTRY[key]
+  if (!entry) {
+    throw new Error(
+      `Unknown REPLICATE_BACKGROUND_MODEL: "${key}". ` +
+        `Available models: ${Object.keys(MODEL_REGISTRY).join(', ')}`
+    )
+  }
+  return entry
+}
 
 /**
  * Replicate-backed background removal provider using the 851-labs/background-remover model.
@@ -36,12 +63,16 @@ export class ReplicateBackgroundRemovalProvider implements BackgroundRemovalProv
       throw this.createError('INVALID_INPUT', 'imageUrl is required', 'invalid_input')
     }
 
+    const { modelId, modelVersion } = resolveModel()
     const startTime = Date.now()
 
+    logger.info('[Replicate] Calling background removal', { modelId, modelVersion, imageUrl })
+
     try {
-      const output = await this.client.run(MODEL_ID, {
+      const output = await this.client.run(modelId as `${string}/${string}:${string}`, {
         input: {
           image: imageUrl,
+          // 851-labs supports these extra params; other models may ignore them
           background_type: 'rgba',
           format: 'png',
           ...options,
@@ -49,6 +80,7 @@ export class ReplicateBackgroundRemovalProvider implements BackgroundRemovalProv
       })
 
       const processingTimeMs = Date.now() - startTime
+      logger.info('[Replicate] Background removal succeeded', { modelId, processingTimeMs })
 
       // Replicate returns a URL (or ReadableStream) to the processed image.
       // We need to fetch it and convert to a Buffer.
@@ -66,7 +98,7 @@ export class ReplicateBackgroundRemovalProvider implements BackgroundRemovalProv
       return {
         imageBuffer,
         processingTimeMs,
-        modelVersion: MODEL_VERSION,
+        modelVersion,
       }
     } catch (error: unknown) {
       // Re-throw if it's already a BackgroundRemovalError
@@ -84,9 +116,10 @@ export class ReplicateBackgroundRemovalProvider implements BackgroundRemovalProv
     }
 
     try {
-      // Lightweight check: hit the Replicate API to verify credentials
-      // The models.get call is cheap and confirms auth works
-      await this.client.models.get('851-labs', 'background-remover')
+      const { modelId } = resolveModel()
+      const [owner, modelWithVersion] = modelId.split('/')
+      const modelName = modelWithVersion.split(':')[0]
+      await this.client.models.get(owner, modelName)
       return true
     } catch {
       return false

@@ -346,7 +346,7 @@ export class CutoutGenerationService {
       .from(BUCKET_NAME)
       .upload(path, buffer, {
         contentType: 'image/png',
-        cacheControl: '31536000', // 1 year cache
+        cacheControl: '31536000', // 1 year cache on the object itself
         upsert: true,
       })
 
@@ -358,7 +358,10 @@ export class CutoutGenerationService {
       .from(BUCKET_NAME)
       .getPublicUrl(path)
 
-    return urlData.publicUrl
+    // Append a cache-busting version so browsers/CDNs always fetch the
+    // latest file when the cutout is regenerated (same path, new content).
+    const version = Date.now()
+    return `${urlData.publicUrl}?v=${version}`
   }
 
   /**

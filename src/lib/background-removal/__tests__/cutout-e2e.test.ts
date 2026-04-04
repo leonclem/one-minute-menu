@@ -354,7 +354,10 @@ describe('Cut-out E2E integration', () => {
       // Step 6: Image record updated with cutout result
       const imageAfterProcess = images.get(IMAGE_ID)!
       expect(imageAfterProcess.cutout_status).toBe('succeeded')
-      expect(imageAfterProcess.cutout_url).toBe(`https://storage.example.com/${storagePath}`)
+      // URL includes a cache-busting ?v=<timestamp> suffix appended by uploadCutout
+      expect(imageAfterProcess.cutout_url).toMatch(
+        new RegExp(`^https://storage\\.example\\.com/${storagePath.replace(/\//g, '/')}(\\?v=\\d+)?$`)
+      )
       expect(imageAfterProcess.cutout_provider).toBe('mock-provider')
       expect(imageAfterProcess.cutout_failure_reason).toBeNull()
 
@@ -372,7 +375,9 @@ describe('Cut-out E2E integration', () => {
         templateSupportsCutouts: true,
         featureEnabled: true,
       })
-      expect(resolvedUrl).toBe(`https://storage.example.com/${storagePath}`)
+      expect(resolvedUrl).toMatch(
+        new RegExp(`^https://storage\\.example\\.com/${storagePath.replace(/\//g, '/')}(\\?v=\\d+)?$`)
+      )
 
       // Step 9: Original image URL is preserved
       expect(imageAfterProcess.original_url).toBe(ORIGINAL_URL)

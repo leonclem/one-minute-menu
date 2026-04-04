@@ -1125,6 +1125,18 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     }
   }
 
+  const refreshAuthMenu = async () => {
+    try {
+      const resp = await fetch(`/api/menus/${menuId}`)
+      const json = await resp.json().catch(() => ({}))
+      if (resp.ok && json?.data) {
+        setAuthMenu(json.data as Menu)
+      }
+    } catch {
+      // best-effort
+    }
+  }
+
   const applyAIImageToMenuItem = async (
     itemId: string,
     imageUrl: string,
@@ -1157,9 +1169,9 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       if (opts?.imageId) {
         // select-image returns only a partial response (not a full Menu), so we must not
         // call setAuthMenu with it. For non-silent (single-item) use, refresh to get the
-        // updated menu. For silent/batch use the batch modal calls refreshMenu on close.
+        // updated menu. For silent/batch use the batch modal calls refreshAuthMenu on close.
         if (!opts?.silent) {
-          await refreshMenu()
+          await refreshAuthMenu()
         }
       } else {
         setAuthMenu(json.data as Menu)
@@ -2623,9 +2635,10 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           onClose={() => {
             setShowBatchPhoto(false)
             setSelectedItemKeys(new Set())
+            refreshAuthMenu()
           }}
-          onItemImageGenerated={async () => {
-            // Sequential runner calls this after each item
+          onItemImageGenerated={async (itemId, imageUrl, imageId) => {
+            await applyAIImageToMenuItem(itemId, imageUrl, { silent: true, closeModal: false, imageId })
           }}
         />
       )}

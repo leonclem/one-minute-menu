@@ -104,9 +104,17 @@ export class PromptConstructionService {
     const normalizedDescription = this.normalizeDescription(item.description || '')
     
     // 1. Subject & Plating
-    // Default to warm beige circular ceramic plate to improve cutout segmentation
-    const surface = params.settingReferenceImage ? '' : `resting on a ${this.getDefaultSurface(params.establishmentType)}`
-    const subjectClause = `${dishName} — ${normalizedDescription}. Plated on a warm beige circular ceramic plate${surface ? `, ${surface}` : ''}.`
+    // Default to warm beige circular ceramic plate to improve cutout segmentation.
+    // Always specify the surface for contrast — even with a reference image the plate
+    // needs to sit on something. With a reference image we defer to its scene but still
+    // anchor the plate on a dark slate surface for cutout clarity.
+    const surface = `resting on a ${this.getDefaultSurface(params.establishmentType)}`
+    const categoryContext = this.getCategoryContext(params.itemCategory)
+    const subjectClause = [
+      `${dishName} — ${normalizedDescription}.`,
+      categoryContext,
+      `Plated on a warm beige circular ceramic plate, ${surface}.`
+    ].filter(Boolean).join(' ')
 
     // 2. Camera Angle
     const angleMap = {
@@ -121,15 +129,19 @@ export class PromptConstructionService {
       : `${angleMap[params.angle]}, shallow depth of field, dish in sharp focus.`
 
     // 3. Lighting
-    const lightingMap = {
+    const lightingMap: Record<string, string> = {
       natural: 'Soft natural window light from the left, gentle shadows',
       studio: 'Professional studio softbox lighting, clean even illumination, controlled shadows',
       moody: 'Moody restaurant ambiance, dramatic low lighting, warm accent lights, rich shadows'
     }
-    const lightingClause = lightingMap[params.lighting]
+    const lightingClause = lightingMap[params.lighting] ?? lightingMap['natural']
 
     // 4. Background & Cuisine Context
-    const backgroundClause = `Clean neutral background, no clutter.`
+    // With a reference image the scene is defined by the reference — no need to re-state it.
+    // Without one, reinforce the dark surface so the model doesn't drift to a neutral/white background.
+    const backgroundClause = params.settingReferenceImage
+      ? ''
+      : 'Dark background, no clutter, strong contrast between plate and surface.'
     const cuisineContext = this.getCuisineContext(params.primaryCuisine)
 
     // 5. Reference Instructions
@@ -167,7 +179,9 @@ export class PromptConstructionService {
       case 'cafe-brunch': return 'warm wood table'
       case 'bakery-dessert': return 'marble countertop'
       case 'hawker-foodcourt': return 'clean stainless steel surface'
-      default: return 'neutral clean surface'
+      // Default to dark slate — provides contrast with the beige ceramic plate
+      // and creates clean separation for cutout generation
+      default: return 'dark slate surface'
     }
   }
 
@@ -179,6 +193,54 @@ export class PromptConstructionService {
       case 'italian': return 'Rustic Italian presentation, fresh Mediterranean ingredients.'
       default: return ''
     }
+  }
+
+  /**
+   * Derive a presentation hint from the menu category name.
+   * This is the single most important context signal for ambiguous item names —
+   * "Buttermilk Chicken" in a "Burgers" category should be in a bun, not on a plate.
+   * Matching is case-insensitive and substring-based to handle real-world category names.
+   */
+  private getCategoryContext(category?: string): string {
+    if (!category || category.toLowerCase() === 'uncategorized') return ''
+    const c = category.toLowerCase()
+
+    if (c.includes('burger') || c.includes('sandwich') || c.includes('wrap') || c.includes('sub')) {
+      return `Presented as a ${c.includes('wrap') ? 'wrap' : c.includes('sandwich') ? 'sandwich' : 'burger'} in a bun with typical accompaniments.`
+    }
+    if (c.includes('pizza')) {
+      return 'Presented as a whole or sliced pizza.'
+    }
+    if (c.includes('pasta') || c.includes('noodle') || c.includes('ramen') || c.includes('pho')) {
+      return 'Served in a bowl with noodles and broth or sauce.'
+    }
+    if (c.includes('soup') || c.includes('broth') || c.includes('stew')) {
+      return 'Served in a deep bowl with liquid broth or sauce.'
+    }
+    if (c.includes('salad')) {
+      return 'Presented as a salad with fresh leaves and toppings.'
+    }
+    if (c.includes('dessert') || c.includes('sweet') || c.includes('cake') || c.includes('pastry') || c.includes('ice cream')) {
+      return 'Presented as a dessert portion.'
+    }
+    if (c.includes('drink') || c.includes('beverage') || c.includes('cocktail') || c.includes('juice') || c.includes('coffee') || c.includes('tea')) {
+      return 'Presented as a drink in an appropriate glass or cup.'
+    }
+    if (c.includes('starter') || c.includes('appetiser') || c.includes('appetizer') || c.includes('snack') || c.includes('side')) {
+      return 'Presented as a small plate or starter portion.'
+    }
+    if (c.includes('sharing') || c.includes('platter') || c.includes('board')) {
+      return 'Presented as a sharing platter or board.'
+    }
+    if (c.includes('breakfast') || c.includes('brunch')) {
+      return 'Presented as a breakfast or brunch dish.'
+    }
+    if (c.includes('taco') || c.includes('burrito') || c.includes('quesadilla')) {
+      return `Presented as a ${c.includes('burrito') ? 'burrito' : c.includes('quesadilla') ? 'quesadilla' : 'taco'}.`
+    }
+
+    // For any other named category, pass it through as light context
+    return `From the ${category} section of the menu.`
   }
 
   /**
