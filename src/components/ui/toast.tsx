@@ -43,7 +43,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       {/* Toast viewport */}
-      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+      <div className="fixed bottom-4 right-4 z-[200] space-y-2">
         {toasts.map(t => (
           <div
             key={t.id}

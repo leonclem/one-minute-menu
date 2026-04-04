@@ -1,4 +1,4 @@
-import type { MenuItem, ImageGenerationParams } from '@/types'
+import type { MenuItem, ImageGenerationParams, PhotoGenerationParams } from '@/types'
 
 // Prompt construction service for AI image generation
 // Transforms menu item data into effective image generation prompts
@@ -96,6 +96,91 @@ const DEFAULT_NEGATIVE_ELEMENTS = [
 ]
 
 export class PromptConstructionService {
+  /**
+   * Build a complete prompt from menu item data and style parameters (V2 Narrative Structure)
+   */
+  buildPromptV2(item: MenuItem, params: PhotoGenerationParams): PromptResult {
+    const dishName = item.name
+    const normalizedDescription = this.normalizeDescription(item.description || '')
+    
+    // 1. Subject & Plating
+    // Default to warm beige circular ceramic plate to improve cutout segmentation
+    const surface = params.settingReferenceImage ? '' : `resting on a ${this.getDefaultSurface(params.establishmentType)}`
+    const subjectClause = `${dishName} — ${normalizedDescription}. Plated on a warm beige circular ceramic plate${surface ? `, ${surface}` : ''}.`
+
+    // 2. Camera Angle
+    const angleMap = {
+      overhead: 'Top-down (90 degree) camera angle',
+      '45': 'Three-quarter (45 degree) camera angle',
+      front: 'Eye-level camera angle'
+    }
+    
+    // If we have a reference image, we want to match its perspective, but still hint at the desired angle
+    const angleClause = params.settingReferenceImage
+      ? `${angleMap[params.angle]}, shallow depth of field, dish in sharp focus. Match the camera perspective of the reference image.`
+      : `${angleMap[params.angle]}, shallow depth of field, dish in sharp focus.`
+
+    // 3. Lighting
+    const lightingMap = {
+      natural: 'Soft natural window light from the left, gentle shadows',
+      studio: 'Professional studio softbox lighting, clean even illumination, controlled shadows',
+      moody: 'Moody restaurant ambiance, dramatic low lighting, warm accent lights, rich shadows'
+    }
+    const lightingClause = lightingMap[params.lighting]
+
+    // 4. Background & Cuisine Context
+    const backgroundClause = `Clean neutral background, no clutter.`
+    const cuisineContext = this.getCuisineContext(params.primaryCuisine)
+
+    // 5. Reference Instructions
+    let referenceInstructions = ''
+    if (params.settingReferenceImage) {
+      referenceInstructions = '\nPlace the dish naturally into the scene shown in the reference image. Match the perspective, lighting direction, and surface. Keep geometry realistic - no warped plates, no floating food.'
+    }
+
+    // 6. Constraints (Always Inline)
+    const constraints = 'Photoreal food photography, natural textures, appetizing presentation. No people, no humans, no hands, no text, no watermarks, no logos, no utensils in use, no clutter, nothing not directly part of the described dish.'
+
+    // Combine into narrative structure
+    const prompt = [
+      subjectClause,
+      angleClause,
+      lightingClause,
+      backgroundClause,
+      cuisineContext,
+      constraints,
+      referenceInstructions
+    ].filter(Boolean).join('\n')
+
+    return {
+      prompt: prompt.trim(),
+      negativePrompt: DEFAULT_NEGATIVE_ELEMENTS.join(', '),
+      tokens: this.estimateTokens(prompt),
+      truncated: false,
+      appliedTemplate: 'v2-narrative'
+    }
+  }
+
+  private getDefaultSurface(establishmentType?: string): string {
+    switch (establishmentType) {
+      case 'fine-dining': return 'dark slate surface'
+      case 'cafe-brunch': return 'warm wood table'
+      case 'bakery-dessert': return 'marble countertop'
+      case 'hawker-foodcourt': return 'clean stainless steel surface'
+      default: return 'neutral clean surface'
+    }
+  }
+
+  private getCuisineContext(cuisine?: string): string {
+    switch (cuisine) {
+      case 'local-sg': return 'Authentic hawker centre presentation, vibrant colours.'
+      case 'peranakan': return 'Ornate nyonya ware, intricate garnish, vibrant traditional colours.'
+      case 'japanese': return 'Minimalist zen plating, precise arrangement, matte ceramic, negative space.'
+      case 'italian': return 'Rustic Italian presentation, fresh Mediterranean ingredients.'
+      default: return ''
+    }
+  }
+
   /**
    * Build a complete prompt from menu item data and style parameters
    */

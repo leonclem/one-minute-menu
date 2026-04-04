@@ -95,6 +95,7 @@ export async function runBatchGenerationSequential(
           styleParams: options.styleParams,
           numberOfVariations: options.numberOfVariations ?? 1,
           referenceImages: options.referenceImages,
+          batchIndex: index,
         }),
       })
 

@@ -11,8 +11,11 @@ import { checkRateLimit, getBatchLimits } from '@/lib/rate-limiting'
 import type { 
   ImageGenerationRequest, 
   NanoBananaParams,
-  MenuItem 
+  MenuItem,
+  PhotoGenerationParams,
+  UserPlan
 } from '@/types'
+import { PLAN_CONFIGS } from '@/types'
 import { logger } from '@/lib/logger'
 import { isCutoutFeatureEnabled } from '@/lib/background-removal/feature-flag'
 import { getBackgroundRemovalProvider } from '@/lib/background-removal/provider-factory'
@@ -67,6 +70,7 @@ export async function POST(request: NextRequest) {
       generationNotes?: string
       referenceImages?: Array<{ dataUrl: string; comment?: string; role?: string; name?: string }>
       referenceMode?: 'style_match' | 'composite'
+      batchIndex?: number
     }
     
     logger.debug('📝 [Generate Image] Request:', { 
@@ -74,7 +78,8 @@ export async function POST(request: NextRequest) {
       styleParams: body.styleParams,
       numberOfVariations: body.numberOfVariations,
       referenceImageCount: body.referenceImages?.length || 0,
-      referenceMode: body.referenceMode
+      referenceMode: body.referenceMode,
+      batchIndex: body.batchIndex
     })
     
     if (!body.menuItemId || !body.menuId) {
@@ -217,7 +222,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Enforce per-minute rate limit (database-backed, plan-based)
-    const plan = (profile?.plan ?? 'free') as any
+    const plan = (profile?.plan ?? 'free') as UserPlan
     const rateLimitCheck = await checkRateLimit(user.id, 'image_generation', plan)
     if (!rateLimitCheck.allowed) {
       return NextResponse.json(
@@ -279,6 +284,25 @@ export async function POST(request: NextRequest) {
         { status: 429 }
       )
     }
+
+    // Phase 3.5: Validate requested resolution against plan limits
+    const requestedResolution = (body.styleParams as any)?.resolution || '1k'
+    const planConfig = PLAN_CONFIGS[plan]
+    if (requestedResolution === '4k' && planConfig.maxImageResolution !== '4k') {
+      logger.warn('[Generate Image] User requested 4K but plan does not support it', { userId: user.id, plan })
+      return NextResponse.json(
+        {
+          error: '4K resolution is not available on your plan',
+          code: 'RESOLUTION_NOT_SUPPORTED',
+          upgrade: {
+            cta: 'View Pricing',
+            href: '/pricing',
+            reason: 'Upgrade to Grid+ or Grid+Premium to access 4K image generation'
+          }
+        },
+        { status: 403 }
+      )
+    }
     
     // Construct generation request
     const generationRequest: ImageGenerationRequest = {
@@ -328,23 +352,48 @@ export async function POST(request: NextRequest) {
     
     // Build prompt using prompt construction service
     const promptConstructionService = getPromptConstructionService()
-    const promptResult = promptConstructionService.buildPrompt(
-      {
-        id: menuItem.id,
-        name: menuItem.name,
-        description: menuItem.description,
-        price: menuItem.price ?? 0,
-        available: menuItem.available ?? true,
-        category: menuItem.category,
-        order: menuItem.order ?? 0,
-        imageSource: menuItem.imageSource ?? 'none'
-      } as MenuItem,
-      {
-        ...generationRequest.styleParams,
-        establishmentType: menuRow.establishment_type,
-        primaryCuisine: menuRow.primary_cuisine
-      }
-    )
+    
+    // Check if we should use V2 narrative structure (Phase 1.2)
+    // We use buildPromptV2 if the request includes the new PhotoGenerationParams fields
+    const useV2 = !!(body.styleParams as any)?.angle && !!(body.styleParams as any)?.lighting
+    
+    const promptResult = useV2 
+      ? promptConstructionService.buildPromptV2(
+          {
+            id: menuItem.id,
+            name: menuItem.name,
+            description: menuItem.description,
+            price: menuItem.price ?? 0,
+            available: menuItem.available ?? true,
+            category: menuItem.category,
+            order: menuItem.order ?? 0,
+            imageSource: menuItem.imageSource ?? 'none'
+          } as MenuItem,
+          {
+            ...(body.styleParams as any),
+            settingReferenceImage: body.referenceImages?.find(r => r.role === 'scene')?.dataUrl,
+            establishmentType: menuRow.establishment_type,
+            primaryCuisine: menuRow.primary_cuisine,
+            itemCategory: menuItem.category
+          }
+        )
+      : promptConstructionService.buildPrompt(
+          {
+            id: menuItem.id,
+            name: menuItem.name,
+            description: menuItem.description,
+            price: menuItem.price ?? 0,
+            available: menuItem.available ?? true,
+            category: menuItem.category,
+            order: menuItem.order ?? 0,
+            imageSource: menuItem.imageSource ?? 'none'
+          } as MenuItem,
+          {
+            ...generationRequest.styleParams,
+            establishmentType: menuRow.establishment_type,
+            primaryCuisine: menuRow.primary_cuisine
+          }
+        )
     
     // Estimate cost
     const costEstimate = await quotaOperations.estimateCost(generationRequest)
@@ -428,7 +477,11 @@ export async function POST(request: NextRequest) {
           generationJobId: jobRow.id,
           originalPrompt: promptResult.prompt,
           aspectRatio: generationRequest.styleParams.aspectRatio || '1:1',
-          generatedAt: new Date()
+          generatedAt: new Date(),
+          // Store angle in metadata for gallery labeling
+          metadata: {
+            angle: body.styleParams?.angle
+          }
         },
         user.id
       )
@@ -447,12 +500,65 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Mark first image as selected for convenience
+    // Mark first image as selected for convenience and update menu item
     if (images[0]) {
-      await supabase
-        .from('ai_generated_images')
-        .update({ selected: true })
-        .eq('id', images[0].id)
+      const selectedImage = images[0]
+      logger.info('🎯 [Generate Image] Automatically selecting first variation', { imageId: selectedImage.id })
+
+      // Keep selection state consistent (unselect old + select new)
+      const { error: selectErr } = await supabase.rpc('select_ai_image_for_menu_item', {
+        p_menu_item_id: normalizedMenuItemId,
+        p_image_id: selectedImage.id
+      })
+      if (selectErr) {
+        logger.error('❌ [Generate Image] Failed to select image via RPC:', selectErr)
+      }
+
+      // Ensure menu_items references the newly selected AI image explicitly
+      const { error: miErr } = await supabase
+        .from('menu_items')
+        .update({
+          ai_image_id: selectedImage.id,
+          image_source: 'ai',
+          custom_image_url: null
+        })
+        .eq('id', normalizedMenuItemId)
+      if (miErr) logger.error('❌ [Generate Image] Failed to update menu_items:', miErr)
+
+      // Update menu JSON (both flat items and nested category items) to keep pages in sync
+      const currentMenuData = menuRow.menu_data || {}
+      const imageUpdate = {
+        aiImageId: selectedImage.id,
+        imageSource: 'ai' as const,
+        customImageUrl: null as string | null,
+      }
+      const updatedItems = (currentMenuData.items || []).map((it: any) =>
+        it.id === normalizedMenuItemId ? { ...it, ...imageUpdate } : it
+      )
+      const updatedCategories = (currentMenuData.categories || []).map((cat: any) => {
+        if (!Array.isArray(cat.items)) return cat
+        return {
+          ...cat,
+          items: cat.items.map((it: any) =>
+            it.id === normalizedMenuItemId ? { ...it, ...imageUpdate } : it
+          ),
+        }
+      })
+
+      const { error: menuUpdateErr } = await supabase
+        .from('menus')
+        .update({
+          menu_data: {
+            ...currentMenuData,
+            items: updatedItems,
+            categories: updatedCategories,
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', body.menuId)
+
+      if (menuUpdateErr) logger.error('❌ [Generate Image] Failed to update menu JSON:', menuUpdateErr)
+      else logger.info('✅ [Generate Image] Menu JSON updated with selected AI image')
     }
 
     // Consume quota immediately for synchronous generation
@@ -470,13 +576,26 @@ export async function POST(request: NextRequest) {
       .eq('id', jobRow.id)
 
     // Create pending cutout jobs for generated images (best-effort, never blocks response)
+    // SKIP if a reference image was provided (Phase 2.6 feedback)
     try {
-      const cutoutEnabled = isCutoutFeatureEnabled()
+      const cutoutEnabled = isCutoutFeatureEnabled() && !body.referenceImages?.length
       if (cutoutEnabled) {
         const cutoutProvider = getBackgroundRemovalProvider()
         const cutoutService = new CutoutGenerationService(cutoutProvider, createAdminSupabaseClient())
+        
+        // Calculate stagger delay for batch scenarios (Phase 3.2)
+        // When batchIndex is provided, delay cutout requests by batchIndex * 3000ms
+        // to space them across the batch and avoid rate limit bursts
+        const batchStaggerMs = (body.batchIndex ?? 0) * 3000
+        
         for (const image of images) {
           try {
+            // Apply stagger delay if this is part of a batch
+            if (batchStaggerMs > 0) {
+              logger.info(`⏳ [Generate Image] Staggering cutout request by ${batchStaggerMs}ms for batch index ${body.batchIndex}`)
+              await new Promise(resolve => setTimeout(resolve, batchStaggerMs))
+            }
+            
             await cutoutService.requestCutout({
               imageId: image.id,
               imageUrl: image.originalUrl,

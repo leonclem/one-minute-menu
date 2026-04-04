@@ -27,6 +27,7 @@ export interface PlanLimits {
   menuItems: number
   monthlyUploads: number
   aiImageGenerations: number
+  maxImageResolution: '1k' | '4k'
 }
 
 // Plan configurations
@@ -36,18 +37,21 @@ export const PLAN_CONFIGS: Record<User['plan'], PlanLimits> = {
     menuItems: 40,
     monthlyUploads: 5,
     aiImageGenerations: 50,
+    maxImageResolution: '1k',
   },
   grid_plus: {
     menus: 5,
     menuItems: 500,
     monthlyUploads: 100,
     aiImageGenerations: 300,
+    maxImageResolution: '4k',
   },
   grid_plus_premium: {
     menus: -1, // unlimited
     menuItems: -1,
     monthlyUploads: -1,
     aiImageGenerations: 1000,
+    maxImageResolution: '4k',
   },
   // Keep legacy for backward compatibility during transition
   premium: {
@@ -55,12 +59,14 @@ export const PLAN_CONFIGS: Record<User['plan'], PlanLimits> = {
     menuItems: 500,
     monthlyUploads: 100,
     aiImageGenerations: 300,
+    maxImageResolution: '4k',
   },
   enterprise: {
     menus: -1, // unlimited
     menuItems: -1,
     monthlyUploads: -1,
     aiImageGenerations: 1000,
+    maxImageResolution: '4k',
   },
 }
 
@@ -581,6 +587,17 @@ export interface ValidationError extends AppError {
 
 // AI Image Generation Types
 
+export interface PhotoGenerationParams {
+  angle: 'overhead' | '45' | 'front'
+  lighting: 'natural' | 'studio' | 'moody'
+  settingReferenceImage?: string // data URL of venue/table photo
+  resolution?: '1k' | '4k'
+  // Populated automatically from menu/profile — never set by UI
+  establishmentType?: string
+  primaryCuisine?: string
+  itemCategory?: string
+}
+
 export interface ImageGenerationParams {
   style?: 'rustic' | 'modern' | 'elegant' | 'casual'
   presentation?: 'white_plate' | 'wooden_board' | 'overhead' | 'closeup' | 'bokeh' | 'none'
@@ -591,6 +608,7 @@ export interface ImageGenerationParams {
   establishmentType?: string
   primaryCuisine?: string
   hasReferenceImage?: boolean
+  angle?: string
 }
 
 export interface GeneratedImage {

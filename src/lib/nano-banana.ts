@@ -99,7 +99,7 @@ export class NanoBananaClient {
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.NANO_BANANA_API_KEY || ''
     // Default to Gemini image generation endpoint; allow override via env
-    this.baseUrl = process.env.NANO_BANANA_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent'
+    this.baseUrl = process.env.NANO_BANANA_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent'
     
     if (!this.apiKey) {
       throw new Error('Nano Banana API key is required')
@@ -133,7 +133,7 @@ export class NanoBananaClient {
     }
 
     // Determine model and base URL
-    const model = requestParams.model || 'gemini-2.5-flash-image'
+    const model = requestParams.model || 'gemini-3.1-flash-image-preview'
     const baseUrl = params.model 
       ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
       : this.baseUrl
@@ -142,8 +142,8 @@ export class NanoBananaClient {
     this.validateParams(requestParams)
 
     try {
-      const promptPreview = requestParams.prompt.substring(0, 120)
-      const promptHash = createHash('sha256').update(requestParams.prompt).digest('hex')
+      const promptText = requestParams.prompt
+      const promptHash = createHash('sha256').update(promptText).digest('hex')
       const hasRef = !!(requestParams.reference_images && requestParams.reference_images.length > 0)
       const refMeta = hasRef
         ? requestParams.reference_images!.map((img) => ({ mimeType: img.mimeType, bytes: Buffer.from(img.data, 'base64').length }))
@@ -159,14 +159,14 @@ export class NanoBananaClient {
         referenceMode: requestParams.reference_mode || null,
         referenceImages: refMeta,
         promptHash,
-        promptPreview,
-        promptLength: requestParams.prompt.length,
+        promptText,
+        promptLength: promptText.length,
       })
       
       // Translate our simplified params into Gemini generateContent request
       const candidateCount = Math.min(Math.max(requestParams.number_of_images || 1, 1), 4)
 
-      let promptText = requestParams.prompt
+      let finalPromptText = promptText
 
       // If reference images are provided, guide the model with explicit instructions.
       // We use the "Image A/B/C" syntax recommended for Nano Banana Pro.
@@ -192,30 +192,30 @@ export class NanoBananaClient {
 
         // We use a unified composition prompt as recommended by Nano Banana Pro tips.
         // The specific roles (dish, scene, style, etc.) guide how the images are used.
-        promptText =
+        finalPromptText =
           `Compose a new image using the provided reference inputs:\n` +
           roleInstructions.join('\n') +
           ` \nIntegrate the subject naturally into the environment while maintaining the requested style and layout.\n\n` +
-          promptText
+          finalPromptText
       }
 
       if (requestParams.negative_prompt) {
-        promptText += `\nExclude: ${requestParams.negative_prompt}`
+        finalPromptText += `\nExclude: ${requestParams.negative_prompt}`
       }
       
-      // Gemini 3 Pro uses imageConfig for aspect ratio, 2.5 Flash uses prompt instructions
-      if (model === 'gemini-2.5-flash-image' && requestParams.aspect_ratio) {
-        promptText += `\nAspect ratio: ${requestParams.aspect_ratio}`
+      // Gemini 3.1 Flash Image uses prompt instructions for aspect ratio in the standard generateContent endpoint
+      if (requestParams.aspect_ratio) {
+        finalPromptText += `\nAspect ratio: ${requestParams.aspect_ratio}`
       }
       
       if (requestParams.person_generation === 'dont_allow') {
-        promptText += `\nNo people in the image.`
+        finalPromptText += `\nNo people in the image.`
       }
       if (requestParams.safety_filter_level) {
-        promptText += `\nContent safety: ${requestParams.safety_filter_level}`
+        finalPromptText += `\nContent safety: ${requestParams.safety_filter_level}`
       }
 
-      const parts: any[] = [{ text: `Generate an image of: ${promptText}` }]
+      const parts: any[] = [{ text: `Generate an image of: ${finalPromptText}` }]
 
       // Add reference image(s) as inlineData parts (base64, no data URL prefix).
       if (requestParams.reference_images && requestParams.reference_images.length > 0) {
@@ -229,22 +229,13 @@ export class NanoBananaClient {
         }
       }
 
-      const generationConfig: any = {
-        responseModalities: ['image'],
+      // Gemini 3.1 Flash Image uses a different request structure than standard Gemini Pro
+      const generationConfig = {
         candidateCount,
-      }
-
-      // Add imageConfig for Gemini 3 Pro
-      if (model.includes('gemini-3') || model.includes('pro')) {
-        const imageConfig: any = {}
-        if (requestParams.aspect_ratio) {
-          imageConfig.aspectRatio = requestParams.aspect_ratio
-        }
-        if (requestParams.image_size) {
-          imageConfig.imageSize = requestParams.image_size
-        }
-        if (Object.keys(imageConfig).length > 0) {
-          generationConfig.imageConfig = imageConfig
+        responseModalities: ['IMAGE'],
+        imageConfig: {
+          aspectRatio: requestParams.aspect_ratio || '1:1',
+          imageSize: requestParams.image_size || '1k'
         }
       }
 
@@ -258,6 +249,10 @@ export class NanoBananaClient {
         generationConfig,
       }
 
+      // If we are using a model that supports imageConfig (like Gemini 3 Pro),
+      // it usually expects the 'imagen' or 'generateImage' endpoint, not 'generateContent'.
+      // For 'generateContent' with Flash Image, we should keep the config minimal.
+
       // Build URL with API key as query param per Gemini requirements
       const url = new URL(baseUrl)
       url.searchParams.set('key', this.apiKey)
@@ -267,7 +262,7 @@ export class NanoBananaClient {
       console.log('🔍 [Nano Banana] Request body summary:', {
         candidateCount,
         imageConfig: generationConfig.imageConfig,
-        promptLength: promptText.length,
+        promptLength: finalPromptText.length,
         referenceImageCount: requestParams.reference_images?.length || 0
       })
 
@@ -358,7 +353,7 @@ export class NanoBananaClient {
       }
 
       logger.info('✅ [Nano Banana] Response received', {
-        modelVersion: apiResponse?.metadata?.model_version || 'gemini-2.5-flash-image',
+        modelVersion: apiResponse?.metadata?.model_version || 'gemini-3.1-flash-image',
         imageCount: images.length,
         processingTimeMs: apiResponse?.metadata?.processing_time_ms || 0,
       })
@@ -367,7 +362,7 @@ export class NanoBananaClient {
         images,
         metadata: {
           processingTime: apiResponse?.metadata?.processing_time_ms || 0,
-          modelVersion: apiResponse?.metadata?.model_version || 'gemini-2.5-flash-image',
+          modelVersion: apiResponse?.metadata?.model_version || 'gemini-3.1-flash-image',
           safetyFilterApplied: apiResponse?.metadata?.safety_filter_applied,
           filterReason: apiResponse?.metadata?.filter_reason
         }
@@ -444,7 +439,7 @@ export class NanoBananaClient {
     }
 
     if (params.reference_images && params.reference_images.length > 0) {
-      const model = params.model || 'gemini-2.5-flash-image'
+      const model = params.model || 'gemini-3.1-flash-image'
       const isPro = model.includes('gemini-3') || model.includes('pro')
       const maxRefs = isPro ? 14 : 3
       

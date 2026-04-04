@@ -88,6 +88,8 @@ export async function GET(
         file_size,
         selected,
         metadata,
+        cutout_status,
+        cutout_url,
         created_at
       `)
       .eq('menu_item_id', itemId)
@@ -118,7 +120,11 @@ export async function GET(
       height: image.height,
       fileSize: image.file_size,
       selected: image.selected,
-      metadata: image.metadata,
+      metadata: {
+        ...image.metadata,
+        cutoutStatus: image.cutout_status,
+        cutoutUrl: image.cutout_url
+      },
       createdAt: new Date(image.created_at)
     }))
     

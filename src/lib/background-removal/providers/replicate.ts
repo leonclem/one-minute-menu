@@ -169,7 +169,8 @@ export class ReplicateBackgroundRemovalProvider implements BackgroundRemovalProv
 
     if (status === 429) {
       logger.warn('[Replicate] Rate limited', { status, message })
-      return this.createError('RATE_LIMITED', message, 'rate_limited')
+      const retryAfter = this.extractRetryAfter(error)
+      return this.createError('RATE_LIMITED', message, 'rate_limited', retryAfter)
     }
 
     if (status && status >= 500) {
@@ -203,12 +204,53 @@ export class ReplicateBackgroundRemovalProvider implements BackgroundRemovalProv
     return null
   }
 
+  /**
+   * Try to extract retry_after (in seconds) from a rate limit error response.
+   */
+  private extractRetryAfter(error: unknown): number | undefined {
+    if (error && typeof error === 'object') {
+      const e = error as Record<string, unknown>
+      // Check common header names and response fields
+      if (typeof e.retryAfter === 'number') return e.retryAfter
+      if (typeof e.retry_after === 'number') return e.retry_after
+      if (e.headers && typeof e.headers === 'object') {
+        const headers = e.headers as Record<string, unknown>
+        if (typeof headers['retry-after'] === 'string') {
+          const parsed = parseInt(headers['retry-after'] as string, 10)
+          if (!isNaN(parsed)) return parsed
+        }
+        if (typeof headers['retry-after'] === 'number') return headers['retry-after']
+      }
+      if (e.response && typeof e.response === 'object') {
+        const resp = e.response as Record<string, unknown>
+        if (resp.headers && typeof resp.headers === 'object') {
+          const headers = resp.headers as Record<string, unknown>
+          if (typeof headers['retry-after'] === 'string') {
+            const parsed = parseInt(headers['retry-after'] as string, 10)
+            if (!isNaN(parsed)) return parsed
+          }
+          if (typeof headers['retry-after'] === 'number') return headers['retry-after']
+        }
+      }
+    }
+    // Fallback: parse retry_after from serialized error message JSON.
+    // Example snippet: ..."retry_after":2}
+    const message = error instanceof Error ? error.message : String(error)
+    const retryAfterMatch = message.match(/"retry_after"\s*:\s*(\d+)/i)
+    if (retryAfterMatch) {
+      const parsed = parseInt(retryAfterMatch[1], 10)
+      if (!isNaN(parsed) && parsed > 0) return parsed
+    }
+    return undefined
+  }
+
   private createError(
     code: string,
     message: string,
-    category: BackgroundRemovalError['category']
+    category: BackgroundRemovalError['category'],
+    retryAfter?: number
   ): BackgroundRemovalError {
-    return { code, message, category }
+    return { code, message, category, retryAfter }
   }
 
   private isBackgroundRemovalError(error: unknown): error is BackgroundRemovalError {

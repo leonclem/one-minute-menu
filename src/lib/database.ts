@@ -38,6 +38,7 @@ export const resolvePlanLimits = (dbLimits: any, plan: UserPlan): PlanLimits => 
     menuItems: resolve(dbLimits?.items, defaults.menuItems),
     monthlyUploads: resolve(dbLimits?.monthly_uploads, defaults.monthlyUploads),
     aiImageGenerations: resolve(dbLimits?.ai_image_generations, defaults.aiImageGenerations),
+    maxImageResolution: defaults.maxImageResolution,
   }
 }
 
@@ -189,7 +190,7 @@ export const userOperations = {
     }
   },
 
-  async checkPlanLimits(userId: string, resource: keyof PlanLimits, profile?: User): Promise<{ allowed: boolean; current: number; limit: number }> {
+  async checkPlanLimits(userId: string, resource: 'menus' | 'menuItems' | 'monthlyUploads' | 'aiImageGenerations', profile?: User): Promise<{ allowed: boolean; current: number; limit: number }> {
     const userProfile = profile || await this.getProfile(userId)
     
     // Admin users have unlimited access

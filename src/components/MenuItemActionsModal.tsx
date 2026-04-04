@@ -365,7 +365,7 @@ export default function MenuItemActionsModal({
               >
                 <span>
                   {item.imageSource !== 'none' || item.customImageUrl || item.aiImageId 
-                    ? 'Manage photos & images' 
+                    ? 'Manage photos' 
                     : 'Add photo / Create AI Photo'}
                 </span>
                 {!(item.imageSource !== 'none' || item.customImageUrl || item.aiImageId) && (

@@ -20,6 +20,8 @@ export interface BackgroundRemovalError {
     | 'invalid_input'
     | 'rate_limited'
     | 'unknown'
+  /** Optional retry_after hint (in seconds) from rate limit responses */
+  retryAfter?: number
 }
 
 export interface BackgroundRemovalProvider {

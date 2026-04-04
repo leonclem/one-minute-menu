@@ -1,42 +1,24 @@
 # Roadmap
 
-### /extracted - Image Generation - "cutout" dishes image style
-- [x] Develop plan for cutout mechanism
-- [x] Implement and roll out to /templates
-- [x] Ensure demo images are run through replicate too
-- [x] Add a cutout image menu to the home page
-- [ ] What happens if cutouts are pending?  Maybe all pending image generation could asynchronously populate
-- [ ] ISSUE: "Request...failed with status 429 Too Many Requests..."
-- [ ] Need indicator of cutout status per menu item image
-- [ ] If cutout doesn't exist or its pending, use generic placeholder cutout
-
-### /template - preview page and image handling
-- [ ] Drag and zoom individual menu item images in-place (determine applicable image options types)
-
-## /extracted - Image Generation
-- [x] Understand what's required and pricing to switch to NB2
-- [x] Determine best practices for prompting
-- [x] Investigate how prompting is currently constructed (Admin area should reveal details)
-- [ ] Overhaul prompting modal interface to simplify for non-technical
-- [ ] When using a reference image from those already generated, preserve the details that were used to create it somehow(?)
+### /extracted - cutout images
+- [ ] Capability to switch to alternative providers
 
 ## Production Monitoring
 - [ ] Install Vercel analytics
 
-## Allergens / Spice level / etc
-- [ ] Extend indicator taxonomy for additional dietary restrictions
-- [ ] Add custom allergen management via /extracted page
-
-## "What's New?" page
-- [ ] "What's New?" page
-- [ ] Coming soon...
-- [ ] Add popup banner to /dashboard
+## /template
+- [ ] Introduce A3 variants to create more space for menu items and menu item components
+- [ ] Design flourishes, e.g. paint splashes, food ingredients, etc. (overlay)
+- [ ] Alternating colour tiles (i.e. menu items, not spacers).
+- [ ] Logo / category headers as special filler tiles
+- [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 
 ## Exports
 - [ ] Verify "print ready"
 
-## /extracted
-- [ ] Sometimes not enough space for menu item description.  We need to limit the characters for menu item creation.
+## Allergens / Spice level / etc
+- [ ] Extend indicator taxonomy for additional dietary restrictions
+- [ ] Add custom allergen management via /extracted page
 
 ## Deployment
 - [x] Upgrade Vercel package
@@ -48,11 +30,13 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Bugs
-- [ ] Adding more reference photos during generation in /extracted (singular) leads to JSON error
-- [ ] If generating multiple photos, latest generated isn't selected afterwards
-- [ ] If removing images from menu items, they still display in the menu item thumbnail
 - [ ] Extraction from more than one image only extracts the first before page loads
 - [ ] Pricing keeps defaulting to USD
+
+## "What's New?" page
+- [ ] "What's New?" page
+- [ ] Coming soon...
+- [ ] Add popup banner to /dashboard
 
 ## Security
 - [ ] Address Next.js DoS vulnerabilities (see `SECURITY_NEXTJS_VULNERABILITIES.md`)
@@ -72,13 +56,13 @@
 - [x] Add links to footer
 - [x] Create Instagram account and add link icon to footer
 - [ ] Reddit community posting
-- [ ] Google "Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required."
+- [x] Google "Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required."
 
 ### Blogs
 - [x] Create blogs section of site
 - [x] Digital vs paper menu
-- [ ] Admin tool to add blogs
 - [ ] Grow sales with better images
+- [ ] Admin tool to add blogs
 - [ ] Use better descriptions to boost sales
 - [ ] Menu design tips and tricks
 - [ ] Menu engineering
@@ -97,6 +81,7 @@
 - [ ] Crop for large menus text extraction
 
 ## /extracted
+- [ ] Sometimes not enough space for menu item description.  We need to limit the characters for menu item creation.
 - [ ] Menu Control Panel > Download Menu pages (PNG zip)
 - [ ] Menu Control Panel > Download Menu Images (PNG zip)
 - [ ] Rename this page to menu curator
@@ -108,23 +93,17 @@
 - [ ] Boost my description
 
 ## /template
-- [ ] Introduce A3 variants to create more space for menu items and menu item components
 - [ ] Hand tool to navigate preview pane
-- [ ] Images too dark, perhaps only darken lower half (assuming top half has text)
-- [ ] Design flourishes, e.g. paint splashes, food ingredients, etc. (overlay)
+- [x] Images too dark, perhaps only darken lower half (assuming top half has text)
 - [ ] Upload branding colours
-- [ ] Alternating colour tiles (i.e. menu items, not spacers).
 - [ ] For "6. Display Options": new options to only show images for feature items
-- [ ] Logo as special filler tile
 - [ ] Develop presets
-- [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 - [ ] "Polaroid" / angled effect.  Perhaps with "marker pen" headings?
 - [ ] Should still leave a space between categories even if category titles toggled off
 - [ ] Drag and drop tiles
-- [ ] Hand tool to navigate preview pane
 
 ## /pricing
-- [ ] Image resolutions - 1k for Creator Pack, 2k for GridMenu, 4k for GridMenu+.  Consider Nano Banana 2.
+- [ ] Image resolutions - 1k for Creator Pack, 2k for GridMenu, 4k for GridMenu+.
 - [ ] Mauricio feedback - billing period (quarterly, bi-annually, annually)
 
 ## Payment QR
@@ -138,7 +117,7 @@
 - [ ] Show menu and image outputs examples
 
 ## Demo Flow
-- [ ] Replace "breakfast blackboard" photo with MS Word photo version
+- [x] Replace "breakfast blackboard" photo with MS Word photo version
 - [ ] Demo flow - don't allow users to proceed beyond /extracted until all images generated
 - [ ] Remove "Extract items" step - not necessary for demo flow (extra click)
 
@@ -220,6 +199,14 @@
 - [x] Test with OMG Donuts
 - [x] Reference photo(s) for inclusion in image generation for general users
 
+## /extracted - Image Generation
+- [x] Understand what's required and pricing to switch to NB2
+- [x] Determine best practices for prompting
+- [x] Investigate how prompting is currently constructed (Admin area should reveal details)
+- [x] Overhaul prompting modal interface to simplify for non-technical
+- [x] ISSUE: "Request...failed with status 429 Too Many Requests..."
+- [x] Need indicator of cutout status per menu item image
+
 ## Menu templates
 
 ## /template
@@ -230,6 +217,7 @@
 - [x] Redirect user back to Dashboard after export from /template to reduce repeat clicks/requests
 - [x] Show/hide category title
 - [x] If no/disabled images for category, render as text-only layout
+- [x] Drag and zoom individual menu item images in-place
 
 ### GridMenu V2 Layout Engine
 - [x] Complete V2 architecture implementation

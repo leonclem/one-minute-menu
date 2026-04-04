@@ -954,7 +954,7 @@ export interface TileRenderData {
 }
 
 export interface RenderElement {
-  type: 'text' | 'image' | 'indicator' | 'background'
+  type: 'text' | 'image' | 'indicator' | 'background' | 'svg'
   x: number
   y: number
   width?: number
@@ -1691,8 +1691,35 @@ function renderItemContent(
         }
       })
     } else {
-      // No placeholder background for cutout mode — transparent is intentional
-      if (!isCutoutMode) {
+      // Phase 3.4: Cutout placeholder for missing/pending cutouts in cutout mode
+      if (isCutoutMode) {
+        const placeholderSvg = `
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <!-- Dashed border circle (craft-like cutout pending indicator) -->
+            <circle cx="100" cy="100" r="90" fill="none" stroke="#B8A595" stroke-width="2" stroke-dasharray="8,6" stroke-linecap="round"/>
+            <!-- Plate silhouette (simple circle with shadow) -->
+            <ellipse cx="100" cy="105" rx="75" ry="70" fill="#E8DCC8" opacity="0.6"/>
+            <!-- Plate rim/edge detail -->
+            <ellipse cx="100" cy="100" rx="75" ry="70" fill="none" stroke="#9E8B7E" stroke-width="1.5" opacity="0.4"/>
+            <!-- Food silhouette (minimalist plate with mound) -->
+            <ellipse cx="100" cy="95" rx="55" ry="45" fill="#D4B5A0" opacity="0.4"/>
+            <!-- Center detail (utensil-like) -->
+            <line x1="85" y1="80" x2="115" y2="110" stroke="#9E8B7E" stroke-width="1.5" opacity="0.3" stroke-linecap="round"/>
+          </svg>
+        `
+        elements.push({
+          type: 'svg',
+          x: imageComputedX, y: imageY,
+          width: imageComputedWidth, height: imageComputedHeight,
+          content: placeholderSvg,
+          style: {
+            borderRadius: imageComputedBorderRadius,
+            backgroundColor: 'transparent',
+            opacity: 0.5,
+          }
+        })
+      } else {
+        // Regular mode: light grey placeholder background
         elements.push({
           type: 'background',
           x: imageComputedX, y: imageY,

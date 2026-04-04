@@ -65,14 +65,58 @@ export async function GET(request: NextRequest) {
 
 /**
  * PATCH — Reset failed/timed-out cutouts back to pending, then process them.
- * Body: { menuId?: string } — optional scope to a single menu.
+ * Body: { menuId?: string, imageId?: string } — optional scope to a single menu or image.
  */
 export async function PATCH(request: NextRequest) {
   try {
     const admin = await requireAdminApi()
     if (!admin.ok) return admin.response
 
-    const body = await request.json().catch(() => ({})) as { menuId?: string }
+    const body = await request.json().catch(() => ({})) as { menuId?: string; imageId?: string }
+    
+    // Phase 3.3: If imageId is provided, retry a specific image only
+    if (body.imageId) {
+      const supabase = (await import('@/lib/supabase-server')).createAdminSupabaseClient()
+      
+      // Reset this specific image's cutout back to pending
+      const { error: updateErr } = await supabase
+        .from('ai_generated_images')
+        .update({
+          cutout_status: 'pending',
+          cutout_failure_reason: null,
+          cutout_completed_at: null,
+        })
+        .eq('id', body.imageId)
+        .in('cutout_status', ['failed', 'timed_out'])
+      
+      if (updateErr) {
+        logger.error('[cutout-worker route] Failed to reset image cutout:', updateErr)
+        return NextResponse.json(
+          { error: 'Failed to reset cutout' },
+          { status: 400 }
+        )
+      }
+      
+      // Also reset the corresponding log entry
+      const { data: image } = await supabase
+        .from('ai_generated_images')
+        .select('cutout_generation_log_id')
+        .eq('id', body.imageId)
+        .maybeSingle()
+      
+      if (image?.cutout_generation_log_id) {
+        await supabase
+          .from('cutout_generation_logs')
+          .update({ status: 'pending', error_category: null, error_code: null, error_message: null, completed_at: null })
+          .eq('id', image.cutout_generation_log_id)
+          .in('status', ['failed', 'timed_out'])
+      }
+      
+      logger.info('[cutout-worker route] Reset cutout for image', { imageId: body.imageId })
+      return NextResponse.json({ reset: 1, imageId: body.imageId })
+    }
+    
+    // Original behavior: reset by menuId (or all if no menuId)
     const resetCount = await retryFailedCutouts(body.menuId)
 
     if (resetCount === 0) {

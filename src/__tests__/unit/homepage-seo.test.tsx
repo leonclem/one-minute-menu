@@ -305,17 +305,16 @@ describe('7.3 Content sections', () => {
     // The gallery section uses these three specific image sources
     const allImages = document.querySelectorAll('img')
     const gallerySrcs = [
-      '/marketing/hannahs-cafe.png',
       '/marketing/fonde-de-la-noche.png',
-      '/marketing/duck-fat-combined.png',
+      '/marketing/breakfast-3-col-dark-cutout.png',
+      '/marketing/indian-4-col-stretch-fit.png',
     ]
     gallerySrcs.forEach((src) => {
       const matches = Array.from(allImages).filter((img) => img.getAttribute('src') === src)
       expect(matches.length).toBeGreaterThanOrEqual(1)
     })
-    // Fonde de la Noche and Duck Fat only appear in the gallery (not reused elsewhere)
+    // Fonde de la Noche appears in the gallery
     expect(screen.getByAltText(/fonde de la noche/i)).toBeInTheDocument()
-    expect(screen.getByAltText(/duck fat/i)).toBeInTheDocument()
   })
 
   it('benefits section has at least 4 benefit cards (H3 headings)', () => {

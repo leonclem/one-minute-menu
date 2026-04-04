@@ -232,6 +232,12 @@ export class CutoutGenerationService {
         } catch (dbErr) {
           logger.error('[CutoutService] Failed to update log after provider error', dbErr)
         }
+
+        // Important: bubble up retryable provider errors so the worker-level
+        // retry/backoff logic can actually run.
+        if (bgError.category === 'rate_limited' || bgError.category === 'provider_unavailable' || bgError.category === 'timeout') {
+          throw bgError
+        }
       } else {
         // Unknown / unexpected error
         const message = err instanceof Error ? err.message : String(err)

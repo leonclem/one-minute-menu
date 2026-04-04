@@ -4,13 +4,117 @@ import {
   createBasicPrompt,
   validateMenuItemForImageGeneration
 } from '../prompt-construction'
-import type { MenuItem, ImageGenerationParams } from '@/types'
+import type { MenuItem, ImageGenerationParams, PhotoGenerationParams } from '@/types'
 
 describe('PromptConstructionService', () => {
   let service: PromptConstructionService
 
   beforeEach(() => {
     service = new PromptConstructionService()
+  })
+
+  describe('buildPromptV2', () => {
+    const sampleItem: MenuItem = {
+      id: '1',
+      name: 'Grilled Salmon',
+      description: 'Fresh Atlantic salmon with quinoa and roasted vegetables',
+      price: 24.99,
+      available: true,
+      category: 'Main Course',
+      order: 0,
+      imageSource: 'none'
+    }
+
+    it('should build prompt with narrative structure for 45 degree angle and natural lighting', () => {
+      const params: PhotoGenerationParams = {
+        angle: '45',
+        lighting: 'natural'
+      }
+
+      const result = service.buildPromptV2(sampleItem, params)
+
+      expect(result.prompt).toContain('Grilled Salmon — Fresh Atlantic salmon with quinoa and roasted vegetables.')
+      expect(result.prompt).toContain('Plated on a warm beige circular ceramic plate')
+      expect(result.prompt).toContain('Three-quarter (45 degree) camera angle')
+      expect(result.prompt).toContain('Soft natural window light')
+      expect(result.prompt).toContain('Photoreal food photography')
+      expect(result.prompt).toContain('No people, no humans, no hands')
+      expect(result.appliedTemplate).toBe('v2-narrative')
+    })
+
+    it('should use correct surface for fine-dining', () => {
+      const params: PhotoGenerationParams = {
+        angle: 'overhead',
+        lighting: 'moody',
+        establishmentType: 'fine-dining'
+      }
+
+      const result = service.buildPromptV2(sampleItem, params)
+
+      expect(result.prompt).toContain('dark slate surface')
+      expect(result.prompt).toContain('Top-down (90 degree) camera angle')
+      expect(result.prompt).toContain('Moody restaurant ambiance')
+    })
+
+    it('should use correct surface for cafe-brunch', () => {
+      const params: PhotoGenerationParams = {
+        angle: 'front',
+        lighting: 'natural',
+        establishmentType: 'cafe-brunch'
+      }
+
+      const result = service.buildPromptV2(sampleItem, params)
+
+      expect(result.prompt).toContain('warm wood table')
+      expect(result.prompt).toContain('Eye-level camera angle')
+    })
+
+    it('should inject cuisine context for japanese', () => {
+      const params: PhotoGenerationParams = {
+        angle: '45',
+        lighting: 'studio',
+        primaryCuisine: 'japanese'
+      }
+
+      const result = service.buildPromptV2(sampleItem, params)
+
+      expect(result.prompt).toContain('Minimalist zen plating, precise arrangement')
+      expect(result.prompt).toContain('Professional studio softbox lighting')
+    })
+
+    it('should append reference instructions when settingReferenceImage is provided', () => {
+      const params: PhotoGenerationParams = {
+        angle: '45',
+        lighting: 'natural',
+        settingReferenceImage: 'data:image/jpeg;base64,abc'
+      }
+
+      const result = service.buildPromptV2(sampleItem, params)
+
+      expect(result.prompt).toContain('Place the dish naturally into the scene shown in the reference image')
+      expect(result.prompt).toContain('Match the perspective, lighting direction, and surface')
+    })
+
+    it('should always include the constraints clause', () => {
+      const params: PhotoGenerationParams = {
+        angle: '45',
+        lighting: 'natural'
+      }
+
+      const result = service.buildPromptV2(sampleItem, params)
+
+      expect(result.prompt).toContain('No people, no humans, no hands, no text, no watermarks, no logos')
+      expect(result.prompt).toContain('nothing not directly part of the described dish')
+    })
+
+    it('should handle missing description gracefully', () => {
+      const itemNoDesc = { ...sampleItem, description: undefined }
+      const params: PhotoGenerationParams = { angle: '45', lighting: 'natural' }
+
+      const result = service.buildPromptV2(itemNoDesc, params)
+
+      expect(result.prompt).toContain('Grilled Salmon — .') // normalizeDescription returns empty string
+    })
   })
 
   describe('buildPrompt', () => {

@@ -7,13 +7,13 @@ import { logger } from '@/lib/logger'
 const DEFAULT_JOB_TIMEOUT_MS = 60_000
 
 /** Maximum retries per job for transient errors. */
-const MAX_RETRIES = 2
+const MAX_RETRIES = 4
 
 /** Categories of errors worth retrying. */
 const RETRYABLE_CATEGORIES = new Set(['rate_limited', 'provider_unavailable', 'timeout'])
 
-/** Inter-job delay in ms to avoid hammering the provider. */
-const INTER_JOB_DELAY_MS = 500
+/** Inter-job delay in ms to avoid hammering the provider (2 seconds for ~30 req/min pace). */
+const INTER_JOB_DELAY_MS = 2000
 
 export interface WorkerResult {
   processed: number
@@ -90,7 +90,33 @@ export async function processPendingCutouts(
         MAX_RETRIES,
         { logId, imageId }
       )
-      result.succeeded++
+      // processPendingCutout handles provider errors internally and may persist
+      // a terminal failure status without throwing. Verify final status before
+      // counting this job as succeeded to keep worker metrics truthful.
+      const { data: finalImage, error: finalStatusErr } = await supabase
+        .from('ai_generated_images')
+        .select('cutout_status, cutout_failure_reason')
+        .eq('id', imageId)
+        .single()
+
+      if (finalStatusErr || !finalImage) {
+        result.failed++
+        logger.error('[CutoutWorker] Could not verify final job status after processing', {
+          logId,
+          imageId,
+          error: finalStatusErr,
+        })
+      } else if (finalImage.cutout_status === 'succeeded') {
+        result.succeeded++
+      } else {
+        result.failed++
+        logger.warn('[CutoutWorker] Job completed with terminal non-success status', {
+          logId,
+          imageId,
+          status: finalImage.cutout_status,
+          reason: finalImage.cutout_failure_reason ?? null,
+        })
+      }
     } catch (err: unknown) {
       result.failed++
       const isTimeout = err instanceof TimeoutError
@@ -154,6 +180,7 @@ function isRetryable(err: unknown): boolean {
 /**
  * Retry a function up to `maxRetries` times with exponential backoff,
  * but only for transient/retryable errors.
+ * Uses the retry_after hint from rate limit responses if available.
  */
 async function withRetry<T>(
   fn: () => Promise<T>,
@@ -167,7 +194,21 @@ async function withRetry<T>(
     } catch (err) {
       lastError = err
       if (attempt < maxRetries && isRetryable(err)) {
-        const delayMs = 1000 * Math.pow(2, attempt) // 1s, 2s
+        // Use retry_after hint from rate limit response if available
+        let delayMs: number
+        if (err && typeof err === 'object' && 'retryAfter' in err) {
+          const retryAfterSeconds = (err as { retryAfter?: number }).retryAfter
+          if (typeof retryAfterSeconds === 'number' && retryAfterSeconds > 0) {
+            // Convert to ms and add 10% buffer
+            delayMs = Math.ceil(retryAfterSeconds * 1000 * 1.1)
+          } else {
+            // Fall back to exponential backoff (2s, 4s, 8s, 16s)
+            delayMs = 2000 * Math.pow(2, attempt)
+          }
+        } else {
+          // Standard exponential backoff (2s, 4s, 8s, 16s)
+          delayMs = 2000 * Math.pow(2, attempt)
+        }
         logger.warn(`[CutoutWorker] Retryable error on attempt ${attempt + 1}/${maxRetries + 1}, retrying in ${delayMs}ms`, {
           ...context,
           error: err instanceof Error ? err.message : (err && typeof err === 'object' && 'message' in err) ? (err as { message: string }).message : String(err),

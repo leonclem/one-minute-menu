@@ -50,7 +50,7 @@ const nextConfig = {
             : []),
           {
             key: 'Content-Security-Policy',
-            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; ${imgSrc} font-src 'self' data:; ${connectSrc}`,
+            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; ${imgSrc} font-src 'self' data: https://fonts.gstatic.com; ${connectSrc}`,
           },
         ],
       },

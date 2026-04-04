@@ -18,6 +18,9 @@ import ItemManagementModal from '@/components/ItemManagementModal'
 import ZoomableImageModal from '@/components/ZoomableImageModal'
 import ImageUpload from '@/components/ImageUpload'
 import MenuItemActionsModal from '@/components/MenuItemActionsModal'
+import PhotoGalleryModal from '@/components/PhotoGalleryModal'
+import GeneratePhotoModal from '@/components/GeneratePhotoModal'
+import BatchPhotoModal from '@/components/BatchPhotoModal'
 import BulkDeleteModal from '@/components/BulkDeleteModal'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
 
@@ -48,6 +51,9 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const [activeImageItemName, setActiveImageItemName] = useState<string | undefined>(undefined)
   const [activeImageMode, setActiveImageMode] = useState<'generate' | 'manage'>('generate')
   const [showBatchGeneration, setShowBatchGeneration] = useState(false)
+  const [showPhotoGallery, setShowPhotoGallery] = useState<MenuItem | null>(null)
+  const [showGeneratePhoto, setShowGeneratePhoto] = useState<MenuItem | null>(null)
+  const [showBatchPhoto, setShowBatchPhoto] = useState(false)
   const [demoGenerating, setDemoGenerating] = useState(false)
   const [previewImage, setPreviewImage] = useState<{ url: string; alt: string } | null>(null)
   const [editingMenuName, setEditingMenuName] = useState(false)
@@ -1771,7 +1777,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                                   })
                                   return
                                 }
-                                setShowBatchGeneration(true)
+                                setShowBatchPhoto(true)
                               }}
                               disabled={loading}
                             >
@@ -2553,9 +2559,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             setSelectedItemKeys(new Set()) // Clear selections after update
           }}
           onManageImages={() => {
-            setActiveImageItemId(activeMenuItem.id)
-            setActiveImageItemName(activeMenuItem.name)
-            setActiveImageMode('manage')
+            setShowPhotoGallery(activeMenuItem)
             setActiveMenuItem(null)
           }}
           onEditDetails={() => {
@@ -2567,6 +2571,61 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             })
             setShowEditItem(activeMenuItem)
             setActiveMenuItem(null)
+          }}
+        />
+      )}
+
+      {/* Photo Gallery Modal */}
+      {showPhotoGallery && (
+        <PhotoGalleryModal
+          itemId={showPhotoGallery.id}
+          menuId={menuId}
+          itemName={showPhotoGallery.name}
+          itemDescription={showPhotoGallery.description}
+          onClose={() => setShowPhotoGallery(null)}
+          onImageSelected={async (itemId, imageUrl) => {
+            await refreshMenu()
+          }}
+          onOpenGenerate={(params) => {
+            setShowGeneratePhoto(showPhotoGallery)
+            setShowPhotoGallery(null)
+          }}
+        />
+      )}
+
+      {/* Generate Photo Modal */}
+      {showGeneratePhoto && (
+        <GeneratePhotoModal
+          itemId={showGeneratePhoto.id}
+          menuId={menuId}
+          itemName={showGeneratePhoto.name}
+          itemDescription={showGeneratePhoto.description}
+          onClose={() => setShowGeneratePhoto(null)}
+          onSuccess={async () => {
+            await refreshMenu()
+            setShowGeneratePhoto(null)
+            // Re-open gallery to show new photo
+            if (showGeneratePhoto) {
+              setShowPhotoGallery(showGeneratePhoto)
+            }
+          }}
+        />
+      )}
+
+      {/* Batch Photo Modal */}
+      {showBatchPhoto && (
+        <BatchPhotoModal
+          menuId={menuId}
+          items={Array.from(selectedItemKeys).map(id => {
+            const item = baseMenu?.items.find(i => i.id === id)
+            return { id, name: item?.name || 'Unknown Item' }
+          })}
+          onClose={() => {
+            setShowBatchPhoto(false)
+            setSelectedItemKeys(new Set())
+          }}
+          onItemImageGenerated={async () => {
+            // Sequential runner calls this after each item
           }}
         />
       )}

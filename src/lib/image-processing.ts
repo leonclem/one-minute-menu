@@ -15,6 +15,7 @@ export interface ImageMetadata {
   originalPrompt: string;
   aspectRatio: string;
   generatedAt: Date;
+  metadata?: Record<string, any>;
 }
 
 export interface ProcessedImage {
@@ -385,6 +386,7 @@ export class ImageProcessingService {
           file_size: processedImage.sizes.original,
           selected: false,
           metadata: {
+            ...processedImage.metadata.metadata,
             sizes: processedImage.sizes,
             processingTimestamp: Date.now()
           }
