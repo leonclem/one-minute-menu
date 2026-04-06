@@ -710,8 +710,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           template_id: templateId,
           configuration,
           metadata: {
-            format: 'A4',
-            orientation: 'portrait'
+            format: templateId.includes('a3') ? 'A3' : 'A4',
+            orientation: templateId.includes('landscape') ? 'landscape' : 'portrait'
           }
         })
       })

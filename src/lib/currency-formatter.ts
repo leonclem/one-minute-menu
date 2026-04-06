@@ -61,7 +61,7 @@ export function formatCurrency(
     const formatter = new Intl.NumberFormat(locale, {
       style: showSymbol ? 'currency' : 'decimal',
       currency: normalizedCode,
-      currencyDisplay: showCode ? 'code' : 'symbol',
+      currencyDisplay: showCode ? 'code' : 'narrowSymbol',
     });
 
     return formatter.format(amount);

@@ -127,12 +127,11 @@ export async function renderToPdf(
     page = await acquirePage()
     logger.info(`[PDFRendererV2] Page acquired in ${Date.now() - acquireStartTime}ms`)
     
-    // Set viewport for consistent rendering
-    // Use A4 dimensions in pixels at 96 DPI
-    const isLandscape = document.pageSpec.width > document.pageSpec.height
+    // Set viewport to match actual page dimensions (points → pixels at 96 DPI: px = pt * 96/72)
+    const PT_TO_PX = 96 / 72
     await page.setViewport({
-      width: isLandscape ? 1123 : 794,
-      height: isLandscape ? 794 : 1123,
+      width: Math.ceil(document.pageSpec.width * PT_TO_PX),
+      height: Math.ceil(document.pageSpec.height * PT_TO_PX),
       deviceScaleFactor: 2 // High DPI for better rendering
     })
 

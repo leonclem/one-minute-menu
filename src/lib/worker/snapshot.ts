@@ -101,46 +101,18 @@ async function fetchTemplate(templateId: string): Promise<{
   version: string
   name: string
 }> {
-  // For now, we'll use a simple mapping since templates are likely stored
-  // in the codebase rather than the database
-  // TODO: Update this when template storage strategy is finalized
-  
-  const templateMap: Record<string, { version: string; name: string }> = {
-    'elegant-dark': { version: '1.0', name: 'Elegant Dark' },
-    'modern-minimal': { version: '1.0', name: 'Modern Minimal' },
-    'classic-menu': { version: '1.0', name: 'Classic Menu' },
-    'rustic-charm': { version: '1.0', name: 'Rustic Charm' },
-    '4-column-portrait': { version: '2.0', name: '4 column (portrait)' },
-    '3-column-portrait': { version: '2.0', name: '3 column (portrait)' },
-    '2-column-portrait': { version: '2.0', name: '2 column (portrait)' },
-    '1-column-tall': { version: '2.0', name: '1 column (tall)' },
-    '4-column-landscape': { version: '2.0', name: '4 column (landscape)' }
-  }
-
-  // Try template loader for V2 templates not in map (e.g. test-template, or legacy IDs resolved by loader)
-  let template = templateMap[templateId]
-  if (!template) {
-    try {
-      const { loadTemplateV2 } = await import('@/lib/templates/v2/template-loader-v2')
-      const t = await loadTemplateV2(templateId)
-      template = { version: t.version, name: t.name }
-    } catch {
-      // Fall through to throw
-    }
-  }
-
-  if (!template) {
+  // Resolve directly from YAML — the template loader is the single source of truth.
+  // No hardcoded map needed; adding a new template only requires a new YAML file.
+  try {
+    const { loadTemplateV2 } = await import('@/lib/templates/v2/template-loader-v2')
+    const t = await loadTemplateV2(templateId)
+    return { id: templateId, version: t.version, name: t.name }
+  } catch {
     throw new SnapshotCreationError(
       `Template not found: ${templateId}`,
       'TEMPLATE_NOT_FOUND',
       { templateId }
     )
-  }
-  
-  return {
-    id: templateId,
-    version: template.version,
-    name: template.name
   }
 }
 

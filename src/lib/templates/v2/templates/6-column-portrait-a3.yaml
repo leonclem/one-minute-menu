@@ -1,0 +1,201 @@
+id: 6-column-portrait-a3
+version: "2.0.0"
+name: 6 column · A3 (portrait)
+
+page:
+  size: A3_PORTRAIT
+  margins:
+    top: 25.51
+    right: 28.35
+    bottom: 25.51
+    left: 28.35
+
+regions:
+  header:
+    height: 65
+  title:
+    height: 32
+  footer:
+    height: 38
+
+body:
+  container:
+    type: GRID
+    cols: 6
+    # A3 portrait content width: 841.89 - 28.35 - 28.35 = 785.19pt
+    # Cell width: (785.19 - 5 * 10) / 6 = 122.53pt
+    rowHeight: 90
+    gapX: 10
+    gapY: 8
+
+tiles:
+  LOGO:
+    region: header
+    contentBudget:
+      nameLines: 0
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 50
+      paddingTop: 7
+      paddingBottom: 8
+      totalHeight: 65
+
+  TITLE:
+    region: title
+    contentBudget:
+      nameLines: 1
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 4
+      paddingBottom: 4
+      totalHeight: 32
+
+  SECTION_HEADER:
+    region: body
+    colSpan: 6
+    style:
+      typography:
+        fontSet: "system-sans-bold"
+        fontSize: "5xl"
+        fontWeight: "bold"
+        textAlign: "left"
+        lineHeight: "normal"
+        letterSpacing: 0.8
+        textTransform: "capitalize"
+        decoration: "bullet"
+      spacing:
+        paddingLeft: 8
+        paddingTop: 24
+        paddingBottom: 0
+      border:
+        width: 0.6
+        style: "solid"
+        sides: ["bottom"]
+    contentBudget:
+      nameLines: 1
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 8
+      paddingBottom: 4
+      totalHeight: 24
+
+  # ITEM_CARD: rowSpan 2
+  # Height: 2 * 90 + 1 * 8 = 188pt
+  ITEM_CARD:
+    region: body
+    rowSpan: 2
+    style:
+      typography:
+        name:
+          fontSet: "system-sans"
+          fontSize: "xxs"
+          fontWeight: "bold"
+          textTransform: "capitalize"
+        description:
+          fontSet: "modern-sans"
+          fontSize: "xxxs"
+          fontWeight: "normal"
+          lineHeight: "relaxed"
+        price:
+          fontSet: "modern-sans"
+          fontSize: "xxxs"
+          fontWeight: "bold"
+    contentBudget:
+      nameLines: 2
+      descLines: 3
+      indicatorAreaHeight: 14
+      imageBoxHeight: 96
+      paddingTop: 8
+      paddingBottom: 8
+      totalHeight: 188
+
+  # ITEM_TEXT_ROW: rowSpan 1
+  # Height: 90pt
+  ITEM_TEXT_ROW:
+    region: body
+    rowSpan: 1
+    style:
+      typography:
+        name:
+          fontSet: "system-sans"
+          fontSize: "xxs"
+          fontWeight: "bold"
+          textTransform: "capitalize"
+        description:
+          fontSet: "modern-sans"
+          fontSize: "xxxs"
+          fontWeight: "normal"
+          lineHeight: "relaxed"
+        price:
+          fontSet: "modern-sans"
+          fontSize: "xxxs"
+          fontWeight: "bold"
+    contentBudget:
+      nameLines: 2
+      descLines: 3
+      indicatorAreaHeight: 14
+      imageBoxHeight: 0
+      paddingTop: 8
+      paddingBottom: 8
+      totalHeight: 90
+
+  FOOTER_INFO:
+    region: footer
+    style:
+      typography:
+        contact:
+          fontSet: "modern-sans"
+          fontSize: "xss"
+          fontWeight: "normal"
+      border:
+        width: 1
+        color: "#D1D5DB"
+        style: "solid"
+        sides: ["top"]
+    contentBudget:
+      nameLines: 0
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 0
+      paddingTop: 4
+      paddingBottom: 0
+      totalHeight: 38
+
+policies:
+  lastRowBalancing: CENTER
+  showLogoOnPages: [FIRST, CONTINUATION, FINAL, SINGLE]
+  repeatSectionHeaderOnContinuation: true
+  sectionHeaderKeepWithNextItems: 1
+
+filler:
+  enabled: false
+  safeZones:
+    - startRow: 0
+      endRow: LAST_CONTENT
+      startCol: 0
+      endCol: 5
+  tiles:
+    - id: filler-blank
+      style: color
+      content: ''
+      rowSpan: 2
+  policy: SEQUENTIAL
+
+itemIndicators:
+  mode: INLINE
+  maxCount: 3
+  style:
+    badgeSize: 14
+    iconSet: emoji
+  spiceScale:
+    1: "🌶"
+    2: "🌶🌶"
+    3: "🌶🌶🌶"
+  letterFallback:
+    vegetarian: "V"
+    vegan: "VG"
+    halal: "H"
+    kosher: "K"
+    gluten-free: "GF"

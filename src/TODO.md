@@ -4,10 +4,11 @@
 - [ ] Install Vercel analytics
 
 ## /template
-- [ ] Introduce A3 variants to create more space for menu items and menu item components
-- [ ] Design flourishes, e.g. paint splashes, food ingredients, etc. (overlay)
-- [ ] Alternating colour tiles (i.e. menu items, not spacers).
+- [x] Introduce A3 variants to create more space for menu items and menu item components
+- [ ] Banner Image (flagship concept)
 - [ ] Logo / category headers as special filler tiles
+- [ ] Alternating colour tiles (i.e. menu items, not spacers).
+- [ ] Design flourishes, e.g. paint splashes, food ingredients, etc. (overlay)
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 
 ## Exports

@@ -1603,7 +1603,7 @@ function renderItemContent(
   const usableHeight = tile.height - padTop - padBottom
   let gapNameToDesc: number = hasDesc ? SPACING_V2.nameToDesc : 0
   let gapDescToPrice: number = SPACING_V2.descToPrice
-  const descReservedLines = hasDesc ? Math.min(descMaxLines, 2) : 0
+  const descReservedLines = hasDesc ? Math.min(descMaxLines, 3) : 0
   let fitNameHeight = nameLineHeight * nameMaxLines
   let fitDescHeight = descLineHeight * descReservedLines
   let fitNameLines = nameMaxLines
