@@ -740,10 +740,10 @@ describe('14.7 Font style preset Google Fonts URL generation', () => {
     expect(url).toContain('display=swap')
   })
 
-  it('"standard" preset returns a valid Google Fonts URL for Inter', () => {
+  it('"standard" preset returns a valid Google Fonts URL for Oswald', () => {
     const url = getFontStylePresetGoogleFontsUrl('standard')
     expect(url).toContain('https://fonts.googleapis.com/css2?family=')
-    expect(url).toContain('Inter')
+    expect(url).toContain('Oswald')
     expect(url).toContain('display=swap')
   })
 

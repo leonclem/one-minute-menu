@@ -278,9 +278,9 @@ export const FONT_STYLE_PRESETS: Record<FontStylePreset, FontStylePresetConfig> 
   standard: {
     id: 'standard',
     label: 'Standard',
-    bannerTitleFamily: '"Inter", "Arial", sans-serif',
-    sectionHeaderFamily: '"Inter", "Arial", sans-serif',
-    googleFonts: 'Inter:wght@400;500;600;700',
+    bannerTitleFamily: '"Oswald", "Arial Narrow", sans-serif',
+    sectionHeaderFamily: '"Oswald", "Arial Narrow", sans-serif',
+    googleFonts: 'Oswald:wght@400;500;600;700',
     bannerTitleWeight: 600,
     sectionHeaderWeight: 500,
   },
