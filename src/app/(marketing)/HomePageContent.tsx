@@ -327,7 +327,7 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                     className="rounded-lg w-full h-auto"
                   />
                   <Image
-                    src="/marketing/indian-4-col-stretch-fit.png"
+                    src="/marketing/magic-circle-4col-a4.png"
                     alt="Indian restaurant menu created with GridMenu — a showcase for grid-based menu design"
                     width={600}
                     height={800}

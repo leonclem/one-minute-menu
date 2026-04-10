@@ -307,7 +307,7 @@ describe('7.3 Content sections', () => {
     const gallerySrcs = [
       '/marketing/fonde-de-la-noche.png',
       '/marketing/fill-6col-a3-midnight.png',
-      '/marketing/indian-4-col-stretch-fit.png',
+      '/marketing/magic-circle-4col-a4.png',
     ]
     gallerySrcs.forEach((src) => {
       const matches = Array.from(allImages).filter((img) => img.getAttribute('src') === src)
