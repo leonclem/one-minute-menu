@@ -1,14 +1,13 @@
 # Roadmap
 
 ## Production Monitoring
-- [ ] Install Vercel analytics
+- [ ] Install analytics tooling (Vercel default, PostHog, etc.)
+
+## Social Media
+- [ ] Openclaw posts
 
 ## /template
-- [x] Introduce A3 variants to create more space for menu items and menu item components
-- [ ] Banner Image (flagship concept)
 - [ ] Logo / category headers as special filler tiles
-- [ ] Alternating colour tiles (i.e. menu items, not spacers).
-- [ ] Design flourishes, e.g. paint splashes, food ingredients, etc. (overlay)
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 
 ## Exports
@@ -102,6 +101,9 @@
 - [ ] "Polaroid" / angled effect.  Perhaps with "marker pen" headings?
 - [ ] Should still leave a space between categories even if category titles toggled off
 - [ ] Drag and drop tiles
+- [ ] Image edit applies to banner logo and flagship image
+- [ ] Alternating colour tiles (i.e. menu items, not spacers).
+- [ ] Design flourishes, e.g. paint splashes, food ingredients, etc. (overlay)
 
 ## /pricing
 - [ ] Image resolutions - 1k for Creator Pack, 2k for GridMenu, 4k for GridMenu+.
@@ -148,6 +150,7 @@
 ## misc
 - [ ] Display user information (e.g. email address of logged in user)
 - [ ] Create CP, Grid+, and G+P logo for upload to Stripe products config
+- [ ] Monochrome GridMenu logo on every menu
 
 ## Unclassified
 - [ ] Lloyd feedback: Give an option to email the PDF menu or send to printers (order x amount)
@@ -220,6 +223,8 @@
 - [x] Show/hide category title
 - [x] If no/disabled images for category, render as text-only layout
 - [x] Drag and zoom individual menu item images in-place
+- [x] Introduce A3 variants to create more space for menu items and menu item components
+- [x] Banner Image (flagship concept)
 
 ### GridMenu V2 Layout Engine
 - [x] Complete V2 architecture implementation

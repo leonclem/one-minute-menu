@@ -224,18 +224,6 @@ export default function DemoSampleClient() {
               {/* Menu Image */}
               {sampleMenu.imageUrl ? (
                 <div className="w-full h-56 md:h-64 overflow-visible flex items-center justify-center relative">
-                  {sampleMenu.id === 'sample-breakfast' && (
-                    <div className="absolute top-4 z-10 pointer-events-none select-none" style={{ right: '18%' }}>
-                      <div
-                        className="flex flex-col items-center justify-center text-center rounded-full bg-amber-400 text-amber-900 shadow-lg border-2 border-amber-500"
-                        style={{ width: 88, height: 88, transform: 'rotate(12deg)' }}
-                      >
-                        <span className="text-[9px] font-black uppercase tracking-tight leading-tight">Now with</span>
-                        <span className="text-[11px] font-black uppercase tracking-tight leading-tight">✂ Cutout</span>
-                        <span className="text-[9px] font-black uppercase tracking-tight leading-tight">images!</span>
-                      </div>
-                    </div>
-                  )}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                   src={sampleMenu.imageUrl}

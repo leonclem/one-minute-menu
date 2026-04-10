@@ -28,7 +28,10 @@ import type {
   FooterInfoContentV2,
   FeatureCardContentV2,
   DividerContentV2,
-  ImageModeV2
+  ImageModeV2,
+  FontStylePreset,
+  BannerContentV2,
+  BannerStripContentV2
 } from './engine-types-v2'
 import { formatCurrency } from '../../currency-formatter'
 
@@ -103,10 +106,20 @@ export interface RenderOptionsV2 {
   spacerTilePatternId?: string
   /** Per-item image transform overrides (itemId → transform). Applied at render time for live preview without re-fetching layout. */
   imageTransforms?: Map<string, import('@/types').ImageTransform>
+  /** Live banner hero image transform override (applied during edit without re-fetching layout) */
+  bannerHeroTransform?: import('@/types').ImageTransform
+  /** Live banner logo image transform override (applied during edit without re-fetching layout) */
+  bannerLogoTransform?: import('@/types').ImageTransform
   /** When true, image tiles show the interactive edit overlay */
   imageEditMode?: boolean
   /** Callback when user adjusts a per-item image transform via the overlay */
   onImageTransformChange?: (itemId: string, transform: import('@/types').ImageTransform) => void
+  /** Callback when user adjusts the banner hero or logo transform */
+  onBannerTransformChange?: (target: 'hero' | 'logo', transform: import('@/types').ImageTransform) => void
+  /** Font style preset for banner title and section headers */
+  fontStylePreset?: FontStylePreset
+  /** Centre-align category headings (and item tiles when spacer tiles = "None") */
+  centreAlignment?: boolean
 }
 
 // ============================================================================
@@ -219,6 +232,77 @@ export function getFontSet(fontSetId: string): FontSetV2 {
 export function getFontFamily(fontSetId: string): string {
   const fontSet = getFontSet(fontSetId)
   return `"${fontSet.primary}", ${fontSet.fallback}`
+}
+
+// ============================================================================
+// Font Style Presets (Banner Title & Section Headers)
+// ============================================================================
+
+/** Configuration for a font style preset */
+export interface FontStylePresetConfig {
+  id: FontStylePreset
+  label: string
+  /** CSS font-family string for banner title */
+  bannerTitleFamily: string
+  /** CSS font-family string for section headers */
+  sectionHeaderFamily: string
+  /** Google Fonts API param (empty string for system fonts) */
+  googleFonts: string
+  bannerTitleWeight: number
+  sectionHeaderWeight: number
+  /** Optional multiplier applied to the template's section header font size (default 1.0) */
+  sectionHeaderFontSizeMultiplier?: number
+}
+
+/** Registry of all font style presets */
+export const FONT_STYLE_PRESETS: Record<FontStylePreset, FontStylePresetConfig> = {
+  strong: {
+    id: 'strong',
+    label: 'Strong',
+    bannerTitleFamily: '"Anton", "Impact", "Arial Black", sans-serif',
+    sectionHeaderFamily: '"Anton", "Impact", "Arial Black", sans-serif',
+    googleFonts: '', // System fonts only — no Google Fonts needed
+    bannerTitleWeight: 400, // Anton only has 400
+    sectionHeaderWeight: 400,
+  },
+  fun: {
+    id: 'fun',
+    label: 'Fun',
+    bannerTitleFamily: '"Caveat Bold", "Caveat", "Ink Free", cursive',
+    sectionHeaderFamily: '"Caveat Bold", "Caveat", "Ink Free", cursive',
+    googleFonts: 'Caveat:wght@400;700',
+    bannerTitleWeight: 700,
+    sectionHeaderWeight: 700,
+    sectionHeaderFontSizeMultiplier: 1.25,
+  },
+  standard: {
+    id: 'standard',
+    label: 'Standard',
+    bannerTitleFamily: '"Inter", "Arial", sans-serif',
+    sectionHeaderFamily: '"Inter", "Arial", sans-serif',
+    googleFonts: 'Inter:wght@400;500;600;700',
+    bannerTitleWeight: 600,
+    sectionHeaderWeight: 500,
+  },
+  serif: {
+    id: 'serif',
+    label: 'Serif',
+    bannerTitleFamily: '"Times New Roman", "Georgia", serif',
+    sectionHeaderFamily: '"Times New Roman", "Georgia", serif',
+    googleFonts: '', // System font — no Google Fonts needed
+    bannerTitleWeight: 700,
+    sectionHeaderWeight: 700,
+  },
+}
+
+/**
+ * Generate a Google Fonts import URL for a given font style preset.
+ * Returns an empty string for presets that use only system fonts.
+ */
+export function getFontStylePresetGoogleFontsUrl(preset: FontStylePreset): string {
+  const config = FONT_STYLE_PRESETS[preset]
+  if (!config.googleFonts) return ''
+  return `https://fonts.googleapis.com/css2?family=${config.googleFonts}&display=swap`
 }
 
 // ============================================================================
@@ -355,6 +439,14 @@ export interface ColorPaletteV2 {
       medium: string
     }
     textMuted: string
+    /** Banner background color */
+    bannerSurface: string
+    /** Banner text color */
+    bannerText: string
+    /** Footer border color */
+    footerBorder: string
+    /** Footer text color (address, phone, email, social media) */
+    footerText: string
   }
 }
 
@@ -404,7 +496,11 @@ export const PALETTES_V2: ColorPaletteV2[] = [
         light: '#E5E7EB',
         medium: '#D1D5DB'
       },
-      textMuted: '#9CA3AF'
+      textMuted: '#9CA3AF',
+      bannerSurface: '#E1E3E8',
+      bannerText: '#111827',
+      footerBorder: '#E5E7EB',
+      footerText: '#111827'
     }
   },
   {
@@ -414,7 +510,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
       background: '#FDFCF0', // Warm cream
       surface: '#F5F2E8',
       menuTitle: '#2C2C2C',
-      sectionHeader: '#2C2C2C',
+      sectionHeader: '#634e06',
       itemTitle: '#2C2C2C',
       itemPrice: '#8B6B23', // Muted gold/bronze
       itemDescription: '#555555',
@@ -425,7 +521,11 @@ export const PALETTES_V2: ColorPaletteV2[] = [
         light: '#E8E4C9',
         medium: '#D4CFA3'
       },
-      textMuted: '#8E8E8E'
+      textMuted: '#8E8E8E',
+      bannerSurface: '#D4CFC1',
+      bannerText: '#2C2C2C',
+      footerBorder: '#E8E4C9',
+      footerText: '#2C2C2C'
     }
   },
   {
@@ -446,7 +546,11 @@ export const PALETTES_V2: ColorPaletteV2[] = [
         light: '#333333',
         medium: '#444444'
       },
-      textMuted: '#666666'
+      textMuted: '#666666',
+      bannerSurface: '#8f7e02',
+      bannerText: '#1C1C1B',
+      footerBorder: '#333333',
+      footerText: '#1C1C1B'
     }
   },
   {
@@ -467,7 +571,11 @@ export const PALETTES_V2: ColorPaletteV2[] = [
         light: '#E0D5C4',
         medium: '#C9BAA3'
       },
-      textMuted: '#9A8B7A'
+      textMuted: '#9A8B7A',
+      bannerSurface: '#d3c5b2',
+      bannerText: '#3E2C1C',
+      footerBorder: '#E0D5C4',
+      footerText: '#3E2C1C'
     }
   },
   {
@@ -488,7 +596,11 @@ export const PALETTES_V2: ColorPaletteV2[] = [
         light: '#D0DEE6',
         medium: '#B3C8D4'
       },
-      textMuted: '#8A9FAB'
+      textMuted: '#8A9FAB',
+      bannerSurface: '#c9dbe6',
+      bannerText: '#1B3A4B',
+      footerBorder: '#D0DEE6',
+      footerText: '#1B3A4B'
     }
   },
   {
@@ -509,7 +621,11 @@ export const PALETTES_V2: ColorPaletteV2[] = [
         light: '#D4DED0',
         medium: '#B8C9B3'
       },
-      textMuted: '#7E9478'
+      textMuted: '#7E9478',
+      bannerSurface: '#d1dfc5',
+      bannerText: '#1C3318',
+      footerBorder: '#D4DED0',
+      footerText: '#1C3318'
     }
   },
   {
@@ -530,7 +646,11 @@ export const PALETTES_V2: ColorPaletteV2[] = [
         light: '#F5D0DA',
         medium: '#E8A8BA'
       },
-      textMuted: '#B08090'
+      textMuted: '#B08090',
+      bannerSurface: '#f0cbd5',
+      bannerText: '#8B1A4A',
+      footerBorder: '#F5D0DA',
+      footerText: '#8B1A4A'
     }
   },
   {
@@ -541,7 +661,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
       surface: '#3d1515',
       menuTitle: '#D4A017',
       sectionHeader: '#D4A017',
-      itemTitle: '#F5E6C8',
+      itemTitle: '#caa9a9',
       itemPrice: '#D4A017',
       itemDescription: '#C4A882',
       itemIndicators: {
@@ -551,7 +671,11 @@ export const PALETTES_V2: ColorPaletteV2[] = [
         light: '#5C1A1A',
         medium: '#7A2E2E'
       },
-      textMuted: '#8A6A5A'
+      textMuted: '#8A6A5A',
+      bannerSurface: '#6d0505',
+      bannerText: '#D4A017',
+      footerBorder: '#5C1A1A',
+      footerText: '#D4A017'
     }
   },
   {
@@ -572,7 +696,11 @@ export const PALETTES_V2: ColorPaletteV2[] = [
         light: '#E5A800',
         medium: '#C98F00'
       },
-      textMuted: '#7A5C00'
+      textMuted: '#7A5C00',
+      bannerSurface: '#dca308',
+      bannerText: '#1A1200',
+      footerBorder: '#E5A800',
+      footerText: '#1A1200'
     }
   }
 ]
@@ -743,6 +871,18 @@ export const TEXTURE_IDS: string[] = [
   'linen',
   'dark-paper',
 ]
+
+/** Palette IDs that are dark-themed and pair well with dark-only textures */
+export const DARK_PALETTE_IDS = new Set(['midnight-gold', 'lunar-red-gold', 'elegant-dark'])
+
+/** Texture IDs that only work well on dark palettes */
+export const DARK_ONLY_TEXTURE_IDS = new Set(['dark-paper'])
+
+/** Texture IDs that only work well on light palettes */
+export const LIGHT_ONLY_TEXTURE_IDS = new Set([
+  'subtle-dots', 'paper-grain', 'stripes-horizontal', 'stripes-vertical',
+  'stripes-diagonal', 'waves', 'linen',
+])
 
 // ============================================================================
 // Filler (Spacer Tile) Pattern Registry
@@ -936,6 +1076,12 @@ export function renderTileContent(
     case 'DECORATIVE_DIVIDER':
       return renderDividerContent(content as DividerContentV2, tile, options)
     
+    case 'BANNER':
+      return renderBannerContent(content as BannerContentV2, tile, options)
+
+    case 'BANNER_STRIP':
+      return renderBannerStripContent(content as BannerStripContentV2, tile, options)
+    
     default:
       return {
         elements: [],
@@ -990,6 +1136,16 @@ export interface RenderStyle {
   transform?: string
   /** CSS transform-origin string (e.g. '50% 70%') paired with transform */
   transformOrigin?: string
+  /** CSS writing-mode (e.g. 'vertical-rl') for rotated text */
+  writingMode?: string
+  /** CSS text-orientation paired with writingMode */
+  textOrientation?: string
+  /** CSS display override */
+  display?: string
+  /** CSS align-items override */
+  alignItems?: string
+  /** CSS justify-content override */
+  justifyContent?: string
 }
 
 // ============================================================================
@@ -1174,7 +1330,11 @@ function renderSectionHeaderContent(
   const fontSet = tileStyle?.typography?.fontSet || 'modern-sans'
   const fontSize = tileStyle?.typography?.fontSize || '2xl'
   const fontWeight = tileStyle?.typography?.fontWeight || 'semibold'
-  const textAlign = tileStyle?.typography?.textAlign ?? 'center'
+  const textAlign = options.centreAlignment === true
+    ? 'center'
+    : options.centreAlignment === false
+      ? 'left'
+      : (tileStyle?.typography?.textAlign ?? 'center')
   const lineHeight = tileStyle?.typography?.lineHeight || 'normal'
   const letterSpacingOverride = tileStyle?.typography?.letterSpacing
   const decoration = tileStyle?.typography?.decoration
@@ -1185,6 +1345,11 @@ function renderSectionHeaderContent(
   
   // Get font family from font set
   const fontFamily = getFontFamily(fontSet)
+  
+  // Apply font style preset override if set
+  const presetConfig = options.fontStylePreset ? FONT_STYLE_PRESETS[options.fontStylePreset] : null
+  const resolvedFontFamily = presetConfig ? presetConfig.sectionHeaderFamily : fontFamily
+  const resolvedFontWeight = presetConfig ? presetConfig.sectionHeaderWeight : (TYPOGRAPHY_TOKENS_V2.fontWeight[fontWeight as FontWeightV2] || TYPOGRAPHY_TOKENS_V2.fontWeight.semibold)
   
   // Add background if specified
   if (tileStyle?.background?.color) {
@@ -1276,7 +1441,7 @@ function renderSectionHeaderContent(
         ? 1.5
         : undefined
 
-  const resolvedFontSize = TYPOGRAPHY_TOKENS_V2.fontSize[fontSize as FontSizeV2] || TYPOGRAPHY_TOKENS_V2.fontSize['2xl']
+  const resolvedFontSize = (TYPOGRAPHY_TOKENS_V2.fontSize[fontSize as FontSizeV2] || TYPOGRAPHY_TOKENS_V2.fontSize['2xl']) * (presetConfig?.sectionHeaderFontSizeMultiplier ?? 1)
   const resolvedLineHeight = TYPOGRAPHY_TOKENS_V2.lineHeight[lineHeight as LineHeightV2] || TYPOGRAPHY_TOKENS_V2.lineHeight.normal
 
   // Anchor text just above the bottom border so heading-to-divider proximity
@@ -1341,9 +1506,9 @@ function renderSectionHeaderContent(
       content: decorationChar,
       style: {
         fontSize: decorationFontSize,
-        fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight[fontWeight as FontWeightV2] || TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
+        fontWeight: resolvedFontWeight,
         color: decorationColor,
-        fontFamily,
+        fontFamily: resolvedFontFamily,
         textAlign: 'left'
       }
     })
@@ -1358,14 +1523,14 @@ function renderSectionHeaderContent(
     content: labelText,
     style: {
       fontSize: resolvedFontSize,
-      fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight[fontWeight as FontWeightV2] || TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
+      fontWeight: resolvedFontWeight,
       lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight[lineHeight as LineHeightV2] || TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
       color: tileStyle?.typography?.color || palette.colors.sectionHeader,
       // For centered headings with a decoration, we approximate-center the
       // bullet + label group via geometry, so the label's own textAlign
       // remains left-aligned to keep the bullet close to the first letter.
       textAlign: (showDecoration && textAlign === 'center' ? 'left' : textAlign) as TextAlignV2,
-      fontFamily,
+      fontFamily: resolvedFontFamily,
       textTransform: labelCssTransform,
       letterSpacing
     }
@@ -2283,6 +2448,339 @@ function renderTextBlockContent(
   return { elements }
 }
 
+function renderBannerContent(
+  content: BannerContentV2,
+  tile: TileInstanceV2,
+  options: RenderOptionsV2
+): TileRenderData {
+  const elements: RenderElement[] = []
+  const preset = FONT_STYLE_PRESETS[content.fontStylePreset] || FONT_STYLE_PRESETS.standard
+
+  // 1. Full banner background
+  elements.push({
+    type: 'background',
+    x: 0, y: 0,
+    width: tile.width,
+    height: tile.height,
+    content: '',
+    style: { backgroundColor: content.surfaceColor }
+  })
+
+  const hasHeroImage = !!content.heroImageUrl || !!content.heroImageCutoutUrl
+  const showHero = hasHeroImage && content.bannerImageStyle !== 'none'
+  const isCutout = content.bannerImageStyle === 'cutout'
+  const hasVenueIdentity = content.showVenueName && (content.logoUrl || content.venueName)
+  const showTitle = content.showBannerTitle
+
+  // Resolve live-edit transforms (override persisted values from content)
+  const logoTransform = options.bannerLogoTransform ?? content.logoTransform
+  const logoTransformStyle = computeImageTransformStyle(logoTransform, 0, 50)
+
+  // Hero zone: right 48% of banner width. In cutout mode the image overflows both
+  // the top and right edges so it's clipped by the page container.
+  const heroWidthRatio = showHero ? 0.48 : 0
+  const heroZoneWidth = tile.width * heroWidthRatio
+
+  // Determine whether to show the sidebar slice.
+  // The sidebar is only shown when BOTH venue identity AND title are visible
+  // (so there are two things to split between sidebar and main zone).
+  const showSidebar = hasVenueIdentity && showTitle
+
+  if (showSidebar) {
+    // ── LAYOUT A / B (swappable) ─────────────────────────────────────────────
+    // Default (swapLayout=false): sidebar = title vertical, main = venue name/logo
+    // Swapped  (swapLayout=true):  sidebar = venue name vertical, main = title large
+    //
+    // The sidebar is a narrow strip on the left with a thin divider.
+
+    const sidebarWidth = Math.max(32, tile.height * 0.26)
+    const dividerWidth = 1
+    const sidebarTotalWidth = sidebarWidth + dividerWidth
+    const textPadH = Math.max(12, tile.height * 0.08)
+    const textZoneX = sidebarTotalWidth + textPadH
+    const textZoneWidth = tile.width - sidebarTotalWidth - heroZoneWidth - textPadH * 2
+
+    // Sidebar divider
+    elements.push({
+      type: 'background',
+      x: sidebarWidth, y: 0,
+      width: dividerWidth,
+      height: tile.height,
+      content: '',
+      style: { backgroundColor: content.textColor, opacity: 0.2 }
+    })
+
+    if (!content.swapLayout) {
+      // ── Default: "MENU" vertical in sidebar, venue name/logo in main ──────
+
+      if (showTitle) {
+        const sidebarFontSize = Math.max(12, sidebarWidth * 0.72)
+        elements.push({
+          type: 'text',
+          x: 0, y: 0,
+          width: sidebarWidth,
+          height: tile.height,
+          content: content.title,
+          style: {
+            fontSize: sidebarFontSize,
+            fontWeight: preset.bannerTitleWeight,
+            fontFamily: preset.bannerTitleFamily,
+            color: content.textColor,
+            textAlign: 'center',
+            lineHeight: 1,
+            writingMode: 'vertical-rl',
+            textOrientation: 'mixed',
+            transform: 'rotate(180deg)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            letterSpacing: 2,
+            zIndex: 4,
+          }
+        })
+      }
+
+      // Venue name / logo centred in main zone
+      if (content.logoUrl) {
+        // Fill ~50% of the available text zone width, capped by height
+        const maxLogoW = textZoneWidth * 0.5
+        const maxLogoH = tile.height * 0.7
+        const logoWidth = Math.min(maxLogoW, maxLogoH * 4)
+        const logoHeight = Math.min(maxLogoH, logoWidth / 2)
+        const logoY = (tile.height - logoHeight) / 2
+        elements.push({
+          type: 'image',
+          x: textZoneX,
+          y: logoY,
+          width: logoWidth,
+          height: logoHeight,
+          content: content.logoUrl,
+          style: { objectFit: 'contain', objectPosition: logoTransformStyle.objectPosition ?? 'left center', transform: logoTransformStyle.transform, transformOrigin: logoTransformStyle.transformOrigin, zIndex: 4 }
+        })
+      } else if (content.venueName) {
+        const venueFontSize = Math.max(18, Math.min(tile.height * 0.55, textZoneWidth * 0.16))
+        const venueY = (tile.height - venueFontSize * 1.1) / 2
+        elements.push({
+          type: 'text',
+          x: textZoneX,
+          y: venueY,
+          width: textZoneWidth,
+          content: content.venueName,
+          style: {
+            fontSize: venueFontSize,
+            fontWeight: preset.bannerTitleWeight,
+            fontFamily: preset.bannerTitleFamily,
+            color: content.textColor,
+            textAlign: 'left',
+            lineHeight: 1.05,
+            zIndex: 4,
+          }
+        })
+      }
+
+    } else {
+      // ── Swapped: venue name vertical in sidebar, "MENU" large in main ─────
+
+      // Venue name / logo rotated vertically in sidebar
+      if (content.logoUrl) {
+        // Logo rotated 90° in sidebar — keep it small enough to fit
+        const logoH = Math.min(sidebarWidth * 0.8, tile.height * 0.5)
+        const logoW = logoH * 3
+        const logoX = (sidebarWidth - logoH) / 2
+        const logoY = (tile.height - logoW) / 2
+        elements.push({
+          type: 'image',
+          x: logoX,
+          y: logoY,
+          width: logoH,
+          height: logoW,
+          content: content.logoUrl,
+          style: { objectFit: 'contain', objectPosition: 'center' }
+        })
+      } else if (content.venueName) {
+        const sidebarFontSize = Math.max(10, sidebarWidth * 0.55)
+        elements.push({
+          type: 'text',
+          x: 0, y: 0,
+          width: sidebarWidth,
+          height: tile.height,
+          content: content.venueName,
+          style: {
+            fontSize: sidebarFontSize,
+            fontWeight: preset.bannerTitleWeight,
+            fontFamily: preset.bannerTitleFamily,
+            color: content.textColor,
+            textAlign: 'center',
+            lineHeight: 1,
+            writingMode: 'vertical-rl',
+            textOrientation: 'mixed',
+            transform: 'rotate(180deg)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            letterSpacing: 1,
+          }
+        })
+      }
+
+      // "MENU" large and horizontal in main zone
+      if (showTitle) {
+        const titleFontSize = Math.max(20, Math.min(tile.height * 0.72, textZoneWidth * 0.35))
+        const titleY = (tile.height - titleFontSize * 1.0) / 2
+        elements.push({
+          type: 'text',
+          x: textZoneX,
+          y: titleY,
+          width: textZoneWidth,
+          content: content.title,
+          style: {
+            fontSize: titleFontSize,
+            fontWeight: preset.bannerTitleWeight,
+            fontFamily: preset.bannerTitleFamily,
+            color: content.textColor,
+            textAlign: 'left',
+            lineHeight: 1.0,
+            zIndex: 4,
+          }
+        })
+      }
+    }
+
+  } else if (hasVenueIdentity && !showTitle) {
+    // ── Venue identity only (no title, no sidebar) ──────────────────────────
+    // Logo or venue name fills the left portion of the banner generously.
+    const padH = Math.max(12, tile.height * 0.1)
+    const padV = Math.max(8, tile.height * 0.12)
+    const availW = tile.width - heroZoneWidth - padH * 2
+    const availH = tile.height - padV * 2
+
+    if (content.logoUrl) {
+      // Fill ~55% of the non-hero width, capped so it doesn't clip vertically
+      const targetW = availW * 0.55
+      const targetH = availH * 0.85
+      const logoWidth = Math.min(targetW, targetH * 4)
+      const logoHeight = Math.min(targetH, logoWidth)
+      const logoY = (tile.height - logoHeight) / 2
+      elements.push({
+        type: 'image',
+        x: padH,
+        y: logoY,
+        width: logoWidth,
+        height: logoHeight,
+        content: content.logoUrl,
+        style: { objectFit: 'contain', objectPosition: logoTransformStyle.objectPosition ?? 'left center', transform: logoTransformStyle.transform, transformOrigin: logoTransformStyle.transformOrigin, zIndex: 4 }
+      })
+    } else if (content.venueName) {
+      const venueFontSize = Math.max(18, Math.min(tile.height * 0.55, availW * 0.16))
+      const venueY = (tile.height - venueFontSize * 1.1) / 2
+      elements.push({
+        type: 'text',
+        x: padH,
+        y: venueY,
+        width: availW,
+        content: content.venueName,
+        style: {
+          fontSize: venueFontSize,
+          fontWeight: preset.bannerTitleWeight,
+          fontFamily: preset.bannerTitleFamily,
+          color: content.textColor,
+          textAlign: 'left',
+          lineHeight: 1.05,
+          zIndex: 4,
+        }
+      })
+    }
+
+  } else {
+    // ── NO venue identity: title fills the available width ───────────────────
+    if (showTitle) {
+      const padH = Math.max(12, tile.height * 0.08)
+      const textZoneWidth = tile.width - heroZoneWidth - padH * 2
+      const titleFontSize = Math.max(20, tile.height * 0.72)
+      const titleY = (tile.height - titleFontSize * 1.0) / 2
+      elements.push({
+        type: 'text',
+        x: padH,
+        y: titleY,
+        width: textZoneWidth,
+        content: content.title,
+        style: {
+          fontSize: titleFontSize,
+          fontWeight: preset.bannerTitleWeight,
+          fontFamily: preset.bannerTitleFamily,
+          color: content.textColor,
+          textAlign: 'left',
+          lineHeight: 1.0,
+          zIndex: 4,
+        }
+      })
+    }
+  }
+
+  // ── Hero image ────────────────────────────────────────────────────────────
+  if (showHero) {
+    const heroTransform = options.bannerHeroTransform ?? content.heroTransform
+    if (isCutout) {
+      const imageUrl = content.heroImageCutoutUrl || content.heroImageUrl!
+      const heroSize = tile.height * 1.8
+      const heroX = tile.width - heroSize * 0.75
+      const heroY = tile.height - heroSize * 0.85
+      const heroTransformStyle = computeImageTransformStyle(heroTransform, 50, 100, true)
+      elements.push({
+        type: 'image',
+        x: heroX,
+        y: heroY,
+        width: heroSize,
+        height: heroSize,
+        content: imageUrl,
+        style: {
+          objectFit: 'contain',
+          objectPosition: heroTransformStyle.objectPosition ?? 'right bottom',
+          transform: heroTransformStyle.transform,
+          transformOrigin: heroTransformStyle.transformOrigin,
+          zIndex: 3,
+        }
+      })
+    } else {
+      const imageUrl = content.heroImageUrl!
+      const heroTransformStyle = computeImageTransformStyle(heroTransform, 50, 50)
+      elements.push({
+        type: 'image',
+        x: tile.width - heroZoneWidth,
+        y: 0,
+        width: heroZoneWidth,
+        height: tile.height,
+        content: imageUrl,
+        style: {
+          objectFit: 'cover',
+          objectPosition: heroTransformStyle.objectPosition ?? 'center',
+          transform: heroTransformStyle.transform,
+          transformOrigin: heroTransformStyle.transformOrigin,
+        }
+      })
+    }
+  }
+
+  return { elements }
+}
+
+function renderBannerStripContent(
+  content: BannerStripContentV2,
+  tile: TileInstanceV2,
+  _options: RenderOptionsV2
+): TileRenderData {
+  return {
+    elements: [{
+      type: 'background',
+      x: 0, y: 0,
+      width: tile.width,
+      height: tile.height,
+      content: '',
+      style: { backgroundColor: content.surfaceColor }
+    }]
+  }
+}
+
 function renderFooterInfoContent(
   content: FooterInfoContentV2,
   tile: TileInstanceV2,
@@ -2295,24 +2793,29 @@ function renderFooterInfoContent(
   // Use template contentBudget for vertical padding when present (allows tighter footer and less gap below text)
   const paddingTop = tile.contentBudget?.paddingTop ?? SPACING_V2.tilePadding
 
-  // Footer background block
-  const bgColor = tileStyle?.background?.color || palette.colors.border.light
+  // Footer background block — full-bleed surface color at full opacity.
+  // When a banner is present, content.surfaceColor carries the same blended color
+  // so the footer matches the banner. Fall back to palette surface/background.
+  const bgColor = content.surfaceColor || tileStyle?.background?.color || palette.colors.surface || palette.colors.background
+  // Use a generous height so the background fills the full-bleed region
+  // (the region container clips any overflow beyond the page edge).
+  const bgHeight = tile.height * 3
   elements.push({
     type: 'background',
     x: 0,
     y: 0,
     width: tile.width,
-    height: tile.height,
+    height: bgHeight,
     content: '',
     style: {
       backgroundColor: bgColor,
-      opacity: tileStyle?.background?.color ? 1 : 0.08,
+      opacity: 1,
       borderRadius: tileStyle?.background?.borderRadius || 0
     }
   })
 
   // Top border
-  const borderColor = tileStyle?.border?.color || palette.colors.border.light
+  const borderColor = tileStyle?.border?.color || palette.colors.footerBorder
   const borderWidth = tileStyle?.border?.width || 1
   elements.push({
     type: 'background',
@@ -2331,7 +2834,7 @@ function renderFooterInfoContent(
   })
   const fontSize = contactTypo.fontSize
   const lineHeight = contactTypo.lineHeight
-  const defaultTextColor = tileStyle?.typography?.color || palette.colors.textMuted
+  const defaultTextColor = tileStyle?.typography?.color || palette.colors.footerText
   let currentY = paddingTop + borderWidth
 
   const addText = (text: string, bold = false) => {

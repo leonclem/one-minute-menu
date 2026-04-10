@@ -24,6 +24,7 @@ import type {
   RegionV2,
   SelectionConfigV2,
   PlacementLogEntry,
+  EngineItemV2,
 } from './engine-types-v2'
 import { calculateRegions, getBodyRegion } from './region-calculator'
 import {
@@ -33,6 +34,8 @@ import {
   createTitleTile,
   createFooterInfoTile,
   createDividerTile,
+  createBannerTile,
+  createBannerStripTile,
   selectItemVariant,
   placeTile,
   advancePosition,
@@ -44,6 +47,74 @@ import {
 } from './tile-placer'
 import { calculateTileHeight, calculateMaxRows } from './engine-types-v2'
 import { getItemSlotPositions, hashString } from './filler-manager-v2'
+import { PALETTES_V2, DEFAULT_PALETTE_V2 } from './renderer-v2'
+
+// =============================================================================
+// Banner Helpers
+// =============================================================================
+
+/**
+ * Determine if banner should be shown based on selection config and template config.
+ * Returns false when showBanner is false OR template.banner.enabled is false/absent.
+ */
+export function isBannerEnabled(
+  template: TemplateV2,
+  selection?: SelectionConfigV2
+): boolean {
+  const bannerConfig = template.banner
+  if (!bannerConfig?.enabled) return false
+  // showBanner defaults to true when template supports it
+  return selection?.showBanner !== false
+}
+
+/**
+ * Compute banner height for FIRST/SINGLE pages.
+ * Returns 0 when banner is disabled.
+ */
+export function computeBannerHeight(
+  template: TemplateV2,
+  selection?: SelectionConfigV2
+): number {
+  if (!isBannerEnabled(template, selection)) return 0
+  return template.banner!.heightPt
+}
+
+/**
+ * Compute banner strip height for CONTINUATION/FINAL pages.
+ * Returns 0 when banner is disabled.
+ */
+export function computeStripHeight(
+  template: TemplateV2,
+  selection?: SelectionConfigV2
+): number {
+  if (!isBannerEnabled(template, selection)) return 0
+  return template.banner!.stripHeightPt
+}
+
+/**
+ * Get surface and text colors from the active palette.
+ */
+function getBannerColors(selection?: SelectionConfigV2): { surfaceColor: string; textColor: string } {
+  const palette = selection?.colourPaletteId
+    ? (PALETTES_V2.find(p => p.id === selection.colourPaletteId) ?? DEFAULT_PALETTE_V2)
+    : DEFAULT_PALETTE_V2
+
+  return {
+    surfaceColor: palette.colors.bannerSurface,
+    textColor: palette.colors.bannerText
+  }
+}
+
+/**
+ * Find the flagship item across all sections of the menu.
+ */
+function findFlagshipItem(menu: EngineMenuV2): EngineItemV2 | undefined {
+  for (const section of menu.sections) {
+    const flagship = section.items.find(item => item.isFlagship)
+    if (flagship) return flagship
+  }
+  return undefined
+}
 
 // =============================================================================
 // Placement Context Extension
@@ -99,8 +170,10 @@ export function initContext(
   pageSpec: PageSpecV2,
   selection?: SelectionConfigV2
 ): StreamingContext {
-  const showMenuTitle = selection?.showMenuTitle !== false // Default to true
-  const regions = calculateRegions(pageSpec, template, showMenuTitle)
+  const bannerHeight = computeBannerHeight(template, selection)
+  // Suppress title region when banner is present (banner covers venue identity)
+  const showMenuTitle = bannerHeight === 0 && selection?.showMenuTitle === true
+  const regions = calculateRegions(pageSpec, template, showMenuTitle, bannerHeight)
   applyBodyTopPadding(regions, selection)
   
   const initialPage: PageLayoutV2 = {
@@ -195,7 +268,14 @@ export function finalizePage(ctx: StreamingContext): void {
   
   // When fillers are enabled (template or selection), do not center so empty cells remain for fillers
   const fillersEnabled = ctx.selection?.fillersEnabled ?? ctx.template.filler.enabled
-  if (!fillersEnabled) {
+  // Apply centering if: fillers are disabled AND centering is wanted.
+  // centreAlignment === false means the user explicitly disabled it, overriding the template policy.
+  // centreAlignment === true means the user explicitly enabled it.
+  // centreAlignment === undefined means defer to the template policy.
+  const templateWantsCentre = ctx.template.policies.lastRowBalancing === 'CENTER'
+  const userOverride = ctx.selection?.centreAlignment  // true | false | undefined
+  const shouldCentre = userOverride === false ? false : (userOverride === true ? true : templateWantsCentre)
+  if (!fillersEnabled && shouldCentre) {
     applyLastRowBalancing(ctx.currentPage, ctx.template)
   }
 }
@@ -207,8 +287,14 @@ export function finalizePage(ctx: StreamingContext): void {
  * @param pageType - Type of the new page
  */
 export function startNewPage(ctx: StreamingContext, pageType: PageTypeV2): void {
-  const showMenuTitle = ctx.selection?.showMenuTitle !== false // Default to true
-  const regions = calculateRegions(ctx.pageSpec, ctx.template, showMenuTitle)
+  // Continuation/Final pages use strip height; First/Single use full banner height
+  const isFirstOrSingle = pageType === 'FIRST' || pageType === 'SINGLE'
+  const bannerHeight = isFirstOrSingle
+    ? computeBannerHeight(ctx.template, ctx.selection)
+    : computeStripHeight(ctx.template, ctx.selection)
+  // Suppress title region when banner is present (banner covers venue identity)
+  const showMenuTitle = bannerHeight === 0 && ctx.selection?.showMenuTitle === true
+  const regions = calculateRegions(ctx.pageSpec, ctx.template, showMenuTitle, bannerHeight)
   applyBodyTopPadding(regions, ctx.selection)
   
   const newPage: PageLayoutV2 = {
@@ -235,7 +321,7 @@ export function startNewPage(ctx: StreamingContext, pageType: PageTypeV2): void 
 // =============================================================================
 
 /**
- * Place static tiles (logo, title) on a page based on page type.
+ * Place static tiles (logo, title, banner/strip) on a page based on page type.
  *
  * @param ctx - Streaming context
  * @param menu - Menu data
@@ -247,9 +333,11 @@ export function placeStaticTiles(
   pageType: PageTypeV2
 ): void {
   const { showLogoOnPages } = ctx.template.policies
-  
-  // Place logo if policy allows for this page type
-  if (showLogoOnPages.includes(pageType)) {
+  const hasBanner = !!ctx.currentPage.regions.find(r => r.id === 'banner')
+
+  // Place logo only if policy allows for this page type AND no banner is present
+  // (banner already shows venue identity, so the header logo would be redundant)
+  if (showLogoOnPages.includes(pageType) && !hasBanner) {
     const logoTile = createLogoTile(menu, ctx.template)
     const headerRegion = ctx.currentPage.regions.find(r => r.id === 'header')!
     
@@ -266,9 +354,9 @@ export function placeStaticTiles(
     
     logPlacement(ctx, 'placed', placedLogo.id, 'Static logo tile')
   }
-  
-  // Place title tile only if showMenuTitle is enabled
-  const showMenuTitle = ctx.selection?.showMenuTitle !== false // Default to true
+
+  // Title tile is suppressed when a banner is present; banner covers venue identity
+  const showMenuTitle = !hasBanner && ctx.selection?.showMenuTitle === true
   if (showMenuTitle) {
     const titleTile = createTitleTile(menu, ctx.template)
     const titleRegion = ctx.currentPage.regions.find(r => r.id === 'title')!
@@ -287,6 +375,45 @@ export function placeStaticTiles(
     logPlacement(ctx, 'placed', placedTitle.id, 'Static title tile')
   }
 
+  // Place banner or banner strip when enabled
+  const bannerRegion = ctx.currentPage.regions.find(r => r.id === 'banner')
+  if (bannerRegion) {
+    const { surfaceColor, textColor } = getBannerColors(ctx.selection)
+    const isFirstOrSingle = pageType === 'FIRST' || pageType === 'SINGLE'
+
+    if (isFirstOrSingle) {
+      // Full banner on FIRST/SINGLE pages
+      const flagshipItem = findFlagshipItem(menu)
+      const bannerTile = createBannerTile(
+        menu,
+        ctx.selection ?? {},
+        bannerRegion.height,
+        surfaceColor,
+        textColor,
+        flagshipItem
+      )
+      const placedBanner = placeTile(
+        ctx,
+        ctx.currentPage,
+        { ...bannerTile, width: bannerRegion.width },
+        bannerRegion,
+        ctx.template
+      )
+      logPlacement(ctx, 'placed', placedBanner.id, 'Static banner tile')
+    } else {
+      // Banner strip on CONTINUATION/FINAL pages
+      const stripTile = createBannerStripTile(menu, bannerRegion.height, surfaceColor)
+      const placedStrip = placeTile(
+        ctx,
+        ctx.currentPage,
+        { ...stripTile, width: bannerRegion.width },
+        bannerRegion,
+        ctx.template
+      )
+      logPlacement(ctx, 'placed', placedStrip.id, 'Static banner strip tile')
+    }
+  }
+
   // Place footer info if present
   if (menu.metadata.venueInfo && (
     menu.metadata.venueInfo.address || 
@@ -297,7 +424,9 @@ export function placeStaticTiles(
     menu.metadata.venueInfo.socialMedia?.x ||
     menu.metadata.venueInfo.socialMedia?.website
   )) {
-    const footerTile = createFooterInfoTile(menu, ctx.template)
+    // Use the same blended surface color as the banner so footer matches
+    const { surfaceColor: footerSurfaceColor } = bannerRegion ? getBannerColors(ctx.selection) : { surfaceColor: undefined }
+    const footerTile = createFooterInfoTile(menu, ctx.template, footerSurfaceColor)
     const footerRegion = ctx.currentPage.regions.find(r => r.id === 'footer')
     
     if (footerRegion) {
@@ -342,7 +471,8 @@ function canPlaceHeaderWithItems(
   }
   
   // Create a temporary context to check if header fits at the correct position
-  const tempCtx = { ...ctx, currentRow: headerRow }
+  // Reset currentCol to 0 since section headers always start new rows
+  const tempCtx = { ...ctx, currentRow: headerRow, currentCol: 0 }
   
   if (section.items.length === 0 || sectionHeaderKeepWithNextItems === 0) {
     return fitsInCurrentPage(tempCtx, headerTile.height)
@@ -394,6 +524,11 @@ function canPlaceHeaderWithItems(
   const itemsHeight = rowsNeeded * rowHeight + Math.max(0, rowsNeeded - 1) * gapY
   requiredHeight += itemsHeight
   
+  // Add a safety margin to ensure items actually fit (not just theoretically)
+  // This prevents edge cases where items don't fit due to rounding or other factors
+  const safetyMargin = gapY
+  requiredHeight += safetyMargin
+  
   // Header colSpan is usually 'cols' (full width)
   return fitsInCurrentPage(tempCtx, requiredHeight, headerTile.colSpan)
 }
@@ -422,7 +557,7 @@ export function streamingPaginate(
   selection?: SelectionConfigV2
 ): LayoutDocumentV2 {
   const ctx = initContext(template, pageSpec, selection)
-  const bodyRegion = getBodyRegion(ctx.currentPage.regions)
+  let bodyRegion = getBodyRegion(ctx.currentPage.regions)
   
   // Place static tiles on first page
   placeStaticTiles(ctx, menu, 'FIRST')
@@ -491,6 +626,7 @@ export function streamingPaginate(
         // Place section header on new page
         const placedHeader = placeTile(ctx, ctx.currentPage, headerTile, newBodyRegion, template)
         logPlacement(ctx, 'placed', placedHeader.id, 'Section header')
+        bodyRegion = newBodyRegion
       } else {
         // Section headers always start new rows - force new row if not at start
         if (ctx.currentCol !== 0) {
@@ -643,7 +779,8 @@ export function streamingPaginate(
     }
 
     // When fillers are enabled, do not center — empty cells remain for fillers
-    if (!fillersEnabled) {
+    // Only center if centreAlignment is explicitly requested
+    if (!fillersEnabled && ctx.selection?.centreAlignment) {
       applySectionLastRowCentering(ctx.pages, section.id, template)
     }
   }

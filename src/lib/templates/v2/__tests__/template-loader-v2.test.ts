@@ -44,12 +44,12 @@ describe('Template Loader V2', () => {
       expect(template.id).toBe('4-column-portrait')
     })
 
-    it('should load and validate the 4-column-landscape template', async () => {
-      const template = await loadTemplateV2('4-column-landscape')
+    it('should load and validate the 5-column-landscape template', async () => {
+      const template = await loadTemplateV2('5-column-landscape')
       
-      expect(template.id).toBe('4-column-landscape')
+      expect(template.id).toBe('5-column-landscape')
       expect(template.version).toBe('2.0.0')
-      expect(template.name).toBe('4 column (landscape)')
+      expect(template.name).toBe('5 column (landscape)')
       expect(template.page.size).toBe('A4_LANDSCAPE')
       expect(template.page.margins).toEqual({ top: 20, right: 28, bottom: 20, left: 28 })
       expect(template.body.container.cols).toBe(4)

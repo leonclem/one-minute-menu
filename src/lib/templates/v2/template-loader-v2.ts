@@ -41,7 +41,7 @@ function resolveTemplateId(templateId: string): string {
   if (templateId === 'italian-v2') return '2-column-portrait'
   if (templateId === 'three-column-modern-v2') return '3-column-portrait'
   if (templateId === 'half-a4-tall-v2') return '1-column-tall'
-  if (templateId === 'classic-cards-v2-landscape') return '4-column-landscape'
+  if (templateId === 'classic-cards-v2-landscape') return '5-column-landscape'
   return templateId
 }
 

@@ -163,6 +163,9 @@ export interface MenuItem {
   
   // Featured item flag
   isFeatured?: boolean
+
+  // Flagship item flag (one per menu, used for banner hero image)
+  isFlagship?: boolean
   
   // AI Image Generation fields
   aiImageId?: string
@@ -873,6 +876,13 @@ export interface RenderSnapshot {
     layout?: any
     textures?: any
     features?: any
+    // Banner & footer fields
+    showBanner?: boolean
+    bannerTitle?: string
+    showVenueName?: boolean
+    bannerImageStyle?: string
+    fontStylePreset?: string
+    flagshipItemId?: string | null
   }
   
   // Menu data (frozen state)
@@ -923,6 +933,9 @@ export interface RenderSnapshot {
 
       // Cutout (transparent background) image URL, when available
       cutout_url?: string
+
+      // Flagship item designation for banner hero image
+      isFlagship?: boolean
 
       // Per-mode image positioning (zoom/pan) for PDF export
       imageTransform?: ImageTransformRecord

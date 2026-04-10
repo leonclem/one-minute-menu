@@ -128,7 +128,7 @@ export const SafeZoneSchemaV2 = z.object({
 /**
  * Schema for region IDs - enum validation catches typos at parse time.
  */
-export const RegionIdSchema = z.enum(['header', 'title', 'body', 'footer'])
+export const RegionIdSchema = z.enum(['header', 'title', 'banner', 'body', 'footer'])
 
 // =============================================================================
 // Tile Variant Schema
@@ -238,6 +238,12 @@ export const TemplateSchemaV2 = z.object({
     supportsCutouts: z.boolean().optional()
   }).optional(),
   
+  banner: z.object({
+    enabled: z.boolean(),
+    heightPt: z.number().min(0),
+    stripHeightPt: z.number().min(0)
+  }).optional(),
+
   itemIndicators: z.object({
     mode: z.enum(['IMAGE_OVERLAY', 'INLINE', 'INLINE_AFTER_NAME', 'IN_DESCRIPTION']),
     maxCount: z.number().int().min(1).max(10),

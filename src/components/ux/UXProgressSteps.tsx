@@ -30,6 +30,11 @@ export function UXProgressSteps({ currentStep, menuId, clickable = true }: UXPro
   const handleNavigate = (id: StepId, index: number) => {
     if (!clickable) return
     if (index > activeIndex) return
+    // For demo menus, the first step (upload) should go back to sample selection
+    if (id === 'upload' && menuId.startsWith('demo-')) {
+      router.push('/demo/sample')
+      return
+    }
     router.push(`/menus/${menuId}/${id}`)
   }
 

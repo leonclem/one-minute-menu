@@ -70,9 +70,9 @@ describe('createRenderSnapshot', () => {
 
     const snapshot = await createRenderSnapshot(
       'menu-123',
-      'elegant-dark',
+      '4-column-portrait',
       {
-        template_id: 'elegant-dark',
+        template_id: '4-column-portrait',
         format: 'A4',
         orientation: 'portrait',
         include_images: true,
@@ -82,9 +82,9 @@ describe('createRenderSnapshot', () => {
 
     // Verify snapshot structure
     expect(snapshot).toBeDefined()
-    expect(snapshot.template_id).toBe('elegant-dark')
-    expect(snapshot.template_version).toBe('1.0')
-    expect(snapshot.template_name).toBe('Elegant Dark')
+    expect(snapshot.template_id).toBe('4-column-portrait')
+    expect(snapshot.template_version).toBe('2.0.0')
+    expect(snapshot.template_name).toBe('4 column (portrait)')
     
     expect(snapshot.menu_data.id).toBe('menu-123')
     expect(snapshot.menu_data.name).toBe('Test Menu')
@@ -145,9 +145,9 @@ describe('createRenderSnapshot', () => {
 
     const snapshot = await createRenderSnapshot(
       'menu-123',
-      'elegant-dark',
+      '4-column-portrait',
       {
-        template_id: 'elegant-dark'
+        template_id: '4-column-portrait'
       }
     )
 
@@ -169,11 +169,11 @@ describe('createRenderSnapshot', () => {
     })
 
     await expect(
-      createRenderSnapshot('invalid-menu', 'elegant-dark', { template_id: 'elegant-dark' })
+      createRenderSnapshot('invalid-menu', '4-column-portrait', { template_id: '4-column-portrait' })
     ).rejects.toThrow(SnapshotCreationError)
     
     await expect(
-      createRenderSnapshot('invalid-menu', 'elegant-dark', { template_id: 'elegant-dark' })
+      createRenderSnapshot('invalid-menu', '4-column-portrait', { template_id: '4-column-portrait' })
     ).rejects.toThrow('Menu not found')
   })
 
@@ -214,11 +214,11 @@ describe('createRenderSnapshot', () => {
     })
 
     await expect(
-      createRenderSnapshot('menu-123', 'elegant-dark', { template_id: 'elegant-dark' })
+      createRenderSnapshot('menu-123', '4-column-portrait', { template_id: '4-column-portrait' })
     ).rejects.toThrow(SnapshotCreationError)
     
     await expect(
-      createRenderSnapshot('menu-123', 'elegant-dark', { template_id: 'elegant-dark' })
+      createRenderSnapshot('menu-123', '4-column-portrait', { template_id: '4-column-portrait' })
     ).rejects.toThrow('Untrusted image URL')
   })
 
@@ -236,8 +236,8 @@ describe('createRenderSnapshot', () => {
 
     const snapshot = await createRenderSnapshot(
       'menu-123',
-      'elegant-dark',
-      { template_id: 'elegant-dark' }
+      '4-column-portrait',
+      { template_id: '4-column-portrait' }
     )
 
     expect(snapshot.export_options.format).toBe('A4')
@@ -278,8 +278,8 @@ describe('createRenderSnapshot', () => {
 
     const snapshot = await createRenderSnapshot(
       'menu-123',
-      'elegant-dark',
-      { template_id: 'elegant-dark' }
+      '4-column-portrait',
+      { template_id: '4-column-portrait' }
     )
 
     expect(snapshot.menu_data.items).toHaveLength(1)
@@ -290,9 +290,9 @@ describe('createRenderSnapshot', () => {
 describe('getRenderSnapshot', () => {
   it('should extract snapshot from job metadata', () => {
     const mockSnapshot: RenderSnapshot = {
-      template_id: 'elegant-dark',
+      template_id: '4-column-portrait',
       template_version: '1.0',
-      template_name: 'Elegant Dark',
+      template_name: '4 column (portrait)',
       menu_data: {
         id: 'menu-123',
         name: 'Test Menu',
@@ -326,7 +326,7 @@ describe('getRenderSnapshot', () => {
 
   it('should throw error when snapshot is invalid', () => {
     const invalidSnapshot = {
-      template_id: 'elegant-dark'
+      template_id: '4-column-portrait'
       // Missing required fields
     }
 
@@ -340,7 +340,7 @@ describe('getRenderSnapshot', () => {
 
   it('should validate all required snapshot fields', () => {
     const incompleteSnapshot = {
-      template_id: 'elegant-dark',
+      template_id: '4-column-portrait',
       template_version: '1.0',
       // Missing other required fields
     }
@@ -368,9 +368,9 @@ describe('getRenderSnapshot', () => {
     // even if the original data source is modified.
 
     const originalSnapshot: RenderSnapshot = {
-      template_id: 'elegant-dark',
+      template_id: '4-column-portrait',
       template_version: '1.0',
-      template_name: 'Elegant Dark',
+      template_name: '4 column (portrait)',
       menu_data: {
         id: 'menu-123',
         name: 'Original Menu Name',

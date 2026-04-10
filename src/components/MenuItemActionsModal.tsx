@@ -31,6 +31,7 @@ export default function MenuItemActionsModal({
   const [loading, setLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showFeaturedConfirm, setShowFeaturedConfirm] = useState<string | null>(null)
+  const [showFlagshipConfirm, setShowFlagshipConfirm] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const { showToast } = useToast()
 
@@ -194,6 +195,63 @@ export default function MenuItemActionsModal({
     }
   }
 
+  const handleToggleFlagship = async (replacingItemId?: string) => {
+    setLoading(true)
+    try {
+      const newFlagship = !item.isFlagship
+      const response = await fetch(`/api/menus/${menuId}/items/${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isFlagship: newFlagship }),
+      })
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to update flagship status'
+        try {
+          const error = await response.json()
+          errorMessage = error.error || errorMessage
+        } catch {
+          errorMessage = `${response.status}: ${response.statusText}`
+        }
+        throw new Error(errorMessage)
+      }
+
+      showToast({
+        type: 'success',
+        title: newFlagship ? 'Flagship set' : 'Flagship removed',
+        description: newFlagship
+          ? `"${item.name}" is now your flagship item.`
+          : `"${item.name}" is no longer the flagship item.`,
+      })
+
+      onItemUpdated()
+      onClose()
+    } catch (error) {
+      console.error('Error updating flagship status:', error)
+      showToast({
+        type: 'error',
+        title: 'Update failed',
+        description: error instanceof Error ? error.message : 'Please try again.',
+      })
+    } finally {
+      setLoading(false)
+      setShowFlagshipConfirm(null)
+    }
+  }
+
+  const handleFlagshipClick = () => {
+    if (item.isFlagship) {
+      handleToggleFlagship()
+      return
+    }
+    const existingFlagship = allItems?.find(i => i.id !== item.id && i.isFlagship)
+    if (existingFlagship) {
+      setShowFlagshipConfirm(existingFlagship.name)
+    } else {
+      handleToggleFlagship()
+    }
+  }
+
   const handleMoveToCategory = async (newCategory: string) => {
     if (newCategory === item.category) {
       onClose()
@@ -315,6 +373,40 @@ export default function MenuItemActionsModal({
     )
   }
 
+  if (showFlagshipConfirm) {
+    return createPortal(
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+        <div className="w-full max-w-md bg-white rounded-lg shadow-lg border border-ux-border">
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-ux-text mb-2">
+              Replace Flagship Item
+            </h3>
+            <p className="text-ux-text-secondary mb-4">
+              &ldquo;{showFlagshipConfirm}&rdquo; is already your flagship item. Only one item per menu can be the flagship. Replace it with &ldquo;{item.name}&rdquo;?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowFlagshipConfirm(null)}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => handleToggleFlagship()}
+                disabled={loading}
+              >
+                {loading ? 'Updating...' : 'Replace'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )
+  }
+
   // Filter out current category from available categories
   const otherCategories = availableCategories.filter(cat => cat !== item.category)
 
@@ -342,12 +434,9 @@ export default function MenuItemActionsModal({
             {/* Edit details */}
             {onEditDetails && (
               <button
-                onClick={() => {
-                  onEditDetails()
-                  onClose()
-                }}
+                onClick={() => { onEditDetails(); onClose() }}
                 disabled={loading}
-                className="w-full text-left px-3 py-2 rounded-lg hover:bg-ux-background-secondary transition-colors text-ux-text disabled:opacity-50"
+                className="w-full text-left px-3 py-2 rounded-lg border border-ux-border hover:bg-ux-background-secondary transition-colors text-ux-text text-sm disabled:opacity-50"
               >
                 Update item details
               </button>
@@ -356,29 +445,30 @@ export default function MenuItemActionsModal({
             {/* Image management */}
             {onManageImages && (
               <button
-                onClick={() => {
-                  onManageImages()
-                  onClose()
-                }}
+                onClick={() => { onManageImages(); onClose() }}
                 disabled={loading}
-                className="w-full text-left px-3 py-2 rounded-lg hover:bg-ux-background-secondary transition-colors text-ux-text disabled:opacity-50 flex items-center justify-between"
+                className="w-full text-left px-3 py-2 rounded-lg border border-ux-border hover:bg-ux-background-secondary transition-colors text-ux-text text-sm disabled:opacity-50 flex items-center justify-between gap-2"
               >
                 <span>
-                  {item.imageSource !== 'none' || item.customImageUrl || item.aiImageId 
-                    ? 'Manage photos' 
+                  {item.imageSource !== 'none' || item.customImageUrl || item.aiImageId
+                    ? 'Manage photos'
                     : 'Add photo / Create AI Photo'}
                 </span>
                 {!(item.imageSource !== 'none' || item.customImageUrl || item.aiImageId) && (
-                  <span className="text-[10px] bg-ux-primary/10 text-ux-primary px-1.5 py-0.5 rounded uppercase font-bold tracking-tight">New</span>
+                  <span className="text-[10px] bg-ux-primary/10 text-ux-primary px-1.5 py-0.5 rounded uppercase font-bold tracking-tight shrink-0">New</span>
                 )}
               </button>
             )}
-            
+
             {/* Toggle availability */}
             <button
               onClick={handleToggleAvailability}
               disabled={loading}
-              className="w-full text-left px-3 py-2 rounded-lg hover:bg-ux-background-secondary transition-colors text-ux-text disabled:opacity-50"
+              className={`w-full text-left px-3 py-2 rounded-lg border transition-colors text-sm disabled:opacity-50 ${
+                !item.available
+                  ? 'bg-green-50 border-green-300 text-green-800 font-medium hover:bg-green-100'
+                  : 'border-ux-border text-ux-text hover:bg-ux-background-secondary'
+              }`}
             >
               {item.available ? 'Mark as out of stock' : 'Mark as available'}
             </button>
@@ -387,36 +477,53 @@ export default function MenuItemActionsModal({
             <button
               onClick={handleFeaturedClick}
               disabled={loading}
-              className="w-full text-left px-3 py-2 rounded-lg hover:bg-ux-background-secondary transition-colors text-ux-text disabled:opacity-50 flex items-center justify-between"
+              className={`w-full text-left px-3 py-2 rounded-lg border transition-colors text-sm disabled:opacity-50 flex items-center justify-between gap-2 ${
+                item.isFeatured
+                  ? 'bg-gray-100 border-gray-300 text-ux-text font-medium'
+                  : 'border-ux-border text-ux-text hover:bg-ux-background-secondary'
+              }`}
             >
               <span>{item.isFeatured ? 'Remove featured' : 'Mark as featured'}</span>
-              {item.isFeatured && (
-                <span className="text-amber-500">★</span>
-              )}
+              <span className="text-gray-400 text-xs shrink-0">★</span>
             </button>
-            
+
+            {/* Toggle flagship — only shown when item has an image */}
+            {item.imageSource !== 'none' && (
+              <button
+                onClick={handleFlagshipClick}
+                disabled={loading}
+                className={`w-full text-left px-3 py-2 rounded-lg border transition-colors text-sm disabled:opacity-50 flex items-center justify-between gap-2 ${
+                  item.isFlagship
+                    ? 'bg-yellow-50 border-yellow-300 text-ux-text font-medium'
+                    : 'border-ux-border text-ux-text hover:bg-ux-background-secondary'
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  {item.isFlagship ? 'Remove flagship' : 'Set as flagship'}
+                  <span
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-ux-primary/10 text-ux-primary text-[10px] font-bold cursor-help shrink-0"
+                    title="Your flagship item's image will be showcased in the menu banner. Only one item per menu can be the flagship."
+                  >
+                    i
+                  </span>
+                </span>
+                <span className="text-yellow-500 text-sm shrink-0">★</span>
+              </button>
+            )}
+
             {/* Move to category */}
             {otherCategories.length > 0 && (
-              <div className="border-t border-ux-border pt-2 px-3">
-                <p className="text-xs font-medium text-ux-text-secondary mb-2">
-                  Move to category:
-                </p>
+              <div className="border-t border-ux-border pt-2">
                 <div className="relative">
                   <select
                     disabled={loading}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        handleMoveToCategory(e.target.value)
-                      }
-                    }}
+                    onChange={(e) => { if (e.target.value) handleMoveToCategory(e.target.value) }}
                     className="w-full px-3 py-2 border border-ux-border rounded-lg text-sm bg-white text-ux-text focus:outline-none focus:ring-2 focus:ring-ux-primary/20 transition-all cursor-pointer appearance-none"
                     defaultValue=""
                   >
-                    <option value="" disabled>Select a category...</option>
+                    <option value="" disabled>Move to category...</option>
                     {otherCategories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
+                      <option key={category} value={category}>{category}</option>
                     ))}
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-ux-text-secondary">
@@ -427,13 +534,13 @@ export default function MenuItemActionsModal({
                 </div>
               </div>
             )}
-            
+
             {/* Delete item */}
             <div className="border-t border-ux-border pt-2">
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 disabled={loading}
-                className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-50 transition-colors text-red-600 disabled:opacity-50"
+                className="w-full text-left px-3 py-2 rounded-lg border border-red-200 hover:bg-red-50 transition-colors text-red-600 text-sm disabled:opacity-50"
               >
                 Delete item entirely
               </button>

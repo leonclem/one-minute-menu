@@ -219,7 +219,7 @@ Approximate characters per line (at default font sizes):
 | 3-column-portrait | 30–42 |
 | 2-column-portrait | 40–55 |
 | 1-column-tall | 18–22 |
-| 4-column-landscape | 25–35 |
+| 5-column-landscape | 25–35 |
 
 ### Common Pitfalls
 

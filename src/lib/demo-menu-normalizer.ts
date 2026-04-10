@@ -60,8 +60,20 @@ export function normalizeDemoMenu(menu: LegacyDemoMenu | null | undefined): Menu
     socialMedia: social,
   }
 
+  // Patch logoUrl for legacy demo menus that still use the old default logo
+  const menuName = menu.name?.toLowerCase() ?? ''
+  let logoUrl = menu.logoUrl
+  if (!logoUrl || logoUrl === '/logos/logo.svg') {
+    if (menuName.includes('breakfast')) {
+      logoUrl = "/sample-menus/Hannah's Cafe---Transparent.png"
+    } else if (menuName.includes('fine dining') || menuName.includes('fine-dining')) {
+      logoUrl = '/sample-menus/fill.png'
+    }
+  }
+
   return {
     ...menu,
+    logoUrl: logoUrl ?? menu.logoUrl,
     venueInfo: mergedVenueInfo,
   }
 }

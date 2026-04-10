@@ -26,6 +26,11 @@ body:
     gapX: 0
     gapY: 6
 
+banner:
+  enabled: false
+  heightPt: 0
+  stripHeightPt: 0
+
 tiles:
   LOGO:
     region: header
@@ -149,7 +154,6 @@ tiles:
           fontWeight: "normal"
       border:
         width: 0.5
-        color: "#D1D5DB"
         style: "solid"
         sides: ["top"]
     contentBudget:

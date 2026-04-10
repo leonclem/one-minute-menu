@@ -29,8 +29,10 @@ import {
   TEXTURE_REGISTRY,
   PALETTE_TEXTURE_MAP,
   getFontSet,
-  type RenderOptionsV2 
+  getFontStylePresetGoogleFontsUrl,
+  type RenderOptionsV2,
 } from './renderer-v2'
+import type { BannerContentV2, FontStylePreset } from './engine-types-v2'
 
 // ============================================================================
 // PDF Export Options
@@ -72,6 +74,8 @@ export interface PDFExportOptionsV2 {
   fillItemTiles?: boolean
   /** Override spacer (filler) tile rendering with this pattern ID */
   spacerTilePatternId?: string
+  /** Font style preset for banner title and section headers */
+  fontStylePreset?: FontStylePreset
 }
 
 export interface PDFExportResultV2 {
@@ -156,7 +160,8 @@ export async function renderToPdf(
       itemBorders: options.itemBorders,
       itemDropShadow: options.itemDropShadow,
       fillItemTiles: options.fillItemTiles,
-      spacerTilePatternId: options.spacerTilePatternId
+      spacerTilePatternId: options.spacerTilePatternId,
+      fontStylePreset: options.fontStylePreset,
     })
     logger.info(`[PDFRendererV2] HTML generated in ${Date.now() - htmlStartTime}ms (HTML length: ${htmlContent.length})`)
 
@@ -166,7 +171,7 @@ export async function renderToPdf(
     // is much faster and more reliable.
     const contentStartTime = Date.now()
     await page.setContent(htmlContent, {
-      waitUntil: 'domcontentloaded',
+      waitUntil: ['domcontentloaded', 'networkidle0'],
       timeout: timeout
     })
     logger.info(`[PDFRendererV2] Page content set in ${Date.now() - contentStartTime}ms`)
@@ -233,7 +238,7 @@ export async function renderToPdf(
 async function generatePDFHTML(
   document: LayoutDocumentV2, 
   customCSS: string = '',
-  options: { showRegionBounds?: boolean; paletteId?: string; textureId?: string; texturesEnabled?: boolean; imageMode?: string; showVignette?: boolean; itemBorders?: boolean; itemDropShadow?: boolean; fillItemTiles?: boolean; spacerTilePatternId?: string } = {}
+  options: { showRegionBounds?: boolean; paletteId?: string; textureId?: string; texturesEnabled?: boolean; imageMode?: string; showVignette?: boolean; itemBorders?: boolean; itemDropShadow?: boolean; fillItemTiles?: boolean; spacerTilePatternId?: string; fontStylePreset?: string } = {}
 ): Promise<string> {
   // Use dynamic import to avoid Next.js static analysis issues with react-dom/server
   // in Route Handlers and Server Components.
@@ -294,6 +299,7 @@ async function generatePDFHTML(
     itemDropShadow: options.itemDropShadow,
     fillItemTiles: options.fillItemTiles,
     spacerTilePatternId: options.spacerTilePatternId,
+    fontStylePreset: (options.fontStylePreset as any) || undefined,
     showGridOverlay: false,
     showRegionBounds: options.showRegionBounds || false,
     showTileIds: false,
@@ -310,14 +316,17 @@ async function generatePDFHTML(
   )
 
   // Generate complete HTML document
+  const { css: pdfCSS, fontLinkUrls } = generatePDFCSS(document, options.paletteId)
+  const fontLinkTags = fontLinkUrls.map(url => `  <link rel="stylesheet" href="${url}">`).join('\n')
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${document.templateId} - Layout V2</title>
+${fontLinkTags}
   <style>
-    ${generatePDFCSS(document, options.paletteId)}
+    ${pdfCSS}
     ${customCSS}
   </style>
 </head>
@@ -363,16 +372,38 @@ function generateGoogleFontsURL(fontSetIds: string[]): string | null {
 }
 
 /**
+ * Extract the font style preset from the first BANNER tile in the document.
+ * Defaults to 'standard' if no banner tile is found.
+ */
+function extractFontStylePreset(document: LayoutDocumentV2): FontStylePreset {
+  for (const page of document.pages) {
+    for (const tile of page.tiles) {
+      if (tile.type === 'BANNER') {
+        return (tile.content as BannerContentV2).fontStylePreset ?? 'standard'
+      }
+    }
+  }
+  return 'standard'
+}
+
+/**
  * Generate CSS optimized for PDF rendering
  * Includes font loading, print styles, and layout fixes
  */
-function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string {
+function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): { css: string; fontLinkUrls: string[] } {
   const palette = PALETTES_V2.find(p => p.id === paletteId) ?? DEFAULT_PALETTE_V2
   const usedFontSets = extractUsedFontSets(document)
   const googleFontsURL = generateGoogleFontsURL(usedFontSets)
-  const fontImportCSS = googleFontsURL ? `\n    /* Font Loading */\n    @import url('${googleFontsURL}');` : ''
 
-  return `
+  const fontStylePreset = extractFontStylePreset(document)
+  const presetFontsUrl = getFontStylePresetGoogleFontsUrl(fontStylePreset)
+
+  // Collect Google Fonts URLs for <link> tags (render-blocking, more reliable than @import)
+  const fontLinkUrls: string[] = []
+  if (googleFontsURL) fontLinkUrls.push(googleFontsURL)
+  if (presetFontsUrl) fontLinkUrls.push(presetFontsUrl)
+
+  const css = `
     /* CSS Reset for PDF */
     html, body {
       margin: 0;
@@ -385,7 +416,7 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string 
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-    }${fontImportCSS}
+    }
 
     /* Body and Document Styles */
     body {
@@ -437,6 +468,16 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string 
       overflow: visible;
     }
 
+    /* Banner tile: allow cutout hero images to overflow */
+    .tile-banner {
+      overflow: visible;
+    }
+
+    /* Banner strip tile */
+    .tile-banner_strip {
+      overflow: hidden;
+    }
+
     /* Tile Type Specific Styles */
     .tile-logo {
       display: flex;
@@ -475,6 +516,13 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string 
       height: auto;
       object-fit: cover;
       border-radius: 4px;
+    }
+
+    /* Banner hero images must respect their inline sizing (the global
+       height:auto / max-width:100% collapses the oversized cutout container) */
+    .tile-banner img {
+      max-width: none;
+      height: 100%;
     }
 
     /* Text Styles */
@@ -536,6 +584,7 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): string 
       z-index: 2;
     }
   `
+  return { css, fontLinkUrls }
 }
 
 // ============================================================================

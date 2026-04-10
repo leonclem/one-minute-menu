@@ -96,7 +96,7 @@ describe('Feature: gridmenu-v2-layout-enhancements, Property 4: Layout Invariant
 
   it.each([
     '4-column-portrait',
-    '4-column-landscape',
+    '5-column-landscape',
     '3-column-portrait',
     '2-column-portrait',
     '1-column-tall',
@@ -117,9 +117,14 @@ describe('Feature: gridmenu-v2-layout-enhancements, Property 4: Layout Invariant
           expect(doc.pages.length).toBeGreaterThan(0)
           expect(doc.templateId).toBe(templateId)
 
-          // Every page should have 4 regions
+          // Every page should have 4 regions (or 5 when banner is present)
           for (const page of doc.pages) {
-            expect(page.regions).toHaveLength(4)
+            const regionIds = page.regions.map(r => r.id).sort()
+            const validRegionSets = [
+              ['body', 'footer', 'header', 'title'],
+              ['banner', 'body', 'footer', 'header', 'title'],
+            ]
+            expect(validRegionSets.some(s => JSON.stringify(s) === JSON.stringify(regionIds))).toBe(true)
           }
 
           // Total item tiles should equal total items in menu

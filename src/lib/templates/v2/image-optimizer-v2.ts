@@ -7,7 +7,7 @@
  */
 
 import { fetchImageAsDataURL } from '../export/texture-utils'
-import type { LayoutDocumentV2, ItemContentV2, LogoContentV2 } from './engine-types-v2'
+import type { LayoutDocumentV2, ItemContentV2, LogoContentV2, BannerContentV2 } from './engine-types-v2'
 import { logger } from '../../logger'
 
 /**
@@ -87,6 +87,32 @@ export async function optimizeLayoutDocumentImages(
             type: 'LOGO',
             url: content.imageUrl,
             update: (dataURL) => { content.imageUrl = dataURL }
+          })
+        }
+      }
+
+      // Handle banner hero images
+      if (tile.type === 'BANNER') {
+        const content = tile.content as BannerContentV2
+        if (content.heroImageUrl) {
+          imageTasks.push({
+            type: 'LOGO',
+            url: content.heroImageUrl,
+            update: (dataURL) => { content.heroImageUrl = dataURL }
+          })
+        }
+        if (content.heroImageCutoutUrl) {
+          imageTasks.push({
+            type: 'LOGO',
+            url: content.heroImageCutoutUrl,
+            update: (dataURL) => { content.heroImageCutoutUrl = dataURL }
+          })
+        }
+        if (content.logoUrl) {
+          imageTasks.push({
+            type: 'LOGO',
+            url: content.logoUrl,
+            update: (dataURL) => { content.logoUrl = dataURL }
           })
         }
       }

@@ -440,11 +440,15 @@ describe('V2 Layout Engine Property Tests', () => {
           })
 
           for (const page of result.pages) {
-            // Check exactly 4 regions
-            expect(page.regions).toHaveLength(4)
+            // Check 4 or 5 regions (5 when banner is present)
+            expect(page.regions.length).toBeGreaterThanOrEqual(4)
+            expect(page.regions.length).toBeLessThanOrEqual(5)
             
             const regionIds = page.regions.map(r => r.id).sort()
-            expect(regionIds).toEqual(['body', 'footer', 'header', 'title'])
+            expect(regionIds).toContain('body')
+            expect(regionIds).toContain('footer')
+            expect(regionIds).toContain('header')
+            expect(regionIds).toContain('title')
 
             // Check all item tiles are in body region
             const itemTiles = page.tiles.filter(t => 
@@ -513,14 +517,22 @@ describe('V2 Layout Engine Property Tests', () => {
             templateId: FIXED_TEMPLATE_ID 
           })
 
-          // For 4-column-portrait, logo should appear on all pages
+          // For 4-column-portrait, logo/banner should appear on all pages
+          // When banner is enabled, the logo is embedded in the BANNER tile rather than a separate LOGO tile
           const expectedLogoPages = ['FIRST', 'CONTINUATION', 'FINAL', 'SINGLE']
 
           for (const page of result.pages) {
             const logoTiles = page.tiles.filter(t => t.type === 'LOGO')
+            const bannerTiles = page.tiles.filter(t => t.type === 'BANNER' || t.type === 'BANNER_STRIP')
+            const hasBanner = page.regions.some(r => r.id === 'banner')
             
             if (expectedLogoPages.includes(page.pageType)) {
-              expect(logoTiles.length).toBeGreaterThanOrEqual(1)
+              // When banner is present, logo is embedded in banner tile; otherwise expect a LOGO tile
+              if (hasBanner) {
+                expect(bannerTiles.length).toBeGreaterThanOrEqual(1)
+              } else {
+                expect(logoTiles.length).toBeGreaterThanOrEqual(1)
+              }
             } else {
               expect(logoTiles).toHaveLength(0)
             }

@@ -43,15 +43,22 @@ describe('Streaming Paginator', () => {
       expect(result.pages).toHaveLength(1)
       expect(result.pages[0].pageType).toBe('SINGLE')
       
-      // Should have logo, title, section header, and items
+      // Should have logo/banner, section header, and items
+      // When banner is enabled, logo is embedded in BANNER tile rather than a separate LOGO tile
       const tiles = result.pages[0].tiles
       const logoTiles = tiles.filter(t => t.type === 'LOGO')
+      const bannerTiles = tiles.filter(t => t.type === 'BANNER' || t.type === 'BANNER_STRIP')
+      const hasBanner = result.pages[0].regions.some(r => r.id === 'banner')
       const titleTiles = tiles.filter(t => t.type === 'TITLE')
       const sectionHeaders = tiles.filter(t => t.type === 'SECTION_HEADER')
       const itemTiles = tiles.filter(t => t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW')
 
-      expect(logoTiles).toHaveLength(1)
-      expect(titleTiles).toHaveLength(1)
+      if (hasBanner) {
+        expect(bannerTiles).toHaveLength(1)
+      } else {
+        expect(logoTiles).toHaveLength(1)
+        expect(titleTiles).toHaveLength(1)
+      }
       expect(sectionHeaders).toHaveLength(1)
       expect(itemTiles).toHaveLength(3) // tiny menu has 3 items
     })
@@ -110,10 +117,13 @@ describe('Streaming Paginator', () => {
 
       expect(result.pages.length).toBeGreaterThan(2)
       
-      // All pages should have regions
+      // All pages should have regions (4 base regions, or 5 when banner is present)
       result.pages.forEach(page => {
-        expect(page.regions).toHaveLength(4)
-        expect(page.regions.map(r => r.id)).toEqual(['header', 'title', 'body', 'footer'])
+        const regionIds = page.regions.map(r => r.id)
+        expect(regionIds).toContain('header')
+        expect(regionIds).toContain('title')
+        expect(regionIds).toContain('body')
+        expect(regionIds).toContain('footer')
       })
 
       // Count total items across all pages
@@ -372,10 +382,13 @@ describe('Streaming Paginator', () => {
         expect(result.templateId).toBe('4-column-portrait')
         expect(result.pageSpec).toEqual(pageSpec)
 
-        // Each page should have 4 regions
+        // Each page should have 4 base regions (or 5 when banner is present)
         result.pages.forEach(page => {
-          expect(page.regions).toHaveLength(4)
-          expect(page.regions.map(r => r.id)).toEqual(['header', 'title', 'body', 'footer'])
+          const regionIds = page.regions.map(r => r.id)
+          expect(regionIds).toContain('header')
+          expect(regionIds).toContain('title')
+          expect(regionIds).toContain('body')
+          expect(regionIds).toContain('footer')
         })
 
         // All tiles should be within their region bounds

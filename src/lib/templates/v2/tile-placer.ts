@@ -23,6 +23,10 @@ import type {
   TileVariantDefV2,
   TileTypeV2,
   RegionV2,
+  BannerContentV2,
+  BannerStripContentV2,
+  FontStylePreset,
+  BannerImageStyle,
 } from './engine-types-v2'
 import { calculateTileHeight, calculateTileWidth, calculateCellWidth } from './engine-types-v2'
 
@@ -258,7 +262,8 @@ export function createTitleTile(
  */
 export function createFooterInfoTile(
   menu: EngineMenuV2,
-  template: TemplateV2
+  template: TemplateV2,
+  surfaceColor?: string
 ): Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'> {
   // Use footer region height from template if available, otherwise default to 40
   const height = template.regions.footer?.height || 40 
@@ -280,8 +285,139 @@ export function createFooterInfoTile(
       phone: menu.metadata.venueInfo?.phone,
       email: menu.metadata.venueInfo?.email,
       socialMedia: menu.metadata.venueInfo?.socialMedia,
+      surfaceColor,
     },
     style: footerVariant?.style,
+  }
+}
+
+/**
+ * Resolve the hero image URL for the banner based on bannerImageStyle.
+ * - 'cutout': use item.cutoutUrl (transparent background)
+ * - 'stretch-fit': use item.imageUrl (primary image)
+ * - 'none': omit (return undefined)
+ */
+export function resolveBannerHeroImageUrl(
+  flagshipItem: EngineItemV2 | undefined,
+  bannerImageStyle: BannerImageStyle
+): { heroImageUrl?: string; heroImageCutoutUrl?: string } {
+  if (!flagshipItem || bannerImageStyle === 'none') {
+    return {}
+  }
+  // Always provide the regular image as heroImageUrl so the banner is never blank
+  const heroImageUrl = flagshipItem.originalImageUrl || flagshipItem.imageUrl
+  if (bannerImageStyle === 'cutout') {
+    return {
+      heroImageUrl,
+      // Only set cutoutUrl when the item actually has a resolved cutout image.
+      // If the item's imageUrl was already swapped to the cutout by the transformer
+      // (i.e. originalImageUrl differs from imageUrl), use imageUrl as the cutout.
+      // Otherwise fall back to the raw cutoutUrl field if present.
+      heroImageCutoutUrl: (flagshipItem.originalImageUrl && flagshipItem.imageUrl !== flagshipItem.originalImageUrl)
+        ? flagshipItem.imageUrl
+        : flagshipItem.cutoutUrl,
+    }
+  }
+  // stretch-fit: always use the original (non-cutout) image so a cutout PNG
+  // with transparent background isn't accidentally used as a stretch image
+  return { heroImageUrl }
+}
+
+/**
+ * Resolve the effective banner title: use "MENU" when bannerTitle is undefined, null, or empty.
+ */
+export function resolveBannerTitle(bannerTitle?: string | null): string {
+  if (!bannerTitle || bannerTitle.trim() === '') return 'MENU'
+  return bannerTitle
+}
+
+/**
+ * Create a BANNER tile for FIRST/SINGLE pages.
+ *
+ * @param menu - Menu data (for venue name, logo)
+ * @param selection - User selection config (banner title, image style, etc.)
+ * @param bannerHeight - Height of the banner region in points
+ * @param surfaceColor - Palette surface color
+ * @param textColor - Palette menuTitle color
+ * @param flagshipItem - Optional flagship item for hero image
+ * @returns Banner tile instance (without position)
+ */
+export function createBannerTile(
+  menu: EngineMenuV2,
+  selection: SelectionConfigV2,
+  bannerHeight: number,
+  surfaceColor: string,
+  textColor: string,
+  flagshipItem?: EngineItemV2
+): Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'> {
+  const bannerImageStyle: BannerImageStyle = selection.bannerImageStyle ?? 'cutout'
+  const fontStylePreset: FontStylePreset = selection.fontStylePreset ?? 'standard'
+  const showVenueName = selection.showVenueName !== false // default true
+  const showBannerTitle = selection.showBannerTitle !== false // default true
+  const swapLayout = selection.bannerSwapLayout === true // default false
+  const title = resolveBannerTitle(selection.bannerTitle)
+
+  const { heroImageUrl, heroImageCutoutUrl } = resolveBannerHeroImageUrl(flagshipItem, bannerImageStyle)
+
+  const content: BannerContentV2 = {
+    type: 'BANNER',
+    title,
+    showBannerTitle,
+    fontStylePreset,
+    showVenueName,
+    swapLayout,
+    venueName: showVenueName ? menu.metadata.venueName : undefined,
+    logoUrl: showVenueName ? menu.metadata.logoUrl : undefined,
+    heroImageUrl,
+    heroImageCutoutUrl,
+    bannerImageStyle,
+    surfaceColor,
+    textColor,
+    heroTransform: selection.bannerHeroTransform,
+    logoTransform: selection.bannerLogoTransform,
+  }
+
+  return {
+    id: `banner-${menu.id}`,
+    type: 'BANNER',
+    regionId: 'banner',
+    width: 0, // Set by caller based on region width
+    height: bannerHeight,
+    colSpan: 1,
+    rowSpan: 1,
+    layer: 'content',
+    content,
+  }
+}
+
+/**
+ * Create a BANNER_STRIP tile for CONTINUATION/FINAL pages.
+ *
+ * @param menu - Menu data
+ * @param stripHeight - Height of the strip in points
+ * @param surfaceColor - Palette surface color
+ * @returns Banner strip tile instance (without position)
+ */
+export function createBannerStripTile(
+  menu: EngineMenuV2,
+  stripHeight: number,
+  surfaceColor: string
+): Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'> {
+  const content: BannerStripContentV2 = {
+    type: 'BANNER_STRIP',
+    surfaceColor,
+  }
+
+  return {
+    id: `banner-strip-${menu.id}`,
+    type: 'BANNER_STRIP',
+    regionId: 'banner',
+    width: 0, // Set by caller based on region width
+    height: stripHeight,
+    colSpan: 1,
+    rowSpan: 1,
+    layer: 'content',
+    content,
   }
 }
 

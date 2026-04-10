@@ -9,6 +9,7 @@ import { logLayoutError, LayoutEngineError, ERROR_CODES } from '@/lib/templates/
 import { imageExportLimiter, applyRateLimit } from '@/lib/templates/rate-limiter'
 import { MetricsBuilder, logLayoutMetrics, validatePerformance } from '@/lib/templates/metrics'
 import type { OutputContext } from '@/lib/templates/types'
+import type { MenuItem } from '@/types'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
 
@@ -35,46 +36,56 @@ async function handleV2TemplateEngine(
   const { renderToString } = await import('react-dom/server')
   const { getMenuCurrency } = await import('@/lib/menu-currency-service')
   
+  // Mark the flagship item so findFlagshipItem() can locate it for the banner hero
+  const flagshipItemId: string | null = typeof imageOptions.flagshipItemId === 'string' ? imageOptions.flagshipItemId : null
+
   // Transform menu to EngineMenuV2 with user's menu currency preference
   metricsBuilder.markCalculationStart()
   const menuCurrency = await getMenuCurrency(userId)
-  const engineMenu = transformMenuToV2(menu, { currency: menuCurrency })
 
-  // Calculate menu characteristics for metrics
-  const sectionCount = engineMenu.sections.length
-  const totalItems = engineMenu.sections.reduce((sum, section) => sum + section.items.length, 0)
-  const itemsWithImages = engineMenu.sections.reduce((sum, section) => 
-    sum + section.items.filter(item => !!item.imageUrl).length, 0)
-  const imageRatio = totalItems > 0 ? (itemsWithImages / totalItems) * 100 : 0
-  
-  const totalNameLength = engineMenu.sections.reduce((sum, section) => 
-    sum + section.items.reduce((s, i) => s + i.name.length, 0), 0)
-  const avgNameLength = totalItems > 0 ? totalNameLength / totalItems : 0
-  
-  const hasDescriptions = engineMenu.sections.some(section => 
-    section.items.some(item => !!item.description && item.description.length > 0))
-
-  metricsBuilder.setMenuCharacteristics({
-    sectionCount,
-    totalItems,
-    imageRatio,
-    avgNameLength,
-    hasDescriptions
+  // Build cutout context for transformation
+  const { isCutoutFeatureEnabled } = await import('@/lib/background-removal/feature-flag')
+  const featureEnabled = isCutoutFeatureEnabled()
+  const allItems: MenuItem[] = [
+    ...(menu.items ?? []),
+    ...(menu.categories?.flatMap((c: { items: MenuItem[] }) => c.items) ?? []),
+  ]
+  const itemCutouts = new Map<string, import('@/lib/templates/v2/menu-transformer-v2').ItemCutoutContext>()
+  allItems.forEach(item => {
+    if (item.cutoutUrl !== undefined || item.cutoutStatus !== undefined) {
+      itemCutouts.set(item.id, {
+        cutoutUrl: item.cutoutUrl ?? null,
+        cutoutStatus: item.cutoutStatus ?? 'not_requested',
+      })
+    }
   })
+
+  const rawImageMode = imageOptions.imageMode || 'stretch'
+  const engineMenu = transformMenuToV2(menu, {
+    currency: menuCurrency,
+    imageModeIsCutout: rawImageMode === 'cutout',
+    cutout: {
+      featureEnabled,
+      templateSupportsCutouts: true,
+      itemCutouts,
+      menuId: menu.id,
+      templateId,
+      isExport: true,
+    },
+  })
+
+  if (flagshipItemId) {
+    for (const section of engineMenu.sections) {
+      for (const item of section.items) {
+        if (item.id === flagshipItemId) {
+          item.isFlagship = true
+        }
+      }
+    }
+  }
   
-  // Load saved template selection (if exists)
-  const supabase = createServerSupabaseClient()
-  const { data: selectionData } = await supabase
-    .from('menu_template_selections')
-    .select('*')
-    .eq('menu_id', menu.id)
-    .single()
-  
-  const configuration = selectionData?.configuration || {}
-  
-  const rawImageMode = configuration.imageMode || 'stretch'
   const imageModeForEngine = rawImageMode === 'none' ? 'stretch' : rawImageMode
-  const textOnly = configuration.textOnly || rawImageMode === 'none'
+  const textOnly = imageOptions.textOnly || rawImageMode === 'none'
 
   // Generate V2 layout
   const layoutDocument = await generateLayoutV2({
@@ -82,13 +93,21 @@ async function handleV2TemplateEngine(
     templateId,
     selection: {
       textOnly,
-      fillersEnabled: configuration.fillersEnabled !== false,
-      texturesEnabled: configuration.texturesEnabled !== false,
-      showMenuTitle: configuration.showMenuTitle || false,
-      showVignette: configuration.showVignette !== false,
-      showCategoryTitles: configuration.showCategoryTitles !== false,
-      colourPaletteId: configuration.colourPaletteId || configuration.paletteId,
-      imageMode: imageModeForEngine
+      fillersEnabled: imageOptions.fillersEnabled !== false,
+      texturesEnabled: imageOptions.texturesEnabled !== false,
+      showMenuTitle: imageOptions.showMenuTitle || false,
+      showVignette: imageOptions.showVignette !== false,
+      showCategoryTitles: imageOptions.showCategoryTitles !== false,
+      centreAlignment: imageOptions.centreAlignment === true,
+      colourPaletteId: imageOptions.colourPaletteId || imageOptions.paletteId,
+      imageMode: imageModeForEngine,
+      showBanner: imageOptions.showBanner !== false,
+      bannerTitle: imageOptions.bannerTitle || undefined,
+      showBannerTitle: imageOptions.showBannerTitle !== false,
+      showVenueName: imageOptions.showVenueName !== false,
+      bannerSwapLayout: imageOptions.bannerSwapLayout === true,
+      bannerImageStyle: imageOptions.bannerImageStyle || undefined,
+      fontStylePreset: imageOptions.fontStylePreset || undefined,
     },
     debug: false
   })
@@ -97,7 +116,7 @@ async function handleV2TemplateEngine(
   metricsBuilder.markCalculationEnd()
   
   // Resolve palette
-  const paletteId = configuration.colourPaletteId || configuration.paletteId
+  const paletteId = imageOptions.colourPaletteId || imageOptions.paletteId
   const palette = PALETTES_V2.find(p => p.id === paletteId) ?? DEFAULT_PALETTE_V2
   
   // Calculate dimensions for image export based on page spec
@@ -123,7 +142,7 @@ async function handleV2TemplateEngine(
   // Pre-fetch texture data URL if enabled
   const { getTextureDataURL } = await import('@/lib/templates/export/texture-utils')
   let textureDataURL: string | undefined = undefined
-  if (configuration.texturesEnabled !== false) {
+  if (imageOptions.texturesEnabled !== false) {
     if (palette.id === 'midnight-gold') {
       textureDataURL = await getTextureDataURL('dark-paper-2.png', headers) || undefined
     } else if (palette.id === 'elegant-dark') {
@@ -181,15 +200,16 @@ async function handleV2TemplateEngine(
       scale: 1,
       palette,
       isExport: true,
-      texturesEnabled: configuration.texturesEnabled !== false,
+      texturesEnabled: imageOptions.texturesEnabled !== false,
       textureDataURL,
-      textureId: configuration.textureId,
+      textureId: imageOptions.textureId,
       imageMode: imageModeForEngine,
-      showVignette: configuration.showVignette !== false,
-      itemBorders: configuration.itemBorders === true,
-      itemDropShadow: configuration.itemDropShadow === true,
-      fillItemTiles: configuration.fillItemTiles === true,
-      spacerTilePatternId: configuration.spacerTilePatternId,
+      showVignette: imageOptions.showVignette !== false,
+      itemBorders: imageOptions.itemBorders === true,
+      itemDropShadow: imageOptions.itemDropShadow === true,
+      fillItemTiles: imageOptions.fillItemTiles === true,
+      spacerTilePatternId: imageOptions.spacerTilePatternId,
+      centreAlignment: imageOptions.centreAlignment === true,
       showGridOverlay: false,
       showRegionBounds: false,
       showTileIds: false

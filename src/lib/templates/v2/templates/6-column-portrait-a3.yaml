@@ -28,6 +28,11 @@ body:
     gapX: 10
     gapY: 8
 
+banner:
+  enabled: true
+  heightPt: 200
+  stripHeightPt: 20
+
 tiles:
   LOGO:
     region: header
@@ -63,9 +68,9 @@ tiles:
         lineHeight: "normal"
         letterSpacing: 0.8
         textTransform: "capitalize"
-        decoration: "bullet"
+        decoration: "none"
       spacing:
-        paddingLeft: 8
+        paddingLeft: 4
         paddingTop: 24
         paddingBottom: 0
       border:
@@ -151,7 +156,6 @@ tiles:
           fontWeight: "normal"
       border:
         width: 1
-        color: "#D1D5DB"
         style: "solid"
         sides: ["top"]
     contentBudget:

@@ -1,6 +1,6 @@
-id: 4-column-landscape
+id: 5-column-landscape
 version: "2.0.0"
-name: 4 column (landscape)
+name: 5 column (landscape)
 
 page:
   size: A4_LANDSCAPE
@@ -25,6 +25,11 @@ body:
     rowHeight: 68
     gapX: 10
     gapY: 6
+
+banner:
+  enabled: true
+  heightPt: 65
+  stripHeightPt: 15
 
 tiles:
   LOGO:
@@ -61,9 +66,9 @@ tiles:
         lineHeight: "normal"
         letterSpacing: 0.8
         textTransform: "capitalize"
-        decoration: "bullet"
+        decoration: "none"
       spacing:
-        paddingLeft: 8
+        paddingLeft: 4
         paddingTop: 24
         paddingBottom: 0
       border:
@@ -148,7 +153,6 @@ tiles:
           fontWeight: "normal"
       border:
         width: 1
-        color: "#E5E7EB"
         style: "solid"
         sides: ["top"]
     contentBudget:

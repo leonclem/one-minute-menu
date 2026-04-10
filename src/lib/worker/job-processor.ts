@@ -353,7 +353,11 @@ export class JobProcessor {
         // In all other modes: use the standard image_url.
         image_url: isCutoutMode
           ? ((item as any).cutout_url ? translateUrl((item as any).cutout_url) : undefined)
-          : translateUrl(item.image_url)
+          : translateUrl(item.image_url),
+        // Preserve original image URL for the banner hero (which may use it in stretch mode)
+        original_image_url: translateUrl(item.image_url),
+        // Preserve raw cutout URL for the banner hero (which uses it in cutout mode)
+        cutout_url: (item as any).cutout_url ? translateUrl((item as any).cutout_url) : undefined
       }))
       const translatedLogoUrl = translateUrl(snapshot.menu_data.logo_url)
 
@@ -386,6 +390,21 @@ export class JobProcessor {
 
       // Generate V2 Layout
       const resolvedPaletteId = config?.palette?.id || config?.colourPaletteId || config?.paletteId
+
+      // Resolve flagship item ID from config — used to mark the banner hero item
+      const flagshipItemId: string | null = typeof config?.flagshipItemId === 'string' ? config.flagshipItemId : null
+
+      // Mark the flagship item in the sections so findFlagshipItem() can locate it
+      if (flagshipItemId) {
+        for (const section of engineMenu.sections) {
+          for (const item of section.items) {
+            if (item.id === flagshipItemId) {
+              item.isFlagship = true
+            }
+          }
+        }
+      }
+
       const layoutDocument = await generateLayoutV2({
         menu: engineMenu,
         templateId: snapshot.template_id,
@@ -400,6 +419,16 @@ export class JobProcessor {
           showVignette: config?.showVignette !== false,
           showCategoryTitles: config?.showCategoryTitles !== false,
           imageMode: effectiveImageMode,
+          showBanner: config?.showBanner !== false,
+          bannerTitle: config?.bannerTitle || undefined,
+          showBannerTitle: config?.showBannerTitle !== false,
+          showVenueName: config?.showVenueName !== false,
+          bannerSwapLayout: config?.bannerSwapLayout === true,
+          bannerImageStyle: config?.bannerImageStyle || undefined,
+          fontStylePreset: config?.fontStylePreset || undefined,
+          bannerHeroTransform: config?.bannerHeroTransform || undefined,
+          bannerLogoTransform: config?.bannerLogoTransform || undefined,
+          centreAlignment: config?.centreAlignment === true,
         }
       })
 
@@ -423,6 +452,7 @@ export class JobProcessor {
         itemDropShadow: config?.itemDropShadow === true,
         fillItemTiles: config?.fillItemTiles === true,
         spacerTilePatternId: config?.spacerTilePatternId || (config?.spacerTiles !== 'none' ? config?.spacerTiles : undefined),
+        fontStylePreset: config?.fontStylePreset || undefined,
       })
 
       return Buffer.from(result.pdfBytes)
@@ -466,13 +496,16 @@ export class JobProcessor {
           description: item.description,
           price: item.price,
           imageUrl: item.image_url,
+          cutoutUrl: item.cutout_url,
+          originalImageUrl: item.original_image_url,
           sortOrder: item.display_order ?? index,
           indicators: item.indicators || {
             dietary: [],
             spiceLevel: null,
             allergens: []
           },
-          imageTransform: (item as any).imageTransform
+          isFlagship: item.isFlagship === true || item.is_flagship === true,
+          imageTransform: item.imageTransform
         })
       })
 

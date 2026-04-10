@@ -374,6 +374,9 @@ export async function createRenderSnapshot(
           // Populated by enrichMenuDataWithImageUrls from ai_generated_images.cutout_url.
           cutout_url: item.cutoutUrl ?? undefined,
 
+          // Flagship item designation for banner hero image
+          isFlagship: item.isFlagship === true || item.is_flagship === true,
+
           // Per-mode image positioning (zoom/pan) for PDF export — prefer menu_items
           imageTransform: transformById.get(item.id) ?? item.imageTransform
         })),

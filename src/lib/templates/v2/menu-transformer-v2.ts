@@ -256,6 +256,7 @@ function transformItemToV2(
 
   // Resolve cutout URL when cutout context is provided
   const cutoutCtx = options?.cutout
+  const originalImageUrl = imageUrl // preserve before cutout resolution
   if (imageUrl && cutoutCtx) {
     const itemCutout = cutoutCtx.itemCutouts.get(item.id)
     const resolvedUrl = CutoutGenerationService.resolveImageUrl({
@@ -295,9 +296,12 @@ function transformItemToV2(
     description: item.description,
     price: item.price,
     imageUrl,
+    originalImageUrl: originalImageUrl !== imageUrl ? originalImageUrl : undefined,
+    cutoutUrl: item.cutoutUrl ?? undefined,
     sortOrder: item.order ?? fallbackOrder,
     indicators: transformIndicators(item),
     isFeatured: item.isFeatured ?? false,
+    isFlagship: item.isFlagship ?? undefined,
     imageTransform: normalizeImageTransformRecord(item.imageTransform),
   }
 }

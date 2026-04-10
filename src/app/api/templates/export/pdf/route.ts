@@ -10,6 +10,7 @@ import { pdfExportLimiter, applyRateLimit } from '@/lib/templates/rate-limiter'
 import { MetricsBuilder, logLayoutMetrics, validatePerformance } from '@/lib/templates/metrics'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
+import type { MenuItem } from '@/types'
 
 // Extended timeout for PDF generation
 export const maxDuration = 60
@@ -58,13 +59,52 @@ async function handleNewTemplateEngine(
   const imageModeForEngine = rawImageMode === 'none' ? 'stretch' : rawImageMode
   const textOnly = finalConfiguration.textOnly || rawImageMode === 'none'
 
+  // Mark the flagship item so findFlagshipItem() can locate it for the banner hero
+  const flagshipItemId: string | null = typeof finalConfiguration.flagshipItemId === 'string' ? finalConfiguration.flagshipItemId : null
+  
   // Transform menu to EngineMenuV2 with user's menu currency preference
   metricsBuilder.markCalculationStart()
   const menuCurrency = userId ? await getMenuCurrency(userId) : 'USD'
+  
+  // Build cutout context for transformation
+  const { isCutoutFeatureEnabled } = await import('@/lib/background-removal/feature-flag')
+  const featureEnabled = isCutoutFeatureEnabled()
+  const allItems: MenuItem[] = [
+    ...(menu.items ?? []),
+    ...(menu.categories?.flatMap((c: { items: MenuItem[] }) => c.items) ?? []),
+  ]
+  const itemCutouts = new Map<string, import('@/lib/templates/v2/menu-transformer-v2').ItemCutoutContext>()
+  allItems.forEach(item => {
+    if (item.cutoutUrl !== undefined || item.cutoutStatus !== undefined) {
+      itemCutouts.set(item.id, {
+        cutoutUrl: item.cutoutUrl ?? null,
+        cutoutStatus: item.cutoutStatus ?? 'not_requested',
+      })
+    }
+  })
+
   const engineMenu = transformMenuToV2(menu, {
     currency: menuCurrency,
     imageModeIsCutout: rawImageMode === 'cutout',
+    cutout: {
+      featureEnabled,
+      templateSupportsCutouts: true, // banner/items support cutouts in V2
+      itemCutouts,
+      menuId: menu.id,
+      templateId,
+      isExport: true,
+    },
   })
+
+  if (flagshipItemId) {
+    for (const section of engineMenu.sections) {
+      for (const item of section.items) {
+        if (item.id === flagshipItemId) {
+          item.isFlagship = true
+        }
+      }
+    }
+  }
 
   // Calculate menu characteristics for metrics
   // ... metrics calculation ...
@@ -100,8 +140,16 @@ async function handleNewTemplateEngine(
         showMenuTitle: finalConfiguration.showMenuTitle || false,
         showVignette: finalConfiguration.showVignette !== false,
         showCategoryTitles: finalConfiguration.showCategoryTitles !== false,
+        centreAlignment: finalConfiguration.centreAlignment === true,
         colourPaletteId: finalConfiguration.colourPaletteId || finalConfiguration.paletteId,
-        imageMode: imageModeForEngine
+        imageMode: imageModeForEngine,
+        showBanner: finalConfiguration.showBanner !== false,
+        bannerTitle: finalConfiguration.bannerTitle || undefined,
+        showBannerTitle: finalConfiguration.showBannerTitle !== false,
+        showVenueName: finalConfiguration.showVenueName !== false,
+        bannerSwapLayout: finalConfiguration.bannerSwapLayout === true,
+        bannerImageStyle: finalConfiguration.bannerImageStyle || undefined,
+        fontStylePreset: finalConfiguration.fontStylePreset || undefined,
       },
     debug: false
   })
@@ -138,7 +186,8 @@ async function handleNewTemplateEngine(
     itemBorders: finalConfiguration.itemBorders === true,
     itemDropShadow: finalConfiguration.itemDropShadow === true,
     fillItemTiles: finalConfiguration.fillItemTiles === true,
-    spacerTilePatternId: finalConfiguration.spacerTilePatternId
+    spacerTilePatternId: finalConfiguration.spacerTilePatternId,
+    fontStylePreset: finalConfiguration.fontStylePreset || undefined,
   })
   metricsBuilder.markExportEnd()
   

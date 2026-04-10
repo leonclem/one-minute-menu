@@ -89,7 +89,7 @@ export function buildPageSpec(
 // =============================================================================
 
 /** Region IDs */
-export type RegionIdV2 = 'header' | 'title' | 'body' | 'footer'
+export type RegionIdV2 = 'header' | 'title' | 'banner' | 'body' | 'footer'
 
 /**
  * Region definition.
@@ -134,6 +134,8 @@ export type TileTypeV2 =
   | 'FOOTER_INFO'
   | 'FEATURE_CARD'
   | 'DECORATIVE_DIVIDER'
+  | 'BANNER'
+  | 'BANNER_STRIP'
 
 /** Tile layer for z-ordering and overlap detection */
 export type TileLayerV2 = 'background' | 'content'
@@ -240,6 +242,8 @@ export interface FooterInfoContentV2 {
     tiktok?: string
     website?: string
   }
+  /** Background color for the footer — when set, matches the banner surface color */
+  surfaceColor?: string
 }
 
 /** Feature card tile content (for multi-cell featured items) */
@@ -255,6 +259,39 @@ export interface FeatureCardContentV2 {
   currency: string
   indicators: ItemIndicatorsV2
   imageTransform?: import('@/types').ImageTransformRecord
+}
+
+/** Banner image rendering mode */
+export type BannerImageStyle = 'cutout' | 'stretch-fit' | 'none'
+
+/** Font style preset for banner title and section headers */
+export type FontStylePreset = 'strong' | 'fun' | 'standard' | 'serif'
+
+/** Banner tile content (full banner on FIRST/SINGLE pages) */
+export interface BannerContentV2 {
+  type: 'BANNER'
+  title: string
+  showBannerTitle: boolean
+  fontStylePreset: FontStylePreset
+  showVenueName: boolean
+  swapLayout: boolean
+  venueName?: string
+  logoUrl?: string
+  heroImageUrl?: string
+  heroImageCutoutUrl?: string
+  bannerImageStyle: BannerImageStyle
+  surfaceColor: string
+  textColor: string
+  /** Optional transform for the hero (flagship) image */
+  heroTransform?: import('@/types').ImageTransform
+  /** Optional transform for the logo image */
+  logoTransform?: import('@/types').ImageTransform
+}
+
+/** Banner strip tile content (thin colored strip on CONTINUATION/FINAL pages) */
+export interface BannerStripContentV2 {
+  type: 'BANNER_STRIP'
+  surfaceColor: string
 }
 
 /** Divider style options */
@@ -280,6 +317,8 @@ export type TileContentV2 =
   | FooterInfoContentV2
   | FeatureCardContentV2
   | DividerContentV2
+  | BannerContentV2
+  | BannerStripContentV2
 
 // =============================================================================
 // Tile Instance
@@ -425,9 +464,15 @@ export interface EngineItemV2 {
   description?: string
   price: number
   imageUrl?: string
+  /** Original (non-cutout) image URL — preserved so the banner can use it for stretch-fit even when global imageMode is cutout */
+  originalImageUrl?: string
+  /** Cutout image URL (transparent background) — used for banner hero image in 'cutout' style */
+  cutoutUrl?: string
   sortOrder: number
   indicators: ItemIndicatorsV2
   isFeatured?: boolean
+  /** Flagship item designation — one per menu, used for banner hero image */
+  isFlagship?: boolean
   imageTransform?: import('@/types').ImageTransformRecord
 }
 
@@ -468,6 +513,26 @@ export interface SelectionConfigV2 {
   showCategoryTitles?: boolean
   /** Optional target cell width in points; when set, gapX is derived to achieve this width (clamped to per-cols min/max) */
   targetCellWidthPt?: number
+  /** Show banner on first page and strip on continuation pages */
+  showBanner?: boolean
+  /** Banner title text (max 30 chars, default "MENU") */
+  bannerTitle?: string
+  /** Show the banner title text (default true) */
+  showBannerTitle?: boolean
+  /** Show venue name or logo in banner */
+  showVenueName?: boolean
+  /** Swap sidebar/main layout: when true, venue name goes in sidebar and title is in main area */
+  bannerSwapLayout?: boolean
+  /** Hero image rendering mode */
+  bannerImageStyle?: BannerImageStyle
+  /** Font style preset for banner title and section headers */
+  fontStylePreset?: FontStylePreset
+  /** Persisted transform for the banner hero (flagship) image */
+  bannerHeroTransform?: import('@/types').ImageTransform
+  /** Persisted transform for the banner logo image */
+  bannerLogoTransform?: import('@/types').ImageTransform
+  /** Centre-align category headings (and item tiles when spacer tiles = "None") */
+  centreAlignment?: boolean
 }
 
 
@@ -478,6 +543,13 @@ export interface SelectionConfigV2 {
 /** Parsed template from YAML */
 export interface TemplateCapabilitiesV2 {
   supportsCutouts?: boolean
+}
+
+/** Banner configuration from template YAML */
+export interface TemplateBannerConfigV2 {
+  enabled: boolean
+  heightPt: number
+  stripHeightPt: number
 }
 
 export interface TemplateV2 {
@@ -493,6 +565,7 @@ export interface TemplateV2 {
   filler: TemplateFillerConfigV2
   itemIndicators: TemplateIndicatorConfigV2
   capabilities?: TemplateCapabilitiesV2
+  banner?: TemplateBannerConfigV2
 }
 
 /** Page configuration */

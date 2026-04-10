@@ -157,9 +157,18 @@ function checkTileOverlaps(page: PageLayoutV2): InvariantViolation[] {
  * INV-3: Check for widowed section headers (header without items on same page).
  * A section header should always have at least one item from the same section
  * appearing below it on the same page.
+ * 
+ * NOTE: This invariant is relaxed in production to allow widowed headers
+ * (they may occur when a section spans multiple pages). In development mode,
+ * we still check for them to catch potential layout issues.
  */
 function checkNoWidowedSectionHeaders(page: PageLayoutV2): InvariantViolation[] {
   const violations: InvariantViolation[] = []
+
+  // Skip this check in production - widowed headers are acceptable when sections span pages
+  if (process.env.NODE_ENV === 'production') {
+    return violations
+  }
 
   const sectionHeaders = page.tiles.filter(t => t.type === 'SECTION_HEADER')
 

@@ -3,14 +3,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
-import { UXSection, UXButton, UXCard, PaletteDropdown, TemplateDropdown, ImageModeDropdown } from '@/components/ux'
+import { UXSection, UXButton, UXCard, CollapsibleSection } from '@/components/ux'
+import { getPaletteSwatchColors } from '@/components/ux/PaletteDropdown'
 import { MenuThumbnailBadge } from '@/components/ux/MenuThumbnailBadge'
 import { useToast } from '@/components/ui'
 import type { Menu, ImageTransform, ImageTransformRecord } from '@/types'
 import { normalizeImageTransformRecord } from '@/types'
 import { normalizeDemoMenu } from '@/lib/demo-menu-normalizer'
 import { PageRenderer } from '@/lib/templates/v2/renderer-web-v2'
-import { PALETTES_V2, DEFAULT_PALETTE_V2, TEXTURE_IDS, TEXTURE_REGISTRY, FILLER_PATTERN_IDS, FILLER_PATTERN_REGISTRY, SPACER_BLANK_ID } from '@/lib/templates/v2/renderer-v2'
+import { PALETTES_V2, DEFAULT_PALETTE_V2, TEXTURE_IDS, TEXTURE_REGISTRY, DARK_PALETTE_IDS, DARK_ONLY_TEXTURE_IDS, LIGHT_ONLY_TEXTURE_IDS, FILLER_PATTERN_IDS, FILLER_PATTERN_REGISTRY, SPACER_BLANK_ID, getFontStylePresetGoogleFontsUrl } from '@/lib/templates/v2/renderer-v2'
 import type { LayoutDocumentV2, ImageModeV2 } from '@/lib/templates/v2/engine-types-v2'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
@@ -31,9 +32,43 @@ const DEMO_DEFAULTS = {
   itemDropShadow: true,
   fillItemTiles: true,
   showCategoryTitles: false,
+  centreAlignment: false,
+}
+
+/** Fine Dining specific demo defaults */
+const DEMO_DEFAULTS_FINE_DINING = {
+  templateId: '6-column-portrait-a3',
+  paletteId: 'lunar-red-gold',
+  imageMode: 'cutout' as ImageModeV2,
+  spacerTiles: 'matte-paper-grain',
+  textureId: null as string | null,
+  showMenuTitle: false,
+  showVignette: true,
+  itemBorders: true,
+  itemDropShadow: true,
+  fillItemTiles: true,
+  showCategoryTitles: true,
+  centreAlignment: false,
+  bannerTitle: 'DINNER',
+  bannerImageStyle: 'cutout' as const,
+  fontStylePreset: 'standard' as const,
+  // Logo: scaled up and anchored near top so tail overflows below banner edge
+  bannerLogoTransform: { scale: 2.0, offsetX: 0, offsetY: -25 } as ImageTransform,
+  // Hero: slightly bigger, shifted up ~30%
+  bannerHeroTransform: { scale: 1.4, offsetX: 0, offsetY: -10 } as ImageTransform,
 }
 
 /** Build validated state from saved templateId + configuration (API or session draft). */
+/** Templates that support the banner feature (banner.enabled: true in YAML) */
+const BANNER_ENABLED_TEMPLATES = new Set([
+  '4-column-portrait',
+  '3-column-portrait',
+  '2-column-portrait',
+  '6-column-portrait-a3',
+  '5-column-landscape',
+  '1-column-tall',
+])
+
 function getRestoredState(
   savedTemplateId: string,
   config: Record<string, unknown>
@@ -49,14 +84,25 @@ function getRestoredState(
   itemDropShadow: boolean
   fillItemTiles: boolean
   showCategoryTitles: boolean
+  showBanner: boolean
+  bannerTitle: string
+  showBannerTitle: boolean
+  showVenueName: boolean
+  bannerSwapLayout: boolean
+  bannerImageStyle: 'cutout' | 'stretch-fit' | 'none'
+  fontStylePreset: 'strong' | 'fun' | 'standard' | 'serif'
+  flagshipItemId: string | null
+  bannerHeroTransform: ImageTransform | undefined
+  bannerLogoTransform: ImageTransform | undefined
+  centreAlignment: boolean
 } {
   const mappedTemplateId =
     savedTemplateId === 'classic-grid-cards' || savedTemplateId === 'simple-rows' || savedTemplateId === 'classic-cards-v2' ? '4-column-portrait' :
     savedTemplateId === 'two-column-text' || savedTemplateId === 'italian-v2' ? '2-column-portrait' :
     savedTemplateId === 'three-column-modern-v2' ? '3-column-portrait' :
     savedTemplateId === 'half-a4-tall-v2' ? '1-column-tall' :
-    savedTemplateId === 'classic-cards-v2-landscape' ? '4-column-landscape' :
-    savedTemplateId || '4-column-portrait'
+    savedTemplateId === 'classic-cards-v2-landscape' ? '5-column-landscape' :
+    savedTemplateId || '6-column-portrait-a3'
 
   const paletteIdRaw = (config.colourPaletteId ?? config.paletteId) as string | undefined
   const paletteId = paletteIdRaw && PALETTES_V2.some(p => p.id === paletteIdRaw)
@@ -79,6 +125,34 @@ function getRestoredState(
     (config.imageMode && ['none', 'compact-rect', 'compact-circle', 'stretch', 'background', 'cutout'].includes(config.imageMode as string))
       ? (config.imageMode as ImageModeV2) : 'compact-rect'
 
+  // Banner defaults: showBanner defaults to true if the template supports it
+  const bannerEnabledByDefault = BANNER_ENABLED_TEMPLATES.has(mappedTemplateId)
+  const showBanner = config.showBanner !== undefined ? config.showBanner === true : bannerEnabledByDefault
+  const bannerTitle = typeof config.bannerTitle === 'string' && config.bannerTitle.length > 0
+    ? config.bannerTitle
+    : 'MENU'
+  const showBannerTitle = config.showBannerTitle !== false
+  const showVenueName = config.showVenueName !== false
+  const bannerSwapLayout = config.bannerSwapLayout === true
+  const bannerImageStyle: 'cutout' | 'stretch-fit' | 'none' =
+    config.bannerImageStyle === 'stretch-fit' ? 'stretch-fit' :
+    config.bannerImageStyle === 'none' ? 'none' :
+    'cutout'
+  const fontStylePreset: 'strong' | 'fun' | 'standard' | 'serif' =
+    config.fontStylePreset === 'strong' ? 'strong' :
+    config.fontStylePreset === 'fun' ? 'fun' :
+    config.fontStylePreset === 'serif' ? 'serif' :
+    'standard'
+  const flagshipItemId = typeof config.flagshipItemId === 'string' ? config.flagshipItemId : null
+
+  const isValidTransform = (t: unknown): t is ImageTransform =>
+    !!t && typeof t === 'object' &&
+    typeof (t as ImageTransform).offsetX === 'number' &&
+    typeof (t as ImageTransform).offsetY === 'number' &&
+    typeof (t as ImageTransform).scale === 'number'
+  const bannerHeroTransform = isValidTransform(config.bannerHeroTransform) ? config.bannerHeroTransform : undefined
+  const bannerLogoTransform = isValidTransform(config.bannerLogoTransform) ? config.bannerLogoTransform : undefined
+
   return {
     templateId: mappedTemplateId,
     paletteId,
@@ -90,7 +164,18 @@ function getRestoredState(
     itemBorders: config.itemBorders !== false,
     itemDropShadow: config.itemDropShadow !== false,
     fillItemTiles: config.fillItemTiles !== false,
-    showCategoryTitles: config.showCategoryTitles !== false
+    showCategoryTitles: config.showCategoryTitles !== false,
+    showBanner,
+    bannerTitle,
+    showBannerTitle,
+    showVenueName,
+    bannerSwapLayout,
+    bannerImageStyle,
+    fontStylePreset,
+    flagshipItemId,
+    bannerHeroTransform,
+    bannerLogoTransform,
+    centreAlignment: config.centreAlignment === true,
   }
 }
 
@@ -107,7 +192,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const isDemo = menuId.startsWith('demo-')
 
   // Selection State — demo users get curated defaults for best first impression
-  const [templateId, setTemplateId] = useState(isDemo ? DEMO_DEFAULTS.templateId : '4-column-portrait')
+  const [templateId, setTemplateId] = useState(isDemo ? DEMO_DEFAULTS.templateId : '6-column-portrait-a3')
   const [paletteId, setPaletteId] = useState(isDemo ? DEMO_DEFAULTS.paletteId : 'elegant-cream')
   const [imageMode, setImageMode] = useState<ImageModeV2>(isDemo ? DEMO_DEFAULTS.imageMode : 'compact-rect')
   /** 'blank' = plain rectangle fillers, 'none' = no fillers, otherwise pattern ID */
@@ -122,6 +207,23 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [itemDropShadow, setItemDropShadow] = useState(isDemo ? DEMO_DEFAULTS.itemDropShadow : true)
   const [fillItemTiles, setFillItemTiles] = useState(isDemo ? DEMO_DEFAULTS.fillItemTiles : true)
   const [showCategoryTitles, setShowCategoryTitles] = useState(isDemo ? DEMO_DEFAULTS.showCategoryTitles : true)
+  const [centreAlignment, setCentreAlignment] = useState(isDemo ? DEMO_DEFAULTS.centreAlignment : false)
+  
+  // Banner & footer state
+  const [showBanner, setShowBanner] = useState(true)
+  const [bannerTitle, setBannerTitle] = useState('MENU')
+  const [showBannerTitle, setShowBannerTitle] = useState(true)
+  const [showVenueName, setShowVenueName] = useState(true)
+  const [bannerSwapLayout, setBannerSwapLayout] = useState(false)
+  const [bannerImageStyle, setBannerImageStyle] = useState<'cutout' | 'stretch-fit' | 'none'>('cutout')
+  const [fontStylePreset, setFontStylePreset] = useState<'strong' | 'fun' | 'standard' | 'serif'>('standard')
+  const [flagshipItemId, setFlagshipItemId] = useState<string | null>(null)
+
+  // Derived: whether the currently selected template supports the banner feature
+  const bannerSupported = BANNER_ENABLED_TEMPLATES.has(templateId)
+  
+  // Control panel state — only one section expanded at a time
+  const [expandedSection, setExpandedSection] = useState<string | null>('Grid Layout')
   
   // Preview State
   const [layoutDocument, setLayoutDocument] = useState<LayoutDocumentV2 | null>(null)
@@ -135,6 +237,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [imageTransformRecords, setImageTransformRecords] = useState<Map<string, ImageTransformRecord>>(new Map())
   const imageTransformSaveTimeout = useRef<Map<string, NodeJS.Timeout>>(new Map())
   const imageTransformRecordsRef = useRef<Map<string, ImageTransformRecord>>(new Map())
+
+  // Banner image transforms (hero + logo) — persisted in template configuration
+  const [bannerHeroTransform, setBannerHeroTransform] = useState<ImageTransform | undefined>(undefined)
+  const [bannerLogoTransform, setBannerLogoTransform] = useState<ImageTransform | undefined>(undefined)
+  const bannerTransformSaveTimeout = useRef<NodeJS.Timeout | null>(null)
   
   const [isSaving, setIsSaving] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -191,6 +298,18 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     setMounted(true)
   }, [])
 
+  // Inject Google Fonts <link> for the active font style preset
+  useEffect(() => {
+    const url = getFontStylePresetGoogleFontsUrl(fontStylePreset)
+    if (!url || typeof document === 'undefined') return
+    const existing = document.querySelector(`link[href="${url}"]`)
+    if (existing) return
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = url
+    document.head.appendChild(link)
+  }, [fontStylePreset])
+
   // Cooldown countdown timer for export rate limiting
   useEffect(() => {
     if (!cooldownResetAt) {
@@ -241,6 +360,17 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   setItemDropShadow(r.itemDropShadow)
                   setFillItemTiles(r.fillItemTiles)
                   setShowCategoryTitles(r.showCategoryTitles)
+                  setShowBanner(r.showBanner)
+                  setBannerTitle(r.bannerTitle)
+                  setShowBannerTitle(r.showBannerTitle)
+                  setShowVenueName(r.showVenueName)
+                  setBannerSwapLayout(r.bannerSwapLayout)
+                  setBannerImageStyle(r.bannerImageStyle)
+                  setFontStylePreset(r.fontStylePreset)
+                  setFlagshipItemId(r.flagshipItemId)
+                  setBannerHeroTransform(r.bannerHeroTransform)
+                  setBannerLogoTransform(r.bannerLogoTransform)
+                  setCentreAlignment(r.centreAlignment)
                   setLoading(false)
                   return
                 }
@@ -249,6 +379,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               }
             }
             const selectionRaw = sessionStorage.getItem(`templateSelection-${menuId}`)
+            let restoredFromSelection = false
             if (selectionRaw) {
               try {
                 const sel = JSON.parse(selectionRaw) as { templateId?: string; configuration?: Record<string, unknown> }
@@ -265,9 +396,58 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   setItemDropShadow(r.itemDropShadow)
                   setFillItemTiles(r.fillItemTiles)
                   setShowCategoryTitles(r.showCategoryTitles)
+                  setShowBanner(r.showBanner)
+                  setBannerTitle(r.bannerTitle)
+                  setShowBannerTitle(r.showBannerTitle)
+                  setShowVenueName(r.showVenueName)
+                  setBannerSwapLayout(r.bannerSwapLayout)
+                  setBannerImageStyle(r.bannerImageStyle)
+                  setFontStylePreset(r.fontStylePreset)
+                  setFlagshipItemId(r.flagshipItemId)
+                  setBannerHeroTransform(r.bannerHeroTransform)
+                  setBannerLogoTransform(r.bannerLogoTransform)
+                  setCentreAlignment(r.centreAlignment)
+                  restoredFromSelection = true
                 }
               } catch {
                 // ignore invalid selection
+              }
+            }
+            // No saved config — apply per-menu defaults for flagship and banner style
+            if (!restoredFromSelection) {
+              const isBreakfastMenu = normalized.name.toLowerCase().includes('breakfast')
+              const isFineDiningMenu = !isBreakfastMenu
+              const defaultFlagshipName = isBreakfastMenu ? 'Country Tartine' : 'Tenderloin of Beef Wellington'
+              const defaultBannerStyle: 'cutout' | 'stretch-fit' = isBreakfastMenu ? 'cutout' : 'stretch-fit'
+              const flagshipItem = normalized.items?.find((item: any) => item.isFlagship || item.name === defaultFlagshipName)
+              if (flagshipItem) {
+                setFlagshipItemId(flagshipItem.id)
+                setBannerImageStyle(defaultBannerStyle)
+              }
+              if (isBreakfastMenu) {
+                setBannerTitle('BRUNCH')
+                setFontStylePreset('fun')
+              }
+              if (isFineDiningMenu) {
+                const d = DEMO_DEFAULTS_FINE_DINING
+                setTemplateId(d.templateId)
+                setPaletteId(d.paletteId)
+                setImageMode(d.imageMode)
+                setSpacerTiles(d.spacerTiles)
+                setTextureId(d.textureId)
+                setShowMenuTitle(d.showMenuTitle)
+                setShowVignette(d.showVignette)
+                setItemBorders(d.itemBorders)
+                setItemDropShadow(d.itemDropShadow)
+                setFillItemTiles(d.fillItemTiles)
+                setShowCategoryTitles(d.showCategoryTitles)
+                setCentreAlignment(d.centreAlignment)
+                setBannerTitle(d.bannerTitle)
+                setBannerImageStyle(d.bannerImageStyle)
+                setFontStylePreset(d.fontStylePreset)
+                setBannerLogoTransform(d.bannerLogoTransform)
+                setBannerHeroTransform(d.bannerHeroTransform)
+                setZoom(0.8)
               }
             }
           } catch (error) {
@@ -310,6 +490,17 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 setItemDropShadow(r.itemDropShadow)
                 setFillItemTiles(r.fillItemTiles)
                 setShowCategoryTitles(r.showCategoryTitles)
+                setShowBanner(r.showBanner)
+                setBannerTitle(r.bannerTitle)
+                setShowBannerTitle(r.showBannerTitle)
+                setShowVenueName(r.showVenueName)
+                setBannerSwapLayout(r.bannerSwapLayout)
+                setBannerImageStyle(r.bannerImageStyle)
+                setFontStylePreset(r.fontStylePreset)
+                setFlagshipItemId(r.flagshipItemId)
+                setBannerHeroTransform(r.bannerHeroTransform)
+                setBannerLogoTransform(r.bannerLogoTransform)
+                  setCentreAlignment(r.centreAlignment)
                 setLoading(false)
                 return
               }
@@ -324,7 +515,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
             const selectionData = await selectionResp.json()
             if (selectionData.data) {
               const config = selectionData.data.configuration || {}
-              const savedTemplateId = selectionData.data.templateId || '4-column-portrait'
+              const savedTemplateId = selectionData.data.templateId || '6-column-portrait-a3'
               const r = getRestoredState(savedTemplateId, config)
               setTemplateId(r.templateId)
               setPaletteId(r.paletteId)
@@ -337,6 +528,17 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               setItemDropShadow(r.itemDropShadow)
               setFillItemTiles(r.fillItemTiles)
               setShowCategoryTitles(r.showCategoryTitles)
+              setShowBanner(r.showBanner)
+              setBannerTitle(r.bannerTitle)
+              setShowBannerTitle(r.showBannerTitle)
+              setShowVenueName(r.showVenueName)
+              setBannerSwapLayout(r.bannerSwapLayout)
+              setBannerImageStyle(r.bannerImageStyle)
+              setFontStylePreset(r.fontStylePreset)
+              setFlagshipItemId(r.flagshipItemId)
+              setBannerHeroTransform(r.bannerHeroTransform)
+              setBannerLogoTransform(r.bannerLogoTransform)
+                  setCentreAlignment(r.centreAlignment)
             }
           }
         } catch (e) {
@@ -398,6 +600,15 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         showMenuTitle,
         showVignette,
         showCategoryTitles,
+        centreAlignment,
+        showBanner,
+        bannerTitle,
+        showBannerTitle,
+        showVenueName,
+        bannerSwapLayout,
+        bannerImageStyle,
+        fontStylePreset,
+        flagshipItemId: flagshipItemId ?? undefined,
         engineVersion: 'v2'
       }
 
@@ -424,6 +635,15 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           showMenuTitle: showMenuTitle.toString(),
           showVignette: showVignette.toString(),
           showCategoryTitles: showCategoryTitles.toString(),
+          centreAlignment: centreAlignment.toString(),
+          showBanner: showBanner.toString(),
+          bannerTitle,
+          showBannerTitle: showBannerTitle.toString(),
+          showVenueName: showVenueName.toString(),
+          bannerSwapLayout: bannerSwapLayout.toString(),
+          bannerImageStyle,
+          fontStylePreset,
+          ...(flagshipItemId ? { flagshipItemId } : {}),
           engineVersion: 'v2'
         })
         resp = await fetch(`/api/menus/${menuId}/layout?${params.toString()}`)
@@ -446,7 +666,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     } finally {
       setPreviewLoading(false)
     }
-  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, showCategoryTitles, isDemoUser, currentPageIndex])
+  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, showCategoryTitles, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, isDemoUser, currentPageIndex])
 
   const handleImageTransformChange = useCallback((itemId: string, transform: ImageTransform) => {
     const mode = imageMode === 'none' ? 'stretch' : imageMode
@@ -499,7 +719,20 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     imageTransformSaveTimeout.current.set(itemId, timeout)
   }, [isDemoUser, imageMode])
 
-  /** Flush any pending image transform saves before navigation so positioning is preserved */
+  /** Handle banner hero/logo transform changes — debounced save into configuration */
+  const handleBannerTransformChange = useCallback((target: 'hero' | 'logo', transform: ImageTransform) => {
+    if (target === 'hero') setBannerHeroTransform(transform)
+    else setBannerLogoTransform(transform)
+
+    // Debounced save: banner transforms are stored in the template configuration
+    if (bannerTransformSaveTimeout.current) clearTimeout(bannerTransformSaveTimeout.current)
+    bannerTransformSaveTimeout.current = setTimeout(async () => {
+      bannerTransformSaveTimeout.current = null
+      if (isDemoUser) return // demo: state is enough, no API call needed
+      // Transforms are persisted via the template-selection save on navigation/export
+      // No separate API call needed here — the draft effect handles persistence
+    }, 500)
+  }, [isDemoUser])
   const flushImageTransformSaves = useCallback(async () => {
     const pendingItemIds = Array.from(imageTransformSaveTimeout.current.keys())
     if (pendingItemIds.length === 0) return
@@ -587,8 +820,19 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       itemDropShadow,
       fillItemTiles,
       showCategoryTitles,
+      centreAlignment,
       colourPaletteId: paletteId,
-      imageMode
+      imageMode,
+      showBanner,
+      bannerTitle,
+      showBannerTitle,
+      showVenueName,
+      bannerSwapLayout,
+      bannerImageStyle,
+      fontStylePreset,
+      flagshipItemId: flagshipItemId ?? undefined,
+      bannerHeroTransform: bannerHeroTransform ?? undefined,
+      bannerLogoTransform: bannerLogoTransform ?? undefined,
     }
     draftConfigRef.current = { templateId, configuration }
     if (draftWriteTimeout.current) clearTimeout(draftWriteTimeout.current)
@@ -601,7 +845,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         sessionStorage.setItem(TEMPLATE_DRAFT_KEY(menuId), JSON.stringify(draftConfigRef.current))
       }
     }
-  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, itemBorders, itemDropShadow, fillItemTiles, showCategoryTitles])
+  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, itemBorders, itemDropShadow, fillItemTiles, showCategoryTitles, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, flagshipItemId, bannerHeroTransform, bannerLogoTransform])
 
   const handleSelectTemplate = async () => {
     if (!menu) return
@@ -622,8 +866,19 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         itemDropShadow,
         fillItemTiles,
         showCategoryTitles,
+        centreAlignment,
         colourPaletteId: paletteId,
-        imageMode
+        imageMode,
+        showBanner,
+        bannerTitle,
+        showBannerTitle,
+        showVenueName,
+        bannerSwapLayout,
+        bannerImageStyle,
+        fontStylePreset,
+        flagshipItemId: flagshipItemId ?? undefined,
+        bannerHeroTransform: bannerHeroTransform ?? undefined,
+        bannerLogoTransform: bannerLogoTransform ?? undefined,
       }
 
       if (isDemoUser) {
@@ -696,8 +951,19 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         itemDropShadow,
         fillItemTiles,
         showCategoryTitles,
+        centreAlignment,
         palette: palette,
-        imageMode
+        imageMode,
+        showBanner,
+        bannerTitle,
+        showBannerTitle,
+        showVenueName,
+        bannerSwapLayout,
+        bannerImageStyle,
+        fontStylePreset,
+        flagshipItemId: flagshipItemId ?? undefined,
+        bannerHeroTransform: bannerHeroTransform ?? undefined,
+        bannerLogoTransform: bannerLogoTransform ?? undefined,
       }
 
       // 1. Create Export Job
@@ -794,9 +1060,9 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         {/* Left Column: Controls */}
         <div className="lg:col-span-4 space-y-6">
           <UXCard className="overflow-visible">
-            <div className="p-6 space-y-8">
+            <div className="p-6 space-y-2">
               {/* Menu Summary */}
-              <div className="flex items-center space-x-4 border-b pb-6">
+              <div className="flex items-center space-x-4 border-b pb-6 mb-2">
                 <MenuThumbnailBadge imageUrl={menu?.imageUrl} size="sm" />
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-ux-text">{menu?.name}</h3>
@@ -826,100 +1092,358 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               </div>
 
               {/* Template Selection */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">1. Grid Layout</h4>
-                <TemplateDropdown
-                  templates={V2_TEMPLATE_OPTIONS}
-                  value={templateId}
-                  onChange={setTemplateId}
-                  variant="primary"
-                />
-              </div>
+              <CollapsibleSection 
+                title="Grid Layout" 
+                isExpanded={expandedSection === 'Grid Layout'}
+                onExpand={(expanded) => setExpandedSection(expanded ? 'Grid Layout' : null)}
+              >
+                <div className="pt-2 space-y-1.5">
+                  {V2_TEMPLATE_OPTIONS.map((t) => {
+                    const isSelected = t.id === templateId
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setTemplateId(t.id)}
+                        className={`w-full text-left rounded-lg border-2 px-3 py-2 transition-all hover:border-ux-primary ${
+                          isSelected ? 'border-ux-primary bg-ux-primary/5' : 'border-ux-border bg-white'
+                        }`}
+                      >
+                        <div className={`text-sm font-semibold ${isSelected ? 'text-ux-primary' : 'text-ux-text'}`}>{t.name}</div>
+                        <div className="text-[11px] text-ux-text-secondary leading-tight mt-0.5">{t.description}</div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </CollapsibleSection>
 
               {/* Palette Selection */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">2. Color Palette</h4>
-                <PaletteDropdown
-                  palettes={PALETTES_V2}
-                  value={paletteId}
-                  onChange={setPaletteId}
-                  variant="primary"
-                />
-              </div>
-
-              {/* Background texture (overlay on palette) */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">3. Background texture</h4>
-                <select
-                  value={textureId ?? ''}
-                  onChange={(e) => setTextureId(e.target.value || null)}
-                  className="w-full rounded border border-ux-border bg-white px-3 py-2 text-sm text-ux-text focus:ring-ux-primary focus:border-ux-primary"
-                >
-                  <option value="">None</option>
-                  {TEXTURE_IDS.map((id) => (
-                    <option key={id} value={id}>
-                      {TEXTURE_REGISTRY.get(id)?.label ?? id}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Image Mode Selection */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">4. Image Options</h4>
-                <ImageModeDropdown
-                  value={imageMode}
-                  onChange={setImageMode}
-                  variant="primary"
-                  showDescription={false}
-                  cutoutAvailable={(() => {
-                    const allItems = [
-                      ...(menu?.items ?? []),
-                      ...(menu?.categories?.flatMap(c => c.items) ?? []),
-                    ]
-                    return allItems.some(item => item.cutoutStatus === 'succeeded')
-                  })()}
-                />
-                {imageMode === 'cutout' && (
-                  <div className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                    <span className="shrink-0 mt-0.5">⚠</span>
-                    <span>Cutout is a beta feature. Results vary by dish — if a cutout looks off, try a different image style.</span>
+              <CollapsibleSection 
+                title="Color Palette" 
+                isExpanded={expandedSection === 'Color Palette'}
+                onExpand={(expanded) => setExpandedSection(expanded ? 'Color Palette' : null)}
+              >
+                <div className="pt-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    {PALETTES_V2.map((p) => {
+                      const colors = getPaletteSwatchColors(p)
+                      const isSelected = p.id === paletteId
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setPaletteId(p.id)}
+                          className={`flex flex-col items-center gap-1 rounded-lg border-2 p-2 transition-all hover:border-ux-primary ${
+                            isSelected ? 'border-ux-primary bg-ux-primary/5' : 'border-ux-border bg-white'
+                          }`}
+                          title={p.name}
+                        >
+                          <div className="flex -space-x-1.5">
+                            {colors.map((color, i) => (
+                              <div key={i} className="h-5 w-5 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: color }} />
+                            ))}
+                          </div>
+                          <span className="text-[10px] font-medium text-ux-text text-center leading-tight line-clamp-1">{p.name}</span>
+                        </button>
+                      )
+                    })}
                   </div>
-                )}
-              </div>
+                </div>
+              </CollapsibleSection>
+
+              {/* Banner & Footer */}
+              <CollapsibleSection 
+                title="Banner & Footer" 
+                isExpanded={expandedSection === 'Banner & Footer'}
+                onExpand={(expanded) => setExpandedSection(expanded ? 'Banner & Footer' : null)}
+              >
+                <div className="pt-2 space-y-3">
+                  {/* 10.1: Show Banner toggle — only shown when template supports banner */}
+                  {bannerSupported && (
+                    <label className="flex items-center justify-between cursor-pointer group">
+                      <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Show banner</span>
+                      <input
+                        type="checkbox"
+                        checked={showBanner}
+                        onChange={(e) => setShowBanner(e.target.checked)}
+                        className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
+                      />
+                    </label>
+                  )}
+
+                  {/* Controls below are only relevant when banner is supported and enabled */}
+                  {bannerSupported && showBanner && (
+                    <>
+                      {/* Title text input */}
+                      <div>
+                        <label htmlFor="banner-title-input" className="block text-xs font-semibold text-ux-text-secondary uppercase tracking-wider mb-1 pl-2">
+                          Title
+                        </label>
+                        <input
+                          id="banner-title-input"
+                          type="text"
+                          value={bannerTitle}
+                          maxLength={30}
+                          onChange={(e) => setBannerTitle(e.target.value.slice(0, 30))}
+                          placeholder="MENU"
+                          className="w-full px-3 py-2 text-sm border border-ux-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ux-primary bg-white text-ux-text"
+                        />
+                        <div className="flex justify-between mt-1">
+                          {bannerTitle.length >= 16 && (
+                            <p className="text-xs text-amber-600">Long titles may wrap or be truncated in the banner</p>
+                          )}
+                          <p className={`text-xs ml-auto ${bannerTitle.length >= 28 ? 'text-red-500' : 'text-ux-text-secondary'}`}>
+                            {bannerTitle.length}/30
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Banner Image Style selector — immediately after Title */}
+                      <div>
+                        <p className="text-xs font-semibold text-ux-text-secondary uppercase tracking-wider mb-2 pl-2">Banner image style</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(['cutout', 'stretch-fit', 'none'] as const).map((style) => {
+                            const labels = { cutout: 'Cutout', 'stretch-fit': 'Stretch', none: 'None' }
+                            const isSelected = bannerImageStyle === style
+                            return (
+                              <button
+                                key={style}
+                                type="button"
+                                onClick={() => setBannerImageStyle(style)}
+                                className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 transition-all hover:border-ux-primary ${
+                                  isSelected ? 'border-ux-primary bg-ux-primary/5' : 'border-ux-border bg-white'
+                                }`}
+                              >
+                                <span className="text-[10px] font-medium text-ux-text text-center leading-tight">{labels[style]}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Show menu title toggle */}
+                      <div className="flex items-center justify-between">
+                        <label htmlFor="show-banner-title-cb" className="text-sm text-ux-text cursor-pointer">
+                          Show menu title
+                        </label>
+                        <input
+                          id="show-banner-title-cb"
+                          type="checkbox"
+                          checked={showBannerTitle}
+                          onChange={(e) => setShowBannerTitle(e.target.checked)}
+                          className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
+                        />
+                      </div>
+
+                      {/* Show venue name / logo toggle */}
+                      <div className="flex items-center justify-between">
+                        <label htmlFor="show-venue-name-cb" className="text-sm text-ux-text cursor-pointer">
+                          {menu?.logoUrl ? 'Show venue logo' : 'Show venue name'}
+                        </label>
+                        <input
+                          id="show-venue-name-cb"
+                          type="checkbox"
+                          checked={showVenueName}
+                          onChange={(e) => setShowVenueName(e.target.checked)}
+                          className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
+                        />
+                      </div>
+
+                      {/* Switch layout — only relevant when venue name is shown */}
+                      {showVenueName && (
+                        <div className="flex items-center justify-between">
+                          <label htmlFor="banner-swap-layout-cb" className="text-sm text-ux-text cursor-pointer">
+                            Switch layout
+                          </label>
+                          <input
+                            id="banner-swap-layout-cb"
+                            type="checkbox"
+                            checked={bannerSwapLayout}
+                            onChange={(e) => setBannerSwapLayout(e.target.checked)}
+                            className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </CollapsibleSection>
+
+              {/* Background Texture */}
+              <CollapsibleSection 
+                title="Background Texture" 
+                isExpanded={expandedSection === 'Background Texture'}
+                onExpand={(expanded) => setExpandedSection(expanded ? 'Background Texture' : null)}
+              >
+                <div className="pt-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTextureId(null)}
+                      className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 h-14 transition-all hover:border-ux-primary ${
+                        textureId === null ? 'border-ux-primary bg-ux-primary/5' : 'border-ux-border bg-white'
+                      }`}
+                    >
+                      <span className="text-[10px] font-medium text-ux-text-secondary">None</span>
+                    </button>
+                    {TEXTURE_IDS.map((id) => {
+                      const isSelected = textureId === id
+                      const label = TEXTURE_REGISTRY.get(id)?.label ?? id
+                      const isDark = DARK_PALETTE_IDS.has(paletteId)
+                      const incompatible =
+                        (DARK_ONLY_TEXTURE_IDS.has(id) && !isDark) ||
+                        (LIGHT_ONLY_TEXTURE_IDS.has(id) && isDark)
+                      const tooltip = incompatible
+                        ? DARK_ONLY_TEXTURE_IDS.has(id)
+                          ? 'Best with dark palettes (Midnight Gold, Lunar Red & Gold)'
+                          : 'Best with light palettes'
+                        : label
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => !incompatible && setTextureId(id)}
+                          disabled={incompatible}
+                          className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 h-14 transition-all ${
+                            incompatible
+                              ? 'border-ux-border bg-white opacity-35 cursor-not-allowed'
+                              : isSelected
+                                ? 'border-ux-primary bg-ux-primary/5 hover:border-ux-primary'
+                                : 'border-ux-border bg-white hover:border-ux-primary'
+                          }`}
+                          title={tooltip}
+                        >
+                          <span className="text-[10px] font-medium text-ux-text text-center leading-tight">{label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </CollapsibleSection>
+
+              {/* Image Style */}
+              <CollapsibleSection 
+                title="Image Style" 
+                isExpanded={expandedSection === 'Image Style'}
+                onExpand={(expanded) => setExpandedSection(expanded ? 'Image Style' : null)}
+              >
+                <div className="pt-2 space-y-1.5">
+                  {(() => {
+                    const cutoutAvailable = (() => {
+                      const allItems = [
+                        ...(menu?.items ?? []),
+                        ...(menu?.categories?.flatMap(c => c.items) ?? []),
+                      ]
+                      return allItems.some(item => item.cutoutStatus === 'succeeded')
+                    })()
+                    const IMAGE_MODE_OPTIONS = [
+                      { value: 'none' as ImageModeV2, label: 'None', description: 'Text only, no images' },
+                      { value: 'compact-rect' as ImageModeV2, label: 'Compact (rectangular)', description: 'Smaller image, preserves aspect ratio' },
+                      { value: 'compact-circle' as ImageModeV2, label: 'Compact (circular)', description: 'Square crop with circular border' },
+                      { value: 'stretch' as ImageModeV2, label: 'Stretch fit', description: 'Image fills tile width' },
+                      { value: 'background' as ImageModeV2, label: 'Background', description: 'Full-tile image with text overlay' },
+                      { value: 'cutout' as ImageModeV2, label: 'Cutout', description: 'Transparent cut-out images', beta: true, requiresCutout: true },
+                    ]
+                    return IMAGE_MODE_OPTIONS.map((opt) => {
+                      const isSelected = imageMode === opt.value
+                      const isDisabled = opt.requiresCutout && !cutoutAvailable
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          disabled={isDisabled}
+                          onClick={() => !isDisabled && setImageMode(opt.value)}
+                          className={`w-full text-left rounded-lg border-2 px-3 py-2 transition-all ${
+                            isDisabled ? 'opacity-40 cursor-not-allowed border-ux-border bg-white' :
+                            isSelected ? 'border-ux-primary bg-ux-primary/5' : 'border-ux-border bg-white hover:border-ux-primary'
+                          }`}
+                        >
+                          <div className={`text-sm font-semibold flex items-center gap-1.5 ${isSelected ? 'text-ux-primary' : 'text-ux-text'}`}>
+                            {opt.label}
+                            {opt.beta && <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700">Beta</span>}
+                          </div>
+                          <div className="text-[11px] text-ux-text-secondary leading-tight mt-0.5">{opt.description}</div>
+                        </button>
+                      )
+                    })
+                  })()}
+                  {imageMode === 'cutout' && (
+                    <div className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      <span className="shrink-0 mt-0.5">⚠</span>
+                      <span>Cutout is a beta feature. Results vary by dish — if a cutout looks off, try a different image style.</span>
+                    </div>
+                  )}
+                </div>
+              </CollapsibleSection>
 
               {/* Spacer Tiles */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">5. Spacer Tiles</h4>
-                <select
-                  value={spacerTiles}
-                  onChange={(e) => setSpacerTiles(e.target.value as 'blank' | 'none' | string)}
-                  className="w-full rounded border border-ux-border bg-white px-3 py-2 text-sm text-ux-text focus:ring-ux-primary focus:border-ux-primary"
-                >
-                  <option value={SPACER_BLANK_ID}>Blank</option>
-                  <option value="none">None</option>
-                  <option value="mix">Mix</option>
-                  {FILLER_PATTERN_IDS.map((id) => (
-                    <option key={id} value={id}>
-                      {FILLER_PATTERN_REGISTRY.get(id)?.label ?? id}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <CollapsibleSection 
+                title="Spacer Tiles" 
+                isExpanded={expandedSection === 'Spacer Tiles'}
+                onExpand={(expanded) => setExpandedSection(expanded ? 'Spacer Tiles' : null)}
+              >
+                <div className="pt-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: 'none', label: 'None' },
+                      { value: SPACER_BLANK_ID, label: 'Blank' },
+                      { value: 'mix', label: 'Mix' },
+                      ...FILLER_PATTERN_IDS.map(id => ({ value: id, label: FILLER_PATTERN_REGISTRY.get(id)?.label ?? id }))
+                    ].map(({ value, label }) => {
+                      const isSelected = spacerTiles === value
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setSpacerTiles(value as 'blank' | 'none' | string)}
+                          className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 h-14 transition-all hover:border-ux-primary ${
+                            isSelected ? 'border-ux-primary bg-ux-primary/5' : 'border-ux-border bg-white'
+                          }`}
+                          title={label}
+                        >
+                          <span className="text-[10px] font-medium text-ux-text text-center leading-tight">{label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </CollapsibleSection>
+
+              {/* Font Style */}
+              <CollapsibleSection 
+                title="Font Style" 
+                isExpanded={expandedSection === 'Font Style'}
+                onExpand={(expanded) => setExpandedSection(expanded ? 'Font Style' : null)}
+              >
+                <div className="pt-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['standard', 'serif', 'fun', 'strong'] as const).map((preset) => {
+                      const labels = { standard: 'Standard', strong: 'Strong', fun: 'Fun', serif: 'Serif' }
+                      const isSelected = fontStylePreset === preset
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setFontStylePreset(preset)}
+                          className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 transition-all hover:border-ux-primary ${
+                            isSelected ? 'border-ux-primary bg-ux-primary/5' : 'border-ux-border bg-white'
+                          }`}
+                        >
+                          <span className="text-[10px] font-medium text-ux-text text-center leading-tight">{labels[preset]}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </CollapsibleSection>
 
               {/* Display Options */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">6. Display Options</h4>
-                <div className="space-y-3">
-                  <label className="flex items-center justify-between cursor-pointer group">
-                    <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Show menu title</span>
-                    <input
-                      type="checkbox"
-                      checked={showMenuTitle}
-                      onChange={(e) => setShowMenuTitle(e.target.checked)}
-                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
-                    />
-                  </label>
+              <CollapsibleSection 
+                title="Display Options" 
+                isExpanded={expandedSection === 'Display Options'}
+                onExpand={(expanded) => setExpandedSection(expanded ? 'Display Options' : null)}
+              >
+                <div className="pt-2 space-y-3">
                   <label className="flex items-center justify-between cursor-pointer group">
                     <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Show category title(s)</span>
                     <input
@@ -965,8 +1489,17 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                       className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
                     />
                   </label>
+                  <label className="flex items-center justify-between cursor-pointer group">
+                    <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Centre alignment</span>
+                    <input
+                      type="checkbox"
+                      checked={centreAlignment}
+                      onChange={(e) => setCentreAlignment(e.target.checked)}
+                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
+                    />
+                  </label>
                 </div>
-              </div>
+              </CollapsibleSection>
             </div>
           </UXCard>
         </div>
@@ -1005,8 +1538,10 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               )}
 
               <div className="flex items-center space-x-4">
-                {/* Image Edit Lock toggle — only shown when an image mode is active */}
-                {imageMode !== 'none' && (
+                {/* Image Edit Lock toggle — shown when there's something editable:
+                    item images (imageMode active), banner hero image (banner on + image style set),
+                    or banner logo image (banner on + menu has a logo) */}
+                {(imageMode !== 'none' || (showBanner && bannerImageStyle !== 'none') || (showBanner && !!menu?.logoUrl)) && (
                   <button
                     onClick={() => setImageEditUnlocked(v => !v)}
                     title={imageEditUnlocked ? 'Lock image edits' : 'Unlock image edits (drag to reposition, scroll to zoom)'}
@@ -1092,14 +1627,19 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                         itemDropShadow,
                         fillItemTiles,
                         showCategoryTitles,
+                        centreAlignment,
                         showGridOverlay: false,
                         showRegionBounds: false,
                         showTileIds: false,
                         isExport: false,
                         spacerTilePatternId: spacerTiles !== 'none' ? spacerTiles : undefined,
+                        fontStylePreset,
                         imageEditMode: imageEditUnlocked,
                         imageTransforms,
-                        onImageTransformChange: imageEditUnlocked ? handleImageTransformChange : undefined
+                        onImageTransformChange: imageEditUnlocked ? handleImageTransformChange : undefined,
+                        bannerHeroTransform,
+                        bannerLogoTransform,
+                        onBannerTransformChange: imageEditUnlocked ? handleBannerTransformChange : undefined
                       }}
                     />
                   </div>
@@ -1143,7 +1683,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 fillItemTiles,
                 showCategoryTitles,
                 colourPaletteId: paletteId,
-                imageMode
+                imageMode,
+                centreAlignment
               }
               sessionStorage.setItem(TEMPLATE_DRAFT_KEY(menuId), JSON.stringify({ templateId, configuration }))
             }

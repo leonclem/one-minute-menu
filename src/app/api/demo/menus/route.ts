@@ -66,7 +66,11 @@ export async function POST(request: NextRequest) {
       }],
       createdAt: new Date(),
       updatedAt: new Date(),
-      logoUrl: '/logos/logo.svg',
+      logoUrl: name.toLowerCase().includes('breakfast')
+        ? "/sample-menus/Hannah's Cafe---Transparent.png"
+        : name.toLowerCase().includes('fine dining') || name.toLowerCase().includes('fine-dining')
+          ? '/sample-menus/fill.png'
+          : '/logos/logo.svg',
       venueInfo: {
         address: '123 Gourmet Avenue, Food City, FC 12345',
         phone: '+1 (555) 123-4567',

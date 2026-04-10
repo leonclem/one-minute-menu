@@ -7,7 +7,7 @@ import type { ImageModeV2 } from '@/lib/templates/v2/engine-types-v2'
 const DRAG_THRESHOLD_PX = 4
 const MIN_SCALE_DEFAULT = 1.0
 const MIN_SCALE_CUTOUT = 0.4
-const MAX_SCALE = 2.5
+const MAX_SCALE = 4.0
 const WHEEL_SCALE_STEP = 0.08
 const DRAG_SENSITIVITY = 1.0
 const CUTOUT_OVERFLOW_X_PCT = 30

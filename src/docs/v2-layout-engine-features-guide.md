@@ -129,7 +129,7 @@ Five production templates are available, named by column layout and orientation 
 - The default template. Photo-forward grid with image cards.
 - Supports FEATURE_CARD and DECORATIVE_DIVIDER.
 
-### 4 column (landscape) (`4-column-landscape`)
+### 5 column (landscape) (`5-column-landscape`)
 - Page: A4 Landscape, 4 columns
 - Wide-format version. Good for bi-fold or placemat menus.
 - `rowHeight: 65`, `gapX: 10`, `gapY: 8`
@@ -427,7 +427,7 @@ interface SelectionConfigV2 {
 | Template ID | YAML File |
 |---|---|
 | `4-column-portrait` | `templates/4-column-portrait.yaml` |
-| `4-column-landscape` | `templates/4-column-landscape.yaml` |
+| `5-column-landscape` | `templates/5-column-landscape.yaml` |
 | `3-column-portrait` | `templates/3-column-portrait.yaml` |
 | `2-column-portrait` | `templates/2-column-portrait.yaml` |
 | `1-column-tall` | `templates/1-column-tall.yaml` |

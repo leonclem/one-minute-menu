@@ -230,8 +230,8 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     fine_dining: {
       'Crispy Duck in Port Cherry Sauce': '/sample-menus/generated/fine-dining/standard/crispy-duck-in-port-cherry-sauce.webp',
       'Grilled Faroe Island Salmon': '/sample-menus/generated/fine-dining/standard/grilled-faroe-island-salmon.webp',
-      'House Made Ice Cream': '/sample-menus/generated/fine-dining/standard/house-made-ice-cream.jpg',
-      'Key Lime Pudding': '/sample-menus/generated/fine-dining/standard/key-lime-pudding.jpg',
+      'House Made Ice Cream': '/sample-menus/generated/fine-dining/standard/house-made-ice-cream.webp',
+      'Key Lime Pudding': '/sample-menus/generated/fine-dining/standard/key-lime-pudding.webp',
       'Marinated Local Oyster Mushroom Salad': '/sample-menus/generated/fine-dining/standard/marinated-local-oyster-mushroom-salad.webp',
       'Pan Roasted Duck Breast': '/sample-menus/generated/fine-dining/standard/pan-roasted-duck-breast.webp',
       'Rutabaga and Toasted Hazelnut Soup': '/sample-menus/generated/fine-dining/standard/rutabaga-and-toasted-hazelnut-soup.webp',
@@ -254,7 +254,17 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       'Three Organic Eggs Your Way!': '/sample-menus/generated/breakfast/cutout/three-eggs-your-way.png',
       'Two Soft-Boiled Eggs & \'Mouillettes\'': '/sample-menus/generated/breakfast/cutout/two-soft-boiled-eggs-and-mouilettes.png'
     } as Record<string, string>,
-    fine_dining: {} as Record<string, string>
+    fine_dining: {
+      'Crispy Duck in Port Cherry Sauce': '/sample-menus/generated/fine-dining/cutout/crispy-duck-in-port-cherry-sauce---cutout.png',
+      'Grilled Faroe Island Salmon': '/sample-menus/generated/fine-dining/cutout/grilled-faroe-island-salmon---cutout.png',
+      'House Made Ice Cream': '/sample-menus/generated/fine-dining/cutout/house-made-ice-cream---cutout.png',
+      'Key Lime Pudding': '/sample-menus/generated/fine-dining/cutout/key-lime-pudding---cutout.png',
+      'Marinated Local Oyster Mushroom Salad': '/sample-menus/generated/fine-dining/cutout/marinated-local-oyster-mushroom-salad---cutout.png',
+      'Pan Roasted Duck Breast': '/sample-menus/generated/fine-dining/cutout/pan-roasted-duck-breast---cutout.png',
+      'Rutabaga and Toasted Hazelnut Soup': '/sample-menus/generated/fine-dining/cutout/rutabaga-and-toasted-hazelnut-soup---cutout.png',
+      'Tenderloin of Beef Wellington': '/sample-menus/generated/fine-dining/cutout/tenderloin-of-beef-wellington---cutout.png',
+      'Tres Leches Cake': '/sample-menus/generated/fine-dining/cutout/tres-leches-cake---cutout.png',
+    } as Record<string, string>
   }
 
   useEffect(() => {
@@ -570,6 +580,9 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     const images = isBreakfast ? DEMO_IMAGES.breakfast : DEMO_IMAGES.fine_dining
     const cutoutImages = isBreakfast ? DEMO_CUTOUT_IMAGES.breakfast : DEMO_CUTOUT_IMAGES.fine_dining
 
+    // Flagship item per menu type
+    const FLAGSHIP_ITEM_NAME = isBreakfast ? 'Country Tartine' : 'Tenderloin of Beef Wellington'
+
     // Select all items to generate images for
     const itemsToUpdate = [...(demoMenu.items || [])]
     const updatedItems = [...itemsToUpdate]
@@ -590,13 +603,15 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           cutoutUrl: cutoutUrl ?? undefined,
           imageSource: 'ai' as const,
           ...(cutoutUrl ? { cutoutStatus: 'succeeded' as const } : {}),
+          // Mark flagship item
+          ...(item.name === FLAGSHIP_ITEM_NAME ? { isFlagship: true } : {}),
           // Default cutout-mode transform: scaled down and nudged down so the food
           // sits within the tile. Works with cutoutScale=1.5 in the renderer.
           // Adjustable via the transform overlay on the template page.
           ...(cutoutUrl ? {
             imageTransform: {
               ...((item.imageTransform as Record<string, unknown>) ?? {}),
-              cutout: { scale: 0.65, offsetX: 0, offsetY: 15 }
+              cutout: { scale: 0.85, offsetX: 0, offsetY: 15 }
             }
           } : {})
         }
@@ -2096,14 +2111,47 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                         >
                           {/* Out of stock overlay */}
                           {!isDemo && authMenu && !(raw as MenuItem).available && (
-                            <div className="absolute inset-0 bg-black/60 rounded-lg flex items-center justify-center z-10">
+                            <div className="absolute inset-0 bg-black/60 rounded-lg flex items-center justify-center z-20">
                               <div className="text-center text-white">
                                 <div className="text-sm font-semibold">Out of Stock</div>
                                 <div className="text-xs opacity-90 mt-1">Tap to make available</div>
                               </div>
                             </div>
                           )}
-                          <div className="flex flex-col gap-2">
+                          {/* Watermark star(s) — centred behind card content */}
+                          {!isDemo && ((raw as MenuItem).isFlagship || (raw as MenuItem).isFeatured) && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden rounded-lg">
+                              {/* Both set: silver left, gold right, ~30% horizontal overlap */}
+                              {(raw as MenuItem).isFlagship && (raw as MenuItem).isFeatured ? (
+                                <>
+                                  <span
+                                    className="absolute text-gray-300/40 select-none"
+                                    style={{ fontSize: '7rem', lineHeight: 1, transform: 'translateX(-2.4rem)' }}
+                                    aria-hidden="true"
+                                  >★</span>
+                                  <span
+                                    className="absolute text-yellow-400/40 select-none"
+                                    style={{ fontSize: '7rem', lineHeight: 1, transform: 'translateX(2.4rem)' }}
+                                    aria-hidden="true"
+                                  >★</span>
+                                </>
+                              ) : (raw as MenuItem).isFlagship ? (
+                                <span
+                                  className="absolute text-yellow-400/40 select-none"
+                                  style={{ fontSize: '7rem', lineHeight: 1 }}
+                                  aria-hidden="true"
+                                >★</span>
+                              ) : (
+                                <span
+                                  className="absolute text-gray-300/40 select-none"
+                                  style={{ fontSize: '7rem', lineHeight: 1 }}
+                                  aria-hidden="true"
+                                >★</span>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="relative z-10 flex flex-col gap-2">
                             <div className="flex items-start gap-2">
                               {!isDemo && (
                               <button
@@ -2142,11 +2190,8 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                               </button>
                               )}
                               <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-ux-text leading-tight flex items-center gap-1">
+                                <h4 className="font-medium text-ux-text leading-tight">
                                   {raw.name}
-                                  {!isDemo && (raw as MenuItem).isFeatured && (
-                                    <span className="text-amber-500 text-sm shrink-0" title="Featured item">★</span>
-                                  )}
                                 </h4>
                               </div>
                             </div>
@@ -2157,7 +2202,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                             )}
                           </div>
 
-                          <div className="flex items-end gap-3 mt-auto pt-2">
+                          <div className="relative z-10 flex items-end gap-3 mt-auto pt-2">
                             <div className="h-16 w-16 rounded-md border border-dashed border-ux-border bg-ux-background-secondary overflow-hidden flex items-center justify-center text-[11px] text-ux-text-secondary">
                               {hasImage ? (
                                 <button
@@ -2233,7 +2278,8 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             size="lg"
             onClick={handleProceedToTemplate}
             loading={loading}
-            disabled={loading}
+            disabled={loading || (isDemo && (demoGenerating || !(demoMenu?.items?.every(i => i.customImageUrl) ?? false)))}
+            title={isDemo && !(demoMenu?.items?.every(i => i.customImageUrl) ?? false) ? 'Generate photos first using the Auto-Generate Photos button above' : undefined}
           >
             Proceed to GridMenu layout →
           </UXButton>

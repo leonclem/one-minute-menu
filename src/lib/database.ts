@@ -873,12 +873,56 @@ export const menuItemOperations = {
   async updateItem(menuId: string, userId: string, itemId: string, updates: Partial<MenuItem>): Promise<Menu> {
     const menu = await menuOperations.getMenu(menuId, userId)
     if (!menu) throw new DatabaseError('Menu not found')
-    
-    // Update in flat items array
-    const updatedItems = menu.items.map(item => 
-      item.id === itemId ? { ...item, ...updates } : item
+
+    // Enforce one-per-menu flagship uniqueness: clear existing flagship before setting new one
+    let effectiveUpdates = updates
+    if (updates.isFlagship === true) {
+      effectiveUpdates = { ...updates }
+      const updatedItemsPrep = menu.items.map(item =>
+        item.id === itemId ? item : { ...item, isFlagship: false }
+      )
+      // Persist the cleared flagship state then apply the target update below
+      const clearedItems = updatedItemsPrep
+      let clearedCategories = menu.categories
+      if (clearedCategories && clearedCategories.length > 0) {
+        const clearInCategories = (categories: any[]): any[] =>
+          categories.map(category => ({
+            ...category,
+            items: category.items.map((item: any) =>
+              item.id === itemId ? item : { ...item, isFlagship: false }
+            ),
+            subcategories: category.subcategories
+              ? clearInCategories(category.subcategories)
+              : undefined,
+          }))
+        clearedCategories = clearInCategories(clearedCategories)
+      }
+      // Apply the flagship update on top of the cleared state
+      const finalItems = clearedItems.map(item =>
+        item.id === itemId ? { ...item, ...effectiveUpdates } : item
+      )
+      let finalCategories = clearedCategories
+      if (finalCategories && finalCategories.length > 0) {
+        const applyInCategories = (categories: any[]): any[] =>
+          categories.map(category => ({
+            ...category,
+            items: category.items.map((item: any) =>
+              item.id === itemId ? { ...item, ...effectiveUpdates } : item
+            ),
+            subcategories: category.subcategories
+              ? applyInCategories(category.subcategories)
+              : undefined,
+          }))
+        finalCategories = applyInCategories(finalCategories)
+      }
+      return menuOperations.updateMenu(menuId, userId, { items: finalItems, categories: finalCategories })
+    }
+
+    // Standard update (no flagship change, or clearing flagship)
+    const updatedItems = menu.items.map(item =>
+      item.id === itemId ? { ...item, ...effectiveUpdates } : item
     )
-    
+
     // Also update in categories to keep data in sync
     let updatedCategories = menu.categories
     if (updatedCategories && updatedCategories.length > 0) {
@@ -886,7 +930,7 @@ export const menuItemOperations = {
         return categories.map(category => ({
           ...category,
           items: category.items.map((item: any) =>
-            item.id === itemId ? { ...item, ...updates } : item
+            item.id === itemId ? { ...item, ...effectiveUpdates } : item
           ),
           subcategories: category.subcategories
             ? updateItemInCategories(category.subcategories)
@@ -895,7 +939,7 @@ export const menuItemOperations = {
       }
       updatedCategories = updateItemInCategories(updatedCategories)
     }
-    
+
     return menuOperations.updateMenu(menuId, userId, { items: updatedItems, categories: updatedCategories })
   },
 
@@ -1040,7 +1084,37 @@ async function transformMenuFromDB(dbMenu: any): Promise<Menu> {
   // Merge image_transform from menu_items (source of truth for positioning)
   await enrichMenuItemsWithImageTransform(compatibleMenu, dbMenu.id)
 
+  // Merge is_flagship from menu_items (source of truth for flagship designation)
+  await enrichMenuItemsWithFlagship(compatibleMenu, dbMenu.id)
+
   return compatibleMenu
+}
+
+/**
+ * Enriches menu items with is_flagship from menu_items table (source of truth for flagship designation).
+ */
+async function enrichMenuItemsWithFlagship(menu: Menu, menuId: string): Promise<void> {
+  const supabase = createServerSupabaseClient()
+  const { data: rows, error } = await supabase
+    .from('menu_items')
+    .select('id, is_flagship')
+    .eq('menu_id', menuId)
+
+  if (error || !rows?.length) return
+
+  const flagshipById = new Map<string, boolean>()
+  for (const row of rows) {
+    flagshipById.set(row.id, row.is_flagship ?? false)
+  }
+
+  const applyFlagship = (item: MenuItem) => {
+    const val = flagshipById.get(item.id)
+    if (val !== undefined) {
+      item.isFlagship = val || undefined // store undefined instead of false to keep it sparse
+    }
+  }
+  menu.items?.forEach(applyFlagship)
+  menu.categories?.forEach(cat => cat.items.forEach(applyFlagship))
 }
 
 /**

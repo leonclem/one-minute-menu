@@ -24,7 +24,7 @@ import type {
 // Fixtures
 // =============================================================================
 
-const V2_TEMPLATE_IDS = ['4-column-portrait', '3-column-portrait', '2-column-portrait', '1-column-tall', '4-column-landscape'] as const
+const V2_TEMPLATE_IDS = ['4-column-portrait', '3-column-portrait', '2-column-portrait', '1-column-tall', '5-column-landscape'] as const
 
 function makeSimpleMenu(sectionCount = 2, itemsPerSection = 3): EngineMenuV2 {
   const sections: EngineSectionV2[] = Array.from({ length: sectionCount }, (_, si) => ({

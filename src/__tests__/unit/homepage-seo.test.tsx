@@ -306,7 +306,7 @@ describe('7.3 Content sections', () => {
     const allImages = document.querySelectorAll('img')
     const gallerySrcs = [
       '/marketing/fonde-de-la-noche.png',
-      '/marketing/breakfast-3-col-dark-cutout.png',
+      '/marketing/fill-6col-a3-midnight.png',
       '/marketing/indian-4-col-stretch-fit.png',
     ]
     gallerySrcs.forEach((src) => {

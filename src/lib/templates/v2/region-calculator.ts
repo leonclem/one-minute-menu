@@ -1,7 +1,7 @@
 /**
  * Region Calculator for GridMenu V2 Layout Engine
  *
- * This module handles the partitioning of pages into regions (header, title, body, footer).
+ * This module handles the partitioning of pages into regions (header, title, banner, body, footer).
  * All coordinates are CONTENT-BOX RELATIVE, meaning they are relative to the content box
  * origin (0,0) after page margins are applied.
  *
@@ -29,33 +29,45 @@ import type { PageSpecV2, RegionV2, TemplateV2 } from './engine-types-v2'
  * @param pageSpec - Page specification with dimensions and margins
  * @param template - Template configuration with region heights
  * @param showMenuTitle - Whether to show the menu title (affects region sizing)
+ * @param bannerHeight - Optional banner region height in points (0 = no banner region)
  * @returns Array of RegionV2 objects with content-box relative coordinates
  */
 export function calculateRegions(
   pageSpec: PageSpecV2,
   template: TemplateV2,
-  showMenuTitle: boolean = true
+  showMenuTitle: boolean = true,
+  bannerHeight: number = 0
 ): RegionV2[] {
   // Calculate content box dimensions (after margins)
   const contentWidth = pageSpec.width - pageSpec.margins.left - pageSpec.margins.right
   const contentHeight = pageSpec.height - pageSpec.margins.top - pageSpec.margins.bottom
 
   // Extract region heights from template
-  const headerHeight = template.regions.header.height
+  // When a banner is present, the header logo is suppressed and the banner renders
+  // full-bleed (outside the content-box), so collapse header height to 0.
+  const headerHeight = bannerHeight > 0 ? 0 : template.regions.header.height
   const titleHeight = showMenuTitle ? template.regions.title.height : 0
   const footerHeight = template.regions.footer.height
 
-  // Body height is computed as remaining space
-  const bodyHeight = contentHeight - headerHeight - titleHeight - footerHeight
+  // When banner is full-bleed, it doesn't consume content-box space — the body
+  // starts at the top of the content-box (below header/title only).
+  // The full-bleed banner overlaps the top margin area visually.
+  // We push the body down by (bannerHeight - margins.top) so it starts below the banner.
+  const bannerBodyOffset = bannerHeight > 0
+    ? Math.max(0, bannerHeight - pageSpec.margins.top)
+    : 0
+  const bodyHeight = contentHeight - headerHeight - titleHeight - bannerBodyOffset - footerHeight
 
   // Validate that body height is positive
   if (bodyHeight <= 0) {
     throw new Error(
       `Invalid template configuration: body height would be ${bodyHeight}pt. ` +
-      `Total region heights (${headerHeight + titleHeight + footerHeight}pt) ` +
+      `Total region heights (${headerHeight + titleHeight + bannerBodyOffset + footerHeight}pt) ` +
       `exceed content height (${contentHeight}pt).`
     )
   }
+
+  const bodyY = headerHeight + titleHeight + bannerBodyOffset
 
   // All coordinates are CONTENT-BOX RELATIVE (x=0, y stacked from 0)
   const regions: RegionV2[] = [
@@ -76,7 +88,7 @@ export function calculateRegions(
     {
       id: 'body',
       x: 0,
-      y: headerHeight + titleHeight, // stacked below title (or header if title is hidden)
+      y: bodyY,
       width: contentWidth,
       height: bodyHeight,
     },
@@ -88,6 +100,19 @@ export function calculateRegions(
       height: footerHeight,
     },
   ]
+
+  // Insert banner region when banner height > 0.
+  // Banner renders full-bleed in the web/PDF renderer so its y here is used
+  // only for tile placement reference; the renderer overrides its position.
+  if (bannerHeight > 0) {
+    regions.splice(2, 0, {
+      id: 'banner',
+      x: 0,
+      y: 0, // placeholder — full-bleed renderer positions this at page top
+      width: contentWidth,
+      height: bannerHeight,
+    })
+  }
 
   return regions
 }
@@ -122,7 +147,7 @@ export function validateRegions(
   contentHeight: number, 
   allowZeroHeightTitle: boolean = false
 ): void {
-  // Check that all required regions exist
+  // Check that all required regions exist (banner is optional)
   const requiredRegions: RegionV2['id'][] = ['header', 'title', 'body', 'footer']
   for (const regionId of requiredRegions) {
     const region = regions.find(r => r.id === regionId)
@@ -136,8 +161,9 @@ export function validateRegions(
     }
   }
 
-  // Check that regions don't overlap and cover the full content height
-  const sortedRegions = [...regions].sort((a, b) => a.y - b.y)
+  // Banner is full-bleed and not part of the content-box stacking — exclude from stacking check
+  const stackedRegions = regions.filter(r => r.id !== 'banner')
+  const sortedRegions = [...stackedRegions].sort((a, b) => a.y - b.y)
   let expectedY = 0
 
   for (const region of sortedRegions) {
@@ -150,7 +176,7 @@ export function validateRegions(
     expectedY += region.height
   }
 
-  // Check that total height matches content height
+  // Check that stacked regions cover the full content height
   if (expectedY !== contentHeight) {
     throw new Error(
       `Total region height (${expectedY}pt) does not match content height (${contentHeight}pt)`

@@ -518,7 +518,7 @@ describe('V2 Renderer', () => {
 
       // First should be full-width background
       expect(bgElements[0].width).toBe(500)
-      expect(bgElements[0].height).toBe(45)
+      expect(bgElements[0].height).toBe(45 * 3)
 
       // Second should be top border (1pt height)
       expect(bgElements[1].y).toBe(0)

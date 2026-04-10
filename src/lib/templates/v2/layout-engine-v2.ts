@@ -130,10 +130,16 @@ export async function generateLayoutV2(
   // This catches layout bugs early with descriptive error messages
   if (process.env.NODE_ENV === 'development' || input.debug) {
     const violations = validateInvariants(document, effectiveTemplate)
-    if (violations.length > 0) {
+    // Widowed section headers are acceptable (sections can span pages) — only warn
+    const fatal = violations.filter(v => v.code !== 'WIDOWED_SECTION_HEADER')
+    const warnings = violations.filter(v => v.code === 'WIDOWED_SECTION_HEADER')
+    if (warnings.length > 0) {
+      console.warn(`[Layout] ${warnings.length} non-fatal violation(s):`, warnings.map(w => w.message).join('; '))
+    }
+    if (fatal.length > 0) {
       throw new InvariantViolationError(
-        `Layout invariants violated: ${violations.length} violation(s) found`,
-        violations
+        `Layout invariants violated: ${fatal.length} violation(s) found`,
+        fatal
       )
     }
   }

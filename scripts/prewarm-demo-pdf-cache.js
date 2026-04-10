@@ -49,7 +49,17 @@ const DEMO_CUTOUT_IMAGES = {
     'Three Organic Eggs Your Way!': '/sample-menus/generated/breakfast/cutout/three-eggs-your-way.png',
     "Two Soft-Boiled Eggs & 'Mouillettes'": '/sample-menus/generated/breakfast/cutout/two-soft-boiled-eggs-and-mouilettes.png'
   },
-  fine_dining: {}
+  fine_dining: {
+    'Crispy Duck in Port Cherry Sauce': '/sample-menus/generated/fine-dining/cutout/crispy-duck-in-port-cherry-sauce---cutout.png',
+    'Grilled Faroe Island Salmon': '/sample-menus/generated/fine-dining/cutout/grilled-faroe-island-salmon---cutout.png',
+    'House Made Ice Cream': '/sample-menus/generated/fine-dining/cutout/house-made-ice-cream---cutout.png',
+    'Key Lime Pudding': '/sample-menus/generated/fine-dining/cutout/key-lime-pudding---cutout.png',
+    'Marinated Local Oyster Mushroom Salad': '/sample-menus/generated/fine-dining/cutout/marinated-local-oyster-mushroom-salad---cutout.png',
+    'Pan Roasted Duck Breast': '/sample-menus/generated/fine-dining/cutout/pan-roasted-duck-breast---cutout.png',
+    'Rutabaga and Toasted Hazelnut Soup': '/sample-menus/generated/fine-dining/cutout/rutabaga-and-toasted-hazelnut-soup---cutout.png',
+    'Tenderloin of Beef Wellington': '/sample-menus/generated/fine-dining/cutout/tenderloin-of-beef-wellington---cutout.png',
+    'Tres Leches Cake': '/sample-menus/generated/fine-dining/cutout/tres-leches-cake---cutout.png',
+  }
 }
 
 const SAMPLE_MENUS = [
@@ -69,7 +79,8 @@ const SAMPLE_MENUS = [
       { name: 'French Toast', price: 9.5, description: 'With maple syrup, homemade jam & whipped cream', category: 'BREAKFAST' }
     ],
     imageMap: DEMO_IMAGES.breakfast,
-    cutoutMap: DEMO_CUTOUT_IMAGES.breakfast
+    cutoutMap: DEMO_CUTOUT_IMAGES.breakfast,
+    configOverrides: { bannerImageStyle: 'cutout', flagshipItemId: 'item-7' }
   },
   {
     id: 'prewarm-fine-dining',
@@ -86,7 +97,8 @@ const SAMPLE_MENUS = [
       { name: 'House Made Ice Cream', price: 9, description: 'Black raspberry', category: 'DESSERTS' }
     ],
     imageMap: DEMO_IMAGES.fine_dining,
-    cutoutMap: DEMO_CUTOUT_IMAGES.fine_dining
+    cutoutMap: DEMO_CUTOUT_IMAGES.fine_dining,
+    configOverrides: { bannerImageStyle: 'stretch-fit', flagshipItemId: 'item-5' }
   }
 ]
 
@@ -129,6 +141,16 @@ async function pollJob(jobId) {
 }
 
 function buildMenu(sample) {
+  const FLAGSHIP_NAMES = {
+    breakfast: 'Country Tartine',
+    fine_dining: 'Tenderloin of Beef Wellington',
+  }
+  const isBreakfast = sample.id.includes('breakfast')
+  const flagshipName = isBreakfast ? FLAGSHIP_NAMES.breakfast : FLAGSHIP_NAMES.fine_dining
+  const logoUrl = isBreakfast
+    ? "/sample-menus/Hannah's Cafe---Transparent.png"
+    : '/sample-menus/fill.png'
+
   const items = sample.items.map((item, i) => {
     const cutoutUrl = sample.cutoutMap?.[item.name] || null
     return {
@@ -140,15 +162,16 @@ function buildMenu(sample) {
       customImageUrl: sample.imageMap[item.name] || null,
       cutoutUrl,
       imageSource: 'ai',
+      ...(item.name === flagshipName ? { isFlagship: true } : {}),
       ...(cutoutUrl ? { cutoutStatus: 'succeeded' } : {}),
-      ...(cutoutUrl ? { imageTransform: { cutout: { scale: 0.65, offsetX: 0, offsetY: 15 } } } : {}),
+      ...(cutoutUrl ? { imageTransform: { cutout: { scale: 0.85, offsetX: 0, offsetY: 15 } } } : {}),
       display_order: i
     }
   })
   return {
     id: sample.id,
     name: sample.name,
-    logoUrl: '/logos/logo.svg',
+    logoUrl,
     venueInfo: {
       address: '123 Gourmet Avenue, Food City, FC 12345',
       phone: '+1 (555) 123-4567',

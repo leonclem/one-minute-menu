@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * V2 Web Renderer - React Components for Layout Lab Preview
  * 
@@ -11,7 +13,7 @@
  * - Overlay toggles for debugging (grid, bounds, IDs)
  */
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import type { 
   LayoutDocumentV2, 
   PageLayoutV2, 
@@ -30,6 +32,7 @@ import {
   FONT_SETS_V2,
   TEXTURE_REGISTRY,
   PALETTE_TEXTURE_MAP,
+  getFontStylePresetGoogleFontsUrl,
   type RenderOptionsV2,
   type RenderElement 
 } from './renderer-v2'
@@ -110,6 +113,20 @@ export function renderToWeb(
   const usedFontSets = extractUsedFontSets(document)
   loadGoogleFonts(usedFontSets)
 
+  // Load font style preset fonts if specified
+  if (options.fontStylePreset) {
+    const presetUrl = getFontStylePresetGoogleFontsUrl(options.fontStylePreset)
+    if (presetUrl && typeof window !== 'undefined') {
+      const existing = window.document.querySelector(`link[href="${presetUrl}"]`)
+      if (!existing) {
+        const link = window.document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = presetUrl
+        window.document.head.appendChild(link)
+      }
+    }
+  }
+
   return (
     <div className="layout-document-v2" style={{ fontFamily: TYPOGRAPHY_TOKENS_V2.fontFamily.primary }}>
       {document.pages.map((page, pageIndex) => (
@@ -136,6 +153,19 @@ export interface PageRendererProps {
 
 export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
   const { scale, isExport, palette, texturesEnabled } = options
+
+  // Ensure the font style preset's Google Font is loaded whenever the preset changes
+  useEffect(() => {
+    if (!options.fontStylePreset || typeof window === 'undefined') return
+    const presetUrl = getFontStylePresetGoogleFontsUrl(options.fontStylePreset)
+    if (!presetUrl) return
+    if (!window.document.querySelector(`link[href="${presetUrl}"]`)) {
+      const link = window.document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = presetUrl
+      window.document.head.appendChild(link)
+    }
+  }, [options.fontStylePreset])
   const bgColor = palette?.colors.background || COLOR_TOKENS_V2.background.white
   const mutedTextColor = palette?.colors.textMuted || COLOR_TOKENS_V2.text.muted
   const borderColor = palette?.colors.border.light || COLOR_TOKENS_V2.border.light
@@ -160,6 +190,11 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
     }
   }
   
+  // Banner and footer render full-bleed (flush to page edges), bypassing content-box margins.
+  const bannerRegion = page.regions.find(r => r.id === 'banner')
+  const footerRegion = page.regions.find(r => r.id === 'footer')
+  const innerRegions = page.regions.filter(r => r.id !== 'banner' && r.id !== 'footer')
+
   return (
     <div 
       className="page-container-v2"
@@ -183,6 +218,18 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
           ...backgroundStyle
         }}
       />
+
+      {/* Full-bleed banner — flush to top and side edges */}
+      {bannerRegion && (
+        <FullBleedRegionRenderer
+          region={bannerRegion}
+          tiles={page.tiles.filter(t => t.regionId === 'banner')}
+          pageSpec={pageSpec}
+          options={options}
+          edge="top"
+        />
+      )}
+
       {/* Content box wrapper - applies margins ONCE; above background */}
       <div
         className="content-box-v2"
@@ -195,8 +242,8 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
           zIndex: 1
         }}
       >
-        {/* Regions */}
-        {page.regions.map(region => (
+        {/* Non-bleed regions (header, title, body) */}
+        {innerRegions.map(region => (
           <RegionRenderer
             key={region.id}
             region={region}
@@ -205,6 +252,17 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
           />
         ))}
       </div>
+
+      {/* Full-bleed footer — flush to bottom and side edges */}
+      {footerRegion && (
+        <FullBleedRegionRenderer
+          region={footerRegion}
+          tiles={page.tiles.filter(t => t.regionId === 'footer')}
+          pageSpec={pageSpec}
+          options={options}
+          edge="bottom"
+        />
+      )}
       
       {/* Vignette overlay */}
       {options.showVignette && (
@@ -253,6 +311,66 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
           Page {page.pageIndex + 1} ({page.pageType})
         </div>
       )}
+    </div>
+  )
+}
+
+// ============================================================================
+// Full-Bleed Region Renderer (banner / footer)
+// ============================================================================
+
+interface FullBleedRegionRendererProps {
+  region: RegionV2
+  tiles: TileInstanceV2[]
+  pageSpec: PageSpecV2
+  options: RenderOptionsV2
+  edge: 'top' | 'bottom'
+}
+
+/**
+ * Renders a region flush to the page edges (no margin inset).
+ * Used for banner (top) and footer (bottom) so they span the full page width.
+ * Tiles are re-rendered with width = pageSpec.width so internal layout fills the full bleed area.
+ */
+function FullBleedRegionRenderer({ region, tiles, pageSpec, options, edge }: FullBleedRegionRendererProps) {
+  const { scale } = options
+  const fullWidth = pageSpec.width
+
+  // For bottom edge, extend the region height to cover the bottom margin so the
+  // footer background is flush to the page edge.
+  const extraHeight = edge === 'bottom' ? pageSpec.margins.bottom : 0
+  const renderHeight = region.height + extraHeight
+
+  // Re-map tiles to full page width so internal element positions scale correctly
+  const fullBleedTiles: TileInstanceV2[] = tiles.map(tile => ({
+    ...tile,
+    x: 0,
+    width: fullWidth,
+  }))
+
+  const top = edge === 'top' ? 0 : (pageSpec.height - renderHeight) * scale
+
+  return (
+    <div
+      className={`region-v2 region-${region.id} region-fullbleed`}
+      style={{
+        position: 'absolute',
+        left: 0,
+        top,
+        width: fullWidth * scale,
+        height: renderHeight * scale,
+        zIndex: 2,
+        // Banner cutout images overflow upward — allow visible overflow on top edge
+        overflow: edge === 'top' ? 'visible' : 'hidden',
+      }}
+    >
+      {fullBleedTiles.map(tile => (
+        <TileRenderer
+          key={tile.id}
+          tile={tile}
+          options={options}
+        />
+      ))}
     </div>
   )
 }
@@ -336,11 +454,6 @@ function TileRenderer({ tile, options }: TileRendererProps) {
 
   if (overlayImageElement) {
     if (options.imageMode === 'cutout') {
-      // For cutout, the image can protrude significantly outside the tile.
-      // If we make the grab area cover the protruding image, the invisible bounding boxes
-      // of adjacent tiles will heavily overlap, causing unpredictable hover states.
-      // Instead, we strictly bind the grab area and the glow effect to the menu tile itself.
-      // This ensures 100% predictable collision detection with zero overlap.
       overlayFrame = {
         left: 0,
         top: 0,
@@ -348,7 +461,7 @@ function TileRenderer({ tile, options }: TileRendererProps) {
         height: tile.height * scale,
         borderRadius: 8 * scale,
       }
-      overlayHighlightFrame = undefined // Glow matches the frame exactly
+      overlayHighlightFrame = undefined
     } else {
       overlayFrame = {
         left: overlayImageElement.x * scale,
@@ -361,6 +474,35 @@ function TileRenderer({ tile, options }: TileRendererProps) {
       }
     }
   }
+
+  // Banner image edit overlays (hero + logo)
+  const isBannerTile = tile.type === 'BANNER'
+  const showBannerOverlays = options.imageEditMode && isBannerTile && !!options.onBannerTransformChange
+  const bannerContent = isBannerTile ? (tile.content as import('./engine-types-v2').BannerContentV2) : undefined
+  const hasHeroImage = !!(bannerContent?.heroImageUrl || bannerContent?.heroImageCutoutUrl) && bannerContent?.bannerImageStyle !== 'none'
+  const hasLogoImage = !!bannerContent?.logoUrl
+
+  // Find hero and logo image elements from render data
+  const heroImageElement = showBannerOverlays && hasHeroImage
+    ? renderData.elements.filter(e => e.type === 'image').at(-1) // hero is always last image element
+    : undefined
+  const logoImageElement = showBannerOverlays && hasLogoImage
+    ? renderData.elements.find(e => e.type === 'image' && e.style.zIndex === 4)
+    : undefined
+
+  const heroOverlayFrame = heroImageElement ? {
+    left: heroImageElement.x * scale,
+    top: Math.max(0, heroImageElement.y * scale),
+    width: heroImageElement.width! * scale,
+    height: heroImageElement.height! * scale,
+  } : undefined
+
+  const logoOverlayFrame = logoImageElement ? {
+    left: logoImageElement.x * scale,
+    top: logoImageElement.y * scale,
+    width: logoImageElement.width! * scale,
+    height: logoImageElement.height! * scale,
+  } : undefined
   const isCutoutTile = hasImage && options.imageMode === 'cutout'
   const tileZIndex = tile.layer === 'background' ? 0 : isCutoutTile ? 5 : 1
 
@@ -377,7 +519,7 @@ function TileRenderer({ tile, options }: TileRendererProps) {
         backgroundColor,
         border,
         ...(boxShadow ? { boxShadow } : {}),
-        ...(isCutoutTile ? { overflow: 'visible' } : {})
+        ...((isCutoutTile || isBannerTile) ? { overflow: 'visible' } : {})
       }}
     >
       {/* Render tile content elements */}
@@ -398,6 +540,28 @@ function TileRenderer({ tile, options }: TileRendererProps) {
           onChange={options.onImageTransformChange}
           frame={overlayFrame}
           highlightFrame={overlayHighlightFrame}
+        />
+      )}
+
+      {/* Banner hero image edit overlay */}
+      {showBannerOverlays && hasHeroImage && heroOverlayFrame && options.onBannerTransformChange && (
+        <ImageTransformOverlay
+          itemId="banner-hero"
+          imageMode={bannerContent?.bannerImageStyle === 'cutout' ? 'cutout' : 'stretch'}
+          currentTransform={options.bannerHeroTransform ?? bannerContent?.heroTransform}
+          onChange={(_, transform) => options.onBannerTransformChange!('hero', transform)}
+          frame={heroOverlayFrame}
+        />
+      )}
+
+      {/* Banner logo image edit overlay */}
+      {showBannerOverlays && hasLogoImage && logoOverlayFrame && options.onBannerTransformChange && (
+        <ImageTransformOverlay
+          itemId="banner-logo"
+          imageMode="compact-rect"
+          currentTransform={options.bannerLogoTransform ?? bannerContent?.logoTransform}
+          onChange={(_, transform) => options.onBannerTransformChange!('logo', transform)}
+          frame={logoOverlayFrame}
         />
       )}
       
@@ -454,18 +618,26 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
     textAlign: (element.style.textAlign as React.CSSProperties['textAlign']) || 'center',
     opacity: element.style.opacity,
     borderRadius: element.style.borderRadius ? element.style.borderRadius * scale : undefined,
-    display: element.style.maxLines ? '-webkit-box' : 'flex',
+    display: element.style.writingMode
+      ? 'flex'
+      : element.style.maxLines ? '-webkit-box' : (element.style.display as React.CSSProperties['display'] ?? 'flex'),
     WebkitLineClamp: element.style.maxLines,
     WebkitBoxOrient: element.style.maxLines ? 'vertical' : undefined,
     overflow: element.style.maxLines ? 'hidden' : undefined,
-    alignItems: element.style.maxLines ? undefined : 'center',
-    justifyContent: element.style.textAlign === 'left' ? 'flex-start'
-      : element.style.textAlign === 'right' ? 'flex-end'
-      : 'center',
+    alignItems: element.style.alignItems as React.CSSProperties['alignItems']
+      ?? (element.style.maxLines ? undefined : 'center'),
+    justifyContent: element.style.justifyContent as React.CSSProperties['justifyContent']
+      ?? (element.style.textAlign === 'left' ? 'flex-start'
+        : element.style.textAlign === 'right' ? 'flex-end'
+        : 'center'),
     boxShadow: element.style.boxShadow,
     textTransform: element.style.textTransform as React.CSSProperties['textTransform'],
     letterSpacing: element.style.letterSpacing ? element.style.letterSpacing * scale : undefined,
     textShadow: element.style.textShadow,
+    writingMode: element.style.writingMode as React.CSSProperties['writingMode'],
+    textOrientation: element.style.textOrientation as React.CSSProperties['textOrientation'],
+    transform: element.style.writingMode ? element.style.transform : undefined,
+    zIndex: element.style.zIndex,
     pointerEvents: 'none'
   }
 

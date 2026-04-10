@@ -10,6 +10,7 @@ import { logLayoutError, LayoutEngineError, ERROR_CODES } from '@/lib/templates/
 import { htmlExportLimiter, applyRateLimit } from '@/lib/templates/rate-limiter'
 import { MetricsBuilder, logLayoutMetrics, validatePerformance } from '@/lib/templates/metrics'
 import type { OutputContext } from '@/lib/templates/types'
+import type { MenuItem } from '@/types'
 import { z } from 'zod'
 
 /**
@@ -32,47 +33,56 @@ async function handleV2TemplateEngine(
   const { renderToString } = await import('react-dom/server')
   const { getMenuCurrency } = await import('@/lib/menu-currency-service')
   
+  // Mark the flagship item so findFlagshipItem() can locate it for the banner hero
+  const flagshipItemId: string | null = typeof options.flagshipItemId === 'string' ? options.flagshipItemId : null
+
   // Transform menu to EngineMenuV2 with user's menu currency preference
   metricsBuilder.markCalculationStart()
   const menuCurrency = await getMenuCurrency(userId)
-  const engineMenu = transformMenuToV2(menu, { currency: menuCurrency })
 
-  // Calculate menu characteristics for metrics
-  const totalItems = engineMenu.sections.reduce((sum, section) => sum + section.items.length, 0)
-  const itemsWithImages = engineMenu.sections.reduce(
-    (sum, section) => sum + section.items.filter(item => item.imageUrl).length,
-    0
-  )
-  const imageRatio = totalItems > 0 ? (itemsWithImages / totalItems) * 100 : 0
-  const allNames = engineMenu.sections.flatMap(section => section.items.map(item => item.name))
-  const avgNameLength = allNames.length > 0 
-    ? allNames.reduce((sum, name) => sum + name.length, 0) / allNames.length 
-    : 0
-  const hasDescriptions = engineMenu.sections.some(section => 
-    section.items.some(item => item.description && item.description.length > 0)
-  )
-  
-  metricsBuilder.setMenuCharacteristics({
-    sectionCount: engineMenu.sections.length,
-    totalItems,
-    imageRatio,
-    avgNameLength,
-    hasDescriptions
+  // Build cutout context for transformation
+  const { isCutoutFeatureEnabled } = await import('@/lib/background-removal/feature-flag')
+  const featureEnabled = isCutoutFeatureEnabled()
+  const allItems: MenuItem[] = [
+    ...(menu.items ?? []),
+    ...(menu.categories?.flatMap((c: { items: MenuItem[] }) => c.items) ?? []),
+  ]
+  const itemCutouts = new Map<string, import('@/lib/templates/v2/menu-transformer-v2').ItemCutoutContext>()
+  allItems.forEach(item => {
+    if (item.cutoutUrl !== undefined || item.cutoutStatus !== undefined) {
+      itemCutouts.set(item.id, {
+        cutoutUrl: item.cutoutUrl ?? null,
+        cutoutStatus: item.cutoutStatus ?? 'not_requested',
+      })
+    }
   })
+
+  const rawImageMode = options.imageMode || 'stretch'
+  const engineMenu = transformMenuToV2(menu, {
+    currency: menuCurrency,
+    imageModeIsCutout: rawImageMode === 'cutout',
+    cutout: {
+      featureEnabled,
+      templateSupportsCutouts: true,
+      itemCutouts,
+      menuId: menu.id,
+      templateId,
+      isExport: true,
+    },
+  })
+
+  if (flagshipItemId) {
+    for (const section of engineMenu.sections) {
+      for (const item of section.items) {
+        if (item.id === flagshipItemId) {
+          item.isFlagship = true
+        }
+      }
+    }
+  }
   
-  // Load saved template selection (if exists)
-  const supabase = createServerSupabaseClient()
-  const { data: selectionData } = await supabase
-    .from('menu_template_selections')
-    .select('*')
-    .eq('menu_id', menu.id)
-    .single()
-  
-  const configuration = selectionData?.configuration || {}
-  
-  const rawImageMode = configuration.imageMode || 'stretch'
   const imageModeForEngine = rawImageMode === 'none' ? 'stretch' : rawImageMode
-  const textOnly = configuration.textOnly || rawImageMode === 'none'
+  const textOnly = options.textOnly || rawImageMode === 'none'
 
   // Generate V2 layout
   const layoutDocument = await generateLayoutV2({
@@ -80,13 +90,21 @@ async function handleV2TemplateEngine(
     templateId,
     selection: {
       textOnly,
-      fillersEnabled: configuration.fillersEnabled !== false,
-      texturesEnabled: configuration.texturesEnabled !== false,
-      showMenuTitle: configuration.showMenuTitle || false,
-      showVignette: configuration.showVignette !== false,
-      showCategoryTitles: configuration.showCategoryTitles !== false,
-      colourPaletteId: configuration.colourPaletteId || configuration.paletteId,
-      imageMode: imageModeForEngine
+      fillersEnabled: options.fillersEnabled !== false,
+      texturesEnabled: options.texturesEnabled !== false,
+      showMenuTitle: options.showMenuTitle || false,
+      showVignette: options.showVignette !== false,
+      showCategoryTitles: options.showCategoryTitles !== false,
+      centreAlignment: options.centreAlignment === true,
+      colourPaletteId: options.colourPaletteId || options.paletteId,
+      imageMode: imageModeForEngine,
+      showBanner: options.showBanner !== false,
+      bannerTitle: options.bannerTitle || undefined,
+      showBannerTitle: options.showBannerTitle !== false,
+      showVenueName: options.showVenueName !== false,
+      bannerSwapLayout: options.bannerSwapLayout === true,
+      bannerImageStyle: options.bannerImageStyle || undefined,
+      fontStylePreset: options.fontStylePreset || undefined,
     },
     debug: false
   })
@@ -95,13 +113,13 @@ async function handleV2TemplateEngine(
   metricsBuilder.markCalculationEnd()
   
   // Resolve palette
-  const paletteId = configuration.colourPaletteId || configuration.paletteId
+  const paletteId = options.colourPaletteId || options.paletteId
   const palette = PALETTES_V2.find(p => p.id === paletteId) ?? DEFAULT_PALETTE_V2
   
   // Pre-fetch texture data URL if enabled
   const { getTextureDataURL } = await import('@/lib/templates/export/texture-utils')
   let textureDataURL: string | undefined = undefined
-  if (configuration.texturesEnabled !== false) {
+  if (options.texturesEnabled !== false) {
     if (palette.id === 'midnight-gold') {
       textureDataURL = await getTextureDataURL('dark-paper-2.png', headers) || undefined
     } else if (palette.id === 'elegant-dark') {
@@ -116,15 +134,16 @@ async function handleV2TemplateEngine(
       scale: 1,
       palette,
       isExport: false, // Set to false to show page boundaries in web view
-      texturesEnabled: configuration.texturesEnabled !== false,
+      texturesEnabled: options.texturesEnabled !== false,
       textureDataURL,
-      textureId: configuration.textureId,
+      textureId: options.textureId,
       imageMode: imageModeForEngine,
-      showVignette: configuration.showVignette !== false,
-      itemBorders: configuration.itemBorders === true,
-      itemDropShadow: configuration.itemDropShadow === true,
-      fillItemTiles: configuration.fillItemTiles === true,
-      spacerTilePatternId: configuration.spacerTilePatternId,
+      showVignette: options.showVignette !== false,
+      itemBorders: options.itemBorders === true,
+      itemDropShadow: options.itemDropShadow === true,
+      fillItemTiles: options.fillItemTiles === true,
+      spacerTilePatternId: options.spacerTilePatternId,
+      centreAlignment: options.centreAlignment === true,
       showGridOverlay: false,
       showRegionBounds: false,
       showTileIds: false

@@ -107,7 +107,16 @@ export async function GET(
     const showMenuTitle = searchParams.get('showMenuTitle') === 'true'
     const showVignette = searchParams.get('showVignette') === 'true'
     const showCategoryTitles = searchParams.get('showCategoryTitles') !== 'false' // default true
+    const centreAlignment = searchParams.get('centreAlignment') === 'true' // default false
     const engineVersion = (searchParams.get('engineVersion') as 'v1' | 'v2') || 'v2'
+    const showBanner = searchParams.get('showBanner') !== 'false' // default true
+    const bannerTitle = searchParams.get('bannerTitle') || undefined
+    const showBannerTitle = searchParams.get('showBannerTitle') !== 'false' // default true
+    const showVenueName = searchParams.get('showVenueName') !== 'false' // default true
+    const bannerSwapLayout = searchParams.get('bannerSwapLayout') === 'true' // default false
+    const bannerImageStyle = searchParams.get('bannerImageStyle') || undefined
+    const fontStylePreset = searchParams.get('fontStylePreset') || undefined
+    const flagshipItemId = searchParams.get('flagshipItemId') || undefined
     
     if (!templateId) {
       return NextResponse.json(
@@ -172,7 +181,16 @@ export async function GET(
       showMenuTitle,
       showVignette,
       showCategoryTitles,
-      engineVersion
+      centreAlignment,
+      engineVersion,
+      showBanner,
+      bannerTitle,
+      showBannerTitle,
+      showVenueName,
+      bannerSwapLayout,
+      bannerImageStyle,
+      fontStylePreset,
+      flagshipItemId,
     }
     
     // Fetch user's menu currency preference (needed for cache key and transformation)
@@ -231,6 +249,17 @@ export async function GET(
 
       // Transform to EngineMenuV2 with user's currency preference
       const menuV2 = transformMenuToV2(menu, cutoutOptions)
+
+      // Mark the flagship item so findFlagshipItem() can locate it for the banner hero
+      if (flagshipItemId) {
+        for (const section of menuV2.sections) {
+          for (const item of section.items) {
+            if (item.id === flagshipItemId) {
+              item.isFlagship = true
+            }
+          }
+        }
+      }
       
       layout = await generateLayoutWithVersion({
         menu: menuV2,
@@ -245,8 +274,16 @@ export async function GET(
           showMenuTitle,
           showVignette,
           showCategoryTitles,
+          centreAlignment,
           colourPaletteId: paletteId || undefined,
-          imageMode
+          imageMode,
+          showBanner,
+          bannerTitle,
+          showBannerTitle,
+          showVenueName,
+          bannerSwapLayout,
+          bannerImageStyle: bannerImageStyle as any,
+          fontStylePreset: fontStylePreset as any,
         },
         debug: true
       }, 'v2')
@@ -318,7 +355,15 @@ export async function POST(
       showMenuTitle = false,
       showVignette = true,
       showCategoryTitles = true,
-      engineVersion = 'v2'
+      engineVersion = 'v2',
+      showBanner = true,
+      bannerTitle,
+      showBannerTitle = true,
+      showVenueName = true,
+      bannerSwapLayout = false,
+      bannerImageStyle,
+      fontStylePreset,
+      centreAlignment = false,
     } = configuration
     const imageMode = rawImageMode === 'none' ? 'stretch' : rawImageMode
     const textOnly = configTextOnly || rawImageMode === 'none'
@@ -365,6 +410,18 @@ export async function POST(
 
       // Transform to EngineMenuV2 if needed
       const menuV2 = isEngineMenuV2(menu) ? menu : transformMenuToV2(menu, demoTransformOptions)
+
+      // Mark the flagship item so findFlagshipItem() can locate it for the banner hero
+      const postFlagshipItemId = typeof configuration.flagshipItemId === 'string' ? configuration.flagshipItemId : undefined
+      if (postFlagshipItemId) {
+        for (const section of menuV2.sections) {
+          for (const item of section.items) {
+            if (item.id === postFlagshipItemId) {
+              item.isFlagship = true
+            }
+          }
+        }
+      }
       
       layout = await generateLayoutWithVersion({
         menu: menuV2,
@@ -379,8 +436,16 @@ export async function POST(
           showMenuTitle,
           showVignette,
           showCategoryTitles,
+          centreAlignment,
           colourPaletteId: paletteId,
-          imageMode
+          imageMode,
+          showBanner,
+          bannerTitle,
+          showBannerTitle,
+          showVenueName,
+          bannerSwapLayout,
+          bannerImageStyle: bannerImageStyle as any,
+          fontStylePreset: fontStylePreset as any,
         },
         debug: true
       }, 'v2')

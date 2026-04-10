@@ -320,7 +320,7 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                     className="rounded-lg w-full h-auto"
                   />
                   <Image
-                    src="/marketing/breakfast-3-col-dark-cutout.png"
+                    src="/marketing/fill-6col-a3-midnight.png"
                     alt="Breakfast menu created with GridMenu — a striking, elegant menu design"
                     width={600}
                     height={800}
