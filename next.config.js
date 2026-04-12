@@ -26,8 +26,8 @@ const nextConfig = {
       ? "img-src 'self' data: https: blob:;"
       : "img-src 'self' data: https: http://localhost:54321 blob:;"
     const connectSrc = isProd
-      ? "connect-src 'self' https://*.supabase.co https://*.supabase.com;"
-      : "connect-src 'self' https://*.supabase.co https://*.supabase.com http://localhost:54321;"
+      ? "connect-src 'self' https://*.supabase.co https://*.supabase.com https://www.googletagmanager.com https://googleadservices.com;"
+      : "connect-src 'self' https://*.supabase.co https://*.supabase.com http://localhost:54321 https://www.googletagmanager.com https://googleadservices.com;"
     return [
       {
         source: '/(.*)',
@@ -50,7 +50,7 @@ const nextConfig = {
             : []),
           {
             key: 'Content-Security-Policy',
-            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; ${imgSrc} font-src 'self' data: https://fonts.gstatic.com; ${connectSrc}`,
+            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; ${imgSrc} font-src 'self' data: https://fonts.gstatic.com; ${connectSrc}`,
           },
         ],
       },
