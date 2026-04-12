@@ -10,6 +10,7 @@ import type { LayoutMenuData, LayoutPreset, OutputContext, GridLayout } from '@/
 import { generateGridLayout } from '@/lib/templates/grid-generator'
 import { insertFillerTiles } from '@/lib/templates/filler-tiles'
 import { isItemTile, isFillerTile } from '@/lib/templates/types'
+import { getCurrencyMetadata } from '@/lib/currency-config'
 
 // ============================================================================
 // Server-Side Grid Menu Layout
@@ -307,25 +308,14 @@ export function ServerTextOnlyLayout({ data, preset, className = '', showLeaderD
 // ============================================================================
 
 function formatPrice(price: number, currency: string): string {
-  const currencySymbols: Record<string, string> = {
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    JPY: '¥',
-    CNY: '¥',
-    INR: '₹',
-    AUD: 'A$',
-    CAD: 'C$'
+  const metadata = getCurrencyMetadata(currency);
+  const formatted = price.toFixed(metadata.decimalPlaces);
+  
+  if (metadata.symbolPosition === 'suffix') {
+    return `${formatted}${metadata.symbol}`;
   }
-
-  const symbol = currencySymbols[currency.toUpperCase()] || currency
-  const formatted = price.toFixed(2)
-
-  if (currency.toUpperCase() === 'EUR') {
-    return `${formatted}${symbol}`
-  }
-
-  return `${symbol}${formatted}`
+  
+  return `${metadata.symbol}${formatted}`;
 }
 
 /**

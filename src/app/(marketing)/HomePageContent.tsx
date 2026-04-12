@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { UXButton } from '@/components/ux'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { supabase } from '@/lib/supabase'
+import ZoomableImageModal from '@/components/ZoomableImageModal'
 
 /**
  * SlidePanel — bleeds off the anchored edge, stops ~25% short of the far edge.
@@ -129,7 +130,7 @@ const homepageFaqs: Array<{ question: string; answer: string }> = [
   {
     question: 'How long does it take to create a menu?',
     answer:
-      'Most users have a polished, ready-to-use menu in under 5 minutes. Add your dishes and prices, pick a style, and GridMenu generates the layout and AI food photos automatically — no waiting around.',
+      'Simple menus can be ready-to-use in under 5 minutes.  More complex menus can take 15 minutes or more, depending predominantly on the number of items.',
   },
   {
     question: 'Do I need design skills to use GridMenu?',
@@ -160,6 +161,7 @@ const homepageFaqs: Array<{ question: string; answer: string }> = [
 
 export default function HomePageContent({ initialUser }: { initialUser: any }) {
   const [user, setUser] = useState<any>(initialUser ?? null)
+  const [expandedImage, setExpandedImage] = useState<{ url: string; alt: string } | null>(null)
 
   useEffect(() => {
     // Re-check auth on client (session may differ from server)
@@ -285,13 +287,31 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                 How GridMenu works
               </h2>
               <div className="rounded-lg overflow-hidden">
+                {/* Desktop/wide view */}
                 <Image
                   src="/marketing/how-gridmenu-works.png"
                   alt="How GridMenu works: three steps — add dishes and prices, choose a menu style, get your finished menu"
                   width={1040}
                   height={400}
-                  className="w-full h-auto"
+                  className="hidden md:block w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
                   priority={false}
+                  onClick={() => setExpandedImage({
+                    url: '/marketing/how-gridmenu-works.png',
+                    alt: 'How GridMenu works: three steps — add dishes and prices, choose a menu style, get your finished menu'
+                  })}
+                />
+                {/* Mobile/narrow view */}
+                <Image
+                  src="/marketing/how-gridmenu-works---vertical.png"
+                  alt="How GridMenu works: three steps — add dishes and prices, choose a menu style, get your finished menu"
+                  width={600}
+                  height={1200}
+                  className="md:hidden w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                  priority={false}
+                  onClick={() => setExpandedImage({
+                    url: '/marketing/how-gridmenu-works---vertical.png',
+                    alt: 'How GridMenu works: three steps — add dishes and prices, choose a menu style, get your finished menu'
+                  })}
                 />
               </div>
           </div>
@@ -317,21 +337,33 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                     alt="Fonde de la Noche menu created with GridMenu — a vibrant, Mexican fiesta design"
                     width={600}
                     height={800}
-                    className="rounded-lg w-full h-auto"
+                    className="rounded-lg w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => setExpandedImage({
+                      url: '/marketing/fonde-de-la-noche.png',
+                      alt: 'Fonde de la Noche menu created with GridMenu — a vibrant, Mexican fiesta design'
+                    })}
                   />
                   <Image
                     src="/marketing/fill-6col-a3-midnight.png"
                     alt="Breakfast menu created with GridMenu — a striking, elegant menu design"
                     width={600}
                     height={800}
-                    className="rounded-lg w-full h-auto"
+                    className="rounded-lg w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => setExpandedImage({
+                      url: '/marketing/fill-6col-a3-midnight.png',
+                      alt: 'Breakfast menu created with GridMenu — a striking, elegant menu design'
+                    })}
                   />
                   <Image
                     src="/marketing/magic-circle-4col-a4.png"
                     alt="Indian restaurant menu created with GridMenu — a showcase for grid-based menu design"
                     width={600}
                     height={800}
-                    className="rounded-lg w-full h-auto"
+                    className="rounded-lg w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => setExpandedImage({
+                      url: '/marketing/magic-circle-4col-a4.png',
+                      alt: 'Indian restaurant menu created with GridMenu — a showcase for grid-based menu design'
+                    })}
                   />
                 </StaggerChildren>
               </div>
@@ -351,7 +383,7 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                 <StaggerChildren visible={visible}>
                   <div className="card-ux p-6">
                     <div className="flex items-start gap-4">
-                      <div className="w-8 h-8 flex-shrink-0 mt-1 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 flex-shrink-0 mt-1 bg-gradient-to-br from-primary-400 to-primary-600 rounded-lg flex items-center justify-center">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -368,7 +400,7 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                   </div>
                   <div className="card-ux p-6">
                     <div className="flex items-start gap-4">
-                      <div className="w-8 h-8 flex-shrink-0 mt-1 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 flex-shrink-0 mt-1 bg-gradient-to-br from-primary-300 to-primary-500 rounded-lg flex items-center justify-center">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -383,7 +415,7 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                   </div>
                   <div className="card-ux p-6">
                     <div className="flex items-start gap-4">
-                      <div className="w-8 h-8 flex-shrink-0 mt-1 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 flex-shrink-0 mt-1 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
@@ -398,7 +430,7 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                   </div>
                   <div className="card-ux p-6">
                     <div className="flex items-start gap-4">
-                      <div className="w-8 h-8 flex-shrink-0 mt-1 bg-gradient-to-br from-green-400 to-emerald-600 rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 flex-shrink-0 mt-1 bg-gradient-to-br from-primary-600 to-primary-800 rounded-lg flex items-center justify-center">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           <polyline points="13 3 13 8 18 8" />
@@ -437,7 +469,11 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                     alt="A photo of a printed breakfast menu — the kind you can photograph and upload to GridMenu for automatic extraction"
                     width={800}
                     height={600}
-                    className="rounded-lg w-full h-auto"
+                    className="rounded-lg w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => setExpandedImage({
+                      url: '/sample-menus/breakfast.jpg',
+                      alt: 'A photo of a printed breakfast menu — the kind you can photograph and upload to GridMenu for automatic extraction'
+                    })}
                   />
                 </div>
 
@@ -462,7 +498,11 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                     alt="Hannah's Café menu created with GridMenu — the finished result after extracting and styling a menu"
                     width={600}
                     height={800}
-                    className="rounded-lg w-full h-auto"
+                    className="rounded-lg w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => setExpandedImage({
+                      url: '/marketing/hannahs-cafe-warm-earth.png',
+                      alt: 'Hannah\'s Café menu created with GridMenu — the finished result after extracting and styling a menu'
+                    })}
                   />
                 </div>
               </div>
@@ -474,7 +514,11 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                   alt="A photo of a printed breakfast menu — the kind you can photograph and upload to GridMenu for automatic extraction"
                   width={800}
                   height={600}
-                  className="rounded-lg w-full h-auto"
+                  className="rounded-lg w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setExpandedImage({
+                    url: '/sample-menus/breakfast.jpg',
+                    alt: 'A photo of a printed breakfast menu — the kind you can photograph and upload to GridMenu for automatic extraction'
+                  })}
                 />
                 <svg width="60" height="50" viewBox="0 0 110 90" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style={{ transform: 'rotate(90deg)' }}>
                   <path d="M0 28 H62 V8 L110 45 L62 82 V62 H0 Z" fill="rgb(255, 193, 7)" filter="drop-shadow(0 4px 12px rgba(0,0,0,0.35))" />
@@ -484,7 +528,11 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
                   alt="Hannah's Café menu created with GridMenu — the finished result after extracting and styling a menu"
                   width={600}
                   height={800}
-                  className="rounded-lg w-full h-auto"
+                  className="rounded-lg w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setExpandedImage({
+                    url: '/marketing/hannahs-cafe-warm-earth.png',
+                    alt: 'Hannah\'s Café menu created with GridMenu — the finished result after extracting and styling a menu'
+                  })}
                 />
               </div>
             </div>
@@ -525,6 +573,14 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
 
       {/* Final CTA — amber/yellow background, visually distinct from teal footer */}
       <CtaSection user={user} onPrimaryClick={handlePrimaryClick} />
+
+      {/* Image expansion modal */}
+      <ZoomableImageModal
+        isOpen={expandedImage !== null}
+        onClose={() => setExpandedImage(null)}
+        url={expandedImage?.url || ''}
+        alt={expandedImage?.alt || ''}
+      />
     </div>
   )
 }
