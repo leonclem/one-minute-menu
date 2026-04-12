@@ -64,6 +64,19 @@ export async function GET(req: NextRequest) {
             profile = await userOperations.getProfile(user.id, supabase)
           }
 
+          // Detect new user: account created within the last 30 seconds
+          const isNewUser = user.created_at
+            ? Date.now() - new Date(user.created_at).getTime() < 30_000
+            : false
+
+          // If new user, append ?new_signup=true to the redirect so the client
+          // can fire the Google Ads conversion regardless of which form they used
+          if (isNewUser) {
+            const redirectUrl = new URL(res.headers.get('location') || next, url.origin)
+            redirectUrl.searchParams.set('new_signup', 'true')
+            res.headers.set('location', redirectUrl.toString())
+          }
+
           // Record that the user actually completed the magic-link callback.
           // This is our app-owned "verified inbox" signal for Admin Hub gating.
           // We use the service-role client to avoid any RLS edge cases.

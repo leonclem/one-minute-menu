@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { UXHeader, UXFooter, UXButton, UXInput, UXCard } from '@/components/ux'
 import { fetchJsonWithRetry } from '@/lib/retry'
@@ -10,11 +10,13 @@ export default function OnboardingClient({
   userEmail, 
   next,
   reason,
+  isNewSignup,
   initialData,
 }: { 
   userEmail?: string;
   next?: string;
   reason?: string;
+  isNewSignup?: boolean;
   initialData?: {
     restaurantName: string;
     establishmentType: string;
@@ -32,6 +34,16 @@ export default function OnboardingClient({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+
+  // Fire Google Ads conversion when a genuinely new user lands here,
+  // regardless of whether they came via /register or /auth/signin
+  useEffect(() => {
+    if (isNewSignup && typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
+      ;(window as any).gtag('event', 'conversion', {
+        send_to: `${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}/${process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL}`,
+      })
+    }
+  }, [isNewSignup])
 
   const handleNext = () => {
     if (step === 1 && !formData.name) {

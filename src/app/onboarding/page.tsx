@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 export default async function OnboardingPage({
   searchParams,
 }: {
-  searchParams: { next?: string; reason?: string }
+  searchParams: { next?: string; reason?: string; new_signup?: string }
 }) {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -56,6 +56,7 @@ export default async function OnboardingPage({
       userEmail={user.email} 
       next={searchParams.next} 
       reason={searchParams.reason}
+      isNewSignup={searchParams.new_signup === 'true'}
       initialData={{
         restaurantName: profile?.restaurantName || '',
         establishmentType: profile?.establishmentType || '',
