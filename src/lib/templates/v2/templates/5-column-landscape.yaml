@@ -21,7 +21,7 @@ regions:
 body:
   container:
     type: GRID
-    cols: 4
+    cols: 5
     rowHeight: 68
     gapX: 10
     gapY: 6
@@ -56,7 +56,7 @@ tiles:
 
   SECTION_HEADER:
     region: body
-    colSpan: 4
+    colSpan: 5
     style:
       typography:
         fontSet: "system-sans-bold"
@@ -176,7 +176,7 @@ filler:
     - startRow: 0
       endRow: LAST_CONTENT
       startCol: 0
-      endCol: 3
+      endCol: 4
   tiles:
     - id: filler-blank
       style: color
