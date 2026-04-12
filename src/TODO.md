@@ -1,10 +1,20 @@
 # Roadmap
 
+## Bugs
+- [ ] PDF export doesn't keep strong font
+- [ ] PDF export doesn't preserve text centring if centre alignment is checked on the /template page.
+- [ ] "Not an acai" renders in PDF as "not An Acai"
+- [ ] Extraction from more than one image only extracts the first before page loads
+- [ ] Pricing keeps defaulting to USD
+
+## Social Media and Advertising
+- [x] Set up first Google ad campaign
+- [x] Add Google tag to <head>
+- [ ] Openclaw initial setup
+- [ ] Understand what is required and potential upside to conduct a cold email campaign
+
 ## Production Monitoring
 - [ ] Install analytics tooling (Vercel default, PostHog, etc.)
-
-## Social Media
-- [ ] Openclaw posts
 
 ## /template
 - [ ] Logo / category headers as special filler tiles
@@ -22,16 +32,17 @@
 - [ ] Determine UAT requirements
 - [ ] Determine if database backup strategy exists (Supabase / Vercel)
 
+### /extracted
+- [ ] Users can no longer upload their own images
+- [ ] Enhance this image feature
+- [ ] No slate for provided background (and warning for )
+
 ### /extracted - cutout images
 - [ ] Overhead isn't always directly overhead - can we be more explicit with our prompt?
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-## Bugs
-- [ ] Extraction from more than one image only extracts the first before page loads
-- [ ] Pricing keeps defaulting to USD
 
 ## "What's New?" page
 - [ ] "What's New?" page

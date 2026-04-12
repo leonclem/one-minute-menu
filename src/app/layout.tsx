@@ -121,6 +121,26 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://uztyljbiqyrykzwtdbpa.supabase.co" />
+
+        {/* Google Ads Global Site Tag (gtag.js) */}
+        {process.env.NEXT_PUBLIC_GOOGLE_ADS_ID && (
+          <>
+            <script
+              async
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}`}
+            />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}');
+                `,
+              }}
+            />
+          </>
+        )}
       </head>
       <body className="min-h-screen bg-white font-sans antialiased">
         <ToastProvider>

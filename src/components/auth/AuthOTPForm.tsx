@@ -112,6 +112,13 @@ export function AuthOTPForm({
               source: trackingSource || 'auth_form',
             },
           })
+
+          // Google Ads conversion tracking
+          if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
+            ;(window as any).gtag('event', 'conversion', {
+              send_to: `${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}/${process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL}`,
+            })
+          }
         }
         
         onSuccess?.(email)
