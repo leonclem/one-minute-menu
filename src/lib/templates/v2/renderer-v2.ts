@@ -39,11 +39,17 @@ import { formatCurrency } from '../../currency-formatter'
 // Text Transform Helpers
 // ============================================================================
 
-/** True title case: "SPINACH SALAD" → "Spinach Salad", "insalate" → "Insalate" */
+/**
+ * True title case: uppercases the first letter of each word without lowercasing
+ * the rest. This preserves intentional mixed-case text such as menu items that
+ * contain quoted phrases (e.g. `"Not an acai"` stays `"Not an acai"` rather
+ * than becoming `"Not An Acai"`).
+ *
+ * We only uppercase the character that immediately follows a word boundary
+ * (start-of-string or whitespace), leaving all other characters untouched.
+ */
 function toTitleCase(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/(?:^|\s)\S/g, ch => ch.toUpperCase())
+  return text.replace(/(?:^|\s)\S/g, ch => ch.toUpperCase())
 }
 
 /**
@@ -261,7 +267,7 @@ export const FONT_STYLE_PRESETS: Record<FontStylePreset, FontStylePresetConfig> 
     label: 'Strong',
     bannerTitleFamily: '"Anton", "Impact", "Arial Black", sans-serif',
     sectionHeaderFamily: '"Anton", "Impact", "Arial Black", sans-serif',
-    googleFonts: '', // System fonts only — no Google Fonts needed
+    googleFonts: 'Anton', // Anton is a Google Font (weight 400 only)
     bannerTitleWeight: 400, // Anton only has 400
     sectionHeaderWeight: 400,
   },

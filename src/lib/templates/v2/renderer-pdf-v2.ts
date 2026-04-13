@@ -76,6 +76,8 @@ export interface PDFExportOptionsV2 {
   spacerTilePatternId?: string
   /** Font style preset for banner title and section headers */
   fontStylePreset?: FontStylePreset
+  /** Centre-align category headings and item text */
+  centreAlignment?: boolean
 }
 
 export interface PDFExportResultV2 {
@@ -162,6 +164,7 @@ export async function renderToPdf(
       fillItemTiles: options.fillItemTiles,
       spacerTilePatternId: options.spacerTilePatternId,
       fontStylePreset: options.fontStylePreset,
+      centreAlignment: options.centreAlignment,
     })
     logger.info(`[PDFRendererV2] HTML generated in ${Date.now() - htmlStartTime}ms (HTML length: ${htmlContent.length})`)
 
@@ -238,7 +241,7 @@ export async function renderToPdf(
 async function generatePDFHTML(
   document: LayoutDocumentV2, 
   customCSS: string = '',
-  options: { showRegionBounds?: boolean; paletteId?: string; textureId?: string; texturesEnabled?: boolean; imageMode?: string; showVignette?: boolean; itemBorders?: boolean; itemDropShadow?: boolean; fillItemTiles?: boolean; spacerTilePatternId?: string; fontStylePreset?: string } = {}
+  options: { showRegionBounds?: boolean; paletteId?: string; textureId?: string; texturesEnabled?: boolean; imageMode?: string; showVignette?: boolean; itemBorders?: boolean; itemDropShadow?: boolean; fillItemTiles?: boolean; spacerTilePatternId?: string; fontStylePreset?: string; centreAlignment?: boolean } = {}
 ): Promise<string> {
   // Use dynamic import to avoid Next.js static analysis issues with react-dom/server
   // in Route Handlers and Server Components.
@@ -300,6 +303,7 @@ async function generatePDFHTML(
     fillItemTiles: options.fillItemTiles,
     spacerTilePatternId: options.spacerTilePatternId,
     fontStylePreset: (options.fontStylePreset as any) || undefined,
+    centreAlignment: options.centreAlignment,
     showGridOverlay: false,
     showRegionBounds: options.showRegionBounds || false,
     showTileIds: false,
@@ -316,7 +320,7 @@ async function generatePDFHTML(
   )
 
   // Generate complete HTML document
-  const { css: pdfCSS, fontLinkUrls } = generatePDFCSS(document, options.paletteId)
+  const { css: pdfCSS, fontLinkUrls } = generatePDFCSS(document, options.paletteId, options.fontStylePreset)
   const fontLinkTags = fontLinkUrls.map(url => `  <link rel="stylesheet" href="${url}">`).join('\n')
   return `<!DOCTYPE html>
 <html lang="en">
@@ -390,12 +394,13 @@ function extractFontStylePreset(document: LayoutDocumentV2): FontStylePreset {
  * Generate CSS optimized for PDF rendering
  * Includes font loading, print styles, and layout fixes
  */
-function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string): { css: string; fontLinkUrls: string[] } {
+function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string, fontStylePresetOverride?: string): { css: string; fontLinkUrls: string[] } {
   const palette = PALETTES_V2.find(p => p.id === paletteId) ?? DEFAULT_PALETTE_V2
   const usedFontSets = extractUsedFontSets(document)
   const googleFontsURL = generateGoogleFontsURL(usedFontSets)
 
-  const fontStylePreset = extractFontStylePreset(document)
+  // Prefer the explicitly-passed preset (user's selection) over what's embedded in the document
+  const fontStylePreset = (fontStylePresetOverride as FontStylePreset | undefined) ?? extractFontStylePreset(document)
   const presetFontsUrl = getFontStylePresetGoogleFontsUrl(fontStylePreset)
 
   // Collect Google Fonts URLs for <link> tags (render-blocking, more reliable than @import)

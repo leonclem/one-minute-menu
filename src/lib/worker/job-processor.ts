@@ -453,6 +453,7 @@ export class JobProcessor {
         fillItemTiles: config?.fillItemTiles === true,
         spacerTilePatternId: config?.spacerTilePatternId || (config?.spacerTiles !== 'none' ? config?.spacerTiles : undefined),
         fontStylePreset: config?.fontStylePreset || undefined,
+        centreAlignment: config?.centreAlignment === true,
       })
 
       return Buffer.from(result.pdfBytes)

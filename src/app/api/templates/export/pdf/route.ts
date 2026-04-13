@@ -188,6 +188,7 @@ async function handleNewTemplateEngine(
     fillItemTiles: finalConfiguration.fillItemTiles === true,
     spacerTilePatternId: finalConfiguration.spacerTilePatternId,
     fontStylePreset: finalConfiguration.fontStylePreset || undefined,
+    centreAlignment: finalConfiguration.centreAlignment === true,
   })
   metricsBuilder.markExportEnd()
   
