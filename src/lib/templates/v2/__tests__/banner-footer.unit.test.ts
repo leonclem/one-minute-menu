@@ -728,9 +728,11 @@ describe('14.6 Banner title advisory note threshold', () => {
 // =============================================================================
 
 describe('14.7 Font style preset Google Fonts URL generation', () => {
-  it('"strong" preset returns empty string (system fonts only)', () => {
+  it('"strong" preset returns a valid Google Fonts URL for Anton', () => {
     const url = getFontStylePresetGoogleFontsUrl('strong')
-    expect(url).toBe('')
+    expect(url).toContain('https://fonts.googleapis.com/css2?family=')
+    expect(url).toContain('Anton')
+    expect(url).toContain('display=swap')
   })
 
   it('"fun" preset returns a valid Google Fonts URL for Caveat', () => {

@@ -1,10 +1,10 @@
 # Roadmap
 
 ## Bugs
-- [ ] PDF export doesn't keep strong font
-- [ ] PDF export doesn't preserve text centring if centre alignment is checked on the /template page.
-- [ ] "Not an acai" renders in PDF as "not An Acai"
-- [ ] Extraction from more than one image only extracts the first before page loads
+- [x] PDF export doesn't keep strong font
+- [x] PDF export doesn't preserve text centring if centre alignment is checked on the /template page.
+- [x] "Not an acai" renders in PDF as "not An Acai"
+- [x] Extraction from more than one image only extracts the first before page loads
 - [ ] Pricing keeps defaulting to USD
 
 ## Social Media and Advertising
@@ -17,6 +17,7 @@
 - [ ] Install analytics tooling (Vercel default, PostHog, etc.)
 
 ## /template
+- [ ] Featured tiles to stand out.
 - [ ] Logo / category headers as special filler tiles
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 
@@ -34,11 +35,8 @@
 
 ### /extracted
 - [ ] Users can no longer upload their own images
-- [ ] Enhance this image feature
-- [ ] No slate for provided background (and warning for )
-
-### /extracted - cutout images
-- [ ] Overhead isn't always directly overhead - can we be more explicit with our prompt?
+- [ ] "Enhance this image" feature
+- [ ] No slate for provided background (and warning for users using background images)
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>

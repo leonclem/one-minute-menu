@@ -39,6 +39,12 @@ export async function POST(
       )
     }
 
+    // extractionOnly=true means: just store the file and return the URL.
+    // Do NOT delete the previous image or update the menu record.
+    // Used when uploading multiple images for extraction so earlier uploads
+    // aren't deleted before the worker has a chance to process them.
+    const extractionOnly = formData.get('extractionOnly') === 'true'
+
     // Enforce monthly upload limits (per plan)
     const { allowed, current, limit } = await userOperations.checkPlanLimits(user.id, 'monthlyUploads')
     if (!allowed) {
@@ -55,17 +61,21 @@ export async function POST(
         { status: 403 }
       )
     }
-    // Upload image
+
+    // Upload image to storage
     const imageUrl = await imageOperations.uploadMenuImage(user.id, file)
-    
-    // Update menu with image URL
-    const menu = await imageOperations.updateMenuImage(params.menuId, user.id, imageUrl)
-    
+
+    let menu = null
+    if (!extractionOnly) {
+      // Update menu's display image (deletes previous image from storage)
+      menu = await imageOperations.updateMenuImage(params.menuId, user.id, imageUrl)
+    }
+
     // Log upload for quota tracking
     await createServerSupabaseClient()
       .from('uploads')
       .insert({ user_id: user.id, menu_id: params.menuId, file_url: imageUrl })
-    
+
     return NextResponse.json({
       success: true,
       data: {

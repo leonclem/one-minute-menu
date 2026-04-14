@@ -289,29 +289,9 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       // Handle authenticated user menu
       // First, try to load the menu from the database to check if it has extracted data
       let cancelled = false
-      let channel: any | null = null
-      let pollTimer: ReturnType<typeof setTimeout> | null = null
-      let pollAttempts = 0
 
       const stopWatching = () => {
-        if (pollTimer) {
-          clearTimeout(pollTimer)
-          pollTimer = null
-        }
-        if (channel) {
-          try {
-            // Supabase realtime APIs differ between client versions; best-effort cleanup.
-            const sb: any = supabase as any
-            if (typeof sb.removeChannel === 'function') {
-              sb.removeChannel(channel)
-            } else if (typeof sb.removeSubscription === 'function') {
-              sb.removeSubscription(channel)
-            }
-          } catch {
-            // best-effort
-          }
-          channel = null
-        }
+        cancelled = true
       }
 
       ;(async () => {
@@ -354,13 +334,25 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         // Try loading from database first
         const hasExistingData = await loadMenuFromDatabase()
         
-        if (hasExistingData) {
-          // Menu already has data, no need to check extraction job
+        if (hasExistingData && !isNewExtraction) {
+          // Menu already has data and we're not expecting a new extraction — no need to poll
           return
         }
 
-        // If no existing data, check for active extraction job in sessionStorage
-        const jobId = sessionStorage.getItem(`extractionJob:${menuId}`)
+        // If no existing data, check for active extraction job(s) in sessionStorage
+        // Support both the new multi-job array and the legacy single-job key
+        let jobIds: string[] = []
+        const jobsRaw = sessionStorage.getItem(`extractionJobs:${menuId}`)
+        if (jobsRaw) {
+          try { jobIds = JSON.parse(jobsRaw) } catch { /* ignore */ }
+        }
+        if (jobIds.length === 0) {
+          const singleJobId = sessionStorage.getItem(`extractionJob:${menuId}`)
+          if (singleJobId) jobIds = [singleJobId]
+        }
+
+        const jobId = jobIds[0] ?? null
+
         if (!jobId) {
           // If we're intentionally entering items manually, don't redirect
           if (isManualEntry) {
@@ -378,189 +370,187 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           return
         }
 
-        // Subscribe to real-time updates for the extraction job
-        {
-          const sb: any = supabase as any
-          if (typeof sb.channel === 'function') {
-            channel = sb
-              .channel(`extraction_job:${jobId}`)
-              .on(
-                'postgres_changes',
-                {
-                  event: 'UPDATE',
-                  schema: 'public',
-                  table: 'menu_extraction_jobs',
-                  filter: `id=eq.${jobId}`,
-                },
-                async (payload: any) => {
-                  const status = payload.new.status
-                  setExtractionStatus(status)
+        // Process all pending jobs sequentially
+        const processJobSequentially = async (remainingJobIds: string[], jobIndex: number) => {
+          if (cancelled || remainingJobIds.length === 0) return
 
-                  if (status === 'completed' && payload.new.result) {
-                    setAuthResult(payload.new.result as Stage1ExtractionResult | Stage2ExtractionResult)
+          const currentJobId = remainingJobIds[0]
+          const isLastJob = remainingJobIds.length === 1
+          // Append if this isn't the first job, OR if the menu already had items before we started
+          const isAppend = jobIndex > 0 || hasExistingData
+          const totalJobs = jobIds.length
 
-                    if (!appliedRef.current) {
-                      appliedRef.current = true
-                      try {
-                        const applyResp = await fetch(`/api/menus/${menuId}/apply-extraction`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            result: payload.new.result,
-                            schemaVersion: (payload.new.schema_version || 'stage2') as 'stage1' | 'stage2',
-                            promptVersion: payload.new.prompt_version,
-                            jobId,
-                          }),
-                        })
-                        const applyJson = await applyResp.json()
-                        if (!applyResp.ok) {
-                          throw new Error(applyJson?.error || 'Failed to save extracted items to menu')
-                        }
-                        setAuthMenu(applyJson.data as Menu)
-                        setLogoUrl((applyJson.data as Menu)?.logoUrl ?? null)
-                        setExtractionStatus('completed')
-                        stopWatching()
-                      } catch (err) {
-                        console.error('Failed to apply extraction to menu', err)
-                        showToast({
-                          type: 'error',
-                          title: 'Could not save items',
-                          description: 'Please try again from the extraction step.',
-                        })
-                        router.push(`/menus/${menuId}/extract`)
-                        stopWatching()
-                      }
-                    }
-                  } else if (status === 'failed') {
-                    showToast({
-                      type: 'error',
-                      title: 'Extraction failed',
-                      description: payload.new.error_message || 'Please try again.',
-                    })
-                    router.push(`/menus/${menuId}/extract`)
-                    stopWatching()
-                  }
-                }
-              )
-              .subscribe()
-          } else {
-            // In some test/runtime environments realtime isn't available; polling below still works.
-            console.warn('[Extracted Page] Supabase realtime not available; falling back to polling')
-          }
-        }
-
-        const fetchStatus = async () => {
-          try {
-            const resp = await fetch(`/api/extraction/status/${jobId}`)
-            const json = await resp.json()
-            if (!resp.ok) {
-              throw new Error(json?.error || 'Failed to get extraction status')
+          const applyJob = async (result: any, schemaVersion: string, promptVersion: string) => {
+            const applyResp = await fetch(`/api/menus/${menuId}/apply-extraction`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                result,
+                schemaVersion: (schemaVersion || 'stage2') as 'stage1' | 'stage2',
+                promptVersion,
+                jobId: currentJobId,
+                append: isAppend,
+              }),
+            })
+            const applyJson = await applyResp.json()
+            if (!applyResp.ok) {
+              throw new Error(applyJson?.error || 'Failed to save extracted items to menu')
             }
-            const status = json?.data?.status
-            setExtractionStatus(status)
+            return applyJson.data as Menu
+          }
 
-            if (status === 'completed' && json?.data?.result) {
-              if (!cancelled) {
-                setAuthResult(json.data.result as Stage1ExtractionResult | Stage2ExtractionResult)
-
-                // Apply extraction results to the menu once and get the updated menu items
+          const onJobComplete = async (result: any, schemaVersion: string, promptVersion: string) => {
+            try {
+              const updatedMenu = await applyJob(result, schemaVersion, promptVersion)
+              console.log('[Extracted Page] Applied extraction to menu:', {
+                menuId: updatedMenu?.id,
+                itemsCount: updatedMenu?.items?.length || 0,
+                jobIndex,
+              })
+              setAuthMenu(updatedMenu)
+              setLogoUrl(updatedMenu?.logoUrl ?? null)
+              if (isLastJob) {
+                if (!appliedRef.current) appliedRef.current = true
+                setAuthResult(result as Stage1ExtractionResult | Stage2ExtractionResult)
+                setExtractionStatus('completed')
+                stopWatching()
+              } else {
+                // Continue to next job
+                await processJobSequentially(remainingJobIds.slice(1), jobIndex + 1)
+              }
+            } catch (err) {
+              console.error('Failed to apply extraction to menu', err)
+              if (isLastJob) {
+                showToast({ type: 'error', title: 'Could not save items', description: 'Please try again from the extraction step.' })
                 if (!appliedRef.current) {
-                  appliedRef.current = true
-                  try {
-                    const applyResp = await fetch(`/api/menus/${menuId}/apply-extraction`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        result: json.data.result,
-                        schemaVersion: (json.data.schemaVersion || 'stage2') as 'stage1' | 'stage2',
-                        promptVersion: json.data.promptVersion,
-                        jobId,
-                      }),
-                    })
-                    const applyJson = await applyResp.json()
-                    if (!applyResp.ok) {
-                      throw new Error(applyJson?.error || 'Failed to save extracted items to menu')
-                    }
-                    console.log('[Extracted Page] Applied extraction to menu:', {
-                      menuId: applyJson.data?.id,
-                      itemsCount: applyJson.data?.items?.length || 0,
-                      items: applyJson.data?.items
-                    })
-                    setAuthMenu(applyJson.data as Menu)
-                    setLogoUrl((applyJson.data as Menu)?.logoUrl ?? null)
-                    stopWatching()
-                  } catch (err) {
-                    console.error('Failed to apply extraction to menu', err)
-                    showToast({
-                      type: 'error',
-                      title: 'Could not save items',
-                      description: 'Please try again from the extraction step.',
-                    })
-                    router.push(`/menus/${menuId}/extract`)
-                    stopWatching()
-                    return true
-                  }
+                  // No jobs succeeded at all — redirect to extract
+                  router.push(`/menus/${menuId}/extract`)
                 }
+                stopWatching()
+              } else {
+                // Apply failed for this job but continue with remaining
+                showToast({ type: 'error', title: `Image ${jobIndex + 1} could not be saved`, description: 'Continuing with remaining images.' })
+                await processJobSequentially(remainingJobIds.slice(1), jobIndex + 1)
+              }
+            }
+          }
+
+          const onJobFailed = async (errorMessage?: string) => {
+            if (isLastJob) {
+              if (!appliedRef.current) {
+                // No jobs succeeded — redirect to extract
+                showToast({ type: 'error', title: 'Extraction failed', description: errorMessage || 'Please try again.' })
+                router.push(`/menus/${menuId}/extract`)
+              } else {
+                // Some jobs succeeded — just show a warning
+                showToast({ type: 'info', title: `Image ${jobIndex + 1} failed`, description: errorMessage || 'Some images could not be extracted.' })
+                setExtractionStatus('completed')
+              }
+              stopWatching()
+            } else {
+              // This job failed but continue with remaining
+              showToast({ type: 'info', title: `Image ${jobIndex + 1} of ${totalJobs} failed`, description: 'Continuing with remaining images.' })
+              await processJobSequentially(remainingJobIds.slice(1), jobIndex + 1)
+            }
+          }
+
+          let jobApplied = false
+
+          // Subscribe to real-time updates for this job
+          let jobChannel: any = null
+          {
+            const sb: any = supabase as any
+            if (typeof sb.channel === 'function') {
+              jobChannel = sb
+                .channel(`extraction_job:${currentJobId}`)
+                .on(
+                  'postgres_changes',
+                  {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'menu_extraction_jobs',
+                    filter: `id=eq.${currentJobId}`,
+                  },
+                  async (payload: any) => {
+                    const status = payload.new.status
+                    if (isLastJob) setExtractionStatus(status)
+
+                    if (status === 'completed' && payload.new.result && !jobApplied) {
+                      jobApplied = true
+                      jobChannel?.unsubscribe?.()
+                      await onJobComplete(payload.new.result, payload.new.schema_version, payload.new.prompt_version)
+                    } else if (status === 'failed' && !jobApplied) {
+                      jobApplied = true
+                      jobChannel?.unsubscribe?.()
+                      await onJobFailed(payload.new.error_message)
+                    }
+                  }
+                )
+                .subscribe()
+            } else {
+              console.warn('[Extracted Page] Supabase realtime not available; falling back to polling')
+            }
+          }
+
+          const fetchStatus = async (): Promise<boolean> => {
+            try {
+              const resp = await fetch(`/api/extraction/status/${currentJobId}`)
+              const json = await resp.json()
+              if (!resp.ok) throw new Error(json?.error || 'Failed to get extraction status')
+
+              const status = json?.data?.status
+              if (isLastJob) setExtractionStatus(status)
+
+              if (status === 'completed' && json?.data?.result && !jobApplied) {
+                jobApplied = true
+                jobChannel?.unsubscribe?.()
+                await onJobComplete(json.data.result, json.data.schemaVersion, json.data.promptVersion)
+                return true
+              }
+              if (status === 'failed' && !jobApplied) {
+                jobApplied = true
+                jobChannel?.unsubscribe?.()
+                await onJobFailed(json?.data?.error)
+                return true
+              }
+              return false
+            } catch (e) {
+              console.error('Failed to fetch extraction status', e)
+              if (!jobApplied) {
+                jobApplied = true
+                await onJobFailed('Could not load results. Please try again.')
               }
               return true
             }
-            if (status === 'failed') {
-              showToast({
-                type: 'error',
-                title: 'Extraction failed',
-                description: json?.data?.error || 'Please try again.'
-              })
-              router.push(`/menus/${menuId}/extract`)
-              stopWatching()
-              return true
-            }
-            return false
-          } catch (e) {
-            console.error('Failed to fetch extraction status', e)
-            showToast({
-              type: 'error',
-              title: 'Could not load results',
-              description: 'Please try again from the extraction step.'
-            })
-            router.push(`/menus/${menuId}/extract`)
-            stopWatching()
-            return true
           }
-        }
 
-        const schedulePoll = () => {
-          if (cancelled) return
-          if (pollTimer) return
+          let pollAttempts = 0
+          let pollTimer: ReturnType<typeof setTimeout> | null = null
 
-          pollTimer = setTimeout(async () => {
-            pollTimer = null
+          const schedulePoll = () => {
             if (cancelled) return
+            if (pollTimer) return
+            pollTimer = setTimeout(async () => {
+              pollTimer = null
+              if (cancelled) return
+              pollAttempts += 1
+              if (pollAttempts > 150) {
+                if (!jobApplied) {
+                  jobApplied = true
+                  await onJobFailed('Taking longer than expected. Please try again.')
+                }
+                return
+              }
+              const done = await fetchStatus()
+              if (!done) schedulePoll()
+            }, 2000)
+          }
 
-            pollAttempts += 1
-            // ~5 minutes at 2s interval
-            if (pollAttempts > 150) {
-              showToast({
-                type: 'error',
-                title: 'Taking longer than expected',
-                description: 'We could not confirm completion. Please try again from the extraction step.',
-              })
-              router.push(`/menus/${menuId}/extract`)
-              stopWatching()
-              return
-            }
-
-            const done = await fetchStatus()
-            if (!done) schedulePoll()
-          }, 2000)
+          const done = await fetchStatus()
+          if (!done) schedulePoll()
         }
 
-        // Initial fetch and then keep polling until completed/failed.
-        // Realtime updates should short-circuit this, but local/dev environments
-        // can be flaky, so polling keeps the UI responsive.
-        const done = await fetchStatus()
-        if (!done) schedulePoll()
-        
-        // Note: cleanup is handled by the outer effect cleanup calling stopWatching().
+        await processJobSequentially(jobIds, 0)
       })()
 
       return () => {
@@ -568,7 +558,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
         stopWatching()
       }
     }
-  }, [menuId, router, showToast, isManualEntry])
+  }, [menuId, router, showToast, isManualEntry, isNewExtraction])
 
   const handleDemoGenerateImages = async () => {
     if (!demoMenu) return
@@ -1572,7 +1562,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-ux-primary/10 text-ux-primary mb-2">
                 <Sparkles className="h-8 w-8 animate-spin-slow" />
               </div>
-              <h2 className="text-2xl font-bold text-ux-text">AI is extracting your menu...</h2>
+              <h2 className="text-2xl font-bold text-ux-text">GridMenu is extracting your menu items</h2>
               <p className="text-lg text-ux-primary font-medium transition-all duration-500">
                 {loadingMessages[loadingMessageIndex]}
               </p>
@@ -1786,6 +1776,17 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                           >
                             <ImageUp className="hidden sm:inline-block h-4 w-4 mr-2" />
                             {logoUrl ? 'Manage logo' : 'Upload logo'}
+                          </UXButton>
+                        )}
+                        {!isDemo && !isReadOnly && (
+                          <UXButton
+                            variant="warning"
+                            size="md"
+                            onClick={() => router.push(`/menus/${menuId}/upload`)}
+                            disabled={loading}
+                          >
+                            <ImageUp className="hidden sm:inline-block h-4 w-4 mr-2" />
+                            Scan another page
                           </UXButton>
                         )}
                         {!isReadOnly && (

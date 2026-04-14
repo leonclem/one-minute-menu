@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ImageUpload from '@/components/ImageUpload'
 import { UXButton, UXCard } from '@/components/ux'
 import ExtractionStatusBanner from '@/components/ExtractionStatusBanner'
-import { AlertTriangle, Info, X, Plus } from 'lucide-react'
+import { Info, X } from 'lucide-react'
 import { createThumbnail, rotateImageQuarterTurns } from '@/lib/image-utils'
 
 interface UploadClientProps {
@@ -18,89 +18,59 @@ interface UploadClientProps {
 export default function UploadClient({ menuId, menuName, hasItems = false }: UploadClientProps) {
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
-  const [processingImages, setProcessingImages] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [extractionStatus, setExtractionStatus] = useState<'idle' | 'uploading' | 'submitting' | 'processing' | 'completed' | 'failed'>('idle')
   const [extractionMessage, setExtractionMessage] = useState<string | undefined>(undefined)
   const [extractionProgress, setExtractionProgress] = useState(0)
-  const [queuedFiles, setQueuedFiles] = useState<{ file: File; preview: string }[]>([])
-  const [editingQueueIndex, setEditingQueueIndex] = useState<number | null>(null)
-  const [rotatingQueueImage, setRotatingQueueImage] = useState(false)
-  const jobQueue = useRef<File[]>([])
-  const currentJobIndex = useRef(0)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [queuedFile, setQueuedFile] = useState<{ file: File; preview: string } | null>(null)
+  const [editingImage, setEditingImage] = useState(false)
+  const [rotatingImage, setRotatingImage] = useState(false)
 
-  // Calculate total size of queued files
-  const totalSize = queuedFiles.reduce((acc, curr) => acc + curr.file.size, 0)
-  const MAX_TOTAL_SIZE = 32 * 1024 * 1024 // 32MB total limit
-  const MAX_FILES = 10 // Max 10 images at once
-
-  const processQueue = useCallback(async () => {
-    if (currentJobIndex.current >= jobQueue.current.length) {
-      // Don't show "completed" here — the worker will continue processing on the next page.
-      setExtractionStatus('processing')
-      setExtractionMessage('Sending you to the next step to review your items…')
-      setExtractionProgress(100)
-      setQueuedFiles([])
-      setSubmitting(false)
-      router.push(`/menus/${menuId}/extracted?newExtraction=true`)
+  const startExtraction = useCallback(async () => {
+    if (!queuedFile) return
+    if (menuId.startsWith('demo-')) {
+      router.push(`/menus/${menuId}/extract`)
       return
     }
 
-    const file = jobQueue.current[currentJobIndex.current]
-    const totalFiles = jobQueue.current.length
-    const fileLabel = totalFiles > 1 ? ` (Image ${currentJobIndex.current + 1} of ${totalFiles})` : ''
+    setSubmitting(true)
+    setError(null)
 
     try {
       setExtractionStatus('uploading')
-      setExtractionMessage(`Uploading image${fileLabel}...`)
-      
+      setExtractionMessage('Uploading image...')
+
       const formData = new FormData()
-      formData.append('image', file)
+      formData.append('image', queuedFile.file)
 
       const uploadRes = await fetch(`/api/menus/${menuId}/image`, {
         method: 'POST',
         body: formData,
       })
       const uploadData = await uploadRes.json()
-      
-      if (!uploadRes.ok) {
-        throw new Error(uploadData?.error || 'Upload failed')
-      }
+      if (!uploadRes.ok) throw new Error(uploadData?.error || 'Upload failed')
 
       setExtractionStatus('submitting')
-      setExtractionMessage(
-        `Please bear with us, this can take a couple of minutes for menus with a large number of items.${fileLabel}`
-      )
-      
+      setExtractionMessage('Please bear with us, this can take a couple of minutes for menus with a large number of items.')
+
       const extractRes = await fetch('/api/extraction/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageUrl: uploadData.data.imageUrl,
-          menuId,
-          schemaVersion: 'stage2'
-        })
+        body: JSON.stringify({ imageUrl: uploadData.data.imageUrl, menuId, schemaVersion: 'stage2' })
       })
-
       const extractData = await extractRes.json()
-      
-      if (!extractRes.ok) {
-        throw new Error(extractData?.error || 'Extraction failed to start')
-      }
+      if (!extractRes.ok) throw new Error(extractData?.error || 'Extraction failed to start')
 
       const jobId = extractData.data.jobId
       const isCached = !!extractData?.data?.cached
-      
-      // If we got a cache hit, try once immediately (no polling delay)
+
       if (isCached) {
         setExtractionStatus('processing')
-        setExtractionMessage(`Using cached extraction${fileLabel}...`)
+        setExtractionMessage('Using cached extraction...')
         const statusResp = await fetch(`/api/extraction/status/${jobId}`)
         if (statusResp.ok) {
           const statusData = await statusResp.json()
-          const status = statusData?.data?.status
-          if (status === 'completed') {
+          if (statusData?.data?.status === 'completed') {
             const applyRes = await fetch(`/api/menus/${menuId}/apply-extraction`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -108,117 +78,39 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
                 result: statusData.data.result,
                 schemaVersion: statusData.data.schemaVersion,
                 promptVersion: statusData.data.promptVersion,
-                jobId: jobId,
-                append: hasItems || currentJobIndex.current > 0
+                jobId,
+                append: hasItems,
               })
             })
-
-            if (!applyRes.ok) {
-              throw new Error('Failed to apply extraction results')
-            }
-
-            // Move to next file in queue
-            currentJobIndex.current++
-            processQueue()
-            return
+            if (!applyRes.ok) throw new Error('Failed to apply extraction results')
           }
         }
       }
 
-      // Store job ID and redirect to extracted page for worker processing
+      sessionStorage.setItem(`extractionJobs:${menuId}`, JSON.stringify([jobId]))
       sessionStorage.setItem(`extractionJob:${menuId}`, jobId)
-      // Don't show "completed" here — the worker will continue processing on the next page.
       setExtractionStatus('processing')
       setExtractionMessage('Sending you to the next step to review your items…')
       setExtractionProgress(100)
-      setQueuedFiles([])
+      setQueuedFile(null)
       setSubmitting(false)
       router.push(`/menus/${menuId}/extracted?newExtraction=true`)
-
     } catch (e: any) {
       setExtractionStatus('failed')
       setExtractionMessage(e.message || 'An error occurred during extraction.')
       setSubmitting(false)
     }
-  }, [menuId, router, hasItems])
+  }, [queuedFile, menuId, router, hasItems])
 
-  const handleUpload = async (file: File, preview: string) => {
-    if (queuedFiles.length >= MAX_FILES) {
-      setError(`Maximum of ${MAX_FILES} images allowed in the queue.`)
-      return
-    }
-    if (totalSize + file.size > MAX_TOTAL_SIZE) {
-      setError(`Total size exceeds 32MB. Please remove some images or use smaller files.`)
-      return
-    }
-    setQueuedFiles(prev => [...prev, { file, preview }])
-    setError(null)
-  }
-
-  const handleMultipleUpload = async (files: File[]) => {
-    setProcessingImages(true)
-    setError(null)
-    const newFiles: { file: File; preview: string }[] = []
-    
-    for (const file of files) {
-      if (queuedFiles.length + newFiles.length >= MAX_FILES) {
-        setError(`Some files were skipped. Maximum of ${MAX_FILES} images allowed.`)
-        break
-      }
-      
-      const currentTotalSize = totalSize + newFiles.reduce((acc, curr) => acc + curr.file.size, 0)
-      if (currentTotalSize + file.size > MAX_TOTAL_SIZE) {
-        setError(`Some files were skipped. Total size cannot exceed 32MB.`)
-        break
-      }
-
-      try {
-        const preview = await createThumbnail(file, 400)
-        newFiles.push({ file, preview })
-      } catch (e) {
-        console.error('Failed to create thumbnail for', file.name)
-      }
-    }
-
-    setQueuedFiles(prev => [...prev, ...newFiles])
-    setProcessingImages(false)
-  }
-
-  const startExtraction = useCallback(() => {
-    if (queuedFiles.length === 0) return
-
-    setSubmitting(true)
-    setError(null)
-    jobQueue.current = queuedFiles.map(q => q.file)
-    currentJobIndex.current = 0
-    
-    if (menuId.startsWith('demo-')) {
-      // Demo menus follow original flow
-      router.push(`/menus/${menuId}/extract`)
-      return
-    }
-
-    processQueue()
-  }, [queuedFiles, menuId, router, processQueue])
-
-  const removeFileFromQueue = (index: number) => {
-    setQueuedFiles(prev => prev.filter((_, i) => i !== index))
-  }
-
-  const handleRotateQueuedImage = async (quarterTurns: number) => {
-    if (editingQueueIndex == null) return
-    const entry = queuedFiles[editingQueueIndex]
-    if (!entry) return
-
-    setRotatingQueueImage(true)
+  const handleRotate = async (quarterTurns: number) => {
+    if (!queuedFile) return
+    setRotatingImage(true)
     try {
-      const rotated = await rotateImageQuarterTurns(entry.file, quarterTurns)
+      const rotated = await rotateImageQuarterTurns(queuedFile.file, quarterTurns)
       const preview = await createThumbnail(rotated.file, 400)
-      setQueuedFiles(prev => prev.map((it, idx) => (
-        idx === editingQueueIndex ? { file: rotated.file, preview } : it
-      )))
+      setQueuedFile({ file: rotated.file, preview })
     } finally {
-      setRotatingQueueImage(false)
+      setRotatingImage(false)
     }
   }
 
@@ -231,15 +123,15 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
           </h1>
           <p className="mt-2 text-white/80 text-hero-shadow">
             {hasItems
-              ? 'Upload more photos to add items fast — or jump back to your items to edit.'
-              : 'To build your menu, you can upload photos of an existing menu (fastest) or enter items manually.'}
+              ? 'Upload a photo to scan more items — or jump back to your items to edit.'
+              : "Upload a photo of your existing menu and we'll pull out the items for you. Or enter them manually."}
           </p>
         </div>
 
-        <ExtractionStatusBanner 
-          status={extractionStatus} 
-          message={extractionMessage} 
-          progress={extractionProgress} 
+        <ExtractionStatusBanner
+          status={extractionStatus}
+          message={extractionMessage}
+          progress={extractionProgress}
         />
 
         {error && (
@@ -255,114 +147,71 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
                 {!hasItems ? (
                   <>
                     <p className="text-ux-text font-semibold mb-1">
-                      Quick question — do you already have a menu you can photograph?
+                      Do you have a menu you can photograph?
                     </p>
-                    <p className="text-ux-text-secondary text-sm mb-3">
-                      If yes, upload or drag &amp; drop a few clear photos below and we&apos;ll pull out the items for you. If not, no worries —
-                      you can type them in manually.
-                    </p>
-                    <p className="text-xs text-ux-text-secondary">
-                      Either way, you&apos;ll be able to review and edit everything in the next step.
+                    <p className="text-ux-text-secondary text-sm mb-1">
+                      Upload one clear photo and we&apos;ll extract the items for you. You can scan more pages after reviewing.
                     </p>
                   </>
                 ) : (
-                  <>
-                    <p className="text-ux-text font-medium mb-1">Upload more menu photos</p>
-                    <p className="text-ux-text-secondary text-sm mb-3">
-                      Upload one or more new photos and we’ll append any new items.
-                    </p>
-                  </>
+                  <p className="text-ux-text font-medium mb-1">Upload a menu photo to scan more items</p>
                 )}
               </div>
 
-              {/* Selection and Queue Area */}
               <div className="px-6 pb-6">
-                {queuedFiles.length > 0 ? (
+                {queuedFile ? (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {queuedFiles.map((item, idx) => (
-                        <div key={`${item.file.name}-${idx}`} className="relative group">
-                          <div className="aspect-[3/4] rounded-lg border-2 border-ux-border bg-ux-background-secondary overflow-hidden flex flex-col items-center justify-center text-center relative">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img 
-                              src={item.preview} 
-                              alt={`Preview ${idx + 1}`}
-                              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                            <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
-                            <div className="relative z-10 p-2 bg-white/90 backdrop-blur-[2px] w-full mt-auto border-t border-ux-border">
-                              <span className="text-[10px] text-ux-text font-semibold truncate block w-full">
-                                {item.file.name}
-                              </span>
-                              <span className="text-[10px] font-bold text-ux-primary">
-                                {(item.file.size / 1024 / 1024).toFixed(1)} MB
-                              </span>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setEditingQueueIndex(idx)}
-                            className="absolute top-2 left-2 text-[10px] px-2 py-1 rounded-full bg-white/90 border border-ux-border text-ux-text hover:bg-white transition-colors z-20"
-                            title="Rotate / adjust"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => removeFileFromQueue(idx)}
-                            className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-ux-warning text-ux-text flex items-center justify-center shadow-lg hover:bg-amber-500 transition-colors z-20 border-2 border-white group-active:scale-95"
-                            title="Remove image"
-                          >
-                            <X className="h-4 w-4 stroke-[3px]" />
-                          </button>
+                    <div className="relative group max-w-xs mx-auto">
+                      <div className="aspect-[3/4] rounded-lg border-2 border-ux-border bg-ux-background-secondary overflow-hidden relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={queuedFile.preview}
+                          alt="Menu photo preview"
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                        <div className="relative z-10 p-2 bg-white/90 backdrop-blur-[2px] w-full absolute bottom-0 border-t border-ux-border">
+                          <span className="text-[10px] text-ux-text font-semibold truncate block w-full">{queuedFile.file.name}</span>
+                          <span className="text-[10px] font-bold text-ux-primary">{(queuedFile.file.size / 1024 / 1024).toFixed(1)} MB</span>
                         </div>
-                      ))}
-                      
-                      {/* Add more button */}
-                      {queuedFiles.length < MAX_FILES && (
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          className="aspect-[3/4] rounded-lg border-2 border-dashed border-ux-border bg-white/40 hover:bg-white/60 hover:border-ux-primary transition-all flex flex-col items-center justify-center text-ux-text-secondary hover:text-ux-primary"
-                        >
-                          <Plus className="h-8 w-8 mb-2" />
-                          <span className="text-xs font-medium">Add another</span>
-                        </button>
-                      )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditingImage(true)}
+                        className="absolute top-2 left-2 text-[10px] px-2 py-1 rounded-full bg-white/90 border border-ux-border text-ux-text hover:bg-white transition-colors z-20"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setQueuedFile(null)}
+                        className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-ux-warning text-ux-text flex items-center justify-center shadow-lg hover:bg-amber-500 transition-colors z-20 border-2 border-white"
+                        title="Remove image"
+                      >
+                        <X className="h-4 w-4 stroke-[3px]" />
+                      </button>
                     </div>
 
-                    <div className="pt-4 flex flex-col gap-3">
-                      <div className="flex justify-between items-center px-1">
-                        <span className="text-xs text-ux-text-secondary">
-                          Queue: <span className="font-semibold text-ux-text">{queuedFiles.length}/{MAX_FILES}</span> images
-                        </span>
-                        <span className="text-xs text-ux-text-secondary">
-                          Total size: <span className={`font-semibold ${totalSize > MAX_TOTAL_SIZE * 0.8 ? 'text-red-500' : 'text-ux-text'}`}>
-                            {(totalSize / 1024 / 1024).toFixed(1)} MB
-                          </span> / 32 MB
-                        </span>
-                      </div>
-                      
-                      <UXButton
-                        variant="primary"
-                        size="lg"
-                        className="w-full py-4 text-lg"
-                        onClick={startExtraction}
-                      >
-                        Extract items from {queuedFiles.length} {queuedFiles.length === 1 ? 'photo' : 'photos'}
-                      </UXButton>
-                      <p className="text-center text-xs text-ux-text-secondary">
-                        AI will process these images one by one and append the items.
-                      </p>
-                    </div>
+                    <UXButton
+                      variant="primary"
+                      size="lg"
+                      className="w-full py-4 text-lg"
+                      onClick={startExtraction}
+                      disabled={submitting}
+                    >
+                      Extract items from photo
+                    </UXButton>
                   </div>
                 ) : (
                   <>
                     <ImageUpload
-                      onImageSelected={(file, preview) => handleUpload(file, preview)}
-                      onImagesSelected={(files) => handleMultipleUpload(files)}
-                      multiple
+                      onImageSelected={async (file, preview) => {
+                        const thumb = preview || await createThumbnail(file, 400)
+                        setQueuedFile({ file, preview: thumb })
+                        setError(null)
+                      }}
+                      multiple={false}
                       skipPreview
                       enableCamera={false}
-                      primaryUploadLabel={hasItems ? 'Upload more menu photos' : 'Upload menu photos'}
+                      primaryUploadLabel={hasItems ? 'Upload a menu photo' : 'Upload menu photo'}
                       uploadButtonVariant="primary"
                       className="w-full bg-transparent shadow-none"
                     />
@@ -374,12 +223,9 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
                             <div className="w-full border-t border-ux-border/60" />
                           </div>
                           <div className="relative flex justify-center text-xs">
-                            <span className="px-2 bg-white/80 backdrop-blur-[1px] text-ux-text-secondary font-semibold tracking-wide">
-                              OR
-                            </span>
+                            <span className="px-2 bg-white/80 backdrop-blur-[1px] text-ux-text-secondary font-semibold tracking-wide">OR</span>
                           </div>
                         </div>
-
                         <div className="mt-4 flex justify-center">
                           <Link href={`/menus/${menuId}/extracted?manual=true`} aria-label="Enter items manually">
                             <UXButton variant="warning" size="md" noShadow className="min-w-[220px] py-2">
@@ -392,30 +238,14 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
                   </>
                 )}
               </div>
-              
+
               <div className="px-6 pb-6 pt-2 border-t border-ux-border/50 flex items-center gap-2 text-ux-text-secondary text-xs italic justify-center">
                 <Info className="h-3 w-3" />
                 <span>AI extraction is fast but not always perfect. You&apos;ll be able to review and fix any mistakes in the next step.</span>
               </div>
 
-              {/* Hidden input for "Add another" functionality */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/jpg,image/png"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files) {
-                    handleMultipleUpload(Array.from(e.target.files))
-                    // Reset value so same file can be selected again
-                    e.target.value = ''
-                  }
-                }}
-              />
-
-              {/* Rotate/Edit modal for queued images */}
-              {editingQueueIndex != null && queuedFiles[editingQueueIndex] && (
+              {/* Rotate/Edit modal */}
+              {editingImage && queuedFile && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
                   <div className="w-full max-w-md">
                     <UXCard>
@@ -424,9 +254,9 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
                         <button
                           type="button"
                           className="h-7 w-7 flex items-center justify-center rounded-full text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-primary transition-colors"
-                          onClick={() => !rotatingQueueImage && setEditingQueueIndex(null)}
+                          onClick={() => !rotatingImage && setEditingImage(false)}
                           aria-label="Close photo editor"
-                          disabled={rotatingQueueImage}
+                          disabled={rotatingImage}
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -434,63 +264,16 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
                       <div className="p-4 space-y-4">
                         <div className="rounded-lg overflow-hidden border border-ux-border bg-ux-background-secondary">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={queuedFiles[editingQueueIndex].preview}
-                            alt="Queued menu photo preview"
-                            className="w-full max-h-[60vh] object-contain bg-white"
-                          />
+                          <img src={queuedFile.preview} alt="Menu photo preview" className="w-full max-h-[60vh] object-contain bg-white" />
                         </div>
-
                         <div className="flex gap-3">
-                          <UXButton
-                            variant="outline"
-                            className="flex-1 bg-white"
-                            onClick={() => handleRotateQueuedImage(3)}
-                            disabled={rotatingQueueImage}
-                          >
-                            Rotate left
-                          </UXButton>
-                          <UXButton
-                            variant="outline"
-                            className="flex-1 bg-white"
-                            onClick={() => handleRotateQueuedImage(1)}
-                            disabled={rotatingQueueImage}
-                          >
-                            Rotate right
-                          </UXButton>
+                          <UXButton variant="outline" className="flex-1 bg-white" onClick={() => handleRotate(3)} disabled={rotatingImage}>Rotate left</UXButton>
+                          <UXButton variant="outline" className="flex-1 bg-white" onClick={() => handleRotate(1)} disabled={rotatingImage}>Rotate right</UXButton>
                         </div>
-
-                        <UXButton
-                          variant="primary"
-                          className="w-full"
-                          onClick={() => setEditingQueueIndex(null)}
-                          disabled={rotatingQueueImage}
-                        >
-                          Done
-                        </UXButton>
+                        <UXButton variant="primary" className="w-full" onClick={() => setEditingImage(false)} disabled={rotatingImage}>Done</UXButton>
                       </div>
                     </UXCard>
                   </div>
-                </div>
-              )}
-
-              {/* Processing Overlay */}
-              {processingImages && (
-                <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[2px] flex flex-col items-center justify-center rounded-md">
-                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-ux-primary mb-3"></div>
-                  <p className="text-sm font-semibold text-ux-text">Optimizing images...</p>
-                </div>
-              )}
-
-              {/* Hidden ImageUpload for "Add another" functionality when queue is active */}
-              {queuedFiles.length > 0 && (
-                <div className="hidden">
-                  <ImageUpload
-                    onImageSelected={(file, preview) => handleUpload(file, preview)}
-                    onImagesSelected={(files) => handleMultipleUpload(files)}
-                    multiple
-                    skipPreview
-                  />
                 </div>
               )}
             </div>
@@ -510,7 +293,3 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
     </section>
   )
 }
-
-
-
-
