@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { UXButton } from '@/components/ux'
 import { getPlanFriendlyName, copyToClipboard } from '@/lib/utils'
 import { useToast, ConfirmDialog } from '@/components/ui'
+import { UserMenusPanel } from './UserMenusPanel'
 
 interface ManagedUser {
   id: string
@@ -24,6 +25,7 @@ export function UserManagementTab() {
   const [searchQuery, setSearchQuery] = useState('')
   const [userToDelete, setUserToDelete] = useState<ManagedUser | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [menuPanelUser, setMenuPanelUser] = useState<ManagedUser | null>(null)
   const { showToast } = useToast()
 
   const fetchUsers = async () => {
@@ -231,6 +233,13 @@ export function UserManagementTab() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       <UXButton
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMenuPanelUser(user)}
+                      >
+                        Menus
+                      </UXButton>
+                      <UXButton
                         variant="primary"
                         size="sm"
                         onClick={() => handleApprove(user.id)}
@@ -304,16 +313,25 @@ export function UserManagementTab() {
                     {user.role === 'admin' ? 'Always Approved' : user.approvedAt ? new Date(user.approvedAt).toLocaleDateString() : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    {user.role !== 'admin' && (
+                    <div className="flex items-center justify-end gap-2">
                       <UXButton
                         variant="outline"
                         size="sm"
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                        onClick={() => setUserToDelete(user)}
+                        onClick={() => setMenuPanelUser(user)}
                       >
-                        Delete
+                        Menus
                       </UXButton>
-                    )}
+                      {user.role !== 'admin' && (
+                        <UXButton
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => setUserToDelete(user)}
+                        >
+                          Delete
+                        </UXButton>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -331,6 +349,14 @@ export function UserManagementTab() {
         confirmText={isDeleting ? 'Deleting...' : 'Yes, delete everything'}
         variant="danger"
       />
+
+      {menuPanelUser && (
+        <UserMenusPanel
+          userId={menuPanelUser.id}
+          userEmail={menuPanelUser.email}
+          onClose={() => setMenuPanelUser(null)}
+        />
+      )}
     </div>
   )
 }

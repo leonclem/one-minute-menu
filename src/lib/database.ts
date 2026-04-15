@@ -1283,6 +1283,133 @@ function generateId(): string {
   return crypto.randomUUID()
 }
 
+/**
+ * Fetch any menu by ID using the admin Supabase client, bypassing RLS.
+ * Replicates the full transformMenuFromDB pipeline (image URLs, transforms, flagship)
+ * using the admin client so all sub-queries also bypass RLS.
+ *
+ * IMPORTANT: Only call this from admin-gated server routes that have already
+ * called requireAdmin().
+ */
+export async function getMenuAsAdmin(menuId: string): Promise<Menu | null> {
+  const { createAdminSupabaseClient } = await import('@/lib/supabase-server')
+  const supabase = createAdminSupabaseClient()
+
+  const { data: dbMenu, error } = await supabase
+    .from('menus')
+    .select('*')
+    .eq('id', menuId)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') return null
+    throw new DatabaseError(`Failed to get menu (admin): ${error.message}`, error.code)
+  }
+
+  const menuData = dbMenu.menu_data || {}
+
+  const menu: Menu = {
+    id: dbMenu.id,
+    userId: dbMenu.user_id,
+    name: dbMenu.name,
+    slug: dbMenu.slug,
+    establishmentType: dbMenu.establishment_type || undefined,
+    primaryCuisine: dbMenu.primary_cuisine || undefined,
+    venueInfo: dbMenu.venue_info || undefined,
+    items: menuData.items || [],
+    categories: menuData.categories || undefined,
+    theme: menuData.theme || getDefaultTheme(),
+    version: dbMenu.current_version,
+    status: dbMenu.status,
+    publishedAt: dbMenu.published_at ? new Date(dbMenu.published_at) : undefined,
+    imageUrl: dbMenu.image_url || undefined,
+    logoUrl: dbMenu.logo_url || undefined,
+    paymentInfo: menuData.paymentInfo || undefined,
+    extractionMetadata: menuData.extractionMetadata
+      ? {
+          ...menuData.extractionMetadata,
+          extractedAt: new Date(menuData.extractionMetadata.extractedAt),
+        }
+      : undefined,
+    auditTrail: [],
+    createdAt: new Date(dbMenu.created_at),
+    updatedAt: new Date(dbMenu.updated_at),
+  }
+
+  // Enrich AI image URLs (admin client)
+  const aiImageIds: string[] = []
+  const allItems = [
+    ...(menu.items ?? []),
+    ...(menu.categories?.flatMap((c) => c.items) ?? []),
+  ]
+  allItems.forEach((item) => {
+    if (item.aiImageId && item.imageSource === 'ai') aiImageIds.push(item.aiImageId)
+  })
+  if (aiImageIds.length > 0) {
+    const { data: aiImages } = await supabase
+      .from('ai_generated_images')
+      .select('id, desktop_url, cutout_url, cutout_status')
+      .in('id', aiImageIds)
+    if (aiImages) {
+      const urlMap = new Map(
+        aiImages
+          .filter((img) => img.desktop_url)
+          .map((img) => [
+            img.id,
+            { desktopUrl: img.desktop_url, cutoutUrl: img.cutout_url ?? null, cutoutStatus: img.cutout_status ?? null },
+          ])
+      )
+      allItems.forEach((item) => {
+        if (item.aiImageId && item.imageSource === 'ai') {
+          const imgData = urlMap.get(item.aiImageId)
+          if (imgData) {
+            item.customImageUrl = imgData.desktopUrl
+            item.cutoutUrl = imgData.cutoutUrl
+            item.cutoutStatus = (imgData.cutoutStatus as import('@/types').CutoutStatus) ?? undefined
+          }
+        }
+      })
+    }
+  }
+
+  // Ensure backward compatibility
+  const compatibleMenu = ensureBackwardCompatibility(menu)
+
+  // Enrich image transforms (admin client)
+  const { data: transformRows } = await supabase
+    .from('menu_items')
+    .select('id, image_transform')
+    .eq('menu_id', menuId)
+  if (transformRows?.length) {
+    const transformById = new Map(
+      transformRows.filter((r) => r.image_transform).map((r) => [r.id, r.image_transform])
+    )
+    const applyTransform = (item: MenuItem) => {
+      const t = transformById.get(item.id)
+      if (t) (item as any).imageTransform = t
+    }
+    compatibleMenu.items?.forEach(applyTransform)
+    compatibleMenu.categories?.forEach((cat) => cat.items.forEach(applyTransform))
+  }
+
+  // Enrich flagship (admin client)
+  const { data: flagshipRows } = await supabase
+    .from('menu_items')
+    .select('id, is_flagship')
+    .eq('menu_id', menuId)
+  if (flagshipRows?.length) {
+    const flagshipById = new Map(flagshipRows.map((r) => [r.id, r.is_flagship ?? false]))
+    const applyFlagship = (item: MenuItem) => {
+      const val = flagshipById.get(item.id)
+      if (val !== undefined) item.isFlagship = val || undefined
+    }
+    compatibleMenu.items?.forEach(applyFlagship)
+    compatibleMenu.categories?.forEach((cat) => cat.items.forEach(applyFlagship))
+  }
+
+  return compatibleMenu
+}
+
 // Image Storage Operations
 export const imageOperations = {
   async uploadMenuImage(userId: string, file: File): Promise<string> {
