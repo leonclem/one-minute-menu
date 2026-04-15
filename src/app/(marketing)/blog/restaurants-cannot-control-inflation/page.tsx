@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     url: '/blog/restaurants-cannot-control-inflation',
     images: [
       {
-        url: '/logos/social-1200x630.png',
+        url: '/backgrounds/ship-on-rough-sea-foreshadow.png',
         width: 1200,
         height: 630,
         alt: 'Restaurants Cannot Control Inflation. They Can Control This',
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    images: ['/logos/social-1200x630.png'],
+    images: ['/backgrounds/ship-on-rough-sea-foreshadow.png'],
   },
 }
 

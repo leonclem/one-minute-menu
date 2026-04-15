@@ -10,6 +10,7 @@
 ## Social Media and Advertising
 - [x] Set up first Google ad campaign
 - [x] Add Google tag to <head>
+- [x] Share buttons on blog posts
 - [ ] Openclaw initial setup
 - [ ] Understand what is required and potential upside to conduct a cold email campaign
 

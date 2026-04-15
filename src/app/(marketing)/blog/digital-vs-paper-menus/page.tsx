@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     url: '/blog/digital-vs-paper-menus',
     images: [
       {
-        url: '/logos/social-1200x630.png',
+        url: '/backgrounds/restaurant-scene-with-menu.png',
         width: 1200,
         height: 630,
         alt: 'Paper Menus for Guests, Digital Control for Operators',
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    images: ['/logos/social-1200x630.png'],
+    images: ['/backgrounds/restaurant-scene-with-menu.png'],
   },
 }
 
