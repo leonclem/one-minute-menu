@@ -5,6 +5,13 @@ import { UXWrapper } from '@/components/ux'
 
 const articles = [
   {
+    slug: 'restaurants-cannot-control-inflation',
+    category: 'Operations',
+    title: 'Restaurants Cannot Control Inflation. They Can Control This',
+    excerpt:
+      'Restaurants cannot control the wider market. They can control how quickly they adapt to it. That is why menu workflow matters more than it once did.',
+  },
+  {
     slug: 'digital-vs-paper-menus',
     category: 'Menu Strategy',
     title: 'Paper Menus for Guests, Digital Control for Operators',

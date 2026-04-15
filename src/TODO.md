@@ -70,6 +70,7 @@
 ### Blogs
 - [x] Create blogs section of site
 - [x] Digital vs paper menu
+- [x] Rising costs of restaurants
 - [ ] Grow sales with better images
 - [ ] Admin tool to add blogs
 - [ ] Use better descriptions to boost sales
