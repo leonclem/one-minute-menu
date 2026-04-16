@@ -53,6 +53,10 @@ export async function GET(request: NextRequest) {
     }
 
     const result = await processPendingCutouts()
+    // Suppress no-op cron logs — only log when there was actual work to do
+    if (result.processed > 0) {
+      logger.info('[cutout-worker route] Cron processed cutouts', result)
+    }
     return NextResponse.json(result)
   } catch (error) {
     logger.error('[cutout-worker route] Cron error processing cutouts:', error)

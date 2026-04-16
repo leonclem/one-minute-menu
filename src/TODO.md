@@ -1,11 +1,14 @@
 # Roadmap
 
-## Bugs
-- [x] PDF export doesn't keep strong font
-- [x] PDF export doesn't preserve text centring if centre alignment is checked on the /template page.
-- [x] "Not an acai" renders in PDF as "not An Acai"
-- [x] Extraction from more than one image only extracts the first before page loads
-- [ ] Pricing keeps defaulting to USD
+### /extracted
+- [ ] Users can no longer upload their own images
+- [ ] "Enhance this image" feature
+- [ ] No slate for provided background (and warning for users using background images)
+
+## /template
+- [ ] Featured tiles to stand out.
+- [ ] Logo / category headers as special filler tiles
+- [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 
 ## Social Media and Advertising
 - [x] Set up first Google ad campaign
@@ -15,12 +18,8 @@
 - [ ] Understand what is required and potential upside to conduct a cold email campaign
 
 ## Production Monitoring
-- [ ] Install analytics tooling (Vercel default, PostHog, etc.)
-
-## /template
-- [ ] Featured tiles to stand out.
-- [ ] Logo / category headers as special filler tiles
-- [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
+- [x] Install Vercel analytics
+- [ ] Install PostHog analytics
 
 ## Exports
 - [ ] Verify "print ready"
@@ -34,14 +33,12 @@
 - [ ] Determine UAT requirements
 - [ ] Determine if database backup strategy exists (Supabase / Vercel)
 
-### /extracted
-- [ ] Users can no longer upload their own images
-- [ ] "Enhance this image" feature
-- [ ] No slate for provided background (and warning for users using background images)
-
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+## Bugs
+- [ ] Pricing keeps defaulting to USD
 
 ## "What's New?" page
 - [ ] "What's New?" page
