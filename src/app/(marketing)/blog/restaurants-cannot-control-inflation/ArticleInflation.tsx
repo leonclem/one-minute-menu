@@ -216,20 +216,28 @@ export default function ArticleInflation() {
               </p>
               <p>That matters more than it used to.</p>
               <p>
-                Last year,{' '}
-                <strong className="text-gray-900">
-                  42% of restaurant operators in the US said their business was not profitable
-                </strong>
-                . In that kind of environment, even small sources of friction start to matter.
+                Last year, 42% of restaurant operators in the US said their business was not
+                profitable. In that kind of environment, even small sources of friction start to
+                matter.
                 <Cite n={1} href={SOURCES.nra} />
               </p>
+            </div>
 
+            {/* Stat 1 */}
+            <StatCallout
+              stat="42%"
+              context="of restaurant operators in the US said their business was not profitable last year."
+              href={SOURCES.nra}
+            />
+
+            <div className="space-y-6 text-gray-700 text-[1.0625rem] leading-relaxed">
               <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 pt-4">
                 Menus are increasingly tied to operational guile
               </h2>
               <p>
-                For many operators, menus used to be something you refreshed occasionally. A price
-                update here, a reprint there, perhaps a broader redesign once in a while.
+                For many operators, the menu was never the main event. The food was. The service
+                was. The menu was something you refreshed occasionally — a price update here, a
+                reprint there, perhaps a broader redesign once in a while.
               </p>
               <p>That feels less realistic now.</p>
               <p>
@@ -245,16 +253,6 @@ export default function ArticleInflation() {
                 .<Cite n={4} href={SOURCES.ons} /> Markets differ, of course, but the pattern is
                 familiar: costs move, and menus cannot stay static for long.
               </p>
-            </div>
-
-            {/* Stat 1 */}
-            <StatCallout
-              stat="3.7%"
-              context="Meals out and takeaway food prices rose 3.7% in Australia over the year to February 2026."
-              href={SOURCES.abs}
-            />
-
-            <div className="space-y-6 text-gray-700 text-[1.0625rem] leading-relaxed overflow-hidden">
               <p>
                 Menus sit right at the intersection of pricing, availability, promotions, and guest
                 communication. When those things change faster than the menu does, the menu can start to
@@ -286,7 +284,8 @@ export default function ArticleInflation() {
                 substitutions, and how often menus need to evolve.
               </p>
               <p>
-                In that kind of environment, flexibility often matters more than perfection.
+                In that kind of environment, it&rsquo;s an unfortunate reality that flexibility
+                must do battle with the ideals we want for our customers.
               </p>
               <p>
                 A restaurant does not always need a grand redesign. It may simply need to update
@@ -315,7 +314,7 @@ export default function ArticleInflation() {
                 reprinting, replacing worn copies, or simply living with inaccuracies until the
                 next update cycle.
               </p>
-              <p>None of this is usually catastrophic by itself. The issue is cumulative drag.</p>
+              <p>None of this is catastrophic by itself. But it adds up — and it tends to land on whoever already has the least spare time.</p>
               <p>
                 The goal is to make <strong className="text-gray-900">menu creation and updating</strong> less brittle.
               </p>
@@ -324,19 +323,18 @@ export default function ArticleInflation() {
                 A quieter, more honest benefit
               </h2>
               <p>
-                There may be cost savings here, yes. But that is probably not the most convincing
-                way to frame it.
+                There are certainly cost savings here, yes. But that is probably not the only way to frame it.
               </p>
               <p>
                 No menu platform is going to solve the wider economic pressures facing hospitality.
-                It is not going to fix inflation, labour shortages, or supplier instability. Yet it
-                removes one avoidable source of friction — and that is where a{' '}
+                It is not going to fix inflation, labour shortages, or supplier instability. Yet it can be made 
+                more friendly to the balance sheet, and removes one avoidable source of friction. That is where a{' '}
                 <Link href="/" className="text-ux-primary hover:underline">
                   menu creation tool like GridMenu
                 </Link>{' '}
                 quietly pays for itself.
               </p>
-              <p>That is a modest claim. But in a difficult market, modest gains are still useful.</p>
+              <p>Its a modest claim. But in a difficult market, modest gains are still useful.</p>
               <p>
                 Less coordinating providers. Fewer version-control problems. Faster updates. Less lag between
                 deciding on a change and seeing it reflected in the menu.
@@ -366,7 +364,8 @@ export default function ArticleInflation() {
                 </p>
                 <p>
                   A better workflow will not fix everything. It may, however, make one important
-                  part of the job simpler, faster, and easier to keep current.
+                  part of the job simpler, faster, and easier to keep current — and give you a
+                  little more headspace for the parts of the job you actually got into this for.
                 </p>
                 <p>And right now, that is valuable enough.</p>
               </div>

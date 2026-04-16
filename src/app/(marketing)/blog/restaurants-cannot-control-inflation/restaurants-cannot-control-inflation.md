@@ -20,7 +20,7 @@ paper menu drafts nearby, warm lighting, slightly pressured but professional atm
 
 ## Menus are no longer just design assets
 
-For many operators, menus used to be something you refreshed occasionally. A price update here, a reprint there, perhaps a broader redesign once in a while.
+For many operators, the menu was never the main event. The food was. The service was. The menu was something you refreshed occasionally — a price update here, a reprint there, perhaps a broader redesign once in a while.
 
 That feels less realistic now.
 
@@ -42,7 +42,7 @@ A menu update often sounds simple until the work begins.
 
 Someone has to update the copy. Someone has to handle layout. Someone has to check prices. Someone has to produce files for print. Then there is the delay of reprinting, replacing worn copies, or simply living with inaccuracies until the next update cycle.
 
-None of this is usually catastrophic by itself. The issue is cumulative drag.
+None of this is catastrophic by itself. But it adds up — and it tends to land on whoever already has the least spare time.
 
 And this does **not** mean restaurants need to abandon print. Printed menus still have a place. The advantage is using a faster digital workflow behind the scenes, then producing polished, print-friendly menus when needed.
 
@@ -55,7 +55,7 @@ Canada’s Food Price Report 2026 says food prices are now **27% higher than the
 > ### 27%
 > **Food prices in Canada are 27% higher than they were five years ago.**[3]
 
-In that kind of environment, flexibility often matters more than perfection.
+In that kind of environment, it's an unfortunate reality that flexibility must do battle with ideals.
 
 A restaurant does not always need a grand redesign. It may simply need to update quickly, keep formats aligned, and avoid the slow admin cycle that turns simple menu changes into a bigger task than they should be.
 
@@ -84,7 +84,7 @@ They can control how quickly they adapt to it.
 
 That is why menu workflow matters more than it once did. Not because it is the single biggest issue in hospitality, but because it touches pricing, communication, operations, and presentation all at once.
 
-A better workflow will not fix everything. It may, however, make one important part of the job simpler, faster, and easier to keep current.
+A better workflow will not fix everything. It may, however, make one important part of the job simpler, faster, and easier to keep current — and give you a little more headspace for the parts of the job you actually got into this for.
 
 And right now, that is valuable enough.
 
