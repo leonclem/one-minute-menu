@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { imageProcessingService } from '@/lib/image-processing'
 import { logger } from '@/lib/logger'
+import { syncMenuItemImageToJsonb } from '@/lib/menu-item-image-sync'
 
 export const runtime = 'nodejs'
 
@@ -113,7 +114,13 @@ export async function DELETE(
           { status: 500 }
         )
       }
-      
+
+      // The delete_ai_generated_image RPC may have cascaded the selection
+      // (auto-selecting the next AI image, or clearing to custom/none).
+      // Sync the JSONB menu_data projection so the /extracted thumbnails,
+      // /template preview, and exports all reflect the authoritative state.
+      await syncMenuItemImageToJsonb(supabase, imageData.menu_item_id)
+
       return NextResponse.json({
         success: true,
         data: {

@@ -11,7 +11,7 @@ import type { Menu, MenuItem, MenuCategory } from '@/types'
 import { normalizeDemoMenu } from '@/lib/demo-menu-normalizer'
 import type { ExtractionResultType as Stage1ExtractionResult } from '@/lib/extraction/schema-stage1'
 import type { ExtractionResultV2Type as Stage2ExtractionResult } from '@/lib/extraction/schema-stage2'
-import { ImageUp, Sparkles, Pencil } from 'lucide-react'
+import { ImageUp, Sparkles, Pencil, ImageOff } from 'lucide-react'
 import AIImageGeneration from '@/components/AIImageGeneration'
 import BatchAIImageGeneration from '@/components/BatchAIImageGeneration'
 import ItemManagementModal from '@/components/ItemManagementModal'
@@ -2044,9 +2044,13 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                       const key = makeItemKey(category, item, index)
                       const selected = selectedItemKeys.has(key)
                       const raw = item as any
-                      const imageSrc =
-                        (raw.customImageUrl as string | undefined)
-                        || (raw.imageUrl as string | undefined)
+                      // If the user has explicitly set "No photo", do not render
+                      // any previously stored image URL — it may be stale or broken.
+                      const explicitlyNoPhoto = raw.imageSource === 'none'
+                      const imageSrc = explicitlyNoPhoto
+                        ? undefined
+                        : ((raw.customImageUrl as string | undefined)
+                          || (raw.imageUrl as string | undefined))
                       const hasImage = typeof imageSrc === 'string' && imageSrc.length > 0
                       const price =
                         typeof raw.price === 'number'
@@ -2235,7 +2239,10 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-ux-primary"></div>
                                   </div>
                                 ) : (
-                                  <span className="pointer-events-none">No photo</span>
+                                  <div className="flex flex-col items-center justify-center gap-0.5 pointer-events-none text-ux-text-secondary">
+                                    <ImageOff className="h-4 w-4" aria-hidden="true" />
+                                    <span className="text-[10px] leading-none">No photo</span>
+                                  </div>
                                 )
                               )}
                             </div>
@@ -2641,7 +2648,11 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           menuId={menuId}
           itemName={showPhotoGallery.name}
           itemDescription={showPhotoGallery.description}
-          onClose={() => setShowPhotoGallery(null)}
+          onClose={async () => {
+            setShowPhotoGallery(null)
+            // Refresh so any image changes (upload or selection) are reflected in thumbnails
+            await refreshMenu()
+          }}
           onImageSelected={async (itemId, imageUrl) => {
             await refreshMenu()
           }}

@@ -4,6 +4,7 @@ import { logger } from '@/lib/logger'
 import { isCutoutFeatureEnabled } from '@/lib/background-removal/feature-flag'
 import { getBackgroundRemovalProvider } from '@/lib/background-removal/provider-factory'
 import { CutoutGenerationService } from '@/lib/background-removal/cutout-service'
+import { syncMenuItemImageToJsonb } from '@/lib/menu-item-image-sync'
 
 // POST /api/menu-items/[itemId]/select-image - Select an image variation for a menu item
 export async function POST(
@@ -208,7 +209,8 @@ export async function POST(
           const imageUpdate = {
             aiImageId: body.imageId,
             imageSource: 'ai' as const,
-            customImageUrl: null as string | null // Will be populated by enrichMenuItemsWithImageUrls
+            // Do NOT null customImageUrl here — uploaded images stored there should persist
+            // so they remain visible in the gallery when the user switches back.
           }
 
           // Update the specific item in the flat items array
@@ -272,15 +274,68 @@ export async function POST(
       })
     }
     
-    // For custom images, just update the menu item
+    // For custom/uploaded images
     if (body.imageSource === 'custom') {
+      // Check if imageId is a UUID (uploaded_item_images record) or a URL (legacy custom image)
+      const isUuid = (val: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(val)
+
+      if (isUuid(body.imageId)) {
+        // New path: selecting a tracked uploaded image via its UUID
+        // Verify the uploaded image belongs to this menu item and user
+        const { data: uploadedImage, error: uploadedImageError } = await supabase
+          .from('uploaded_item_images')
+          .select('id, original_url, menu_item_id, user_id')
+          .eq('id', body.imageId)
+          .eq('menu_item_id', itemId)
+          .single()
+
+        if (uploadedImageError || !uploadedImage) {
+          return NextResponse.json(
+            { error: 'Uploaded image not found or does not belong to this menu item' },
+            { status: 404 }
+          )
+        }
+
+        if (uploadedImage.user_id !== user.id) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+        }
+
+        // Use the DB function to atomically select the uploaded image
+        const { error: selectError } = await supabase.rpc('select_uploaded_image_for_menu_item', {
+          p_menu_item_id: itemId,
+          p_image_id: body.imageId
+        })
+
+        if (selectError) {
+          logger.error('Failed to select uploaded image:', selectError)
+          return NextResponse.json(
+            { error: 'Failed to select uploaded image' },
+            { status: 500 }
+          )
+        }
+
+        // Sync JSONB menu data
+        await syncMenuJsonbForCustomImage(supabase, itemId, menuItem.menu_id, uploadedImage.original_url)
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            menuItemId: itemId,
+            selectedImageId: body.imageId,
+            imageSource: 'custom',
+            message: 'Uploaded image selected successfully'
+          }
+        })
+      }
+
+      // Legacy path: imageId is a raw URL (kept for backward compatibility)
       // First, unselect all AI images for this menu item
       await supabase
         .from('ai_generated_images')
         .update({ selected: false })
         .eq('menu_item_id', itemId)
-      
-      // Invalidate cutouts for AI images on this item — user is replacing with uploaded image (Requirement 10.2)
+
+      // Invalidate cutouts for AI images on this item — user is replacing with uploaded image
       try {
         const cutoutEnabled = isCutoutFeatureEnabled()
         if (cutoutEnabled) {
@@ -311,12 +366,12 @@ export async function POST(
       const { error: updateError } = await supabase
         .from('menu_items')
         .update({
-          custom_image_url: body.imageId, // Assuming imageId is the URL for custom images
+          custom_image_url: body.imageId,
           ai_image_id: null,
           image_source: 'custom'
         })
         .eq('id', itemId)
-      
+
       if (updateError) {
         logger.error('Failed to select custom image:', updateError)
         return NextResponse.json(
@@ -324,7 +379,9 @@ export async function POST(
           { status: 500 }
         )
       }
-      
+
+      await syncMenuJsonbForCustomImage(supabase, itemId, menuItem.menu_id, body.imageId)
+
       return NextResponse.json({
         success: true,
         data: {
@@ -380,6 +437,12 @@ async function handleDeselectImage(
     .update({ selected: false })
     .eq('menu_item_id', itemId)
 
+  // Unselect all uploaded images for this item (keep them for future re-selection)
+  await supabase
+    .from('uploaded_item_images')
+    .update({ selected: false })
+    .eq('menu_item_id', itemId)
+
   // Set image_source to 'none' in relational table
   const { error: updateError } = await supabase
     .from('menu_items')
@@ -394,35 +457,10 @@ async function handleDeselectImage(
     return NextResponse.json({ error: 'Failed to deselect image' }, { status: 500 })
   }
 
-  // Update JSONB data to keep in sync
-  const { data: currentMenu } = await supabase
-    .from('menus')
-    .select('menu_data')
-    .eq('id', menuItem.menu_id)
-    .single()
-
-  if (currentMenu) {
-    const menuData = currentMenu.menu_data || {}
-    const imageUpdate = { imageSource: 'none' as const, aiImageId: null, customImageUrl: null }
-
-    const updatedItems = (menuData.items || []).map((item: any) =>
-      item.id === itemId ? { ...item, ...imageUpdate } : item
-    )
-    const updatedCategories = (menuData.categories || []).map((cat: any) => ({
-      ...cat,
-      items: (cat.items || []).map((item: any) =>
-        item.id === itemId ? { ...item, ...imageUpdate } : item
-      ),
-    }))
-
-    await supabase
-      .from('menus')
-      .update({
-        menu_data: { ...menuData, items: updatedItems, categories: updatedCategories },
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', menuItem.menu_id)
-  }
+  // Sync JSONB projection from the authoritative menu_items state. This
+  // also clears the JSONB customImageUrl so stale thumbnails (e.g. on the
+  // /extracted page) don't render a broken reference after "Set no photo".
+  await syncMenuItemImageToJsonb(supabase, itemId)
 
   logger.info('✅ [Select Image API] Image deselected for item:', itemId)
 
@@ -435,4 +473,48 @@ async function handleDeselectImage(
       message: 'Image deselected successfully. Generated images are preserved.',
     },
   })
+}
+
+/**
+ * Sync the JSONB menu_data to reflect a custom (uploaded) image selection.
+ * Keeps the flat items array and categories in sync.
+ */
+async function syncMenuJsonbForCustomImage(
+  supabase: ReturnType<typeof createServerSupabaseClient>,
+  itemId: string,
+  menuId: string,
+  imageUrl: string
+) {
+  const { data: currentMenu } = await supabase
+    .from('menus')
+    .select('menu_data')
+    .eq('id', menuId)
+    .single()
+
+  if (!currentMenu) return
+
+  const menuData = currentMenu.menu_data || {}
+  const imageUpdate = {
+    imageSource: 'custom' as const,
+    customImageUrl: imageUrl,
+    aiImageId: null as string | null
+  }
+
+  const updatedItems = (menuData.items || []).map((item: any) =>
+    item.id === itemId ? { ...item, ...imageUpdate } : item
+  )
+  const updatedCategories = (menuData.categories || []).map((cat: any) => ({
+    ...cat,
+    items: (cat.items || []).map((item: any) =>
+      item.id === itemId ? { ...item, ...imageUpdate } : item
+    )
+  }))
+
+  await supabase
+    .from('menus')
+    .update({
+      menu_data: { ...menuData, items: updatedItems, categories: updatedCategories },
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', menuId)
 }

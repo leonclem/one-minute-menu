@@ -1,13 +1,12 @@
 # Roadmap
 
 ### /extracted
-- [ ] Users can no longer upload their own images
-- [ ] "Enhance this image" feature
-- [ ] No slate for provided background (and warning for users using background images)
+- [x] Users can no longer upload their own images
+- [ ] Remove slate if user for provides background (and warning for users using background images)
 
 ## /template
-- [ ] Featured tiles to stand out.
 - [ ] Logo / category headers as special filler tiles
+- [ ] Featured tiles to stand out.
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 
 ## Social Media and Advertising
@@ -16,10 +15,6 @@
 - [x] Share buttons on blog posts
 - [ ] Openclaw initial setup
 - [ ] Understand what is required and potential upside to conduct a cold email campaign
-
-## Production Monitoring
-- [x] Install Vercel analytics
-- [ ] Install PostHog analytics
 
 ## Exports
 - [ ] Verify "print ready"
@@ -56,14 +51,9 @@
 - [ ] Review MD docs
 - [ ] QA
 
-## Market awareness
-- [x] Create Facebook page (https://www.facebook.com/gridmenu/)
-- [x] Create X account (https://x.com/gridmenu)
-- [x] Create Instagram account (https://www.instagram.com/gridmenu/)
-- [x] Add links to footer
-- [x] Create Instagram account and add link icon to footer
-- [ ] Reddit community posting
-- [x] Google "Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required."
+## Production Monitoring
+- [x] Install Vercel analytics
+- [ ] Install PostHog analytics
 
 ### Blogs
 - [x] Create blogs section of site
@@ -89,18 +79,28 @@
 - [ ] Crop for large menus text extraction
 
 ## /extracted
-- [ ] Sometimes not enough space for menu item description.  We need to limit the characters for menu item creation.
+- [ ] Sometimes not enough space for menu item description.  We need to warn user about or limit the characters for menu item creation.
+- [ ] "Enhance this image" feature
 - [ ] Menu Control Panel > Download Menu pages (PNG zip)
 - [ ] Menu Control Panel > Download Menu Images (PNG zip)
-- [ ] Rename this page to menu curator
 - [ ] Move item up or down
-- [ ] Existing menu extract: Message "This may take a few minutes. Leave this page open while the key is being added." and checkbox with "Email me instead".
+- [ ] Allow cutouts for uploaded images
+- [ ] Rename this page to menu curator
+- [ ] Advanced options: change plate colour (white, beige, black), remove slate
+- [ ] Advanced options: remove slate
+- [ ] Advanced options: add tags, e.g. Serving type: "Slice"
+- [ ] Advanced options: additional free text description
+- [ ] Existing menu extract: Message "This may take a few minutes. Leave this page open while the key is being added." and checkbox with "Email me when ready".
 - [ ] Cartoon/stylised food images
 - [ ] Description creator or "stylist"
 - [ ] Rate my description
 - [ ] Boost my description
+- [ ] Add a footnote
+- [ ] Add section notes (check Vienna original for ref.)
+- [ ] Allow cropping of image
 
 ## /template
+- [ ] If one or less categories, with less than 5 items in menu, populate with dummy data (otherwise menus look bad)
 - [ ] Hand tool to navigate preview pane
 - [x] Images too dark, perhaps only darken lower half (assuming top half has text)
 - [ ] Upload branding colours
@@ -137,7 +137,7 @@
 
 ## Admin
 - [ ] Track payment failures and cancellations
-- [ ] Change primary email logins to admin@gridmenu.ai (e.g. SendGrid, NameCheap, Railway, Supabase, etc.)
+- [ ] Change primary email logins to admin@gridmenu.ai (e.g. Postmark, NameCheap, Railway, Supabase, etc.)
 - [ ] Remove LOG_LEVEL="debug" from Railway variables
 - [ ] Integrate Posthog
 - [ ] Consolidate documentation so as to be intuitive and useful (for both me and AI dev)
@@ -371,6 +371,15 @@
 - [x] Ensure image file names are relevant to search
 - [x] Ensure image file alt text are relevant to search (be descriptive, and avoid keyword stuffing)
 - [x] Use Open Graph (OG) meta tags for social media sharing
+
+## Market awareness
+- [x] Create Facebook page (https://www.facebook.com/gridmenu/)
+- [x] Create X account (https://x.com/gridmenu)
+- [x] Create Instagram account (https://www.instagram.com/gridmenu/)
+- [x] Add links to footer
+- [x] Create Instagram account and add link icon to footer
+- [x] Reddit community posting
+- [x] Google "Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required."
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>
