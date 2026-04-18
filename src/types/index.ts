@@ -937,6 +937,9 @@ export interface RenderSnapshot {
       // Flagship item designation for banner hero image
       isFlagship?: boolean
 
+      /** Featured item (per-category highlight in layout / PDF) */
+      isFeatured?: boolean
+
       // Per-mode image positioning (zoom/pan) for PDF export
       imageTransform?: ImageTransformRecord
     }>

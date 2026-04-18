@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
         itemDropShadow: options.itemDropShadow ?? false,
         fillItemTiles: options.fillItemTiles ?? false,
         spacerTilePatternId: options.spacerTilePatternId,
-        imageMode: rawImageMode === 'none' ? 'stretch' : rawImageMode
+        imageMode: rawImageMode
       })
       
       // Extract buffer from result

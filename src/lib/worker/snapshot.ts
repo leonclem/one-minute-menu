@@ -377,6 +377,8 @@ export async function createRenderSnapshot(
           // Flagship item designation for banner hero image
           isFlagship: item.isFlagship === true || item.is_flagship === true,
 
+          isFeatured: item.isFeatured === true || item.is_featured === true,
+
           // Per-mode image positioning (zoom/pan) for PDF export — prefer menu_items
           imageTransform: transformById.get(item.id) ?? item.imageTransform
         })),
@@ -501,6 +503,9 @@ export async function createRenderSnapshotFromMenuData(
 
           // Cutout (transparent background) image URL, when available
           cutout_url: item.cutoutUrl ? resolveUrl(item.cutoutUrl) : undefined,
+
+          isFlagship: item.isFlagship === true || item.is_flagship === true,
+          isFeatured: item.isFeatured === true || item.is_featured === true,
 
           // Per-mode image positioning (zoom/pan) for PDF export
           imageTransform: item.imageTransform

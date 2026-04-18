@@ -506,6 +506,7 @@ export class JobProcessor {
             allergens: []
           },
           isFlagship: item.isFlagship === true || item.is_flagship === true,
+          isFeatured: item.isFeatured === true || item.is_featured === true,
           imageTransform: item.imageTransform
         })
       })

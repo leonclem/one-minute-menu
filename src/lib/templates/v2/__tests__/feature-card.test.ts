@@ -9,7 +9,8 @@
  */
 
 import { TemplateSchemaV2 } from '../template-schema-v2'
-import { createItemTile, selectItemVariant } from '../tile-placer'
+import { createItemTile } from '../tile-placer'
+import { blendHexTowards, getFeaturedStarBadgeMetrics, getPopularBadgeMetrics } from '../renderer-v2'
 import type { EngineItemV2, TemplateV2, TileVariantDefV2 } from '../engine-types-v2'
 
 // =============================================================================
@@ -174,24 +175,26 @@ describe('FEATURE_CARD schema validation', () => {
 // Tile Placement Tests
 // =============================================================================
 
-describe('FEATURE_CARD tile placement', () => {
-  it('should create FEATURE_CARD tile for featured item when template supports it', () => {
+describe('Featured item tile placement', () => {
+  it('should use ITEM_CARD for featured item even when template defines FEATURE_CARD', () => {
     const tile = createItemTile(featuredItem, 'section-1', featureTemplate, '$')
 
-    expect(tile.type).toBe('FEATURE_CARD')
-    expect(tile.colSpan).toBe(2)
-    expect(tile.rowSpan).toBe(3)
+    expect(tile.type).toBe('ITEM_CARD')
+    expect(tile.colSpan).toBe(1)
+    expect(tile.rowSpan).toBe(2)
     expect(tile.regionId).toBe('body')
-    expect(tile.content.type).toBe('FEATURE_CARD')
+    expect(tile.content.type).toBe('ITEM_CARD')
     expect((tile.content as any).itemId).toBe('featured-1')
     expect((tile.content as any).name).toBe('Chef Special')
+    expect((tile.content as any).isFeatured).toBe(true)
   })
 
-  it('should fall back to ITEM_CARD for featured item when template lacks FEATURE_CARD', () => {
+  it('should use ITEM_CARD for featured item when template lacks FEATURE_CARD', () => {
     const tile = createItemTile(featuredItem, 'section-1', baseTemplate, '$')
 
     expect(tile.type).toBe('ITEM_CARD')
     expect(tile.content.type).toBe('ITEM_CARD')
+    expect((tile.content as any).isFeatured).toBe(true)
   })
 
   it('should create standard ITEM_CARD for non-featured item even with feature template', () => {
@@ -206,27 +209,29 @@ describe('FEATURE_CARD tile placement', () => {
 
     expect(tile.type).toBe('ITEM_TEXT_ROW')
     expect(tile.content.type).toBe('ITEM_TEXT_ROW')
+    expect((tile.content as any).isFeatured).toBe(true)
   })
 
-  it('should set showImage true for FEATURE_CARD tiles', () => {
+  it('should set showImage true for featured ITEM_CARD tiles', () => {
     const tile = createItemTile(featuredItem, 'section-1', featureTemplate, '$')
 
-    expect(tile.type).toBe('FEATURE_CARD')
+    expect(tile.type).toBe('ITEM_CARD')
     expect((tile.content as any).showImage).toBe(true)
   })
 
-  it('should compute correct footprint height for FEATURE_CARD (3 rows)', () => {
-    const tile = createItemTile(featuredItem, 'section-1', featureTemplate, '$')
+  it('should compute same footprint height for featured as regular ITEM_CARD', () => {
+    const featuredTile = createItemTile(featuredItem, 'section-1', featureTemplate, '$')
+    const regularTile = createItemTile(mockItem, 'section-1', featureTemplate, '$')
 
-    // height = rowSpan * rowHeight + (rowSpan - 1) * gapY = 3 * 70 + 2 * 8 = 226
-    expect(tile.height).toBe(226)
+    expect(featuredTile.height).toBe(regularTile.height)
+    expect(featuredTile.height).toBe(148)
   })
 
   it('should handle featured item without image', () => {
     const noImageFeatured = { ...featuredItem, imageUrl: undefined }
     const tile = createItemTile(noImageFeatured, 'section-1', featureTemplate, '$')
 
-    expect(tile.type).toBe('FEATURE_CARD')
+    expect(tile.type).toBe('ITEM_CARD')
     expect((tile.content as any).imageUrl).toBeUndefined()
     expect((tile.content as any).showImage).toBe(true)
   })
@@ -236,5 +241,44 @@ describe('FEATURE_CARD tile placement', () => {
     const tile = createItemTile(undefinedFeatured, 'section-1', featureTemplate, '$')
 
     expect(tile.type).toBe('ITEM_CARD')
+  })
+})
+
+describe('blendHexTowards', () => {
+  it('interpolates toward the target colour', () => {
+    expect(blendHexTowards('#ffffff', '#000000', 0)).toBe('#ffffff')
+    expect(blendHexTowards('#ffffff', '#000000', 1)).toBe('#000000')
+    const mid = blendHexTowards('#ffffff', '#000000', 0.5)
+    expect(mid).toBe('#808080')
+  })
+})
+
+describe('getPopularBadgeMetrics', () => {
+  it('scales up for wider item tiles', () => {
+    const narrow = getPopularBadgeMetrics(90)
+    const wide = getPopularBadgeMetrics(200)
+    expect(wide.badgeW).toBeGreaterThan(narrow.badgeW)
+    expect(wide.badgeH).toBeGreaterThan(narrow.badgeH)
+    expect(wide.fontSize).toBeGreaterThanOrEqual(narrow.fontSize)
+    expect(wide.overlap).toBeGreaterThanOrEqual(narrow.overlap)
+    expect(wide.boxShadow.length).toBeGreaterThan(10)
+  })
+
+  it('positions overlap so the sticker extends past the tile top-right', () => {
+    const m = getPopularBadgeMetrics(120)
+    const tileW = 130
+    const x = tileW - m.badgeW + m.overlap
+    expect(x + m.badgeW).toBeGreaterThan(tileW)
+    expect(m.overlap).toBeGreaterThan(0)
+  })
+})
+
+describe('getFeaturedStarBadgeMetrics', () => {
+  it('stays smaller than Popular badge for typical tile widths', () => {
+    const tileW = 120
+    const star = getFeaturedStarBadgeMetrics(tileW)
+    const pop = getPopularBadgeMetrics(tileW)
+    expect(star.size).toBeLessThan(pop.badgeW)
+    expect(star.borderRadius).toBe(star.size / 2)
   })
 })

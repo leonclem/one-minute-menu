@@ -509,6 +509,11 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string, fontStyl
       padding: 0;
     }
 
+    /* Featured “Popular” badge may extend past the tile box; match web preview */
+    .tile-featured {
+      overflow: visible !important;
+    }
+
     .tile-filler {
       border-radius: 4px;
     }

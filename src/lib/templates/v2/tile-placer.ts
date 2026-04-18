@@ -172,6 +172,7 @@ export function createItemTile(
         currency: currency || '$',
         indicators: item.indicators,
         imageTransform: item.imageTransform,
+        isFeatured: item.isFeatured === true,
       }
   
   return {
@@ -486,12 +487,7 @@ export function selectItemVariant(
   if (selection?.textOnly) {
     return { variant: template.tiles.ITEM_TEXT_ROW, tileType: 'ITEM_TEXT_ROW' }
   }
-  
-  // Featured item — use FEATURE_CARD if template supports it
-  if (item.isFeatured && template.tiles.FEATURE_CARD) {
-    return { variant: template.tiles.FEATURE_CARD, tileType: 'FEATURE_CARD' }
-  }
-  
+
   // Use ITEM_CARD for all items (with placeholder if no image) to maintain visual parity
   // This ensures consistent spacing and layout regardless of image availability
   if (template.tiles.ITEM_CARD) {

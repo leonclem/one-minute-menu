@@ -1621,7 +1621,10 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                         palette,
                         texturesEnabled: !!textureId,
                         textureId: textureId ?? undefined,
-                        imageMode: imageMode === 'none' ? 'stretch' : imageMode,
+                        // Pass real 'none' so the renderer matches text-only + featured layout (ITEM_TEXT_ROW
+                        // must not reserve badge height when image style is None). Layout is already built
+                        // with textOnly; coercing to 'stretch' here incorrectly re-enabled that reserve.
+                        imageMode,
                         showVignette,
                         itemBorders,
                         itemDropShadow,

@@ -9,6 +9,8 @@
 import { 
   renderTileContent, 
   getDefaultScale,
+  getFeaturedStarBadgeMetrics,
+  getPopularBadgeMetrics,
   TYPOGRAPHY_TOKENS_V2,
   COLOR_TOKENS_V2,
   SPACING_V2,
@@ -177,6 +179,16 @@ describe('V2 Renderer', () => {
     })
   })
 
+  describe('Featured badges', () => {
+    it('should size star badge smaller than Popular sticker for the same tile width', () => {
+      const tileW = 180
+      const star = getFeaturedStarBadgeMetrics(tileW)
+      const pop = getPopularBadgeMetrics(tileW)
+      expect(star.size).toBeLessThan(pop.badgeW)
+      expect(star.size).toBeLessThan(pop.badgeH)
+    })
+  })
+
   describe('Image Modes', () => {
     const createItemTile = (imageMode?: string): TileInstanceV2 => ({
       id: 'item-1',
@@ -215,8 +227,121 @@ describe('V2 Renderer', () => {
       const imageElement = result.elements.find(e => e.type === 'image')
       
       expect(imageElement).toBeDefined()
-      expect(imageElement?.width).toBeGreaterThanOrEqual(tile.width - 2) // Stretch is edge-to-edge (minus 2px border overflow)
+      expect(imageElement?.width).toBeGreaterThanOrEqual(tile.width - 2) // Stretch is edge-to-edge (1px inset each side)
       expect(imageElement?.style.borderRadius).toBe(0) // No border radius in stretch/full-bleed mode
+    })
+
+    it('should omit image slot when imageMode is none (text-only layout)', () => {
+      const tile = createItemTile()
+      const options: RenderOptionsV2 = {
+        ...defaultOptions,
+        imageMode: 'none'
+      }
+
+      const result = renderTileContent(tile, options)
+      expect(result.elements.find(e => e.type === 'image')).toBeUndefined()
+      expect(result.elements.filter(e => e.type === 'text').length).toBeGreaterThanOrEqual(2)
+    })
+
+    it('should still render indicators below text when imageMode is none', () => {
+      const tile: TileInstanceV2 = {
+        ...createItemTile(),
+        content: {
+          ...(createItemTile().content as ItemContentV2),
+          indicators: { dietary: ['vegetarian'], spiceLevel: null, allergens: [] },
+        } as ItemContentV2,
+      }
+      const result = renderTileContent(tile, { ...defaultOptions, imageMode: 'none' })
+      expect(result.elements.some(e => e.type === 'indicator')).toBe(true)
+    })
+
+    it('should use compact star badge for featured item when imageMode is none', () => {
+      const padTop = 8
+      const tile: TileInstanceV2 = {
+        id: 'item-tr-star',
+        type: 'ITEM_TEXT_ROW',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 70,
+        colSpan: 1,
+        rowSpan: 1,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'ITEM_TEXT_ROW',
+          itemId: 'x',
+          sectionId: 's',
+          name: 'Star Featured',
+          description: 'Line',
+          price: 5,
+          showImage: false,
+          currency: 'USD',
+          isFeatured: true,
+        } as ItemContentV2,
+        contentBudget: {
+          nameLines: 2,
+          descLines: 2,
+          indicatorAreaHeight: 16,
+          imageBoxHeight: 0,
+          paddingTop: padTop,
+          paddingBottom: 8,
+          totalHeight: 70,
+        },
+      }
+      const result = renderTileContent(tile, { ...defaultOptions, imageMode: 'none' })
+      const star = result.elements.find(e => e.type === 'text' && e.content === '\u2605')
+      expect(star).toBeDefined()
+      expect(result.elements.some(e => e.type === 'text' && e.content === 'Popular')).toBe(false)
+      expect((star?.width ?? 0) > 0 && (star?.width ?? 0) < 40).toBe(true)
+    })
+
+    it('should keep featured ITEM_TEXT_ROW text in-bounds even if imageMode is stretch (preview parity)', () => {
+      const padTop = 8
+      const tileHeight = 70
+      const tile: TileInstanceV2 = {
+        id: 'item-tr-featured',
+        type: 'ITEM_TEXT_ROW',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: 180,
+        height: tileHeight,
+        colSpan: 1,
+        rowSpan: 1,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: {
+          type: 'ITEM_TEXT_ROW',
+          itemId: 'x',
+          sectionId: 's',
+          name: 'Featured Snack',
+          description: 'Short desc line',
+          price: 9.99,
+          showImage: false,
+          currency: 'USD',
+          isFeatured: true,
+        } as ItemContentV2,
+        contentBudget: {
+          nameLines: 2,
+          descLines: 2,
+          indicatorAreaHeight: 16,
+          imageBoxHeight: 0,
+          paddingTop: padTop,
+          paddingBottom: 8,
+          totalHeight: tileHeight,
+        },
+      }
+      const result = renderTileContent(tile, { ...defaultOptions, imageMode: 'stretch' })
+      const texts = result.elements.filter(
+        e => e.type === 'text' && e.content !== 'Popular' && e.content !== '\u2605'
+      )
+      expect(texts[0]?.y).toBe(padTop)
+      const lastText = texts[texts.length - 1]
+      expect((lastText?.y ?? 0) + (lastText?.height ?? 0)).toBeLessThanOrEqual(tileHeight)
     })
 
     it('should render compact-rect mode with smaller centered image', () => {

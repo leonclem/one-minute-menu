@@ -408,6 +408,32 @@ export function lightenHexForDarkBackground(hex: string, whiteAmount: number): s
   return `#${toHex(r2)}${toHex(g2)}${toHex(b2)}`
 }
 
+/**
+ * Blend two #RGB / #RRGGBB colours. `t` in [0,1] moves from `baseHex` toward `towardHex`.
+ * Used for subtle featured-item tile tinting toward the palette accent.
+ */
+export function blendHexTowards(baseHex: string, towardHex: string, t: number): string {
+  const parse = (hex: string) => {
+    const normalized = hex.replace('#', '').trim()
+    const value =
+      normalized.length === 3
+        ? normalized.split('').map(c => c + c).join('')
+        : normalized
+    const num = parseInt(value, 16)
+    if (Number.isNaN(num)) return { r: 255, g: 255, b: 255 }
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 }
+  }
+  const a = parse(baseHex)
+  const b = parse(towardHex)
+  const u = Math.max(0, Math.min(1, t))
+  const toByte = (x: number) => Math.max(0, Math.min(255, Math.round(x)))
+  const r = toByte(a.r + (b.r - a.r) * u)
+  const g = toByte(a.g + (b.g - a.g) * u)
+  const b2 = toByte(a.b + (b.b - a.b) * u)
+  const toHex = (v: number) => v.toString(16).padStart(2, '0')
+  return `#${toHex(r)}${toHex(g)}${toHex(b2)}`
+}
+
 /** Font size type for template styling */
 export type FontSizeV2 = keyof typeof TYPOGRAPHY_TOKENS_V2.fontSize
 
@@ -436,6 +462,8 @@ export interface ColorPaletteV2 {
     sectionHeader: string
     itemTitle: string
     itemPrice: string
+    /** Optional brand accent; featured chrome falls back to itemPrice when omitted */
+    accent?: string
     itemDescription: string
     itemIndicators: {
       background: string
@@ -1545,6 +1573,134 @@ function renderSectionHeaderContent(
   return { elements }
 }
 
+/** Sizing for the featured “Popular” sticker; scales with item tile width (grid cell). */
+export interface PopularBadgeMetrics {
+  badgeW: number
+  badgeH: number
+  fontSize: number
+  borderRadius: number
+  /** Pixels the badge extends past the top and right of the tile (pt space). */
+  overlap: number
+  /** Extra top padding (pt) for ITEM_TEXT_ROW so title clears the sticker. */
+  textRowTopReserve: number
+  boxShadow: string
+}
+
+export function getPopularBadgeMetrics(tileWidthPt: number): PopularBadgeMetrics {
+  const layoutScale = Math.min(1.5, Math.max(1, tileWidthPt / 108))
+  // ~midway between first version (h≈11, no overlap) and the larger sticker (h≈20, overlap≈6 at scale 1)
+  const overlap = Math.round(3 * layoutScale)
+  const badgeW = Math.round(53 * layoutScale)
+  const badgeH = Math.round(15.5 * layoutScale)
+  const fontSize = Math.round(7.35 * layoutScale * 10) / 10
+  const borderRadius = Math.max(2, Math.round(3 * layoutScale))
+  const textRowTopReserve = overlap + badgeH + 3
+  const lift = Math.round(2 * layoutScale)
+  const blur = Math.round(10 * layoutScale)
+  const boxShadow = [
+    `0 ${lift}px ${blur}px rgba(0,0,0,0.3)`,
+    `0 1px ${Math.max(2, Math.round(2 * layoutScale))}px rgba(0,0,0,0.2)`,
+    `0 0 0 1px rgba(0,0,0,0.08)`,
+  ].join(', ')
+  return { badgeW, badgeH, fontSize, borderRadius, overlap, textRowTopReserve, boxShadow }
+}
+
+/** Compact circular featured mark when Image Style is none (text-only layout). */
+export interface FeaturedStarBadgeMetrics {
+  size: number
+  overlap: number
+  starFontSize: number
+  borderRadius: number
+  boxShadow: string
+}
+
+export function getFeaturedStarBadgeMetrics(tileWidthPt: number): FeaturedStarBadgeMetrics {
+  const layoutScale = Math.min(1.12, Math.max(0.88, tileWidthPt / 130))
+  const size = Math.max(12, Math.round(15 * layoutScale))
+  const overlap = Math.round(2 * layoutScale)
+  const starFontSize = Math.round(9.5 * layoutScale * 10) / 10
+  const borderRadius = size / 2
+  const boxShadow = `0 1px ${Math.max(2, Math.round(4 * layoutScale))}px rgba(0,0,0,0.2)`
+  return { size, overlap, starFontSize, borderRadius, boxShadow }
+}
+
+/** Small accent disc + star (Image Style “none”) — same accent chrome as “Popular”, less vertical footprint. */
+function pushFeaturedStarBadge(
+  elements: RenderElement[],
+  tile: TileInstanceV2,
+  palette: ColorPaletteV2,
+  fontFamily: string,
+  metrics: FeaturedStarBadgeMetrics
+): void {
+  const { size, overlap, starFontSize, borderRadius, boxShadow } = metrics
+  // Slight nudge past the featured outline so the disc does not sit flush on the border ring.
+  const nudgeX = 2
+  const nudgeY = 2
+  const x = tile.width - size + overlap + nudgeX
+  const y = -overlap - nudgeY
+  const accent = palette.colors.accent ?? palette.colors.itemPrice
+  elements.push({
+    type: 'text',
+    x,
+    y,
+    width: size,
+    height: size,
+    content: '\u2605',
+    style: {
+      fontSize: starFontSize,
+      fontWeight: 700,
+      fontFamily,
+      // Match “Popular” pill: light glyph on accent fill (reads across palettes).
+      color: '#ffffff',
+      backgroundColor: accent,
+      textAlign: 'center',
+      borderRadius,
+      lineHeight: 1,
+      zIndex: 35,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow,
+    },
+  })
+}
+
+function pushPopularBadge(
+  elements: RenderElement[],
+  tile: TileInstanceV2,
+  palette: ColorPaletteV2,
+  fontFamily: string,
+  metrics: PopularBadgeMetrics
+): void {
+  const label = 'Popular'
+  const { badgeW, badgeH, fontSize, borderRadius, overlap, boxShadow } = metrics
+  // Slight overlap past top-right of the tile so the sticker reads above the card edge.
+  const x = tile.width - badgeW + overlap
+  const y = -overlap
+  elements.push({
+    type: 'text',
+    x,
+    y,
+    width: badgeW,
+    height: badgeH,
+    content: label,
+    style: {
+      fontSize,
+      fontWeight: 700,
+      fontFamily,
+      color: '#ffffff',
+      backgroundColor: palette.colors.accent ?? palette.colors.itemPrice,
+      textAlign: 'center',
+      borderRadius,
+      zIndex: 35,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow,
+    },
+  })
+}
+
 function renderItemContent(
   content: ItemContentV2,
   tile: TileInstanceV2,
@@ -1579,7 +1735,17 @@ function renderItemContent(
   const isBackgroundMode = imageMode === 'background'
   const isCircularMode = imageMode === 'compact-circle'
   const isCutoutMode = imageMode === 'cutout'
+  const isImageNoneLayout = imageMode === 'none'
   const defaultImageBorderRadius = isCircularMode ? undefined : 8
+
+  /**
+   * Featured tiles get a 2px border on the wrapper; children paint above that border in CSS,
+   * so imagery must be inset in pt space to sit inside the border ring.
+   */
+  const featuredContentInset = content.isFeatured ? 3 : 0
+
+  /** Extra top offset for all text in background-image mode (clears “Popular” + reads lower on the photo). */
+  const BACKGROUND_IMAGE_TEXT_TOP_BIAS_PT = 20
 
   const nameFontSize = isBackgroundMode
     ? Math.min(nameTypo.fontSize + BG_IMAGE_TEXT.nameSizeBump, BG_IMAGE_TEXT.nameSizeMax)
@@ -1607,6 +1773,18 @@ function renderItemContent(
   const hasDesc = estDescLines > 0
   const isTextRowTile = tile.type === 'ITEM_TEXT_ROW'
 
+  const featuredBadgeFont =
+    resolveSubElementTypography(tileStyle, 'name', {
+      fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xsm,
+      fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.semibold,
+      lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.tight,
+    }).fontFamily || TYPOGRAPHY_TOKENS_V2.fontFamily.primary
+
+  const featuredStarMetrics =
+    content.isFeatured && isImageNoneLayout ? getFeaturedStarBadgeMetrics(tile.width) : null
+  const featuredBadgeMetrics =
+    content.isFeatured && !isImageNoneLayout ? getPopularBadgeMetrics(tile.width) : null
+
   // ITEM_TEXT_ROW: fixed-slot layout with top-aligned content group.
   // All tiles of the same height get identical descY and priceY positions,
   // preventing wrapped titles from squashing descriptions and keeping
@@ -1614,7 +1792,14 @@ function renderItemContent(
   if (isTextRowTile) {
     const nameReservedLines = nameMaxLines
     const nameReservedHeight = nameReservedLines * nameLineHeight
-    const usableHeight = tile.height - padTop - padBottom
+    // ITEM_TEXT_ROW is always a text-only footprint (no image strip). Reserving vertical space for the
+    // “Popular” badge shrinks usableHeight and pushes description/price out of short tiles — especially
+    // when previews incorrectly passed imageMode 'stretch' while the layout used textOnly rows.
+    // The badge overlays the top-right; it must not participate in the vertical slot budget.
+    const featuredTextRowReserve = 0
+    const bgTextTopBias = isBackgroundMode ? BACKGROUND_IMAGE_TEXT_TOP_BIAS_PT : 0
+    const usableHeight =
+      tile.height - padTop - padBottom - featuredTextRowReserve - bgTextTopBias
 
     // Prefer full SPACING_V2 gaps; fall back to compact gaps when it unlocks more desc lines
     let gapNameToDesc: number = SPACING_V2.nameToDesc
@@ -1637,8 +1822,14 @@ function renderItemContent(
     const descReservedHeight = descReservedLines * descLineHeight
     const descLinesToRender = hasDesc ? Math.min(estDescLines, descReservedLines) : 0
 
+    if (content.isFeatured && featuredStarMetrics) {
+      pushFeaturedStarBadge(elements, tile, palette, featuredBadgeFont, featuredStarMetrics)
+    } else if (content.isFeatured && featuredBadgeMetrics) {
+      pushPopularBadge(elements, tile, palette, featuredBadgeFont, featuredBadgeMetrics)
+    }
+
     const nameX = (tile.width - textWidth) / 2
-    const nameY = padTop
+    const nameY = padTop + featuredTextRowReserve + bgTextTopBias
     const descY = nameY + nameReservedHeight + gapNameToDesc
     const priceY = descY + descReservedHeight + gapDescToPrice
 
@@ -1713,7 +1904,14 @@ function renderItemContent(
   let imageComputedHeight = 0
   let imageComputedX = 0
   let imageComputedBorderRadius = defaultImageBorderRadius ?? 8
-  const showImage = content.type === 'ITEM_CARD' && content.showImage && !isBackgroundMode
+  /** Horizontal/top inset for stretch mode (1px default; larger when featured so imagery clears the wrapper border). */
+  let stretchSideInset = 1
+  // 'none' = text-only layout: no image slot or placeholder (imageMode still comes from template/preview).
+  const showImage =
+    content.type === 'ITEM_CARD' &&
+    content.showImage &&
+    !isBackgroundMode &&
+    !isImageNoneLayout
 
   if (showImage) {
     const nameReserve = nameLineHeight * 2.0
@@ -1727,13 +1925,14 @@ function renderItemContent(
     const availableForImage = tile.height - stretchOverhead - textTotal
 
     if (imageMode === 'compact-rect') {
-      imageComputedWidth = tile.width * 0.6
+      const innerW = tile.width - 2 * featuredContentInset
+      imageComputedWidth = innerW * 0.6
       imageComputedHeight = imageComputedWidth * 0.75
       if (imageComputedHeight > availableForImage) {
         imageComputedHeight = availableForImage
         imageComputedWidth = imageComputedHeight / 0.75
       }
-      imageComputedX = (tile.width - imageComputedWidth) / 2
+      imageComputedX = featuredContentInset + (innerW - imageComputedWidth) / 2
     } else if (isCutoutMode) {
       // Cutout: container is modestly larger than the tile so the dish can protrude
       // slightly on all sides while keeping the drag/edit area predictably small.
@@ -1741,37 +1940,50 @@ function renderItemContent(
       // tile lets the dish extend beyond tile bounds; z-index keeps it above neighbours.
       const cutoutScale = 1.5
       const layoutHeight = Math.min(availableForImage, tile.width * 0.85)
-      imageComputedWidth = tile.width * cutoutScale
-      imageComputedHeight = layoutHeight * cutoutScale
+      const baseCutoutW = tile.width * cutoutScale
+      const baseCutoutH = layoutHeight * cutoutScale
+      imageComputedWidth = baseCutoutW - 2 * featuredContentInset
+      imageComputedHeight = baseCutoutH - 2 * featuredContentInset
       imageComputedX = (tile.width - imageComputedWidth) / 2
       imageComputedBorderRadius = 0
     } else if (isCircularMode) {
-      const diameter = Math.min(tile.width * 0.45, availableForImage)
+      const innerW = tile.width - 2 * featuredContentInset
+      const diameter = Math.min(innerW * 0.45, availableForImage)
       imageComputedWidth = diameter
       imageComputedHeight = diameter
-      imageComputedX = (tile.width - imageComputedWidth) / 2
+      imageComputedX = featuredContentInset + (innerW - imageComputedWidth) / 2
       imageComputedBorderRadius = diameter / 2
     } else {
-      // stretch mode: full-width (minus 2px to avoid border overflow), edge-to-edge, viewport anchored 70% down
-      imageComputedWidth = tile.width - 2
+      // stretch mode: edge-to-edge; featured tiles inset so imagery does not paint over the wrapper border
+      stretchSideInset = featuredContentInset > 0 ? featuredContentInset : 1
+      imageComputedWidth = tile.width - 2 * stretchSideInset
+      const maxStretchH =
+        availableForImage - (featuredContentInset > 0 ? 2 * featuredContentInset : 0)
       const ideal4by3 = imageComputedWidth * 0.9
-      imageComputedHeight = Math.max(40, Math.min(ideal4by3, availableForImage))
-      imageComputedX = 0
+      imageComputedHeight = Math.max(40, Math.min(ideal4by3, maxStretchH))
+      imageComputedX = stretchSideInset
       imageComputedBorderRadius = 0
     }
     // stretch mode: no afterImage gap — text starts immediately below the image
     // cutout mode: use original layout height for text positioning (dish is oversized via cutoutScale)
     if (isCutoutMode) {
       imageBlockHeight = Math.min(availableForImage, tile.width * 0.85)
+    } else if (imageMode === 'stretch') {
+      const imageTop = stretchSideInset
+      imageBlockHeight = Math.max(
+        imageComputedHeight,
+        imageTop + imageComputedHeight - padTop
+      )
     } else {
-      imageBlockHeight = imageComputedHeight + (imageMode === 'stretch' ? 0 : SPACING_V2.afterImage)
+      imageBlockHeight = imageComputedHeight + SPACING_V2.afterImage
     }
   }
 
   // Fit content within tile: compress gaps first, then reduce line estimates if needed.
   // Reserve fixed line counts for name AND description so all tiles of the same height
   // get identical desc-Y and price-Y, regardless of actual text length.
-  const usableHeight = tile.height - padTop - padBottom
+  const usableHeight =
+    tile.height - padTop - padBottom - (isBackgroundMode ? BACKGROUND_IMAGE_TEXT_TOP_BIAS_PT : 0)
   let gapNameToDesc: number = hasDesc ? SPACING_V2.nameToDesc : 0
   let gapDescToPrice: number = SPACING_V2.descToPrice
   const descReservedLines = hasDesc ? Math.min(descMaxLines, 3) : 0
@@ -1808,21 +2020,26 @@ function renderItemContent(
   // Top-align content within tile so names are consistently positioned across all tiles in the same row.
   // Centering would cause names to float at different heights depending on description length.
   const yOffset = padTop
-  let currentY = yOffset
+  let currentY =
+    yOffset +
+    (content.type === 'ITEM_CARD' && isBackgroundMode ? BACKGROUND_IMAGE_TEXT_TOP_BIAS_PT : 0)
 
   // --- Background image mode (full-bleed, renders before text) ---
   if (content.type === 'ITEM_CARD' && content.showImage && isBackgroundMode) {
+    const bg = featuredContentInset
+    const bgW = tile.width - 2 * bg
+    const bgH = tile.height - 2 * bg
     if (content.imageUrl) {
       const persistedBgTransform = resolveTransformForMode(content.imageTransform, imageMode)
       const effectiveTransform = options.imageTransforms?.get(content.itemId) ?? persistedBgTransform
       const bgTransformStyle = computeImageTransformStyle(effectiveTransform, 50, 50)
       elements.push({
-        type: 'image', x: 0, y: 0, width: tile.width, height: tile.height,
+        type: 'image', x: bg, y: bg, width: bgW, height: bgH,
         content: content.imageUrl,
         style: { borderRadius: 0, objectFit: 'cover', ...bgTransformStyle }
       })
       elements.push({
-        type: 'background', x: 0, y: 0, width: tile.width, height: tile.height,
+        type: 'background', x: bg, y: bg, width: bgW, height: bgH,
         content: '',
         style: { background: BG_IMAGE_TEXT.gradient, borderRadius: 0 }
       })
@@ -1836,11 +2053,13 @@ function renderItemContent(
   if (showImage) {
     const defaultItemShadow = !isCircularMode ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
     const imageShadow = tileStyle?.image?.boxShadow !== undefined ? tileStyle.image.boxShadow : defaultItemShadow
-    // Stretch mode: image starts at y:0 (edge-to-edge top)
+    // Stretch mode: top inset matches horizontal inset so the image does not cover the wrapper border
     // Cutout mode: align oversized container bottom with text start so dish floats upward
     const imageY = isCutoutMode
       ? (imageBlockHeight - imageComputedHeight)
-      : (imageMode === 'stretch') ? 0 : currentY
+      : (imageMode === 'stretch')
+        ? stretchSideInset
+        : currentY
 
     if (content.imageUrl) {
       const itemBaseX = 50
@@ -1904,6 +2123,12 @@ function renderItemContent(
       elements.push(...renderIndicators(content.indicators, imageComputedX + 4, currentY + 4, imageComputedWidth - 8, palette))
     }
     currentY += imageBlockHeight
+  }
+
+  if (content.isFeatured && featuredStarMetrics) {
+    pushFeaturedStarBadge(elements, tile, palette, featuredBadgeFont, featuredStarMetrics)
+  } else if (content.isFeatured && featuredBadgeMetrics) {
+    pushPopularBadge(elements, tile, palette, featuredBadgeFont, featuredBadgeMetrics)
   }
 
   // --- Name ---
@@ -1977,8 +2202,12 @@ function renderItemContent(
   })
   currentY += priceLineHeight + 4
 
-  // --- Indicators (only when no image shown on card) ---
-  if (content.indicators && !(content.type === 'ITEM_CARD' && content.showImage)) {
+  // --- Indicators (only when not already placed on the image/background layer) ---
+  const itemIndicatorsOnImageLayer =
+    content.type === 'ITEM_CARD' &&
+    content.showImage &&
+    (showImage || isBackgroundMode)
+  if (content.indicators && !itemIndicatorsOnImageLayer) {
     const indicatorWidth = textWidth
     const indicatorX = (tile.width - indicatorWidth) / 2
     elements.push(...renderIndicators(content.indicators, indicatorX, currentY, indicatorWidth, palette))

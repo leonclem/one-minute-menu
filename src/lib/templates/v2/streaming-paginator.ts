@@ -653,7 +653,6 @@ export function streamingPaginate(
 
     // Process items in this section in sortOrder
     const sortedItems = [...section.items].sort((a, b) => a.sortOrder - b.sortOrder)
-    const maxFeatured = template.policies.maxFeaturedPerSection
 
     // Determine common item rowSpan for slot-based placement from the actual
     // tile factory output so slot math stays aligned with effective overrides.
@@ -671,37 +670,17 @@ export function streamingPaginate(
             : (template.tiles.ITEM_CARD?.rowSpan ?? 1)
         )
 
-    // Pre-scan: count how many items will be featured (multi-col FEATURE_CARDs
-    // are incompatible with single-cell slot grid, so fall back to sequential)
-    let previewFeaturedCount = 0
-    const hasFeaturedItems = sortedItems.some(item => {
-      if (!item.isFeatured || !template.tiles.FEATURE_CARD) return false
-      if (maxFeatured != null && previewFeaturedCount >= maxFeatured) return false
-      previewFeaturedCount++
-      return true
-    })
-
-    // Slot-based interspersion: enabled when fillers are on AND no featured items
-    // (featured items use multi-col/multi-row tiles that break the uniform slot grid)
     const sectionBodyStartRow = ctx.currentRow
-    const itemSlots = fillersEnabled && !hasFeaturedItems
+    const itemSlots = fillersEnabled
       ? getItemSlotPositions(section.items.length, cols, hashString(`${menu.id}-${template.id}-${section.id}`))
       : null
     let logicalRowOffset = 0
     // Track where items start on the current page (changes after page breaks)
     let pageStartRow = sectionBodyStartRow
 
-    let featuredCount = 0
     for (let itemIndex = 0; itemIndex < sortedItems.length; itemIndex++) {
       const item = sortedItems[itemIndex]
-      let effectiveItem = item
-      if (item.isFeatured && maxFeatured != null && featuredCount >= maxFeatured) {
-        effectiveItem = { ...item, isFeatured: false }
-      }
-      const itemTile = createItemTile(effectiveItem, section.id, template, menu.metadata.currency, sectionSelection)
-      if (effectiveItem.isFeatured && itemTile.type === 'FEATURE_CARD') {
-        featuredCount++
-      }
+      const itemTile = createItemTile(item, section.id, template, menu.metadata.currency, sectionSelection)
 
       if (itemSlots) {
         // Slot-based: map logical slot row to actual body row on the current page

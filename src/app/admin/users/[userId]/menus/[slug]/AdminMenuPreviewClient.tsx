@@ -303,7 +303,7 @@ export default function AdminMenuPreviewClient({ userId, slug }: AdminMenuPrevie
                     palette,
                     texturesEnabled: config.texturesEnabled && !!config.textureId,
                     textureId: config.textureId,
-                    imageMode: config.imageMode === 'none' ? 'stretch' : config.imageMode,
+                    imageMode: config.imageMode,
                     showVignette: config.showVignette,
                     itemBorders: config.itemBorders,
                     itemDropShadow: config.itemDropShadow,

@@ -212,6 +212,8 @@ export interface ItemContentV2 {
   currency: string
   indicators: ItemIndicatorsV2
   imageTransform?: import('@/types').ImageTransformRecord
+  /** When true, tile uses featured chrome (tint / border / badge) at same footprint as regular items */
+  isFeatured?: boolean
 }
 
 /** Filler tile content */

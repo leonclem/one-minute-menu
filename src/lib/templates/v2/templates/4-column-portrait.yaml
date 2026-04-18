@@ -86,8 +86,7 @@ tiles:
 
   # Grid math (rowHeight=70, gapY=8):
   #   ITEM_TEXT_ROW: 1 row  → 1×70             = 70pt   (text-only items)
-  #   ITEM_CARD:     2 rows → 2×70 + 1×8       = 148pt  (items with images)
-  #   FEATURE_CARD:  3 rows → 3×70 + 2×8       = 226pt  (featured items)
+  #   ITEM_CARD:     2 rows → 2×70 + 1×8       = 148pt  (items with images; featured use same footprint)
   ITEM_CARD:
     region: body
     rowSpan: 2
@@ -144,37 +143,6 @@ tiles:
       paddingBottom: 8
       totalHeight: 70
 
-  # FEATURE_CARD: multi-cell tile for featured menu items
-  # Spans 2 columns and 3 rows for visual prominence.
-  # Height formula: 3 * 70 + 2 * 8 = 226pt
-  FEATURE_CARD:
-    region: body
-    colSpan: 2
-    rowSpan: 3
-    style:
-      typography:
-        name:
-          fontSet: "elegant-serif"
-          fontSize: "sm"
-          fontWeight: "bold"
-        description:
-          fontSet: "modern-sans"
-          fontSize: "xsm"
-          fontWeight: "normal"
-          lineHeight: "normal"
-        price:
-          fontSet: "modern-sans"
-          fontSize: "sm"
-          fontWeight: "bold"
-    contentBudget:
-      nameLines: 2
-      descLines: 3
-      indicatorAreaHeight: 20
-      imageBoxHeight: 100
-      paddingTop: 10
-      paddingBottom: 10
-      totalHeight: 226
-
   FOOTER_INFO:
     region: footer
     style:
@@ -221,7 +189,6 @@ policies:
   showLogoOnPages: [FIRST, CONTINUATION, FINAL, SINGLE]
   repeatSectionHeaderOnContinuation: true
   sectionHeaderKeepWithNextItems: 1
-  maxFeaturedPerSection: 1
 
 filler:
   enabled: false

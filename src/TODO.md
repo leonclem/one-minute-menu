@@ -1,7 +1,6 @@
 # Roadmap
 
 ## /template
-- [ ] Featured tiles to stand out.
 - [ ] Logo / category headers as special filler tiles
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 
@@ -27,6 +26,7 @@
 
 ## Bugs
 - [ ] Pricing keeps defaulting to USD
+- [ ] When Image Style is set to "None", descriptions only have one line in most cases
 
 ## "What's New?" page
 - [ ] "What's New?" page
@@ -228,6 +228,7 @@
 - [x] Drag and zoom individual menu item images in-place
 - [x] Introduce A3 variants to create more space for menu items and menu item components
 - [x] Banner Image (flagship concept)
+- [x] Featured tiles to stand out.
 
 ### GridMenu V2 Layout Engine
 - [x] Complete V2 architecture implementation

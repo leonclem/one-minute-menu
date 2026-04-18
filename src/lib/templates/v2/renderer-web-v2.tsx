@@ -33,6 +33,7 @@ import {
   TEXTURE_REGISTRY,
   PALETTE_TEXTURE_MAP,
   getFontStylePresetGoogleFontsUrl,
+  blendHexTowards,
   type RenderOptionsV2,
   type RenderElement 
 } from './renderer-v2'
@@ -430,14 +431,37 @@ function TileRenderer({ tile, options }: TileRendererProps) {
   const { scale, palette } = options
   const renderData = renderTileContent(tile, options)
   const isMenuItemTile = MENU_ITEM_TILE_TYPES.includes(tile.type as (typeof MENU_ITEM_TILE_TYPES)[number])
+  const itemMenuContent = isMenuItemTile ? (tile.content as ItemContentV2 | FeatureCardContentV2) : undefined
+  const isFeaturedItem =
+    isMenuItemTile &&
+    tile.type !== 'FEATURE_CARD' &&
+    !!(itemMenuContent && 'isFeatured' in itemMenuContent && (itemMenuContent as ItemContentV2).isFeatured)
+
+  const accent =
+    palette?.colors?.accent ??
+    palette?.colors?.itemPrice ??
+    COLOR_TOKENS_V2.text.primary
+  const defaultPaper =
+    palette?.colors?.surface ??
+    palette?.colors?.background ??
+    COLOR_TOKENS_V2.background.white
+
   const subtleBorder = options.itemBorders && isMenuItemTile ? SUBTLE_ITEM_BORDER : undefined
   const subtleShadow = options.itemDropShadow && isMenuItemTile ? SUBTLE_ITEM_SHADOW : undefined
-  const border = options.showTileIds ? `1px dashed ${COLOR_TOKENS_V2.border.medium}` : (subtleBorder || 'none')
+  // Featured frame: use outline, not border. With global box-sizing: border-box, a 2px border
+  // shrinks the content box ~4px while element x/y/width still assume the full tile — images
+  // then drift and cover the frame asymmetrically. Outline does not affect layout.
+  const border = options.showTileIds
+    ? `1px dashed ${COLOR_TOKENS_V2.border.medium}`
+    : isFeaturedItem
+      ? 'none'
+      : subtleBorder || 'none'
   const boxShadow = subtleShadow
   const fillColor = options.fillItemTiles && isMenuItemTile
     ? (palette?.colors?.surface ?? palette?.colors?.background ?? COLOR_TOKENS_V2.background.white)
     : undefined
-  const backgroundColor = fillColor ?? 'transparent'
+  const featuredBg = isFeaturedItem ? blendHexTowards(defaultPaper, accent, 0.09) : undefined
+  const backgroundColor = featuredBg ?? fillColor ?? 'transparent'
 
   // Resolve overlay: only for image tiles in edit mode
   const isImageTile = IMAGE_TILE_TYPES.includes(tile.type as (typeof IMAGE_TILE_TYPES)[number])
@@ -508,7 +532,7 @@ function TileRenderer({ tile, options }: TileRendererProps) {
 
   return (
     <div
-      className={`tile-v2 tile-${tile.type.toLowerCase()}`}
+      className={`tile-v2 tile-${tile.type.toLowerCase()}${isFeaturedItem ? ' tile-featured' : ''}`}
       style={{
         position: 'absolute',
         left: tile.x * scale,
@@ -518,8 +542,11 @@ function TileRenderer({ tile, options }: TileRendererProps) {
         zIndex: tileZIndex,
         backgroundColor,
         border,
+        ...(isFeaturedItem && !options.showTileIds
+          ? { outline: `2px solid ${accent}`, outlineOffset: 0 }
+          : {}),
         ...(boxShadow ? { boxShadow } : {}),
-        ...((isCutoutTile || isBannerTile) ? { overflow: 'visible' } : {})
+        ...((isCutoutTile || isBannerTile || isFeaturedItem) ? { overflow: 'visible' } : {})
       }}
     >
       {/* Render tile content elements */}

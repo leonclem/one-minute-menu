@@ -3,9 +3,8 @@
  * Feature: gridmenu-v2-layout-enhancements, Property 5: Featured Item Variant Selection
  *
  * For any EngineItemV2 and TemplateV2, selectItemVariant returns:
- *   - FEATURE_CARD when isFeatured === true AND template has FEATURE_CARD AND not textOnly
+ *   - ITEM_CARD when not textOnly (featured styling is renderer-level, not a larger tile)
  *   - ITEM_TEXT_ROW when textOnly === true (regardless of isFeatured)
- *   - Standard variant (ITEM_CARD or ITEM_TEXT_ROW) when isFeatured is false/undefined
  *
  * **Validates: Requirements 8.2, 8.3, 9.4**
  */
@@ -170,20 +169,20 @@ describe('Feature: gridmenu-v2-layout-enhancements, Property 5: Featured Item Va
     )
   })
 
-  // Property 5b: Featured items get FEATURE_CARD when template supports it and not textOnly
-  it('should return FEATURE_CARD for featured items when template supports it', () => {
+  // Property 5b: Featured items use standard ITEM_CARD (FEATURE_CARD in YAML is ignored for variant)
+  it('should return ITEM_CARD for featured items even when template defines FEATURE_CARD', () => {
     fc.assert(
       fc.property(arbItem(true), (item) => {
         const result = selectItemVariant(item, featureTemplate)
-        expect(result.tileType).toBe('FEATURE_CARD')
-        expect(result.variant).toBe(featureTemplate.tiles.FEATURE_CARD)
+        expect(result.tileType).toBe('ITEM_CARD')
+        expect(result.variant).toBe(featureTemplate.tiles.ITEM_CARD)
       }),
       { numRuns: 100 }
     )
   })
 
-  // Property 5c: Featured items fall back to standard variant when template lacks FEATURE_CARD
-  it('should return standard variant for featured items when template lacks FEATURE_CARD', () => {
+  // Property 5c: Featured items use ITEM_CARD when template lacks FEATURE_CARD
+  it('should return ITEM_CARD for featured items when template lacks FEATURE_CARD', () => {
     fc.assert(
       fc.property(arbItem(true), (item) => {
         const result = selectItemVariant(item, baseTemplate)
@@ -236,11 +235,7 @@ describe('Feature: gridmenu-v2-layout-enhancements, Property 5: Featured Item Va
         if (selection.textOnly) {
           // textOnly always wins
           expect(result.tileType).toBe('ITEM_TEXT_ROW')
-        } else if (item.isFeatured && featureTemplate.tiles.FEATURE_CARD) {
-          // Featured + template support → FEATURE_CARD
-          expect(result.tileType).toBe('FEATURE_CARD')
         } else {
-          // Standard item
           expect(result.tileType).toBe('ITEM_CARD')
         }
       }),
