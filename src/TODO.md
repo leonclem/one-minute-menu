@@ -1,18 +1,11 @@
 # Roadmap
 
-### /extracted
-- [x] Users can no longer upload their own images
-- [ ] Remove slate if user for provides background (and warning for users using background images)
-
 ## /template
-- [ ] Logo / category headers as special filler tiles
 - [ ] Featured tiles to stand out.
+- [ ] Logo / category headers as special filler tiles
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 
 ## Social Media and Advertising
-- [x] Set up first Google ad campaign
-- [x] Add Google tag to <head>
-- [x] Share buttons on blog posts
 - [ ] Openclaw initial setup
 - [ ] Understand what is required and potential upside to conduct a cold email campaign
 
@@ -205,6 +198,8 @@
 - [x] Disable but don't delete images for item or category
 - [x] "Select all" in category but not all in menu
 - [x] Remove "Add QR / manage items" button from control panel
+- [x] Users can no longer upload their own images
+- [x] Remove slate if user for provides background (and warning for users using background images)
 
 ## Image Generation Test Harness
 - [x] Reference image
@@ -380,6 +375,11 @@
 - [x] Create Instagram account and add link icon to footer
 - [x] Reddit community posting
 - [x] Google "Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required."
+
+## Social Media and Advertising
+- [x] Set up first Google ad campaign
+- [x] Add Google tag to <head>
+- [x] Share buttons on blog posts
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>

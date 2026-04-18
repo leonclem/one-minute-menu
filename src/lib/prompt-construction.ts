@@ -108,12 +108,14 @@ export class PromptConstructionService {
     // Always specify the surface for contrast — even with a reference image the plate
     // needs to sit on something. With a reference image we defer to its scene but still
     // anchor the plate on a dark slate surface for cutout clarity.
-    const surface = `resting on a ${this.getDefaultSurface(params.establishmentType)}`
+    // If a reference image is provided, we omit the default surface to avoid "plate on slate on table" issues.
+    const hasReference = !!params.settingReferenceImage
+    const surfaceStr = hasReference ? '' : `, resting on a ${this.getDefaultSurface(params.establishmentType)}`
     const categoryContext = this.getCategoryContext(params.itemCategory)
     const subjectClause = [
       `${dishName} — ${normalizedDescription}.`,
       categoryContext,
-      `Plated on a warm beige circular ceramic plate, ${surface}.`
+      `Plated on a warm beige circular ceramic plate${surfaceStr}.`
     ].filter(Boolean).join(' ')
 
     // 2. Camera Angle

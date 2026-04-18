@@ -94,6 +94,20 @@ describe('PromptConstructionService', () => {
       expect(result.prompt).toContain('Place the dish naturally into the scene shown in the reference image')
       expect(result.prompt).toContain('Match the perspective, lighting direction, and surface')
     })
+    
+    it('should omit default surface when settingReferenceImage is provided', () => {
+      const params: PhotoGenerationParams = {
+        angle: '45',
+        lighting: 'natural',
+        settingReferenceImage: 'data:image/jpeg;base64,abc'
+      }
+
+      const result = service.buildPromptV2(sampleItem, params)
+
+      expect(result.prompt).toContain('Plated on a warm beige circular ceramic plate.')
+      expect(result.prompt).not.toContain('resting on a')
+      expect(result.prompt).not.toContain('dark slate surface')
+    })
 
     it('should always include the constraints clause', () => {
       const params: PhotoGenerationParams = {
