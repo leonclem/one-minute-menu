@@ -5,6 +5,7 @@ import OnboardingClient from './onboarding-client'
 import { PendingApproval } from '@/components/dashboard/PendingApproval'
 import { UXHeader, UXFooter } from '@/components/ux'
 import { isOnboardingComplete } from '@/lib/onboarding-gate'
+import { getFeatureFlag } from '@/lib/feature-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,8 @@ export default async function OnboardingPage({
   
   // APPROVAL GATE
   const isAdmin = profile?.role === 'admin'
-  if (!isAdmin && profile && !profile.isApproved) {
+  const requireAdminApproval = await getFeatureFlag('require_admin_approval')
+  if (requireAdminApproval && !isAdmin && profile && !profile.isApproved) {
     return (
       <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
         <div

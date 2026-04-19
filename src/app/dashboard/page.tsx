@@ -11,6 +11,7 @@ import { DashboardAutoRefresh } from '@/components/dashboard/DashboardAutoRefres
 import { PendingApproval } from '@/components/dashboard/PendingApproval'
 import { PLAN_CONFIGS } from '@/types'
 import { getPlanFriendlyName } from '@/lib/utils'
+import { getFeatureFlag } from '@/lib/feature-flags'
 const QuotaUsageDashboard = nextDynamic(() => import('@/components/QuotaUsageDashboard'), { ssr: false })
 
 export default async function DashboardPage() {
@@ -123,7 +124,8 @@ export default async function DashboardPage() {
   }
 
   // APPROVAL GATE
-  if (!isAdmin && profile && !profile.isApproved) {
+  const requireAdminApproval = await getFeatureFlag('require_admin_approval')
+  if (requireAdminApproval && !isAdmin && profile && !profile.isApproved) {
     return (
       <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
         <div

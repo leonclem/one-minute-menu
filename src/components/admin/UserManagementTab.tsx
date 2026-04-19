@@ -5,6 +5,7 @@ import { UXButton } from '@/components/ux'
 import { getPlanFriendlyName, copyToClipboard } from '@/lib/utils'
 import { useToast, ConfirmDialog } from '@/components/ui'
 import { UserMenusPanel } from './UserMenusPanel'
+import { RegistrationGatingSettings } from './RegistrationGatingSettings'
 
 interface ManagedUser {
   id: string
@@ -162,6 +163,11 @@ export function UserManagementTab() {
 
   return (
     <div className="space-y-8">
+      {/* Registration Gating Settings */}
+      <section>
+        <RegistrationGatingSettings />
+      </section>
+
       {/* Search and Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="relative flex-1 max-w-md">

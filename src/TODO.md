@@ -2,14 +2,15 @@
 
 ## /template
 - [ ] Logo / category headers as special filler tiles
+- [ ] Flagship as 2x1 or 2x2 large tiles
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
+
+## Exports
+- [ ] Verify "print ready"
 
 ## Social Media and Advertising
 - [ ] Openclaw initial setup
 - [ ] Understand what is required and potential upside to conduct a cold email campaign
-
-## Exports
-- [ ] Verify "print ready"
 
 ## Allergens / Spice level / etc
 - [ ] Extend indicator taxonomy for additional dietary restrictions
@@ -27,6 +28,7 @@
 ## Bugs
 - [ ] Pricing keeps defaulting to USD
 - [ ] When Image Style is set to "None", descriptions only have one line in most cases
+- [ ] Description still too short generally across layouts
 
 ## "What's New?" page
 - [ ] "What's New?" page
@@ -129,6 +131,7 @@
 - [ ] Verify that webhooks are in place to detect recurring payments, failures, etc. (as per Gemini chat)
 
 ## Admin
+- [x] Create feature flag for new registrants approval in Admin > Users 
 - [ ] Track payment failures and cancellations
 - [ ] Change primary email logins to admin@gridmenu.ai (e.g. Postmark, NameCheap, Railway, Supabase, etc.)
 - [ ] Remove LOG_LEVEL="debug" from Railway variables

@@ -1,10 +1,14 @@
 import { UXWrapper, UXSection } from '@/components/ux'
 import UXRegisterClient from './register-client'
+import { getFeatureFlag } from '@/lib/feature-flags'
 
 // Force dynamic rendering for authentication
 export const dynamic = 'force-dynamic'
 
-export default function UXRegisterPage() {
+export default async function UXRegisterPage() {
+  const requireAdminApproval = await getFeatureFlag('require_admin_approval')
+  console.log('[register-page] requireAdminApproval =', requireAdminApproval)
+  
   return (
     <UXWrapper variant="centered">
       <UXSection>
@@ -17,7 +21,7 @@ export default function UXRegisterPage() {
             Get started with your digital menu in just a few steps
           </p>
         </div>
-        <UXRegisterClient />
+        <UXRegisterClient requireAdminApproval={requireAdminApproval} />
       </UXSection>
     </UXWrapper>
   )
