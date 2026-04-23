@@ -128,6 +128,7 @@ export type TileTypeV2 =
   | 'TITLE'
   | 'SECTION_HEADER'
   | 'ITEM_CARD'
+  | 'FLAGSHIP_CARD'
   | 'ITEM_TEXT_ROW'
   | 'FILLER'
   | 'TEXT_BLOCK'
@@ -182,6 +183,8 @@ export interface LogoContentV2 {
   type: 'LOGO'
   imageUrl?: string
   venueName?: string
+  /** Present only for embedded body logos so section-scoped fillers can track ownership. */
+  sectionId?: string
 }
 
 /** Title tile content */
@@ -263,6 +266,21 @@ export interface FeatureCardContentV2 {
   imageTransform?: import('@/types').ImageTransformRecord
 }
 
+/** Flagship card tile content (for the single promoted body-grid item) */
+export interface FlagshipCardContentV2 {
+  type: 'FLAGSHIP_CARD'
+  itemId: string
+  sectionId: string
+  name: string
+  description?: string
+  price: number
+  imageUrl?: string
+  showImage: boolean
+  currency: string
+  indicators: ItemIndicatorsV2
+  imageTransform?: import('@/types').ImageTransformRecord
+}
+
 /** Banner image rendering mode */
 export type BannerImageStyle = 'cutout' | 'stretch-fit' | 'none'
 
@@ -318,6 +336,7 @@ export type TileContentV2 =
   | TextBlockContentV2
   | FooterInfoContentV2
   | FeatureCardContentV2
+  | FlagshipCardContentV2
   | DividerContentV2
   | BannerContentV2
   | BannerStripContentV2
@@ -513,6 +532,12 @@ export interface SelectionConfigV2 {
   fillItemTiles?: boolean
   /** Show category/section title headers (defaults to true) */
   showCategoryTitles?: boolean
+  /** Render the venue logo/name as a 1x1 body-grid tile instead of the header logo */
+  showLogoTile?: boolean
+  /** Render category headers as 1x1 body-grid tiles instead of full-width section headers */
+  showCategoryHeaderTiles?: boolean
+  /** Render the selected flagship item as a dedicated body-grid tile */
+  showFlagshipTile?: boolean
   /** Optional target cell width in points; when set, gapX is derived to achieve this width (clamped to per-cols min/max) */
   targetCellWidthPt?: number
   /** Show banner on first page and strip on continuation pages */
@@ -545,6 +570,7 @@ export interface SelectionConfigV2 {
 /** Parsed template from YAML */
 export interface TemplateCapabilitiesV2 {
   supportsCutouts?: boolean
+  supportsBodyTileMode?: boolean
 }
 
 /** Banner configuration from template YAML */
@@ -697,6 +723,16 @@ export interface ImageStyleV2 {
   boxShadow?: string
 }
 
+/** Badge styling configuration for promoted tiles */
+export interface BadgeStyleV2 {
+  /** Badge label text */
+  label?: string
+  /** Badge border radius in points */
+  borderRadius?: number
+  /** Badge edge position */
+  position?: 'left' | 'right'
+}
+
 /** Complete tile styling configuration */
 export interface TileStyleV2 {
   /** Typography styling */
@@ -709,6 +745,8 @@ export interface TileStyleV2 {
   background?: BackgroundStyleV2
   /** Image styling (e.g. drop shadow) */
   image?: ImageStyleV2
+  /** Badge styling (e.g. Popular / House Special) */
+  badge?: BadgeStyleV2
 }
 
 /** Single tile variant definition */
@@ -724,12 +762,14 @@ export interface TileVariantDefV2 {
 /** Tile variant definitions */
 export interface TemplateTileVariantsV2 {
   LOGO: TileVariantDefV2
+  LOGO_BODY?: TileVariantDefV2
   TITLE: TileVariantDefV2
   SECTION_HEADER: TileVariantDefV2
   ITEM_CARD: TileVariantDefV2
   ITEM_TEXT_ROW: TileVariantDefV2
   FILLER?: TileVariantDefV2[]
   FEATURE_CARD?: TileVariantDefV2
+  FLAGSHIP_CARD?: TileVariantDefV2
   DECORATIVE_DIVIDER?: TileVariantDefV2
   FOOTER_INFO?: TileVariantDefV2
 }

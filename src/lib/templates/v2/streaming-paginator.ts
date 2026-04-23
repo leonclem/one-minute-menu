@@ -29,25 +29,22 @@ import type {
 import { calculateRegions, getBodyRegion } from './region-calculator'
 import {
   createSectionHeaderTile,
-  createItemTile,
   createLogoTile,
   createTitleTile,
   createFooterInfoTile,
   createDividerTile,
   createBannerTile,
   createBannerStripTile,
-  selectItemVariant,
   placeTile,
-  advancePosition,
   advanceToNextRow,
   applyLastRowBalancing,
   applySectionLastRowCentering,
   PlacementContext,
   initPlacementContext,
 } from './tile-placer'
-import { calculateTileHeight, calculateMaxRows } from './engine-types-v2'
-import { getItemSlotPositions, hashString } from './filler-manager-v2'
-import { PALETTES_V2, DEFAULT_PALETTE_V2 } from './renderer-v2'
+import { calculateMaxRows } from './engine-types-v2'
+import { PALETTES_V2, DEFAULT_PALETTE_V2 } from './palettes-v2'
+import { buildContinuationLeadRowPlan, buildSectionPlans } from './lead-row-planner'
 
 // =============================================================================
 // Banner Helpers
@@ -142,6 +139,38 @@ export interface StreamingContext extends PlacementContext {
 // =============================================================================
 
 const BODY_TOP_PADDING_NO_HEADERS = 20 // pts of breathing room when category titles are hidden
+const HEADER_BUFFER_WITH_BODY_LOGO = 8 // small print-safe gap when the header logo is suppressed
+const BODY_TOP_PADDING_WITH_BANNER = 12 // small buffer between banner/strip and first body row
+
+function resolveHeaderRegionHeight(
+  template: TemplateV2,
+  selection: SelectionConfigV2 | undefined,
+  bannerHeight: number
+): number {
+  if (bannerHeight > 0) return 0
+  if (selection?.showLogoTile === true) return HEADER_BUFFER_WITH_BODY_LOGO
+  return 0
+}
+
+/**
+ * Add a small buffer below the banner/strip so body rows do not sit flush
+ * against the banner edge. The narrow 1-column-tall format is exempt.
+ */
+function applyBannerBodyPadding(regions: RegionV2[], template: TemplateV2, selection?: SelectionConfigV2): void {
+  if (template.id === '1-column-tall') return
+
+  const banner = regions.find(r => r.id === 'banner')
+  if (!banner || banner.height <= 0) return
+
+  const showCategoryTitles = selection?.showCategoryTitles !== false // default true
+  if (!showCategoryTitles) return
+
+  const body = regions.find(r => r.id === 'body')
+  if (!body) return
+
+  body.y += BODY_TOP_PADDING_WITH_BANNER
+  body.height -= BODY_TOP_PADDING_WITH_BANNER
+}
 
 /**
  * When category titles are hidden, nudge the body region down slightly so items
@@ -173,7 +202,11 @@ export function initContext(
   const bannerHeight = computeBannerHeight(template, selection)
   // Suppress title region when banner is present (banner covers venue identity)
   const showMenuTitle = bannerHeight === 0 && selection?.showMenuTitle === true
-  const regions = calculateRegions(pageSpec, template, showMenuTitle, bannerHeight)
+  const headerHeight = resolveHeaderRegionHeight(template, selection, bannerHeight)
+  const regions = calculateRegions(pageSpec, template, showMenuTitle, bannerHeight, {
+    headerHeightOverride: headerHeight,
+  })
+  applyBannerBodyPadding(regions, template, selection)
   applyBodyTopPadding(regions, selection)
   
   const initialPage: PageLayoutV2 = {
@@ -268,14 +301,17 @@ export function finalizePage(ctx: StreamingContext): void {
   
   // When fillers are enabled (template or selection), do not center so empty cells remain for fillers
   const fillersEnabled = ctx.selection?.fillersEnabled ?? ctx.template.filler.enabled
-  // Apply centering if: fillers are disabled AND centering is wanted.
+  const spacerTilePatternId = ctx.selection?.spacerTilePatternId || ctx.template.filler.tiles[0]?.id
+  const hasSpacers = fillersEnabled && spacerTilePatternId !== 'none'
+
+  // Apply centering if: spacers are disabled AND centering is wanted.
   // centreAlignment === false means the user explicitly disabled it, overriding the template policy.
   // centreAlignment === true means the user explicitly enabled it.
   // centreAlignment === undefined means defer to the template policy.
   const templateWantsCentre = ctx.template.policies.lastRowBalancing === 'CENTER'
   const userOverride = ctx.selection?.centreAlignment  // true | false | undefined
   const shouldCentre = userOverride === false ? false : (userOverride === true ? true : templateWantsCentre)
-  if (!fillersEnabled && shouldCentre) {
+  if (!hasSpacers && shouldCentre) {
     applyLastRowBalancing(ctx.currentPage, ctx.template)
   }
 }
@@ -294,7 +330,11 @@ export function startNewPage(ctx: StreamingContext, pageType: PageTypeV2): void 
     : computeStripHeight(ctx.template, ctx.selection)
   // Suppress title region when banner is present (banner covers venue identity)
   const showMenuTitle = bannerHeight === 0 && ctx.selection?.showMenuTitle === true
-  const regions = calculateRegions(ctx.pageSpec, ctx.template, showMenuTitle, bannerHeight)
+  const headerHeight = resolveHeaderRegionHeight(ctx.template, ctx.selection, bannerHeight)
+  const regions = calculateRegions(ctx.pageSpec, ctx.template, showMenuTitle, bannerHeight, {
+    headerHeightOverride: headerHeight,
+  })
+  applyBannerBodyPadding(regions, ctx.template, ctx.selection)
   applyBodyTopPadding(regions, ctx.selection)
   
   const newPage: PageLayoutV2 = {
@@ -332,28 +372,7 @@ export function placeStaticTiles(
   menu: EngineMenuV2,
   pageType: PageTypeV2
 ): void {
-  const { showLogoOnPages } = ctx.template.policies
   const hasBanner = !!ctx.currentPage.regions.find(r => r.id === 'banner')
-
-  // Place logo only if policy allows for this page type AND no banner is present
-  // (banner already shows venue identity, so the header logo would be redundant)
-  if (showLogoOnPages.includes(pageType) && !hasBanner) {
-    const logoTile = createLogoTile(menu, ctx.template)
-    const headerRegion = ctx.currentPage.regions.find(r => r.id === 'header')!
-    
-    const placedLogo = placeTile(
-      ctx,
-      ctx.currentPage,
-      {
-        ...logoTile,
-        width: headerRegion.width, // Logo spans full header width
-      },
-      headerRegion,
-      ctx.template
-    )
-    
-    logPlacement(ctx, 'placed', placedLogo.id, 'Static logo tile')
-  }
 
   // Title tile is suppressed when a banner is present; banner covers venue identity
   const showMenuTitle = !hasBanner && ctx.selection?.showMenuTitle === true
@@ -446,91 +465,241 @@ export function placeStaticTiles(
 // Keep-With-Next Logic
 // =============================================================================
 
-/**
- * Check if a section header can be placed with required items.
- * Enforces keep-with-next policy using FOOTPRINT heights.
- *
- * @param ctx - Streaming context
- * @param section - Section to check
- * @param headerTile - Header tile (without position)
- * @returns True if header + required items fit, false otherwise
- */
-function canPlaceHeaderWithItems(
-  ctx: StreamingContext,
-  section: { items: any[] },
-  headerTile: Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'>
+interface GridPosition {
+  row: number
+  col: number
+}
+
+function createPlacementGrid(maxRows: number, cols: number, startRow: number): boolean[][] {
+  const grid = Array.from({ length: maxRows }, () => Array(cols).fill(false))
+
+  for (let row = 0; row < startRow && row < maxRows; row++) {
+    grid[row].fill(true)
+  }
+
+  return grid
+}
+
+function isGridAreaEmpty(
+  grid: boolean[][],
+  row: number,
+  col: number,
+  rowSpan: number,
+  colSpan: number
 ): boolean {
-  const { sectionHeaderKeepWithNextItems } = ctx.template.policies
-  const { rowHeight, gapY, cols } = ctx.template.body.container
-  
-  // Calculate the row where the section header would actually be placed
-  // Section headers always start new rows, so if we're not at column 0, we need to advance
-  let headerRow = ctx.currentRow
-  if (ctx.currentCol !== 0) {
-    headerRow += ctx.currentRowMaxSpan
+  const maxRows = grid.length
+  const cols = grid[0]?.length ?? 0
+
+  if (row < 0 || col < 0 || row + rowSpan > maxRows || col + colSpan > cols) {
+    return false
   }
-  
-  // Create a temporary context to check if header fits at the correct position
-  // Reset currentCol to 0 since section headers always start new rows
-  const tempCtx = { ...ctx, currentRow: headerRow, currentCol: 0 }
-  
-  if (section.items.length === 0 || sectionHeaderKeepWithNextItems === 0) {
-    return fitsInCurrentPage(tempCtx, headerTile.height)
-  }
-  
-  // Calculate required height: header + gap + height needed for keep-with-next items
-  let requiredHeight = headerTile.height + gapY
-  
-  const itemsToCheck = Math.min(sectionHeaderKeepWithNextItems, section.items.length)
-  
-  // Simulate placing the first N items to calculate actual grid row heights needed
-  let simulatedCol = 0
-  let maxRowSpanInCurrentRow = 1
-  let rowsNeeded = 0
-  
-  for (let i = 0; i < itemsToCheck; i++) {
-    const item = section.items[i]
-    const itemVariant = selectItemVariant(item, ctx.template, ctx.selection)
-    const itemRowSpan = itemVariant.variant.rowSpan ?? 1
-    const itemColSpan = itemVariant.variant.colSpan ?? 1
-    
-    // Correct simulation: Check if item fits in current row before updating maxRowSpan
-    if (simulatedCol + itemColSpan > cols && simulatedCol > 0) {
-      rowsNeeded += maxRowSpanInCurrentRow
-      simulatedCol = 0
-      maxRowSpanInCurrentRow = 1
-    }
-    
-    simulatedCol += itemColSpan
-    if (itemRowSpan > maxRowSpanInCurrentRow) {
-      maxRowSpanInCurrentRow = itemRowSpan
-    }
-    
-    // If exactly filled, advance
-    if (simulatedCol >= cols) {
-      rowsNeeded += maxRowSpanInCurrentRow
-      simulatedCol = 0
-      maxRowSpanInCurrentRow = 1
+
+  for (let r = row; r < row + rowSpan; r++) {
+    for (let c = col; c < col + colSpan; c++) {
+      if (grid[r][c]) {
+        return false
+      }
     }
   }
-  
-  // If there are items remaining in the last simulated row, account for them
-  if (simulatedCol > 0) {
-    rowsNeeded += maxRowSpanInCurrentRow
+
+  return true
+}
+
+function markGridAreaOccupied(
+  grid: boolean[][],
+  row: number,
+  col: number,
+  rowSpan: number,
+  colSpan: number
+): void {
+  for (let r = row; r < row + rowSpan && r < grid.length; r++) {
+    for (let c = col; c < col + colSpan && c < grid[0].length; c++) {
+      grid[r][c] = true
+    }
   }
-  
-  // Calculate height needed for the rows using FOOTPRINT formula
-  // This accounts for the actual grid space needed, not individual tile heights
-  const itemsHeight = rowsNeeded * rowHeight + Math.max(0, rowsNeeded - 1) * gapY
-  requiredHeight += itemsHeight
-  
-  // Add a safety margin to ensure items actually fit (not just theoretically)
-  // This prevents edge cases where items don't fit due to rounding or other factors
-  const safetyMargin = gapY
-  requiredHeight += safetyMargin
-  
-  // Header colSpan is usually 'cols' (full width)
-  return fitsInCurrentPage(tempCtx, requiredHeight, headerTile.colSpan)
+}
+
+function findNextGridPosition(
+  grid: boolean[][],
+  startRow: number,
+  tile: Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'>
+): GridPosition | null {
+  const cols = grid[0]?.length ?? 0
+
+  for (let row = startRow; row < grid.length; row++) {
+    for (let col = 0; col <= cols - tile.colSpan; col++) {
+      if (isGridAreaEmpty(grid, row, col, tile.rowSpan, tile.colSpan)) {
+        return { row, col }
+      }
+    }
+  }
+
+  return null
+}
+
+function getSectionStartRow(ctx: StreamingContext): number {
+  return ctx.currentCol === 0 ? ctx.currentRow : ctx.currentRow + ctx.currentRowMaxSpan
+}
+
+function countLeadRowFollowers(
+  leadRow: ReturnType<typeof buildSectionPlans>[number]['leadRow']
+): number {
+  return [...leadRow.chosenTiles, ...leadRow.queuedTiles].filter(
+    candidate => candidate.kind === 'flagship' || candidate.kind === 'item'
+  ).length
+}
+
+function canPlaceLeadRowWithFollowers(
+  ctx: StreamingContext,
+  leadRow: ReturnType<typeof buildSectionPlans>[number]['leadRow']
+): boolean {
+  const hasHeader = leadRow.candidates.some(candidate => candidate.kind === 'header')
+  const keepWithNext = hasHeader ? ctx.template.policies.sectionHeaderKeepWithNextItems : 0
+  const totalFollowers = countLeadRowFollowers(leadRow)
+  const requiredFollowers = Math.min(keepWithNext, totalFollowers)
+  const bodyRegion = getBodyRegion(ctx.currentPage.regions)
+  const { cols, rowHeight, gapY } = ctx.template.body.container
+  const maxRows = calculateMaxRows(bodyRegion.height, rowHeight, gapY)
+  const startRow = getSectionStartRow(ctx)
+  const grid = createPlacementGrid(maxRows, cols, startRow)
+  const candidates = [...leadRow.chosenTiles, ...leadRow.queuedTiles]
+  let followersPlaced = 0
+
+  for (let index = 0; index < candidates.length; index++) {
+    const candidate = candidates[index]
+    const position = findNextGridPosition(grid, startRow, candidate.tile)
+
+    if (!position) {
+      return false
+    }
+
+    markGridAreaOccupied(grid, position.row, position.col, candidate.tile.rowSpan, candidate.tile.colSpan)
+
+    if (candidate.kind === 'flagship' || candidate.kind === 'item') {
+      followersPlaced++
+    }
+
+    const allLeadTilesPlaced = index + 1 >= leadRow.chosenTiles.length
+    if (allLeadTilesPlaced && followersPlaced >= requiredFollowers) {
+      return true
+    }
+  }
+
+  return leadRow.chosenTiles.length === 0 || followersPlaced >= requiredFollowers
+}
+
+function placeTileAtGridPosition(
+  ctx: StreamingContext,
+  tile: Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'>,
+  bodyRegion: RegionV2,
+  row: number,
+  col: number
+): TileInstanceV2 {
+  ctx.currentRow = row
+  ctx.currentCol = col
+  ctx.currentRowMaxSpan = 1
+  ctx.currentRowTiles = []
+
+  return placeTile(ctx, ctx.currentPage, tile, bodyRegion, ctx.template)
+}
+
+function placeCandidateTilesOnPage(
+  ctx: StreamingContext,
+  bodyRegion: RegionV2,
+  candidates: Array<ReturnType<typeof buildSectionPlans>[number]['leadRow']['chosenTiles'][number]>,
+  startRow: number
+): { placedCount: number; lastRowEnd: number } {
+  const { cols, rowHeight, gapY } = ctx.template.body.container
+  const maxRows = calculateMaxRows(bodyRegion.height, rowHeight, gapY)
+  const grid = createPlacementGrid(maxRows, cols, startRow)
+  let lastRowEnd = startRow
+  let searchRowFloor = startRow
+
+  for (let index = 0; index < candidates.length; index++) {
+    const candidate = candidates[index]
+    const position = findNextGridPosition(grid, searchRowFloor, candidate.tile)
+
+    if (!position) {
+      return {
+        placedCount: index,
+        lastRowEnd,
+      }
+    }
+
+    const placedTile = placeTileAtGridPosition(ctx, candidate.tile, bodyRegion, position.row, position.col)
+    logPlacement(ctx, 'placed', placedTile.id, `Section tile (${candidate.kind})`)
+    markGridAreaOccupied(grid, position.row, position.col, candidate.tile.rowSpan, candidate.tile.colSpan)
+    lastRowEnd = Math.max(lastRowEnd, position.row + candidate.tile.rowSpan)
+
+    const isFullWidthHeader = candidate.kind === 'header' && candidate.tile.colSpan >= cols
+    if (isFullWidthHeader) {
+      searchRowFloor = position.row + candidate.tile.rowSpan
+    }
+  }
+
+  return {
+    placedCount: candidates.length,
+    lastRowEnd,
+  }
+}
+
+function placeSectionPlan(
+  ctx: StreamingContext,
+  menu: EngineMenuV2,
+  sectionPlan: ReturnType<typeof buildSectionPlans>[number],
+  bodyRegion: RegionV2
+): RegionV2 {
+  let targetBodyRegion = bodyRegion
+  let pendingCandidates = [...sectionPlan.leadRow.chosenTiles, ...sectionPlan.leadRow.queuedTiles]
+  let sectionStarted = false
+  const showCategoryTitles = ctx.selection?.showCategoryTitles !== false
+
+  while (pendingCandidates.length > 0) {
+    if (!sectionStarted && !canPlaceLeadRowWithFollowers(ctx, sectionPlan.leadRow)) {
+      finalizePage(ctx)
+      startNewPage(ctx, 'CONTINUATION')
+      placeStaticTiles(ctx, menu, 'CONTINUATION')
+      targetBodyRegion = getBodyRegion(ctx.currentPage.regions)
+      continue
+    }
+
+    const continuationPrefix = sectionStarted &&
+      ctx.template.policies.repeatSectionHeaderOnContinuation &&
+      showCategoryTitles
+      ? buildContinuationLeadRowPlan(sectionPlan.section, ctx.template, ctx.selection).chosenTiles
+      : []
+
+    const startRow = getSectionStartRow(ctx)
+    const pageCandidates = [...continuationPrefix, ...pendingCandidates]
+    const { placedCount, lastRowEnd } = placeCandidateTilesOnPage(
+      ctx,
+      targetBodyRegion,
+      pageCandidates,
+      startRow
+    )
+    const pendingPlacedCount = Math.max(0, placedCount - continuationPrefix.length)
+
+    if (pendingPlacedCount > 0 || (!sectionStarted && placedCount > 0)) {
+      sectionStarted = true
+    }
+
+    pendingCandidates = pendingCandidates.slice(pendingPlacedCount)
+
+    if (placedCount === pageCandidates.length) {
+      ctx.currentRow = lastRowEnd
+      ctx.currentCol = 0
+      ctx.currentRowMaxSpan = 1
+      ctx.currentRowTiles = []
+      return targetBodyRegion
+    }
+
+    finalizePage(ctx)
+    startNewPage(ctx, 'CONTINUATION')
+    placeStaticTiles(ctx, menu, 'CONTINUATION')
+    targetBodyRegion = getBodyRegion(ctx.currentPage.regions)
+  }
+
+  return targetBodyRegion
 }
 
 // =============================================================================
@@ -561,207 +730,41 @@ export function streamingPaginate(
   
   // Place static tiles on first page
   placeStaticTiles(ctx, menu, 'FIRST')
-  
-  // Process each section in sortOrder
-  const sortedSections = [...menu.sections].sort((a, b) => a.sortOrder - b.sortOrder)
-  let nonEmptySectionIndex = 0
-  for (const section of sortedSections) {
-    // Skip empty sections (enforce INV-3: No widowed section headers)
-    if (!section.items || section.items.length === 0) {
-      continue
+  const sectionPlans = buildSectionPlans(menu, template, selection)
+  const fillersEnabled = ctx.selection?.fillersEnabled ?? template.filler.enabled
+
+  for (const sectionPlan of sectionPlans) {
+    if (ctx.currentCol !== 0) {
+      advanceToNextRow(ctx, ctx.currentRowMaxSpan)
     }
 
-    // Insert divider between sections (not before first non-empty section)
-    if (template.dividers?.enabled && nonEmptySectionIndex > 0) {
-      const dividerTile = createDividerTile(section.id, template)
+    if (sectionPlan.hasDividerBefore) {
+      const dividerTile = createDividerTile(sectionPlan.section.id, template)
 
-      // Force new row before divider
       if (ctx.currentCol !== 0) {
         advanceToNextRow(ctx, ctx.currentRowMaxSpan)
       }
 
       if (!fitsInCurrentPage(ctx, dividerTile.height, dividerTile.colSpan)) {
-        // Divider + next section go to new page together
         finalizePage(ctx)
         startNewPage(ctx, 'CONTINUATION')
         placeStaticTiles(ctx, menu, 'CONTINUATION')
+        bodyRegion = getBodyRegion(ctx.currentPage.regions)
       }
 
-      const dividerRegion = getBodyRegion(ctx.currentPage.regions)
-      const placedDivider = placeTile(ctx, ctx.currentPage, dividerTile, dividerRegion, template)
+      const placedDivider = placeTile(ctx, ctx.currentPage, dividerTile, bodyRegion, template)
       logPlacement(ctx, 'placed', placedDivider.id, 'Section divider')
       advanceToNextRow(ctx, dividerTile.rowSpan)
     }
 
-    nonEmptySectionIndex++
+    bodyRegion = placeSectionPlan(ctx, menu, sectionPlan, bodyRegion)
 
-    // Per-section image override: if this section has no images at all,
-    // force text-only layout for its items regardless of the global imageMode.
-    // This avoids empty placeholder image slots in image-less categories.
-    const sectionSelection = (section.hasImages === false && !selection?.textOnly)
-      ? { ...selection, textOnly: true }
-      : selection
+    const spacerTilePatternId = ctx.selection?.spacerTilePatternId || template.filler.tiles[0]?.id
+    const hasSpacers = fillersEnabled && spacerTilePatternId !== 'none'
 
-    // Conditionally place section header tile (skipped when showCategoryTitles is false)
-    const showCategoryTitles = selection?.showCategoryTitles !== false // Default to true
-    if (showCategoryTitles) {
-      // Create section header tile with FOOTPRINT height
-      const headerTile = createSectionHeaderTile(section, template, false)
-      
-      // Check keep-with-next: header + required items must fit
-      if (!canPlaceHeaderWithItems(ctx, section, headerTile)) {
-        // Finalize current page and start new one
-        finalizePage(ctx)
-        startNewPage(ctx, 'CONTINUATION')
-        placeStaticTiles(ctx, menu, 'CONTINUATION')
-        
-        // Get body region from new page
-        const newBodyRegion = getBodyRegion(ctx.currentPage.regions)
-        
-        // Section headers always start new rows - force new row if not at start
-        if (ctx.currentCol !== 0) {
-          advanceToNextRow(ctx, ctx.currentRowMaxSpan)
-        }
-        
-        // Place section header on new page
-        const placedHeader = placeTile(ctx, ctx.currentPage, headerTile, newBodyRegion, template)
-        logPlacement(ctx, 'placed', placedHeader.id, 'Section header')
-        bodyRegion = newBodyRegion
-      } else {
-        // Section headers always start new rows - force new row if not at start
-        if (ctx.currentCol !== 0) {
-          advanceToNextRow(ctx, ctx.currentRowMaxSpan)
-        }
-        
-        // Place section header on current page
-        const placedHeader = placeTile(ctx, ctx.currentPage, headerTile, bodyRegion, template)
-        logPlacement(ctx, 'placed', placedHeader.id, 'Section header')
-      }
-      
-      // Advance to next row (section headers always start new rows)
-      advanceToNextRow(ctx, headerTile.rowSpan)
-    } else {
-      // No section header - still ensure items start on a new row
-      if (ctx.currentCol !== 0) {
-        advanceToNextRow(ctx, ctx.currentRowMaxSpan)
-      }
-    }
-    
-    const fillersEnabled = ctx.selection?.fillersEnabled ?? template.filler.enabled
-    const { cols, rowHeight, gapY } = template.body.container
-    const maxRows = calculateMaxRows(bodyRegion.height, rowHeight, gapY)
-
-    // Process items in this section in sortOrder
-    const sortedItems = [...section.items].sort((a, b) => a.sortOrder - b.sortOrder)
-
-    // Determine common item rowSpan for slot-based placement from the actual
-    // tile factory output so slot math stays aligned with effective overrides.
-    const commonItemRowSpan = sortedItems.length > 0
-      ? createItemTile(
-          sortedItems[0],
-          section.id,
-          template,
-          menu.metadata.currency,
-          sectionSelection
-        ).rowSpan
-      : (
-          sectionSelection?.textOnly
-            ? (template.tiles.ITEM_TEXT_ROW?.rowSpan ?? 1)
-            : (template.tiles.ITEM_CARD?.rowSpan ?? 1)
-        )
-
-    const sectionBodyStartRow = ctx.currentRow
-    const itemSlots = fillersEnabled
-      ? getItemSlotPositions(section.items.length, cols, hashString(`${menu.id}-${template.id}-${section.id}`))
-      : null
-    let logicalRowOffset = 0
-    // Track where items start on the current page (changes after page breaks)
-    let pageStartRow = sectionBodyStartRow
-
-    for (let itemIndex = 0; itemIndex < sortedItems.length; itemIndex++) {
-      const item = sortedItems[itemIndex]
-      const itemTile = createItemTile(item, section.id, template, menu.metadata.currency, sectionSelection)
-
-      if (itemSlots) {
-        // Slot-based: map logical slot row to actual body row on the current page
-        const slot = itemSlots[itemIndex]
-        const logicalRow = slot.row - logicalRowOffset
-        let actualRow = pageStartRow + logicalRow * commonItemRowSpan
-
-        // Handle page breaks when the target row exceeds page capacity
-        while (actualRow + commonItemRowSpan > maxRows) {
-          finalizePage(ctx)
-          startNewPage(ctx, 'CONTINUATION')
-          placeStaticTiles(ctx, menu, 'CONTINUATION')
-          const newBodyRegion = getBodyRegion(ctx.currentPage.regions)
-          let contHeaderRows = 0
-          if (template.policies.repeatSectionHeaderOnContinuation && showCategoryTitles) {
-            const contHeader = createSectionHeaderTile(section, template, true)
-            if (ctx.currentCol !== 0) advanceToNextRow(ctx, ctx.currentRowMaxSpan)
-            const placedContHeader = placeTile(ctx, ctx.currentPage, contHeader, newBodyRegion, template)
-            logPlacement(ctx, 'placed', placedContHeader.id, 'Continuation header')
-            advanceToNextRow(ctx, contHeader.rowSpan)
-            contHeaderRows = contHeader.rowSpan
-          }
-          const logicalRowsOnPrevPage = Math.floor((maxRows - pageStartRow) / commonItemRowSpan)
-          logicalRowOffset += logicalRowsOnPrevPage
-          pageStartRow = contHeaderRows
-          const newLogicalRow = slot.row - logicalRowOffset
-          actualRow = pageStartRow + newLogicalRow * commonItemRowSpan
-        }
-
-        ctx.currentRow = actualRow
-        ctx.currentCol = slot.col
-        ctx.currentRowTiles = []
-        ctx.currentRowMaxSpan = commonItemRowSpan
-
-        const placedItem = placeTile(ctx, ctx.currentPage, itemTile, bodyRegion, template)
-        logPlacement(ctx, 'placed', placedItem.id, 'Item tile (slot)')
-      } else {
-        // Sequential placement (no slots): original flow
-        if (!fitsInCurrentPage(ctx, itemTile.height, itemTile.colSpan)) {
-          finalizePage(ctx)
-          startNewPage(ctx, 'CONTINUATION')
-          placeStaticTiles(ctx, menu, 'CONTINUATION')
-          const newBodyRegion = getBodyRegion(ctx.currentPage.regions)
-          if (template.policies.repeatSectionHeaderOnContinuation && showCategoryTitles) {
-            const contHeader = createSectionHeaderTile(section, template, true)
-            const placedContHeader = placeTile(ctx, ctx.currentPage, contHeader, newBodyRegion, template)
-            logPlacement(ctx, 'placed', placedContHeader.id, 'Continuation header')
-            advanceToNextRow(ctx, contHeader.rowSpan)
-          }
-          const placedItem = placeTile(ctx, ctx.currentPage, itemTile, newBodyRegion, template)
-          logPlacement(ctx, 'placed', placedItem.id, 'Item tile')
-          advancePosition(ctx, placedItem, template)
-        } else {
-          const placedItem = placeTile(ctx, ctx.currentPage, itemTile, bodyRegion, template)
-          logPlacement(ctx, 'placed', placedItem.id, 'Item tile')
-          advancePosition(ctx, placedItem, template)
-        }
-      }
-    }
-
-    // After slot-based placement, advance cursor past the last tile on the CURRENT page.
-    // Using sectionBodyStartRow + logicalRows is wrong when a section spans multiple pages
-    // because sectionBodyStartRow refers to the first page's row position.
-    if (itemSlots && sortedItems.length > 0) {
-      let maxRowEnd = 0
-      for (const tile of ctx.currentPage.tiles) {
-        if (tile.regionId === 'body') {
-          maxRowEnd = Math.max(maxRowEnd, tile.gridRow + tile.rowSpan)
-        }
-      }
-      ctx.currentRow = maxRowEnd
-      ctx.currentCol = 0
-      ctx.currentRowMaxSpan = 1
-      ctx.currentRowTiles = []
-    }
-
-    // When fillers are enabled, do not center — empty cells remain for fillers
-    // Only center if centreAlignment is explicitly requested
-    if (!fillersEnabled && ctx.selection?.centreAlignment) {
-      applySectionLastRowCentering(ctx.pages, section.id, template)
-    }
+    if (!hasSpacers && ctx.selection?.centreAlignment) {
+      applySectionLastRowCentering(ctx.pages, sectionPlan.section.id, template)
+    }    
   }
   
   // Finalize last page

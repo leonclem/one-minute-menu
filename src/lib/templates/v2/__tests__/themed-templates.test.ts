@@ -12,7 +12,7 @@
 import fc from 'fast-check'
 import { loadTemplateV2, clearTemplateCache } from '../template-loader-v2'
 import { generateLayoutV2 } from '../layout-engine-v2'
-import { PALETTES_V2 } from '../renderer-v2'
+import { PALETTES_V2 } from '../palettes-v2'
 import type {
   EngineMenuV2,
   EngineItemV2,

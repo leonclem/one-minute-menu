@@ -5,6 +5,7 @@
 import {
   createSectionHeaderTile,
   createItemTile,
+  createFlagshipTile,
   createLogoTile,
   createTitleTile,
   selectItemVariant,
@@ -12,6 +13,7 @@ import {
   advancePosition,
   advanceToNextRow,
   applyLastRowBalancing,
+  applySectionLastRowCentering,
   generateTileId,
   initPlacementContext,
   type PlacementContext,
@@ -224,6 +226,32 @@ describe('Tile Placer', () => {
       expect(tile.content.isContinuation).toBe(true)
       expect(tile.id).toContain('-cont')
     })
+
+    it('matches image-item height when category header tiles are enabled', () => {
+      const tile = createSectionHeaderTile(
+        mockSection,
+        mockTemplate,
+        false,
+        { showCategoryHeaderTiles: true }
+      )
+
+      expect(tile.colSpan).toBe(1)
+      expect(tile.rowSpan).toBe(2)
+      expect(tile.height).toBe(148)
+    })
+
+    it('matches text-row height for category header tiles in text-only mode', () => {
+      const tile = createSectionHeaderTile(
+        mockSection,
+        mockTemplate,
+        false,
+        { showCategoryHeaderTiles: true, textOnly: true }
+      )
+
+      expect(tile.colSpan).toBe(1)
+      expect(tile.rowSpan).toBe(1)
+      expect(tile.height).toBe(70)
+    })
   })
 
   describe('createItemTile', () => {
@@ -289,6 +317,57 @@ describe('Tile Placer', () => {
       expect(tile.rowSpan).toBe(1)
       expect(tile.height).toBe(70) // 1 * 70
       expect(tile.contentBudget?.totalHeight).toBe(70)
+    })
+  })
+
+  describe('createFlagshipTile', () => {
+    it('falls back to a single column on 1-column templates', () => {
+      const singleColumnTemplate: TemplateV2 = {
+        ...mockTemplate,
+        body: {
+          container: {
+            ...mockTemplate.body.container,
+            cols: 1,
+          },
+        },
+        tiles: {
+          ...mockTemplate.tiles,
+          FLAGSHIP_CARD: {
+            ...mockTemplate.tiles.ITEM_CARD,
+            region: 'body',
+            colSpan: 2,
+            rowSpan: 2,
+          },
+        },
+      }
+
+      const tile = createFlagshipTile(mockItem, mockSection.id, singleColumnTemplate, '$')
+
+      expect(tile.type).toBe('FLAGSHIP_CARD')
+      expect(tile.colSpan).toBe(1)
+      expect(tile.rowSpan).toBe(2)
+    })
+  })
+
+  describe('createLogoTile', () => {
+    it('creates a body-grid logo tile when the logo tile toggle is enabled', () => {
+      const tile = createLogoTile(mockMenu, mockTemplate, { showLogoTile: true })
+
+      expect(tile.type).toBe('LOGO')
+      expect(tile.regionId).toBe('body')
+      expect(tile.colSpan).toBe(1)
+      expect(tile.rowSpan).toBe(2)
+      expect(tile.height).toBe(148)
+    })
+
+    it('matches text-row height for the body logo in text-only mode', () => {
+      const tile = createLogoTile(mockMenu, mockTemplate, { showLogoTile: true, textOnly: true })
+
+      expect(tile.type).toBe('LOGO')
+      expect(tile.regionId).toBe('body')
+      expect(tile.colSpan).toBe(1)
+      expect(tile.rowSpan).toBe(1)
+      expect(tile.height).toBe(70)
     })
   })
 
@@ -363,6 +442,87 @@ describe('Tile Placer', () => {
     it('generates ID with suffix', () => {
       const id = generateTileId('SECTION_HEADER', 'section-1', 'cont')
       expect(id).toBe('section_header-section-1-cont')
+    })
+  })
+
+  describe('applySectionLastRowCentering', () => {
+    it('does not recenter item cells in mixed lead rows', () => {
+      const cellWidth = 119
+      const rowPitch = mockTemplate.body.container.rowHeight + mockTemplate.body.container.gapY
+      const page: PageLayoutV2 = {
+        pageIndex: 0,
+        pageType: 'SINGLE',
+        regions: [mockBodyRegion],
+        tiles: [
+          {
+            id: 'header-mixed',
+            type: 'SECTION_HEADER',
+            regionId: 'body',
+            x: 0,
+            y: 0,
+            width: cellWidth,
+            height: 70,
+            colSpan: 1,
+            rowSpan: 1,
+            gridRow: 0,
+            gridCol: 0,
+            layer: 'content',
+            content: { type: 'SECTION_HEADER', sectionId: 'section-1', label: 'Test Section' } as any,
+          },
+          {
+            id: 'logo-mixed',
+            type: 'LOGO',
+            regionId: 'body',
+            x: cellWidth + 8,
+            y: 0,
+            width: cellWidth,
+            height: 70,
+            colSpan: 1,
+            rowSpan: 1,
+            gridRow: 0,
+            gridCol: 1,
+            layer: 'content',
+            content: { type: 'LOGO', sectionId: 'section-1', venueName: 'Test Venue' } as any,
+          },
+          {
+            id: 'item-mixed',
+            type: 'ITEM_TEXT_ROW',
+            regionId: 'body',
+            x: (cellWidth + 8) * 2,
+            y: 0,
+            width: cellWidth,
+            height: 70,
+            colSpan: 1,
+            rowSpan: 1,
+            gridRow: 0,
+            gridCol: 2,
+            layer: 'content',
+            content: { type: 'ITEM_TEXT_ROW', sectionId: 'section-1', itemId: 'item-1' } as any,
+          },
+          {
+            id: 'item-next-row',
+            type: 'ITEM_TEXT_ROW',
+            regionId: 'body',
+            x: 0,
+            y: rowPitch,
+            width: cellWidth,
+            height: 70,
+            colSpan: 1,
+            rowSpan: 1,
+            gridRow: 1,
+            gridCol: 0,
+            layer: 'content',
+            content: { type: 'ITEM_TEXT_ROW', sectionId: 'section-1', itemId: 'item-2' } as any,
+          },
+        ],
+      }
+
+      const mixedRowItem = page.tiles.find(tile => tile.id === 'item-mixed')!
+      const originalX = mixedRowItem.x
+
+      applySectionLastRowCentering([page], 'section-1', mockTemplate)
+
+      expect(mixedRowItem.x).toBe(originalX)
     })
   })
 })

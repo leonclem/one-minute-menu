@@ -130,6 +130,27 @@ describe('Region Calculator', () => {
         calculateRegions(pageSpec, invalidTemplate as TemplateV2)
       }).toThrow(/body height would be -50pt/)
     })
+
+    it('should support a reduced header height override for body-logo layouts', () => {
+      const pageSpec = buildPageSpec('A4_PORTRAIT', {
+        top: 22.68,
+        right: 25.51,
+        bottom: 22.68,
+        left: 25.51,
+      })
+
+      const regions = calculateRegions(pageSpec, mockTemplate as TemplateV2, false, 0, {
+        headerHeightOverride: 8,
+      })
+
+      const header = regions.find(r => r.id === 'header')!
+      const title = regions.find(r => r.id === 'title')!
+      const body = regions.find(r => r.id === 'body')!
+
+      expect(header.height).toBe(8)
+      expect(title.height).toBe(0)
+      expect(body.y).toBe(8)
+    })
   })
 
   describe('getBodyRegion', () => {

@@ -40,6 +40,9 @@ interface ExportPdfRequest {
     textOnly?: boolean
     imageMode?: string
     showRegionBounds?: boolean
+    showLogoTile?: boolean
+    showCategoryHeaderTiles?: boolean
+    showFlagshipTile?: boolean
   }
 }
 
@@ -162,6 +165,9 @@ export async function POST(request: NextRequest) {
           textureId: options.textureId,
           showMenuTitle: options.showMenuTitle,
           showVignette: options.showVignette ?? true,
+          showLogoTile: options.showLogoTile,
+          showCategoryHeaderTiles: options.showCategoryHeaderTiles,
+          showFlagshipTile: options.showFlagshipTile,
           imageMode: imageModeForEngine as any
         },
         debug: false // No debug info needed for PDF

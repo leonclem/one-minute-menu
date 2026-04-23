@@ -32,6 +32,31 @@ describe('Streaming Paginator', () => {
     })
   })
 
+  describe('Region spacing', () => {
+    it('adds a small buffer below the banner before the first body row', () => {
+      const bannerHeight = template.banner?.heightPt ?? 0
+      const expectedBodyY = Math.max(0, bannerHeight - pageSpec.margins.top) + 12
+      const ctx = initContext(template, pageSpec, { showBanner: true })
+      const bodyRegion = ctx.currentPage.regions.find(r => r.id === 'body')
+
+      expect(bodyRegion).toBeDefined()
+      expect(bodyRegion!.y).toBeCloseTo(expectedBodyY, 2)
+    })
+
+    it('does not stack extra banner padding on top of the no-header breathing room', () => {
+      const bannerHeight = template.banner?.heightPt ?? 0
+      const expectedBodyY = Math.max(0, bannerHeight - pageSpec.margins.top) + 20
+      const ctx = initContext(template, pageSpec, {
+        showBanner: true,
+        showCategoryTitles: false,
+      })
+      const bodyRegion = ctx.currentPage.regions.find(r => r.id === 'body')
+
+      expect(bodyRegion).toBeDefined()
+      expect(bodyRegion!.y).toBeCloseTo(expectedBodyY, 2)
+    })
+  })
+
   describe('Single-page layout (few items)', () => {
     it('should create single page for tiny menu', () => {
       const result = streamingPaginate(
@@ -43,8 +68,7 @@ describe('Streaming Paginator', () => {
       expect(result.pages).toHaveLength(1)
       expect(result.pages[0].pageType).toBe('SINGLE')
       
-      // Should have logo/banner, section header, and items
-      // When banner is enabled, logo is embedded in BANNER tile rather than a separate LOGO tile
+      // Should have banner or title, section header, and items.
       const tiles = result.pages[0].tiles
       const logoTiles = tiles.filter(t => t.type === 'LOGO')
       const bannerTiles = tiles.filter(t => t.type === 'BANNER' || t.type === 'BANNER_STRIP')
@@ -56,7 +80,7 @@ describe('Streaming Paginator', () => {
       if (hasBanner) {
         expect(bannerTiles).toHaveLength(1)
       } else {
-        expect(logoTiles).toHaveLength(1)
+        expect(logoTiles).toHaveLength(0)
         expect(titleTiles).toHaveLength(1)
       }
       expect(sectionHeaders).toHaveLength(1)
@@ -414,10 +438,417 @@ describe('Streaming Paginator', () => {
         // Count items should match input
         const totalInputItems = menu.sections.reduce((sum, section) => sum + section.items.length, 0)
         const totalOutputItems = result.pages.reduce((sum, page) => {
-          return sum + page.tiles.filter(t => t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW' || t.type === 'FEATURE_CARD').length
+          return sum + page.tiles.filter(
+            t =>
+              t.type === 'ITEM_CARD' ||
+              t.type === 'ITEM_TEXT_ROW' ||
+              t.type === 'FEATURE_CARD' ||
+              t.type === 'FLAGSHIP_CARD'
+          ).length
         }, 0)
         expect(totalOutputItems).toBe(totalInputItems)
       })
+    })
+  })
+
+  describe('Flagship tile placement', () => {
+    const flagshipMenu: EngineMenuV2 = {
+      id: 'flagship-menu',
+      name: 'Flagship Test Menu',
+      sections: [{
+        id: 'sec-1',
+        name: 'Mains',
+        sortOrder: 0,
+        items: [
+          {
+            id: 'item-1',
+            name: 'House Burger',
+            description: 'Beef patty, cheddar, pickles',
+            price: 14.5,
+            imageUrl: 'https://example.com/burger.jpg',
+            sortOrder: 0,
+            indicators: { dietary: [], allergens: ['gluten'], spiceLevel: null },
+          },
+          {
+            id: 'item-2',
+            name: 'Signature Steak',
+            description: 'Dry-aged ribeye with peppercorn sauce',
+            price: 28,
+            imageUrl: 'https://example.com/steak.jpg',
+            sortOrder: 1,
+            isFlagship: true,
+            isFeatured: true,
+            indicators: { dietary: [], allergens: [], spiceLevel: 1 },
+          },
+          {
+            id: 'item-3',
+            name: 'Roast Chicken',
+            description: 'Herb butter and roast potatoes',
+            price: 19,
+            imageUrl: 'https://example.com/chicken.jpg',
+            sortOrder: 2,
+            indicators: { dietary: [], allergens: [], spiceLevel: null },
+          }
+        ],
+      }],
+      metadata: { currency: '$' }
+    }
+
+    it('should emit a single FLAGSHIP_CARD and suppress the regular tile', () => {
+      const flagshipTemplate: TemplateV2 = {
+        ...template,
+        tiles: {
+          ...template.tiles,
+          FLAGSHIP_CARD: {
+            ...template.tiles.ITEM_CARD,
+            region: 'body',
+            colSpan: 2,
+            rowSpan: 2,
+          },
+        },
+      }
+
+      const result = streamingPaginate(
+        flagshipMenu,
+        flagshipTemplate,
+        pageSpec,
+        { showFlagshipTile: true }
+      )
+
+      const allTiles = result.pages.flatMap(page => page.tiles)
+      const flagshipTiles = allTiles.filter(t => t.type === 'FLAGSHIP_CARD')
+      const suppressedRegularTiles = allTiles.filter(
+        t =>
+          (t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW') &&
+          (t.content as any).itemId === 'item-2'
+      )
+
+      expect(flagshipTiles).toHaveLength(1)
+      expect((flagshipTiles[0].content as any).itemId).toBe('item-2')
+      expect(suppressedRegularTiles).toHaveLength(0)
+
+      const firstPage = result.pages[0]
+      const headerTile = firstPage.tiles.find(t => t.type === 'SECTION_HEADER')
+      const sectionBodyTiles = firstPage.tiles
+        .filter(
+          t =>
+            (t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW' || t.type === 'FLAGSHIP_CARD') &&
+            (t.content as any).sectionId === 'sec-1'
+        )
+        .sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y))
+
+      expect(headerTile).toBeDefined()
+      expect(sectionBodyTiles[0].type).toBe('FLAGSHIP_CARD')
+      expect(sectionBodyTiles[0].y).toBeGreaterThan(headerTile!.y)
+    })
+
+    it('should leave the flagship item as a regular item when the toggle is off', () => {
+      const flagshipTemplate: TemplateV2 = {
+        ...template,
+        tiles: {
+          ...template.tiles,
+          FLAGSHIP_CARD: {
+            ...template.tiles.ITEM_CARD,
+            region: 'body',
+            colSpan: 2,
+            rowSpan: 2,
+          },
+        },
+      }
+
+      const result = streamingPaginate(
+        flagshipMenu,
+        flagshipTemplate,
+        pageSpec,
+        { showFlagshipTile: false }
+      )
+
+      const allTiles = result.pages.flatMap(page => page.tiles)
+      expect(allTiles.filter(t => t.type === 'FLAGSHIP_CARD')).toHaveLength(0)
+      expect(
+        allTiles.filter(
+          t =>
+            (t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW') &&
+            (t.content as any).itemId === 'item-2'
+        )
+      ).toHaveLength(1)
+    })
+
+    it('should not suppress the flagship item until the template defines FLAGSHIP_CARD', () => {
+      const templateWithoutFlagship: TemplateV2 = {
+        ...template,
+        tiles: {
+          ...template.tiles,
+          FLAGSHIP_CARD: undefined,
+        },
+      }
+
+      const result = streamingPaginate(
+        flagshipMenu,
+        templateWithoutFlagship,
+        pageSpec,
+        { showFlagshipTile: true }
+      )
+
+      const allTiles = result.pages.flatMap(page => page.tiles)
+      expect(allTiles.filter(t => t.type === 'FLAGSHIP_CARD')).toHaveLength(0)
+      expect(
+        allTiles.filter(
+          t =>
+            (t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW') &&
+            (t.content as any).itemId === 'item-2'
+        )
+      ).toHaveLength(1)
+    })
+
+    it('should demote the flagship to the next row when a shared 3-column lead row is full', async () => {
+      const threeColumnTemplate = await loadTemplateV2('3-column-portrait')
+      const result = streamingPaginate(
+        flagshipMenu,
+        threeColumnTemplate,
+        pageSpec,
+        {
+          showBanner: false,
+          showLogoTile: true,
+          showFlagshipTile: true,
+          showCategoryHeaderTiles: true,
+        }
+      )
+
+      const firstPage = result.pages[0]
+      const logoTile = firstPage.tiles.find(t => t.type === 'LOGO' && t.regionId === 'body')
+      const headerTile = firstPage.tiles.find(t => t.type === 'SECTION_HEADER')
+      const flagshipTile = firstPage.tiles.find(t => t.type === 'FLAGSHIP_CARD')
+      const firstRegularItem = firstPage.tiles.find(
+        t =>
+          (t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW') &&
+          (t.content as any).itemId === 'item-1'
+      )
+
+      expect(logoTile).toBeDefined()
+      expect(headerTile).toBeDefined()
+      expect(flagshipTile).toBeDefined()
+      expect(firstRegularItem).toBeDefined()
+
+      expect(logoTile!.gridRow).toBe(0)
+      expect(headerTile!.gridRow).toBe(0)
+      expect(firstRegularItem!.gridRow).toBe(0)
+      expect(flagshipTile!.gridRow).toBeGreaterThan(0)
+      expect(flagshipTile!.gridRow).toBeGreaterThan(firstRegularItem!.gridRow)
+      expect(flagshipTile!.gridCol).toBe(0)
+    })
+  })
+
+  describe('Tile-based body placement options', () => {
+    it('should not place any logo when banner and logo tile are both disabled', () => {
+      const logoMenu: EngineMenuV2 = {
+        ...(tinyMenu as EngineMenuV2),
+        metadata: {
+          ...(tinyMenu as EngineMenuV2).metadata,
+          currency: '$',
+          venueName: 'Test Venue',
+          logoUrl: 'https://example.com/logo.png',
+        },
+      }
+
+      const result = streamingPaginate(
+        logoMenu,
+        template,
+        pageSpec,
+        { showBanner: false, showLogoTile: false }
+      )
+
+      const firstPage = result.pages[0]
+      const logoTiles = firstPage.tiles.filter(t => t.type === 'LOGO')
+      const headerRegion = firstPage.regions.find(r => r.id === 'header')
+      const bodyRegion = firstPage.regions.find(r => r.id === 'body')
+
+      expect(logoTiles).toHaveLength(0)
+      expect(headerRegion?.height).toBe(0)
+      expect(bodyRegion?.y).toBe(0)
+    })
+
+    it('should place the logo in the body grid and suppress the header logo', () => {
+      const logoMenu: EngineMenuV2 = {
+        ...(tinyMenu as EngineMenuV2),
+        metadata: {
+          ...(tinyMenu as EngineMenuV2).metadata,
+          currency: '$',
+          venueName: 'Test Venue',
+          logoUrl: 'https://example.com/logo.png',
+        },
+      }
+
+      const result = streamingPaginate(
+        logoMenu,
+        template,
+        pageSpec,
+        { showBanner: false, showLogoTile: true }
+      )
+
+      const firstPage = result.pages[0]
+      const logoTiles = firstPage.tiles.filter(t => t.type === 'LOGO')
+      const headerLogoTiles = firstPage.tiles.filter(t => t.type === 'LOGO' && t.regionId === 'header')
+      const bodyLogo = firstPage.tiles.find(t => t.type === 'LOGO' && t.regionId === 'body')
+      const sectionHeader = firstPage.tiles.find(t => t.type === 'SECTION_HEADER')
+      const headerRegion = firstPage.regions.find(r => r.id === 'header')
+      const bodyRegion = firstPage.regions.find(r => r.id === 'body')
+
+      expect(logoTiles).toHaveLength(1)
+      expect(headerLogoTiles).toHaveLength(0)
+      expect(bodyLogo).toBeDefined()
+      expect(bodyLogo?.gridRow).toBe(0)
+      expect(sectionHeader).toBeDefined()
+      expect(headerRegion?.height).toBe(8)
+      expect(bodyRegion?.y).toBe(8)
+      expect(bodyLogo!.y).toBeLessThan(sectionHeader!.y)
+    })
+
+    it('should place the section header before any section items when using body logo tiles with standard headings', () => {
+      const logoMenu: EngineMenuV2 = {
+        ...(tinyMenu as EngineMenuV2),
+        metadata: {
+          ...(tinyMenu as EngineMenuV2).metadata,
+          currency: '$',
+          venueName: 'Test Venue',
+          logoUrl: 'https://example.com/logo.png',
+        },
+      }
+
+      const result = streamingPaginate(
+        logoMenu,
+        template,
+        pageSpec,
+        {
+          showBanner: false,
+          showLogoTile: true,
+          showCategoryTitles: true,
+          showCategoryHeaderTiles: false,
+        }
+      )
+
+      const firstPage = result.pages[0]
+      const firstSection = [...logoMenu.sections].sort((a, b) => a.sortOrder - b.sortOrder)[0]
+      const sectionHeader = firstPage.tiles.find(
+        t => t.type === 'SECTION_HEADER' && (t.content as any).sectionId === firstSection.id
+      )
+      const firstSectionItem = firstPage.tiles
+        .filter(
+          t =>
+            (t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW' || t.type === 'FEATURE_CARD' || t.type === 'FLAGSHIP_CARD') &&
+            (t.content as any).sectionId === firstSection.id
+        )
+        .sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y))[0]
+
+      expect(sectionHeader).toBeDefined()
+      expect(firstSectionItem).toBeDefined()
+      expect(sectionHeader!.gridRow).toBeLessThanOrEqual(firstSectionItem!.gridRow)
+      expect(sectionHeader!.y).toBeLessThan(firstSectionItem!.y)
+    })
+
+    it('should place the section header before the flagship when using body logo tiles and standard headings', () => {
+      // Reproduces the exact screenshot bug: logo + flagship appear in the same row
+      // before the section header when showCategoryHeaderTiles=false and showFlagshipTile=true.
+      const flagshipMenu: EngineMenuV2 = {
+        ...(tinyMenu as EngineMenuV2),
+        sections: [
+          {
+            id: 'sandwiches',
+            name: 'Sandwiches',
+            sortOrder: 0,
+            items: [
+              {
+                id: 'bavarian',
+                name: 'Bavarian Bratwurst',
+                description: 'House Special',
+                price: 14.95,
+                imageUrl: 'https://example.com/bavarian.jpg',
+                sortOrder: 0,
+                isFlagship: true,
+                isFeatured: true,
+                indicators: { dietary: [], allergens: [], spiceLevel: null },
+              },
+              {
+                id: 'grilled',
+                name: 'Grilled Chicken',
+                price: 12.95,
+                imageUrl: 'https://example.com/grilled.jpg',
+                sortOrder: 1,
+                indicators: { dietary: [], allergens: [], spiceLevel: null },
+              },
+              {
+                id: 'breaded',
+                name: 'Breaded Chicken',
+                price: 12.95,
+                imageUrl: 'https://example.com/breaded.jpg',
+                sortOrder: 2,
+                indicators: { dietary: [], allergens: [], spiceLevel: null },
+              },
+            ],
+          },
+        ],
+        metadata: {
+          ...(tinyMenu as EngineMenuV2).metadata,
+          currency: '$',
+          venueName: 'Cafe Vienna',
+          logoUrl: 'https://example.com/logo.png',
+        },
+      }
+
+      const result = streamingPaginate(
+        flagshipMenu,
+        template,
+        pageSpec,
+        {
+          showBanner: false,
+          showLogoTile: true,
+          showCategoryTitles: true,
+          showCategoryHeaderTiles: false,
+          showFlagshipTile: true,
+        }
+      )
+
+      const firstPage = result.pages[0]
+      const sectionHeader = firstPage.tiles.find(
+        t => t.type === 'SECTION_HEADER' && (t.content as any).sectionId === 'sandwiches'
+      )
+      const flagshipTile = firstPage.tiles.find(
+        t => t.type === 'FLAGSHIP_CARD'
+      )
+      const firstRegularItem = firstPage.tiles
+        .filter(t => t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW')
+        .sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y))[0]
+
+      expect(sectionHeader).toBeDefined()
+      expect(flagshipTile).toBeDefined()
+      // Header must come before both the flagship and any regular items
+      expect(sectionHeader!.y).toBeLessThan(flagshipTile!.y)
+      if (firstRegularItem) {
+        expect(sectionHeader!.y).toBeLessThan(firstRegularItem.y)
+      }
+    })
+
+    it('should let 1x1 section headers share the opening row with items', () => {
+      const result = streamingPaginate(
+        tinyMenu as EngineMenuV2,
+        template,
+        pageSpec,
+        { showCategoryHeaderTiles: true }
+      )
+
+      const firstPage = result.pages[0]
+      const sectionHeader = firstPage.tiles.find(t => t.type === 'SECTION_HEADER')
+      const firstItem = firstPage.tiles
+        .filter(t => t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW')
+        .sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y))[0]
+
+      expect(sectionHeader).toBeDefined()
+      expect(firstItem).toBeDefined()
+      expect(sectionHeader!.colSpan).toBe(1)
+      expect(sectionHeader!.gridCol).toBe(0)
+      expect(firstItem!.gridRow).toBe(sectionHeader!.gridRow)
+      expect(firstItem!.y).toBe(sectionHeader!.y)
+      expect(firstItem!.gridCol).toBeGreaterThan(sectionHeader!.gridCol)
     })
   })
 

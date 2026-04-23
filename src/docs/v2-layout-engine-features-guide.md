@@ -10,7 +10,7 @@ This guide covers all features introduced in the V2 Layout Engine Enhancements. 
 2. [Background Textures](#2-background-textures)
 3. [Page Sizes](#3-page-sizes)
 4. [Template Families](#4-template-families)
-5. [Featured Items & Feature Cards](#5-featured-items--feature-cards)
+5. [Featured Items, Flagship Tiles & Body Tile Mode](#5-featured-items-flagship-tiles--body-tile-mode)
 6. [Section Dividers](#6-section-dividers)
 7. [Themed Menus](#7-themed-menus)
 8. [Configuration Reference](#8-configuration-reference)
@@ -122,34 +122,43 @@ const spec = buildPageSpec('A3_PORTRAIT', {
 
 ## 4. Template Families
 
-Five production templates are available, named by column layout and orientation to match the template page dropdown:
+Six production templates are available, named by column layout and orientation to match the template page dropdown:
 
 ### 4 column (portrait) (`4-column-portrait`)
 - Page: A4 Portrait, 4 columns
 - The default template. Photo-forward grid with image cards.
-- Supports FEATURE_CARD and DECORATIVE_DIVIDER.
+- Supports body tile mode (`LOGO_BODY`, compact `SECTION_HEADER`, and `FLAGSHIP_CARD`) plus `DECORATIVE_DIVIDER`.
 
 ### 5 column (landscape) (`5-column-landscape`)
 - Page: A4 Landscape, 4 columns
 - Wide-format version. Good for bi-fold or placemat menus.
 - `rowHeight: 65`, `gapX: 10`, `gapY: 8`
+- Supports body tile mode (`LOGO_BODY`, compact `SECTION_HEADER`, and `FLAGSHIP_CARD`).
 
 ### 3 column (portrait) (`3-column-portrait`)
 - Page: A4 Portrait, 3 columns
 - Balanced layout fitting more items per page than 2-column.
 - `rowHeight: 70`, `gapX: 10`, `gapY: 8`
 - Section headers span full width (`colSpan: 3`).
+- Supports body tile mode (`LOGO_BODY`, compact `SECTION_HEADER`, and `FLAGSHIP_CARD`).
 
 ### 2 column (portrait) (`2-column-portrait`)
 - Page: A4 Portrait, 2 columns
 - Text-focused layout. Auto-enables stretch image mode in the Layout Lab.
 - Section headers span full width (`colSpan: 2`).
+- Supports body tile mode (`LOGO_BODY`, compact `SECTION_HEADER`, and `FLAGSHIP_CARD`).
 
 ### 1 column (tall) (`1-column-tall`)
 - Page: HALF_A4_TALL, 1 column
 - Narrow single-column format for table tent cards or slim menu holders.
 - `rowHeight: 60`, `gapY: 6`
 - Favours `ITEM_TEXT_ROW` (text-only) for the narrow format.
+- Supports body tile mode, with `FLAGSHIP_CARD` degrading to `colSpan: 1`.
+
+### 6 column (portrait A3) (`6-column-portrait-a3`)
+- Page: A3 Portrait, 6 columns
+- Large-format board layout for higher item density and wider flagship tiles.
+- Supports body tile mode (`LOGO_BODY`, compact `SECTION_HEADER`, and `FLAGSHIP_CARD`).
 
 ### Choosing a template
 
@@ -222,11 +231,17 @@ tiles:
     rowSpan: 1
     contentBudget: { nameLines: 2, descLines: 2, indicatorAreaHeight: 16, imageBoxHeight: 0, paddingTop: 8, paddingBottom: 8, totalHeight: 70 }
 
-  # Optional — add these only if you want the features:
-  # FEATURE_CARD:
+  # Optional — add these only if you want body tile mode:
+  # LOGO_BODY:
   #   region: body
-  #   colSpan: 2
-  #   rowSpan: 3
+  #   colSpan: 1
+  #   rowSpan: 1
+  #   contentBudget: { ... }
+  #
+  # FLAGSHIP_CARD:
+  #   region: body
+  #   colSpan: 2              # Use 1 for single-column templates
+  #   rowSpan: 2
   #   contentBudget: { ... }
 
   # DECORATIVE_DIVIDER:
@@ -253,6 +268,10 @@ filler:
   tiles: []
   policy: SEQUENTIAL
 
+# Optional:
+# capabilities:
+#   supportsBodyTileMode: true
+
 itemIndicators:
   mode: INLINE
   maxCount: 3
@@ -263,59 +282,58 @@ itemIndicators:
 
 ---
 
-## 5. Featured Items & Feature Cards
+## 5. Featured Items, Flagship Tiles & Body Tile Mode
 
-Featured items let restaurant owners highlight signature dishes with larger, visually distinct tiles.
+V2 now treats "featured" and "flagship" as separate concepts:
+
+- `isFeatured` keeps the normal item footprint and adds stronger chrome to a standard `ITEM_CARD` or `ITEM_TEXT_ROW`.
+- `isFlagship` can optionally promote one item per menu into a dedicated `FLAGSHIP_CARD` body tile when `SelectionConfigV2.showFlagshipTile` is enabled.
+- The body tile mode also enables a compact single-column body-logo tile (`showLogoTile`) and compact single-column category-header tiles (`showCategoryHeaderTiles`), with their height matching the effective item footprint for the section they open.
 
 ### Data model
 
-Menu items have an optional `isFeatured` boolean field:
+Menu items can carry both optional flags:
 
 ```typescript
 interface EngineItemV2 {
   id: string
   name: string
   // ...
-  isFeatured?: boolean  // Set to true to feature this item
+  isFeatured?: boolean  // Highlight with featured chrome on a standard tile
+  isFlagship?: boolean  // Eligible for the single flagship tile when enabled in selection config
 }
 ```
 
-In the database, this maps to `menu_items.is_featured` (added by migration `053_add_is_featured_to_menu_items.sql`).
+In the database, these map to `menu_items.is_featured` and `menu_items.is_flagship`. The extracted-page workflow is the source of truth for choosing the single flagship item.
 
-### How it works
+### Featured items
 
-1. When `item.isFeatured === true` and the template defines a `FEATURE_CARD` tile variant, the engine uses the `FEATURE_CARD` type instead of `ITEM_CARD`.
-2. Feature cards are typically `colSpan: 2, rowSpan: 3` — occupying a 2×3 grid footprint for visual prominence.
-3. They render with larger typography, more padding, and a bigger image area than standard cards.
-4. Feature cards participate in the standard grid — they don't float or overlap other tiles.
-5. If a feature card can't fit in the remaining row space, the engine advances to the next row or page.
+1. Featured items still render as standard body items.
+2. In image layouts they use `ITEM_CARD` with `isFeatured: true`; in text-only layouts they use `ITEM_TEXT_ROW` with the same flag.
+3. The renderer gives featured items stronger chrome, but the footprint does not change.
+4. Existing `FEATURE_CARD` renderer support remains in the type system for compatibility, but the placement engine does not emit `FEATURE_CARD` in the current flow.
 
-### Graceful degradation
+### Flagship tiles
 
-- If the template doesn't define `FEATURE_CARD`, featured items fall back to standard `ITEM_CARD`.
-- If `textOnly` mode is enabled, all items (including featured) use `ITEM_TEXT_ROW`.
+1. When `showFlagshipTile` is `true` and the template supports body tile mode, the single item marked `isFlagship` renders as `FLAGSHIP_CARD`.
+2. `FLAGSHIP_CARD` uses a wider footprint (`colSpan: 2` in multi-column templates, `colSpan: 1` in `1-column-tall`).
+3. The flagship tile is emitted once, at the start of its section, and the regular item tile for that same item is suppressed.
+4. If an item is both featured and flagship, flagship wins. The engine emits `FLAGSHIP_CARD`, not a featured standard card.
+5. If `showFlagshipTile` is off, or the template does not support body tile mode, the item falls back to the normal item flow.
 
-### Templates with FEATURE_CARD support
+### Body tile mode toggles
 
-- `4-column-portrait` — colSpan: 2, rowSpan: 3
+- `showLogoTile`: moves the venue logo into the body grid as a compact single-column `LOGO_BODY` tile on page 1 only, suppresses the header-region logo, and when no banner is present collapses the header area to a small print-safe buffer instead of keeping the full header band. Its height matches the section's effective item mode, so image sections use image-card height while no-image/text-only sections use text-row height.
+- `showCategoryHeaderTiles`: switches section headers from full-width rows to compact single-column body tiles while still forcing a new row before items. Like the body logo tile, their height matches the section's effective item mode.
+- `showFlagshipTile`: emits `FLAGSHIP_CARD` for the single flagship item and suppresses its regular body tile.
 
-### Adding FEATURE_CARD to a custom template
+When `showBanner` is enabled on the grid templates, the engine also leaves a small buffer between the banner/strip and the first body row so content does not sit flush against the banner edge. The narrow `1-column-tall` template remains the exception.
 
-```yaml
-tiles:
-  FEATURE_CARD:
-    region: body
-    colSpan: 2
-    rowSpan: 3
-    contentBudget:
-      nameLines: 2
-      descLines: 3
-      indicatorAreaHeight: 20
-      imageBoxHeight: 100
-      paddingTop: 10
-      paddingBottom: 10
-      totalHeight: 226    # rowSpan * rowHeight + (rowSpan - 1) * gapY
-```
+### Template requirements
+
+- Templates opt into these capabilities with `capabilities.supportsBodyTileMode: true`.
+- Body tile mode templates must define `LOGO_BODY` and `FLAGSHIP_CARD`.
+- Production templates `1-column-tall`, `2-column-portrait`, `3-column-portrait`, `4-column-portrait`, `5-column-landscape`, and `6-column-portrait-a3` all ship with body tile mode support.
 
 ---
 
@@ -404,6 +422,9 @@ interface SelectionConfigV2 {
   fillersEnabled?: boolean     // Enable filler tiles in empty grid cells
   texturesEnabled?: boolean    // Enable background textures (if palette supports it)
   showMenuTitle?: boolean      // Show/hide the title region
+  showLogoTile?: boolean       // Move logo into the body grid on first page only
+  showCategoryHeaderTiles?: boolean // Use compact single-column section headers in the body grid
+  showFlagshipTile?: boolean   // Promote the single flagship item to FLAGSHIP_CARD
   showVignette?: boolean       // Adds a subtle darkened edge effect to page borders
   colourPaletteId?: string     // Palette ID (falls back to midnight-gold)
 }
@@ -420,6 +441,9 @@ interface SelectionConfigV2 {
 | "Text only (no images)" checkbox | `textOnly` |
 | "Fillers on/off" checkbox | `fillersEnabled` |
 | "Show menu title" checkbox | `showMenuTitle` |
+| "Show logo tile" checkbox | `showLogoTile` |
+| "Show category header tiles" checkbox | `showCategoryHeaderTiles` |
+| "Show flagship tile" checkbox | `showFlagshipTile` |
 | "Show vignette" checkbox | `showVignette` |
 
 ### Template ID → YAML file mapping
@@ -431,15 +455,16 @@ interface SelectionConfigV2 {
 | `3-column-portrait` | `templates/3-column-portrait.yaml` |
 | `2-column-portrait` | `templates/2-column-portrait.yaml` |
 | `1-column-tall` | `templates/1-column-tall.yaml` |
+| `6-column-portrait-a3` | `templates/6-column-portrait-a3.yaml` |
 
 ### Key source files
 
 | File | What it contains |
 |---|---|
 | `engine-types-v2.ts` | PAGE_DIMENSIONS, TileTypeV2, EngineItemV2, SelectionConfigV2, TemplateV2 |
-| `renderer-v2.ts` | PALETTES_V2, TEXTURE_REGISTRY, rendering functions for all tile types |
+| `renderer-v2.ts` | PALETTES_V2, TEXTURE_REGISTRY, and PDF rendering for standard, featured, flagship, logo, and filler tiles |
 | `template-schema-v2.ts` | Zod validation schema for template YAML files |
-| `tile-placer.ts` | selectItemVariant(), createDividerTile(), createItemTile() |
-| `streaming-paginator.ts` | Pagination algorithm with divider insertion |
+| `tile-placer.ts` | Tile factories and placement helpers for body tile mode, flagship tiles, dividers, and standard items |
+| `streaming-paginator.ts` | Pagination algorithm, body tile stream construction, flagship suppression, and continuation handling |
 | `template-loader-v2.ts` | YAML loading and page-size-aware validation |
 | `invariant-validator.ts` | Layout correctness checks (INV-1 through INV-4) |

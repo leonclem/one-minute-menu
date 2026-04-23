@@ -13,9 +13,9 @@ import fc from 'fast-check'
 import {
   PALETTES_V2,
   DEFAULT_PALETTE_V2,
-  TEXTURE_REGISTRY,
   type ColorPaletteV2,
-} from '../renderer-v2'
+} from '../palettes-v2'
+import { TEXTURE_REGISTRY } from '../renderer-v2'
 
 // Helper: resolve palette by ID (same pattern used across the codebase)
 function resolvePalette(paletteId: string): ColorPaletteV2 {
@@ -55,6 +55,21 @@ describe('Feature: gridmenu-v2-layout-enhancements, Property 1: Palette Complete
       expect(colors.border.light.length).toBeGreaterThan(0)
       expect(colors.border.medium.length).toBeGreaterThan(0)
       expect(colors.textMuted.length).toBeGreaterThan(0)
+      expect(colors.inverseTiles?.logoTitle.background.length).toBeGreaterThan(0)
+      expect(colors.inverseTiles?.logoTitle.text.length).toBeGreaterThan(0)
+      expect(colors.inverseTiles?.logoTitle.border.length).toBeGreaterThan(0)
+      expect(colors.inverseTiles?.sectionHeader.background.length).toBeGreaterThan(0)
+      expect(colors.inverseTiles?.sectionHeader.text.length).toBeGreaterThan(0)
+      expect(colors.inverseTiles?.sectionHeader.border.length).toBeGreaterThan(0)
+      expect(colors.promoted.featured.background.length).toBeGreaterThan(0)
+      expect(colors.promoted.featured.border.length).toBeGreaterThan(0)
+      expect(colors.promoted.featured.badgeFill.length).toBeGreaterThan(0)
+      expect(colors.promoted.featured.badgeText.length).toBeGreaterThan(0)
+      expect(colors.promoted.flagship.background.length).toBeGreaterThan(0)
+      expect(colors.promoted.flagship.border.length).toBeGreaterThan(0)
+      expect(colors.promoted.flagship.badgeFill.length).toBeGreaterThan(0)
+      expect(colors.promoted.flagship.badgeText.length).toBeGreaterThan(0)
+      expect(colors.promoted.flagship.price.length).toBeGreaterThan(0)
     }
   )
 })

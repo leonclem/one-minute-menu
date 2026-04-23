@@ -500,14 +500,15 @@ describe('V2 Layout Engine Property Tests', () => {
   })
 
   /**
-   * Property 11: Static Tile Visibility by Page Type
-   * For any generated LayoutDocumentV2, logo tiles SHALL appear only on pages
-   * whose pageType is in the template's policies.showLogoOnPages array.
+   * Property 11: Banner Tiles Replace Standalone Logo Tiles
+   * For any generated LayoutDocumentV2, banner-enabled pages SHALL render a
+   * banner/banner-strip tile, and the legacy standalone header LOGO tile shall
+   * never appear unless the body-grid logo tile mode is explicitly enabled.
    * 
    * Feature: grid-menu-templates-part-4, Property 11: Static tile visibility by page type
    * Validates: Requirements 3.5
    */
-  it('Property 11: Static tile visibility by page type', async () => {
+  it('Property 11: banner tiles replace standalone logo tiles', async () => {
     await fc.assert(
       fc.asyncProperty(
         arbitraryEngineMenuV2({ maxSections: 3, maxItems: 20 }), // Force multi-page
@@ -517,25 +518,16 @@ describe('V2 Layout Engine Property Tests', () => {
             templateId: FIXED_TEMPLATE_ID 
           })
 
-          // For 4-column-portrait, logo/banner should appear on all pages
-          // When banner is enabled, the logo is embedded in the BANNER tile rather than a separate LOGO tile
-          const expectedLogoPages = ['FIRST', 'CONTINUATION', 'FINAL', 'SINGLE']
-
           for (const page of result.pages) {
             const logoTiles = page.tiles.filter(t => t.type === 'LOGO')
             const bannerTiles = page.tiles.filter(t => t.type === 'BANNER' || t.type === 'BANNER_STRIP')
             const hasBanner = page.regions.some(r => r.id === 'banner')
-            
-            if (expectedLogoPages.includes(page.pageType)) {
-              // When banner is present, logo is embedded in banner tile; otherwise expect a LOGO tile
-              if (hasBanner) {
-                expect(bannerTiles.length).toBeGreaterThanOrEqual(1)
-              } else {
-                expect(logoTiles.length).toBeGreaterThanOrEqual(1)
-              }
-            } else {
-              expect(logoTiles).toHaveLength(0)
+
+            if (hasBanner) {
+              expect(bannerTiles.length).toBeGreaterThanOrEqual(1)
             }
+
+            expect(logoTiles).toHaveLength(0)
           }
         }
       ),

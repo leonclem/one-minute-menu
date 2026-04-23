@@ -300,6 +300,42 @@ export function LayoutLabControls({
           <label className="flex items-center space-x-3 cursor-pointer">
             <input
               type="checkbox"
+              checked={state.showLogoTile}
+              onChange={(e) => onStateChange({ showLogoTile: e.target.checked })}
+            />
+            <span className="text-sm">Logo tile</span>
+          </label>
+          <p className="text-xs text-gray-500 ml-6">
+            Experimental body-grid logo tile option for Workstream 1 config plumbing.
+          </p>
+
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.showCategoryHeaderTiles}
+              onChange={(e) => onStateChange({ showCategoryHeaderTiles: e.target.checked })}
+            />
+            <span className="text-sm">Category header tiles</span>
+          </label>
+          <p className="text-xs text-gray-500 ml-6">
+            Experimental 1x1 category header tile option for V2 layout exploration.
+          </p>
+
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.showFlagshipTile}
+              onChange={(e) => onStateChange({ showFlagshipTile: e.target.checked })}
+            />
+            <span className="text-sm">Flagship tile</span>
+          </label>
+          <p className="text-xs text-gray-500 ml-6">
+            Experimental dedicated flagship tile option for V2 layout exploration.
+          </p>
+
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
               checked={state.fillItemTiles}
               onChange={(e) => onStateChange({ fillItemTiles: e.target.checked })}
             />

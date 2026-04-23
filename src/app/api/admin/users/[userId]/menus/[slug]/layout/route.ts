@@ -69,6 +69,9 @@ export async function GET(
     const showMenuTitle = searchParams.get('showMenuTitle') === 'true'
     const showVignette = searchParams.get('showVignette') === 'true'
     const showCategoryTitles = searchParams.get('showCategoryTitles') !== 'false'
+    const showLogoTile = searchParams.get('showLogoTile') === 'true'
+    const showCategoryHeaderTiles = searchParams.get('showCategoryHeaderTiles') === 'true'
+    const showFlagshipTile = searchParams.get('showFlagshipTile') === 'true'
     const centreAlignment = searchParams.get('centreAlignment') === 'true'
     const showBanner = searchParams.get('showBanner') !== 'false'
     const bannerTitle = searchParams.get('bannerTitle') || undefined
@@ -141,6 +144,9 @@ export async function GET(
           showMenuTitle,
           showVignette,
           showCategoryTitles,
+          showLogoTile,
+          showCategoryHeaderTiles,
+          showFlagshipTile,
           centreAlignment,
           colourPaletteId: paletteId,
           imageMode,

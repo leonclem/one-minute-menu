@@ -43,6 +43,19 @@ tiles:
       paddingBottom: 5
       totalHeight: 50
 
+  LOGO_BODY:
+    region: body
+    colSpan: 1
+    rowSpan: 1
+    contentBudget:
+      nameLines: 0
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 54
+      paddingTop: 7
+      paddingBottom: 7
+      totalHeight: 68
+
   TITLE:
     region: title
     contentBudget:
@@ -143,6 +156,27 @@ tiles:
       paddingBottom: 6
       totalHeight: 68
 
+  FLAGSHIP_CARD:
+    region: body
+    colSpan: 2
+    rowSpan: 2
+    style:
+      typography:
+        name:
+          fontSet: "system-sans"
+          fontSize: "smd"
+          fontWeight: "bold"
+          textAlign: "left"
+          textTransform: "capitalize"
+    contentBudget:
+      nameLines: 2
+      descLines: 4
+      indicatorAreaHeight: 16
+      imageBoxHeight: 76
+      paddingTop: 8
+      paddingBottom: 8
+      totalHeight: 142
+
   FOOTER_INFO:
     region: footer
     style:
@@ -183,6 +217,9 @@ filler:
       content: ''
       rowSpan: 2
   policy: SEQUENTIAL
+
+capabilities:
+  supportsBodyTileMode: true
 
 itemIndicators:
   mode: INLINE

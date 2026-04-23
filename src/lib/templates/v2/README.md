@@ -7,6 +7,7 @@ The GridMenu V2 Layout Engine is a complete rewrite of the menu layout system wi
 | Doc | Purpose |
 |-----|--------|
 | **README.md** (this file) | Architecture, API, flow, and how to run/test. |
+| [**`src/docs/v2-layout-engine-current-architecture.md`**](../../../docs/v2-layout-engine-current-architecture.md) | Current engine behaviour, section-aware planning, feature-tile rules, and guardrails for future requirements. |
 | [**TEMPLATE_AUTHORING_GUIDE.md**](./TEMPLATE_AUTHORING_GUIDE.md) | How to create a new template: page, regions, grid, content budget, pitfalls. |
 | [**STYLING_GUIDE.md**](./STYLING_GUIDE.md) | Styling options: fonts, typography, sub-elements, spacing, borders, backgrounds. |
 | [**LIMITATIONS.md**](./LIMITATIONS.md) | What the engine cannot do (layout, styling, typography, export). Read this before designing a new template. |

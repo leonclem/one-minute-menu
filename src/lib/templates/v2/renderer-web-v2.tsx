@@ -19,25 +19,39 @@ import type {
   PageLayoutV2, 
   TileInstanceV2, 
   RegionV2,
-  PageSpecV2 
+  PageSpecV2,
+  ImageModeV2,
+  ItemIndicatorsV2,
+  DietaryIndicator,
+  TileStyleV2,
 } from './engine-types-v2'
-import type { ItemContentV2, FeatureCardContentV2 } from './engine-types-v2'
+import type { ItemContentV2, FeatureCardContentV2, FlagshipCardContentV2 } from './engine-types-v2'
 import { 
   renderTileContent, 
   calculateAbsolutePosition,
   getDefaultScale,
   TYPOGRAPHY_TOKENS_V2,
+  SPACING_V2,
   COLOR_TOKENS_V2,
   getFontSet,
   FONT_SETS_V2,
   TEXTURE_REGISTRY,
   PALETTE_TEXTURE_MAP,
   getFontStylePresetGoogleFontsUrl,
+  BG_IMAGE_TEXT,
   blendHexTowards,
+  getFlagshipBadgeMetrics,
+  getFlagshipChrome,
+  resolveSubElementTypography,
+  resolveFlagshipTitleFit,
+  resolveFlagshipTextSlots,
+  computeImageTransformStyle,
+  resolveTransformForMode,
   type RenderOptionsV2,
   type RenderElement 
 } from './renderer-v2'
 import { ImageTransformOverlay } from '@/components/ImageTransformOverlay'
+import { formatCurrency } from '../../currency-formatter'
 
 // ============================================================================
 // Font Loading Utilities
@@ -421,26 +435,477 @@ interface TileRendererProps {
   options: RenderOptionsV2
 }
 
-const MENU_ITEM_TILE_TYPES = ['ITEM_CARD', 'ITEM_TEXT_ROW', 'FEATURE_CARD'] as const
+const MENU_ITEM_TILE_TYPES = ['ITEM_CARD', 'ITEM_TEXT_ROW', 'FEATURE_CARD', 'FLAGSHIP_CARD'] as const
 const SUBTLE_ITEM_BORDER = '1px solid rgba(0,0,0,0.06)'
 const SUBTLE_ITEM_SHADOW = '0 1px 3px rgba(0,0,0,0.08)'
 
-const IMAGE_TILE_TYPES = ['ITEM_CARD', 'FEATURE_CARD'] as const
+const IMAGE_TILE_TYPES = ['ITEM_CARD', 'FEATURE_CARD', 'FLAGSHIP_CARD'] as const
+
+interface FlagshipLayoutMetrics {
+  padTop: number
+  padBottom: number
+  padX: number
+  gap: number
+  hasMediaColumn: boolean
+  isBackgroundMode: boolean
+  mediaFrame?: { left: number; top: number; width: number; height: number; borderRadius: number }
+}
+
+function getFlagshipLayoutMetrics(
+  tile: TileInstanceV2,
+  imageMode: ImageModeV2,
+  showImage: boolean
+): FlagshipLayoutMetrics {
+  const padTop = tile.contentBudget?.paddingTop ?? 10
+  const padBottom = tile.contentBudget?.paddingBottom ?? 10
+  const padX = Math.max(10, Math.min(18, tile.width * 0.04))
+  const gap = Math.max(10, Math.min(18, tile.width * 0.03))
+  const bodyHeight = tile.height - padTop - padBottom
+  const isBackgroundMode = imageMode === 'background'
+  const hasMediaColumn = showImage && imageMode !== 'none' && !isBackgroundMode
+
+  if (!hasMediaColumn) {
+    return { padTop, padBottom, padX, gap, hasMediaColumn, isBackgroundMode }
+  }
+
+  let mediaWidth = Math.max(88, Math.min(tile.colSpan > 1 ? tile.width * 0.44 : tile.width * 0.38, tile.width - padX * 2 - 92))
+  let mediaHeight = bodyHeight
+  let mediaTop = padTop
+  let mediaLeft = padX
+  let borderRadius = 0
+
+  if (imageMode === 'compact-rect') {
+    mediaWidth = Math.min(mediaWidth, tile.width * 0.34)
+    mediaHeight = Math.min(bodyHeight * 0.72, mediaWidth * 1.15)
+    mediaTop = padTop + (bodyHeight - mediaHeight) / 2
+    borderRadius = 0
+  } else if (imageMode === 'compact-circle') {
+    const diameter = Math.min(mediaWidth, bodyHeight * 0.7)
+    mediaWidth = diameter
+    mediaHeight = diameter
+    mediaTop = padTop + (bodyHeight - diameter) / 2
+    borderRadius = diameter / 2
+  } else if (imageMode === 'cutout') {
+    mediaWidth = Math.min(mediaWidth, tile.width * 0.4)
+    mediaHeight = bodyHeight
+    borderRadius = 0
+  } else if (imageMode === 'stretch') {
+    mediaHeight = tile.height
+    mediaTop = 0
+    mediaLeft = 0
+  }
+
+  return {
+    padTop,
+    padBottom,
+    padX,
+    gap,
+    hasMediaColumn,
+    isBackgroundMode,
+    mediaFrame: {
+      left: mediaLeft,
+      top: mediaTop,
+      width: mediaWidth,
+      height: mediaHeight,
+      borderRadius
+    }
+  }
+}
+
+function getFlagshipImageStyle(
+  content: FlagshipCardContentV2,
+  options: RenderOptionsV2,
+  imageMode: ImageModeV2
+): React.CSSProperties {
+  const persistedTransform = resolveTransformForMode(content.imageTransform, imageMode)
+  const effectiveTransform = options.imageTransforms?.get(content.itemId) ?? persistedTransform
+  const baseY = imageMode === 'stretch' ? 55 : 50
+  const transformStyle = computeImageTransformStyle(
+    effectiveTransform,
+    50,
+    baseY,
+    imageMode === 'cutout'
+  )
+
+  return {
+    objectFit: imageMode === 'cutout' ? 'contain' : 'cover',
+    objectPosition: transformStyle.objectPosition,
+    transform: transformStyle.transform,
+    transformOrigin: transformStyle.transformOrigin,
+  }
+}
+
+function getIndicatorTokens(indicators: ItemIndicatorsV2): string[] {
+  const dietaryTokens: Record<DietaryIndicator, string> = {
+    vegetarian: '🥬',
+    vegan: '🌱',
+    halal: '☪️',
+    kosher: '✡️',
+    'gluten-free': '🌾',
+  }
+
+  return [
+    ...indicators.dietary.map((dietary) => dietaryTokens[dietary] ?? 'V'),
+    ...(indicators.spiceLevel && indicators.spiceLevel > 0
+      ? ['🌶'.repeat(Math.min(indicators.spiceLevel, 3))]
+      : []),
+  ]
+}
+
+interface FlagshipCardProps {
+  tile: TileInstanceV2
+  content: FlagshipCardContentV2
+  options: RenderOptionsV2
+  scale: number
+}
+
+function FlagshipBadge({ tile, options, scale }: Omit<FlagshipCardProps, 'content'>) {
+  const chrome = getFlagshipChrome(options.palette, tile.style as import('./engine-types-v2').TileStyleV2 | undefined)
+  const metrics = getFlagshipBadgeMetrics(tile.width)
+  const top = -metrics.overlap * scale
+  const left = chrome.badgePosition === 'left' ? -metrics.overlap * scale : undefined
+  const right = chrome.badgePosition === 'right' ? -metrics.overlap * scale : undefined
+
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        top,
+        left,
+        right,
+        zIndex: 12,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0,
+        pointerEvents: 'none',
+      }}
+    >
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minWidth: metrics.badgeW * scale,
+          height: metrics.badgeH * scale,
+          padding: `0 ${12 * scale}px`,
+          borderRadius: chrome.badgeRadius * scale,
+          backgroundColor: chrome.badgeFill,
+          color: chrome.badgeText,
+          boxShadow: metrics.boxShadow,
+          fontSize: metrics.fontSize * scale,
+          fontWeight: 800,
+          letterSpacing: 0.2 * scale,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {chrome.badgeLabel}
+      </span>
+    </div>
+  )
+}
+
+function FlagshipCard({ tile, content, options, scale }: FlagshipCardProps) {
+  const palette = options.palette
+  const tileStyle = tile.style as TileStyleV2 | undefined
+  const imageMode: ImageModeV2 = options.imageMode || 'stretch'
+  const layout = getFlagshipLayoutMetrics(tile, imageMode, content.showImage)
+  const chrome = getFlagshipChrome(palette, tile.style as import('./engine-types-v2').TileStyleV2 | undefined)
+  const itemTitle = palette?.colors?.itemTitle ?? COLOR_TOKENS_V2.text.primary
+  const itemDescription = palette?.colors?.itemDescription ?? COLOR_TOKENS_V2.text.secondary
+  const itemPrice = palette?.colors?.itemPrice ?? COLOR_TOKENS_V2.text.primary
+  const prominenceScale = Math.min(1.2, Math.max(1, (tile.colSpan + tile.rowSpan) / 3))
+  const nameTypo = resolveSubElementTypography(tileStyle, 'name', {
+    fontSize: Math.round(TYPOGRAPHY_TOKENS_V2.fontSize.base * prominenceScale),
+    fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.tight,
+  })
+  const articleId = `flagship-title-${tile.id}`
+  const indicatorTokens = getIndicatorTokens(content.indicators)
+  const formattedPrice = formatCurrency(content.price, content.currency || 'USD')
+  const imageStyle = getFlagshipImageStyle(content, options, imageMode)
+  const hasMedia = !!(content.showImage && content.imageUrl && imageMode !== 'none')
+  const mediaFrame = layout.mediaFrame
+  const isStretchFlagship = imageMode === 'stretch' && layout.hasMediaColumn && !!mediaFrame
+  const shouldClipToFlagshipFrame = imageMode === 'stretch' || imageMode === 'background'
+  const baseNameFontSize = nameTypo.fontSize
+  const previewTitleWidth = mediaFrame
+    ? tile.width - mediaFrame.width - layout.gap - layout.padX - (chrome.borderWidth * 2)
+    : tile.width - (layout.padX * 2) - (chrome.borderWidth * 2)
+  const titleFit = resolveFlagshipTitleFit({
+    text: content.name,
+    availableWidth: previewTitleWidth,
+    preferredFontSize: baseNameFontSize,
+    preferredLines: 2,
+    minFontSize: Math.min(baseNameFontSize, 9),
+  })
+  const nameFontSize = titleFit.fontSize * scale
+  const descFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.xsm * scale
+  const priceFontSize = TYPOGRAPHY_TOKENS_V2.fontSize.sm * scale
+  const nameLineHeightPx = nameFontSize * nameTypo.lineHeight
+  const descLineHeightPx = descFontSize * TYPOGRAPHY_TOKENS_V2.lineHeight.normal
+  const priceLineHeightPx = priceFontSize * TYPOGRAPHY_TOKENS_V2.lineHeight.tight
+  const textSlots = resolveFlagshipTextSlots({
+    availableHeight: isStretchFlagship
+      ? (tile.height - (chrome.borderWidth * 2) - layout.padTop - layout.padBottom) * scale
+      : (tile.height - layout.padTop - layout.padBottom) * scale,
+    nameMaxLines: Math.max(tile.contentBudget?.nameLines ?? 2, titleFit.lineBudget),
+    minNameLines: titleFit.lineBudget,
+    descMaxLines: content.description ? (tile.contentBudget?.descLines ?? 4) : 0,
+    hasDescription: !!content.description,
+    nameLineHeight: nameLineHeightPx,
+    descLineHeight: descLineHeightPx,
+    priceLineHeight: priceLineHeightPx,
+  })
+  const clippedImageFillStyle: React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+  }
+
+  return (
+    <article
+      aria-label={`Flagship item: ${content.name}`}
+      aria-labelledby={articleId}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        display: layout.isBackgroundMode
+          ? 'block'
+          : 'flex',
+        flexDirection: layout.hasMediaColumn ? 'row-reverse' : 'column',
+        alignItems: layout.hasMediaColumn ? 'stretch' : undefined,
+        gap: layout.hasMediaColumn && !isStretchFlagship ? layout.gap * scale : undefined,
+        padding: isStretchFlagship
+          ? 0
+          : `${layout.padTop * scale}px ${layout.padX * scale}px ${layout.padBottom * scale}px`,
+        backgroundColor: layout.isBackgroundMode ? 'transparent' : chrome.panel,
+        borderRadius: 0,
+        border: `${chrome.borderWidth * scale}px solid ${chrome.frameOuter}`,
+        boxSizing: 'border-box',
+        boxShadow: `0 ${8 * scale}px ${20 * scale}px rgba(84,58,4,0.16)`,
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: isStretchFlagship ? 'flex-start' : 'center',
+          flex: '1 1 0',
+          height: '100%',
+          boxSizing: 'border-box',
+          padding: isStretchFlagship
+            ? `${layout.padTop * scale}px ${layout.padX * scale}px ${layout.padBottom * scale}px ${layout.gap * scale}px`
+            : undefined,
+        }}
+      >
+        <h3
+          id={articleId}
+          style={{
+            margin: 0,
+            color: layout.isBackgroundMode
+              ? blendHexTowards('#FFFFFF', itemTitle, 0.18)
+              : blendHexTowards(itemTitle, chrome.frameOuter, 0.14),
+            fontSize: nameFontSize,
+            lineHeight: nameTypo.lineHeight,
+            fontWeight: nameTypo.fontWeight,
+            fontFamily: nameTypo.fontFamily,
+            textShadow: layout.isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined,
+            height: textSlots.nameHeight,
+            display: '-webkit-box',
+            WebkitLineClamp: textSlots.nameLines,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            flex: '0 0 auto',
+            textAlign: nameTypo.textAlign,
+            textTransform: nameTypo.textTransform,
+          }}
+        >
+          {content.name}
+        </h3>
+
+        {content.description && (
+          <p
+            style={{
+              margin: `${textSlots.gapNameToDesc}px 0 0`,
+              color: layout.isBackgroundMode ? BG_IMAGE_TEXT.descColor : itemDescription,
+              fontSize: descFontSize,
+              lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
+              textShadow: layout.isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined,
+              height: textSlots.descHeight,
+              display: textSlots.descLines > 0 ? '-webkit-box' : 'none',
+              WebkitLineClamp: textSlots.descLines,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              flex: '0 0 auto',
+            }}
+          >
+            {content.description}
+          </p>
+        )}
+
+        <p
+          style={{
+            margin: `${textSlots.gapDescToPrice}px 0 0`,
+            color: layout.isBackgroundMode
+              ? blendHexTowards('#FFFFFF', itemPrice, 0.28)
+              : chrome.price,
+            fontSize: priceFontSize,
+            lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.tight,
+            fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
+            textShadow: layout.isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined,
+            flex: '0 0 auto',
+          }}
+        >
+          {formattedPrice}
+        </p>
+
+        {indicatorTokens.length > 0 && (
+          <div
+            aria-hidden="true"
+            style={{
+              marginTop: 10 * scale,
+              display: 'flex',
+              gap: 6 * scale,
+              flexWrap: 'wrap',
+            }}
+          >
+            {indicatorTokens.map((token, index) => (
+              <span
+                key={`${tile.id}-indicator-${index}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 20 * scale,
+                  height: 20 * scale,
+                  padding: `0 ${4 * scale}px`,
+                  borderRadius: 999,
+                  backgroundColor: layout.isBackgroundMode
+                    ? 'rgba(255,255,255,0.18)'
+                    : palette?.colors?.itemIndicators?.background ?? COLOR_TOKENS_V2.background.white,
+                  fontSize: 12 * scale,
+                }}
+              >
+                {token}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {layout.isBackgroundMode ? (
+        <>
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: 0,
+              overflow: 'hidden',
+            }}
+          >
+            {hasMedia && (
+              <img
+                src={content.imageUrl}
+                alt=""
+                aria-hidden="true"
+                style={{
+                  display: 'block',
+                  borderRadius: 0,
+                  ...clippedImageFillStyle,
+                  ...imageStyle,
+                }}
+              />
+            )}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(90deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.46) 42%, rgba(0,0,0,0.18) 100%)',
+                borderRadius: 0,
+              }}
+            />
+          </div>
+        </>
+      ) : layout.hasMediaColumn && mediaFrame ? (
+        <div
+          style={{
+            flex: '0 0 auto',
+            width: mediaFrame.width * scale,
+            minWidth: mediaFrame.width * scale,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            alignSelf: 'stretch',
+            height: isStretchFlagship ? '100%' : undefined,
+          }}
+        >
+          {hasMedia ? (
+            <div
+              style={{
+                position: 'relative',
+                width: mediaFrame.width * scale,
+                height: isStretchFlagship ? '100%' : mediaFrame.height * scale,
+                borderRadius: mediaFrame.borderRadius * scale,
+                overflow: shouldClipToFlagshipFrame ? 'hidden' : 'visible',
+              }}
+            >
+              <img
+                src={content.imageUrl}
+                alt={`Photo of ${content.name}`}
+                style={{
+                  display: 'block',
+                  borderRadius: mediaFrame.borderRadius * scale,
+                  boxShadow: imageMode === 'cutout' ? undefined : '0 6px 18px rgba(0,0,0,0.12)',
+                  ...clippedImageFillStyle,
+                  ...imageStyle,
+                }}
+              />
+            </div>
+          ) : (
+            <div
+              aria-hidden="true"
+              style={{
+                width: mediaFrame.width * scale,
+                height: mediaFrame.height * scale,
+                borderRadius: mediaFrame.borderRadius * scale,
+                backgroundColor: palette?.colors?.border?.light ?? COLOR_TOKENS_V2.border.light,
+              }}
+            />
+          )}
+        </div>
+      ) : null}
+    </article>
+  )
+}
 
 function TileRenderer({ tile, options }: TileRendererProps) {
   const { scale, palette } = options
-  const renderData = renderTileContent(tile, options)
+  const isFlagshipTile = tile.type === 'FLAGSHIP_CARD'
+  const renderData = isFlagshipTile ? undefined : renderTileContent(tile, options)
   const isMenuItemTile = MENU_ITEM_TILE_TYPES.includes(tile.type as (typeof MENU_ITEM_TILE_TYPES)[number])
-  const itemMenuContent = isMenuItemTile ? (tile.content as ItemContentV2 | FeatureCardContentV2) : undefined
+  const itemMenuContent = isMenuItemTile
+    ? (tile.content as ItemContentV2 | FeatureCardContentV2 | FlagshipCardContentV2)
+    : undefined
+  const flagshipContent = isFlagshipTile ? (tile.content as FlagshipCardContentV2) : undefined
   const isFeaturedItem =
     isMenuItemTile &&
     tile.type !== 'FEATURE_CARD' &&
+    tile.type !== 'FLAGSHIP_CARD' &&
     !!(itemMenuContent && 'isFeatured' in itemMenuContent && (itemMenuContent as ItemContentV2).isFeatured)
 
   const accent =
     palette?.colors?.accent ??
     palette?.colors?.itemPrice ??
     COLOR_TOKENS_V2.text.primary
+  const flagshipChrome = isFlagshipTile
+    ? getFlagshipChrome(palette, tile.style as import('./engine-types-v2').TileStyleV2 | undefined)
+    : undefined
   const defaultPaper =
     palette?.colors?.surface ??
     palette?.colors?.background ??
@@ -460,23 +925,44 @@ function TileRenderer({ tile, options }: TileRendererProps) {
   const fillColor = options.fillItemTiles && isMenuItemTile
     ? (palette?.colors?.surface ?? palette?.colors?.background ?? COLOR_TOKENS_V2.background.white)
     : undefined
-  const featuredBg = isFeaturedItem ? blendHexTowards(defaultPaper, accent, 0.09) : undefined
-  const backgroundColor = featuredBg ?? fillColor ?? 'transparent'
+  const backgroundColor = isFlagshipTile || isFeaturedItem ? 'transparent' : fillColor ?? 'transparent'
 
   // Resolve overlay: only for image tiles in edit mode
   const isImageTile = IMAGE_TILE_TYPES.includes(tile.type as (typeof IMAGE_TILE_TYPES)[number])
-  const tileContent = tile.content as (ItemContentV2 | FeatureCardContentV2) | undefined
-  const hasImage = isImageTile && !!(tileContent as ItemContentV2 | FeatureCardContentV2)?.imageUrl
+  const tileContent = tile.content as (ItemContentV2 | FeatureCardContentV2 | FlagshipCardContentV2) | undefined
+  const hasImage = isImageTile && !!tileContent?.imageUrl
   const showOverlay = options.imageEditMode && hasImage && !!options.onImageTransformChange
-  const overlayItemId = showOverlay ? (tileContent as ItemContentV2 | FeatureCardContentV2).itemId : undefined
-  const overlayImageElement = showOverlay
+  const overlayItemId = showOverlay ? tileContent?.itemId : undefined
+  const overlayImageElement = showOverlay && renderData
     ? renderData.elements.find((element) => element.type === 'image' && element.width != null && element.height != null)
     : undefined
 
   let overlayFrame: { left: number; top: number; width: number; height: number; borderRadius?: number } | undefined
   let overlayHighlightFrame: { left: number; top: number; width: number; height: number; borderRadius?: number } | undefined
 
-  if (overlayImageElement) {
+  if (showOverlay && isFlagshipTile && flagshipContent) {
+    const imageMode: ImageModeV2 = options.imageMode || 'stretch'
+    const layout = getFlagshipLayoutMetrics(tile, imageMode, flagshipContent.showImage)
+    if (layout.isBackgroundMode || imageMode === 'cutout') {
+      overlayFrame = {
+        left: 0,
+        top: 0,
+        width: tile.width * scale,
+        height: tile.height * scale,
+        borderRadius: 12 * scale,
+      }
+    } else if (layout.mediaFrame) {
+      overlayFrame = {
+        left: layout.mediaFrame.left * scale,
+        top: layout.mediaFrame.top * scale,
+        width: layout.mediaFrame.width * scale,
+        height: layout.mediaFrame.height * scale,
+        borderRadius: layout.mediaFrame.borderRadius === 999
+          ? layout.mediaFrame.width * scale / 2
+          : layout.mediaFrame.borderRadius * scale,
+      }
+    }
+  } else if (overlayImageElement) {
     if (options.imageMode === 'cutout') {
       overlayFrame = {
         left: 0,
@@ -507,10 +993,10 @@ function TileRenderer({ tile, options }: TileRendererProps) {
   const hasLogoImage = !!bannerContent?.logoUrl
 
   // Find hero and logo image elements from render data
-  const heroImageElement = showBannerOverlays && hasHeroImage
+  const heroImageElement = showBannerOverlays && hasHeroImage && renderData
     ? renderData.elements.filter(e => e.type === 'image').at(-1) // hero is always last image element
     : undefined
-  const logoImageElement = showBannerOverlays && hasLogoImage
+  const logoImageElement = showBannerOverlays && hasLogoImage && renderData
     ? renderData.elements.find(e => e.type === 'image' && e.style.zIndex === 4)
     : undefined
 
@@ -542,21 +1028,30 @@ function TileRenderer({ tile, options }: TileRendererProps) {
         zIndex: tileZIndex,
         backgroundColor,
         border,
-        ...(isFeaturedItem && !options.showTileIds
-          ? { outline: `2px solid ${accent}`, outlineOffset: 0 }
-          : {}),
         ...(boxShadow ? { boxShadow } : {}),
-        ...((isCutoutTile || isBannerTile || isFeaturedItem) ? { overflow: 'visible' } : {})
+        ...((isCutoutTile || isBannerTile || isFeaturedItem || isFlagshipTile) ? { overflow: 'visible' } : {})
       }}
     >
       {/* Render tile content elements */}
-      {renderData.elements.map((element, index) => (
-        <RenderElementComponent
-          key={`${tile.id}-element-${index}`}
-          element={element}
+      {isFlagshipTile && flagshipContent ? (
+        <FlagshipCard
+          tile={tile}
+          content={flagshipContent}
+          options={options}
           scale={scale}
         />
-      ))}
+      ) : (
+        renderData?.elements.map((element, index) => (
+          <RenderElementComponent
+            key={`${tile.id}-element-${index}`}
+            element={element}
+            scale={scale}
+          />
+        ))
+      )}
+      {isFlagshipTile && flagshipContent && !options.showTileIds ? (
+        <FlagshipBadge tile={tile} options={options} scale={scale} />
+      ) : null}
 
       {/* Image edit mode overlay */}
       {showOverlay && overlayItemId && options.onImageTransformChange && (

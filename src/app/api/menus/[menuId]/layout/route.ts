@@ -21,7 +21,7 @@ const VALID_IMAGE_MODES: readonly ImageModeV2[] = ['none', 'compact-rect', 'comp
 const layoutCache = new Map<string, { layout: any; timestamp: number }>()
 const CACHE_TTL = 3600000 // 1 hour in milliseconds
 const MAX_CACHE_SIZE = 100
-const LAYOUT_CACHE_VERSION = 'v8'
+const LAYOUT_CACHE_VERSION = 'v10'
 
 /**
  * Generate a cache key for a layout
@@ -107,6 +107,9 @@ export async function GET(
     const showMenuTitle = searchParams.get('showMenuTitle') === 'true'
     const showVignette = searchParams.get('showVignette') === 'true'
     const showCategoryTitles = searchParams.get('showCategoryTitles') !== 'false' // default true
+    const showLogoTile = searchParams.get('showLogoTile') === 'true'
+    const showCategoryHeaderTiles = searchParams.get('showCategoryHeaderTiles') === 'true'
+    const showFlagshipTile = searchParams.get('showFlagshipTile') === 'true'
     const centreAlignment = searchParams.get('centreAlignment') === 'true' // default false
     const engineVersion = (searchParams.get('engineVersion') as 'v1' | 'v2') || 'v2'
     const showBanner = searchParams.get('showBanner') !== 'false' // default true
@@ -181,6 +184,9 @@ export async function GET(
       showMenuTitle,
       showVignette,
       showCategoryTitles,
+      showLogoTile,
+      showCategoryHeaderTiles,
+      showFlagshipTile,
       centreAlignment,
       engineVersion,
       showBanner,
@@ -274,6 +280,9 @@ export async function GET(
           showMenuTitle,
           showVignette,
           showCategoryTitles,
+          showLogoTile,
+          showCategoryHeaderTiles,
+          showFlagshipTile,
           centreAlignment,
           colourPaletteId: paletteId || undefined,
           imageMode,
@@ -436,6 +445,9 @@ export async function POST(
           showMenuTitle,
           showVignette,
           showCategoryTitles,
+          showLogoTile: configuration.showLogoTile === true,
+          showCategoryHeaderTiles: configuration.showCategoryHeaderTiles === true,
+          showFlagshipTile: configuration.showFlagshipTile === true,
           centreAlignment,
           colourPaletteId: paletteId,
           imageMode,

@@ -429,6 +429,9 @@ export class JobProcessor {
           bannerHeroTransform: config?.bannerHeroTransform || undefined,
           bannerLogoTransform: config?.bannerLogoTransform || undefined,
           centreAlignment: config?.centreAlignment === true,
+          showLogoTile: config?.showLogoTile === true,
+          showCategoryHeaderTiles: config?.showCategoryHeaderTiles === true,
+          showFlagshipTile: config?.showFlagshipTile === true,
         }
       })
 
@@ -437,7 +440,14 @@ export class JobProcessor {
       const optimizedLayout = await optimizeLayoutDocumentImages(layoutDocument, {
         maxWidth: 1000,
         quality: 75,
-        preserveTransparencyForItems: isCutoutMode  // only true when items actually have cutout PNGs
+        preserveTransparencyForItems: isCutoutMode,  // only true when items actually have cutout PNGs
+        headers: {
+          cookie: '',
+          authorization: '',
+          host: '',
+          'x-forwarded-host': '',
+          'x-forwarded-proto': ''
+        }
       })
 
       // 4. Render to PDF

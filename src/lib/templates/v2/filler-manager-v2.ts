@@ -740,3 +740,98 @@ function enumerateSubsets(n: number, k: number): number[][] {
   bt(0, [])
   return result
 }
+
+// =============================================================================
+// Semi-Random Item Redistribution
+// =============================================================================
+
+/**
+ * Redistribute ITEM_CARD / ITEM_TEXT_ROW tiles across all rows of each section
+ * to create an even, semi-random spacer distribution.
+ *
+ * The streaming paginator fills rows sequentially (left-to-right), so spare
+ * cells always cluster at the end of the last row. This step uses
+ * getItemSlotPositions() to compute spread-out (row, col) assignments for every
+ * free item — distributing filler gaps evenly across ALL logical rows — and
+ * then updates each tile's gridRow, gridCol, x, and y accordingly.
+ *
+ * Key rules:
+ * - Only ITEM_CARD and ITEM_TEXT_ROW tiles are moved.
+ * - Rows that share grid space with any non-item tile (logo, section header,
+ *   flagship, divider) are excluded: those tiles are in intentional lead-row
+ *   compositions and must not be disturbed.
+ * - Item reading order within the section is preserved.
+ * - Row-span is respected: each logical item row maps to rowSpan physical rows.
+ * - The same deterministic seed used by insertInterspersedFillers is reused so
+ *   the filler manager naturally fills the exact gaps created here.
+ *
+ * Must be called AFTER streamingPaginate and BEFORE insertInterspersedFillers.
+ */
+export function redistributeLastRowItems(
+  document: LayoutDocumentV2,
+  template: TemplateV2,
+  menuId: string,
+): void {
+  const { cols, gapX, rowHeight, gapY } = template.body.container
+
+  for (let pageIndex = 0; pageIndex < document.pages.length; pageIndex++) {
+    const page = document.pages[pageIndex]
+    const bodyRegion = page.regions.find(r => r.id === 'body')
+    if (!bodyRegion) continue
+
+    const cellWidth = calculateCellWidth(bodyRegion.width, cols, gapX)
+    const sectionIds = getSectionIdsOnPage(page)
+
+    for (const sectionId of sectionIds) {
+      const sectionItemTiles = page.tiles.filter(
+        t =>
+          t.regionId === 'body' &&
+          (t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW') &&
+          (t.content as { sectionId?: string }).sectionId === sectionId,
+      )
+      if (sectionItemTiles.length === 0) continue
+
+      // Mark every physical grid row that is shared with a non-item body tile
+      // (section header, logo, flagship, divider). Items in those rows are pinned.
+      const mixedGridRows = new Set<number>()
+      for (const tile of page.tiles) {
+        if (tile.regionId !== 'body') continue
+        if (tile.type === 'ITEM_CARD' || tile.type === 'ITEM_TEXT_ROW') continue
+        for (let r = tile.gridRow; r < tile.gridRow + tile.rowSpan; r++) {
+          mixedGridRows.add(r)
+        }
+      }
+
+      // Separate items into pinned (mixed rows, untouched) and free (pure item rows).
+      const freeItems = sectionItemTiles.filter(t => !mixedGridRows.has(t.gridRow))
+      if (freeItems.length === 0) continue
+
+      // Preserve item reading order: sort by (gridRow, gridCol).
+      freeItems.sort((a, b) => a.gridRow !== b.gridRow ? a.gridRow - b.gridRow : a.gridCol - b.gridCol)
+
+      // The row-span used by this section's item tiles (consistent within a section).
+      const sectionRowSpan = freeItems[0].rowSpan
+
+      // Base physical grid row: the starting row of the first free item.
+      const baseRow = freeItems.reduce((min, t) => Math.min(min, t.gridRow), Infinity)
+      if (!isFinite(baseRow)) continue
+
+      // getItemSlotPositions distributes filler gaps evenly across ALL logical rows,
+      // not just the last partial row.
+      const seed = hashString(`${menuId}-${template.id}-${pageIndex}-${sectionId}`)
+      const targetPositions = getItemSlotPositions(freeItems.length, cols, seed)
+
+      // Apply: convert logical (row, col) targets to physical grid coordinates.
+      for (let i = 0; i < freeItems.length; i++) {
+        const tile = freeItems[i]
+        const target = targetPositions[i]
+        const newGridRow = baseRow + target.row * sectionRowSpan
+        const newGridCol = target.col
+        tile.gridRow = newGridRow
+        tile.gridCol = newGridCol
+        tile.x = newGridCol * (cellWidth + gapX)
+        tile.y = newGridRow * (rowHeight + gapY)
+      }
+    }
+  }
+}

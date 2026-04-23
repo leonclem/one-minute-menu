@@ -27,6 +27,7 @@ export type {
   ItemContentV2,
   FillerContentV2,
   TextBlockContentV2,
+  FlagshipCardContentV2,
   // Indicator types
   DietaryIndicator,
   ItemIndicatorsV2,
@@ -82,6 +83,7 @@ export {
   initPlacementContext,
   createSectionHeaderTile,
   createItemTile,
+  createFlagshipTile,
   createLogoTile,
   createTitleTile,
   selectItemVariant,

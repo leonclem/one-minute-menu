@@ -32,7 +32,7 @@ async function handleV2TemplateEngine(
   const { transformMenuToV2 } = await import('@/lib/templates/v2/menu-transformer-v2')
   const { generateLayoutV2 } = await import('@/lib/templates/v2/layout-engine-v2')
   const { renderToWeb } = await import('@/lib/templates/v2/renderer-web-v2')
-  const { PALETTES_V2, DEFAULT_PALETTE_V2 } = await import('@/lib/templates/v2/renderer-v2')
+  const { PALETTES_V2, DEFAULT_PALETTE_V2 } = await import('@/lib/templates/v2/palettes-v2')
   const { renderToString } = await import('react-dom/server')
   const { getMenuCurrency } = await import('@/lib/menu-currency-service')
   

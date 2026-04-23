@@ -6,7 +6,7 @@
  */
 
 import { generateLayoutV2 } from '../layout-engine-v2'
-import { insertInterspersedFillers, getItemSlotPositions, hashString } from '../filler-manager-v2'
+import { insertInterspersedFillers, getItemSlotPositions, hashString, redistributeLastRowItems } from '../filler-manager-v2'
 import type {
   LayoutDocumentV2,
   PageLayoutV2,
@@ -518,6 +518,194 @@ describe('Interspersed Fillers', () => {
       // Exactly one column missing (filler column)
       const missing = [0, 1, 2, 3].filter(c => !usedCols.has(c))
       expect(missing.length).toBe(1)
+    })
+  })
+
+  describe('redistributeLastRowItems', () => {
+    const cols = 4
+    const rowHeight = 80
+    const gapX = 8
+    const gapY = 8
+    const cellWidth = 94
+    const bodyWidth = cols * cellWidth + (cols - 1) * gapX
+
+    const makeItemTile = (id: string, row: number, col: number, sectionId: string): TileInstanceV2 => ({
+      id,
+      type: 'ITEM_CARD',
+      regionId: 'body',
+      x: col * (cellWidth + gapX),
+      y: row * (rowHeight + gapY),
+      width: cellWidth,
+      height: rowHeight,
+      colSpan: 1,
+      rowSpan: 1,
+      gridRow: row,
+      gridCol: col,
+      layer: 'content',
+      content: { type: 'ITEM_CARD', sectionId } as any,
+    })
+
+    const makeHeaderTile = (id: string, row: number, sectionId: string): TileInstanceV2 => ({
+      id,
+      type: 'SECTION_HEADER',
+      regionId: 'body',
+      x: 0,
+      y: row * (rowHeight + gapY),
+      width: bodyWidth,
+      height: rowHeight,
+      colSpan: cols,
+      rowSpan: 1,
+      gridRow: row,
+      gridCol: 0,
+      layer: 'content',
+      content: { type: 'SECTION_HEADER', sectionId, name: 'Section' } as any,
+    })
+
+    const makeDoc = (tiles: TileInstanceV2[]): LayoutDocumentV2 => ({
+      templateId: baseTemplate.id,
+      templateVersion: baseTemplate.version,
+      pageSpec: { width: 500, height: 700, margins: baseTemplate.page.margins },
+      pages: [{
+        pageIndex: 0,
+        pageType: 'SINGLE',
+        regions: [{ id: 'body', x: 0, y: 0, width: bodyWidth, height: 600 }],
+        tiles,
+      }],
+    })
+
+    it('distributes fillers evenly across all rows, not just the last partial row', () => {
+      // 6 items in a 4-col grid: 2 rows (8 cells), 2 fillers.
+      // Old behaviour: row 0 full (4 items), row 1 partial (2 items at cols 0,1).
+      // New behaviour: getItemSlotPositions distributes 2 fillers across both rows.
+      const tiles: TileInstanceV2[] = [
+        makeItemTile('r0c0', 0, 0, 'sec-a'),
+        makeItemTile('r0c1', 0, 1, 'sec-a'),
+        makeItemTile('r0c2', 0, 2, 'sec-a'),
+        makeItemTile('r0c3', 0, 3, 'sec-a'),
+        makeItemTile('r1c0', 1, 0, 'sec-a'),
+        makeItemTile('r1c1', 1, 1, 'sec-a'),
+      ]
+      const doc = makeDoc(tiles)
+      redistributeLastRowItems(doc, baseTemplate, 'menu-1')
+
+      const page = doc.pages[0]
+      const itemTiles = page.tiles.filter(t => t.type === 'ITEM_CARD')
+
+      // All 6 items still present
+      expect(itemTiles).toHaveLength(6)
+
+      // Each (gridRow, gridCol) pair must be unique — no overlaps
+      const positions = itemTiles.map(t => `${t.gridRow}-${t.gridCol}`)
+      expect(new Set(positions).size).toBe(6)
+
+      // Items span both rows
+      const rowsUsed = new Set(itemTiles.map(t => t.gridRow))
+      expect(rowsUsed.size).toBe(2)
+
+      // Each row should have fewer than 4 items (fillers distributed across rows)
+      const itemsInRow0 = itemTiles.filter(t => t.gridRow === 0).length
+      const itemsInRow1 = itemTiles.filter(t => t.gridRow === 1).length
+      expect(itemsInRow0).toBeLessThan(4)
+      expect(itemsInRow1).toBeLessThan(4)
+      expect(itemsInRow0 + itemsInRow1).toBe(6)
+    })
+
+    it('does not modify rows that share space with non-item tiles (mixed rows)', () => {
+      // Row 0: full-width header (mixed row), Rows 1-2: 2 items (pure item rows).
+      // The header marks row 0 as mixed; item rows 1+ are free to redistribute.
+      const tiles: TileInstanceV2[] = [
+        makeHeaderTile('header', 0, 'sec-a'),
+        makeItemTile('r1c0', 1, 0, 'sec-a'),
+        makeItemTile('r1c1', 1, 1, 'sec-a'),
+      ]
+      const doc = makeDoc(tiles)
+      redistributeLastRowItems(doc, baseTemplate, 'menu-1')
+
+      const headerTile = doc.pages[0].tiles.find(t => t.id === 'header')!
+      expect(headerTile.gridCol).toBe(0) // header must not move
+      expect(headerTile.x).toBe(0)
+
+      // Both item tiles are still present and have unique positions
+      const itemTiles = doc.pages[0].tiles.filter(t => t.type === 'ITEM_CARD')
+      expect(itemTiles).toHaveLength(2)
+      const positions = itemTiles.map(t => `${t.gridRow}-${t.gridCol}`)
+      expect(new Set(positions).size).toBe(2)
+    })
+
+    it('does not touch rows shared with a logo or flagship tile', () => {
+      // Row 0: logo (colSpan 1) + 3 items in cols 1,2,3 — mixed row, must not be touched
+      const logoTile: TileInstanceV2 = {
+        id: 'logo',
+        type: 'LOGO_BODY',
+        regionId: 'body',
+        x: 0,
+        y: 0,
+        width: cellWidth,
+        height: rowHeight,
+        colSpan: 1,
+        rowSpan: 1,
+        gridRow: 0,
+        gridCol: 0,
+        layer: 'content',
+        content: { type: 'LOGO_BODY', sectionId: 'sec-a' } as any,
+      }
+      const tiles: TileInstanceV2[] = [
+        logoTile,
+        makeItemTile('r0c1', 0, 1, 'sec-a'),
+        makeItemTile('r0c2', 0, 2, 'sec-a'),
+        makeItemTile('r0c3', 0, 3, 'sec-a'),
+      ]
+      const doc = makeDoc(tiles)
+      redistributeLastRowItems(doc, baseTemplate, 'menu-1')
+
+      // Mixed row with logo — items must remain at cols 1, 2, 3
+      const itemCols = doc.pages[0].tiles
+        .filter(t => t.type === 'ITEM_CARD')
+        .map(t => t.gridCol)
+        .sort((a, b) => a - b)
+      expect(itemCols).toEqual([1, 2, 3])
+    })
+
+    it('is deterministic across calls', () => {
+      const tiles = (): TileInstanceV2[] => [
+        makeItemTile('r0c0', 0, 0, 'sec-a'),
+        makeItemTile('r0c1', 0, 1, 'sec-a'),
+        makeItemTile('r0c2', 0, 2, 'sec-a'),
+      ]
+      const doc1 = makeDoc(tiles())
+      const doc2 = makeDoc(tiles())
+
+      redistributeLastRowItems(doc1, baseTemplate, 'menu-x')
+      redistributeLastRowItems(doc2, baseTemplate, 'menu-x')
+
+      const cols1 = doc1.pages[0].tiles.map(t => t.gridCol).sort()
+      const cols2 = doc2.pages[0].tiles.map(t => t.gridCol).sort()
+      expect(cols1).toEqual(cols2)
+    })
+
+    it('handles multiple sections on the same page independently', () => {
+      // Section A: 3 items in a 4-col row
+      // Section B: 2 items in a 4-col row
+      const tiles: TileInstanceV2[] = [
+        makeItemTile('a0', 0, 0, 'sec-a'),
+        makeItemTile('a1', 0, 1, 'sec-a'),
+        makeItemTile('a2', 0, 2, 'sec-a'),
+        makeItemTile('b0', 1, 0, 'sec-b'),
+        makeItemTile('b1', 1, 1, 'sec-b'),
+      ]
+      const doc = makeDoc(tiles)
+      redistributeLastRowItems(doc, baseTemplate, 'menu-1')
+
+      const secATiles = doc.pages[0].tiles.filter(t => (t.content as any).sectionId === 'sec-a')
+      const secBTiles = doc.pages[0].tiles.filter(t => (t.content as any).sectionId === 'sec-b')
+
+      // Both sections still have the right number of tiles
+      expect(secATiles).toHaveLength(3)
+      expect(secBTiles).toHaveLength(2)
+
+      // Both sections use distinct columns with no duplicates
+      expect(new Set(secATiles.map(t => t.gridCol)).size).toBe(3)
+      expect(new Set(secBTiles.map(t => t.gridCol)).size).toBe(2)
     })
   })
 })

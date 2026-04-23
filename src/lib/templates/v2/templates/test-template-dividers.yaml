@@ -39,6 +39,19 @@ tiles:
       paddingBottom: 5
       totalHeight: 60
 
+  LOGO_BODY:
+    region: body
+    colSpan: 1
+    rowSpan: 1
+    contentBudget:
+      nameLines: 0
+      descLines: 0
+      indicatorAreaHeight: 0
+      imageBoxHeight: 54
+      paddingTop: 8
+      paddingBottom: 8
+      totalHeight: 70
+
   TITLE:
     region: title
     contentBudget:
@@ -86,6 +99,19 @@ tiles:
       paddingBottom: 8
       totalHeight: 70
 
+  FLAGSHIP_CARD:
+    region: body
+    colSpan: 2
+    rowSpan: 2
+    contentBudget:
+      nameLines: 2
+      descLines: 4
+      indicatorAreaHeight: 16
+      imageBoxHeight: 84
+      paddingTop: 8
+      paddingBottom: 8
+      totalHeight: 148
+
   DECORATIVE_DIVIDER:
     region: body
     colSpan: 4
@@ -115,6 +141,9 @@ filler:
   safeZones: []
   tiles: []
   policy: SEQUENTIAL
+
+capabilities:
+  supportsBodyTileMode: true
 
 itemIndicators:
   mode: INLINE

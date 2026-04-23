@@ -876,6 +876,9 @@ export interface RenderSnapshot {
     layout?: any
     textures?: any
     features?: any
+    showLogoTile?: boolean
+    showCategoryHeaderTiles?: boolean
+    showFlagshipTile?: boolean
     // Banner & footer fields
     showBanner?: boolean
     bannerTitle?: string

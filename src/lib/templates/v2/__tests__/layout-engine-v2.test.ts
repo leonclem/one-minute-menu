@@ -35,7 +35,11 @@ async function generateLayout(menu: EngineMenuV2, debug = true): Promise<LayoutD
 function countItemTiles(doc: LayoutDocumentV2): number {
   return doc.pages.reduce((count, page) => {
     return count + page.tiles.filter(
-      t => t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW' || t.type === 'FEATURE_CARD'
+      t =>
+        t.type === 'ITEM_CARD' ||
+        t.type === 'ITEM_TEXT_ROW' ||
+        t.type === 'FEATURE_CARD' ||
+        t.type === 'FLAGSHIP_CARD'
     ).length
   }, 0)
 }
@@ -267,14 +271,14 @@ describe('Layout Engine V2 - Acceptance Scenarios', () => {
       
       expect(doc.pages.length).toBeGreaterThan(1)
       
-      // Check that logo appears on first page (either as LOGO tile or embedded in BANNER tile)
+      // Check that the first page still shows venue identity only when a banner is present.
       const firstPageLogo = doc.pages[0].tiles.find(t => t.type === 'LOGO')
       const firstPageBanner = doc.pages[0].tiles.find(t => t.type === 'BANNER' || t.type === 'BANNER_STRIP')
       const hasBanner = doc.pages[0].regions.some(r => r.id === 'banner')
       if (hasBanner) {
         expect(firstPageBanner).toBeDefined()
       } else {
-        expect(firstPageLogo).toBeDefined()
+        expect(firstPageLogo).toBeUndefined()
       }
       
       // Check that title appears on first page (suppressed when banner is present)

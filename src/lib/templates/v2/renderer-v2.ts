@@ -27,6 +27,7 @@ import type {
   TextBlockContentV2,
   FooterInfoContentV2,
   FeatureCardContentV2,
+  FlagshipCardContentV2,
   DividerContentV2,
   ImageModeV2,
   FontStylePreset,
@@ -34,6 +35,24 @@ import type {
   BannerStripContentV2
 } from './engine-types-v2'
 import { formatCurrency } from '../../currency-formatter'
+import {
+  COLOR_TOKENS_V2,
+  PALETTES_V2,
+  DEFAULT_PALETTE_V2,
+  type InverseTileColorsV2,
+  type PromotedItemColorsV2,
+  type FlagshipPromotedColorsV2,
+  type ColorPaletteV2,
+} from './palettes-v2'
+export {
+  COLOR_TOKENS_V2,
+  PALETTES_V2,
+  DEFAULT_PALETTE_V2,
+  type InverseTileColorsV2,
+  type PromotedItemColorsV2,
+  type FlagshipPromotedColorsV2,
+  type ColorPaletteV2,
+} from './palettes-v2'
 
 // ============================================================================
 // Text Transform Helpers
@@ -326,6 +345,7 @@ export const TYPOGRAPHY_TOKENS_V2 = {
     xss: 8,    // 8pt (compact footer / microcopy)
     xsm: 9,    // 9pt (Reduced from 11pt)
     xs: 10,    // 10pt
+    smd: 11,   // 11pt
     sm: 12,    // 12pt
     base: 14,  // 14pt
     lg: 16,    // 16pt
@@ -445,301 +465,6 @@ export type TextAlignV2 = 'left' | 'center' | 'right'
 
 /** Line height type for template styling */
 export type LineHeightV2 = keyof typeof TYPOGRAPHY_TOKENS_V2.lineHeight
-
-// ============================================================================
-// Color Tokens and Palettes (Shared between Web and PDF)
-// ============================================================================
-
-/** Color palette definition for V2 */
-export interface ColorPaletteV2 {
-  id: string
-  name: string
-  colors: {
-    background: string
-    /** Optional surface colour for cards/item tiles; should work well with background. Falls back to background if omitted. */
-    surface?: string
-    menuTitle: string
-    sectionHeader: string
-    itemTitle: string
-    itemPrice: string
-    /** Optional brand accent; featured chrome falls back to itemPrice when omitted */
-    accent?: string
-    itemDescription: string
-    itemIndicators: {
-      background: string
-    }
-    border: {
-      light: string
-      medium: string
-    }
-    textMuted: string
-    /** Banner background color */
-    bannerSurface: string
-    /** Banner text color */
-    bannerText: string
-    /** Footer border color */
-    footerBorder: string
-    /** Footer text color (address, phone, email, social media) */
-    footerText: string
-  }
-}
-
-/** Standard Color Tokens (Legacy/Default) */
-export const COLOR_TOKENS_V2 = {
-  text: {
-    primary: '#111827',    // gray-900
-    secondary: '#6B7280',  // gray-500
-    muted: '#9CA3AF'       // gray-400
-  },
-  background: {
-    white: '#FFFFFF',
-    gray50: '#F9FAFB',
-    gray100: '#F3F4F6'
-  },
-  border: {
-    light: '#E5E7EB',      // gray-200
-    medium: '#D1D5DB'      // gray-300
-  },
-  indicator: {
-    vegetarian: '#10B981', // emerald-500
-    vegan: '#059669',      // emerald-600
-    halal: '#3B82F6',      // blue-500
-    kosher: '#6366F1',     // indigo-500
-    glutenFree: '#F59E0B', // amber-500
-    spice: '#EF4444'       // red-500
-  }
-} as const
-
-/** Predefined Color Palettes */
-export const PALETTES_V2: ColorPaletteV2[] = [
-  {
-    id: 'clean-modern',
-    name: 'Clean Modern',
-    colors: {
-      background: '#FFFFFF',
-      surface: '#F9FAFB',
-      menuTitle: '#111827',
-      sectionHeader: '#111827',
-      itemTitle: '#111827',
-      itemPrice: '#111827',
-      itemDescription: '#6B7280',
-      itemIndicators: {
-        background: '#FFFFFF'
-      },
-      border: {
-        light: '#E5E7EB',
-        medium: '#D1D5DB'
-      },
-      textMuted: '#9CA3AF',
-      bannerSurface: '#E1E3E8',
-      bannerText: '#111827',
-      footerBorder: '#E5E7EB',
-      footerText: '#111827'
-    }
-  },
-  {
-    id: 'elegant-cream',
-    name: 'Elegant Cream',
-    colors: {
-      background: '#FDFCF0', // Warm cream
-      surface: '#F5F2E8',
-      menuTitle: '#2C2C2C',
-      sectionHeader: '#634e06',
-      itemTitle: '#2C2C2C',
-      itemPrice: '#8B6B23', // Muted gold/bronze
-      itemDescription: '#555555',
-      itemIndicators: {
-        background: '#FDFCF0'
-      },
-      border: {
-        light: '#E8E4C9',
-        medium: '#D4CFA3'
-      },
-      textMuted: '#8E8E8E',
-      bannerSurface: '#D4CFC1',
-      bannerText: '#2C2C2C',
-      footerBorder: '#E8E4C9',
-      footerText: '#2C2C2C'
-    }
-  },
-  {
-    id: 'midnight-gold',
-    name: 'Midnight Gold',
-    colors: {
-      background: '#1A1A1A', // Dark charcoal
-      surface: '#252525',
-      menuTitle: '#D4AF37', // Gold
-      sectionHeader: '#D4AF37',
-      itemTitle: '#FFFFFF',
-      itemPrice: '#D4AF37',
-      itemDescription: '#A0A0A0',
-      itemIndicators: {
-        background: '#1A1A1A'
-      },
-      border: {
-        light: '#333333',
-        medium: '#444444'
-      },
-      textMuted: '#666666',
-      bannerSurface: '#8f7e02',
-      bannerText: '#1C1C1B',
-      footerBorder: '#333333',
-      footerText: '#1C1C1B'
-    }
-  },
-  {
-    id: 'warm-earth',
-    name: 'Warm Earth',
-    colors: {
-      background: '#F5F0E8',
-      surface: '#EDE6DC',
-      menuTitle: '#3E2C1C',
-      sectionHeader: '#3E2C1C',
-      itemTitle: '#3E2C1C',
-      itemPrice: '#8B6914',
-      itemDescription: '#6B5B4E',
-      itemIndicators: {
-        background: '#F5F0E8'
-      },
-      border: {
-        light: '#E0D5C4',
-        medium: '#C9BAA3'
-      },
-      textMuted: '#9A8B7A',
-      bannerSurface: '#d3c5b2',
-      bannerText: '#3E2C1C',
-      footerBorder: '#E0D5C4',
-      footerText: '#3E2C1C'
-    }
-  },
-  {
-    id: 'ocean-breeze',
-    name: 'Ocean Breeze',
-    colors: {
-      background: '#F0F5F8',
-      surface: '#E8EEF2',
-      menuTitle: '#1B3A4B',
-      sectionHeader: '#1B3A4B',
-      itemTitle: '#1B3A4B',
-      itemPrice: '#2E6B8A',
-      itemDescription: '#5A7A8A',
-      itemIndicators: {
-        background: '#F0F5F8'
-      },
-      border: {
-        light: '#D0DEE6',
-        medium: '#B3C8D4'
-      },
-      textMuted: '#8A9FAB',
-      bannerSurface: '#c9dbe6',
-      bannerText: '#1B3A4B',
-      footerBorder: '#D0DEE6',
-      footerText: '#1B3A4B'
-    }
-  },
-  {
-    id: 'forest-green',
-    name: 'Forest Green',
-    colors: {
-      background: '#F2F5F0',
-      surface: '#E8EDE5',
-      menuTitle: '#1C3318',
-      sectionHeader: '#1C3318',
-      itemTitle: '#1C3318',
-      itemPrice: '#2D5A27',
-      itemDescription: '#4E6B4A',
-      itemIndicators: {
-        background: '#F2F5F0'
-      },
-      border: {
-        light: '#D4DED0',
-        medium: '#B8C9B3'
-      },
-      textMuted: '#7E9478',
-      bannerSurface: '#d1dfc5',
-      bannerText: '#1C3318',
-      footerBorder: '#D4DED0',
-      footerText: '#1C3318'
-    }
-  },
-  {
-    id: 'valentines-rose',
-    name: 'Blush Rose',
-    colors: {
-      background: '#FFF0F3',
-      surface: '#FCE4E9',
-      menuTitle: '#8B1A4A',
-      sectionHeader: '#8B1A4A',
-      itemTitle: '#4A0E2B',
-      itemPrice: '#C2185B',
-      itemDescription: '#7A5060',
-      itemIndicators: {
-        background: '#FFF0F3'
-      },
-      border: {
-        light: '#F5D0DA',
-        medium: '#E8A8BA'
-      },
-      textMuted: '#B08090',
-      bannerSurface: '#f0cbd5',
-      bannerText: '#8B1A4A',
-      footerBorder: '#F5D0DA',
-      footerText: '#8B1A4A'
-    }
-  },
-  {
-    id: 'lunar-red-gold',
-    name: 'Lunar Red & Gold',
-    colors: {
-      background: '#2B0A0A',
-      surface: '#3d1515',
-      menuTitle: '#D4A017',
-      sectionHeader: '#D4A017',
-      itemTitle: '#caa9a9',
-      itemPrice: '#D4A017',
-      itemDescription: '#C4A882',
-      itemIndicators: {
-        background: '#2B0A0A'
-      },
-      border: {
-        light: '#5C1A1A',
-        medium: '#7A2E2E'
-      },
-      textMuted: '#8A6A5A',
-      bannerSurface: '#6d0505',
-      bannerText: '#D4A017',
-      footerBorder: '#5C1A1A',
-      footerText: '#D4A017'
-    }
-  },
-  {
-    id: 'sunny-market',
-    name: 'Sunny Market',
-    colors: {
-      background: '#F8BC02', // GridMenu signature yellow
-      surface: '#F5B200',
-      menuTitle: '#1A1200',
-      sectionHeader: '#1A1200',
-      itemTitle: '#1A1200',
-      itemPrice: '#5C3D00', // Deep amber-brown
-      itemDescription: '#4A3800',
-      itemIndicators: {
-        background: '#F8BC02'
-      },
-      border: {
-        light: '#E5A800',
-        medium: '#C98F00'
-      },
-      textMuted: '#7A5C00',
-      bannerSurface: '#dca308',
-      bannerText: '#1A1200',
-      footerBorder: '#E5A800',
-      footerText: '#1A1200'
-    }
-  }
-]
-
-export const DEFAULT_PALETTE_V2 = PALETTES_V2.find(p => p.id === 'midnight-gold')!
 
 // ============================================================================
 // Texture Registry
@@ -1070,6 +795,50 @@ function getPalette(options: RenderOptionsV2): ColorPaletteV2 {
   return options.palette || DEFAULT_PALETTE_V2
 }
 
+type InverseTileKind = 'logoTitle' | 'sectionHeader'
+
+interface InverseTileChrome {
+  colors: InverseTileColorsV2
+  borderWidth: number
+}
+
+function getInverseTileChrome(palette: ColorPaletteV2, kind: InverseTileKind): InverseTileChrome {
+  const configured = palette.colors.inverseTiles?.[kind]
+
+  if (configured) {
+    return {
+      colors: configured,
+      borderWidth: kind === 'logoTitle' ? 3 : 2,
+    }
+  }
+
+  return kind === 'logoTitle'
+    ? {
+        colors: {
+          background: blendHexTowards(
+            palette.colors.menuTitle,
+            palette.colors.accent ?? palette.colors.itemPrice,
+            0.2
+          ),
+          text: palette.colors.background,
+          border: palette.colors.accent ?? palette.colors.itemPrice ?? palette.colors.menuTitle,
+        },
+        borderWidth: 3,
+      }
+    : {
+        colors: {
+          background: blendHexTowards(
+            palette.colors.surface ?? palette.colors.background,
+            palette.colors.accent ?? palette.colors.itemPrice,
+            0.2
+          ),
+          text: palette.colors.sectionHeader,
+          border: palette.colors.border.medium,
+        },
+        borderWidth: 2,
+      }
+}
+
 /**
  * Render tile content based on tile type and content
  * This function provides the core content rendering logic shared between
@@ -1097,6 +866,9 @@ export function renderTileContent(
     
     case 'FEATURE_CARD':
       return renderFeatureCardContent(content as FeatureCardContentV2, tile, options)
+
+    case 'FLAGSHIP_CARD':
+      return renderFlagshipCardContent(content as FlagshipCardContentV2, tile, options)
     
     case 'FILLER':
       return renderFillerContent(content as FillerContentV2, tile, options)
@@ -1187,7 +959,7 @@ export interface RenderStyle {
 // ============================================================================
 
 /** Pick the single ImageTransform for the active image mode from a per-mode record. */
-function resolveTransformForMode(
+export function resolveTransformForMode(
   record: import('@/types').ImageTransformRecord | undefined,
   mode: string
 ): import('@/types').ImageTransform | undefined {
@@ -1200,7 +972,7 @@ function resolveTransformForMode(
  * baseX/baseY are the default focal percentages for the current image mode (e.g. 50 and 70 for stretch).
  * Returns only the fields that differ from the default (no transform when scale === 1.0).
  */
-function computeImageTransformStyle(
+export function computeImageTransformStyle(
   imageTransform: import('@/types').ImageTransform | undefined,
   baseX: number,
   baseY: number,
@@ -1246,7 +1018,7 @@ interface ResolvedTypography {
 }
 
 /** Resolve sub-element typography from tile YAML style with fallback defaults */
-function resolveSubElementTypography(
+export function resolveSubElementTypography(
   tileStyle: TileStyleV2 | undefined,
   element: 'name' | 'description' | 'price' | 'label' | 'contact',
   defaults: { fontSize: number; fontWeight: number; lineHeight: number }
@@ -1287,34 +1059,66 @@ function renderLogoContent(
 ): TileRenderData {
   const elements: RenderElement[] = []
   const palette = getPalette(options)
+  const preset = FONT_STYLE_PRESETS[options.fontStylePreset ?? 'standard'] || FONT_STYLE_PRESETS.standard
+  const isBodyLogoTile = tile.regionId === 'body'
+  const inverseChrome = isBodyLogoTile ? getInverseTileChrome(palette, 'logoTitle') : undefined
+  const inset = isBodyLogoTile
+    ? Math.max(8, Math.min(14, tile.width * 0.08)) + (inverseChrome?.borderWidth ?? 0)
+    : 0
 
-  if (content.imageUrl) {
+  if (isBodyLogoTile) {
     elements.push({
-      type: 'image',
+      type: 'background',
       x: 0,
       y: 0,
       width: tile.width,
       height: tile.height,
+      content: '',
+      style: {
+        backgroundColor: inverseChrome?.colors.background ?? blendHexTowards(
+          palette.colors.surface ?? palette.colors.background,
+          palette.colors.accent ?? palette.colors.itemPrice,
+          0.1
+        ),
+        borderRadius: 0
+      }
+    })
+    if (inverseChrome) {
+      pushFrameBorders(elements, tile, inverseChrome.colors.border, inverseChrome.borderWidth)
+    }
+  }
+
+  if (content.imageUrl) {
+    elements.push({
+      type: 'image',
+      x: inset,
+      y: inset,
+      width: tile.width - inset * 2,
+      height: tile.height - inset * 2,
       content: content.imageUrl,
       style: {
         objectFit: 'contain',
         objectPosition: 'center',
-        backgroundColor: 'transparent'
+        backgroundColor: 'transparent',
+        borderRadius: 0
       }
     })
   } else {
     // Fallback text logo
     elements.push({
       type: 'text',
-      x: 0,
-      y: 0,
-      width: tile.width,
-      height: tile.height,
+      x: inset,
+      y: inset,
+      width: tile.width - inset * 2,
+      height: tile.height - inset * 2,
       content: content.venueName || 'Logo',
       style: {
         fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xl,
-        fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
-        color: palette.colors.menuTitle,
+        fontWeight: preset.bannerTitleWeight,
+        fontFamily: preset.bannerTitleFamily,
+        color: isBodyLogoTile
+          ? (inverseChrome?.colors.text ?? blendHexTowards(palette.colors.menuTitle, palette.colors.accent ?? palette.colors.itemPrice, 0.35))
+          : palette.colors.menuTitle,
         textAlign: 'center'
       }
     })
@@ -1356,6 +1160,8 @@ function renderSectionHeaderContent(
 ): TileRenderData {
   const palette = getPalette(options)
   const elements: RenderElement[] = []
+  const isCompactHeaderTile = tile.regionId === 'body' && tile.colSpan === 1
+  const inverseChrome = isCompactHeaderTile ? getInverseTileChrome(palette, 'sectionHeader') : undefined
   
   // Get tile styling from template (passed through tile.style)
   const tileStyle = (tile as any).style as TileStyleV2 | undefined
@@ -1375,7 +1181,13 @@ function renderSectionHeaderContent(
   
   // Spacing: padding from template (e.g. 24px top for subtitle, 8px left with decoration)
   const paddingLeft = tileStyle?.spacing?.paddingLeft ?? 0
+  const paddingRight = tileStyle?.spacing?.paddingRight ?? paddingLeft
   const paddingTop = tileStyle?.spacing?.paddingTop ?? 0
+  const compactHorizontalInset = isCompactHeaderTile
+    ? Math.max(8, 6 + (inverseChrome?.borderWidth ?? 0))
+    : 0
+  const effectivePaddingLeft = isCompactHeaderTile ? Math.max(paddingLeft, compactHorizontalInset) : paddingLeft
+  const effectivePaddingRight = isCompactHeaderTile ? Math.max(paddingRight, compactHorizontalInset) : paddingRight
   
   // Get font family from font set
   const fontFamily = getFontFamily(fontSet)
@@ -1396,7 +1208,7 @@ function renderSectionHeaderContent(
       content: '',
       style: {
         backgroundColor: tileStyle.background.color,
-        borderRadius: tileStyle.background.borderRadius || 0
+        borderRadius: isCompactHeaderTile ? 0 : (tileStyle.background.borderRadius || 0)
       }
     })
   }
@@ -1468,14 +1280,42 @@ function renderSectionHeaderContent(
   
   // Apply textTransform and letterSpacing from tile style
   const textTransformVal = tileStyle?.typography?.textTransform || undefined
-  const letterSpacing =
+  let letterSpacing =
     letterSpacingOverride !== undefined
       ? letterSpacingOverride
       : textTransformVal === 'uppercase'
         ? 1.5
         : undefined
 
-  const resolvedFontSize = (TYPOGRAPHY_TOKENS_V2.fontSize[fontSize as FontSizeV2] || TYPOGRAPHY_TOKENS_V2.fontSize['2xl']) * (presetConfig?.sectionHeaderFontSizeMultiplier ?? 1)
+  const [labelText, labelCssTransform] = applyTextTransform(content.label, textTransformVal)
+  const baseResolvedFontSize = (TYPOGRAPHY_TOKENS_V2.fontSize[fontSize as FontSizeV2] || TYPOGRAPHY_TOKENS_V2.fontSize['2xl']) * (presetConfig?.sectionHeaderFontSizeMultiplier ?? 1)
+  let resolvedFontSize = baseResolvedFontSize
+  const decorationWidth = 14
+  const decorationGap = 4
+  const showDecoration = decoration && decoration !== 'none'
+  const compactTextWidth = Math.max(
+    0,
+    tile.width
+      - effectivePaddingLeft
+      - effectivePaddingRight
+      - (showDecoration ? decorationWidth + decorationGap : 0)
+  )
+  if (isCompactHeaderTile && labelText) {
+    const compactMinFontSize = 11
+    const compactMaxByHeight = Math.max(compactMinFontSize, tile.height * 0.42)
+    resolvedFontSize = Math.min(baseResolvedFontSize, compactMaxByHeight)
+
+    while (resolvedFontSize > compactMinFontSize && estimateUnboundedLineCount(labelText, compactTextWidth, resolvedFontSize) > 1) {
+      resolvedFontSize -= 1
+    }
+    resolvedFontSize = Math.max(compactMinFontSize, resolvedFontSize)
+
+    if (letterSpacing !== undefined) {
+      letterSpacing = resolvedFontSize <= baseResolvedFontSize * 0.8
+        ? Math.min(letterSpacing, 0.2)
+        : Math.min(letterSpacing, 0.4)
+    }
+  }
   const resolvedLineHeight = TYPOGRAPHY_TOKENS_V2.lineHeight[lineHeight as LineHeightV2] || TYPOGRAPHY_TOKENS_V2.lineHeight.normal
 
   // Anchor text just above the bottom border so heading-to-divider proximity
@@ -1489,15 +1329,36 @@ function renderSectionHeaderContent(
   } else {
     textY = paddingTop || tile.height / 2
   }
+  if (isCompactHeaderTile) {
+    textY = Math.max(4, (tile.height - sectionTextLineHeight) / 2)
+  }
 
-  const decorationWidth = 14
-  const decorationGap = 4
-  const showDecoration = decoration && decoration !== 'none'
+  if (isCompactHeaderTile && !tileStyle?.background?.color) {
+    elements.unshift({
+      type: 'background',
+      x: 0,
+      y: 0,
+      width: tile.width,
+      height: tile.height,
+      content: '',
+      style: {
+        backgroundColor: inverseChrome?.colors.background ?? blendHexTowards(
+          palette.colors.surface ?? palette.colors.background,
+          palette.colors.accent ?? palette.colors.itemPrice,
+          0.12
+        ),
+        borderRadius: 0
+      }
+    })
+    if (inverseChrome) {
+      pushFrameBorders(elements, tile, inverseChrome.colors.border, inverseChrome.borderWidth)
+    }
+  }
 
   // Default: left-aligned label with optional decoration directly before it
-  let decorationX = paddingLeft
-  let textStartX = paddingLeft + (showDecoration ? decorationWidth + decorationGap : 0)
-  let textWidth = tile.width - textStartX
+  let decorationX = effectivePaddingLeft
+  let textStartX = effectivePaddingLeft + (showDecoration ? decorationWidth + decorationGap : 0)
+  let textWidth = compactTextWidth
 
   // When a decoration is present and textAlign is "center", treat the
   // bullet + label as a single group and approximate-center that group
@@ -1509,11 +1370,11 @@ function renderSectionHeaderContent(
     const approxLabelWidthRaw = label.length * approxCharWidth
 
     // Constrain the estimated width to avoid overshooting the tile
-    const maxLabelWidth = Math.max(0, tile.width - 2 * paddingLeft - decorationWidth - decorationGap)
+    const maxLabelWidth = Math.max(0, tile.width - effectivePaddingLeft - effectivePaddingRight - decorationWidth - decorationGap)
     const approxLabelWidth = Math.min(Math.max(0, approxLabelWidthRaw), maxLabelWidth)
 
     const groupWidth = decorationWidth + decorationGap + approxLabelWidth
-    const groupLeft = Math.max(paddingLeft, (tile.width - groupWidth) / 2)
+    const groupLeft = Math.max(effectivePaddingLeft, (tile.width - groupWidth) / 2)
 
     decorationX = groupLeft
     textStartX = groupLeft + decorationWidth + decorationGap
@@ -1548,7 +1409,6 @@ function renderSectionHeaderContent(
     })
   }
 
-  const [labelText, labelCssTransform] = applyTextTransform(content.label, textTransformVal)
   elements.push({
     type: 'text',
     x: textStartX,
@@ -1559,7 +1419,11 @@ function renderSectionHeaderContent(
       fontSize: resolvedFontSize,
       fontWeight: resolvedFontWeight,
       lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight[lineHeight as LineHeightV2] || TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
-      color: tileStyle?.typography?.color || palette.colors.sectionHeader,
+      color: tileStyle?.typography?.color || (
+        isCompactHeaderTile
+          ? (inverseChrome?.colors.text ?? blendHexTowards(palette.colors.sectionHeader, palette.colors.accent ?? palette.colors.itemPrice, 0.45))
+          : palette.colors.sectionHeader
+      ),
       // For centered headings with a decoration, we approximate-center the
       // bullet + label group via geometry, so the label's own textAlign
       // remains left-aligned to keep the bullet close to the first letter.
@@ -1624,11 +1488,219 @@ export function getFeaturedStarBadgeMetrics(tileWidthPt: number): FeaturedStarBa
   return { size, overlap, starFontSize, borderRadius, boxShadow }
 }
 
+export interface FlagshipBadgeMetrics {
+  badgeW: number
+  badgeH: number
+  fontSize: number
+  borderRadius: number
+  overlap: number
+  boxShadow: string
+}
+
+export interface FlagshipChromeV2 {
+  frameOuter: string
+  panel: string
+  badgeFill: string
+  badgeText: string
+  badgeLabel: string
+  badgePosition: 'left' | 'right'
+  badgeRadius: number
+  price: string
+  borderWidth: number
+}
+
+export interface FeaturedChromeV2 {
+  panel: string
+  borderColor: string
+  borderWidth: number
+  badgeFill: string
+  badgeText: string
+  badgeLabel: string
+  badgePosition: 'left' | 'right'
+  badgeRadius: number
+}
+
+export function getFlagshipBadgeMetrics(tileWidthPt: number): FlagshipBadgeMetrics {
+  const layoutScale = Math.min(1.24, Math.max(1, tileWidthPt / 190))
+  const overlap = Math.round(6 * layoutScale)
+  const badgeW = Math.round(92 * layoutScale)
+  const badgeH = Math.round(24 * layoutScale)
+  const fontSize = Math.round(8.8 * layoutScale * 10) / 10
+  const borderRadius = Math.max(7, Math.round(7 * layoutScale))
+  const boxShadow = [
+    `0 ${Math.max(2, Math.round(2 * layoutScale))}px ${Math.max(10, Math.round(10 * layoutScale))}px rgba(76,53,2,0.24)`,
+    `0 0 0 1px rgba(255,248,220,0.28)`,
+  ].join(', ')
+
+  return { badgeW, badgeH, fontSize, borderRadius, overlap, boxShadow }
+}
+
+export function getFlagshipChrome(
+  palette?: ColorPaletteV2,
+  tileStyle?: TileStyleV2
+): FlagshipChromeV2 {
+  const promoted = palette?.colors.promoted.flagship
+  const frameOuter = promoted?.border ?? '#7F5F14'
+  const panel = promoted?.background ?? '#E0D8C2'
+  const badgeFill = promoted?.badgeFill ?? '#745711'
+  const badgeText = promoted?.badgeText ?? '#FFF9E8'
+  const badgeLabel = tileStyle?.badge?.label ?? 'House Special'
+  const badgePosition = tileStyle?.badge?.position ?? 'left'
+  const badgeRadius = tileStyle?.badge?.borderRadius ?? 7
+  const price = promoted?.price ?? (palette?.colors.itemPrice ?? COLOR_TOKENS_V2.text.primary)
+  const borderWidth = tileStyle?.border?.width ?? 7
+
+  return {
+    frameOuter,
+    panel,
+    badgeFill,
+    badgeText,
+    badgeLabel,
+    badgePosition,
+    badgeRadius,
+    price,
+    borderWidth,
+  }
+}
+
+export function resolveFlagshipTextSlots(args: {
+  availableHeight: number
+  nameMaxLines: number
+  minNameLines?: number
+  descMaxLines: number
+  hasDescription: boolean
+  nameLineHeight: number
+  descLineHeight: number
+  priceLineHeight: number
+}): {
+  nameLines: number
+  descLines: number
+  nameHeight: number
+  descHeight: number
+  gapNameToDesc: number
+  gapDescToPrice: number
+  totalHeight: number
+} {
+  const {
+    availableHeight,
+    nameMaxLines,
+    minNameLines = 1,
+    descMaxLines,
+    hasDescription,
+    nameLineHeight,
+    descLineHeight,
+    priceLineHeight,
+  } = args
+
+  let nameLines = Math.max(1, nameMaxLines)
+  let descLines = hasDescription ? Math.max(0, descMaxLines) : 0
+  let gapNameToDesc: number = descLines > 0 ? SPACING_V2.nameToDesc : 0
+  let gapDescToPrice: number = SPACING_V2.descToPrice
+
+  const calcTotalHeight = () =>
+    (nameLines * nameLineHeight) +
+    (descLines > 0 ? gapNameToDesc + (descLines * descLineHeight) : 0) +
+    gapDescToPrice +
+    priceLineHeight
+
+  let totalHeight = calcTotalHeight()
+  if (totalHeight > availableHeight) {
+    const totalGap = gapNameToDesc + gapDescToPrice
+    const fixedHeight =
+      (nameLines * nameLineHeight) +
+      (descLines * descLineHeight) +
+      priceLineHeight
+    const availableForGaps = Math.max(0, availableHeight - fixedHeight)
+    const gapScale = totalGap > 0 ? Math.min(1, availableForGaps / totalGap) : 0
+    gapNameToDesc = descLines > 0 ? Math.max(2, gapNameToDesc * gapScale) : 0
+    gapDescToPrice = Math.max(2, gapDescToPrice * gapScale)
+    totalHeight = calcTotalHeight()
+
+    while (totalHeight > availableHeight && descLines > 0) {
+      descLines--
+      if (descLines === 0) gapNameToDesc = 0
+      totalHeight = calcTotalHeight()
+    }
+
+    while (totalHeight > availableHeight && nameLines > minNameLines) {
+      nameLines--
+      totalHeight = calcTotalHeight()
+    }
+  }
+
+  return {
+    nameLines,
+    descLines,
+    nameHeight: nameLines * nameLineHeight,
+    descHeight: descLines * descLineHeight,
+    gapNameToDesc,
+    gapDescToPrice,
+    totalHeight,
+  }
+}
+
+export function resolveFlagshipTitleFit(args: {
+  text: string
+  availableWidth: number
+  preferredFontSize: number
+  preferredLines?: number
+  minFontSize?: number
+}): {
+  fontSize: number
+  lineBudget: number
+} {
+  const {
+    text,
+    availableWidth,
+    preferredFontSize,
+    preferredLines = 2,
+    minFontSize = Math.min(preferredFontSize, 9),
+  } = args
+
+  if (!text || availableWidth <= 0) {
+    return {
+      fontSize: preferredFontSize,
+      lineBudget: preferredLines,
+    }
+  }
+
+  let fontSize = preferredFontSize
+  while (
+    fontSize > minFontSize &&
+    estimateLineCount(text, availableWidth, fontSize, preferredLines) > preferredLines
+  ) {
+    fontSize -= 1
+  }
+
+  return {
+    fontSize,
+    lineBudget: preferredLines,
+  }
+}
+
+export function getFeaturedChrome(
+  palette?: ColorPaletteV2,
+  tileStyle?: TileStyleV2
+): FeaturedChromeV2 {
+  const promoted = palette?.colors.promoted.featured
+
+  return {
+    panel: promoted?.background ?? (palette?.colors.surface ?? palette?.colors.background ?? COLOR_TOKENS_V2.background.white),
+    borderColor: promoted?.border ?? (palette?.colors.accent ?? palette?.colors.itemPrice ?? COLOR_TOKENS_V2.text.primary),
+    borderWidth: tileStyle?.border?.width ?? 2,
+    badgeFill: promoted?.badgeFill ?? (palette?.colors.accent ?? palette?.colors.itemPrice ?? COLOR_TOKENS_V2.text.primary),
+    badgeText: promoted?.badgeText ?? '#ffffff',
+    badgeLabel: tileStyle?.badge?.label ?? 'Popular',
+    badgePosition: tileStyle?.badge?.position ?? 'right',
+    badgeRadius: tileStyle?.badge?.borderRadius ?? 3,
+  }
+}
+
 /** Small accent disc + star (Image Style “none”) — same accent chrome as “Popular”, less vertical footprint. */
 function pushFeaturedStarBadge(
   elements: RenderElement[],
   tile: TileInstanceV2,
-  palette: ColorPaletteV2,
+  chrome: FeaturedChromeV2,
   fontFamily: string,
   metrics: FeaturedStarBadgeMetrics
 ): void {
@@ -1636,9 +1708,10 @@ function pushFeaturedStarBadge(
   // Slight nudge past the featured outline so the disc does not sit flush on the border ring.
   const nudgeX = 2
   const nudgeY = 2
-  const x = tile.width - size + overlap + nudgeX
+  const x = chrome.badgePosition === 'left'
+    ? -overlap - nudgeX
+    : tile.width - size + overlap + nudgeX
   const y = -overlap - nudgeY
-  const accent = palette.colors.accent ?? palette.colors.itemPrice
   elements.push({
     type: 'text',
     x,
@@ -1651,10 +1724,10 @@ function pushFeaturedStarBadge(
       fontWeight: 700,
       fontFamily,
       // Match “Popular” pill: light glyph on accent fill (reads across palettes).
-      color: '#ffffff',
-      backgroundColor: accent,
+      color: chrome.badgeText,
+      backgroundColor: chrome.badgeFill,
       textAlign: 'center',
-      borderRadius,
+      borderRadius: chrome.badgeRadius ?? borderRadius,
       lineHeight: 1,
       zIndex: 35,
       display: 'flex',
@@ -1665,17 +1738,51 @@ function pushFeaturedStarBadge(
   })
 }
 
+function pushFlagshipBadge(
+  elements: RenderElement[],
+  tile: TileInstanceV2,
+  chrome: FlagshipChromeV2,
+  fontFamily: string,
+  metrics: FlagshipBadgeMetrics
+): void {
+  const { badgeW, badgeH, fontSize, borderRadius, overlap, boxShadow } = metrics
+  const badgeX = chrome.badgePosition === 'left' ? -overlap : tile.width - badgeW + overlap
+  const badgeY = -overlap
+
+  elements.push({
+    type: 'text',
+    x: badgeX,
+    y: badgeY,
+    width: badgeW,
+    height: badgeH,
+    content: chrome.badgeLabel,
+    style: {
+      fontSize,
+      fontWeight: 800,
+      fontFamily,
+      color: chrome.badgeText,
+      backgroundColor: chrome.badgeFill,
+      textAlign: 'center',
+      borderRadius: chrome.badgeRadius ?? borderRadius,
+      zIndex: 35,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow,
+      letterSpacing: 0.2,
+    },
+  })
+}
+
 function pushPopularBadge(
   elements: RenderElement[],
   tile: TileInstanceV2,
-  palette: ColorPaletteV2,
+  chrome: FeaturedChromeV2,
   fontFamily: string,
   metrics: PopularBadgeMetrics
 ): void {
-  const label = 'Popular'
   const { badgeW, badgeH, fontSize, borderRadius, overlap, boxShadow } = metrics
-  // Slight overlap past top-right of the tile so the sticker reads above the card edge.
-  const x = tile.width - badgeW + overlap
+  const x = chrome.badgePosition === 'left' ? -overlap : tile.width - badgeW + overlap
   const y = -overlap
   elements.push({
     type: 'text',
@@ -1683,15 +1790,15 @@ function pushPopularBadge(
     y,
     width: badgeW,
     height: badgeH,
-    content: label,
+    content: chrome.badgeLabel,
     style: {
       fontSize,
       fontWeight: 700,
       fontFamily,
-      color: '#ffffff',
-      backgroundColor: palette.colors.accent ?? palette.colors.itemPrice,
+      color: chrome.badgeText,
+      backgroundColor: chrome.badgeFill,
       textAlign: 'center',
-      borderRadius,
+      borderRadius: chrome.badgeRadius ?? borderRadius,
       zIndex: 35,
       display: 'flex',
       alignItems: 'center',
@@ -1699,6 +1806,54 @@ function pushPopularBadge(
       boxShadow,
     },
   })
+}
+
+function pushFrameBorders(
+  elements: RenderElement[],
+  tile: TileInstanceV2,
+  color: string,
+  width: number
+): void {
+  if (width <= 0) return
+
+  elements.push(
+    {
+      type: 'background',
+      x: 0,
+      y: 0,
+      width: tile.width,
+      height: width,
+      content: '',
+      style: { backgroundColor: color },
+    },
+    {
+      type: 'background',
+      x: 0,
+      y: tile.height - width,
+      width: tile.width,
+      height: width,
+      content: '',
+      style: { backgroundColor: color },
+    },
+    {
+      type: 'background',
+      x: 0,
+      y: 0,
+      width,
+      height: tile.height,
+      content: '',
+      style: { backgroundColor: color },
+    },
+    {
+      type: 'background',
+      x: tile.width - width,
+      y: 0,
+      width,
+      height: tile.height,
+      content: '',
+      style: { backgroundColor: color },
+    }
+  )
 }
 
 function renderItemContent(
@@ -1709,6 +1864,7 @@ function renderItemContent(
   const elements: RenderElement[] = []
   const palette = getPalette(options)
   const tileStyle = tile.style as TileStyleV2 | undefined
+  const featuredChrome = content.isFeatured ? getFeaturedChrome(palette, tileStyle) : undefined
 
   // Use template contentBudget padding when available, fall back to global default
   const padTop = tile.contentBudget?.paddingTop ?? SPACING_V2.tilePadding
@@ -1742,7 +1898,9 @@ function renderItemContent(
    * Featured tiles get a 2px border on the wrapper; children paint above that border in CSS,
    * so imagery must be inset in pt space to sit inside the border ring.
    */
-  const featuredContentInset = content.isFeatured ? 3 : 0
+  const featuredContentInset = content.isFeatured
+    ? Math.max(3, (featuredChrome?.borderWidth ?? 2) + 1)
+    : 0
 
   /** Extra top offset for all text in background-image mode (clears “Popular” + reads lower on the photo). */
   const BACKGROUND_IMAGE_TEXT_TOP_BIAS_PT = 20
@@ -1785,6 +1943,22 @@ function renderItemContent(
   const featuredBadgeMetrics =
     content.isFeatured && !isImageNoneLayout ? getPopularBadgeMetrics(tile.width) : null
 
+  if (content.isFeatured && featuredChrome) {
+    elements.push({
+      type: 'background',
+      x: 0,
+      y: 0,
+      width: tile.width,
+      height: tile.height,
+      content: '',
+      style: {
+        backgroundColor: featuredChrome.panel,
+        borderRadius: tileStyle?.background?.borderRadius ?? 0,
+      }
+    })
+    pushFrameBorders(elements, tile, featuredChrome.borderColor, featuredChrome.borderWidth)
+  }
+
   // ITEM_TEXT_ROW: fixed-slot layout with top-aligned content group.
   // All tiles of the same height get identical descY and priceY positions,
   // preventing wrapped titles from squashing descriptions and keeping
@@ -1822,10 +1996,10 @@ function renderItemContent(
     const descReservedHeight = descReservedLines * descLineHeight
     const descLinesToRender = hasDesc ? Math.min(estDescLines, descReservedLines) : 0
 
-    if (content.isFeatured && featuredStarMetrics) {
-      pushFeaturedStarBadge(elements, tile, palette, featuredBadgeFont, featuredStarMetrics)
-    } else if (content.isFeatured && featuredBadgeMetrics) {
-      pushPopularBadge(elements, tile, palette, featuredBadgeFont, featuredBadgeMetrics)
+    if (content.isFeatured && featuredStarMetrics && featuredChrome) {
+      pushFeaturedStarBadge(elements, tile, featuredChrome, featuredBadgeFont, featuredStarMetrics)
+    } else if (content.isFeatured && featuredBadgeMetrics && featuredChrome) {
+      pushPopularBadge(elements, tile, featuredChrome, featuredBadgeFont, featuredBadgeMetrics)
     }
 
     const nameX = (tile.width - textWidth) / 2
@@ -2125,10 +2299,10 @@ function renderItemContent(
     currentY += imageBlockHeight
   }
 
-  if (content.isFeatured && featuredStarMetrics) {
-    pushFeaturedStarBadge(elements, tile, palette, featuredBadgeFont, featuredStarMetrics)
-  } else if (content.isFeatured && featuredBadgeMetrics) {
-    pushPopularBadge(elements, tile, palette, featuredBadgeFont, featuredBadgeMetrics)
+  if (content.isFeatured && featuredStarMetrics && featuredChrome) {
+    pushFeaturedStarBadge(elements, tile, featuredChrome, featuredBadgeFont, featuredStarMetrics)
+  } else if (content.isFeatured && featuredBadgeMetrics && featuredChrome) {
+    pushPopularBadge(elements, tile, featuredChrome, featuredBadgeFont, featuredBadgeMetrics)
   }
 
   // --- Name ---
@@ -2451,6 +2625,344 @@ function renderFeatureCardContent(
     const indicatorX = (tile.width - indicatorWidth) / 2
     elements.push(...renderIndicators(content.indicators, indicatorX, currentY, indicatorWidth, palette))
   }
+
+  return { elements }
+}
+
+function renderFlagshipCardContent(
+  content: FlagshipCardContentV2,
+  tile: TileInstanceV2,
+  options: RenderOptionsV2
+): TileRenderData {
+  const elements: RenderElement[] = []
+  const palette = getPalette(options)
+  const tileStyle = tile.style as TileStyleV2 | undefined
+  const imageMode: ImageModeV2 = options.imageMode || 'stretch'
+  const isBackgroundMode = imageMode === 'background'
+  const showsMedia = content.showImage && imageMode !== 'none'
+  const hasImageAsset = !!content.imageUrl
+  const padTop = tile.contentBudget?.paddingTop ?? 10
+  const padBottom = tile.contentBudget?.paddingBottom ?? 10
+  const padX = Math.max(10, Math.min(18, tile.width * 0.04))
+  const gap = Math.max(10, Math.min(18, tile.width * 0.03))
+  const chrome = getFlagshipChrome(palette, tileStyle)
+  const badgeMetrics = getFlagshipBadgeMetrics(tile.width)
+  const surfaceColor = blendHexTowards(
+    palette.colors.surface ?? palette.colors.background,
+    palette.colors.accent ?? palette.colors.itemPrice,
+    0.14
+  )
+  const bodyHeight = tile.height - padTop - padBottom
+  const prominenceScale = Math.min(1.2, Math.max(1, (tile.colSpan + tile.rowSpan) / 3))
+
+  const nameTypo = resolveSubElementTypography(tileStyle, 'name', {
+    fontSize: Math.round(TYPOGRAPHY_TOKENS_V2.fontSize.base * prominenceScale),
+    fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.tight,
+  })
+  const descTypo = resolveSubElementTypography(tileStyle, 'description', {
+    fontSize: Math.round(TYPOGRAPHY_TOKENS_V2.fontSize.sm * Math.min(prominenceScale, 1.02)),
+    fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.normal,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
+  })
+  const priceTypo = resolveSubElementTypography(tileStyle, 'price', {
+    fontSize: Math.round(TYPOGRAPHY_TOKENS_V2.fontSize.base * Math.min(prominenceScale, 1.02)),
+    fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.tight,
+  })
+  const badgeFontFamily =
+    resolveSubElementTypography(tileStyle, 'name', {
+      fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xsm,
+      fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
+      lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.tight,
+    }).fontFamily || TYPOGRAPHY_TOKENS_V2.fontFamily.primary
+  const outerFrameInset = 0
+  const panelInset = chrome.borderWidth
+
+  elements.push({
+    type: 'background',
+    x: outerFrameInset,
+    y: outerFrameInset,
+    width: tile.width - outerFrameInset * 2,
+    height: tile.height - outerFrameInset * 2,
+    content: '',
+    style: {
+      backgroundColor: chrome.frameOuter,
+      borderRadius: 0
+    }
+  })
+  elements.push({
+    type: 'background',
+    x: panelInset,
+    y: panelInset,
+    width: tile.width - panelInset * 2,
+    height: tile.height - panelInset * 2,
+    content: '',
+    style: {
+      backgroundColor: isBackgroundMode ? surfaceColor : chrome.panel,
+      borderRadius: 0
+    }
+  })
+
+  let mediaX = padX
+  let mediaY = padTop
+  let mediaWidth = 0
+  let mediaHeight = 0
+  let mediaBorderRadius = imageMode === 'compact-circle' ? 999 : 0
+
+  const hasMediaColumn = showsMedia && !isBackgroundMode
+  const isStretchFlagship = imageMode === 'stretch' && hasMediaColumn
+  if (hasMediaColumn) {
+    const baseMediaWidth = tile.colSpan > 1 ? tile.width * 0.44 : tile.width * 0.38
+    mediaWidth = Math.max(88, Math.min(baseMediaWidth, tile.width - padX * 2 - 92))
+    mediaHeight = bodyHeight
+
+    if (imageMode === 'compact-rect') {
+      mediaWidth = Math.min(mediaWidth, tile.width * 0.34)
+      mediaHeight = Math.min(bodyHeight * 0.72, mediaWidth * 1.15)
+      mediaY = padTop + (bodyHeight - mediaHeight) / 2
+      mediaBorderRadius = 0
+    } else if (imageMode === 'compact-circle') {
+      const diameter = Math.min(mediaWidth, bodyHeight * 0.7)
+      mediaWidth = diameter
+      mediaHeight = diameter
+      mediaY = padTop + (bodyHeight - diameter) / 2
+      mediaBorderRadius = diameter / 2
+    } else if (imageMode === 'cutout') {
+      mediaWidth = Math.min(mediaWidth, tile.width * 0.4)
+      mediaHeight = bodyHeight
+      mediaBorderRadius = 0
+    } else if (imageMode === 'stretch') {
+      mediaX = panelInset
+      mediaY = panelInset
+      mediaHeight = tile.height - panelInset * 2
+    }
+
+    if (hasImageAsset) {
+      const persistedTransform = resolveTransformForMode(content.imageTransform, imageMode)
+      const effectiveTransform = options.imageTransforms?.get(content.itemId) ?? persistedTransform
+      const baseY = imageMode === 'stretch' ? 55 : 50
+      const transformStyle = computeImageTransformStyle(
+        effectiveTransform,
+        50,
+        baseY,
+        imageMode === 'cutout'
+      )
+      elements.push({
+        type: 'image',
+        x: mediaX,
+        y: mediaY,
+        width: mediaWidth,
+        height: mediaHeight,
+        content: content.imageUrl!,
+        style: {
+          borderRadius: mediaBorderRadius,
+          objectFit: imageMode === 'cutout' ? 'contain' : 'cover',
+          boxShadow: imageMode === 'cutout' ? undefined : '0 6px 18px rgba(0,0,0,0.12)',
+          ...transformStyle
+        }
+      })
+    } else {
+      elements.push({
+        type: 'background',
+        x: mediaX,
+        y: mediaY,
+        width: mediaWidth,
+        height: mediaHeight,
+        content: '',
+        style: {
+          backgroundColor: palette.colors.border.light,
+          borderRadius: mediaBorderRadius
+        }
+      })
+    }
+
+    if (content.indicators) {
+      elements.push(...renderIndicators(content.indicators, mediaX + 6, mediaY + 6, Math.max(30, mediaWidth - 12), palette))
+    }
+  }
+
+  if (content.showImage && isBackgroundMode) {
+    if (hasImageAsset) {
+      const persistedBgTransform = resolveTransformForMode(content.imageTransform, imageMode)
+      const effectiveBgTransform = options.imageTransforms?.get(content.itemId) ?? persistedBgTransform
+      const bgTransformStyle = computeImageTransformStyle(effectiveBgTransform, 50, 50)
+      elements.push({
+        type: 'image',
+        x: panelInset,
+        y: panelInset,
+        width: tile.width - panelInset * 2,
+        height: tile.height - panelInset * 2,
+        content: content.imageUrl!,
+        style: {
+          borderRadius: 0,
+          objectFit: 'cover',
+          ...bgTransformStyle
+        }
+      })
+    } else {
+      elements.push({
+        type: 'background',
+        x: panelInset,
+        y: panelInset,
+        width: tile.width - panelInset * 2,
+        height: tile.height - panelInset * 2,
+        content: '',
+        style: {
+          backgroundColor: surfaceColor,
+          borderRadius: 0
+        }
+      })
+    }
+
+    elements.push({
+      type: 'background',
+      x: panelInset,
+      y: panelInset,
+      width: tile.width - panelInset * 2,
+      height: tile.height - panelInset * 2,
+      content: '',
+      style: {
+        background: 'linear-gradient(90deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.46) 42%, rgba(0,0,0,0.18) 100%)',
+        borderRadius: 0
+      }
+    })
+
+    if (content.indicators) {
+      elements.push(...renderIndicators(content.indicators, padX, padTop, Math.max(40, tile.width - padX * 2), palette))
+    }
+  }
+
+  const textX = hasMediaColumn ? mediaX + mediaWidth + gap : padX
+  const textRightPad = isStretchFlagship ? panelInset + padX : padX
+  const textWidth = tile.width - textX - textRightPad
+  const baseNameFontSize = isBackgroundMode
+    ? Math.min(nameTypo.fontSize + 2, BG_IMAGE_TEXT.nameSizeMax)
+    : nameTypo.fontSize
+  const titleFit = resolveFlagshipTitleFit({
+    text: content.name,
+    availableWidth: textWidth,
+    preferredFontSize: baseNameFontSize,
+    preferredLines: 2,
+    minFontSize: Math.min(baseNameFontSize, 9),
+  })
+  const nameFontSize = titleFit.fontSize
+  const priceFontSize = isBackgroundMode
+    ? Math.min(priceTypo.fontSize + 1, BG_IMAGE_TEXT.priceSizeMax)
+    : Math.max(11, priceTypo.fontSize - 1)
+  const nameLineHeight = nameFontSize * nameTypo.lineHeight
+  const descLineHeight = descTypo.fontSize * descTypo.lineHeight
+  const priceLineHeight = priceFontSize * priceTypo.lineHeight
+  const nameLines = Math.max(tile.contentBudget?.nameLines ?? 2, titleFit.lineBudget)
+  const descLines = content.description ? (tile.contentBudget?.descLines ?? 4) : 0
+  const availableTextHeight = isBackgroundMode || isStretchFlagship
+    ? tile.height - (panelInset * 2) - padTop - padBottom
+    : bodyHeight
+  const textSlots = resolveFlagshipTextSlots({
+    availableHeight: availableTextHeight,
+    nameMaxLines: nameLines,
+    minNameLines: titleFit.lineBudget,
+    descMaxLines: descLines,
+    hasDescription: !!content.description,
+    nameLineHeight,
+    descLineHeight,
+    priceLineHeight,
+  })
+  const textBodyHeight = textSlots.totalHeight
+  const badgeHeight = badgeMetrics.badgeH
+  const badgeVerticalOverlap = badgeMetrics.overlap
+  const effectiveBadgeIntrusion = Math.max(0, badgeHeight - badgeVerticalOverlap)
+  const badgePosition = chrome.badgePosition ?? 'left'
+  // Reserve enough top space to clear a left-anchored badge, plus a small
+  // visual gap so ascenders do not appear tucked under the sticker.
+  const badgeGap = 4
+  const badgeIntrusion = badgePosition === 'left' ? effectiveBadgeIntrusion + badgeGap : 0
+  const centeredTextY = padTop + Math.max(0, (bodyHeight - textBodyHeight) / 2)
+  const textY = isBackgroundMode
+    ? Math.max(padTop + 18 + badgeIntrusion, (tile.height - textBodyHeight) / 2)
+    : isStretchFlagship
+      ? panelInset + Math.max(padTop, badgeIntrusion)
+      : Math.max(padTop + badgeIntrusion, centeredTextY)
+
+  let currentY = textY
+  const [nameText, nameTransform] = applyTextTransform(content.name, nameTypo.textTransform)
+  elements.push({
+    type: 'text',
+    x: textX,
+    y: currentY,
+    width: textWidth,
+    height: textSlots.nameHeight,
+    content: nameText,
+    style: {
+      fontSize: nameFontSize,
+      fontWeight: nameTypo.fontWeight,
+      fontFamily: nameTypo.fontFamily,
+      lineHeight: nameTypo.lineHeight,
+      maxLines: textSlots.nameLines,
+      color: isBackgroundMode
+        ? lightenHexForDarkBackground(palette.colors.itemTitle, BG_IMAGE_TEXT.lightenBlendName)
+        : palette.colors.itemTitle,
+      textAlign: nameTypo.textAlign,
+      textTransform: nameTransform,
+      textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
+    }
+  })
+  currentY += textSlots.nameHeight
+
+  if (content.description && textSlots.descLines > 0) {
+    currentY += textSlots.gapNameToDesc
+    const [descText, descTransform] = applyTextTransform(content.description, descTypo.textTransform)
+    elements.push({
+      type: 'text',
+      x: textX,
+      y: currentY,
+      width: textWidth,
+      height: textSlots.descHeight,
+      content: descText,
+      style: {
+        fontSize: descTypo.fontSize,
+        fontWeight: isBackgroundMode ? Math.max(descTypo.fontWeight, TYPOGRAPHY_TOKENS_V2.fontWeight.medium) : descTypo.fontWeight,
+        fontFamily: descTypo.fontFamily,
+        lineHeight: descTypo.lineHeight,
+        maxLines: textSlots.descLines,
+        color: isBackgroundMode ? BG_IMAGE_TEXT.descColor : palette.colors.itemDescription,
+        textAlign: descTypo.textAlign,
+        textTransform: descTransform,
+        textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
+      }
+    })
+    currentY += textSlots.descHeight
+  }
+
+  currentY += textSlots.gapDescToPrice
+  elements.push({
+    type: 'text',
+    x: textX,
+    y: currentY,
+    width: textWidth,
+    height: priceLineHeight,
+    content: formatCurrency(content.price, content.currency || 'USD'),
+    style: {
+      fontSize: priceFontSize,
+      fontWeight: priceTypo.fontWeight,
+      fontFamily: priceTypo.fontFamily,
+      lineHeight: priceTypo.lineHeight,
+      maxLines: 1,
+      color: isBackgroundMode
+        ? lightenHexForDarkBackground(palette.colors.itemPrice, BG_IMAGE_TEXT.lightenBlendPrice)
+        : chrome.price,
+      textAlign: priceTypo.textAlign,
+      textTransform: priceTypo.textTransform,
+      textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
+    }
+  })
+  currentY += priceLineHeight + 6
+
+  if (content.indicators && !showsMedia) {
+    elements.push(...renderIndicators(content.indicators, textX, currentY, textWidth, palette))
+  }
+
+  pushFlagshipBadge(elements, tile, chrome, badgeFontFamily, badgeMetrics)
 
   return { elements }
 }
@@ -3245,6 +3757,17 @@ export function clampText(
   return text.substring(0, maxChars - 3) + '...'
 }
 
+export function estimateUnboundedLineCount(
+  text: string | undefined | null,
+  availableWidth: number,
+  fontSize: number
+): number {
+  if (!text || text.length === 0) return 0
+  const avgCharWidth = fontSize * 0.6
+  const charsPerLine = Math.max(1, Math.floor(availableWidth / avgCharWidth))
+  return Math.max(1, Math.ceil(text.length / charsPerLine))
+}
+
 /**
  * Estimate the number of rendered lines a text string will occupy.
  * Uses a simplified character-width heuristic (same as clampText).
@@ -3256,10 +3779,8 @@ export function estimateLineCount(
   fontSize: number,
   maxLines: number
 ): number {
-  if (!text || text.length === 0) return 0
-  const avgCharWidth = fontSize * 0.6
-  const charsPerLine = Math.max(1, Math.floor(availableWidth / avgCharWidth))
-  const lines = Math.ceil(text.length / charsPerLine)
+  const lines = estimateUnboundedLineCount(text, availableWidth, fontSize)
+  if (lines === 0) return 0
   return Math.min(Math.max(1, lines), maxLines)
 }
 

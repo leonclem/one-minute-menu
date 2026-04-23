@@ -150,6 +150,10 @@ async function handleNewTemplateEngine(
         bannerSwapLayout: finalConfiguration.bannerSwapLayout === true,
         bannerImageStyle: finalConfiguration.bannerImageStyle || undefined,
         fontStylePreset: finalConfiguration.fontStylePreset || undefined,
+        showLogoTile: finalConfiguration.showLogoTile === true,
+        showCategoryHeaderTiles: finalConfiguration.showCategoryHeaderTiles === true,
+        showFlagshipTile: finalConfiguration.showFlagshipTile === true,
+        spacerTilePatternId: finalConfiguration.spacerTilePatternId || undefined,
       },
     debug: false
   })

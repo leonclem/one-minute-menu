@@ -80,6 +80,15 @@ export const ImageStyleSchemaV2 = z.object({
 })
 
 /**
+ * Schema for badge styling (e.g. Popular / House Special)
+ */
+export const BadgeStyleSchemaV2 = z.object({
+  label: z.string().optional(),
+  borderRadius: z.number().min(0).optional(),
+  position: z.enum(['left', 'right']).optional(),
+})
+
+/**
  * Schema for complete tile styling
  */
 export const TileStyleSchemaV2 = z.object({
@@ -87,7 +96,8 @@ export const TileStyleSchemaV2 = z.object({
   spacing: SpacingStyleSchemaV2.optional(),
   border: BorderStyleSchemaV2.optional(),
   background: BackgroundStyleSchemaV2.optional(),
-  image: ImageStyleSchemaV2.optional()
+  image: ImageStyleSchemaV2.optional(),
+  badge: BadgeStyleSchemaV2.optional(),
 })
 
 // =============================================================================
@@ -202,12 +212,14 @@ export const TemplateSchemaV2 = z.object({
   
   tiles: z.object({
     LOGO: TileVariantSchemaV2,
+    LOGO_BODY: TileVariantSchemaV2.optional(),
     TITLE: TileVariantSchemaV2,
     SECTION_HEADER: TileVariantSchemaV2,
     ITEM_CARD: TileVariantSchemaV2,
     ITEM_TEXT_ROW: TileVariantSchemaV2,
     FILLER: z.array(FillerTileSchemaV2).optional(),
     FEATURE_CARD: TileVariantSchemaV2.optional(),
+    FLAGSHIP_CARD: TileVariantSchemaV2.optional(),
     DECORATIVE_DIVIDER: TileVariantSchemaV2.optional(),
     FOOTER_INFO: TileVariantSchemaV2.optional(),
   }),
@@ -235,7 +247,8 @@ export const TemplateSchemaV2 = z.object({
   }),
   
   capabilities: z.object({
-    supportsCutouts: z.boolean().optional()
+    supportsCutouts: z.boolean().optional(),
+    supportsBodyTileMode: z.boolean().optional()
   }).optional(),
   
   banner: z.object({
@@ -254,6 +267,61 @@ export const TemplateSchemaV2 = z.object({
     spiceScale: z.record(z.string()),
     letterFallback: z.record(z.string())
   })
+}).superRefine((template, ctx) => {
+  if (template.capabilities?.supportsBodyTileMode !== true) {
+    return
+  }
+
+  const logoBody = template.tiles.LOGO_BODY
+  const flagship = template.tiles.FLAGSHIP_CARD
+  const expectedFlagshipColSpan = template.body.container.cols === 1 ? 1 : 2
+
+  if (!logoBody) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['tiles', 'LOGO_BODY'],
+      message: 'LOGO_BODY is required when supportsBodyTileMode is enabled.',
+    })
+  } else {
+    if (logoBody.region !== 'body') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['tiles', 'LOGO_BODY', 'region'],
+        message: 'LOGO_BODY must target the body region.',
+      })
+    }
+    if ((logoBody.colSpan ?? 1) !== 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['tiles', 'LOGO_BODY', 'colSpan'],
+        message: 'LOGO_BODY must use colSpan: 1.',
+      })
+    }
+  }
+
+  if (!flagship) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['tiles', 'FLAGSHIP_CARD'],
+      message: 'FLAGSHIP_CARD is required when supportsBodyTileMode is enabled.',
+    })
+    return
+  }
+
+  if (flagship.region !== 'body') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['tiles', 'FLAGSHIP_CARD', 'region'],
+      message: 'FLAGSHIP_CARD must target the body region.',
+    })
+  }
+  if ((flagship.colSpan ?? 1) !== expectedFlagshipColSpan) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['tiles', 'FLAGSHIP_CARD', 'colSpan'],
+      message: `FLAGSHIP_CARD must use colSpan: ${expectedFlagshipColSpan} for this template.`,
+    })
+  }
 })
 
 // =============================================================================

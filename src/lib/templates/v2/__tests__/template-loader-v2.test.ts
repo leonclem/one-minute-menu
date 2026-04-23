@@ -21,6 +21,9 @@ describe('Template Loader V2', () => {
       expect(template.page.size).toBe('A4_PORTRAIT')
       expect(template.body.container.cols).toBe(4)
       expect(template.tiles.ITEM_CARD.rowSpan).toBe(2)
+      expect(template.tiles.LOGO_BODY?.region).toBe('body')
+      expect(template.tiles.FLAGSHIP_CARD?.colSpan).toBe(2)
+      expect(template.capabilities?.supportsBodyTileMode).toBe(true)
     })
 
     it('should load and validate the 4-column-portrait template', async () => {
@@ -34,6 +37,8 @@ describe('Template Loader V2', () => {
       expect(template.body.container.rowHeight).toBe(70)
       expect(template.tiles.ITEM_CARD.rowSpan).toBe(2)
       expect(template.tiles.ITEM_TEXT_ROW.rowSpan).toBe(1)
+      expect(template.tiles.LOGO_BODY?.region).toBe('body')
+      expect(template.tiles.FLAGSHIP_CARD?.colSpan).toBe(2)
       expect(template.policies.lastRowBalancing).toBe('CENTER')
       expect(template.filler.enabled).toBe(false)
       expect(template.itemIndicators.mode).toBe('INLINE')
@@ -90,6 +95,7 @@ describe('Template Loader V2', () => {
       expect(template.body.container.gapX).toBe(0)
       expect(template.body.container.gapY).toBe(6)
       expect(template.tiles.SECTION_HEADER.colSpan).toBe(1)
+      expect(template.tiles.FLAGSHIP_CARD?.colSpan).toBe(1)
     })
 
     it('should cache templates after first load', async () => {

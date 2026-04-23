@@ -10,7 +10,7 @@
 
 import { loadTemplateV2 } from './template-loader-v2'
 import { streamingPaginate } from './streaming-paginator'
-import { insertInterspersedFillers } from './filler-manager-v2'
+import { insertInterspersedFillers, redistributeLastRowItems } from './filler-manager-v2'
 import { validateInvariants } from './invariant-validator'
 import { InvariantViolationError } from './errors-v2'
 import { buildPageSpec, PAGE_DIMENSIONS, getEffectiveGapXAndCellWidth } from './engine-types-v2'
@@ -110,9 +110,20 @@ export async function generateLayoutV2(
     input.selection
   )
   
-  // Step 4: Insert section-scoped interspersed fillers when enabled
+  // Step 4: Redistribute items in partial rows for semi-random spacer distribution.
+  // This moves items away from the far-left cluster so filler tiles appear between
+  // items rather than all at the end of each row. Must run before filler insertion
+  // so the filler manager fills the spread gaps that were created here.
   const fillersEnabled = input.selection?.fillersEnabled ?? effectiveTemplate.filler.enabled
-  if (fillersEnabled) {
+  const spacerTilePatternId = input.selection?.spacerTilePatternId || effectiveTemplate.filler.tiles[0]?.id
+  const hasSpacers = fillersEnabled && spacerTilePatternId !== 'none'
+
+  if (hasSpacers) {
+    redistributeLastRowItems(document, effectiveTemplate, input.menu.id)
+  }
+
+  // Step 5: Insert section-scoped interspersed fillers when enabled
+  if (hasSpacers) {
     const textOnly = input.selection?.textOnly || false
     // Collect section IDs where no items have images (per-category text-only override)
     const textOnlySectionIds = new Set<string>()
@@ -126,7 +137,7 @@ export async function generateLayoutV2(
     insertInterspersedFillers(document, effectiveTemplate, input.menu.id, fillersEnabled, textOnly, textOnlySectionIds)
   }
   
-  // Step 5: Call validateInvariants in dev mode or when debug=true
+  // Step 6: Call validateInvariants in dev mode or when debug=true
   // This catches layout bugs early with descriptive error messages
   if (process.env.NODE_ENV === 'development' || input.debug) {
     const violations = validateInvariants(document, effectiveTemplate)
@@ -144,7 +155,7 @@ export async function generateLayoutV2(
     }
   }
   
-  // Step 6: Return complete LayoutDocumentV2
+  // Step 7: Return complete LayoutDocumentV2
   return document
 }
 

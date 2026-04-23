@@ -298,8 +298,22 @@ function getRestoredState(savedTemplateId: string, config: Record<string, unknow
     config.fontStylePreset === 'fun' ? 'fun' :
     'standard'
   const flagshipItemId = typeof config.flagshipItemId === 'string' ? config.flagshipItemId : null
+  const showLogoTile = config.showLogoTile === true
+  const showCategoryHeaderTiles = config.showCategoryHeaderTiles === true
+  const showFlagshipTile = config.showFlagshipTile === true
 
-  return { mappedTemplateId, showBanner, bannerTitle, showVenueName, bannerImageStyle, fontStylePreset, flagshipItemId }
+  return {
+    mappedTemplateId,
+    showBanner,
+    bannerTitle,
+    showVenueName,
+    bannerImageStyle,
+    fontStylePreset,
+    flagshipItemId,
+    showLogoTile,
+    showCategoryHeaderTiles,
+    showFlagshipTile,
+  }
 }
 
 describe('14.2 getRestoredState banner/footer field mapping', () => {
@@ -415,6 +429,26 @@ describe('14.2 getRestoredState banner/footer field mapping', () => {
     })
   })
 
+  describe('feature tile toggles', () => {
+    it('default to false when not in config', () => {
+      const r = getRestoredState('4-column-portrait', {})
+      expect(r.showLogoTile).toBe(false)
+      expect(r.showCategoryHeaderTiles).toBe(false)
+      expect(r.showFlagshipTile).toBe(false)
+    })
+
+    it('restore explicit true values', () => {
+      const r = getRestoredState('4-column-portrait', {
+        showLogoTile: true,
+        showCategoryHeaderTiles: true,
+        showFlagshipTile: true,
+      })
+      expect(r.showLogoTile).toBe(true)
+      expect(r.showCategoryHeaderTiles).toBe(true)
+      expect(r.showFlagshipTile).toBe(true)
+    })
+  })
+
   describe('legacy template ID mapping', () => {
     it('maps classic-cards-v2 to 4-column-portrait', () => {
       const r = getRestoredState('classic-cards-v2', {})
@@ -524,13 +558,22 @@ describe('14.4 Footer background color derivation from palette', () => {
       background: '#FFFFFF',
       surface: '#F0EAD6',
       menuTitle: '#1A1A1A',
-      sectionTitle: '#333333',
+      sectionHeader: '#333333',
       itemTitle: '#444444',
       itemDescription: '#666666',
       itemPrice: '#222222',
       accent: '#C0392B',
-      border: { light: '#E0E0E0', medium: '#BDBDBD', dark: '#9E9E9E' },
+      itemIndicators: { background: '#FFFFFF' },
+      border: { light: '#E0E0E0', medium: '#BDBDBD' },
+      textMuted: '#777777',
+      bannerSurface: '#F0EAD6',
+      bannerText: '#1A1A1A',
+      footerBorder: '#E0E0E0',
       footerText: '#1A1A1A',
+      promoted: {
+        featured: { background: '#F8EFD8', border: '#C0392B', badgeFill: '#C0392B', badgeText: '#FFFFFF' },
+        flagship: { background: '#EEE2C6', border: '#8F3A20', badgeFill: '#7A3019', badgeText: '#FFF9E8', price: '#6C2B18' },
+      },
     },
   }
 
@@ -541,12 +584,22 @@ describe('14.4 Footer background color derivation from palette', () => {
       background: '#FAFAFA',
       surface: undefined as any,
       menuTitle: '#1A1A1A',
-      sectionTitle: '#333333',
+      sectionHeader: '#333333',
       itemTitle: '#444444',
       itemDescription: '#666666',
       itemPrice: '#222222',
       accent: '#C0392B',
-      border: { light: '#E0E0E0', medium: '#BDBDBD', dark: '#9E9E9E' },
+      itemIndicators: { background: '#FAFAFA' },
+      border: { light: '#E0E0E0', medium: '#BDBDBD' },
+      textMuted: '#777777',
+      bannerSurface: '#FAFAFA',
+      bannerText: '#1A1A1A',
+      footerBorder: '#E0E0E0',
+      footerText: '#1A1A1A',
+      promoted: {
+        featured: { background: '#F2EBE1', border: '#C0392B', badgeFill: '#C0392B', badgeText: '#FFFFFF' },
+        flagship: { background: '#E7DDD1', border: '#8F3A20', badgeFill: '#7A3019', badgeText: '#FFF9E8', price: '#6C2B18' },
+      },
     },
   }
 
@@ -781,7 +834,7 @@ describe('14.8 RenderSnapshot includes all new banner/footer fields', () => {
    * fields and that a fully-populated snapshot object satisfies the interface.
    */
 
-  it('RenderSnapshot.configuration accepts all banner/footer fields', () => {
+  it('RenderSnapshot.configuration accepts banner/footer and feature-tile fields', () => {
     const snapshot: RenderSnapshot = {
       template_id: 'tmpl-uuid-123',
       template_version: '2.0.0',
@@ -798,6 +851,9 @@ describe('14.8 RenderSnapshot includes all new banner/footer fields', () => {
         bannerImageStyle: 'cutout',
         fontStylePreset: 'standard',
         flagshipItemId: 'item-abc-123',
+        showLogoTile: true,
+        showCategoryHeaderTiles: true,
+        showFlagshipTile: true,
       },
       menu_data: {
         id: 'menu-1',
@@ -815,6 +871,9 @@ describe('14.8 RenderSnapshot includes all new banner/footer fields', () => {
     expect(snapshot.configuration?.bannerImageStyle).toBe('cutout')
     expect(snapshot.configuration?.fontStylePreset).toBe('standard')
     expect(snapshot.configuration?.flagshipItemId).toBe('item-abc-123')
+    expect(snapshot.configuration?.showLogoTile).toBe(true)
+    expect(snapshot.configuration?.showCategoryHeaderTiles).toBe(true)
+    expect(snapshot.configuration?.showFlagshipTile).toBe(true)
   })
 
   it('RenderSnapshot.configuration allows flagshipItemId to be null', () => {
@@ -839,7 +898,7 @@ describe('14.8 RenderSnapshot includes all new banner/footer fields', () => {
     expect(snapshot.configuration?.flagshipItemId).toBeNull()
   })
 
-  it('RenderSnapshot.configuration allows all banner/footer fields to be undefined (optional)', () => {
+  it('RenderSnapshot.configuration allows banner/footer and feature-tile fields to be undefined (optional)', () => {
     const snapshot: RenderSnapshot = {
       template_id: 'tmpl-uuid-123',
       template_version: '2.0.0',
@@ -859,7 +918,7 @@ describe('14.8 RenderSnapshot includes all new banner/footer fields', () => {
     expect(snapshot.configuration?.flagshipItemId).toBeUndefined()
   })
 
-  it('all six banner/footer fields are present in a fully-populated configuration', () => {
+  it('all persisted banner/footer and feature-tile fields are present in a fully-populated configuration', () => {
     const config: RenderSnapshot['configuration'] = {
       showBanner: true,
       bannerTitle: 'DINNER',
@@ -867,9 +926,22 @@ describe('14.8 RenderSnapshot includes all new banner/footer fields', () => {
       bannerImageStyle: 'stretch-fit',
       fontStylePreset: 'fun',
       flagshipItemId: 'item-xyz',
+      showLogoTile: true,
+      showCategoryHeaderTiles: true,
+      showFlagshipTile: true,
     }
 
-    const requiredFields = ['showBanner', 'bannerTitle', 'showVenueName', 'bannerImageStyle', 'fontStylePreset', 'flagshipItemId']
+    const requiredFields = [
+      'showBanner',
+      'bannerTitle',
+      'showVenueName',
+      'bannerImageStyle',
+      'fontStylePreset',
+      'flagshipItemId',
+      'showLogoTile',
+      'showCategoryHeaderTiles',
+      'showFlagshipTile',
+    ]
     for (const field of requiredFields) {
       expect(config).toHaveProperty(field)
     }

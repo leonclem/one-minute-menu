@@ -178,7 +178,12 @@ function checkNoWidowedSectionHeaders(page: PageLayoutV2): InvariantViolation[] 
 
     // Find items from the same section that appear below this header
     const itemsBelow = page.tiles.filter(tile => {
-      if (tile.type !== 'ITEM_CARD' && tile.type !== 'ITEM_TEXT_ROW' && tile.type !== 'FEATURE_CARD') {
+      if (
+        tile.type !== 'ITEM_CARD' &&
+        tile.type !== 'ITEM_TEXT_ROW' &&
+        tile.type !== 'FEATURE_CARD' &&
+        tile.type !== 'FLAGSHIP_CARD'
+      ) {
         return false
       }
 
@@ -220,7 +225,11 @@ function checkItemTilesInBody(page: PageLayoutV2): InvariantViolation[] {
   const violations: InvariantViolation[] = []
 
   const itemTiles = page.tiles.filter(
-    t => t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW' || t.type === 'FEATURE_CARD'
+    t =>
+      t.type === 'ITEM_CARD' ||
+      t.type === 'ITEM_TEXT_ROW' ||
+      t.type === 'FEATURE_CARD' ||
+      t.type === 'FLAGSHIP_CARD'
   )
 
   for (const tile of itemTiles) {

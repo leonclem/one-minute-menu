@@ -36,7 +36,10 @@ export function calculateRegions(
   pageSpec: PageSpecV2,
   template: TemplateV2,
   showMenuTitle: boolean = true,
-  bannerHeight: number = 0
+  bannerHeight: number = 0,
+  options?: {
+    headerHeightOverride?: number
+  }
 ): RegionV2[] {
   // Calculate content box dimensions (after margins)
   const contentWidth = pageSpec.width - pageSpec.margins.left - pageSpec.margins.right
@@ -45,7 +48,9 @@ export function calculateRegions(
   // Extract region heights from template
   // When a banner is present, the header logo is suppressed and the banner renders
   // full-bleed (outside the content-box), so collapse header height to 0.
-  const headerHeight = bannerHeight > 0 ? 0 : template.regions.header.height
+  const headerHeight = bannerHeight > 0
+    ? 0
+    : options?.headerHeightOverride ?? template.regions.header.height
   const titleHeight = showMenuTitle ? template.regions.title.height : 0
   const footerHeight = template.regions.footer.height
 

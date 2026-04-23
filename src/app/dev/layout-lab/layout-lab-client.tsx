@@ -33,6 +33,9 @@ export interface LayoutLabState {
   itemBorders: boolean
   itemDropShadow: boolean
   fillItemTiles: boolean
+  showLogoTile: boolean
+  showCategoryHeaderTiles: boolean
+  showFlagshipTile: boolean
   imageMode: ImageModeV2
   
   // Data
@@ -58,6 +61,9 @@ const initialState: LayoutLabState = {
   itemBorders: true,
   itemDropShadow: true,
   fillItemTiles: true,
+  showLogoTile: false,
+  showCategoryHeaderTiles: false,
+  showFlagshipTile: false,
   imageMode: 'stretch',
   layoutDocument: null,
   isGenerating: false,
@@ -97,6 +103,9 @@ export function LayoutLabClient() {
             showRegionBounds: currentState.showRegionBounds,
             showMenuTitle: currentState.showMenuTitle,
             showVignette: currentState.showVignette,
+            showLogoTile: currentState.showLogoTile,
+            showCategoryHeaderTiles: currentState.showCategoryHeaderTiles,
+            showFlagshipTile: currentState.showFlagshipTile,
             imageMode: currentState.imageMode
           }
         })
@@ -161,7 +170,10 @@ export function LayoutLabClient() {
     state.texturesEnabled,
     state.textureId,
     state.paletteId,
-    state.showMenuTitle
+    state.showMenuTitle,
+    state.showLogoTile,
+    state.showCategoryHeaderTiles,
+    state.showFlagshipTile,
     // Removed state.isGenerating from dependencies to prevent loops
   ])
   
@@ -200,6 +212,9 @@ export function LayoutLabClient() {
             itemBorders: state.itemBorders,
             itemDropShadow: state.itemDropShadow,
             fillItemTiles: state.fillItemTiles,
+            showLogoTile: state.showLogoTile,
+            showCategoryHeaderTiles: state.showCategoryHeaderTiles,
+            showFlagshipTile: state.showFlagshipTile,
             imageMode: state.imageMode
           }
         })

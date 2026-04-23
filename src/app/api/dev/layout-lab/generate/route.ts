@@ -32,6 +32,9 @@ interface GenerateRequest {
     textureId?: string
     showMenuTitle?: boolean
     showVignette?: boolean
+    showLogoTile?: boolean
+    showCategoryHeaderTiles?: boolean
+    showFlagshipTile?: boolean
     imageMode?: string
   }
 }
@@ -143,6 +146,9 @@ export async function POST(request: NextRequest) {
           textureId: options.textureId,
           showMenuTitle: options.showMenuTitle,
           showVignette: options.showVignette ?? true,
+          showLogoTile: options.showLogoTile,
+          showCategoryHeaderTiles: options.showCategoryHeaderTiles,
+          showFlagshipTile: options.showFlagshipTile,
           imageMode: imageModeForEngine as any
         },
         debug: true // Enable debug info for Layout Lab

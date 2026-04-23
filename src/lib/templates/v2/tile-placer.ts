@@ -23,6 +23,7 @@ import type {
   TileVariantDefV2,
   TileTypeV2,
   RegionV2,
+  RegionIdV2,
   BannerContentV2,
   BannerStripContentV2,
   FontStylePreset,
@@ -63,6 +64,80 @@ export function initPlacementContext(): PlacementContext {
 // Tile Creation Functions
 // =============================================================================
 
+export interface TilePlacementDecisionV2 {
+  regionId: RegionIdV2
+  colSpan: number
+  rowSpan: number
+  usesBodyFootprint: boolean
+}
+
+function resolveEffectiveItemRowSpan(
+  template: TemplateV2,
+  selection?: SelectionConfigV2
+): number {
+  if (selection?.textOnly) {
+    return template.tiles.ITEM_TEXT_ROW.rowSpan ?? 1
+  }
+
+  if (template.tiles.ITEM_CARD) {
+    return template.tiles.ITEM_CARD.rowSpan ?? 1
+  }
+
+  return template.tiles.ITEM_TEXT_ROW.rowSpan ?? 1
+}
+
+export function resolveLogoTilePlacement(
+  template: TemplateV2,
+  selection?: SelectionConfigV2,
+  regionOverride?: RegionIdV2
+): TilePlacementDecisionV2 {
+  const usingBodyLogoVariant = selection?.showLogoTile === true && regionOverride !== 'header'
+  const variant = usingBodyLogoVariant
+    ? (template.tiles.LOGO_BODY ?? template.tiles.LOGO)
+    : template.tiles.LOGO
+  const regionId = regionOverride ?? (selection?.showLogoTile === true ? 'body' : variant.region)
+
+  return {
+    regionId,
+    colSpan: regionId === 'body' ? (variant.colSpan ?? 1) : 1,
+    rowSpan: regionId === 'body' ? resolveEffectiveItemRowSpan(template, selection) : 1,
+    usesBodyFootprint: regionId === 'body',
+  }
+}
+
+export function resolveSectionHeaderPlacement(
+  template: TemplateV2,
+  selection?: SelectionConfigV2
+): TilePlacementDecisionV2 {
+  const variant = template.tiles.SECTION_HEADER
+  const { cols } = template.body.container
+  const compactHeaderTiles = selection?.showCategoryHeaderTiles === true
+
+  return {
+    regionId: variant.region,
+    colSpan: compactHeaderTiles ? 1 : (variant.colSpan ?? cols),
+    rowSpan: compactHeaderTiles ? resolveEffectiveItemRowSpan(template, selection) : (variant.rowSpan ?? 1),
+    usesBodyFootprint: true,
+  }
+}
+
+export function resolveFlagshipTilePlacement(template: TemplateV2): TilePlacementDecisionV2 {
+  const variant = template.tiles.FLAGSHIP_CARD
+  if (!variant) {
+    throw new Error('FLAGSHIP_CARD variant is required to create flagship tiles')
+  }
+
+  const { cols } = template.body.container
+  const requestedColSpan = variant.colSpan ?? 1
+
+  return {
+    regionId: variant.region,
+    colSpan: cols === 1 ? 1 : Math.min(requestedColSpan, cols),
+    rowSpan: variant.rowSpan ?? 1,
+    usesBodyFootprint: variant.region === 'body',
+  }
+}
+
 /**
  * Create a section header tile.
  *
@@ -74,13 +149,14 @@ export function initPlacementContext(): PlacementContext {
 export function createSectionHeaderTile(
   section: EngineSectionV2,
   template: TemplateV2,
-  isContinuation: boolean = false
+  isContinuation: boolean = false,
+  selection?: SelectionConfigV2
 ): Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'> {
   const variant = template.tiles.SECTION_HEADER
   const { rowHeight, gapY, cols, gapX } = template.body.container
-  
-  const rowSpan = variant.rowSpan ?? 1
-  const colSpan = variant.colSpan ?? cols // Default to full width
+  const placement = resolveSectionHeaderPlacement(template, selection)
+  const rowSpan = placement.rowSpan
+  const colSpan = placement.colSpan
   
   // CRITICAL: Use FOOTPRINT height, not contentBudget.totalHeight
   const height = calculateTileHeight(rowSpan, rowHeight, gapY)
@@ -106,8 +182,8 @@ export function createSectionHeaderTile(
       isContinuation,
     },
     // Pass style information from template
-    style: variant.style,
-    contentBudget: variant.contentBudget,
+    style: variant?.style,
+    contentBudget: variant?.contentBudget,
   }
 }
 
@@ -144,6 +220,14 @@ export function createItemTile(
   const width = calculateTileWidth(colSpan, cellWidth, gapX)
   
   const showImage = tileType === 'ITEM_CARD' || tileType === 'FEATURE_CARD'
+  const featuredStyleOverride =
+    item.isFeatured === true
+      ? template.tiles.FEATURE_CARD?.style
+      : undefined
+  const resolvedStyle =
+    featuredStyleOverride != null
+      ? mergeTileStyles(variant?.style, featuredStyleOverride)
+      : variant?.style
   
   // Build content based on tile type
   const content = tileType === 'FEATURE_CARD'
@@ -185,8 +269,73 @@ export function createItemTile(
     rowSpan,
     layer: 'content',
     content,
-    style: variant.style,
-    contentBudget: variant.contentBudget,
+    style: resolvedStyle,
+    contentBudget: variant?.contentBudget,
+  }
+}
+
+function mergeTileStyles(
+  baseStyle: TileVariantDefV2['style'] | undefined,
+  overrideStyle: TileVariantDefV2['style'] | undefined,
+): TileVariantDefV2['style'] | undefined {
+  if (!baseStyle) return overrideStyle
+  if (!overrideStyle) return baseStyle
+
+  return {
+    typography: { ...baseStyle.typography, ...overrideStyle.typography },
+    spacing: { ...baseStyle.spacing, ...overrideStyle.spacing },
+    border: { ...baseStyle.border, ...overrideStyle.border },
+    background: { ...baseStyle.background, ...overrideStyle.background },
+    image: { ...baseStyle.image, ...overrideStyle.image },
+    badge: { ...baseStyle.badge, ...overrideStyle.badge },
+  }
+}
+
+/**
+ * Create a flagship tile for the single promoted item in a section.
+ */
+export function createFlagshipTile(
+  item: EngineItemV2,
+  sectionId: string,
+  template: TemplateV2,
+  currency: string,
+  selection?: SelectionConfigV2
+): Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'> {
+  const variant = template.tiles.FLAGSHIP_CARD
+  const { rowHeight, gapY, cols, gapX } = template.body.container
+  const placement = resolveFlagshipTilePlacement(template)
+  const rowSpan = placement.rowSpan
+  const colSpan = placement.colSpan
+  const height = calculateTileHeight(rowSpan, rowHeight, gapY)
+  const bodyRegion = { width: 0 }
+  const cellWidth = calculateCellWidth(bodyRegion.width || 1000, cols, gapX)
+  const width = calculateTileWidth(colSpan, cellWidth, gapX)
+  const showImage = !selection?.textOnly && selection?.imageMode !== 'none'
+
+  return {
+    id: `flagship-${item.id}`,
+    type: 'FLAGSHIP_CARD',
+    regionId: 'body',
+    width,
+    height,
+    colSpan,
+    rowSpan,
+    layer: 'content',
+    content: {
+      type: 'FLAGSHIP_CARD',
+      itemId: item.id,
+      sectionId,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      imageUrl: item.imageUrl,
+      showImage,
+      currency: currency || '$',
+      indicators: item.indicators,
+      imageTransform: item.imageTransform,
+    },
+    style: variant?.style,
+    contentBudget: variant?.contentBudget,
   }
 }
 
@@ -199,26 +348,43 @@ export function createItemTile(
  */
 export function createLogoTile(
   menu: EngineMenuV2,
-  template: TemplateV2
+  template: TemplateV2,
+  selection?: SelectionConfigV2,
+  regionOverride?: RegionIdV2,
+  sectionId?: string
 ): Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'> {
-  const variant = template.tiles.LOGO
-  
+  const usingBodyLogoVariant = (regionOverride ?? (selection?.showLogoTile === true ? 'body' : undefined)) === 'body'
+  const variant = usingBodyLogoVariant
+    ? (template.tiles.LOGO_BODY ?? template.tiles.LOGO)
+    : template.tiles.LOGO
+  const { rowHeight, gapY, cols, gapX } = template.body.container
+  const placement = resolveLogoTilePlacement(template, selection, regionOverride)
+  const height = placement.usesBodyFootprint
+    ? calculateTileHeight(placement.rowSpan, rowHeight, gapY)
+    : (variant?.contentBudget?.totalHeight ?? 0)
+  const bodyRegion = { width: 0 }
+  const cellWidth = calculateCellWidth(bodyRegion.width || 1000, cols, gapX)
+  const width = placement.usesBodyFootprint
+    ? calculateTileWidth(placement.colSpan, cellWidth, gapX)
+    : 0
+
   return {
     id: `logo-${menu.id}`,
     type: 'LOGO',
-    regionId: variant.region,
-    width: 0, // Will be set by caller based on region width
-    height: variant.contentBudget.totalHeight, // Logo uses content budget directly
-    colSpan: 1,
-    rowSpan: 1,
+    regionId: placement.regionId,
+    width,
+    height,
+    colSpan: placement.colSpan,
+    rowSpan: placement.rowSpan,
     layer: 'content',
     content: {
       type: 'LOGO',
       imageUrl: menu.metadata.logoUrl,
       venueName: menu.metadata.venueName,
+      ...(placement.regionId === 'body' && sectionId ? { sectionId } : {}),
     },
-    style: variant.style,
-    contentBudget: variant.contentBudget,
+    style: variant?.style,
+    contentBudget: variant?.contentBudget,
   }
 }
 
@@ -240,7 +406,7 @@ export function createTitleTile(
     type: 'TITLE',
     regionId: variant.region,
     width: 0, // Will be set by caller based on region width
-    height: variant.contentBudget.totalHeight, // Title uses content budget directly
+    height: variant.contentBudget?.totalHeight ?? 0, // Title uses content budget directly
     colSpan: 1,
     rowSpan: 1,
     layer: 'content',
@@ -640,7 +806,12 @@ export function applyLastRowBalancing(
   // Find all body tiles (items only)
   const bodyTiles = page.tiles.filter(
     t => t.regionId === 'body' && 
-         (t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW' || t.type === 'FEATURE_CARD')
+         (
+           t.type === 'ITEM_CARD' ||
+           t.type === 'ITEM_TEXT_ROW' ||
+           t.type === 'FEATURE_CARD' ||
+           t.type === 'FLAGSHIP_CARD'
+         )
   )
   
   if (bodyTiles.length === 0) {
@@ -705,15 +876,21 @@ export function applySectionLastRowCentering(
   template: TemplateV2
 ): void {
   const { cols, gapX } = template.body.container
+
+  const isSectionItemTile = (tile: TileInstanceV2): boolean =>
+    tile.regionId === 'body' &&
+    (
+      tile.type === 'ITEM_CARD' ||
+      tile.type === 'ITEM_TEXT_ROW' ||
+      tile.type === 'FEATURE_CARD' ||
+      tile.type === 'FLAGSHIP_CARD'
+    ) &&
+    (tile.content as any).sectionId === sectionId
   
   // Process each page separately since Y coordinates are region-relative and reset per page
   for (const page of pages) {
     // Find all item tiles from this section on this page
-    const sectionItems = page.tiles.filter(
-      t => t.regionId === 'body' &&
-           (t.type === 'ITEM_CARD' || t.type === 'ITEM_TEXT_ROW' || t.type === 'FEATURE_CARD') &&
-           (t.content as any).sectionId === sectionId
-    )
+    const sectionItems = page.tiles.filter(isSectionItemTile)
     
     if (sectionItems.length === 0) {
       continue
@@ -727,19 +904,45 @@ export function applySectionLastRowCentering(
     
     const cellWidth = calculateCellWidth(bodyRegion.width, cols, gapX)
     
-    // Group items by their starting Y coordinate (row) within this page
-    // Items with the same Y coordinate are in the same row
+    // Group items by their starting grid row within this page.
     const itemsByRow = new Map<number, TileInstanceV2[]>()
     for (const item of sectionItems) {
-      const rowY = item.y
-      if (!itemsByRow.has(rowY)) {
-        itemsByRow.set(rowY, [])
+      const row = item.gridRow
+      if (!itemsByRow.has(row)) {
+        itemsByRow.set(row, [])
       }
-      itemsByRow.get(rowY)!.push(item)
+      itemsByRow.get(row)!.push(item)
     }
     
+    // Track every body tile occupying each row so mixed lead rows and row-spanning
+    // footprints are not mistakenly centered like plain item rows.
+    const occupantsByRow = new Map<number, TileInstanceV2[]>()
+    for (const tile of page.tiles) {
+      if (tile.regionId !== 'body') {
+        continue
+      }
+
+      for (let row = tile.gridRow; row < tile.gridRow + tile.rowSpan; row++) {
+        if (!occupantsByRow.has(row)) {
+          occupantsByRow.set(row, [])
+        }
+        occupantsByRow.get(row)!.push(tile)
+      }
+    }
+
     // For each row, check if it's incomplete and center it if needed
-    itemsByRow.forEach((rowItems, rowY) => {
+    itemsByRow.forEach((rowItems, row) => {
+      const rowOccupants = occupantsByRow.get(row) ?? []
+
+      // Shared lead rows and rows partially covered by taller tiles should keep
+      // their grid-aligned positions instead of re-centering only the new items.
+      const canCenterRow = rowOccupants.every(tile =>
+        isSectionItemTile(tile) && tile.gridRow === row
+      )
+      if (!canCenterRow) {
+        return
+      }
+
       // Calculate occupied columns in this row
       const occupiedCols = rowItems.reduce((sum, t) => sum + t.colSpan, 0)
       

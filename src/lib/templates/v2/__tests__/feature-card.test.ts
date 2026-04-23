@@ -85,6 +85,10 @@ const featureTemplateData = {
       colSpan: 2,
       rowSpan: 3,
       contentBudget: mockFeatureBudget,
+      style: {
+        border: { width: 3 },
+        badge: { label: 'Chef Pick', position: 'left', borderRadius: 8 },
+      },
     },
   },
 }
@@ -107,7 +111,16 @@ const featureTemplate: TemplateV2 = {
   id: 'test-with-feature',
   tiles: {
     ...baseTemplate.tiles,
-    FEATURE_CARD: { region: 'body', colSpan: 2, rowSpan: 3, contentBudget: mockFeatureBudget },
+    FEATURE_CARD: {
+      region: 'body',
+      colSpan: 2,
+      rowSpan: 3,
+      contentBudget: mockFeatureBudget,
+      style: {
+        border: { width: 3 },
+        badge: { label: 'Chef Pick', position: 'left', borderRadius: 8 },
+      },
+    },
   },
 } as TemplateV2
 
@@ -169,6 +182,45 @@ describe('FEATURE_CARD schema validation', () => {
     const result = TemplateSchemaV2.safeParse(invalid)
     expect(result.success).toBe(false)
   })
+
+  it('should require LOGO_BODY and FLAGSHIP_CARD when body tile mode is enabled', () => {
+    const bodyTileModeTemplate = {
+      ...baseTemplateData,
+      capabilities: {
+        supportsBodyTileMode: true,
+      },
+    }
+
+    const result = TemplateSchemaV2.safeParse(bodyTileModeTemplate)
+    expect(result.success).toBe(false)
+  })
+
+  it('should accept body tile mode when LOGO_BODY and FLAGSHIP_CARD are defined', () => {
+    const bodyTileModeTemplate = {
+      ...baseTemplateData,
+      tiles: {
+        ...baseTemplateData.tiles,
+        LOGO_BODY: {
+          region: 'body',
+          colSpan: 1,
+          rowSpan: 2,
+          contentBudget: mockContentBudget,
+        },
+        FLAGSHIP_CARD: {
+          region: 'body',
+          colSpan: 2,
+          rowSpan: 2,
+          contentBudget: mockFeatureBudget,
+        },
+      },
+      capabilities: {
+        supportsBodyTileMode: true,
+      },
+    }
+
+    const result = TemplateSchemaV2.safeParse(bodyTileModeTemplate)
+    expect(result.success).toBe(true)
+  })
 })
 
 // =============================================================================
@@ -187,6 +239,9 @@ describe('Featured item tile placement', () => {
     expect((tile.content as any).itemId).toBe('featured-1')
     expect((tile.content as any).name).toBe('Chef Special')
     expect((tile.content as any).isFeatured).toBe(true)
+    expect(tile.style?.border?.width).toBe(3)
+    expect(tile.style?.badge?.label).toBe('Chef Pick')
+    expect(tile.style?.badge?.position).toBe('left')
   })
 
   it('should use ITEM_CARD for featured item when template lacks FEATURE_CARD', () => {

@@ -23,15 +23,13 @@ import type {
 import { 
   getDefaultScale,
   TYPOGRAPHY_TOKENS_V2,
-  COLOR_TOKENS_V2,
-  PALETTES_V2,
-  DEFAULT_PALETTE_V2,
   TEXTURE_REGISTRY,
   PALETTE_TEXTURE_MAP,
   getFontSet,
   getFontStylePresetGoogleFontsUrl,
   type RenderOptionsV2,
 } from './renderer-v2'
+import { COLOR_TOKENS_V2, PALETTES_V2, DEFAULT_PALETTE_V2 } from './palettes-v2'
 import type { BannerContentV2, FontStylePreset } from './engine-types-v2'
 
 // ============================================================================

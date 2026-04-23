@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
 import { UXSection, UXButton, UXCard, CollapsibleSection } from '@/components/ux'
@@ -32,6 +32,9 @@ const DEMO_DEFAULTS = {
   itemDropShadow: true,
   fillItemTiles: true,
   showCategoryTitles: false,
+  showLogoTile: false,
+  showCategoryHeaderTiles: false,
+  showFlagshipTile: false,
   centreAlignment: false,
 }
 
@@ -48,6 +51,9 @@ const DEMO_DEFAULTS_FINE_DINING = {
   itemDropShadow: true,
   fillItemTiles: true,
   showCategoryTitles: true,
+  showLogoTile: false,
+  showCategoryHeaderTiles: false,
+  showFlagshipTile: false,
   centreAlignment: false,
   bannerTitle: 'DINNER',
   bannerImageStyle: 'cutout' as const,
@@ -84,6 +90,9 @@ function getRestoredState(
   itemDropShadow: boolean
   fillItemTiles: boolean
   showCategoryTitles: boolean
+  showLogoTile: boolean
+  showCategoryHeaderTiles: boolean
+  showFlagshipTile: boolean
   showBanner: boolean
   bannerTitle: string
   showBannerTitle: boolean
@@ -133,6 +142,9 @@ function getRestoredState(
     : 'MENU'
   const showBannerTitle = config.showBannerTitle !== false
   const showVenueName = config.showVenueName !== false
+  const showLogoTile = config.showLogoTile === true
+  const showCategoryHeaderTiles = config.showCategoryHeaderTiles === true
+  const showFlagshipTile = config.showFlagshipTile === true
   const bannerSwapLayout = config.bannerSwapLayout === true
   const bannerImageStyle: 'cutout' | 'stretch-fit' | 'none' =
     config.bannerImageStyle === 'stretch-fit' ? 'stretch-fit' :
@@ -165,6 +177,9 @@ function getRestoredState(
     itemDropShadow: config.itemDropShadow !== false,
     fillItemTiles: config.fillItemTiles !== false,
     showCategoryTitles: config.showCategoryTitles !== false,
+    showLogoTile,
+    showCategoryHeaderTiles,
+    showFlagshipTile,
     showBanner,
     bannerTitle,
     showBannerTitle,
@@ -207,6 +222,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [itemDropShadow, setItemDropShadow] = useState(isDemo ? DEMO_DEFAULTS.itemDropShadow : true)
   const [fillItemTiles, setFillItemTiles] = useState(isDemo ? DEMO_DEFAULTS.fillItemTiles : true)
   const [showCategoryTitles, setShowCategoryTitles] = useState(isDemo ? DEMO_DEFAULTS.showCategoryTitles : true)
+  const [showLogoTile, setShowLogoTile] = useState(isDemo ? DEMO_DEFAULTS.showLogoTile : false)
+  const [showCategoryHeaderTiles, setShowCategoryHeaderTiles] = useState(isDemo ? DEMO_DEFAULTS.showCategoryHeaderTiles : false)
   const [centreAlignment, setCentreAlignment] = useState(isDemo ? DEMO_DEFAULTS.centreAlignment : false)
   
   // Banner & footer state
@@ -293,6 +310,21 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
   const draftWriteTimeout = useRef<NodeJS.Timeout | null>(null)
   const draftConfigRef = useRef<{ templateId: string; configuration: Record<string, unknown> } | null>(null)
+  const flatMenuItems = useMemo(() => [
+    ...(menu?.items ?? []),
+    ...(menu?.categories?.flatMap(category => category.items) ?? []),
+  ], [menu])
+
+  const currentFlagshipItem = useMemo(() => {
+    const dbFlagship = flatMenuItems.find((item: any) => item.isFlagship)
+    if (flagshipItemId) {
+      return flatMenuItems.find((item: any) => item.id === flagshipItemId) ?? dbFlagship ?? null
+    }
+    return dbFlagship ?? null
+  }, [flagshipItemId, flatMenuItems])
+
+  const effectiveFlagshipItemId = currentFlagshipItem?.id ?? null
+  const isFlagshipTileVisible = effectiveFlagshipItemId !== null
 
   useEffect(() => {
     setMounted(true)
@@ -360,6 +392,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   setItemDropShadow(r.itemDropShadow)
                   setFillItemTiles(r.fillItemTiles)
                   setShowCategoryTitles(r.showCategoryTitles)
+                  setShowLogoTile(r.showLogoTile)
+                  setShowCategoryHeaderTiles(r.showCategoryHeaderTiles)
                   setShowBanner(r.showBanner)
                   setBannerTitle(r.bannerTitle)
                   setShowBannerTitle(r.showBannerTitle)
@@ -367,7 +401,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   setBannerSwapLayout(r.bannerSwapLayout)
                   setBannerImageStyle(r.bannerImageStyle)
                   setFontStylePreset(r.fontStylePreset)
-                  setFlagshipItemId(r.flagshipItemId)
+                  // Prioritize the flagship item marked in the database if it exists,
+                // as it might have been updated on the /extracted page.
+                const dbFlagshipId = normalized.items?.find((i: any) => i.isFlagship)?.id || 
+                                   normalized.categories?.flatMap((c: any) => c.items).find((i: any) => i.isFlagship)?.id
+                setFlagshipItemId(dbFlagshipId || r.flagshipItemId || null)
                   setBannerHeroTransform(r.bannerHeroTransform)
                   setBannerLogoTransform(r.bannerLogoTransform)
                   setCentreAlignment(r.centreAlignment)
@@ -396,6 +434,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   setItemDropShadow(r.itemDropShadow)
                   setFillItemTiles(r.fillItemTiles)
                   setShowCategoryTitles(r.showCategoryTitles)
+                  setShowLogoTile(r.showLogoTile)
+                  setShowCategoryHeaderTiles(r.showCategoryHeaderTiles)
                   setShowBanner(r.showBanner)
                   setBannerTitle(r.bannerTitle)
                   setShowBannerTitle(r.showBannerTitle)
@@ -403,7 +443,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   setBannerSwapLayout(r.bannerSwapLayout)
                   setBannerImageStyle(r.bannerImageStyle)
                   setFontStylePreset(r.fontStylePreset)
-                  setFlagshipItemId(r.flagshipItemId)
+                  // Prioritize the flagship item marked in the database if it exists,
+                // as it might have been updated on the /extracted page.
+                const dbFlagshipId = normalized.items?.find((i: any) => i.isFlagship)?.id || 
+                                   normalized.categories?.flatMap((c: any) => c.items).find((i: any) => i.isFlagship)?.id
+                setFlagshipItemId(dbFlagshipId || r.flagshipItemId || null)
                   setBannerHeroTransform(r.bannerHeroTransform)
                   setBannerLogoTransform(r.bannerLogoTransform)
                   setCentreAlignment(r.centreAlignment)
@@ -441,6 +485,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 setItemDropShadow(d.itemDropShadow)
                 setFillItemTiles(d.fillItemTiles)
                 setShowCategoryTitles(d.showCategoryTitles)
+                setShowLogoTile(d.showLogoTile)
+                setShowCategoryHeaderTiles(d.showCategoryHeaderTiles)
                 setCentreAlignment(d.centreAlignment)
                 setBannerTitle(d.bannerTitle)
                 setBannerImageStyle(d.bannerImageStyle)
@@ -490,6 +536,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 setItemDropShadow(r.itemDropShadow)
                 setFillItemTiles(r.fillItemTiles)
                 setShowCategoryTitles(r.showCategoryTitles)
+                setShowLogoTile(r.showLogoTile)
+                setShowCategoryHeaderTiles(r.showCategoryHeaderTiles)
                 setShowBanner(r.showBanner)
                 setBannerTitle(r.bannerTitle)
                 setShowBannerTitle(r.showBannerTitle)
@@ -497,7 +545,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 setBannerSwapLayout(r.bannerSwapLayout)
                 setBannerImageStyle(r.bannerImageStyle)
                 setFontStylePreset(r.fontStylePreset)
-                setFlagshipItemId(r.flagshipItemId)
+                // Prioritize the flagship item marked in the database if it exists,
+                // as it might have been updated on the /extracted page.
+                const dbFlagshipId = data.data.items?.find((i: any) => i.isFlagship)?.id || 
+                                   data.data.categories?.flatMap((c: any) => c.items).find((i: any) => i.isFlagship)?.id
+                setFlagshipItemId(dbFlagshipId || r.flagshipItemId || null)
                 setBannerHeroTransform(r.bannerHeroTransform)
                 setBannerLogoTransform(r.bannerLogoTransform)
                   setCentreAlignment(r.centreAlignment)
@@ -528,6 +580,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               setItemDropShadow(r.itemDropShadow)
               setFillItemTiles(r.fillItemTiles)
               setShowCategoryTitles(r.showCategoryTitles)
+              setShowLogoTile(r.showLogoTile)
+              setShowCategoryHeaderTiles(r.showCategoryHeaderTiles)
               setShowBanner(r.showBanner)
               setBannerTitle(r.bannerTitle)
               setShowBannerTitle(r.showBannerTitle)
@@ -535,7 +589,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               setBannerSwapLayout(r.bannerSwapLayout)
               setBannerImageStyle(r.bannerImageStyle)
               setFontStylePreset(r.fontStylePreset)
-              setFlagshipItemId(r.flagshipItemId)
+              // Prioritize the flagship item marked in the database if it exists,
+              // as it might have been updated on the /extracted page.
+              const dbFlagshipId = data.data.items?.find((i: any) => i.isFlagship)?.id || 
+                                 data.data.categories?.flatMap((c: any) => c.items).find((i: any) => i.isFlagship)?.id
+              setFlagshipItemId(dbFlagshipId || r.flagshipItemId || null)
               setBannerHeroTransform(r.bannerHeroTransform)
               setBannerLogoTransform(r.bannerLogoTransform)
                   setCentreAlignment(r.centreAlignment)
@@ -600,6 +658,9 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         showMenuTitle,
         showVignette,
         showCategoryTitles,
+        showLogoTile,
+        showCategoryHeaderTiles,
+        showFlagshipTile: isFlagshipTileVisible,
         centreAlignment,
         showBanner,
         bannerTitle,
@@ -608,7 +669,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         bannerSwapLayout,
         bannerImageStyle,
         fontStylePreset,
-        flagshipItemId: flagshipItemId ?? undefined,
+        flagshipItemId: effectiveFlagshipItemId ?? undefined,
         engineVersion: 'v2'
       }
 
@@ -635,6 +696,9 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           showMenuTitle: showMenuTitle.toString(),
           showVignette: showVignette.toString(),
           showCategoryTitles: showCategoryTitles.toString(),
+          showLogoTile: showLogoTile.toString(),
+          showCategoryHeaderTiles: showCategoryHeaderTiles.toString(),
+          showFlagshipTile: isFlagshipTileVisible.toString(),
           centreAlignment: centreAlignment.toString(),
           showBanner: showBanner.toString(),
           bannerTitle,
@@ -643,7 +707,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           bannerSwapLayout: bannerSwapLayout.toString(),
           bannerImageStyle,
           fontStylePreset,
-          ...(flagshipItemId ? { flagshipItemId } : {}),
+          ...(effectiveFlagshipItemId ? { flagshipItemId: effectiveFlagshipItemId } : {}),
           engineVersion: 'v2'
         })
         resp = await fetch(`/api/menus/${menuId}/layout?${params.toString()}`)
@@ -666,7 +730,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     } finally {
       setPreviewLoading(false)
     }
-  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, showCategoryTitles, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, isDemoUser, currentPageIndex])
+  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, showCategoryTitles, showLogoTile, showCategoryHeaderTiles, isFlagshipTileVisible, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, effectiveFlagshipItemId, isDemoUser, currentPageIndex])
 
   const handleImageTransformChange = useCallback((itemId: string, transform: ImageTransform) => {
     const mode = imageMode === 'none' ? 'stretch' : imageMode
@@ -820,6 +884,9 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       itemDropShadow,
       fillItemTiles,
       showCategoryTitles,
+      showLogoTile,
+      showCategoryHeaderTiles,
+      showFlagshipTile: isFlagshipTileVisible,
       centreAlignment,
       colourPaletteId: paletteId,
       imageMode,
@@ -830,7 +897,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       bannerSwapLayout,
       bannerImageStyle,
       fontStylePreset,
-      flagshipItemId: flagshipItemId ?? undefined,
+      flagshipItemId: effectiveFlagshipItemId ?? undefined,
       bannerHeroTransform: bannerHeroTransform ?? undefined,
       bannerLogoTransform: bannerLogoTransform ?? undefined,
     }
@@ -845,7 +912,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         sessionStorage.setItem(TEMPLATE_DRAFT_KEY(menuId), JSON.stringify(draftConfigRef.current))
       }
     }
-  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, itemBorders, itemDropShadow, fillItemTiles, showCategoryTitles, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, flagshipItemId, bannerHeroTransform, bannerLogoTransform])
+  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, itemBorders, itemDropShadow, fillItemTiles, showCategoryTitles, showLogoTile, showCategoryHeaderTiles, isFlagshipTileVisible, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, flagshipItemId, bannerHeroTransform, bannerLogoTransform])
 
   const handleSelectTemplate = async () => {
     if (!menu) return
@@ -866,6 +933,9 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         itemDropShadow,
         fillItemTiles,
         showCategoryTitles,
+        showLogoTile,
+        showCategoryHeaderTiles,
+        showFlagshipTile: isFlagshipTileVisible,
         centreAlignment,
         colourPaletteId: paletteId,
         imageMode,
@@ -876,7 +946,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         bannerSwapLayout,
         bannerImageStyle,
         fontStylePreset,
-        flagshipItemId: flagshipItemId ?? undefined,
+        flagshipItemId: effectiveFlagshipItemId ?? undefined,
         bannerHeroTransform: bannerHeroTransform ?? undefined,
         bannerLogoTransform: bannerLogoTransform ?? undefined,
       }
@@ -951,6 +1021,9 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         itemDropShadow,
         fillItemTiles,
         showCategoryTitles,
+        showLogoTile,
+        showCategoryHeaderTiles,
+        showFlagshipTile: isFlagshipTileVisible,
         centreAlignment,
         palette: palette,
         imageMode,
@@ -961,7 +1034,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         bannerSwapLayout,
         bannerImageStyle,
         fontStylePreset,
-        flagshipItemId: flagshipItemId ?? undefined,
+        flagshipItemId: effectiveFlagshipItemId ?? undefined,
         bannerHeroTransform: bannerHeroTransform ?? undefined,
         bannerLogoTransform: bannerLogoTransform ?? undefined,
       }
@@ -1082,6 +1155,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                       setItemDropShadow(DEMO_DEFAULTS.itemDropShadow)
                       setFillItemTiles(DEMO_DEFAULTS.fillItemTiles)
                       setShowCategoryTitles(DEMO_DEFAULTS.showCategoryTitles)
+                      setShowLogoTile(DEMO_DEFAULTS.showLogoTile)
+                      setShowCategoryHeaderTiles(DEMO_DEFAULTS.showCategoryHeaderTiles)
                     }}
                     className="shrink-0 text-xs text-ux-text-secondary hover:text-ux-primary border border-ux-border hover:border-ux-primary rounded px-2 py-1 transition-colors"
                     title="Reset all settings to defaults"
@@ -1445,6 +1520,27 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               >
                 <div className="pt-2 space-y-3">
                   <label className="flex items-center justify-between cursor-pointer group">
+                    <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Logo / title as tile</span>
+                    <input
+                      type="checkbox"
+                      checked={showLogoTile}
+                      onChange={(e) => setShowLogoTile(e.target.checked)}
+                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
+                    />
+                  </label>
+
+                  <label className={`flex items-center justify-between cursor-pointer group ${!showCategoryTitles ? 'opacity-50' : ''}`}>
+                    <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Category name as tiles</span>
+                    <input
+                      type="checkbox"
+                      checked={showCategoryHeaderTiles}
+                      disabled={!showCategoryTitles}
+                      onChange={(e) => setShowCategoryHeaderTiles(e.target.checked)}
+                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5 disabled:cursor-not-allowed"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between cursor-pointer group">
                     <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Show category title(s)</span>
                     <input
                       type="checkbox"
@@ -1685,9 +1781,13 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 itemDropShadow,
                 fillItemTiles,
                 showCategoryTitles,
+                showLogoTile,
+                showCategoryHeaderTiles,
+                showFlagshipTile: isFlagshipTileVisible,
                 colourPaletteId: paletteId,
                 imageMode,
-                centreAlignment
+                centreAlignment,
+                flagshipItemId: effectiveFlagshipItemId ?? undefined
               }
               sessionStorage.setItem(TEMPLATE_DRAFT_KEY(menuId), JSON.stringify({ templateId, configuration }))
             }

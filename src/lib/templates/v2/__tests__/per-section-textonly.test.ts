@@ -72,18 +72,7 @@ describe('Per-section text-only filler sizing', () => {
     expect(itemTilesNoImages.every(t => t.type === 'ITEM_TEXT_ROW')).toBe(true)
     expect(itemTilesNoImages[0].rowSpan).toBe(1)
 
-    // Find filler tiles by checking their gridRow against section rows
-    const noImageItemRows = new Set(itemTilesNoImages.map(t => t.gridRow))
-    const withImageItemRows = new Set(itemTilesWithImages.map(t => t.gridRow))
-
     const fillerTiles = allTiles.filter(t => t.type === 'FILLER')
-    
-    // Fillers in the no-images section should match ITEM_TEXT_ROW rowSpan
-    const fillersInNoImageSection = fillerTiles.filter(t => {
-      const content = t.content as any
-      return content.sectionId === 'no-images' || 
-        t.id.includes('no-images')
-    })
 
     // If we can identify fillers by section, check their rowSpan
     // Fillers created by insertInterspersedFillers include sectionId in their id
@@ -91,18 +80,82 @@ describe('Per-section text-only filler sizing', () => {
     const fillersForWithImages = fillerTiles.filter(t => t.id.includes('with-images'))
 
     if (fillersForNoImages.length > 0) {
-      console.log('Fillers for no-images section:', fillersForNoImages.map(f => ({ id: f.id, rowSpan: f.rowSpan, gridRow: f.gridRow })))
       expect(fillersForNoImages.every(f => f.rowSpan === 1)).toBe(true)
     }
 
     if (fillersForWithImages.length > 0) {
-      console.log('Fillers for with-images section:', fillersForWithImages.map(f => ({ id: f.id, rowSpan: f.rowSpan, gridRow: f.gridRow })))
       expect(fillersForWithImages.every(f => f.rowSpan === 2)).toBe(true)
     }
+  })
 
-    // Log all fillers for debugging
-    console.log('All filler tiles:', fillerTiles.map(f => ({ id: f.id, rowSpan: f.rowSpan, height: f.height })))
-    console.log('Item tiles (no images):', itemTilesNoImages.map(t => ({ id: t.id, type: t.type, rowSpan: t.rowSpan })))
-    console.log('Item tiles (with images):', itemTilesWithImages.map(t => ({ id: t.id, type: t.type, rowSpan: t.rowSpan })))
+  it('matches body-logo and compact header height to the effective item mode of each section', async () => {
+    const sectionWithImages = makeSection('with-images', [
+      makeItem('a1', 'https://example.com/img.jpg'),
+      makeItem('a2', 'https://example.com/img2.jpg'),
+      makeItem('a3'),
+    ], true)
+
+    const sectionNoImages = makeSection('no-images', [
+      makeItem('b1'),
+      makeItem('b2'),
+      makeItem('b3'),
+    ], false)
+
+    const menu: EngineMenuV2 = {
+      id: 'test-menu-body-tiles',
+      name: 'Test Menu',
+      sections: [
+        { ...sectionWithImages, sortOrder: 0 },
+        { ...sectionNoImages, sortOrder: 1 },
+      ],
+      metadata: {
+        currency: '$',
+        venueName: 'Test',
+        logoUrl: 'https://example.com/logo.png',
+      },
+    }
+
+    const layout = await generateLayoutV2({
+      menu,
+      templateId: '4-column-portrait',
+      selection: {
+        showBanner: false,
+        showLogoTile: true,
+        showCategoryHeaderTiles: true,
+      },
+    })
+
+    const allTiles = layout.pages.flatMap(page => page.tiles)
+    const bodyLogo = allTiles.find(tile => tile.type === 'LOGO' && tile.regionId === 'body')
+    const withImagesHeader = allTiles.find(
+      tile => tile.type === 'SECTION_HEADER' && (tile.content as any).sectionId === 'with-images'
+    )
+    const noImagesHeader = allTiles.find(
+      tile => tile.type === 'SECTION_HEADER' && (tile.content as any).sectionId === 'no-images'
+    )
+    const withImageItems = allTiles.filter(
+      tile => (tile.type === 'ITEM_CARD' || tile.type === 'ITEM_TEXT_ROW') &&
+        (tile.content as any).sectionId === 'with-images'
+    )
+    const noImageItems = allTiles.filter(
+      tile => (tile.type === 'ITEM_CARD' || tile.type === 'ITEM_TEXT_ROW') &&
+        (tile.content as any).sectionId === 'no-images'
+    )
+
+    expect(bodyLogo).toBeDefined()
+    expect(withImagesHeader).toBeDefined()
+    expect(noImagesHeader).toBeDefined()
+    expect(withImageItems[0]).toBeDefined()
+    expect(noImageItems[0]).toBeDefined()
+
+    expect(withImageItems.every(tile => tile.rowSpan === 2)).toBe(true)
+    expect(noImageItems.every(tile => tile.rowSpan === 1)).toBe(true)
+
+    expect(bodyLogo!.rowSpan).toBe(withImageItems[0].rowSpan)
+    expect(bodyLogo!.height).toBe(withImageItems[0].height)
+    expect(withImagesHeader!.rowSpan).toBe(withImageItems[0].rowSpan)
+    expect(withImagesHeader!.height).toBe(withImageItems[0].height)
+    expect(noImagesHeader!.rowSpan).toBe(noImageItems[0].rowSpan)
+    expect(noImagesHeader!.height).toBe(noImageItems[0].height)
   })
 })
