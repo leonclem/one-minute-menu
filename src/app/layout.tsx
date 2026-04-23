@@ -3,7 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { ToastProvider } from '@/components/ui'
 import { ConsentBanner } from '@/components/privacy/ConsentBanner'
-import { Analytics } from '@vercel/analytics/next'
+import { VercelAnalytics } from '@/components/VercelAnalytics'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -150,7 +150,7 @@ export default function RootLayout({
           </div>
           <ConsentBanner />
         </ToastProvider>
-        <Analytics />
+        <VercelAnalytics />
       </body>
     </html>
   )
