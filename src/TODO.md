@@ -3,9 +3,6 @@
 ## Security
 - [ ] Check Vercel breach advice and remediation steps
 
-## Bugs
-- [ ] Image Edit doesn't work on mobile devices
-
 ## /template
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 
@@ -104,7 +101,7 @@
 ## /template
 - [ ] If one or less categories, with less than 5 items in menu, populate with dummy data (otherwise menus look bad)
 - [ ] Hand tool to navigate preview pane
-- [x] Images too dark, perhaps only darken lower half (assuming top half has text)
+- [ ] Advise that locked menus (free plan) can't be exported
 - [ ] Upload branding colours
 - [ ] For "6. Display Options": new options to only show images for feature items
 - [ ] Develop presets
@@ -232,6 +229,7 @@
 - [x] Centre category headings for "1 column (tall)" setting under "1. Grid Layout"
 - [x] Not enough room for many menu item descriptions in some templates
 - [x] Redirect user back to Dashboard after export from /template to reduce repeat clicks/requests
+- [x] Images too dark, perhaps only darken lower half (assuming top half has text)
 - [x] Show/hide category title
 - [x] If no/disabled images for category, render as text-only layout
 - [x] Drag and zoom individual menu item images in-place
