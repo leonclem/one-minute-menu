@@ -5,17 +5,29 @@ import { userOperations } from '@/lib/database'
 import { sendAdminNewUserAlert } from '@/lib/notifications'
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
 
+import { getFeatureFlag, clearFeatureFlagCache } from '@/lib/feature-flags'
+
 // Mock next/server
 jest.mock('next/server', () => ({
   NextResponse: {
     redirect: jest.fn((url: URL) => ({
       status: 302,
       url: url.toString(),
+      headers: {
+        get: jest.fn(),
+        set: jest.fn(),
+      },
       cookies: {
         set: jest.fn(),
       },
     })),
   },
+}))
+
+// Mock feature flags
+jest.mock('@/lib/feature-flags', () => ({
+  getFeatureFlag: jest.fn(),
+  clearFeatureFlagCache: jest.fn(),
 }))
 
 // Mock @supabase/ssr
@@ -48,10 +60,21 @@ describe('Auth Callback Route', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     
+    // Default feature flag state
+    ;(getFeatureFlag as jest.Mock).mockResolvedValue(true)
+    
     mockSupabase = {
       auth: {
         exchangeCodeForSession: jest.fn().mockResolvedValue({ error: null }),
-        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-123', email: 'test@example.com' } } }),
+        getUser: jest.fn().mockResolvedValue({ 
+          data: { 
+            user: { 
+              id: 'user-123', 
+              email: 'test@example.com',
+              created_at: new Date().toISOString()
+            } 
+          } 
+        }),
       },
     }
     ;(createServerClient as jest.Mock).mockReturnValue(mockSupabase)
@@ -108,6 +131,29 @@ describe('Auth Callback Route', () => {
     )
   })
 
+  it('should auto-approve user if admin approval is not required', async () => {
+    const req = makeRequest('http://localhost:3000/auth/callback?code=test-code')
+    
+    const mockProfile = {
+      id: 'user-123',
+      email: 'test@example.com',
+      isApproved: false,
+      adminNotified: false,
+      role: 'user',
+    }
+    
+    ;(userOperations.getProfile as jest.Mock).mockResolvedValue(mockProfile)
+    ;(getFeatureFlag as jest.Mock).mockResolvedValue(false) // Approval NOT required
+    
+    await GET(req)
+    
+    expect(userOperations.updateProfile).toHaveBeenCalledWith(
+      'user-123', 
+      { isApproved: true }, 
+      mockAdminSupabase
+    )
+  })
+
   it('should not trigger alert if user is already approved', async () => {
     const req = makeRequest('http://localhost:3000/auth/callback?code=test-code')
     
@@ -158,6 +204,10 @@ describe('Auth Callback Route', () => {
     await GET(req)
     
     expect(sendAdminNewUserAlert).toHaveBeenCalled()
-    expect(userOperations.updateProfile).not.toHaveBeenCalled()
+    expect(userOperations.updateProfile).not.toHaveBeenCalledWith(
+      'user-123',
+      { adminNotified: true },
+      expect.anything()
+    )
   })
 })

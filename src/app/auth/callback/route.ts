@@ -92,25 +92,30 @@ export async function GET(req: NextRequest) {
             console.warn('[auth-callback] Failed to stamp last_login_at:', e)
           }
 
-          // Trigger admin alert for new signups
-          // Always notify when approval is required, or notify on first signup if approval is disabled
-          // Only skip notification for non-admin users who have already been notified
-          if (profile && !profile.adminNotified && profile.role !== 'admin') {
-            const requireAdminApproval = await getFeatureFlag('require_admin_approval')
+          const requireAdminApproval = await getFeatureFlag('require_admin_approval')
+
+          // Auto-approve user if admin approval is not required
+          if (profile && !profile.isApproved && !requireAdminApproval && profile.role !== 'admin') {
+            try {
+              const adminSupabase = createAdminSupabaseClient()
+              await userOperations.updateProfile(user.id, { isApproved: true }, adminSupabase)
+              console.log(`[auth-callback] Auto-approved user ${user.email} (approval not required)`)
+            } catch (e) {
+              console.warn('[auth-callback] Failed to auto-approve user:', e)
+            }
+          }
+
+          // Notify admin of new signups — adminNotified flag prevents duplicate alerts
+          if (profile && !profile.isApproved && !profile.adminNotified && profile.role !== 'admin') {
+            console.log(`[auth-callback] New user ${user.email} signed in. Triggering admin alert...`)
+            const sent = await sendAdminNewUserAlert(profile)
             
-            // Notify if: (1) approval is required and user isn't approved, or (2) it's a new user
-            if ((requireAdminApproval && !profile.isApproved) || isNewUser) {
-              console.log(`[auth-callback] New user ${user.email} signed in. Triggering admin alert...`)
-              const sent = await sendAdminNewUserAlert(profile)
-              
-              if (sent) {
-                // Mark as notified using admin client to bypass RLS if necessary
-                const adminSupabase = createAdminSupabaseClient()
-                await userOperations.updateProfile(user.id, { adminNotified: true }, adminSupabase)
-                console.log(`[auth-callback] Admin notified for user ${user.email}`)
-              } else {
-                console.warn(`[auth-callback] Failed to send admin alert for ${user.email}. Will retry on next login/access.`)
-              }
+            if (sent) {
+              const adminSupabase = createAdminSupabaseClient()
+              await userOperations.updateProfile(user.id, { adminNotified: true }, adminSupabase)
+              console.log(`[auth-callback] Admin notified for user ${user.email}`)
+            } else {
+              console.warn(`[auth-callback] Failed to send admin alert for ${user.email}. Will retry on next login/access.`)
             }
           }
         }

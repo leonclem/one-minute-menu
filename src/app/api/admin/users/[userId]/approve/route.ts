@@ -3,6 +3,7 @@ import { userOperations } from '@/lib/database'
 import { requireAdmin } from '@/lib/auth-utils'
 import { sendUserApprovalNotification } from '@/lib/notifications'
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
+import { getFeatureFlag } from '@/lib/feature-flags'
 
 // PATCH /api/admin/users/[userId]/approve - Approve a user
 export async function PATCH(
@@ -20,8 +21,14 @@ export async function PATCH(
       isApproved: true
     }, adminSupabase)
     
-    // Send notification to user
-    await sendUserApprovalNotification(updatedProfile)
+    // Only send approval email if admin approval is actually required —
+    // if approval is disabled, the user already has access and the email would confuse them
+    const requireAdminApproval = await getFeatureFlag('require_admin_approval')
+    if (requireAdminApproval) {
+      await sendUserApprovalNotification(updatedProfile)
+    } else {
+      console.log(`[admin-users] Skipping approval email for ${updatedProfile.email} — approval not required`)
+    }
     
     return NextResponse.json({
       success: true,
