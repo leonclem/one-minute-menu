@@ -23,23 +23,60 @@ global.TextDecoder = TextDecoder as any
 jest.mock('@/lib/supabase-server')
 jest.mock('@/lib/database')
 jest.mock('@/lib/worker/snapshot')
-jest.mock('@/lib/worker/storage-client')
+jest.mock('@/lib/worker/storage-client', () => ({
+  StorageClient: jest.fn(),
+  generateStoragePath: jest.fn((userId: string, exportType: string, jobId: string) => {
+    const ext = exportType === 'pdf' ? 'pdf' : 'png'
+    return `${userId}/exports/${exportType}/${jobId}.${ext}`
+  }),
+}))
 jest.mock('@/lib/worker/puppeteer-renderer')
+jest.mock('@/lib/worker/database-client', () => ({
+  updateJobToCompleted: jest.fn(),
+  updateJobToFailed: jest.fn(),
+  updateJobStatus: jest.fn(),
+  resetJobToPendingWithBackoff: jest.fn(),
+  getRetentionDaysForPlan: jest.fn(() => 30),
+  logJobEvent: {
+    started: jest.fn(),
+    completed: jest.fn(),
+    failed: jest.fn(),
+    retrying: jest.fn(),
+  },
+}))
+jest.mock('@/lib/worker/output-validator', () => ({
+  validateOutput: jest.fn(),
+}))
 jest.mock('@/lib/notification-service')
 jest.mock('@/lib/rate-limiting', () => ({
   checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 10, limit: 10, resetAt: new Date() }),
   getExportLimits: jest.fn(),
   getBatchLimits: jest.fn(),
 }))
+jest.mock('@/lib/templates/v2/layout-engine-v2', () => ({
+  generateLayoutV2: jest.fn(),
+}))
+jest.mock('@/lib/templates/v2/image-optimizer-v2', () => ({
+  optimizeLayoutDocumentImages: jest.fn(),
+}))
+jest.mock('@/lib/templates/v2/renderer-image-v2', () => ({
+  renderToImageV2: jest.fn(),
+}))
 
 import { POST } from '@/app/api/export/jobs/route'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { userOperations, menuOperations } from '@/lib/database'
 import { createRenderSnapshot } from '@/lib/worker/snapshot'
+import { getRenderSnapshot } from '@/lib/worker/snapshot'
 import { StorageClient } from '@/lib/worker/storage-client'
 import { PuppeteerRenderer } from '@/lib/worker/puppeteer-renderer'
+import { validateOutput } from '@/lib/worker/output-validator'
 import { notificationService } from '@/lib/notification-service'
+import { JobProcessor } from '@/lib/worker/job-processor'
 import { NextRequest } from 'next/server'
+import { generateLayoutV2 } from '@/lib/templates/v2/layout-engine-v2'
+import { optimizeLayoutDocumentImages } from '@/lib/templates/v2/image-optimizer-v2'
+import { renderToImageV2 } from '@/lib/templates/v2/renderer-image-v2'
 
 const mockCreateServerSupabaseClient = createServerSupabaseClient as jest.MockedFunction<typeof createServerSupabaseClient>
 const mockUserOperations = userOperations as jest.Mocked<typeof userOperations>
@@ -525,6 +562,109 @@ describe('End-to-End Export Workflow', () => {
     )
     expect(completionNotification).toBeDefined()
     expect(completionNotification.payload.file_url).toBe(imageFileUrl)
+  })
+
+  it('should render V2 image exports via renderer-image-v2 in the worker', async () => {
+    // Setup: minimal job processor with mocked dependencies
+    const processor = new JobProcessor({
+      renderer: mockRendererInstance as any,
+      storageClient: mockStorageInstance as any,
+      jobTimeoutSeconds: 60,
+    })
+
+    const pngSignature = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+    const pngContent = Buffer.concat([pngSignature, Buffer.from('PNG image data')])
+
+    ;(generateLayoutV2 as jest.Mock).mockResolvedValue({
+      templateId: '4-column-portrait',
+      templateVersion: '2.0.0',
+      pageSpec: { width: 595.28, height: 841.89, margins: { top: 40, right: 40, bottom: 40, left: 40 } },
+      pages: [{ pageIndex: 0, tiles: [], regions: [] }],
+      debug: { engineVersion: 'v2' },
+    })
+    ;(optimizeLayoutDocumentImages as jest.Mock).mockResolvedValue({
+      templateId: '4-column-portrait',
+      templateVersion: '2.0.0',
+      pageSpec: { width: 595.28, height: 841.89, margins: { top: 40, right: 40, bottom: 40, left: 40 } },
+      pages: [{ pageIndex: 0, tiles: [], regions: [] }],
+      debug: { engineVersion: 'v2' },
+    })
+    ;(renderToImageV2 as jest.Mock).mockResolvedValue({
+      imageBuffer: pngContent,
+      size: pngContent.length,
+      width: 794,
+      height: 1123,
+      pageCount: 1,
+      timestamp: new Date(),
+      duration: 10,
+      metadata: { templateId: '4-column-portrait', templateVersion: '2.0.0', engineVersion: 'v2' },
+    })
+
+    // Snapshot indicates V2
+    const v2Snapshot = {
+      snapshot_version: '2.0',
+      template_id: '4-column-portrait',
+      configuration: { colourPaletteId: 'midnight-gold', texturesEnabled: true },
+      menu_data: {
+        id: TEST_MENU_ID,
+        name: 'Test Menu',
+        establishment_name: 'Test Restaurant',
+        establishment_address: '123 St',
+        establishment_phone: '123',
+        logo_url: null,
+        items: [
+          {
+            id: 'item-1',
+            name: 'Burger',
+            description: 'Tasty',
+            price: 10,
+            image_url: 'https://example.com/burger.jpg',
+            category: 'Mains',
+          },
+        ],
+      },
+    }
+
+    // Create a job that will run through processor.process()
+    const job: any = {
+      id: TEST_JOB_ID,
+      user_id: TEST_USER_ID,
+      menu_id: TEST_MENU_ID,
+      export_type: 'image',
+      status: 'processing',
+      priority: 10,
+      retry_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      metadata: {
+        menu_name: 'Test Menu',
+        render_snapshot: v2Snapshot,
+      },
+    }
+
+    // Ensure output validation passes
+    ;(getRenderSnapshot as any).mockReturnValue(v2Snapshot)
+    ;(validateOutput as any).mockReturnValue({
+      valid: true,
+      errors: [],
+      warnings: [],
+      format_verified: true,
+      file_size: pngContent.length
+    })
+
+    // Storage upload/signed URL mocks
+    mockStorageInstance.upload.mockResolvedValue('https://storage.supabase.co/bucket/test-menu.png')
+    mockStorageInstance.generateSignedUrl.mockResolvedValue('https://signed.example.com/test-menu.png')
+
+    await processor.process(job)
+
+    expect(renderToImageV2).toHaveBeenCalled()
+    expect(mockRendererInstance.renderImage).not.toHaveBeenCalled()
+    expect(mockStorageInstance.upload).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      expect.stringContaining(`/exports/image/`),
+      'image/png'
+    )
   })
   
   /**

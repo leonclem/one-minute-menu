@@ -1743,11 +1743,12 @@ describe('POST /api/export/jobs/:jobId/download-url', () => {
       expect(data).toHaveProperty('file_url', newSignedUrl)
       expect(data).toHaveProperty('expires_at')
       
-      // Verify generateSignedUrl was called with correct parameters (path, expiry, optional download filename)
+      // Verify generateSignedUrl was called with correct parameters (path, expiry, download filename)
+      // When no metadata is present the route falls back to "menu-export.pdf"
       expect(mockGenerateSignedUrl).toHaveBeenCalledWith(
         `${TEST_USER_ID}/exports/pdf/${TEST_JOB_ID}.pdf`,
         604800, // 7 days in seconds
-        undefined // no menu name in mock job, so no custom download filename
+        'menu-export.pdf' // fallback filename when no restaurant/menu name in metadata
       )
       
       // Verify expires_at is approximately 7 days from now

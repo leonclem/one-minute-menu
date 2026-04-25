@@ -21,14 +21,14 @@ describe('MenuCard', () => {
     updatedAt: new Date(),
   }
 
-  it('shows "Edit menu" by default', () => {
+  it('shows "Edit Items" by default', () => {
     render(<MenuCard menu={baseMenu} />)
-    expect(screen.getByText('Edit menu')).toBeInTheDocument()
+    expect(screen.getByText('Edit Items')).toBeInTheDocument()
   })
 
-  it('shows "View Menu" when edit locked', () => {
+  it('shows "View Items" when edit locked', () => {
     render(<MenuCard menu={baseMenu} isEditLocked />)
-    expect(screen.getByText('View Menu')).toBeInTheDocument()
+    expect(screen.getByText('View Items')).toBeInTheDocument()
   })
 })
 

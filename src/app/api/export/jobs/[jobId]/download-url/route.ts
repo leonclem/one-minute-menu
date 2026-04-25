@@ -22,6 +22,7 @@ import { StorageClient, generateStoragePath } from '@/lib/worker/storage-client'
  */
 interface RegenerateUrlResponse {
   file_url: string
+  filename: string
   expires_at: string
 }
 
@@ -145,7 +146,8 @@ export async function POST(
           .replace(/^-+|-+$/g, '')
           .slice(0, 140)
       : undefined
-    const filename = safeBase ? `${safeBase}.pdf` : undefined
+    const ext = job.export_type === 'image' ? 'png' : 'pdf'
+    const filename = safeBase ? `${safeBase}.${ext}` : `menu-export.${ext}`
     const newSignedUrl = await storageClient.generateSignedUrl(
       job.storage_path,
       expiresInSeconds,
@@ -158,7 +160,8 @@ export async function POST(
     // Build response
     const response: RegenerateUrlResponse = {
       file_url: newSignedUrl,
-      expires_at: expiresAt
+      filename,
+      expires_at: expiresAt,
     }
     
     return NextResponse.json(response, { status: 200 })

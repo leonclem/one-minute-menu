@@ -62,6 +62,9 @@ function validateImageUrls(menu: any): void {
   
   // Validate each URL
   for (const url of imageUrls) {
+    // Skip internal placeholder values (e.g. 'custom-{uuid}' before a real upload URL is stored)
+    if (!url.startsWith('http://') && !url.startsWith('https://')) continue
+
     try {
       const urlObj = new URL(url)
       const hostname = urlObj.hostname

@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createWorkerSupabaseClient } from '@/lib/supabase-worker'
-import { userOperations, menuOperations, assertUserCanEditMenu, DatabaseError } from '@/lib/database'
+import { userOperations, menuOperations } from '@/lib/database'
 import { createRenderSnapshot, createRenderSnapshotFromMenuData, SnapshotCreationError } from '@/lib/worker/snapshot'
 import { StorageClient } from '@/lib/worker/storage-client'
 import { computeDemoPdfCachePath } from '@/lib/templates/export/demo-pdf-cache'
@@ -602,24 +602,6 @@ export async function POST(request: NextRequest) {
         },
         { status: 500 }
       )
-    }
-
-    // If edits are locked, exporting is locked too (view-only mode)
-    try {
-      await assertUserCanEditMenu({
-        userId,
-        menuCreatedAt: menu.createdAt,
-        profile,
-        supabaseClient: supabase,
-      })
-    } catch (e) {
-      if (e instanceof DatabaseError && e.code === 'EDIT_WINDOW_EXPIRED') {
-        return NextResponse.json<ErrorResponse>(
-          { error: e.message, code: e.code },
-          { status: 403 }
-        )
-      }
-      throw e
     }
 
     // Database-backed per-minute rate limiting (plan-aware with cooldown)

@@ -471,11 +471,101 @@ export default function UXMenuExportClient({ menuId }: UXMenuExportClientProps) 
           filename = `${menuName.replace(/\s+/g, '-').toLowerCase()}-menu.pdf`
           break
         case 'image':
-          endpoint = '/api/templates/export/image'
-          body.context = 'desktop'
-          body.options = { format: 'png', width: 1200, height: 1600 }
+          // Use the worker job queue for PNG exports (avoids serverless timeouts for large menus)
           filename = `${menuName.replace(/\s+/g, '-').toLowerCase()}-menu.png`
-          break
+          try {
+            const jobResp = await fetch('/api/export/jobs', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                menu_id: baseId,
+                export_type: 'image',
+                template_id: templateSelection?.templateId,
+                configuration: templateSelection?.configuration,
+              }),
+            })
+
+            const jobData = await jobResp.json().catch(() => ({}))
+            if (!jobResp.ok) {
+              if (jobResp.status === 401) {
+                showToast({
+                  type: 'info',
+                  title: 'Sign in required',
+                  description: 'Create an account to export your real menu.'
+                })
+                router.push('/register')
+                return
+              }
+              if (jobResp.status === 429) {
+                if (jobData.resetAt) setCooldownResetAt(new Date(jobData.resetAt))
+                if (typeof jobData.remaining === 'number' && typeof jobData.limit === 'number') {
+                  setExportLimit({ remaining: jobData.remaining, limit: jobData.limit })
+                }
+                showToast({
+                  type: 'info',
+                  title: 'Export limit reached',
+                  description: jobData.error || `Try again in ${jobData.retryAfter ?? 60}s.`,
+                })
+                return
+              }
+              throw new Error(jobData?.error || 'Failed to create export job')
+            }
+
+            const jobId = jobData.job_id
+            if (!jobId) throw new Error('No job ID returned')
+
+            showToast({
+              type: 'info',
+              title: 'Generating your PNG...',
+              description: 'Your menu image is being prepared. This usually takes a few seconds.'
+            })
+
+            const pollInterval = 2000
+            const maxAttempts = 90 // 3 minutes
+            let attempts = 0
+
+            while (attempts < maxAttempts) {
+              await new Promise(r => setTimeout(r, pollInterval))
+              const statusResp = await fetch(`/api/export/jobs/${jobId}`)
+              const statusData = await statusResp.json().catch(() => ({}))
+              attempts++
+
+              if (statusData.status === 'completed' && statusData.file_url) {
+                const a = document.createElement('a')
+                a.href = statusData.file_url
+                a.download = filename
+                a.rel = 'noopener noreferrer'
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+
+                setCompletedExports(prev => new Set(Array.from(prev).concat(option.id)))
+                showToast({
+                  type: 'success',
+                  title: 'Menu Image exported',
+                  description: 'Your PNG has been downloaded successfully'
+                })
+                trackConversionEvent({
+                  event: 'export_completed',
+                  metadata: { path: `/menus/${menuId}/export`, format: option.format, isDemo: false }
+                })
+                return
+              }
+              if (statusData.status === 'failed') {
+                throw new Error(statusData.error_message || 'PNG generation failed')
+              }
+            }
+
+            throw new Error('Export is taking longer than expected. Please try again.')
+          } catch (error) {
+            console.error('Error exporting image:', error)
+            showToast({
+              type: 'error',
+              title: 'Export failed',
+              description: error instanceof Error ? error.message : 'Failed to generate PNG export. Please try again.'
+            })
+          }
+          return
         case 'html':
           endpoint = '/api/templates/export/html'
           body.context = 'desktop'

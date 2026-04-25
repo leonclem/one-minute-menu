@@ -24,7 +24,7 @@ export default async function DashboardPage() {
   }
 
   // Get user profile, menus, and check if user is admin
-  const [profile, menus, currentUser, creatorPackData, latestExportJobs] = await Promise.all([
+  const [profile, menus, currentUser, creatorPackData, templateSelections] = await Promise.all([
     userOperations.getProfile(user.id),
     menuOperations.getUserMenus(user.id),
     getCurrentUser(),
@@ -56,19 +56,17 @@ export default async function DashboardPage() {
         latestEditWindowEnd 
       }
     })(),
-    // Fetch the most recent completed export job per menu for the download button
+    // Fetch template selections for each menu (used to gate export buttons)
     (async () => {
-      const { data: jobs } = await supabase
-        .from('export_jobs')
-        .select('id, menu_id, status, file_url, export_type, created_at')
-        .eq('user_id', user.id)
-        .not('menu_id', 'is', null)
-        .order('created_at', { ascending: false })
-      if (!jobs) return {} as Record<string, { status: string; file_url: string | null; export_type: string; job_id: string }>
-      // Keep only the most recent job per menu_id
-      const byMenu: Record<string, { status: string; file_url: string | null; export_type: string; job_id: string }> = {}
-      for (const job of jobs) {
-        if (!byMenu[job.menu_id]) byMenu[job.menu_id] = { status: job.status, file_url: job.file_url, export_type: job.export_type, job_id: job.id }
+      const { data: selections } = await supabase
+        .from('menu_template_selections')
+        .select('menu_id, template_id, configuration')
+      
+      if (!selections) return {} as Record<string, { template_id: string; configuration: any }>
+      
+      const byMenu: Record<string, { template_id: string; configuration: any }> = {}
+      for (const sel of selections) {
+        byMenu[sel.menu_id] = { template_id: sel.template_id, configuration: sel.configuration }
       }
       return byMenu
     })()
@@ -290,9 +288,18 @@ export default async function DashboardPage() {
                     </div>
                   </Link>
                 )}
-                {menus.map((menu) => (
-                  <MenuCard key={menu.id} menu={menu} isEditLocked={isEditWindowExpired} canDelete={isSubscriber || isAdmin} latestExportJob={latestExportJobs[menu.id]} />
-                ))}
+                {menus.map((menu) => {
+                  const templateSelection = templateSelections[menu.id]
+                  return (
+                    <MenuCard 
+                      key={menu.id} 
+                      menu={menu} 
+                      isEditLocked={isEditWindowExpired} 
+                      canDelete={isSubscriber || isAdmin} 
+                      templateSelection={templateSelection}
+                    />
+                  )
+                })}
               </div>
             ) : (
               <UXCard>

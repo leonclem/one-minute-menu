@@ -17,8 +17,8 @@ interface MenuCardProps {
   isEditLocked?: boolean
   /** Whether the user can delete menus (false for Free plan) */
   canDelete?: boolean
-  /** Most recent export job for this menu, if any */
-  latestExportJob?: { status: string; file_url: string | null; export_type: string; job_id: string } | null
+  /** Saved template selection for this menu */
+  templateSelection?: { template_id: string; configuration: any } | null
 }
 
 /**
@@ -32,12 +32,21 @@ interface MenuCardProps {
  * - Handle menu deletion with API call
  * - Smart routing based on menu state
  */
-export function MenuCard({ menu, isEditLocked = false, canDelete = true, latestExportJob }: MenuCardProps) {
+export function MenuCard({ 
+  menu, 
+  isEditLocked = false, 
+  canDelete = true, 
+  templateSelection
+}: MenuCardProps) {
   const router = useRouter()
   const { showToast } = useToast()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [isDownloading, setIsDownloading] = useState(false)
+  
+  // Track exporting status per type
+  const [exportingType, setExportingType] = useState<'pdf' | 'image' | null>(null)
+
+  const hasDesign = !!templateSelection?.template_id
 
   // Smart routing logic based on menu state (Requirements: 22.2, 22.3, 22.4, 22.5)
   const getEditUrl = () => {
@@ -61,11 +70,88 @@ export function MenuCard({ menu, isEditLocked = false, canDelete = true, latestE
     setShowDeleteDialog(true)
   }
 
-  const handleDownload = async () => {
-    if (!latestExportJob || latestExportJob.status !== 'completed') return
-    setIsDownloading(true)
+  const handleExport = async (type: 'pdf' | 'image') => {
+    // Always generate a fresh export — reusing a completed job risks serving stale content
+    // if the user has updated their design since the last export.
+    setExportingType(type)
     try {
-      const resp = await fetch(`/api/export/jobs/${latestExportJob.job_id}/download-url`, {
+      const resp = await fetch('/api/export/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          menu_id: menu.id,
+          export_type: type,
+          template_id: templateSelection?.template_id,
+          configuration: templateSelection?.configuration,
+        }),
+      })
+
+      const data = await resp.json().catch(() => ({}))
+      if (!resp.ok) {
+        if (resp.status === 429) {
+          showToast({
+            type: 'info',
+            title: 'Export limit reached',
+            description: data.error || 'Please try again later.',
+          })
+        } else {
+          throw new Error(data?.error || 'Failed to create export job')
+        }
+        return
+      }
+
+      const jobId = data.job_id
+      if (!jobId) throw new Error('No job ID returned')
+
+      showToast({
+        type: 'info',
+        title: `Generating ${type.toUpperCase()}...`,
+        description: 'Your menu is being prepared. This usually takes a few seconds.'
+      })
+
+      // Poll for completion
+      const pollInterval = 2000
+      const maxAttempts = 90 // 3 minutes
+      let attempts = 0
+
+      while (attempts < maxAttempts) {
+        await new Promise(r => setTimeout(r, pollInterval))
+        const statusResp = await fetch(`/api/export/jobs/${jobId}`)
+        const statusData = await statusResp.json().catch(() => ({}))
+        attempts++
+
+        if (statusData.status === 'completed' && statusData.file_url) {
+          const jobInfo = { status: 'completed', file_url: statusData.file_url, job_id: jobId }
+          await handleDownload(jobInfo, type)
+          
+          showToast({
+            type: 'success',
+            title: `${type.toUpperCase()} exported`,
+            description: `Your menu ${type.toUpperCase()} has been downloaded successfully`
+          })
+          return
+        }
+        if (statusData.status === 'failed') {
+          throw new Error(statusData.error_message || 'Export generation failed')
+        }
+      }
+
+      throw new Error('Export is taking longer than expected. Please try again.')
+    } catch (error) {
+      console.error(`Error exporting ${type}:`, error)
+      showToast({
+        type: 'error',
+        title: 'Export failed',
+        description: error instanceof Error ? error.message : `Failed to generate ${type.toUpperCase()} export.`
+      })
+    } finally {
+      setExportingType(null)
+    }
+  }
+
+  const handleDownload = async (job: { job_id: string }, exportType: 'pdf' | 'image') => {
+    try {
+      const resp = await fetch(`/api/export/jobs/${job.job_id}/download-url`, {
         method: 'POST',
       })
       const data = await resp.json().catch(() => ({}))
@@ -81,12 +167,25 @@ export function MenuCard({ menu, isEditLocked = false, canDelete = true, latestE
         }
         return
       }
-      // Open the fresh signed URL
-      window.open(data.file_url, '_blank', 'noopener,noreferrer')
+
+      // Fetch the file as a blob so the browser download popup is triggered,
+      // regardless of whether the signed URL is cross-origin (Supabase storage).
+      const fileResp = await fetch(data.file_url)
+      if (!fileResp.ok) throw new Error('Failed to fetch file')
+      const blob = await fileResp.blob()
+      const mimeType = exportType === 'image' ? 'image/png' : 'application/pdf'
+      const typedBlob = new Blob([blob], { type: mimeType })
+      const objectUrl = URL.createObjectURL(typedBlob)
+
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = data.filename || `menu-export.${exportType === 'image' ? 'png' : 'pdf'}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(objectUrl)
     } catch {
       showToast({ type: 'error', title: 'Download failed', description: 'Please try again.' })
-    } finally {
-      setIsDownloading(false)
     }
   }
 
@@ -197,44 +296,77 @@ export function MenuCard({ menu, isEditLocked = false, canDelete = true, latestE
                 {menu.updatedAt ? menu.updatedAt.toLocaleDateString() : '—'}
               </span>
             </div>
-            <div className="pt-3 flex flex-col gap-2">
-              <Link
-                href={getEditUrl()}
-                className="inline-block w-full"
-              >
-                <span className="inline-flex items-center justify-center font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ux-primary focus:ring-offset-2 btn-ux-primary px-5 py-2.5 text-sm rounded-full text-soft-shadow w-full">
-                  {isEditLocked ? 'View Menu' : 'Edit menu'}
-                </span>
-              </Link>
-              {latestExportJob && latestExportJob.status === 'completed' ? (
-                <button
-                  onClick={handleDownload}
-                  disabled={isDownloading}
-                  className="inline-flex items-center justify-center gap-1.5 w-full px-5 py-2.5 text-sm font-semibold rounded-full border border-ux-primary text-ux-primary hover:bg-ux-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-ux-primary focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {isDownloading ? (
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            <div className="pt-4 space-y-3">
+              {/* Primary Actions */}
+              <div className="grid grid-cols-2 gap-2">
+                <Link href={getEditUrl()} className="w-full">
+                  <span className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs font-bold rounded-full btn-ux-primary text-soft-shadow transition-all hover:brightness-105">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    {isEditLocked ? 'View Items' : 'Edit Items'}
+                  </span>
+                </Link>
+                {isEditLocked ? (
+                  <span className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs font-bold rounded-full bg-gray-200 text-gray-400 cursor-not-allowed shadow-sm" title="Upgrade to edit design">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
                     </svg>
-                  )}
-                  {isDownloading ? 'Preparing…' : `Download ${latestExportJob.export_type.toUpperCase()}`}
-                </button>
-              ) : latestExportJob && (latestExportJob.status === 'pending' || latestExportJob.status === 'processing') ? (
-                <span
-                  className="inline-flex items-center justify-center gap-1.5 w-full px-5 py-2.5 text-sm font-semibold rounded-full border border-ux-border text-ux-text-secondary cursor-not-allowed opacity-60"
-                  title="Export is being prepared"
-                  aria-disabled="true"
-                >
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Preparing export…
-                </span>
-              ) : null}
+                    Edit Design
+                  </span>
+                ) : (
+                  <Link href={`/menus/${menu.id}/template`} className="w-full">
+                    <span className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs font-bold rounded-full bg-[#FFC107] text-[#212529] transition-all hover:brightness-105 shadow-sm">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                      </svg>
+                      Edit Design
+                    </span>
+                  </Link>
+                )}
+              </div>
+
+              {/* Download Actions */}
+              {hasDesign ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleExport('pdf')}
+                    disabled={!!exportingType}
+                    className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs font-semibold rounded-full border border-ux-border text-ux-text-secondary hover:bg-gray-50 transition-all disabled:opacity-50"
+                  >
+                    {exportingType === 'pdf' ? (
+                      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    )}
+                    {exportingType === 'pdf' ? 'Preparing…' : 'PDF'}
+                  </button>
+                  <button
+                    onClick={() => handleExport('image')}
+                    disabled={!!exportingType}
+                    className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs font-semibold rounded-full border border-ux-border text-ux-text-secondary hover:bg-gray-50 transition-all disabled:opacity-50"
+                  >
+                    {exportingType === 'image' ? (
+                      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    )}
+                    {exportingType === 'image' ? 'Preparing…' : 'PNG'}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-center text-xs text-ux-text-secondary py-1">
+                  Use <span className="font-semibold text-[#b8960e]">Edit Design</span> to set up your menu style before downloading.
+                </p>
+              )}
             </div>
           </div>
         </div>

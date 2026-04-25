@@ -1,28 +1,41 @@
 # Roadmap
 
-## Security
-- [ ] Check Vercel breach advice and remediation steps
+## Social Media and Advertising
+- [ ] Update home page to show animation with costs savings vs photographers, designers, etc.
+- [ ] Openclaw initial setup
+
+## /pricing
+- [ ] Review pricing approach as per ChatGPT suggestion
+
+## /extracted
+- [ ] Add section notes (check Vienna original for ref.)
+- [ ] Advanced options: change plate colour (white, beige, black, none)
+- [ ] Advanced options: remove slate
+- [ ] Advanced options: add tags, e.g. Serving type: "Slice"
+- [ ] Advanced options: additional free text description
+- [ ] Collapse "1. Choose Angle", etc. sections once image generation starts
+
+## misc
+- [ ] Remove the word "Pilot" from emails
 
 ## /template
+- [ ] Stetch fit Image Style should be default for non-demo mode
+- [ ] Review number of controls in control panel
+- [ ] Better preservation of user configuration
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
 
 ## Exports
 - [ ] Verify "print ready"
 
-## Social Media and Advertising
-- [ ] Ensure demo menus available in live site
-- [ ] LinkedIn page (and can I link it to my profile discreetly?)
-- [ ] Openclaw initial setup
-- [ ] Understand what is required and potential upside to conduct a cold email campaign
-
-## Allergens / Spice level / etc
-- [ ] Extend indicator taxonomy for additional dietary restrictions
-- [ ] Add custom allergen management via /extracted page
-
 ## Deployment
 - [x] Upgrade Vercel package
 - [ ] Determine UAT requirements
 - [ ] Determine if database backup strategy exists (Supabase / Vercel)
+- [ ] Site under maintenance page / impending maintenance notice
+
+## Allergens / Spice level / etc
+- [ ] Extend indicator taxonomy for additional dietary restrictions
+- [ ] Add custom allergen management via /extracted page
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
@@ -32,6 +45,7 @@
 - [ ] Pricing keeps defaulting to USD
 - [ ] When Image Style is set to "None", descriptions only have one line in most cases
 - [ ] Description still too short generally across layouts
+- [ ] Reset button on demo doesn't work for banner toggle (and possibly others)
 
 ## "What's New?" page
 - [ ] "What's New?" page
@@ -39,6 +53,8 @@
 - [ ] Add popup banner to /dashboard
 
 ## Security
+- [x] Check Vercel breach advice and remediation steps
+- [x] Enable Vercel 2FA
 - [ ] Address Next.js DoS vulnerabilities (see `SECURITY_NEXTJS_VULNERABILITIES.md`)
 - [ ] Ensure MFA is set on email accounts
 - [ ] Emsure choosing own username during onboarding 
@@ -79,23 +95,17 @@
 
 ## /extracted
 - [ ] Sometimes not enough space for menu item description.  We need to warn user about or limit the characters for menu item creation.
-- [ ] "Enhance this image" feature
-- [ ] Menu Control Panel > Download Menu pages (PNG zip)
+- [ ] "Enhance this image" feature#
 - [ ] Menu Control Panel > Download Menu Images (PNG zip)
 - [ ] Move item up or down
 - [ ] Allow cutouts for uploaded images
 - [ ] Rename this page to menu curator
-- [ ] Advanced options: change plate colour (white, beige, black, none), remove slate
-- [ ] Advanced options: remove slate
-- [ ] Advanced options: add tags, e.g. Serving type: "Slice"
-- [ ] Advanced options: additional free text description
 - [ ] Existing menu extract: Message "This may take a few minutes. Leave this page open while the key is being added." and checkbox with "Email me when ready".
 - [ ] Cartoon/stylised food images
 - [ ] Description creator or "stylist"
 - [ ] Rate my description
 - [ ] Boost my description
 - [ ] Add a footnote
-- [ ] Add section notes (check Vienna original for ref.)
 - [ ] Allow cropping of image
 
 ## /template
@@ -113,7 +123,7 @@
 - [ ] Design flourishes, e.g. paint splashes, food ingredients, etc. (overlay)
 
 ## /pricing
-- [ ] Image resolutions - 1k for Creator Pack, 2k for GridMenu, 4k for GridMenu+.
+- [x] Image resolutions - 1k for Creator Pack, 4k for GridMenu+ and G+P.
 - [ ] Mauricio feedback - billing period (quarterly, bi-annually, annually)
 
 ## Payment QR
@@ -148,11 +158,16 @@
 - [ ] Add "I didn't receive my menu?", check junk/spam folders, etc.
 
 ## Structural / Architectural
+- [ ] Quantity or sized pricing, e.g. S/M/L, 1/2/5/Box, 12"/18" pizza, etc.
 - [ ] Migrate out of OneDrive on laptop development
 - [ ] Explore batch requests to Gemini image creation (saves costs)
 - [ ] Explore use of ChatGPT Images 2.0 (and other options?) as backup to remove single-dependency image generation
 - [ ] Playwright (Patrick Ellis YT video)
 - [ ] App
+
+## Social Media and Advertising
+- [ ] LinkedIn page (and can I link it to my profile discreetly?)
+- [ ] Understand what is required and potential upside to conduct a cold email campaign
 
 ## misc
 - [ ] Display user information (e.g. email address of logged in user)
@@ -206,6 +221,7 @@
 - [x] Remove "Add QR / manage items" button from control panel
 - [x] Users can no longer upload their own images
 - [x] Remove slate if user for provides background (and warning for users using background images)
+- [x] Menu Control Panel > Download Menu pages as PNG
 
 ## Image Generation Test Harness
 - [x] Reference image

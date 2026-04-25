@@ -45,6 +45,7 @@ import {
 } from './metrics'
 import { generateLayoutV2 } from '@/lib/templates/v2/layout-engine-v2'
 import { renderToPdf } from '@/lib/templates/v2/renderer-pdf-v2'
+import { renderToImageV2 } from '@/lib/templates/v2/renderer-image-v2'
 import { optimizeLayoutDocumentImages } from '@/lib/templates/v2/image-optimizer-v2'
 import type { EngineMenuV2, ImageModeV2 } from '@/lib/templates/v2/engine-types-v2'
 
@@ -467,6 +468,144 @@ export class JobProcessor {
       })
 
       return Buffer.from(result.pdfBytes)
+    }
+
+    if (isV2 && job.export_type === 'image') {
+      logInfo('Using V2 Layout Engine for PNG export', { job_id: job.id })
+
+      // 0. Translate public URLs to internal Docker URLs for image fetching inside Docker.
+      // Rewrites any localhost/127.0.0.1 (Supabase :54321, Next app :3000 for demo images) to host.docker.internal.
+      const translateUrl = (url?: string) => {
+        if (!url) return url
+        return rewriteLocalhostUrlForDocker(url)
+      }
+
+      // 2. Read configuration up-front (needed for image mode and layout options)
+      const config = snapshot.configuration as any
+      const requestedImageMode: ImageModeV2 = config?.imageMode || 'stretch'
+      const isCutoutRequested = requestedImageMode === 'cutout'
+
+      // If cutout mode was requested but none of the snapshot items actually have a cutout URL,
+      // downgrade silently to stretch so standard images appear normally rather than all showing as blank.
+      const hasCutoutImages = isCutoutRequested &&
+        snapshot.menu_data.items.some(item => !!(item as any).cutout_url)
+      const effectiveImageMode = (isCutoutRequested && !hasCutoutImages) ? 'stretch' : requestedImageMode
+      const isCutoutMode = effectiveImageMode === 'cutout'
+
+      const translatedItems = snapshot.menu_data.items.map(item => ({
+        ...item,
+        image_url: isCutoutMode
+          ? ((item as any).cutout_url ? translateUrl((item as any).cutout_url) : undefined)
+          : translateUrl(item.image_url),
+        original_image_url: translateUrl(item.image_url),
+        cutout_url: (item as any).cutout_url ? translateUrl((item as any).cutout_url) : undefined
+      }))
+      const translatedLogoUrl = translateUrl(snapshot.menu_data.logo_url)
+
+      const venueInfoFromSnapshot = (snapshot.menu_data as any).venue_info || (snapshot.menu_data as any).venueInfo
+      const venueInfo =
+        venueInfoFromSnapshot ??
+        {
+          address: snapshot.menu_data.establishment_address,
+          phone: snapshot.menu_data.establishment_phone,
+        }
+
+      // 1. Transform snapshot to EngineMenuV2
+      const engineMenu: EngineMenuV2 = {
+        id: snapshot.menu_data.id,
+        name: snapshot.menu_data.name,
+        sections: this.transformToSections(translatedItems),
+        metadata: {
+          currency: snapshot.menu_data.items[0]?.currency || 'SGD',
+          venueName: snapshot.menu_data.establishment_name,
+          venueAddress: snapshot.menu_data.establishment_address,
+          logoUrl: translatedLogoUrl,
+          venueInfo:
+            venueInfo && (venueInfo.address || venueInfo.phone || venueInfo.email || venueInfo.socialMedia)
+              ? venueInfo
+              : undefined,
+        }
+      }
+
+      // Generate V2 Layout
+      const resolvedPaletteId = config?.palette?.id || config?.colourPaletteId || config?.paletteId
+
+      // Resolve flagship item ID from config — used to mark the banner hero item
+      const flagshipItemId: string | null = typeof config?.flagshipItemId === 'string' ? config.flagshipItemId : null
+
+      // Mark the flagship item in the sections so findFlagshipItem() can locate it
+      if (flagshipItemId) {
+        for (const section of engineMenu.sections) {
+          for (const item of section.items) {
+            if (item.id === flagshipItemId) {
+              item.isFlagship = true
+            }
+          }
+        }
+      }
+
+      const layoutDocument = await generateLayoutV2({
+        menu: engineMenu,
+        templateId: snapshot.template_id,
+        selection: {
+          colourPaletteId: resolvedPaletteId,
+          texturesEnabled: config?.texturesEnabled !== false,
+          textureId: config?.textureId,
+          textOnly: config?.textOnly || false,
+          fillersEnabled: config?.fillersEnabled !== false,
+          spacerTilePatternId: config?.spacerTilePatternId || (config?.spacerTiles !== 'none' ? config?.spacerTiles : undefined),
+          showMenuTitle: config?.showMenuTitle || false,
+          showVignette: config?.showVignette !== false,
+          showCategoryTitles: config?.showCategoryTitles !== false,
+          imageMode: effectiveImageMode,
+          showBanner: config?.showBanner !== false,
+          bannerTitle: config?.bannerTitle || undefined,
+          showBannerTitle: config?.showBannerTitle !== false,
+          showVenueName: config?.showVenueName !== false,
+          bannerSwapLayout: config?.bannerSwapLayout === true,
+          bannerImageStyle: config?.bannerImageStyle || undefined,
+          fontStylePreset: config?.fontStylePreset || undefined,
+          bannerHeroTransform: config?.bannerHeroTransform || undefined,
+          bannerLogoTransform: config?.bannerLogoTransform || undefined,
+          centreAlignment: config?.centreAlignment === true,
+          showLogoTile: config?.showLogoTile === true,
+          showCategoryHeaderTiles: config?.showCategoryHeaderTiles === true,
+          showFlagshipTile: config?.showFlagshipTile === true,
+        }
+      })
+
+      // 3. Optimize images (convert to base64 for self-contained HTML)
+      logInfo('Optimizing images for PNG embedding', { job_id: job.id })
+      const optimizedLayout = await optimizeLayoutDocumentImages(layoutDocument, {
+        maxWidth: 1000,
+        quality: 75,
+        preserveTransparencyForItems: isCutoutMode,
+        headers: {
+          cookie: '',
+          authorization: '',
+          host: '',
+          'x-forwarded-host': '',
+          'x-forwarded-proto': ''
+        }
+      })
+
+      // 4. Render to PNG
+      logInfo('Rendering optimized layout to PNG', { job_id: job.id })
+      const result = await renderToImageV2(optimizedLayout, {
+        paletteId: resolvedPaletteId,
+        texturesEnabled: config?.texturesEnabled !== false,
+        textureId: config?.textureId,
+        imageMode: effectiveImageMode,
+        showVignette: config?.showVignette !== false,
+        itemBorders: config?.itemBorders === true,
+        itemDropShadow: config?.itemDropShadow === true,
+        fillItemTiles: config?.fillItemTiles === true,
+        spacerTilePatternId: config?.spacerTilePatternId || (config?.spacerTiles !== 'none' ? config?.spacerTiles : undefined),
+        fontStylePreset: config?.fontStylePreset || undefined,
+        centreAlignment: config?.centreAlignment === true,
+      })
+
+      return Buffer.from(result.imageBuffer)
     }
 
     // Fallback to legacy rendering
