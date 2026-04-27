@@ -1,12 +1,19 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { UXCard } from '@/components/ux'
 import { DeleteMenuDialog } from './DeleteMenuDialog'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/toast'
 import type { Menu } from '@/types'
+
+const PENDING_JOB_EXPIRY_MS = 10 * 60 * 1000 // 10 minutes
+const CHECK_COOLDOWN_MS = 15 * 1000 // 15 seconds
+
+function getPendingExportJobKey(menuId: string) {
+  return `pendingExportJob-${menuId}`
+}
 
 interface MenuCardProps {
   menu: Menu
@@ -46,6 +53,71 @@ export function MenuCard({
   // Track exporting status per type
   const [exportingType, setExportingType] = useState<'pdf' | 'image' | null>(null)
 
+  // Pending export job detected from sessionStorage (written by template page on PDF export).
+  // Includes the configuration that was live at export time so we can use it immediately.
+  interface PendingExportJob {
+    jobId: string
+    createdAt: number
+    configuration?: any
+    templateId?: string
+  }
+  const [pendingJob, setPendingJob] = useState<PendingExportJob | null>(null)
+  const [isCheckingJob, setIsCheckingJob] = useState(false)
+  const [isOnCooldown, setIsOnCooldown] = useState(false)
+  // Configuration override carried from the template page, applied after the pending job resolves
+  const [configOverride, setConfigOverride] = useState<{ templateId: string; configuration: any } | null>(null)
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(getPendingExportJobKey(menu.id))
+      if (!raw) return
+      const entry = JSON.parse(raw) as PendingExportJob
+      if (Date.now() - entry.createdAt > PENDING_JOB_EXPIRY_MS) {
+        sessionStorage.removeItem(getPendingExportJobKey(menu.id))
+        return
+      }
+      setPendingJob(entry)
+    } catch {
+      // sessionStorage unavailable or malformed entry — ignore
+    }
+  }, [menu.id])
+
+  const handleCheckAvailability = async () => {
+    if (!pendingJob || isCheckingJob || isOnCooldown) return
+    setIsCheckingJob(true)
+    try {
+      const resp = await fetch(`/api/export/jobs/${pendingJob.jobId}`)
+      const data = await resp.json().catch(() => ({}))
+
+      if (data.status === 'completed' || data.status === 'failed') {
+        // Carry the configuration from sessionStorage so handleExport uses the latest settings
+        if (pendingJob.configuration && pendingJob.templateId) {
+          setConfigOverride({ templateId: pendingJob.templateId, configuration: pendingJob.configuration })
+        }
+        sessionStorage.removeItem(getPendingExportJobKey(menu.id))
+        setPendingJob(null)
+        router.refresh()
+        showToast({
+          type: 'success',
+          title: 'Export ready',
+          description: 'Your recent export has finished. You can now download below.',
+        })
+      } else {
+        setIsOnCooldown(true)
+        setTimeout(() => setIsOnCooldown(false), CHECK_COOLDOWN_MS)
+        showToast({
+          type: 'info',
+          title: 'Still processing',
+          description: 'Your export is still being prepared. Try again in a moment.',
+        })
+      }
+    } catch {
+      showToast({ type: 'error', title: 'Check failed', description: 'Could not retrieve export status. Please try again.' })
+    } finally {
+      setIsCheckingJob(false)
+    }
+  }
+
   const hasDesign = !!templateSelection?.template_id
 
   // Smart routing logic based on menu state (Requirements: 22.2, 22.3, 22.4, 22.5)
@@ -71,9 +143,9 @@ export function MenuCard({
   }
 
   const handleExport = async (type: 'pdf' | 'image') => {
-    // Always generate a fresh export — reusing a completed job risks serving stale content
-    // if the user has updated their design since the last export.
     setExportingType(type)
+    const effectiveTemplateId = configOverride?.templateId || templateSelection?.template_id
+    const effectiveConfig = configOverride?.configuration || templateSelection?.configuration
     try {
       const resp = await fetch('/api/export/jobs', {
         method: 'POST',
@@ -81,8 +153,8 @@ export function MenuCard({
         body: JSON.stringify({
           menu_id: menu.id,
           export_type: type,
-          template_id: templateSelection?.template_id,
-          configuration: templateSelection?.configuration,
+          template_id: effectiveTemplateId,
+          configuration: effectiveConfig,
         }),
       })
 
@@ -328,40 +400,64 @@ export function MenuCard({
 
               {/* Download Actions */}
               {hasDesign ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => handleExport('pdf')}
-                    disabled={!!exportingType}
-                    className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs font-semibold rounded-full border border-ux-border text-ux-text-secondary hover:bg-gray-50 transition-all disabled:opacity-50"
-                  >
-                    {exportingType === 'pdf' ? (
-                      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    ) : (
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                    )}
-                    {exportingType === 'pdf' ? 'Preparing…' : 'PDF'}
-                  </button>
-                  <button
-                    onClick={() => handleExport('image')}
-                    disabled={!!exportingType}
-                    className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs font-semibold rounded-full border border-ux-border text-ux-text-secondary hover:bg-gray-50 transition-all disabled:opacity-50"
-                  >
-                    {exportingType === 'image' ? (
-                      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    ) : (
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                    )}
-                    {exportingType === 'image' ? 'Preparing…' : 'PNG'}
-                  </button>
-                </div>
+                pendingJob ? (
+                  <div className="space-y-2">
+                    <p className="text-center text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      Recent changes pending export
+                    </p>
+                    <button
+                      onClick={handleCheckAvailability}
+                      disabled={isCheckingJob || isOnCooldown}
+                      className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs font-semibold rounded-full border border-ux-border text-ux-text-secondary hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isCheckingJob ? (
+                        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      )}
+                      {isCheckingJob ? 'Checking…' : isOnCooldown ? 'Try again shortly' : 'Check availability'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleExport('pdf')}
+                      disabled={!!exportingType}
+                      className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs font-semibold rounded-full border border-ux-border text-ux-text-secondary hover:bg-gray-50 transition-all disabled:opacity-50"
+                    >
+                      {exportingType === 'pdf' ? (
+                        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      )}
+                      {exportingType === 'pdf' ? 'Preparing…' : 'PDF'}
+                    </button>
+                    <button
+                      onClick={() => handleExport('image')}
+                      disabled={!!exportingType}
+                      className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs font-semibold rounded-full border border-ux-border text-ux-text-secondary hover:bg-gray-50 transition-all disabled:opacity-50"
+                    >
+                      {exportingType === 'image' ? (
+                        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      )}
+                      {exportingType === 'image' ? 'Preparing…' : 'PNG'}
+                    </button>
+                  </div>
+                )
               ) : (
                 <p className="text-center text-xs text-ux-text-secondary py-1">
                   Use <span className="font-semibold text-[#b8960e]">Edit Design</span> to set up your menu style before downloading.

@@ -1,7 +1,8 @@
 # Roadmap
 
 ## Social Media and Advertising
-- [ ] Update home page to show animation with costs savings vs photographers, designers, etc.
+- [ ] Update home page to show video with costs savings vs photographers, designers, etc.
+- [ ] Process to email those that have signed up and/or subscribed
 - [ ] Openclaw initial setup
 
 ## /pricing
@@ -42,6 +43,7 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Bugs
+- [ ] Banner is missing for 1-column-tall
 - [ ] Pricing keeps defaulting to USD
 - [ ] When Image Style is set to "None", descriptions only have one line in most cases
 - [ ] Description still too short generally across layouts
@@ -169,8 +171,10 @@
 - [ ] LinkedIn page (and can I link it to my profile discreetly?)
 - [ ] Understand what is required and potential upside to conduct a cold email campaign
 
+## Outbound Email
+- [ ] Edit-window urgency email - see doc "EDIT-WINDOW-URGENCY-EMAILS.md" 
+
 ## misc
-- [ ] Display user information (e.g. email address of logged in user)
 - [ ] Create CP, Grid+, and G+P logo for upload to Stripe products config
 - [ ] Monochrome GridMenu logo on every menu
 
@@ -254,6 +258,7 @@
 - [x] Featured tiles to stand out
 - [x] Flagship as 2x1 large tiles
 - [x] Logo / category headers as special filler tiles
+- [x] Decouple non-structural template changes from API call
 
 ### GridMenu V2 Layout Engine
 - [x] Complete V2 architecture implementation

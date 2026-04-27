@@ -3203,6 +3203,11 @@ function renderBannerContent(
   const elements: RenderElement[] = []
   const preset = FONT_STYLE_PRESETS[content.fontStylePreset] || FONT_STYLE_PRESETS.standard
 
+  // Prefer live palette colors so the web preview updates instantly on palette change.
+  // Fall back to baked-in content colors (used by PDF renderer and backward compat).
+  const bannerSurface = options.palette?.colors?.bannerSurface ?? content.surfaceColor
+  const bannerText = options.palette?.colors?.bannerText ?? content.textColor
+
   // 1. Full banner background
   elements.push({
     type: 'background',
@@ -3210,7 +3215,7 @@ function renderBannerContent(
     width: tile.width,
     height: tile.height,
     content: '',
-    style: { backgroundColor: content.surfaceColor }
+    style: { backgroundColor: bannerSurface }
   })
 
   const hasHeroImage = !!content.heroImageUrl || !!content.heroImageCutoutUrl
@@ -3254,7 +3259,7 @@ function renderBannerContent(
       width: dividerWidth,
       height: tile.height,
       content: '',
-      style: { backgroundColor: content.textColor, opacity: 0.2 }
+      style: { backgroundColor: bannerText, opacity: 0.2 }
     })
 
     if (!content.swapLayout) {
@@ -3272,7 +3277,7 @@ function renderBannerContent(
             fontSize: sidebarFontSize,
             fontWeight: preset.bannerTitleWeight,
             fontFamily: preset.bannerTitleFamily,
-            color: content.textColor,
+            color: bannerText,
             textAlign: 'center',
             lineHeight: 1,
             writingMode: 'vertical-rl',
@@ -3317,7 +3322,7 @@ function renderBannerContent(
             fontSize: venueFontSize,
             fontWeight: preset.bannerTitleWeight,
             fontFamily: preset.bannerTitleFamily,
-            color: content.textColor,
+            color: bannerText,
             textAlign: 'left',
             lineHeight: 1.05,
             zIndex: 4,
@@ -3356,7 +3361,7 @@ function renderBannerContent(
             fontSize: sidebarFontSize,
             fontWeight: preset.bannerTitleWeight,
             fontFamily: preset.bannerTitleFamily,
-            color: content.textColor,
+            color: bannerText,
             textAlign: 'center',
             lineHeight: 1,
             writingMode: 'vertical-rl',
@@ -3384,7 +3389,7 @@ function renderBannerContent(
             fontSize: titleFontSize,
             fontWeight: preset.bannerTitleWeight,
             fontFamily: preset.bannerTitleFamily,
-            color: content.textColor,
+            color: bannerText,
             textAlign: 'left',
             lineHeight: 1.0,
             zIndex: 4,
@@ -3430,7 +3435,7 @@ function renderBannerContent(
           fontSize: venueFontSize,
           fontWeight: preset.bannerTitleWeight,
           fontFamily: preset.bannerTitleFamily,
-          color: content.textColor,
+          color: bannerText,
           textAlign: 'left',
           lineHeight: 1.05,
           zIndex: 4,
@@ -3455,7 +3460,7 @@ function renderBannerContent(
           fontSize: titleFontSize,
           fontWeight: preset.bannerTitleWeight,
           fontFamily: preset.bannerTitleFamily,
-          color: content.textColor,
+          color: bannerText,
           textAlign: 'left',
           lineHeight: 1.0,
           zIndex: 4,
@@ -3514,8 +3519,9 @@ function renderBannerContent(
 function renderBannerStripContent(
   content: BannerStripContentV2,
   tile: TileInstanceV2,
-  _options: RenderOptionsV2
+  options: RenderOptionsV2
 ): TileRenderData {
+  const bannerSurface = options.palette?.colors?.bannerSurface ?? content.surfaceColor
   return {
     elements: [{
       type: 'background',
@@ -3523,7 +3529,7 @@ function renderBannerStripContent(
       width: tile.width,
       height: tile.height,
       content: '',
-      style: { backgroundColor: content.surfaceColor }
+      style: { backgroundColor: bannerSurface }
     }]
   }
 }
@@ -3541,9 +3547,9 @@ function renderFooterInfoContent(
   const paddingTop = tile.contentBudget?.paddingTop ?? SPACING_V2.tilePadding
 
   // Footer background block — full-bleed surface color at full opacity.
-  // When a banner is present, content.surfaceColor carries the same blended color
-  // so the footer matches the banner. Fall back to palette surface/background.
-  const bgColor = content.surfaceColor || tileStyle?.background?.color || palette.colors.surface || palette.colors.background
+  // Prefer the live palette banner surface so footer matches the banner on palette change.
+  // Falls back to baked-in content.surfaceColor (set when banner is present) or palette surface/background.
+  const bgColor = options.palette?.colors?.bannerSurface ?? content.surfaceColor ?? tileStyle?.background?.color ?? palette.colors.surface ?? palette.colors.background
   // Use a generous height so the background fills the full-bleed region
   // (the region container clips any overflow beyond the page edge).
   const bgHeight = tile.height * 3

@@ -648,15 +648,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     try {
       let resp
       const config = {
-        paletteId,
         imageMode,
         fillersEnabled: spacerTiles !== 'none',
         spacerTilePatternId: (spacerTiles !== 'none' ? spacerTiles : undefined),
         textOnly,
-        texturesEnabled: !!textureId,
-        textureId: textureId ?? undefined,
         showMenuTitle,
-        showVignette,
         showCategoryTitles,
         showLogoTile,
         showCategoryHeaderTiles,
@@ -686,15 +682,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       } else {
         const params = new URLSearchParams({
           templateId,
-          paletteId,
           imageMode,
           fillersEnabled: (spacerTiles !== 'none').toString(),
           spacerTilePatternId: spacerTiles !== 'none' ? spacerTiles : '',
           textOnly: textOnly.toString(),
-          texturesEnabled: (!!textureId).toString(),
-          ...(textureId ? { textureId } : {}),
           showMenuTitle: showMenuTitle.toString(),
-          showVignette: showVignette.toString(),
           showCategoryTitles: showCategoryTitles.toString(),
           showLogoTile: showLogoTile.toString(),
           showCategoryHeaderTiles: showCategoryHeaderTiles.toString(),
@@ -730,7 +722,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     } finally {
       setPreviewLoading(false)
     }
-  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, showCategoryTitles, showLogoTile, showCategoryHeaderTiles, isFlagshipTileVisible, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, effectiveFlagshipItemId, isDemoUser, currentPageIndex])
+  }, [menu, menuId, templateId, imageMode, spacerTiles, textOnly, showMenuTitle, showCategoryTitles, showLogoTile, showCategoryHeaderTiles, isFlagshipTileVisible, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, effectiveFlagshipItemId, isDemoUser])
 
   const handleImageTransformChange = useCallback((itemId: string, transform: ImageTransform) => {
     const mode = imageMode === 'none' ? 'stretch' : imageMode
@@ -914,42 +906,44 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     }
   }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, itemBorders, itemDropShadow, fillItemTiles, showCategoryTitles, showLogoTile, showCategoryHeaderTiles, isFlagshipTileVisible, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, flagshipItemId, bannerHeroTransform, bannerLogoTransform])
 
+  const buildCurrentConfiguration = () => ({
+    textOnly,
+    fillersEnabled: spacerTiles !== 'none',
+    spacerTiles,
+    spacerTilePatternId: spacerTiles !== 'none' ? spacerTiles : undefined,
+    texturesEnabled: !!textureId,
+    textureId: textureId ?? undefined,
+    showMenuTitle,
+    showVignette,
+    itemBorders,
+    itemDropShadow,
+    fillItemTiles,
+    showCategoryTitles,
+    showLogoTile,
+    showCategoryHeaderTiles,
+    showFlagshipTile: isFlagshipTileVisible,
+    centreAlignment,
+    colourPaletteId: paletteId,
+    imageMode,
+    showBanner,
+    bannerTitle,
+    showBannerTitle,
+    showVenueName,
+    bannerSwapLayout,
+    bannerImageStyle,
+    fontStylePreset,
+    flagshipItemId: effectiveFlagshipItemId ?? undefined,
+    bannerHeroTransform: bannerHeroTransform ?? undefined,
+    bannerLogoTransform: bannerLogoTransform ?? undefined,
+  })
+
   const handleSelectTemplate = async () => {
     if (!menu) return
 
     setIsSaving(true)
     try {
       await flushImageTransformSaves()
-      const configuration = {
-        textOnly,
-        fillersEnabled: spacerTiles !== 'none',
-        spacerTiles,
-        spacerTilePatternId: spacerTiles !== 'none' ? spacerTiles : undefined,
-        texturesEnabled: !!textureId,
-        textureId: textureId ?? undefined,
-        showMenuTitle,
-        showVignette,
-        itemBorders,
-        itemDropShadow,
-        fillItemTiles,
-        showCategoryTitles,
-        showLogoTile,
-        showCategoryHeaderTiles,
-        showFlagshipTile: isFlagshipTileVisible,
-        centreAlignment,
-        colourPaletteId: paletteId,
-        imageMode,
-        showBanner,
-        bannerTitle,
-        showBannerTitle,
-        showVenueName,
-        bannerSwapLayout,
-        bannerImageStyle,
-        fontStylePreset,
-        flagshipItemId: effectiveFlagshipItemId ?? undefined,
-        bannerHeroTransform: bannerHeroTransform ?? undefined,
-        bannerLogoTransform: bannerLogoTransform ?? undefined,
-      }
+      const configuration = buildCurrentConfiguration()
 
       if (isDemoUser) {
         sessionStorage.setItem(`templateSelection-${menuId}`, JSON.stringify({
@@ -1009,38 +1003,21 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
 
     try {
       const configuration = {
-        textOnly,
-        fillersEnabled: spacerTiles !== 'none',
-        spacerTiles,
-        spacerTilePatternId: spacerTiles !== 'none' ? spacerTiles : undefined,
-        texturesEnabled: !!textureId,
-        textureId: textureId ?? undefined,
-        showMenuTitle,
-        showVignette,
-        itemBorders,
-        itemDropShadow,
-        fillItemTiles,
-        showCategoryTitles,
-        showLogoTile,
-        showCategoryHeaderTiles,
-        showFlagshipTile: isFlagshipTileVisible,
-        centreAlignment,
+        ...buildCurrentConfiguration(),
         palette: palette,
-        imageMode,
-        showBanner,
-        bannerTitle,
-        showBannerTitle,
-        showVenueName,
-        bannerSwapLayout,
-        bannerImageStyle,
-        fontStylePreset,
-        flagshipItemId: effectiveFlagshipItemId ?? undefined,
-        bannerHeroTransform: bannerHeroTransform ?? undefined,
-        bannerLogoTransform: bannerLogoTransform ?? undefined,
       }
 
-      // 1. Create Export Job
-      const jobResp = await fetch('/api/export/jobs', {
+      // Persist the current configuration and create the export job in parallel.
+      // The save must complete before navigation so the dashboard reads the latest config.
+      const savePromise = (!isDemoUser && templateId)
+        ? fetch(`/api/menus/${menuId}/template-selection`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ templateId, configuration: buildCurrentConfiguration() }),
+          }).catch(() => null)
+        : Promise.resolve(null)
+
+      const jobPromise = fetch('/api/export/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1055,20 +1032,38 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         })
       })
 
+      const [, jobResp] = await Promise.all([savePromise, jobPromise])
+
+      const jobData = await jobResp.json().catch(() => ({}))
+
       if (!jobResp.ok) {
-        const data = await jobResp.json()
         if (jobResp.status === 429) {
-          if (data.resetAt) setCooldownResetAt(new Date(data.resetAt))
+          if (jobData.resetAt) setCooldownResetAt(new Date(jobData.resetAt))
           showToast({
             type: 'info',
             title: 'Export limit reached',
-            description: data?.error || 'Please wait and try again.',
+            description: jobData?.error || 'Please wait and try again.',
           })
           setIsExporting(false)
           setExportStatus(null)
           return
         }
-        throw new Error(data?.error || 'Failed to create export job')
+        throw new Error(jobData?.error || 'Failed to create export job')
+      }
+
+      // Signal to the dashboard that a recent export is pending so it can gate download buttons.
+      // Include the full configuration so MenuCard can use it directly for subsequent exports
+      // without relying on the auto-save having reached the DB yet.
+      if (jobData.job_id) {
+        try {
+          sessionStorage.setItem(`pendingExportJob-${menuId}`, JSON.stringify({
+            jobId: jobData.job_id,
+            createdAt: Date.now(),
+            configuration: buildCurrentConfiguration(),
+            templateId,
+          }))
+        } catch { /* sessionStorage unavailable */ }
+        markDashboardForRefresh()
       }
 
       trackConversionEvent({

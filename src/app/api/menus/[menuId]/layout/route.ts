@@ -171,18 +171,17 @@ export async function GET(
       )
     }
     
-    // Configuration object for cache and engine
-    const configuration = {
-      paletteId,
+    // Configuration object for cache and engine.
+    // Visual-only options (palette, texture, vignette) are intentionally excluded from the
+    // cache key — they are applied client-side at render time, so the layout structure is
+    // identical across palette/texture/vignette changes and can be reused from cache.
+    const cacheKeyConfig = {
       imageMode,
       fillersEnabled,
       spacerTilePatternId,
       textOnly,
-      texturesEnabled,
-      textureId,
       targetCellWidthPt,
       showMenuTitle,
-      showVignette,
       showCategoryTitles,
       showLogoTile,
       showCategoryHeaderTiles,
@@ -198,6 +197,12 @@ export async function GET(
       fontStylePreset,
       flagshipItemId,
     }
+    // Full configuration still passed to the layout engine so banner/footer tiles have
+    // correctly baked-in colours (used by the PDF renderer as a fallback).
+    const configuration = {
+      ...cacheKeyConfig,
+      paletteId,
+    }
     
     // Fetch user's menu currency preference (needed for cache key and transformation)
     const menuCurrency = await getMenuCurrency(user!.id)
@@ -207,7 +212,7 @@ export async function GET(
       params.menuId,
       templateId,
       menu.updatedAt,
-      configuration,
+      cacheKeyConfig,
       menuCurrency
     )
     
@@ -274,11 +279,8 @@ export async function GET(
           textOnly,
           fillersEnabled,
           spacerTilePatternId,
-          texturesEnabled,
-          textureId,
           targetCellWidthPt,
           showMenuTitle,
-          showVignette,
           showCategoryTitles,
           showLogoTile,
           showCategoryHeaderTiles,

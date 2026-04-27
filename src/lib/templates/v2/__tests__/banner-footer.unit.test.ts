@@ -638,12 +638,26 @@ describe('14.4 Footer background color derivation from palette', () => {
     })
   })
 
-  it('uses content.surfaceColor when provided (matches banner)', () => {
+  it('palette.colors.bannerSurface takes priority over content.surfaceColor', () => {
     const tileWithSurfaceColor = {
       ...baseTile,
       content: { ...baseTile.content, surfaceColor: '#A0522D' },
     } satisfies TileInstanceV2
     const result = renderTileContent(tileWithSurfaceColor, { palette: paletteWithSurface })
+    const bgElement = result.elements.find(
+      el => el.type === 'background' && el.width === baseTile.width && el.height === baseTile.height * 3
+    )
+    expect(bgElement).toBeDefined()
+    // The live palette bannerSurface should win so palette changes are reflected instantly
+    expect(bgElement!.style?.backgroundColor).toBe(paletteWithSurface.colors.bannerSurface)
+  })
+
+  it('falls back to content.surfaceColor when no palette is provided', () => {
+    const tileWithSurfaceColor = {
+      ...baseTile,
+      content: { ...baseTile.content, surfaceColor: '#A0522D' },
+    } satisfies TileInstanceV2
+    const result = renderTileContent(tileWithSurfaceColor, {})
     const bgElement = result.elements.find(
       el => el.type === 'background' && el.width === baseTile.width && el.height === baseTile.height * 3
     )
