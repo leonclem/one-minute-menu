@@ -50,7 +50,7 @@ const nextConfig = {
             : []),
           {
             key: 'Content-Security-Policy',
-            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://googleads.g.doubleclick.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; ${imgSrc} font-src 'self' data: https://fonts.gstatic.com; ${connectSrc}`,
+            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://googleads.g.doubleclick.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; ${imgSrc} font-src 'self' data: https://fonts.gstatic.com; ${connectSrc} frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com;`,
           },
         ],
       },

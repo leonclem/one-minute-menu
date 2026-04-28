@@ -241,39 +241,86 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
 
       {/* Hero Section */}
       <section className="relative w-full">
-        <div className="container-ux mx-auto max-w-4xl px-6 py-20 md:py-32 text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
-            Create your restaurant menu in under 5 minutes
-          </h1>
-          <p
-            className="text-white/80 max-w-2xl mx-auto text-hero-shadow mt-6 md:mt-8"
-            style={{ fontSize: '1.1rem' }}
-          >
-            Enter your dishes and prices, choose a menu style, and GridMenu does the rest —
-            layout, food photos, and a finished menu ready for digital sharing or PDF export.
-          </p>
-          <p className="text-base md:text-lg text-white/90 max-w-2xl mx-auto text-hero-shadow mt-4 md:mt-5 font-medium">
-            No designer. No photographer. No complicated tools.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-8 md:mt-10">
-            <Link
-              href={user ? '/dashboard' : '/register'}
-              className="w-full sm:w-auto"
-              onClick={handlePrimaryClick}
-            >
-              <UXButton variant="primary" size="lg" className="w-full sm:w-auto min-w-[240px]">
-                Start with my menu
-              </UXButton>
-            </Link>
-            <Link
-              href="/demo/sample"
-              className="w-full sm:w-auto"
-              onClick={handleSecondaryClick}
-            >
-              <UXButton variant="warning" size="lg" className="w-full sm:w-auto min-w-[240px]">
-                Try a demo menu
-              </UXButton>
-            </Link>
+        <div className="container-ux mx-auto max-w-6xl px-6 py-12 md:py-20">
+          <div className="flex flex-col md:flex-row items-center gap-10 md:gap-12">
+
+            {/* Left: text + CTAs */}
+            <div className="flex-[5] text-center md:text-left">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
+                Create your restaurant menu in under 5 minutes
+              </h1>
+              <p
+                className="text-white/80 text-hero-shadow mt-6 md:mt-8"
+                style={{ fontSize: '1.1rem' }}
+              >
+                Enter your dishes and prices, choose a menu style, and GridMenu does the rest —
+                layout, food photos, and a finished menu ready for digital sharing or PDF export.
+              </p>
+              <p className="text-base md:text-lg text-white/90 text-hero-shadow mt-4 md:mt-5 font-medium">
+                No designer. No photographer. No complicated tools.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start items-center mt-8 md:mt-10">
+                <Link
+                  href={user ? '/dashboard' : '/register'}
+                  className="w-full sm:w-auto"
+                  onClick={handlePrimaryClick}
+                >
+                  <UXButton variant="primary" size="lg" className="w-full sm:w-auto min-w-[200px]">
+                    Start with my menu
+                  </UXButton>
+                </Link>
+                <Link
+                  href="/demo/sample"
+                  className="w-full sm:w-auto"
+                  onClick={handleSecondaryClick}
+                >
+                  <UXButton variant="warning" size="lg" className="w-full sm:w-auto min-w-[200px]">
+                    Try a demo menu
+                  </UXButton>
+                </Link>
+              </div>
+            </div>
+
+            {/* Right: laptop frame with embedded YouTube video */}
+            <div className="flex-[7] w-full max-w-[560px] md:max-w-none">
+              <div className="relative w-full overflow-hidden">
+                {/* YouTube iframe — pixel-precise position derived from laptop screen boundaries */}
+                <div
+                  className="absolute"
+                  style={{ top: '2.5%', left: '11.5%', width: '77%', height: '66%', zIndex: 1 }}
+                >
+                  <iframe
+                    src="https://www.youtube.com/embed/jIa5GjnaNLc?rel=0&modestbranding=1"
+                    className="w-full h-full"
+                    title="See GridMenu in action"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+
+                {/* Inset shadow overlay — masks anti-aliased fringe at bezel edge */}
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    top: '2.5%', left: '12.3%', width: '74.7%', height: '66%',
+                    boxShadow: 'inset 0 0 0 3px #111',
+                    zIndex: 3,
+                  }}
+                />
+
+                {/* Laptop frame — screen area is transparent, video shows through */}
+                <Image
+                  src="/marketing/laptop-mockup.png"
+                  alt="GridMenu product demo running in a laptop browser"
+                  width={731}
+                  height={500}
+                  className="relative w-full h-auto pointer-events-none select-none"
+                  style={{ zIndex: 2 }}
+                  priority
+                />
+              </div>
+            </div>
+
           </div>
         </div>
       </section>

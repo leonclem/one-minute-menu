@@ -1,7 +1,6 @@
 # Roadmap
 
 ## Social Media and Advertising
-- [ ] Update home page to show video with costs savings vs photographers, designers, etc.
 - [ ] Process to email those that have signed up and/or subscribed
 - [ ] Openclaw initial setup
 
@@ -413,6 +412,7 @@
 - [x] Add Google tag to <head>
 - [x] Share buttons on blog posts
 - [x] Business cards
+- [x] Update home page to show video with costs savings vs photographers, designers, etc.
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>
