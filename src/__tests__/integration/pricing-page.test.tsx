@@ -161,8 +161,14 @@ describe('Pricing Page - Integration Tests', () => {
         expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
       }, { timeout: 10000 })
 
-      // Verify initial USD prices are displayed
-      PRICING_TIERS.forEach((tier) => {
+      // For anonymous users, Creator Pack always shows $0; only check paid tiers for currency prices
+      const paidTiers = PRICING_TIERS.filter(tier => tier.id !== 'creator_pack')
+
+      // Verify creator pack shows $0 for guests
+      expect(screen.getByText('$0')).toBeInTheDocument()
+
+      // Verify initial USD prices are displayed for paid tiers
+      paidTiers.forEach((tier) => {
         const usdPrice = formatPrice(tier.prices.USD, 'USD')
         expect(screen.getByText(usdPrice)).toBeInTheDocument()
       })
@@ -173,14 +179,14 @@ describe('Pricing Page - Integration Tests', () => {
 
       // Wait for prices to update
       await waitFor(() => {
-        PRICING_TIERS.forEach((tier) => {
+        paidTiers.forEach((tier) => {
           const sgdPrice = formatPrice(tier.prices.SGD, 'SGD')
           expect(screen.getByText(sgdPrice)).toBeInTheDocument()
         })
       }, { timeout: 10000 })
 
-      // Verify USD prices are no longer displayed
-      PRICING_TIERS.forEach((tier) => {
+      // Verify USD prices are no longer displayed for paid tiers
+      paidTiers.forEach((tier) => {
         const usdPrice = formatPrice(tier.prices.USD, 'USD')
         expect(screen.queryByText(usdPrice)).not.toBeInTheDocument()
       })
@@ -194,22 +200,28 @@ describe('Pricing Page - Integration Tests', () => {
         expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
       }, { timeout: 10000 })
 
+      // For anonymous users, Creator Pack always shows $0; only check paid tiers for currency prices
+      const paidTiers = PRICING_TIERS.filter(tier => tier.id !== 'creator_pack')
+
       // Test each supported currency
       for (const currency of SUPPORTED_BILLING_CURRENCIES) {
         const currencySelector = screen.getByLabelText(/select billing currency/i)
         await user.selectOptions(currencySelector, currency)
 
-        // Wait for prices to update
+        // Wait for prices to update (use a paid tier as the signal)
         await waitFor(() => {
-          const firstTierPrice = formatPrice(PRICING_TIERS[0].prices[currency], currency)
-          expect(screen.getByText(firstTierPrice)).toBeInTheDocument()
+          const firstPaidTierPrice = formatPrice(paidTiers[0].prices[currency], currency)
+          expect(screen.getByText(firstPaidTierPrice)).toBeInTheDocument()
         }, { timeout: 10000 })
 
-        // Verify all tier prices are updated
-        PRICING_TIERS.forEach((tier) => {
+        // Verify all paid tier prices are updated
+        paidTiers.forEach((tier) => {
           const expectedPrice = formatPrice(tier.prices[currency], currency)
           expect(screen.getByText(expectedPrice)).toBeInTheDocument()
         })
+
+        // Creator Pack should always show $0 for guests regardless of currency
+        expect(screen.getByText('$0')).toBeInTheDocument()
       }
     }, 30000)
 
@@ -245,10 +257,11 @@ describe('Pricing Page - Integration Tests', () => {
       const currencySelector = screen.getByLabelText(/select billing currency/i)
       await user.selectOptions(currencySelector, 'EUR')
 
-      // Prices should update immediately (within 100ms)
+      // Prices should update immediately (within 100ms) — use a paid tier (Grid+) as signal
+      const firstPaidTier = PRICING_TIERS.find(t => t.id !== 'creator_pack')!
       await waitFor(
         () => {
-          const eurPrice = formatPrice(PRICING_TIERS[0].prices.EUR, 'EUR')
+          const eurPrice = formatPrice(firstPaidTier.prices.EUR, 'EUR')
           expect(screen.getByText(eurPrice)).toBeInTheDocument()
         },
         { timeout: 100 }
@@ -380,9 +393,11 @@ describe('Pricing Page - Integration Tests', () => {
       // Now trigger the currency change to update prices
       await user.selectOptions(reloadedSelector, 'EUR')
 
-      // Verify EUR prices are displayed
+      // Verify EUR prices are displayed for paid tiers
+      // (Creator Pack shows $0 for guests regardless of currency)
+      const paidTiers = PRICING_TIERS.filter(t => t.id !== 'creator_pack')
       await waitFor(() => {
-        PRICING_TIERS.forEach((tier) => {
+        paidTiers.forEach((tier) => {
           const eurPrice = formatPrice(tier.prices.EUR, 'EUR')
           expect(screen.getByText(eurPrice)).toBeInTheDocument()
         })
@@ -489,8 +504,9 @@ describe('Pricing Page - Integration Tests', () => {
       const currencySelector = screen.getByLabelText(/select billing currency/i) as HTMLSelectElement
       expect(currencySelector.value).toBe('USD')
 
-      // Verify USD prices are displayed
-      const usdPrice = formatPrice(PRICING_TIERS[0].prices.USD, 'USD')
+      // Verify USD prices are displayed for a paid tier (Creator Pack shows $0 for guests)
+      const firstPaidTier = PRICING_TIERS.find(t => t.id !== 'creator_pack')!
+      const usdPrice = formatPrice(firstPaidTier.prices.USD, 'USD')
       expect(screen.getByText(usdPrice)).toBeInTheDocument()
     })
 
@@ -516,8 +532,9 @@ describe('Pricing Page - Integration Tests', () => {
       const currencySelector = screen.getByLabelText(/select billing currency/i) as HTMLSelectElement
       expect(currencySelector.value).toBe('USD')
 
-      // Verify USD prices are displayed
-      const usdPrice = formatPrice(PRICING_TIERS[0].prices.USD, 'USD')
+      // Verify USD prices are displayed for a paid tier (Creator Pack shows $0 for guests)
+      const firstPaidTier = PRICING_TIERS.find(t => t.id !== 'creator_pack')!
+      const usdPrice = formatPrice(firstPaidTier.prices.USD, 'USD')
       expect(screen.getByText(usdPrice)).toBeInTheDocument()
     })
   })

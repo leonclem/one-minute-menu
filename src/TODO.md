@@ -2,10 +2,10 @@
 
 ## Social Media and Advertising
 - [ ] Process to email those that have signed up and/or subscribed
+- [ ] Process to follow up with followers
+- [ ] Gallery section for food photography
+- [ ] Home page anchor links gridmenu.ai/#how-it-works, /#templates, /#before-after
 - [ ] Openclaw initial setup
-
-## /pricing
-- [ ] Review pricing approach as per ChatGPT suggestion
 
 ## /extracted
 - [ ] Add section notes (check Vienna original for ref.)
@@ -124,7 +124,8 @@
 - [ ] Design flourishes, e.g. paint splashes, food ingredients, etc. (overlay)
 
 ## /pricing
-- [x] Image resolutions - 1k for Creator Pack, 4k for GridMenu+ and G+P.
+- [x] Image resolutions - 1k for Creator Pack, 4k for GridMenu+ and G+P
+- [ ] Review pricing approach as per ChatGPT suggestion (chat "GridMenu Pricing Analysis")
 - [ ] Mauricio feedback - billing period (quarterly, bi-annually, annually)
 
 ## Payment QR

@@ -15,6 +15,8 @@ export interface PricingTier {
   period: string
   description: string
   features: string[]
+  /** Features shown to non-logged-in visitors in place of `features` (e.g. free trial offer). */
+  freeFeatures?: string[]
   cta: string
   subtext: string
   recommended?: boolean
@@ -28,7 +30,6 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: 'creator_pack',
     name: 'Creator Pack',
-    tagline: '*First Pack free*',
     prices: {
       SGD: 95,
       USD: 75,
@@ -43,6 +44,15 @@ export const PRICING_TIERS: PricingTier[] = [
       'Unlimited menu edits for 1 week',
       '200 AI image generations',
       'All templates included',
+      'Print-ready PDF Menu Export',
+      'Exported PDF menu storage for 30 days',
+    ],
+    freeFeatures: [
+      '1 Fully customisable menu',
+      'Unlimited menu edits for 1 week',
+      '50 AI image generations',
+      'All templates included',
+      'Social media ready PNG Menu Export',
       'Print-ready PDF Menu Export',
       'Exported PDF menu storage for 30 days',
     ],

@@ -34,17 +34,26 @@ export default function UXPricingPageContent({
     setSelectedCurrency(currency)
   }
 
-  const pricingTiers = PRICING_TIERS.map(tier => ({
-    ...tier,
-    price: formatPrice(tier.prices[selectedCurrency], selectedCurrency),
-    cta: tier.id === 'creator_pack' && !user ? 'Get Started Free' : tier.cta,
-    tagline: tier.id === 'creator_pack' && !user ? tier.tagline : undefined,
-    subtext: tier.id === 'creator_pack' && !user 
-      ? 'Valid for 24 months. One free pack per signup.' 
-      : tier.id === 'creator_pack' 
-        ? 'Purchase additional menus and edit windows.'
-        : tier.subtext,
-  }))
+  const pricingTiers = PRICING_TIERS.map(tier => {
+    const isCreatorPackForGuest = tier.id === 'creator_pack' && !user
+    return {
+      ...tier,
+      name: isCreatorPackForGuest ? 'Starter Pack' : tier.name,
+      description: isCreatorPackForGuest
+        ? 'Get started with a full-featured menu — no credit card, no commitment.'
+        : tier.description,
+      price: isCreatorPackForGuest ? '$0' : formatPrice(tier.prices[selectedCurrency], selectedCurrency),
+      period: isCreatorPackForGuest ? 'Free to claim' : tier.period,
+      features: isCreatorPackForGuest && tier.freeFeatures ? tier.freeFeatures : tier.features,
+      cta: isCreatorPackForGuest ? 'Get Started Free' : tier.cta,
+      tagline: undefined,
+      subtext: isCreatorPackForGuest
+        ? 'No credit card required. One free menu per signup.'
+        : tier.id === 'creator_pack'
+          ? 'Purchase additional menus and edit windows.'
+          : tier.subtext,
+    }
+  })
 
   const faqs = [
     {
