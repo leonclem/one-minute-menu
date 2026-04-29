@@ -73,10 +73,6 @@ export default function UXPricingPageContent({
       a: 'We accept major credit and debit cards. Additional payment methods may be available depending on your region.'
     },
     {
-      q: 'Do you offer refunds?',
-      a: 'Yes. If you are not satisfied, contact us within 30 days of your first purchase and we will review your request for a full refund. Note that excessive exports may void refund eligibility.'
-    },
-    {
       q: 'Is my data secure?',
       a: 'We use industry-standard security measures to protect your data. Data is processed in accordance with applicable data protection laws, and we only share data with trusted service providers necessary to operate the service.'
     },
