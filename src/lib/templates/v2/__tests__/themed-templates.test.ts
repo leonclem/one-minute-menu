@@ -49,6 +49,30 @@ function makeSimpleMenu(sectionCount = 2, itemsPerSection = 3): EngineMenuV2 {
   }
 }
 
+function makeThreeCategoryImageMenu(itemsPerSection = 3): EngineMenuV2 {
+  const sections: EngineSectionV2[] = Array.from({ length: 3 }, (_, si) => ({
+    id: `image-sec-${si}`,
+    name: ['Starters', 'Mains', 'Desserts'][si],
+    sortOrder: si,
+    items: Array.from({ length: itemsPerSection }, (_, ii) => ({
+      id: `image-item-${si}-${ii}`,
+      name: `Image Item ${si}-${ii}`,
+      description: 'A cosmic dish with bright flavours',
+      price: 9.99 + ii,
+      imageUrl: 'https://placehold.co/400x300',
+      sortOrder: ii,
+      indicators: { dietary: [], spiceLevel: null, allergens: [] },
+    })),
+  }))
+
+  return {
+    id: 'galactic-density-menu',
+    name: 'Galactic Density Menu',
+    sections,
+    metadata: { currency: 'USD', venueName: 'Test Venue' },
+  }
+}
+
 // =============================================================================
 // Generators (for random menu property test)
 // =============================================================================
@@ -168,5 +192,33 @@ describe('V2 templates (display-named)', () => {
       expect(nudged).toBeDefined()
       expect(nudged!.colors.background).toBeTruthy()
     })
+  })
+
+  describe('Galactic compact portrait density', () => {
+    it.each(['3-column-portrait', '4-column-portrait'] as const)(
+      'fits three image-backed categories on page one for "%s"',
+      async (templateId) => {
+        const menu = makeThreeCategoryImageMenu(3)
+        const doc = await generateLayoutV2({
+          menu,
+          templateId,
+          selection: {
+            colourPaletteId: 'galactic-menu',
+            showBanner: true,
+            imageMode: 'stretch',
+          },
+          debug: true,
+        })
+
+        const firstPageSectionIds = doc.pages[0].tiles
+          .filter(tile => tile.type === 'SECTION_HEADER')
+          .map(tile => (tile.content as { sectionId: string }).sectionId)
+        const firstItem = doc.pages[0].tiles.find(tile => tile.type === 'ITEM_CARD')
+
+        expect(firstPageSectionIds).toEqual(['image-sec-0', 'image-sec-1', 'image-sec-2'])
+        expect(firstItem?.contentBudget?.nameLines).toBe(1)
+        expect(firstItem?.contentBudget?.descLines).toBe(2)
+      }
+    )
   })
 })

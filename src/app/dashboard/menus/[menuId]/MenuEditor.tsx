@@ -1500,7 +1500,7 @@ export default function MenuEditor({ menu: initialMenu, canDelete = true }: Menu
                     <div className="space-y-1">
                       <label className="block text-sm font-medium text-secondary-700">Facebook (URL or @handle)</label>
                       <Input
-                        placeholder="facebook.com/restaurant"
+                        placeholder="@restaurant"
                         value={optimisticMenu.venueInfo?.socialMedia?.facebook || ''}
                         onBlur={(e) => {
                           if (e.target.value !== optimisticMenu.venueInfo?.socialMedia?.facebook) {

@@ -308,6 +308,34 @@ export const PALETTES_V2: ColorPaletteV2[] = [
     }
   },
   {
+    id: 'galactic-menu',
+    name: 'Galactic Menu',
+    colors: {
+      background: '#0B1020',
+      surface: '#101A33',
+      menuTitle: '#EAF2FF',
+      sectionHeader: '#57E6FF',
+      itemTitle: '#EAF2FF',
+      itemPrice: '#F9C74F',
+      itemDescription: '#A9B6D1',
+      itemIndicators: { background: '#0B1020' },
+      border: { light: '#1B2A4A', medium: '#27406D' },
+      textMuted: '#6B7A99',
+      bannerSurface: '#0E2A3A',
+      bannerText: '#57E6FF',
+      footerBorder: '#1B2A4A',
+      footerText: '#57E6FF',
+      inverseTiles: {
+        logoTitle: { background: '#57E6FF', text: '#0B1020', border: '#57E6FF' },
+        sectionHeader: { background: '#122846', text: '#EAF2FF', border: '#27406D' },
+      },
+      promoted: {
+        featured: { background: '#122846', border: '#FFFFFF', badgeFill: '#57E6FF', badgeText: '#0B1020' },
+        flagship: { background: '#151E3A', border: '#FFFFFF', badgeFill: '#FFFFFF', badgeText: '#0B1020', price: '#F9C74F' }
+      }
+    }
+  },
+  {
     id: 'sunny-market',
     name: 'Sunny Market',
     colors: {

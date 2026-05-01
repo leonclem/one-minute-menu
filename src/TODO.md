@@ -1,19 +1,21 @@
 # Roadmap
 
 ## Social Media and Advertising
-- [ ] Process to email those that have signed up and/or subscribed
-- [ ] Process to follow up with followers
-- [ ] Gallery section for food photography
+- [x] Process to email those that have signed up and/or subscribed
+- [x] May the 4th menu
+- [ ] New video (all SM platforms) - build the May4 menu in under 5 minutes.
+- [ ] New video (all SM platforms) - how to generate or upload an image in GridMenu
+- [ ] Gallery section for food photography on home page
 - [ ] Home page anchor links gridmenu.ai/#how-it-works, /#templates, /#before-after
 - [ ] Openclaw initial setup
 
 ## /extracted
+- [ ] Collapse photo options sections once image generation starts and advise not to exit the page or refresh
 - [ ] Add section notes (check Vienna original for ref.)
 - [ ] Advanced options: change plate colour (white, beige, black, none)
 - [ ] Advanced options: remove slate
 - [ ] Advanced options: add tags, e.g. Serving type: "Slice"
 - [ ] Advanced options: additional free text description
-- [ ] Collapse "1. Choose Angle", etc. sections once image generation starts
 
 ## misc
 - [ ] Remove the word "Pilot" from emails
@@ -95,6 +97,7 @@
 - [ ] Crop for large menus text extraction
 
 ## /extracted
+- [ ] Single price for all items in a category (+ new category price tile) (can also allow for sets?)
 - [ ] Sometimes not enough space for menu item description.  We need to warn user about or limit the characters for menu item creation.
 - [ ] "Enhance this image" feature#
 - [ ] Menu Control Panel > Download Menu Images (PNG zip)

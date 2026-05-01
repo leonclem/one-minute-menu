@@ -330,6 +330,10 @@ export function getFontStylePresetGoogleFontsUrl(preset: FontStylePreset): strin
   return `https://fonts.googleapis.com/css2?family=${config.googleFonts}&display=swap`
 }
 
+export function getGalacticThemeGoogleFontsUrl(): string {
+  return 'https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Anta&display=swap'
+}
+
 // ============================================================================
 // Typography Tokens (Shared between Web and PDF)
 // ============================================================================
@@ -426,6 +430,28 @@ export function lightenHexForDarkBackground(hex: string, whiteAmount: number): s
   const b2 = Math.round(b * (1 - w) + 255 * w)
   const toHex = (v: number) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')
   return `#${toHex(r2)}${toHex(g2)}${toHex(b2)}`
+}
+
+// ============================================================================
+// Galactic theme effects (neon glow)
+// ============================================================================
+
+function mergeTextShadow(a: string | undefined, b: string | undefined): string | undefined {
+  if (!a) return b
+  if (!b) return a
+  return `${a}, ${b}`
+}
+
+function isGalacticPalette(options: RenderOptionsV2): boolean {
+  return (options.palette?.id ?? DEFAULT_PALETTE_V2.id) === 'galactic-menu'
+}
+
+function neonTextGlow(palette: ColorPaletteV2, kind: 'title' | 'header' | 'price'): string {
+  const cyan = '#57E6FF'
+  const gold = '#F9C74F'
+  const glow = kind === 'price' ? gold : cyan
+  // Keep the glow subtle enough for print/PDF raster while still reading as neon.
+  return `0 0 2px rgba(255,255,255,0.55), 0 0 8px ${glow}55, 0 0 18px ${glow}33`
 }
 
 /**
@@ -548,6 +574,108 @@ const stripeHorizontalExportSvg = '<svg xmlns="http://www.w3.org/2000/svg" width
 const stripeVerticalExportSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><path d="M0 0v40h0.9V0zM8 0v40h0.9V0zM16 0v40h0.9V0zM24 0v40h0.9V0zM32 0v40h0.9V0z" fill="#000" opacity="0.08"/></svg>'
 const stripeDiagonalExportSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M0 0 L16 16" stroke="#000" stroke-width="0.8" opacity="0.08" fill="none"/></svg>'
 
+// Warp-speed background: non-tileable, full-bleed cover texture for the Galactic theme.
+// Keep it filter-free so it renders reliably in both browser and Puppeteer PDF export.
+const warpSpeedBgSvg = (() => {
+  const lines: string[] = []
+  // broken streak bundles with varied lengths/widths; deterministic for stability
+  const streak = (x1: number, y1: number, x2: number, y2: number, w: number, o: number, color: string) =>
+    `<path d="M${x1.toFixed(2)} ${y1.toFixed(2)} L${x2.toFixed(2)} ${y2.toFixed(2)}" stroke="${color}" stroke-width="${w}" stroke-linecap="round" opacity="${o}"/>`
+  const w = 1200
+  const h = 1200
+  const cx = w / 2
+  const cy = h / 2
+  // Core rays
+  for (let i = 0; i < 140; i++) {
+    const a = (i / 140) * Math.PI * 2
+    const jitter = (i % 7) * 0.012
+    const r1 = 40 + (i % 9) * 6
+    const r2 = 520 + (i % 11) * 48
+    const width = (i % 5 === 0) ? 2.0 : 1.0
+    // Middle ground: still subtle, but reads better behind tiles
+    const baseColor = '#D6DEE9'
+    const op = (i % 6 === 0) ? 0.26 : 0.14
+
+    // Break into segments with gaps (reference-like)
+    const segCount = 2 + (i % 3) // 2-4 segments
+    const dirX = Math.cos(a + jitter)
+    const dirY = Math.sin(a + jitter)
+    let cursor = r1
+    for (let s = 0; s < segCount; s++) {
+      const segLen = 70 + ((i * 17 + s * 29) % 120) // 70-189
+      const gapLen = 18 + ((i * 13 + s * 31) % 34)  // 18-51
+      const start = cursor + gapLen
+      const end = Math.min(r2, start + segLen)
+      if (end <= start) break
+      const x1s = cx + dirX * start
+      const y1s = cy + dirY * start
+      const x2s = cx + dirX * end
+      const y2s = cy + dirY * end
+      const localOp = op * (0.92 - s * 0.12)
+      const localW = width * (1.0 - s * 0.12)
+      lines.push(streak(x1s, y1s, x2s, y2s, localW, Math.max(0.05, localOp), baseColor))
+      cursor = end
+      if (cursor >= r2) break
+    }
+  }
+  // Accent rays (cyan)
+  for (let i = 0; i < 26; i++) {
+    const a = (i / 26) * Math.PI * 2 + 0.03
+    const r1 = 60
+    const r2 = 760
+    const dirX = Math.cos(a)
+    const dirY = Math.sin(a)
+    const accent = '#57E6FF'
+    const segCount = 2 + (i % 2)
+    let cursor = r1
+    for (let s = 0; s < segCount; s++) {
+      const segLen = 120 + ((i * 19 + s * 23) % 160)
+      const gapLen = 40 + ((i * 11 + s * 17) % 70)
+      const start = cursor + gapLen
+      const end = Math.min(r2, start + segLen)
+      if (end <= start) break
+      const x1s = cx + dirX * start
+      const y1s = cy + dirY * start
+      const x2s = cx + dirX * end
+      const y2s = cy + dirY * end
+      const localOp = 0.14 - s * 0.025
+      const localW = 2.2 - s * 0.35
+      lines.push(streak(x1s, y1s, x2s, y2s, Math.max(1.2, localW), Math.max(0.05, localOp), accent))
+      cursor = end
+      if (cursor >= r2) break
+    }
+  }
+
+  // Small star specks (very subtle)
+  const specks: string[] = []
+  for (let i = 0; i < 120; i++) {
+    const x = (hash2(i * 97) % 1200) + 0.5
+    const y = (hash2(i * 193 + 11) % 1200) + 0.5
+    const r = 0.6 + ((hash2(i * 29 + 7) % 100) / 100) * 1.0
+    const o = 0.05 + ((hash2(i * 41 + 3) % 100) / 100) * 0.08
+    specks.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="#EAF2FF" opacity="${o.toFixed(2)}"/>`)
+  }
+
+  const bg = [
+    `<defs>`,
+    `<radialGradient id="warp_bg" cx="50%" cy="50%" r="65%">`,
+    `<stop offset="0" stop-color="#000000" stop-opacity="1"/>`,
+    `<stop offset="0.45" stop-color="#0B1020" stop-opacity="1"/>`,
+    `<stop offset="1" stop-color="#000000" stop-opacity="1"/>`,
+    `</radialGradient>`,
+    `</defs>`,
+    `<rect width="${w}" height="${h}" fill="url(#warp_bg)"/>`,
+    specks.join(''),
+    lines.join(''),
+  ].join('')
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${bg}</svg>`
+})()
+
+// Export SVG tuned for PDF raster: slightly thicker strokes and higher opacity.
+const warpSpeedBgExportSvg = warpSpeedBgSvg
+  .replace(/stroke-width="1\.0"/g, 'stroke-width="1.35"')
+  .replace(/opacity="0\.14"/g, 'opacity="0.18"')
+
 // Percent-encoded SVG data URIs for web preview (browser renders these natively)
 const SVG_TEXTURES = {
   paperGrain: `data:image/svg+xml,${encodeURIComponent(paperGrainSvg)}`,
@@ -557,6 +685,7 @@ const SVG_TEXTURES = {
   stripesHorizontal: `data:image/svg+xml,${encodeURIComponent(stripeHorizontalSvg)}`,
   stripesVertical: `data:image/svg+xml,${encodeURIComponent(stripeVerticalSvg)}`,
   stripesDiagonal: `data:image/svg+xml,${encodeURIComponent(stripeDiagonalSvg)}`,
+  warpSpeedBg: `data:image/svg+xml,${encodeURIComponent(warpSpeedBgSvg)}`,
 }
 
 // Base64-encoded SVG data URIs for PDF export (Puppeteer renders base64 reliably).
@@ -569,6 +698,7 @@ const SVG_TEXTURES_EXPORT = {
   stripesHorizontal: svgToBase64DataUri(stripeHorizontalExportSvg),
   stripesVertical: svgToBase64DataUri(stripeVerticalExportSvg),
   stripesDiagonal: svgToBase64DataUri(stripeDiagonalExportSvg),
+  warpSpeedBg: svgToBase64DataUri(warpSpeedBgExportSvg),
 }
 
 function svgTexturePattern(svgDataUri: string, exportDataUri: string): Pick<TextureConfig, 'webCss' | 'webCssExport' | 'pdfTextureFile'> {
@@ -617,6 +747,24 @@ export const TEXTURE_REGISTRY = new Map<string, TextureConfig>([
   ['waves', { label: 'Waves', ...svgTexturePattern(SVG_TEXTURES.wave, SVG_TEXTURES_EXPORT.wave) }],
   ['linen', { label: 'Linen', ...svgTexturePattern(SVG_TEXTURES.linen, SVG_TEXTURES_EXPORT.linen) }],
   ['subtle-dots', { label: 'Subtle Dots', ...svgTexturePattern(SVG_TEXTURES.subtleDots, SVG_TEXTURES_EXPORT.subtleDots) }],
+  // Theme-only: non-selectable by users (not in TEXTURE_IDS).
+  ['warp-speed-bg', {
+    label: 'Warp Speed',
+    webCss: () => ({
+      backgroundImage: `url("${SVG_TEXTURES.warpSpeedBg}")`,
+      // Zoom in slightly so streaks reach nearer the page edges behind tiles
+      backgroundSize: '135% 135%',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
+    }),
+    webCssExport: () => ({
+      backgroundImage: `url("${SVG_TEXTURES_EXPORT.warpSpeedBg}")`,
+      backgroundSize: '135% 135%',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
+    }),
+    pdfTextureFile: '',
+  }],
 ])
 
 /** Ordered list of texture pattern IDs for user selection dropdowns (3. Background texture) */
@@ -654,6 +802,10 @@ export interface FillerPatternConfig {
   getSvgDataUri: (palette: ColorPaletteV2) => string
   /** Override background-size in px (defaults to FILLER_PATTERN_TILE_SIZE) */
   tileSize?: number
+  /** Render once, scaled to the spacer tile bounds instead of repeated. */
+  fitToTile?: boolean
+  /** Optional pattern overlay opacity. */
+  opacity?: number
 }
 
 const FILLER_PATTERN_TILE_SIZE = 64
@@ -758,6 +910,88 @@ function mattePaperGrainSvg(palette: ColorPaletteV2): string {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`
 }
 
+/** Star field: subtle dotted stars with a few softly glowing larger points. */
+function starsSvg(palette: ColorPaletteV2): string {
+  const { base, light, mid } = fillerPalette(palette)
+  const accent = palette.colors.accent ?? palette.colors.itemPrice ?? palette.colors.sectionHeader
+  const body = [
+    '<defs>',
+    '<filter id="starGlow" x="-80%" y="-80%" width="260%" height="260%">',
+    '<feGaussianBlur stdDeviation="1.1" result="b"/>',
+    '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>',
+    '</filter>',
+    '<pattern id="stars" width="96" height="96" patternUnits="userSpaceOnUse">',
+    `<rect width="96" height="96" fill="${base}"/>`,
+    `<rect width="96" height="96" fill="${light}" opacity="0.08"/>`,
+    `<g filter="url(#starGlow)">`,
+    `<circle cx="12" cy="14" r="0.9" fill="${mid}" opacity="0.60"/>`,
+    `<circle cx="28" cy="34" r="0.7" fill="${light}" opacity="0.46"/>`,
+    `<circle cx="52" cy="18" r="1.1" fill="${accent}" opacity="0.48"/>`,
+    `<circle cx="78" cy="30" r="0.8" fill="${mid}" opacity="0.50"/>`,
+    `<circle cx="88" cy="12" r="0.55" fill="${light}" opacity="0.36"/>`,
+    `<circle cx="36" cy="10" r="0.65" fill="${mid}" opacity="0.42"/>`,
+    `<circle cx="18" cy="68" r="1.5" fill="${accent}" opacity="0.34"/>`,
+    `<circle cx="44" cy="74" r="0.8" fill="${light}" opacity="0.44"/>`,
+    `<circle cx="70" cy="62" r="1.2" fill="${mid}" opacity="0.42"/>`,
+    `<circle cx="88" cy="82" r="0.7" fill="${light}" opacity="0.38"/>`,
+    `<circle cx="8" cy="46" r="0.6" fill="${light}" opacity="0.34"/>`,
+    `<circle cx="34" cy="54" r="0.55" fill="${mid}" opacity="0.36"/>`,
+    `<circle cx="58" cy="88" r="0.6" fill="${light}" opacity="0.34"/>`,
+    `<circle cx="84" cy="50" r="0.55" fill="${accent}" opacity="0.34"/>`,
+    '</g>',
+    '</pattern>',
+    '</defs>',
+    '<rect width="96" height="96" fill="url(#stars)"/>',
+  ].join('')
+  return fillerSvgDataUri(body, '0 0 96 96')
+}
+
+/** Retro targeting grid: rings + crosshair + small blips. */
+function targetingGridSvg(palette: ColorPaletteV2): string {
+  const { base, light, mid } = fillerPalette(palette)
+  const accent = palette.colors.accent ?? palette.colors.sectionHeader ?? palette.colors.itemPrice
+  const body = [
+    '<defs>',
+    '<pattern id="tg" width="96" height="96" patternUnits="userSpaceOnUse">',
+    `<rect width="96" height="96" fill="${base}"/>`,
+    `<circle cx="48" cy="48" r="32" fill="none" stroke="${light}" stroke-width="3" opacity="0.48"/>`,
+    `<circle cx="48" cy="48" r="20" fill="none" stroke="${mid}" stroke-width="2.2" opacity="0.42"/>`,
+    `<circle cx="48" cy="48" r="8" fill="none" stroke="${accent}" stroke-width="2" opacity="0.66"/>`,
+    `<path d="M48 4 V28 M48 68 V92 M4 48 H28 M68 48 H92" stroke="${light}" stroke-width="1.4" opacity="0.32"/>`,
+    `<circle cx="18" cy="24" r="2.6" fill="${accent}" opacity="0.48"/>`,
+    `<circle cx="78" cy="66" r="2.1" fill="${accent}" opacity="0.40"/>`,
+    `<circle cx="70" cy="20" r="1.6" fill="${mid}" opacity="0.34"/>`,
+    '</pattern>',
+    '</defs>',
+    '<rect width="96" height="96" fill="url(#tg)"/>',
+  ].join('')
+  return fillerSvgDataUri(body, '0 0 96 96')
+}
+
+/** Orbit map: concentric orbits with small planets, subtle grid. */
+function orbitMapSvg(palette: ColorPaletteV2): string {
+  const { base, light, mid } = fillerPalette(palette)
+  const accent = palette.colors.accent ?? palette.colors.itemPrice ?? palette.colors.sectionHeader
+  const body = [
+    '<defs>',
+    '<pattern id="om" width="96" height="96" patternUnits="userSpaceOnUse">',
+    `<rect width="96" height="96" fill="${base}"/>`,
+    `<path d="M0 24 H96 M0 48 H96 M0 72 H96" stroke="${light}" stroke-width="1" opacity="0.12"/>`,
+    `<path d="M24 0 V96 M48 0 V96 M72 0 V96" stroke="${light}" stroke-width="1" opacity="0.12"/>`,
+    `<circle cx="48" cy="48" r="8" fill="${accent}" opacity="0.30"/>`,
+    `<circle cx="48" cy="48" r="24" fill="none" stroke="${mid}" stroke-width="2" opacity="0.34"/>`,
+    `<circle cx="48" cy="48" r="38" fill="none" stroke="${light}" stroke-width="2" opacity="0.26"/>`,
+    `<ellipse cx="48" cy="48" rx="38" ry="16" fill="none" stroke="${accent}" stroke-width="1.5" opacity="0.30" transform="rotate(-25 48 48)"/>`,
+    `<circle cx="68" cy="32" r="3" fill="${accent}" opacity="0.52"/>`,
+    `<circle cx="26" cy="68" r="2.4" fill="${mid}" opacity="0.44"/>`,
+    `<circle cx="76" cy="74" r="1.8" fill="${light}" opacity="0.32"/>`,
+    '</pattern>',
+    '</defs>',
+    '<rect width="96" height="96" fill="url(#om)"/>',
+  ].join('')
+  return fillerSvgDataUri(body, '0 0 96 96')
+}
+
 /**
  * Registry mapping spacer tile pattern IDs to their configurations.
  * Patterns are palette-adaptive (base + accent from active palette).
@@ -768,10 +1002,14 @@ export const FILLER_PATTERN_REGISTRY = new Map<string, FillerPatternConfig>([
   ['overlapping-rings', { label: 'Overlapping Rings', getSvgDataUri: overlappingRingsSvg }],
   ['windowpane', { label: 'Windowpane Grid', getSvgDataUri: windowpaneSvg, tileSize: 28 }],
   ['matte-paper-grain', { label: 'Matte Paper Grain', getSvgDataUri: mattePaperGrainSvg }],
+  ['warp-speed', { label: 'Stars', getSvgDataUri: starsSvg, tileSize: 96 }],
+  ['targeting-grid', { label: 'Targeting Grid', getSvgDataUri: targetingGridSvg, tileSize: 128, opacity: 0.76 }],
+  ['orbit-map', { label: 'Orbit Map', getSvgDataUri: orbitMapSvg, tileSize: 128, opacity: 0.74 }],
 ])
 
 /** Ordered list of spacer tile pattern IDs for dropdowns */
 export const FILLER_PATTERN_IDS = Array.from(FILLER_PATTERN_REGISTRY.keys())
+export const GALACTIC_FILLER_PATTERN_IDS = ['warp-speed', 'targeting-grid', 'orbit-map'] as const
 
 /** Map palette IDs to their default texture pattern (used for legacy texturesEnabled fallback) */
 export const PALETTE_TEXTURE_MAP: Record<string, string> = {
@@ -937,6 +1175,7 @@ export interface RenderStyle {
   textTransform?: string
   letterSpacing?: number
   textShadow?: string
+  whiteSpace?: string
   zIndex?: number
   /** CSS transform string (e.g. 'scale(1.5)') for per-item image zoom */
   transform?: string
@@ -1133,6 +1372,7 @@ function renderTitleContent(
   options: RenderOptionsV2
 ): TileRenderData {
   const palette = getPalette(options)
+  const galactic = isGalacticPalette(options)
   const elements: RenderElement[] = [
     {
       type: 'text',
@@ -1145,7 +1385,8 @@ function renderTitleContent(
         fontSize: TYPOGRAPHY_TOKENS_V2.fontSize['3xl'],
         fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.bold,
         color: palette.colors.menuTitle,
-        textAlign: 'center'
+        textAlign: 'center',
+        textShadow: galactic ? neonTextGlow(palette, 'title') : undefined
       }
     }
   ]
@@ -1159,6 +1400,7 @@ function renderSectionHeaderContent(
   options: RenderOptionsV2
 ): TileRenderData {
   const palette = getPalette(options)
+  const galactic = isGalacticPalette(options)
   const elements: RenderElement[] = []
   const isCompactHeaderTile = tile.regionId === 'body' && tile.colSpan === 1
   const inverseChrome = isCompactHeaderTile ? getInverseTileChrome(palette, 'sectionHeader') : undefined
@@ -1194,7 +1436,12 @@ function renderSectionHeaderContent(
   
   // Apply font style preset override if set
   const presetConfig = options.fontStylePreset ? FONT_STYLE_PRESETS[options.fontStylePreset] : null
-  const resolvedFontFamily = presetConfig ? presetConfig.sectionHeaderFamily : fontFamily
+  const galacticHeaderFontFamily = '"Orbitron", "Anta", system-ui, -apple-system, "Segoe UI", Arial, sans-serif'
+  const resolvedFontFamily = galactic
+    ? galacticHeaderFontFamily
+    : presetConfig
+      ? presetConfig.sectionHeaderFamily
+      : fontFamily
   const resolvedFontWeight = presetConfig ? presetConfig.sectionHeaderWeight : (TYPOGRAPHY_TOKENS_V2.fontWeight[fontWeight as FontWeightV2] || TYPOGRAPHY_TOKENS_V2.fontWeight.semibold)
   
   // Add background if specified
@@ -1212,6 +1459,9 @@ function renderSectionHeaderContent(
       }
     })
   }
+
+  // Galactic section framing is handled at the region level (web/PDF renderer),
+  // so we avoid adding any header-only borders here.
   
   // Add borders if specified
   if (tileStyle?.border?.width && tileStyle?.border?.color) {
@@ -1333,7 +1583,7 @@ function renderSectionHeaderContent(
     textY = Math.max(4, (tile.height - sectionTextLineHeight) / 2)
   }
 
-  if (isCompactHeaderTile && !tileStyle?.background?.color) {
+  if (!galactic && isCompactHeaderTile && !tileStyle?.background?.color) {
     elements.unshift({
       type: 'background',
       x: 0,
@@ -1430,7 +1680,8 @@ function renderSectionHeaderContent(
       textAlign: (showDecoration && textAlign === 'center' ? 'left' : textAlign) as TextAlignV2,
       fontFamily: resolvedFontFamily,
       textTransform: labelCssTransform,
-      letterSpacing
+      letterSpacing,
+      textShadow: galactic ? neonTextGlow(palette, 'header') : undefined
     }
   })
 
@@ -1450,7 +1701,10 @@ export interface PopularBadgeMetrics {
   boxShadow: string
 }
 
-export function getPopularBadgeMetrics(tileWidthPt: number): PopularBadgeMetrics {
+export function getPopularBadgeMetrics(
+  tileWidthPt: number,
+  options?: { glowColor?: string }
+): PopularBadgeMetrics {
   const layoutScale = Math.min(1.5, Math.max(1, tileWidthPt / 108))
   // ~midway between first version (h≈11, no overlap) and the larger sticker (h≈20, overlap≈6 at scale 1)
   const overlap = Math.round(3 * layoutScale)
@@ -1461,11 +1715,18 @@ export function getPopularBadgeMetrics(tileWidthPt: number): PopularBadgeMetrics
   const textRowTopReserve = overlap + badgeH + 3
   const lift = Math.round(2 * layoutScale)
   const blur = Math.round(10 * layoutScale)
-  const boxShadow = [
+  const base = [
     `0 ${lift}px ${blur}px rgba(0,0,0,0.3)`,
     `0 1px ${Math.max(2, Math.round(2 * layoutScale))}px rgba(0,0,0,0.2)`,
     `0 0 0 1px rgba(0,0,0,0.08)`,
-  ].join(', ')
+  ]
+  const glow = options?.glowColor
+    ? [
+        `0 0 ${Math.max(8, Math.round(10 * layoutScale))}px ${options.glowColor}55`,
+        `0 0 ${Math.max(14, Math.round(18 * layoutScale))}px ${options.glowColor}33`,
+      ]
+    : []
+  const boxShadow = [...base, ...glow].join(', ')
   return { badgeW, badgeH, fontSize, borderRadius, overlap, textRowTopReserve, boxShadow }
 }
 
@@ -1520,17 +1781,27 @@ export interface FeaturedChromeV2 {
   badgeRadius: number
 }
 
-export function getFlagshipBadgeMetrics(tileWidthPt: number): FlagshipBadgeMetrics {
+export function getFlagshipBadgeMetrics(
+  tileWidthPt: number,
+  options?: { glowColor?: string }
+): FlagshipBadgeMetrics {
   const layoutScale = Math.min(1.24, Math.max(1, tileWidthPt / 190))
   const overlap = Math.round(6 * layoutScale)
   const badgeW = Math.round(92 * layoutScale)
   const badgeH = Math.round(24 * layoutScale)
   const fontSize = Math.round(8.8 * layoutScale * 10) / 10
   const borderRadius = Math.max(7, Math.round(7 * layoutScale))
-  const boxShadow = [
+  const base = [
     `0 ${Math.max(2, Math.round(2 * layoutScale))}px ${Math.max(10, Math.round(10 * layoutScale))}px rgba(76,53,2,0.24)`,
     `0 0 0 1px rgba(255,248,220,0.28)`,
-  ].join(', ')
+  ]
+  const glow = options?.glowColor
+    ? [
+        `0 0 ${Math.max(10, Math.round(14 * layoutScale))}px ${options.glowColor}44`,
+        `0 0 ${Math.max(18, Math.round(24 * layoutScale))}px ${options.glowColor}22`,
+      ]
+    : []
+  const boxShadow = [...base, ...glow].join(', ')
 
   return { badgeW, badgeH, fontSize, borderRadius, overlap, boxShadow }
 }
@@ -1544,7 +1815,7 @@ export function getFlagshipChrome(
   const panel = promoted?.background ?? '#E0D8C2'
   const badgeFill = promoted?.badgeFill ?? '#745711'
   const badgeText = promoted?.badgeText ?? '#FFF9E8'
-  const badgeLabel = tileStyle?.badge?.label ?? 'House Special'
+  const badgeLabel = tileStyle?.badge?.label ?? 'Stellar Special'
   const badgePosition = tileStyle?.badge?.position ?? 'left'
   const badgeRadius = tileStyle?.badge?.borderRadius ?? 7
   const price = promoted?.price ?? (palette?.colors.itemPrice ?? COLOR_TOKENS_V2.text.primary)
@@ -1863,6 +2134,7 @@ function renderItemContent(
 ): TileRenderData {
   const elements: RenderElement[] = []
   const palette = getPalette(options)
+  const galactic = isGalacticPalette(options)
   const tileStyle = tile.style as TileStyleV2 | undefined
   const featuredChrome = content.isFeatured ? getFeaturedChrome(palette, tileStyle) : undefined
 
@@ -1941,7 +2213,9 @@ function renderItemContent(
   const featuredStarMetrics =
     content.isFeatured && isImageNoneLayout ? getFeaturedStarBadgeMetrics(tile.width) : null
   const featuredBadgeMetrics =
-    content.isFeatured && !isImageNoneLayout ? getPopularBadgeMetrics(tile.width) : null
+    content.isFeatured && !isImageNoneLayout
+      ? getPopularBadgeMetrics(tile.width, galactic ? { glowColor: '#57E6FF' } : undefined)
+      : null
 
   if (content.isFeatured && featuredChrome) {
     elements.push({
@@ -2080,6 +2354,8 @@ function renderItemContent(
   let imageComputedBorderRadius = defaultImageBorderRadius ?? 8
   /** Horizontal/top inset for stretch mode (1px default; larger when featured so imagery clears the wrapper border). */
   let stretchSideInset = 1
+  const textUsableHeight =
+    tile.height - padTop - padBottom - (isBackgroundMode ? BACKGROUND_IMAGE_TEXT_TOP_BIAS_PT : 0)
   // 'none' = text-only layout: no image slot or placeholder (imageMode still comes from template/preview).
   const showImage =
     content.type === 'ITEM_CARD' &&
@@ -2088,7 +2364,7 @@ function renderItemContent(
     !isImageNoneLayout
 
   if (showImage) {
-    const nameReserve = nameLineHeight * 2.0
+    const nameReserve = nameLineHeight * nameMaxLines
     const descReserve = content.description
       ? (descLineHeight * descMaxLines) + SPACING_V2.nameToDesc
       : 0
@@ -2096,7 +2372,7 @@ function renderItemContent(
     const textTotal = nameReserve + descReserve + priceReserve
     // stretch/cutout mode: image starts at y:0 so padTop is not subtracted; afterImage gap is also removed
     const stretchOverhead = (imageMode === 'stretch' || isCutoutMode) ? 0 : padTop + SPACING_V2.afterImage
-    const availableForImage = tile.height - stretchOverhead - textTotal
+    const availableForImage = Math.max(0, textUsableHeight - stretchOverhead - textTotal)
 
     if (imageMode === 'compact-rect') {
       const innerW = tile.width - 2 * featuredContentInset
@@ -2134,7 +2410,7 @@ function renderItemContent(
       const maxStretchH =
         availableForImage - (featuredContentInset > 0 ? 2 * featuredContentInset : 0)
       const ideal4by3 = imageComputedWidth * 0.9
-      imageComputedHeight = Math.max(40, Math.min(ideal4by3, maxStretchH))
+      imageComputedHeight = Math.max(0, Math.min(ideal4by3, maxStretchH))
       imageComputedX = stretchSideInset
       imageComputedBorderRadius = 0
     }
@@ -2156,8 +2432,7 @@ function renderItemContent(
   // Fit content within tile: compress gaps first, then reduce line estimates if needed.
   // Reserve fixed line counts for name AND description so all tiles of the same height
   // get identical desc-Y and price-Y, regardless of actual text length.
-  const usableHeight =
-    tile.height - padTop - padBottom - (isBackgroundMode ? BACKGROUND_IMAGE_TEXT_TOP_BIAS_PT : 0)
+  const usableHeight = textUsableHeight
   let gapNameToDesc: number = hasDesc ? SPACING_V2.nameToDesc : 0
   let gapDescToPrice: number = SPACING_V2.descToPrice
   const descReservedLines = hasDesc ? Math.min(descMaxLines, 3) : 0
@@ -2178,15 +2453,22 @@ function renderItemContent(
     gapDescToPrice = Math.max(2, gapDescToPrice * scale)
     contentHeight = calcContent()
 
-    // If still overflows after gap compression, reduce desc lines then name lines
-    while (contentHeight > usableHeight && fitDescLines > 1) {
+    // If still overflows after gap compression, preserve at least two description
+    // lines before sacrificing extra name lines. Descriptions carry more meaning
+    // in compact photo layouts, especially stretch/cutout modes.
+    while (contentHeight > usableHeight && fitNameLines > 1) {
+      fitNameLines--
+      fitNameHeight = nameLineHeight * fitNameLines
+      contentHeight = calcContent()
+    }
+    while (contentHeight > usableHeight && fitDescLines > 2) {
       fitDescLines--
       fitDescHeight = descLineHeight * fitDescLines
       contentHeight = calcContent()
     }
-    while (contentHeight > usableHeight && fitNameLines > 1) {
-      fitNameLines--
-      fitNameHeight = nameLineHeight * fitNameLines
+    while (contentHeight > usableHeight && fitDescLines > 1) {
+      fitDescLines--
+      fitDescHeight = descLineHeight * fitDescLines
       contentHeight = calcContent()
     }
   }
@@ -2323,6 +2605,7 @@ function renderItemContent(
         : palette.colors.itemTitle,
       textAlign: nameTypo.textAlign,
       textTransform: applyTextTransform(content.name, nameTypo.textTransform)[1],
+      // Keep names crisp; glow strains the eye at small sizes.
       textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
     }
   })
@@ -2371,7 +2654,10 @@ function renderItemContent(
         : palette.colors.itemPrice,
       textAlign: priceTypo.textAlign,
       textTransform: priceTypo.textTransform,
-      textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
+      textShadow: mergeTextShadow(
+        isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined,
+        galactic ? neonTextGlow(palette, 'price') : undefined
+      )
     }
   })
   currentY += priceLineHeight + 4
@@ -2636,6 +2922,7 @@ function renderFlagshipCardContent(
 ): TileRenderData {
   const elements: RenderElement[] = []
   const palette = getPalette(options)
+  const galactic = isGalacticPalette(options)
   const tileStyle = tile.style as TileStyleV2 | undefined
   const imageMode: ImageModeV2 = options.imageMode || 'stretch'
   const isBackgroundMode = imageMode === 'background'
@@ -2646,7 +2933,7 @@ function renderFlagshipCardContent(
   const padX = Math.max(10, Math.min(18, tile.width * 0.04))
   const gap = Math.max(10, Math.min(18, tile.width * 0.03))
   const chrome = getFlagshipChrome(palette, tileStyle)
-  const badgeMetrics = getFlagshipBadgeMetrics(tile.width)
+  const badgeMetrics = getFlagshipBadgeMetrics(tile.width, galactic ? { glowColor: '#FFFFFF' } : undefined)
   const surfaceColor = blendHexTowards(
     palette.colors.surface ?? palette.colors.background,
     palette.colors.accent ?? palette.colors.itemPrice,
@@ -3099,6 +3386,7 @@ function renderFillerContent(
   const elements: RenderElement[] = []
   const palette = getPalette(options)
   const isBlank = options.spacerTilePatternId === SPACER_BLANK_ID
+  const galactic = isGalacticPalette(options)
 
   // Blank: plain rectangle only; alternating light vs mid with tuned opacity so neither is too faint nor too dark
   if (isBlank) {
@@ -3120,10 +3408,11 @@ function renderFillerContent(
     return { elements }
   }
 
-  // Resolve pattern: "mix" rotates through FILLER_PATTERN_IDS by fillerIndex; else user override
+  // Resolve pattern: "mix" rotates through regular patterns, or only cosmic patterns for Galactic.
+  const mixPatternIds = galactic ? [...GALACTIC_FILLER_PATTERN_IDS] : FILLER_PATTERN_IDS
   const patternId =
     options.spacerTilePatternId === 'mix'
-      ? FILLER_PATTERN_IDS[(content.fillerIndex ?? 0) % FILLER_PATTERN_IDS.length]
+      ? mixPatternIds[(content.fillerIndex ?? 0) % mixPatternIds.length]
       : options.spacerTilePatternId && FILLER_PATTERN_REGISTRY.has(options.spacerTilePatternId)
         ? options.spacerTilePatternId
         : undefined
@@ -3148,6 +3437,9 @@ function renderFillerContent(
     const dataUri = config.getSvgDataUri(palette)
     const scale = options.scale ?? 1
     const size = (config.tileSize ?? FILLER_PATTERN_TILE_SIZE) * scale
+    const background = config.fitToTile
+      ? `url("${dataUri}") no-repeat center / 100% 100%`
+      : `url("${dataUri}") repeat 0 0 / ${size}px ${size}px`
     // Align pattern to region origin so it tessellates seamlessly across adjacent filler tiles
     elements.push({
       type: 'background',
@@ -3157,9 +3449,10 @@ function renderFillerContent(
       height: tile.height,
       content: '',
       style: {
-        background: `url("${dataUri}") repeat 0 0 / ${size}px ${size}px`,
-        backgroundPositionX: -tile.x * scale,
-        backgroundPositionY: -tile.y * scale,
+        background,
+        opacity: config.opacity,
+        backgroundPositionX: config.fitToTile ? undefined : -tile.x * scale,
+        backgroundPositionY: config.fitToTile ? undefined : -tile.y * scale,
         borderRadius: 4
       }
     })
@@ -3202,11 +3495,64 @@ function renderBannerContent(
 ): TileRenderData {
   const elements: RenderElement[] = []
   const preset = FONT_STYLE_PRESETS[content.fontStylePreset] || FONT_STYLE_PRESETS.standard
-
+  const palette = getPalette(options)
+  const galactic = isGalacticPalette(options)
+  const galacticBannerFontFamily = '"Orbitron", "Anta", system-ui, -apple-system, "Segoe UI", Arial, sans-serif'
+  const galacticTitleText = galactic ? (content.title || '').toUpperCase() : content.title
+  const galacticSubheadingText = 'A COSMIC INSPIRED SELECTION'
+  const getGalacticTitleFontSize = (availableWidth: number, bannerHeight: number) => {
+    // Orbitron is wide; size from width first so "GALACTIC MENU" never clips on A3/6-column.
+    const byWidth = availableWidth / Math.max(1, galacticTitleText.length * 1.08)
+    const byHeight = bannerHeight * 0.42
+    return Math.max(18, Math.min(byWidth, byHeight))
+  }
+  const getGalacticSubheadingFontSize = (availableWidth: number, bannerHeight: number) => {
+    const byWidth = availableWidth / Math.max(1, galacticSubheadingText.length * 0.86)
+    const byHeight = bannerHeight * 0.11
+    return Math.max(9, Math.min(byWidth, byHeight))
+  }
   // Prefer live palette colors so the web preview updates instantly on palette change.
   // Fall back to baked-in content colors (used by PDF renderer and backward compat).
   const bannerSurface = options.palette?.colors?.bannerSurface ?? content.surfaceColor
   const bannerText = options.palette?.colors?.bannerText ?? content.textColor
+
+  const galacticStarsOverlayDataUri = () => {
+    // Tileable star-dots with subtle glow; tuned for header/footer overlays.
+    const c1 = '#FFFFFF'
+    const c2 = palette.colors.menuTitle ?? palette.colors.sectionHeader
+    const svg = [
+      '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="90" viewBox="0 0 220 90">',
+      '<defs>',
+      '<filter id="g" x="-50%" y="-50%" width="200%" height="200%">',
+      '<feGaussianBlur stdDeviation="0.8" result="b"/>',
+      '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>',
+      '</filter>',
+      '</defs>',
+      `<g filter="url(#g)" opacity="0.92">`,
+      // small stars
+      `<circle cx="18" cy="18" r="0.9" fill="${c1}" opacity="0.70"/>`,
+      `<circle cx="42" cy="28" r="0.7" fill="${c1}" opacity="0.55"/>`,
+      `<circle cx="74" cy="20" r="0.8" fill="${c2}" opacity="0.55"/>`,
+      `<circle cx="96" cy="34" r="0.7" fill="${c1}" opacity="0.50"/>`,
+      `<circle cx="128" cy="18" r="0.9" fill="${c1}" opacity="0.62"/>`,
+      `<circle cx="156" cy="30" r="0.7" fill="${c2}" opacity="0.50"/>`,
+      `<circle cx="188" cy="22" r="0.8" fill="${c1}" opacity="0.48"/>`,
+      `<circle cx="212" cy="34" r="0.7" fill="${c1}" opacity="0.42"/>`,
+      // medium stars
+      `<circle cx="26" cy="62" r="1.3" fill="${c1}" opacity="0.60"/>`,
+      `<circle cx="66" cy="58" r="1.1" fill="${c2}" opacity="0.52"/>`,
+      `<circle cx="112" cy="64" r="1.2" fill="${c1}" opacity="0.52"/>`,
+      `<circle cx="170" cy="62" r="1.15" fill="${c2}" opacity="0.46"/>`,
+      `<circle cx="206" cy="66" r="1.25" fill="${c1}" opacity="0.44"/>`,
+      // a few bigger glows
+      `<circle cx="14" cy="38" r="1.8" fill="${c2}" opacity="0.33"/>`,
+      `<circle cx="138" cy="42" r="1.7" fill="${c1}" opacity="0.30"/>`,
+      `<circle cx="196" cy="44" r="1.9" fill="${c2}" opacity="0.28"/>`,
+      '</g>',
+      '</svg>',
+    ].join('')
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`
+  }
 
   // 1. Full banner background
   elements.push({
@@ -3217,6 +3563,23 @@ function renderBannerContent(
     content: '',
     style: { backgroundColor: bannerSurface }
   })
+
+  // 1b. Galactic overlay: subtle star dots behind text / hero
+  if (galactic) {
+    elements.push({
+      type: 'background',
+      x: 0,
+      y: 0,
+      width: tile.width,
+      height: tile.height,
+      content: '',
+      style: {
+        background: `url("${galacticStarsOverlayDataUri()}") repeat 0 0 / 220px 90px`,
+        opacity: 0.55,
+        zIndex: 1,
+      }
+    })
+  }
 
   const hasHeroImage = !!content.heroImageUrl || !!content.heroImageCutoutUrl
   const showHero = hasHeroImage && content.bannerImageStyle !== 'none'
@@ -3272,11 +3635,11 @@ function renderBannerContent(
           x: 0, y: 0,
           width: sidebarWidth,
           height: tile.height,
-          content: content.title,
+          content: galacticTitleText,
           style: {
             fontSize: sidebarFontSize,
             fontWeight: preset.bannerTitleWeight,
-            fontFamily: preset.bannerTitleFamily,
+            fontFamily: galactic ? galacticBannerFontFamily : preset.bannerTitleFamily,
             color: bannerText,
             textAlign: 'center',
             lineHeight: 1,
@@ -3288,6 +3651,7 @@ function renderBannerContent(
             justifyContent: 'center',
             letterSpacing: 2,
             zIndex: 4,
+            textShadow: galactic ? neonTextGlow(palette, 'title') : undefined,
           }
         })
       }
@@ -3371,30 +3735,87 @@ function renderBannerContent(
             alignItems: 'center',
             justifyContent: 'center',
             letterSpacing: 1,
+            textShadow: galactic ? neonTextGlow(palette, 'title') : undefined,
           }
         })
       }
 
       // "MENU" large and horizontal in main zone
       if (showTitle) {
-        const titleFontSize = Math.max(20, Math.min(tile.height * 0.72, textZoneWidth * 0.35))
+        let titleFontSize = Math.max(20, Math.min(tile.height * 0.72, textZoneWidth * 0.35))
+        if (galactic) {
+          titleFontSize = getGalacticTitleFontSize(textZoneWidth, tile.height)
+        }
         const titleY = (tile.height - titleFontSize * 1.0) / 2
         elements.push({
           type: 'text',
           x: textZoneX,
           y: titleY,
           width: textZoneWidth,
-          content: content.title,
+          content: galacticTitleText,
           style: {
             fontSize: titleFontSize,
             fontWeight: preset.bannerTitleWeight,
-            fontFamily: preset.bannerTitleFamily,
+            fontFamily: galactic ? galacticBannerFontFamily : preset.bannerTitleFamily,
             color: bannerText,
-            textAlign: 'left',
+            textAlign: galactic ? 'center' : 'left',
             lineHeight: 1.0,
             zIndex: 4,
+            textShadow: galactic ? neonTextGlow(palette, 'title') : undefined,
+            whiteSpace: galactic ? 'nowrap' : undefined,
           }
         })
+
+        if (galactic) {
+          const subFontSize = getGalacticSubheadingFontSize(textZoneWidth, tile.height)
+          const subY = Math.min(tile.height - subFontSize * 1.3, titleY + titleFontSize * 0.95)
+          const lineY = subY + subFontSize * 0.55
+          const lineColor = palette.colors.menuTitle ?? bannerText
+          const glow = `0 0 16px ${lineColor}AA, 0 0 30px ${lineColor}66, 0 0 46px ${lineColor}33`
+          const gap = Math.max(10, textZoneWidth * 0.02)
+          const textW = Math.min(textZoneWidth * 0.78, Math.max(160, textZoneWidth * 0.62))
+          const textX = textZoneX + (textZoneWidth - textW) / 2
+          const leftLineW = Math.max(24, textX - textZoneX - gap)
+          const rightLineW = Math.max(24, (textZoneX + textZoneWidth) - (textX + textW) - gap)
+          const lineH = 1.5
+
+          elements.push({
+            type: 'background',
+            x: textZoneX,
+            y: lineY,
+            width: leftLineW,
+            height: lineH,
+            content: '',
+            style: { backgroundColor: lineColor, opacity: 0.82, boxShadow: glow, zIndex: 3 }
+          })
+          elements.push({
+            type: 'background',
+            x: textX + textW + gap,
+            y: lineY,
+            width: rightLineW,
+            height: lineH,
+            content: '',
+            style: { backgroundColor: lineColor, opacity: 0.82, boxShadow: glow, zIndex: 3 }
+          })
+          elements.push({
+            type: 'text',
+            x: textX,
+            y: subY,
+            width: textW,
+            content: galacticSubheadingText,
+            style: {
+              fontSize: subFontSize,
+              fontWeight: 600,
+              fontFamily: galacticBannerFontFamily,
+              color: bannerText,
+              textAlign: 'center',
+              letterSpacing: 1.8,
+              textShadow: neonTextGlow(palette, 'header'),
+              zIndex: 4,
+              whiteSpace: 'nowrap',
+            }
+          })
+        }
       }
     }
 
@@ -3439,6 +3860,7 @@ function renderBannerContent(
           textAlign: 'left',
           lineHeight: 1.05,
           zIndex: 4,
+          textShadow: galactic ? neonTextGlow(palette, 'title') : undefined,
         }
       })
     }
@@ -3448,24 +3870,81 @@ function renderBannerContent(
     if (showTitle) {
       const padH = Math.max(12, tile.height * 0.08)
       const textZoneWidth = tile.width - heroZoneWidth - padH * 2
-      const titleFontSize = Math.max(20, tile.height * 0.72)
+      let titleFontSize = Math.max(20, tile.height * 0.72)
+      if (galactic) {
+        titleFontSize = getGalacticTitleFontSize(tile.width - heroZoneWidth, tile.height)
+      }
       const titleY = (tile.height - titleFontSize * 1.0) / 2
       elements.push({
         type: 'text',
-        x: padH,
+        x: galactic ? 0 : padH,
         y: titleY,
-        width: textZoneWidth,
-        content: content.title,
+        width: galactic ? (tile.width - heroZoneWidth) : textZoneWidth,
+        content: galacticTitleText,
         style: {
           fontSize: titleFontSize,
           fontWeight: preset.bannerTitleWeight,
-          fontFamily: preset.bannerTitleFamily,
+          fontFamily: galactic ? galacticBannerFontFamily : preset.bannerTitleFamily,
           color: bannerText,
-          textAlign: 'left',
+          textAlign: galactic ? 'center' : 'left',
           lineHeight: 1.0,
           zIndex: 4,
+          textShadow: galactic ? neonTextGlow(palette, 'title') : undefined,
+          whiteSpace: galactic ? 'nowrap' : undefined,
         }
       })
+
+      if (galactic) {
+        const zoneW = tile.width - heroZoneWidth
+        const subFontSize = getGalacticSubheadingFontSize(zoneW, tile.height)
+        const subY = Math.min(tile.height - subFontSize * 1.3, titleY + titleFontSize * 0.95)
+        const lineY = subY + subFontSize * 0.55
+        const lineColor = palette.colors.menuTitle ?? bannerText
+        const glow = `0 0 16px ${lineColor}AA, 0 0 30px ${lineColor}66, 0 0 46px ${lineColor}33`
+        const gap = Math.max(10, zoneW * 0.02)
+        const textW = Math.min(zoneW * 0.78, Math.max(160, zoneW * 0.62))
+        const textX = (zoneW - textW) / 2
+        const leftLineW = Math.max(24, textX - gap)
+        const rightLineW = Math.max(24, zoneW - (textX + textW) - gap)
+        const lineH = 1.5
+
+        elements.push({
+          type: 'background',
+          x: 0,
+          y: lineY,
+          width: leftLineW,
+          height: lineH,
+          content: '',
+          style: { backgroundColor: lineColor, opacity: 0.82, boxShadow: glow, zIndex: 3 }
+        })
+        elements.push({
+          type: 'background',
+          x: textX + textW + gap,
+          y: lineY,
+          width: rightLineW,
+          height: lineH,
+          content: '',
+          style: { backgroundColor: lineColor, opacity: 0.82, boxShadow: glow, zIndex: 3 }
+        })
+        elements.push({
+          type: 'text',
+          x: textX,
+          y: subY,
+          width: textW,
+          content: galacticSubheadingText,
+          style: {
+            fontSize: subFontSize,
+            fontWeight: 600,
+            fontFamily: galacticBannerFontFamily,
+            color: bannerText,
+            textAlign: 'center',
+            letterSpacing: 1.8,
+            textShadow: neonTextGlow(palette, 'header'),
+            zIndex: 4,
+            whiteSpace: 'nowrap',
+          }
+        })
+      }
     }
   }
 
@@ -3541,6 +4020,7 @@ function renderFooterInfoContent(
 ): TileRenderData {
   const elements: RenderElement[] = []
   const palette = getPalette(options)
+  const galactic = isGalacticPalette(options)
   const tileStyle = tile.style as TileStyleV2 | undefined
   const paddingH = SPACING_V2.tilePadding
   // Use template contentBudget for vertical padding when present (allows tighter footer and less gap below text)
@@ -3566,6 +4046,49 @@ function renderFooterInfoContent(
       borderRadius: tileStyle?.background?.borderRadius || 0
     }
   })
+
+  if (galactic) {
+    const c1 = '#FFFFFF'
+    const c2 = palette.colors.menuTitle ?? palette.colors.sectionHeader
+    const svg = [
+      '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="90" viewBox="0 0 220 90">',
+      '<defs>',
+      '<filter id="g" x="-50%" y="-50%" width="200%" height="200%">',
+      '<feGaussianBlur stdDeviation="0.8" result="b"/>',
+      '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>',
+      '</filter>',
+      '</defs>',
+      `<g filter="url(#g)" opacity="0.92">`,
+      `<circle cx="20" cy="16" r="0.9" fill="${c1}" opacity="0.60"/>`,
+      `<circle cx="58" cy="22" r="0.7" fill="${c1}" opacity="0.48"/>`,
+      `<circle cx="92" cy="14" r="0.8" fill="${c2}" opacity="0.46"/>`,
+      `<circle cx="130" cy="24" r="0.8" fill="${c1}" opacity="0.52"/>`,
+      `<circle cx="164" cy="18" r="0.7" fill="${c2}" opacity="0.42"/>`,
+      `<circle cx="198" cy="22" r="0.8" fill="${c1}" opacity="0.44"/>`,
+      `<circle cx="32" cy="58" r="1.2" fill="${c2}" opacity="0.40"/>`,
+      `<circle cx="86" cy="62" r="1.1" fill="${c1}" opacity="0.44"/>`,
+      `<circle cx="146" cy="60" r="1.15" fill="${c2}" opacity="0.38"/>`,
+      `<circle cx="206" cy="64" r="1.2" fill="${c1}" opacity="0.36"/>`,
+      `<circle cx="12" cy="38" r="1.7" fill="${c2}" opacity="0.26"/>`,
+      `<circle cx="182" cy="44" r="1.8" fill="${c1}" opacity="0.24"/>`,
+      '</g>',
+      '</svg>',
+    ].join('')
+    const uri = `data:image/svg+xml,${encodeURIComponent(svg)}`
+    elements.push({
+      type: 'background',
+      x: 0,
+      y: 0,
+      width: tile.width,
+      height: tile.height,
+      content: '',
+      style: {
+        background: `url("${uri}") repeat 0 0 / 220px 90px`,
+        opacity: 0.55,
+        zIndex: 1,
+      }
+    })
+  }
 
   // Top border
   const borderColor = tileStyle?.border?.color || palette.colors.footerBorder

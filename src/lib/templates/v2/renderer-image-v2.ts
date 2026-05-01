@@ -22,6 +22,7 @@ import {
   PALETTE_TEXTURE_MAP,
   TEXTURE_REGISTRY,
   getFontStylePresetGoogleFontsUrl,
+  getGalacticThemeGoogleFontsUrl,
   getFontSet,
   type RenderOptionsV2,
 } from './renderer-v2'
@@ -286,7 +287,8 @@ async function generateImageHTML(
   // (section headers, logo tiles, banner title). Both are needed for a correct render.
   const baseFontsUrl = generateBaseFontsUrl(extractUsedFontSets(document))
   const presetFontsUrl = getFontStylePresetGoogleFontsUrl(effectiveFontStylePreset)
-  const fontLinks = [baseFontsUrl, presetFontsUrl]
+  const galacticFontsUrl = palette.id === 'galactic-menu' ? getGalacticThemeGoogleFontsUrl() : ''
+  const fontLinks = [baseFontsUrl, presetFontsUrl, galacticFontsUrl]
     .filter(Boolean)
     .map(url => `<link rel="stylesheet" href="${url}" />`)
     .join('\n    ')

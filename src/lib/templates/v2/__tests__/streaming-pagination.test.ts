@@ -43,6 +43,19 @@ describe('Streaming Paginator', () => {
       expect(bodyRegion!.y).toBeCloseTo(expectedBodyY, 2)
     })
 
+    it('uses a tighter Galactic portrait banner buffer to balance footer clearance', () => {
+      const bannerHeight = template.banner?.heightPt ?? 0
+      const expectedBodyY = Math.max(0, bannerHeight - pageSpec.margins.top) + 4
+      const ctx = initContext(template, pageSpec, {
+        showBanner: true,
+        colourPaletteId: 'galactic-menu',
+      })
+      const bodyRegion = ctx.currentPage.regions.find(r => r.id === 'body')
+
+      expect(bodyRegion).toBeDefined()
+      expect(bodyRegion!.y).toBeCloseTo(expectedBodyY, 2)
+    })
+
     it('does not stack extra banner padding on top of the no-header breathing room', () => {
       const bannerHeight = template.banner?.heightPt ?? 0
       const expectedBodyY = Math.max(0, bannerHeight - pageSpec.margins.top) + 20

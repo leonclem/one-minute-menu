@@ -154,6 +154,64 @@ describe('V2 Renderer', () => {
       expect(indicatorElements.length).toBeGreaterThan(0)
     })
 
+    it.each(['stretch', 'cutout'] as const)(
+      'preserves two description lines before extra name lines in %s item cards',
+      (imageMode) => {
+        const description = 'A cosmic dish with bright flavours, layered spice, and a long finish'
+        const tile: TileInstanceV2 = {
+          id: `compact-${imageMode}-item`,
+          type: 'ITEM_CARD',
+          regionId: 'body',
+          x: 0,
+          y: 0,
+          width: 130,
+          height: 134,
+          colSpan: 1,
+          rowSpan: 2,
+          gridRow: 0,
+          gridCol: 0,
+          layer: 'content',
+          contentBudget: {
+            nameLines: 1,
+            descLines: 2,
+            indicatorAreaHeight: 16,
+            imageBoxHeight: 60,
+            paddingTop: 6,
+            paddingBottom: 6,
+            totalHeight: 134,
+          },
+          content: {
+            type: 'ITEM_CARD',
+            itemId: 'compact-item',
+            sectionId: 'section-1',
+            name: 'Galactic Mac and Cheese',
+            description,
+            price: 14,
+            imageUrl: 'https://example.com/item.jpg',
+            showImage: true,
+            currency: 'USD',
+            indicators: {
+              dietary: [],
+              spiceLevel: null,
+              allergens: [],
+            },
+          } as ItemContentV2,
+        }
+
+        const result = renderTileContent(tile, {
+          ...defaultOptions,
+          imageMode,
+          palette: PALETTES_V2.find(p => p.id === 'galactic-menu'),
+        })
+
+        const nameElement = result.elements.find(element => element.type === 'text' && element.content === 'Galactic Mac and Cheese')
+        const descElement = result.elements.find(element => element.type === 'text' && element.content === description)
+
+        expect(nameElement?.style.maxLines).toBe(1)
+        expect(descElement?.style.maxLines).toBe(2)
+      }
+    )
+
     it('should render flagship cards as side-by-side layouts in non-background modes', () => {
       const tile: TileInstanceV2 = {
         id: 'flagship-1',
@@ -194,7 +252,7 @@ describe('V2 Renderer', () => {
       const result = renderTileContent(tile, { ...defaultOptions, imageMode: 'stretch' })
       const imageEl = result.elements.find((element) => element.type === 'image')
       const nameEl = result.elements.find((element) => element.type === 'text' && element.content === 'Braised Lamb')
-      const badgeEl = result.elements.find((element) => element.type === 'text' && element.content === 'House Special')
+      const badgeEl = result.elements.find((element) => element.type === 'text' && element.content === 'Stellar Special')
       const bgEls = result.elements.filter((element) => element.type === 'background')
 
       expect(bgEls.length).toBeGreaterThanOrEqual(2)
@@ -383,7 +441,7 @@ describe('V2 Renderer', () => {
       const imageEl = result.elements.find((element) => element.type === 'image')
       const overlayEl = result.elements.find((element) => element.type === 'background' && element.style.background)
       const nameEl = result.elements.find((element) => element.type === 'text' && element.content === 'Smoked Brisket')
-      const badgeEl = result.elements.find((element) => element.type === 'text' && element.content === 'House Special')
+      const badgeEl = result.elements.find((element) => element.type === 'text' && element.content === 'Stellar Special')
 
       expect(imageEl?.width).toBe(tile.width - 14)
       expect(imageEl?.height).toBe(tile.height - 14)
@@ -1587,7 +1645,16 @@ describe('V2 Renderer', () => {
 
   describe('Filler (spacer) pattern registry', () => {
     it('should have expected filler pattern IDs registered', () => {
-      const expected = ['diagonal-pinstripe', 'bauhaus-check', 'overlapping-rings', 'windowpane', 'matte-paper-grain']
+      const expected = [
+        'diagonal-pinstripe',
+        'bauhaus-check',
+        'overlapping-rings',
+        'windowpane',
+        'matte-paper-grain',
+        'warp-speed',
+        'targeting-grid',
+        'orbit-map',
+      ]
       expect(FILLER_PATTERN_IDS).toEqual(expected)
       expected.forEach(id => {
         const config = FILLER_PATTERN_REGISTRY.get(id)

@@ -141,6 +141,11 @@ export interface StreamingContext extends PlacementContext {
 const BODY_TOP_PADDING_NO_HEADERS = 20 // pts of breathing room when category titles are hidden
 const HEADER_BUFFER_WITH_BODY_LOGO = 8 // small print-safe gap when the header logo is suppressed
 const BODY_TOP_PADDING_WITH_BANNER = 12 // small buffer between banner/strip and first body row
+const GALACTIC_PORTRAIT_BODY_TOP_PADDING_WITH_BANNER = 4
+const GALACTIC_COMPACT_PORTRAIT_TEMPLATE_IDS = new Set([
+  '3-column-portrait',
+  '4-column-portrait',
+])
 
 function resolveHeaderRegionHeight(
   template: TemplateV2,
@@ -168,8 +173,13 @@ function applyBannerBodyPadding(regions: RegionV2[], template: TemplateV2, selec
   const body = regions.find(r => r.id === 'body')
   if (!body) return
 
-  body.y += BODY_TOP_PADDING_WITH_BANNER
-  body.height -= BODY_TOP_PADDING_WITH_BANNER
+  const padding = selection?.colourPaletteId === 'galactic-menu' &&
+    GALACTIC_COMPACT_PORTRAIT_TEMPLATE_IDS.has(template.id)
+      ? GALACTIC_PORTRAIT_BODY_TOP_PADDING_WITH_BANNER
+      : BODY_TOP_PADDING_WITH_BANNER
+
+  body.y += padding
+  body.height -= padding
 }
 
 /**

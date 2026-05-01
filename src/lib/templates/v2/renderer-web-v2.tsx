@@ -38,6 +38,7 @@ import {
   TEXTURE_REGISTRY,
   PALETTE_TEXTURE_MAP,
   getFontStylePresetGoogleFontsUrl,
+  getGalacticThemeGoogleFontsUrl,
   BG_IMAGE_TEXT,
   blendHexTowards,
   getFlagshipBadgeMetrics,
@@ -103,6 +104,17 @@ function loadGoogleFonts(fontSetIds: string[]): void {
   link.rel = 'stylesheet'
   link.href = fontUrl
   document.head.appendChild(link)
+}
+
+function loadGalacticHeaderFonts(): void {
+  if (typeof window === 'undefined') return
+  const url = getGalacticThemeGoogleFontsUrl()
+  const existing = window.document.querySelector(`link[href="${url}"]`)
+  if (existing) return
+  const link = window.document.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = url
+  window.document.head.appendChild(link)
 }
 
 // ============================================================================
@@ -181,6 +193,12 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
       window.document.head.appendChild(link)
     }
   }, [options.fontStylePreset])
+
+  // Galactic banner font (Orbitron / Anta) for preview + PDF export.
+  useEffect(() => {
+    if (palette?.id === 'galactic-menu') loadGalacticHeaderFonts()
+  }, [palette?.id])
+
   const bgColor = palette?.colors.background || COLOR_TOKENS_V2.background.white
   const mutedTextColor = palette?.colors.textMuted || COLOR_TOKENS_V2.text.muted
   const borderColor = palette?.colors.border.light || COLOR_TOKENS_V2.border.light
@@ -402,6 +420,51 @@ interface RegionRendererProps {
 
 function RegionRenderer({ region, tiles, options }: RegionRendererProps) {
   const { scale } = options
+  const galactic = options.palette?.id === 'galactic-menu'
+
+  // Galactic: draw a frame around each category block (SECTION_HEADER + items below it).
+  const sectionFrames = React.useMemo(() => {
+    if (!galactic || region.id !== 'body') return []
+    const headers = tiles
+      .filter(t => t.type === 'SECTION_HEADER')
+      .slice()
+      .sort((a, b) => a.y - b.y)
+    if (headers.length === 0) return []
+
+    const frames: Array<{ id: string; x: number; y: number; w: number; h: number }> = []
+    for (let i = 0; i < headers.length; i++) {
+      const h = headers[i]
+      const next = headers[i + 1]
+      const sectionTiles = tiles.filter(t => (
+        t.id !== h.id &&
+        t.y >= h.y &&
+        (!next || t.y < next.y)
+      ))
+      const contentTiles = sectionTiles.length > 0 ? sectionTiles : [h]
+      const minX = Math.min(...contentTiles.map(t => t.x))
+      const maxRight = Math.max(...contentTiles.map(t => t.x + t.width))
+      const maxBottom = Math.max(...contentTiles.map(t => t.y + t.height))
+
+      // Place the frame just outside the section content. Some templates place
+      // item tiles at x=0, so a halfway-to-edge calculation still hugs items.
+      const outsideGap = Math.max(8, Math.min(18, region.width * 0.025))
+      const left = minX - outsideGap
+      const right = maxRight + outsideGap
+      const top = Math.max(0, h.y + h.height * 0.72)
+      const nextFrameTop = next ? next.y + next.height * 0.72 : undefined
+      const maxAllowedBottom = nextFrameTop !== undefined ? nextFrameTop - 8 : region.height - 8
+      const bottom = Math.min(maxAllowedBottom, maxBottom + 12)
+      const height = Math.max(28, bottom - top)
+      frames.push({
+        id: `section-frame-${h.id}`,
+        x: left,
+        y: top,
+        w: Math.max(0, right - left),
+        h: height,
+      })
+    }
+    return frames
+  }, [galactic, region.id, region.height, region.width, tiles])
   
   return (
     <div
@@ -414,6 +477,23 @@ function RegionRenderer({ region, tiles, options }: RegionRendererProps) {
         height: region.height * scale
       }}
     >
+      {sectionFrames.map(frame => (
+        <div
+          key={frame.id}
+          style={{
+            position: 'absolute',
+            left: frame.x * scale,
+            top: frame.y * scale,
+            width: frame.w * scale,
+            height: frame.h * scale,
+            border: '1.5px solid rgba(87, 230, 255, 0.55)',
+            boxShadow: '0 0 14px rgba(87, 230, 255, 0.32), 0 0 30px rgba(87, 230, 255, 0.18)',
+            borderRadius: 10,
+            pointerEvents: 'none',
+          }}
+        />
+      ))}
+
       {/* Tiles within region */}
       {tiles.map(tile => (
         <TileRenderer
@@ -561,7 +641,10 @@ interface FlagshipCardProps {
 
 function FlagshipBadge({ tile, options, scale }: Omit<FlagshipCardProps, 'content'>) {
   const chrome = getFlagshipChrome(options.palette, tile.style as import('./engine-types-v2').TileStyleV2 | undefined)
-  const metrics = getFlagshipBadgeMetrics(tile.width)
+  const metrics = getFlagshipBadgeMetrics(
+    tile.width,
+    options.palette?.id === 'galactic-menu' ? { glowColor: '#FFFFFF' } : undefined
+  )
   const top = -metrics.overlap * scale
   const left = chrome.badgePosition === 'left' ? -metrics.overlap * scale : undefined
   const right = chrome.badgePosition === 'right' ? -metrics.overlap * scale : undefined
@@ -921,7 +1004,15 @@ function TileRenderer({ tile, options }: TileRendererProps) {
     : isFeaturedItem
       ? 'none'
       : subtleBorder || 'none'
-  const boxShadow = subtleShadow
+  // Galactic glow should apply to menu item tiles, not headings (prevents a "shadow box" around section headers).
+  const galacticGlow =
+    palette?.id === 'galactic-menu' && (isMenuItemTile || isFlagshipTile)
+      ? `0 0 ${10 * scale}px rgba(87,230,255,0.18), 0 0 ${22 * scale}px rgba(87,230,255,0.10)`
+      : undefined
+  const boxShadow =
+    subtleShadow && galacticGlow
+      ? `${subtleShadow}, ${galacticGlow}`
+      : subtleShadow || galacticGlow
   const fillColor = options.fillItemTiles && isMenuItemTile
     ? (palette?.colors?.surface ?? palette?.colors?.background ?? COLOR_TOKENS_V2.background.white)
     : undefined
@@ -1156,6 +1247,7 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
     textTransform: element.style.textTransform as React.CSSProperties['textTransform'],
     letterSpacing: element.style.letterSpacing ? element.style.letterSpacing * scale : undefined,
     textShadow: element.style.textShadow,
+    whiteSpace: element.style.whiteSpace as React.CSSProperties['whiteSpace'],
     writingMode: element.style.writingMode as React.CSSProperties['writingMode'],
     textOrientation: element.style.textOrientation as React.CSSProperties['textOrientation'],
     transform: element.style.writingMode ? element.style.transform : undefined,

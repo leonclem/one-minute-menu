@@ -172,9 +172,9 @@ export async function GET(
     }
     
     // Configuration object for cache and engine.
-    // Visual-only options (palette, texture, vignette) are intentionally excluded from the
-    // cache key — they are applied client-side at render time, so the layout structure is
-    // identical across palette/texture/vignette changes and can be reused from cache.
+    // Most visual-only options are intentionally excluded from the cache key, but Galactic
+    // currently applies a compact portrait density override, so it must vary structurally.
+    const structuralPaletteId = paletteId === 'galactic-menu' ? paletteId : undefined
     const cacheKeyConfig = {
       imageMode,
       fillersEnabled,
@@ -196,6 +196,7 @@ export async function GET(
       bannerImageStyle,
       fontStylePreset,
       flagshipItemId,
+      structuralPaletteId,
     }
     // Full configuration still passed to the layout engine so banner/footer tiles have
     // correctly baked-in colours (used by the PDF renderer as a fallback).

@@ -27,6 +27,7 @@ import {
   PALETTE_TEXTURE_MAP,
   getFontSet,
   getFontStylePresetGoogleFontsUrl,
+  getGalacticThemeGoogleFontsUrl,
   type RenderOptionsV2,
 } from './renderer-v2'
 import { COLOR_TOKENS_V2, PALETTES_V2, DEFAULT_PALETTE_V2 } from './palettes-v2'
@@ -400,11 +401,15 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string, fontStyl
   // Prefer the explicitly-passed preset (user's selection) over what's embedded in the document
   const fontStylePreset = (fontStylePresetOverride as FontStylePreset | undefined) ?? extractFontStylePreset(document)
   const presetFontsUrl = getFontStylePresetGoogleFontsUrl(fontStylePreset)
+  const galacticFontsUrl = paletteId === 'galactic-menu'
+    ? getGalacticThemeGoogleFontsUrl()
+    : ''
 
   // Collect Google Fonts URLs for <link> tags (render-blocking, more reliable than @import)
   const fontLinkUrls: string[] = []
   if (googleFontsURL) fontLinkUrls.push(googleFontsURL)
   if (presetFontsUrl) fontLinkUrls.push(presetFontsUrl)
+  if (galacticFontsUrl) fontLinkUrls.push(galacticFontsUrl)
 
   const css = `
     /* CSS Reset for PDF */

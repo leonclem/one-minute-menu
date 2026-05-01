@@ -14,6 +14,15 @@ jest.mock('@/lib/supabase-server', () => ({
   createAdminSupabaseClient: jest.fn()
 }))
 
+jest.mock('@/lib/notification-service', () => ({
+  notificationService: {
+    sendSubscriptionConfirmation: jest.fn().mockResolvedValue(undefined),
+    sendCreatorPackConfirmation: jest.fn().mockResolvedValue(undefined),
+    sendPaymentFailedNotification: jest.fn().mockResolvedValue(undefined),
+    sendSubscriptionCancelledNotification: jest.fn().mockResolvedValue(undefined),
+  }
+}))
+
 describe('Property 12: Subscription Fulfillment Updates Profile', () => {
   beforeEach(() => {
     // Reset mocks

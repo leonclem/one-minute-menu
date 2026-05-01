@@ -38,13 +38,29 @@ export default function NewMenuPage() {
         const response = await fetchJsonWithRetry<{ success: boolean; data: User }>('/api/profile')
         if (response.success && response.data) {
           const profile = response.data
-          setFormData(prev => ({
-            ...prev,
-            name: profile.restaurantName || prev.name,
-            slug: profile.restaurantName ? generateSlugFromName(profile.restaurantName) : prev.slug,
-            establishmentType: profile.establishmentType || prev.establishmentType,
-            primaryCuisine: profile.primaryCuisine || prev.primaryCuisine,
-          }))
+          setFormData(prev => {
+            const previousVenueInfo = prev.venueInfo ?? {}
+            const previousSocialMedia = previousVenueInfo.socialMedia ?? {}
+
+            return {
+              ...prev,
+              name: profile.restaurantName || prev.name,
+              slug: profile.restaurantName ? generateSlugFromName(profile.restaurantName) : prev.slug,
+              establishmentType: profile.establishmentType || prev.establishmentType,
+              primaryCuisine: profile.primaryCuisine || prev.primaryCuisine,
+              venueInfo: {
+                address: profile.defaultVenueInfo?.address || previousVenueInfo.address,
+                email: profile.defaultVenueInfo?.email || previousVenueInfo.email,
+                phone: profile.defaultVenueInfo?.phone || previousVenueInfo.phone,
+                socialMedia: {
+                  instagram: profile.defaultVenueInfo?.socialMedia?.instagram || previousSocialMedia.instagram,
+                  facebook: profile.defaultVenueInfo?.socialMedia?.facebook || previousSocialMedia.facebook,
+                  x: profile.defaultVenueInfo?.socialMedia?.x || previousSocialMedia.x,
+                  website: profile.defaultVenueInfo?.socialMedia?.website || previousSocialMedia.website,
+                },
+              },
+            }
+          })
         }
       } catch (err) {
         console.error('Failed to load profile for pre-filling:', err)
@@ -346,7 +362,7 @@ export default function NewMenuPage() {
                               socialMedia: { ...formData.venueInfo?.socialMedia, facebook: e.target.value }
                             }
                           })}
-                          placeholder="facebook.com/restaurant"
+                          placeholder="@restaurant"
                         />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

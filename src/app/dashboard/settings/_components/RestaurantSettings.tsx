@@ -285,7 +285,7 @@ export function RestaurantSettings({
                       label="Facebook"
                       value={facebook}
                       onChange={(e) => setFacebook(e.target.value)}
-                      placeholder="facebook.com/restaurant"
+                      placeholder="@restaurant"
                     />
 
                     <UXInput
