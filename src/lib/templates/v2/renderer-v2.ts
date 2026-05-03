@@ -1808,14 +1808,16 @@ export function getFlagshipBadgeMetrics(
 
 export function getFlagshipChrome(
   palette?: ColorPaletteV2,
-  tileStyle?: TileStyleV2
+  tileStyle?: TileStyleV2,
+  isGalactic?: boolean
 ): FlagshipChromeV2 {
   const promoted = palette?.colors.promoted.flagship
   const frameOuter = promoted?.border ?? '#7F5F14'
   const panel = promoted?.background ?? '#E0D8C2'
   const badgeFill = promoted?.badgeFill ?? '#745711'
   const badgeText = promoted?.badgeText ?? '#FFF9E8'
-  const badgeLabel = tileStyle?.badge?.label ?? 'Stellar Special'
+  const defaultBadgeLabel = isGalactic ? 'Stellar Special' : 'House Special'
+  const badgeLabel = tileStyle?.badge?.label ?? defaultBadgeLabel
   const badgePosition = tileStyle?.badge?.position ?? 'left'
   const badgeRadius = tileStyle?.badge?.borderRadius ?? 7
   const price = promoted?.price ?? (palette?.colors.itemPrice ?? COLOR_TOKENS_V2.text.primary)
@@ -2932,7 +2934,7 @@ function renderFlagshipCardContent(
   const padBottom = tile.contentBudget?.paddingBottom ?? 10
   const padX = Math.max(10, Math.min(18, tile.width * 0.04))
   const gap = Math.max(10, Math.min(18, tile.width * 0.03))
-  const chrome = getFlagshipChrome(palette, tileStyle)
+  const chrome = getFlagshipChrome(palette, tileStyle, galactic)
   const badgeMetrics = getFlagshipBadgeMetrics(tile.width, galactic ? { glowColor: '#FFFFFF' } : undefined)
   const surfaceColor = blendHexTowards(
     palette.colors.surface ?? palette.colors.background,

@@ -640,10 +640,11 @@ interface FlagshipCardProps {
 }
 
 function FlagshipBadge({ tile, options, scale }: Omit<FlagshipCardProps, 'content'>) {
-  const chrome = getFlagshipChrome(options.palette, tile.style as import('./engine-types-v2').TileStyleV2 | undefined)
+  const isGalactic = options.palette?.id === 'galactic-menu'
+  const chrome = getFlagshipChrome(options.palette, tile.style as import('./engine-types-v2').TileStyleV2 | undefined, isGalactic)
   const metrics = getFlagshipBadgeMetrics(
     tile.width,
-    options.palette?.id === 'galactic-menu' ? { glowColor: '#FFFFFF' } : undefined
+    isGalactic ? { glowColor: '#FFFFFF' } : undefined
   )
   const top = -metrics.overlap * scale
   const left = chrome.badgePosition === 'left' ? -metrics.overlap * scale : undefined
@@ -693,7 +694,7 @@ function FlagshipCard({ tile, content, options, scale }: FlagshipCardProps) {
   const tileStyle = tile.style as TileStyleV2 | undefined
   const imageMode: ImageModeV2 = options.imageMode || 'stretch'
   const layout = getFlagshipLayoutMetrics(tile, imageMode, content.showImage)
-  const chrome = getFlagshipChrome(palette, tile.style as import('./engine-types-v2').TileStyleV2 | undefined)
+  const chrome = getFlagshipChrome(palette, tile.style as import('./engine-types-v2').TileStyleV2 | undefined, palette?.id === 'galactic-menu')
   const itemTitle = palette?.colors?.itemTitle ?? COLOR_TOKENS_V2.text.primary
   const itemDescription = palette?.colors?.itemDescription ?? COLOR_TOKENS_V2.text.secondary
   const itemPrice = palette?.colors?.itemPrice ?? COLOR_TOKENS_V2.text.primary
@@ -987,7 +988,7 @@ function TileRenderer({ tile, options }: TileRendererProps) {
     palette?.colors?.itemPrice ??
     COLOR_TOKENS_V2.text.primary
   const flagshipChrome = isFlagshipTile
-    ? getFlagshipChrome(palette, tile.style as import('./engine-types-v2').TileStyleV2 | undefined)
+    ? getFlagshipChrome(palette, tile.style as import('./engine-types-v2').TileStyleV2 | undefined, palette?.id === 'galactic-menu')
     : undefined
   const defaultPaper =
     palette?.colors?.surface ??
