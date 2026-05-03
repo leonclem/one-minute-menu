@@ -89,7 +89,7 @@ describe('renderer-web-v2 flagship rendering', () => {
     const image = screen.getByAltText('Photo of Grilled Salmon')
 
     expect(article.tagName).toBe('ARTICLE')
-    expect(screen.getByText('Stellar Special')).toBeInTheDocument()
+    expect(screen.getByText('House Special')).toBeInTheDocument()
     expect(article).toContainElement(heading)
     expect(article).toContainElement(image)
     expect(heading.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()

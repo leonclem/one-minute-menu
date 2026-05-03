@@ -252,7 +252,7 @@ describe('V2 Renderer', () => {
       const result = renderTileContent(tile, { ...defaultOptions, imageMode: 'stretch' })
       const imageEl = result.elements.find((element) => element.type === 'image')
       const nameEl = result.elements.find((element) => element.type === 'text' && element.content === 'Braised Lamb')
-      const badgeEl = result.elements.find((element) => element.type === 'text' && element.content === 'Stellar Special')
+      const badgeEl = result.elements.find((element) => element.type === 'text' && element.content === 'House Special')
       const bgEls = result.elements.filter((element) => element.type === 'background')
 
       expect(bgEls.length).toBeGreaterThanOrEqual(2)
@@ -441,7 +441,7 @@ describe('V2 Renderer', () => {
       const imageEl = result.elements.find((element) => element.type === 'image')
       const overlayEl = result.elements.find((element) => element.type === 'background' && element.style.background)
       const nameEl = result.elements.find((element) => element.type === 'text' && element.content === 'Smoked Brisket')
-      const badgeEl = result.elements.find((element) => element.type === 'text' && element.content === 'Stellar Special')
+      const badgeEl = result.elements.find((element) => element.type === 'text' && element.content === 'House Special')
 
       expect(imageEl?.width).toBe(tile.width - 14)
       expect(imageEl?.height).toBe(tile.height - 14)
