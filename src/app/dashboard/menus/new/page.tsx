@@ -329,7 +329,7 @@ export default function NewMenuPage() {
                       </InfoTip>
                     </h4>
                     <div className="space-y-4">
-                      <div className="space-y-1">
+                      <div className="space-y-1" data-ph-mask="address">
                         <label className="block text-sm font-medium text-ux-text">Address</label>
                         <textarea
                           value={formData.venueInfo?.address || ''}

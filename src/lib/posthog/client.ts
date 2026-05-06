@@ -72,7 +72,12 @@ export async function initializePostHogIfAllowed(): Promise<void> {
       session_recording: {
         maskAllInputs: true,
         maskInputOptions: { password: true, email: true },
-        maskTextSelector: '*',
+        // Only mask text nodes that live inside an element tagged with
+        // `data-ph-mask` (e.g. address fields on settings/new-menu, or the
+        // admin route subtree via src/app/admin/layout.tsx). GridMenu's UI
+        // is public-facing by design, so menu text, labels, and buttons are
+        // visible in replays. See docs/ANALYTICS.md.
+        maskTextSelector: '[data-ph-mask], [data-ph-mask] *',
       },
       persistence: 'localStorage+cookie',
       loaded: (_ph: unknown) => {

@@ -82,13 +82,20 @@ Admins can exclude their own browser from PostHog analytics to prevent internal 
 
 ### Session Replay Privacy and Masking
 
-PostHog session replay is configured with maximum privacy defaults:
+PostHog session replay protects user input values globally, while rendered text is only masked inside explicitly tagged sensitive subtrees:
 
-- `maskAllInputs: true` — every `<input>`, `<textarea>`, `<select>` is masked
+- `maskAllInputs: true` — every `<input>`, `<textarea>`, `<select>` value is masked
 - `maskInputOptions: { password: true, email: true }` — belt-and-suspenders for PII input types
-- `maskTextSelector: '*'` — every rendered text node is masked (protects menu text, dish names, descriptions)
+- `maskTextSelector: '[data-ph-mask], [data-ph-mask] *'` — only rendered text inside a `data-ph-mask` subtree is masked
 
-Selective unblocking of safe UI labels (button text, tab labels) can be done via `.ph-no-mask` CSS class — but the default posture is maximum privacy.
+GridMenu's UI (menu content, dish names, descriptions, button labels, headings, instructions) is public-facing by design and visible in replays. Sensitive rendered text is opted in via the `data-ph-mask="<reason>"` attribute convention:
+
+- `data-ph-mask="admin"` — applied once by `src/app/admin/layout.tsx`, covering the entire `/admin` subtree
+- `data-ph-mask="address"` — applied to address input wrappers (e.g. `src/app/dashboard/settings/_components/RestaurantSettings.tsx`, `src/app/dashboard/menus/new/page.tsx`) where users may accidentally enter a home address
+
+When adding new sensitive UI, wrap the subtree in an element with `data-ph-mask="<reason>"`. The attribute value is informational; the selector keys on its presence.
+
+The MenuEditor venue address textarea (`src/app/dashboard/menus/[menuId]/MenuEditor.tsx`) is intentionally not masked, because by that point the address has been promoted from user profile defaults into public menu content.
 
 ### Sensitive Properties Deny-List
 

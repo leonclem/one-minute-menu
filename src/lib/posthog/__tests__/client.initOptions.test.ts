@@ -84,7 +84,7 @@ describe('client.ts — init-options shape', () => {
     expect(options.session_recording).toEqual({
       maskAllInputs: true,
       maskInputOptions: { password: true, email: true },
-      maskTextSelector: '*',
+      maskTextSelector: '[data-ph-mask], [data-ph-mask] *',
     })
   })
 

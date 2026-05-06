@@ -239,12 +239,14 @@ export function RestaurantSettings({
                 </p>
                 
                 <div className="space-y-4">
-                  <UXInput
-                    label="Address"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="123 Restaurant St, City"
-                  />
+                  <div data-ph-mask="address">
+                    <UXInput
+                      label="Address"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="123 Restaurant St, City"
+                    />
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <UXInput
