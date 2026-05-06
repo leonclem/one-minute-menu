@@ -3,6 +3,11 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { getStoredConsent, saveConsent } from '@/lib/consent'
+import {
+  initializePostHogIfAllowed,
+  posthogOptOutCapturingIfLoaded,
+  resetAnalytics,
+} from '@/lib/posthog'
 
 type BannerState = 'hidden' | 'visible'
 
@@ -21,8 +26,17 @@ export function ConsentBanner() {
     return null
   }
 
-  const handleChoice = (analytics: boolean) => {
-    saveConsent({ analytics })
+  const handleChoice = async (analytics: boolean) => {
+    if (analytics) {
+      // Grant: persist consent first, then initialize PostHog
+      saveConsent({ analytics: true })
+      await initializePostHogIfAllowed()
+    } else {
+      // Withdrawal: persist consent first, then opt out of any loaded SDK
+      saveConsent({ analytics: false })
+      resetAnalytics()
+      posthogOptOutCapturingIfLoaded()
+    }
     setState('hidden')
   }
 
@@ -53,14 +67,14 @@ export function ConsentBanner() {
             <button
               type="button"
               className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-              onClick={() => handleChoice(false)}
+              onClick={() => void handleChoice(false)}
             >
               Decline analytics
             </button>
             <button
               type="button"
               className="inline-flex items-center justify-center rounded-full bg-[rgb(var(--ux-primary))] px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-[rgb(var(--ux-primary-dark))]"
-              onClick={() => handleChoice(true)}
+              onClick={() => void handleChoice(true)}
             >
               Allow analytics
             </button>

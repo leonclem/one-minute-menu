@@ -4,6 +4,7 @@ import './globals.css'
 import { ToastProvider } from '@/components/ui'
 import { ConsentBanner } from '@/components/privacy/ConsentBanner'
 import { VercelAnalytics } from '@/components/VercelAnalytics'
+import { PostHogBootstrap } from '@/components/posthog/PostHogBootstrap'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -151,6 +152,7 @@ export default function RootLayout({
           <ConsentBanner />
         </ToastProvider>
         <VercelAnalytics />
+        <PostHogBootstrap />
       </body>
     </html>
   )

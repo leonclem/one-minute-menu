@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { UXButton, UXInput } from '@/components/ux'
 import { isValidEmail } from '@/lib/utils'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
+import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 
 interface AuthOTPFormProps {
   type: 'signin' | 'signup'
@@ -30,6 +31,8 @@ export function AuthOTPForm({
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [mounted, setMounted] = useState(false)
+  // Once-per-mount guard for signup_started (Req 5.1)
+  const signupStartedFiredRef = useRef(false)
   
   useEffect(() => {
     setMounted(true)
@@ -38,6 +41,16 @@ export function AuthOTPForm({
   // Robust localhost check
   const isLocalDev = mounted && 
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+
+  // Fire signup_started on first focus of the email field (Req 5.1)
+  // Uses a useRef guard so it fires at most once per form mount.
+  // Do NOT fire on mere render — only on actual user interaction.
+  const handleEmailFocus = () => {
+    if (type === 'signup' && !signupStartedFiredRef.current) {
+      signupStartedFiredRef.current = true
+      captureEvent(ANALYTICS_EVENTS.SIGNUP_STARTED)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -158,6 +171,7 @@ export function AuthOTPForm({
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onFocus={handleEmailFocus}
           placeholder="you@restaurant.com"
           error={error}
           disabled={loading}

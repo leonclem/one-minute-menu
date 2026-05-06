@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { UXHeader, UXFooter, UXButton, UXInput, UXCard } from '@/components/ux'
 import { fetchJsonWithRetry } from '@/lib/retry'
 import { ESTABLISHMENT_TYPES, CUISINES } from '@/types'
+import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 
 export default function OnboardingClient({ 
   userEmail, 
@@ -42,6 +43,15 @@ export default function OnboardingClient({
       ;(window as any).gtag('event', 'conversion', {
         send_to: `${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}/${process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL}`,
       })
+    }
+  }, [isNewSignup])
+
+  // Fire signup_completed for new users after the Supabase session is confirmed.
+  // The auth callback sets ?new_signup=true and redirects here, so this is the
+  // earliest client-visible point after session establishment for new signups.
+  useEffect(() => {
+    if (isNewSignup) {
+      captureEvent(ANALYTICS_EVENTS.SIGNUP_COMPLETED)
     }
   }, [isNewSignup])
 

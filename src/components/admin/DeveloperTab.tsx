@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
+import { AnalyticsOptOutToggle } from './AnalyticsOptOutToggle'
 
 export function DeveloperTab() {
   const [isAnalyticsDisabled, setIsAnalyticsDisabled] = useState(false)
@@ -79,6 +80,9 @@ export function DeveloperTab() {
                   }`}
                 />
               </button>
+            </div>
+            <div className="mt-3">
+              <AnalyticsOptOutToggle />
             </div>
           </CardContent>
         </Card>

@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/ui'
 import BillingCurrencySelector from '@/components/BillingCurrencySelector'
 import { PRICING_TIERS, formatPrice } from '@/lib/pricing-config'
 import type { BillingCurrency } from '@/lib/currency-config'
+import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 
 export default function UXPricingPageContent({ 
   initialUser 
@@ -25,6 +26,11 @@ export default function UXPricingPageContent({
       setUser(user)
     }
     getUser()
+  }, [])
+
+  // Fire pricing_viewed once on mount (Req 5.1)
+  useEffect(() => {
+    captureEvent(ANALYTICS_EVENTS.PRICING_VIEWED)
   }, [])
 
   const handleCurrencyChange = (currency: BillingCurrency) => {
@@ -88,6 +94,13 @@ export default function UXPricingPageContent({
       window.location.href = '/register?returnTo=/pricing'
       return
     }
+
+    // Fire checkout_started BEFORE the Stripe redirect (Req 4.10)
+    // Do NOT auto-wire subscription_started (out of scope per design §18 and Req 3.5)
+    captureEvent(ANALYTICS_EVENTS.CHECKOUT_STARTED, {
+      plan: tierId,
+      location: 'pricing_page',
+    })
 
     setLoading(tierId)
     try {

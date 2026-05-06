@@ -8,6 +8,7 @@ import { UXButton, UXCard } from '@/components/ux'
 import ExtractionStatusBanner from '@/components/ExtractionStatusBanner'
 import { Info, X } from 'lucide-react'
 import { createThumbnail, rotateImageQuarterTurns } from '@/lib/image-utils'
+import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 
 interface UploadClientProps {
   menuId: string
@@ -49,6 +50,16 @@ export default function UploadClient({ menuId, menuName, hasItems = false }: Upl
       })
       const uploadData = await uploadRes.json()
       if (!uploadRes.ok) throw new Error(uploadData?.error || 'Upload failed')
+
+      // Fire menu_image_uploaded on successful upload.
+      // source: 'upload_client' identifies the upload entry point.
+      // file_type: derived from the file MIME type (e.g. 'image/jpeg').
+      // NOTE: file_name is intentionally NOT included — it may contain PII
+      // or business-sensitive content (Req 4.5, 10.4).
+      captureEvent(ANALYTICS_EVENTS.MENU_IMAGE_UPLOADED, {
+        source: 'upload_client',
+        file_type: queuedFile.file.type,
+      })
 
       setExtractionStatus('submitting')
       setExtractionMessage('Please bear with us, this can take a couple of minutes for menus with a large number of items.')

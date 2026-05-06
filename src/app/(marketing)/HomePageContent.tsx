@@ -7,6 +7,7 @@ import { UXButton } from '@/components/ux'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { supabase } from '@/lib/supabase'
 import ZoomableImageModal from '@/components/ZoomableImageModal'
+import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 
 /**
  * SlidePanel — bleeds off the anchored edge, stops ~25% short of the far edge.
@@ -216,12 +217,20 @@ export default function HomePageContent({ initialUser }: { initialUser: any }) {
         metadata: { path: '/', source: 'hero_primary' },
       })
     }
+    captureEvent(ANALYTICS_EVENTS.CTA_CLICKED, {
+      location: 'hero',
+      label: user ? 'Start with my menu' : 'Start with my menu',
+    })
   }
 
   const handleSecondaryClick = () => {
     trackConversionEvent({
       event: 'cta_click_secondary',
       metadata: { path: '/', destination: '/demo/sample', source: 'hero_secondary' },
+    })
+    captureEvent(ANALYTICS_EVENTS.CTA_CLICKED, {
+      location: 'hero',
+      label: 'Try a demo menu',
     })
   }
 

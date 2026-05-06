@@ -7,6 +7,7 @@ import { DeleteMenuDialog } from './DeleteMenuDialog'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/toast'
 import type { Menu } from '@/types'
+import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 
 const PENDING_JOB_EXPIRY_MS = 10 * 60 * 1000 // 10 minutes
 const CHECK_COOLDOWN_MS = 15 * 1000 // 15 seconds
@@ -147,6 +148,15 @@ export function MenuCard({
     const effectiveTemplateId = configOverride?.templateId || templateSelection?.template_id
     const effectiveConfig = configOverride?.configuration || templateSelection?.configuration
     try {
+      // Fire pdf_export_started BEFORE any network call (Req 4.9)
+      if (type === 'pdf') {
+        captureEvent(ANALYTICS_EVENTS.PDF_EXPORT_STARTED, {
+          menu_id: menu.id,
+          template_id: effectiveTemplateId ?? '',
+          orientation: effectiveTemplateId?.includes('landscape') ? 'landscape' : 'portrait',
+        })
+      }
+
       const resp = await fetch('/api/export/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -196,6 +206,16 @@ export function MenuCard({
           const jobInfo = { status: 'completed', file_url: statusData.file_url, job_id: jobId }
           await handleDownload(jobInfo, type)
           
+          // Fire pdf_exported at the client-visible completion signal (Req 4.9)
+          if (type === 'pdf') {
+            captureEvent(ANALYTICS_EVENTS.PDF_EXPORTED, {
+              menu_id: menu.id,
+              template_id: effectiveTemplateId ?? '',
+              orientation: effectiveTemplateId?.includes('landscape') ? 'landscape' : 'portrait',
+              page_count: 1,
+            })
+          }
+
           showToast({
             type: 'success',
             title: `${type.toUpperCase()} exported`,
@@ -204,6 +224,12 @@ export function MenuCard({
           return
         }
         if (statusData.status === 'failed') {
+          // Fire pdf_export_failed with error_code only — no raw error message (Req 5.1, 5.3)
+          if (type === 'pdf') {
+            captureEvent(ANALYTICS_EVENTS.PDF_EXPORT_FAILED, {
+              error_code: statusData.error_code || 'export_failed',
+            })
+          }
           throw new Error(statusData.error_message || 'Export generation failed')
         }
       }
@@ -211,6 +237,12 @@ export function MenuCard({
       throw new Error('Export is taking longer than expected. Please try again.')
     } catch (error) {
       console.error(`Error exporting ${type}:`, error)
+      // Fire pdf_export_failed with error_code only — no raw error message (Req 5.1, 5.3)
+      if (type === 'pdf') {
+        captureEvent(ANALYTICS_EVENTS.PDF_EXPORT_FAILED, {
+          error_code: 'export_error',
+        })
+      }
       showToast({
         type: 'error',
         title: 'Export failed',

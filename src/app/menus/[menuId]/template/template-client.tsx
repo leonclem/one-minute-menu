@@ -17,6 +17,7 @@ import { getThemePresetByPaletteId, isThemePresetAvailable } from '@/lib/templat
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
 import { V2_TEMPLATE_OPTIONS } from '@/lib/templates/v2/template-options'
+import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 
 const TEMPLATE_DRAFT_KEY = (menuId: string) => `templateDraft-${menuId}`
 
@@ -1115,6 +1116,16 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       await flushImageTransformSaves()
       const configuration = buildCurrentConfiguration()
 
+      // Fire template_selected when the user confirms their template choice.
+      // orientation is derived from the templateId (landscape vs portrait).
+      // template_name is looked up from V2_TEMPLATE_OPTIONS.
+      const selectedTemplateOption = V2_TEMPLATE_OPTIONS.find(t => t.id === templateId)
+      captureEvent(ANALYTICS_EVENTS.TEMPLATE_SELECTED, {
+        template_id: templateId,
+        template_name: selectedTemplateOption?.name ?? templateId,
+        orientation: templateId.includes('landscape') ? 'landscape' : 'portrait',
+      })
+
       if (isDemoUser) {
         sessionStorage.setItem(`templateSelection-${menuId}`, JSON.stringify({
           menuId,
@@ -1169,6 +1180,13 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         format: 'pdf',
         isDemo: isDemoUser,
       },
+    })
+
+    // Fire pdf_export_started BEFORE any network call (Req 4.9)
+    captureEvent(ANALYTICS_EVENTS.PDF_EXPORT_STARTED, {
+      menu_id: menuId,
+      template_id: templateId,
+      orientation: templateId.includes('landscape') ? 'landscape' : 'portrait',
     })
 
     try {

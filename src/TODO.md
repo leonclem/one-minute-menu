@@ -1,33 +1,34 @@
 # Roadmap
 
-## Social Media and Advertising
-- [x] Process to email those that have signed up and/or subscribed
-- [x] May the 4th menu
-- [ ] New video (all SM platforms) - build the May4 menu in under 5 minutes.
-- [ ] New video (all SM platforms) - how to generate or upload an image in GridMenu
-- [ ] Gallery section for food photography on home page
-- [ ] Home page anchor links gridmenu.ai/#how-it-works, /#templates, /#before-after
-- [ ] Openclaw initial setup
+## Structural / Architectural
+- [ ] Image creation to background job
+- [ ] More definitive specification for every grid option (Show examples and get the IDE AI to describe every layout for creation in another LLM)
 
 ## /extracted
-- [ ] Collapse photo options sections once image generation starts and advise not to exit the page or refresh
-- [ ] Add section notes (check Vienna original for ref.)
+- [ ] Collapse photo options sections once image generation starts and advise not to exit the page or refresh (what happens if user closes the tab?)
 - [ ] Advanced options: change plate colour (white, beige, black, none)
 - [ ] Advanced options: remove slate
 - [ ] Advanced options: add tags, e.g. Serving type: "Slice"
 - [ ] Advanced options: additional free text description
 
+## SEO optimisation
+- [ ] Identify backlinks sites for SEO
+- [ ] "Best menu design for restaurant" Starter Story April 26 "I Make $17k/Month With One Strategy"
+
+## Social Media and Advertising
+- [x] Process to email those that have signed up and/or subscribed
+- [x] May the 4th menu
+- [ ] New video (all SM platforms) - build the May the 4th menu in under 5 minutes
+- [ ] Openclaw initial setup
+
 ## misc
 - [ ] Remove the word "Pilot" from emails
 
 ## /template
-- [ ] Stetch fit Image Style should be default for non-demo mode
+- [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
+- [ ] Stretch fit Image Style should be default for non-demo mode
 - [ ] Review number of controls in control panel
 - [ ] Better preservation of user configuration
-- [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
-
-## Exports
-- [ ] Verify "print ready"
 
 ## Deployment
 - [x] Upgrade Vercel package
@@ -44,11 +45,11 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Bugs
+- [ ] Reset button on demo doesn't work for banner toggle (and possibly others)
 - [ ] Banner is missing for 1-column-tall
 - [ ] Pricing keeps defaulting to USD
 - [ ] When Image Style is set to "None", descriptions only have one line in most cases
 - [ ] Description still too short generally across layouts
-- [ ] Reset button on demo doesn't work for banner toggle (and possibly others)
 
 ## "What's New?" page
 - [ ] "What's New?" page
@@ -70,7 +71,7 @@
 
 ## Production Monitoring
 - [x] Install Vercel analytics
-- [ ] Install PostHog analytics
+- [x] Install PostHog analytics
 
 ### Blogs
 - [x] Create blogs section of site
@@ -97,6 +98,8 @@
 - [ ] Crop for large menus text extraction
 
 ## /extracted
+- [ ] Add section notes (check Vienna original for ref.)
+- [ ] Add menu items notes (e.g. "ask to add level 49 spicy)
 - [ ] Single price for all items in a category (+ new category price tile) (can also allow for sets?)
 - [ ] Sometimes not enough space for menu item description.  We need to warn user about or limit the characters for menu item creation.
 - [ ] "Enhance this image" feature#
@@ -139,6 +142,8 @@
 
 ## Home Page
 - [x] Update text to be less American
+- [ ] Gallery section for food photography on home page
+- [ ] Home page anchor links gridmenu.ai/#how-it-works, /#templates, /#before-after (for Google Ads)
 - [ ] Show menu and image outputs examples
 
 ## Demo Flow
@@ -152,7 +157,6 @@
 - [ ] Track payment failures and cancellations
 - [ ] Change primary email logins to admin@gridmenu.ai (e.g. Postmark, NameCheap, Railway, Supabase, etc.)
 - [ ] Remove LOG_LEVEL="debug" from Railway variables
-- [ ] Integrate Posthog
 - [ ] Consolidate documentation so as to be intuitive and useful (for both me and AI dev)
 - [ ] Cyber attack protection plan
 - [ ] Power user, i.e. "login as user X" (support)
@@ -171,6 +175,7 @@
 - [ ] App
 
 ## Social Media and Advertising
+- [ ] New video (all SM platforms) - how to generate or upload an image in GridMenu
 - [ ] LinkedIn page (and can I link it to my profile discreetly?)
 - [ ] Understand what is required and potential upside to conduct a cold email campaign
 

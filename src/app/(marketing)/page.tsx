@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import HomePageContent from './HomePageContent'
+import HomepageAnalytics from './HomepageAnalytics'
 
 export const metadata: Metadata = {
   title: 'Restaurant Menu Maker | Digital & Print-ready Menus | GridMenu',
@@ -33,5 +34,10 @@ export default async function HomePage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  return <HomePageContent initialUser={user} />
+  return (
+    <>
+      <HomepageAnalytics />
+      <HomePageContent initialUser={user} />
+    </>
+  )
 }

@@ -23,6 +23,7 @@ import GeneratePhotoModal from '@/components/GeneratePhotoModal'
 import BatchPhotoModal from '@/components/BatchPhotoModal'
 import BulkDeleteModal from '@/components/BulkDeleteModal'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
+import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 
 // Constants for category management
 const DEFAULT_CATEGORY = 'Uncategorized'
@@ -413,6 +414,18 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                 if (!appliedRef.current) appliedRef.current = true
                 setAuthResult(result as Stage1ExtractionResult | Stage2ExtractionResult)
                 setExtractionStatus('completed')
+
+                // Fire menu_extraction_completed with item and category counts.
+                // duration_ms is not available here (the worker runs server-side),
+                // so we pass 0 as a safe default.
+                const itemCount = updatedMenu?.items?.length ?? 0
+                const categoryCount = updatedMenu?.categories?.length ?? 0
+                captureEvent(ANALYTICS_EVENTS.MENU_EXTRACTION_COMPLETED, {
+                  item_count: itemCount,
+                  category_count: categoryCount,
+                  duration_ms: 0,
+                })
+
                 stopWatching()
               } else {
                 // Continue to next job
@@ -1028,6 +1041,9 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
 
       await refreshMenu()
       setShowEditItem(null)
+      
+      // Fire menu_item_edited on successful save (Req 5.1)
+      captureEvent(ANALYTICS_EVENTS.MENU_ITEM_EDITED)
       
       showToast({
         type: 'success',

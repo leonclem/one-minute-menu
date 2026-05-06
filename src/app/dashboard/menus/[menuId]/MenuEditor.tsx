@@ -21,6 +21,7 @@ import ExtractionReview from '@/components/ExtractionReview'
 import type { Menu, MenuItem, MenuItemFormData } from '@/types'
 import { ESTABLISHMENT_TYPES, CUISINES } from '@/types'
 import type { Category, MenuItem as ExtractedMenuItem } from '@/lib/extraction/schema-stage1'
+import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 
 interface MenuEditorProps {
   menu: Menu
@@ -1091,6 +1092,16 @@ export default function MenuEditor({ menu: initialMenu, canDelete = true }: Menu
       setMenu(result.data.menu)
       addOptimisticUpdate(result.data.menu)
       showToast({ type: 'success', title: 'Image uploaded', description: 'Ready for OCR extraction.' })
+
+      // Fire menu_image_uploaded on successful upload.
+      // source: 'menu_editor' identifies the upload entry point.
+      // file_type: derived from the file MIME type (e.g. 'image/jpeg').
+      // NOTE: file_name is intentionally NOT included — it may contain PII
+      // or business-sensitive content (Req 4.5, 10.4).
+      captureEvent(ANALYTICS_EVENTS.MENU_IMAGE_UPLOADED, {
+        source: 'menu_editor',
+        file_type: file.type,
+      })
     } catch (error) {
       console.error('Error uploading image:', error)
       showToast({ type: 'error', title: 'Network error', description: 'Please try again.' })

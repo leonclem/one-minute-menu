@@ -10,6 +10,7 @@ import { fetchJsonWithRetry, HttpError } from '@/lib/retry'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
 import type { CreateMenuFormData, User } from '@/types'
 import { ESTABLISHMENT_TYPES, CUISINES } from '@/types'
+import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 
 export default function NewMenuPage() {
   const [formData, setFormData] = useState<CreateMenuFormData>({
@@ -141,6 +142,28 @@ export default function NewMenuPage() {
       )
       // Ensure dashboard list is fresh when user later returns
       markDashboardForRefresh()
+
+      // Fire menu_creation_started for this new menu session.
+      // The draft menu ID serves as the creation_session_id.
+      // We also persist it in sessionStorage so that if the user revisits
+      // the creation UI within the same browser session, we can detect it
+      // and avoid re-firing the event.
+      const creationSessionId: string = result.data.id
+      const sessionKey = `gridmenu_creation_session_id_${creationSessionId}`
+      const alreadyFired = typeof sessionStorage !== 'undefined'
+        ? sessionStorage.getItem(sessionKey)
+        : null
+      if (!alreadyFired) {
+        captureEvent(ANALYTICS_EVENTS.MENU_CREATION_STARTED, {
+          creation_session_id: creationSessionId,
+        })
+        try {
+          sessionStorage.setItem(sessionKey, '1')
+        } catch {
+          // sessionStorage unavailable — fire-once guard is best-effort
+        }
+      }
+
       router.push(`/menus/${result.data.id}/upload`)
     } catch (error) {
       if (error instanceof HttpError) {

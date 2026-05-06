@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui'
 import ZoomableImageModal from '@/components/ZoomableImageModal'
 import type { Menu } from '@/types'
 import { fetchJsonWithRetry, HttpError } from '@/lib/retry'
+import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 
 interface UXMenuExtractClientProps {
   menuId: string
@@ -149,6 +150,9 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
     }
     setExtracting(true)
     try {
+      // Fire menu_extraction_started before the /api/extraction/submit call (Req 5.1)
+      captureEvent(ANALYTICS_EVENTS.MENU_EXTRACTION_STARTED)
+
       // Submit extraction job
       const submitData = await fetchJsonWithRetry<{ success: boolean; data: any; error?: string; code?: string }>(
         '/api/extraction/submit',
@@ -212,6 +216,10 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
           return
         }
         if (status === 'failed') {
+          // Fire menu_extraction_failed with error_code only — no raw error message (Req 5.1, 5.3)
+          captureEvent(ANALYTICS_EVENTS.MENU_EXTRACTION_FAILED, {
+            error_code: statusData?.data?.errorCode || 'extraction_failed',
+          })
           showToast({
             type: 'error',
             title: 'Extraction failed',
@@ -271,6 +279,10 @@ export default function UXMenuExtractClient({ menuId }: UXMenuExtractClientProps
       }
 
       const fallbackMsg = body?.userMessage || (e instanceof Error ? e.message : 'Please try again or add items manually.')
+      // Fire menu_extraction_failed with error_code only — no raw error message (Req 5.1, 5.3)
+      captureEvent(ANALYTICS_EVENTS.MENU_EXTRACTION_FAILED, {
+        error_code: code || 'extraction_error',
+      })
       showToast({ type: 'error', title: 'Extraction failed to start', description: fallbackMsg })
     } finally {
       setExtracting(false)
