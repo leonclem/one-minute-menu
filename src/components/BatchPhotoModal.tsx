@@ -2,11 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Sparkles } from 'lucide-react'
+import { CheckCircle2, Clock, Sparkles, X } from 'lucide-react'
 import { useToast } from '@/components/ui'
 import { Button } from '@/components/ui'
 import type { PhotoGenerationParams, QuotaStatus } from '@/types'
-import { runBatchGenerationSequential, type BatchGenerationItem, type BatchGenerationResult, type BatchProgressUpdate } from '@/lib/batch-generation'
+import type { BatchGenerationItem } from '@/lib/batch-generation'
+import {
+  getImageGenerationJobLabel,
+  useImageGenerationStatus,
+  type ImageGenerationJobStatus,
+} from '@/lib/image-generation/use-image-generation-status'
 import AngleSelector from './photo-generation/AngleSelector'
 import LightingSelector from './photo-generation/LightingSelector'
 import SettingReferenceSlot from './photo-generation/SettingReferenceSlot'
@@ -15,14 +20,20 @@ interface BatchPhotoModalProps {
   menuId: string
   items: BatchGenerationItem[]
   onClose: () => void
-  onItemImageGenerated: (itemId: string, imageUrl: string, imageId?: string) => Promise<void> | void
 }
 
 /** Fallback batch limits (Free plan defaults) */
 const DEFAULT_MAX_BATCH_ITEMS = 5
-const DEFAULT_DELAY_MS = 3000
 
-export default function BatchPhotoModal({ menuId, items, onClose, onItemImageGenerated }: BatchPhotoModalProps) {
+type SubmittedBatchJob = {
+  id: string
+  itemId: string
+  itemName: string
+  menuItemId: string
+  status: ImageGenerationJobStatus
+}
+
+export default function BatchPhotoModal({ menuId, items, onClose }: BatchPhotoModalProps) {
   const { showToast } = useToast()
   const [params, setParams] = useState<PhotoGenerationParams>({
     angle: '45',
@@ -31,19 +42,20 @@ export default function BatchPhotoModal({ menuId, items, onClose, onItemImageGen
   })
   const [quota, setQuota] = useState<QuotaStatus | null>(null)
   const [running, setRunning] = useState(false)
-  const [progress, setProgress] = useState<Record<string, BatchProgressUpdate['status']>>({})
-  const [results, setResults] = useState<BatchGenerationResult[] | null>(null)
+  const [progress, setProgress] = useState<Record<string, ImageGenerationJobStatus>>({})
+  const [submittedJobs, setSubmittedJobs] = useState<SubmittedBatchJob[] | null>(null)
 
   // Plan-based batch limits
   const [maxBatchItems, setMaxBatchItems] = useState(DEFAULT_MAX_BATCH_ITEMS)
-  const [batchDelayMs, setBatchDelayMs] = useState(DEFAULT_DELAY_MS)
+  const {
+    data: imageGenerationStatus,
+  } = useImageGenerationStatus(menuId, !!submittedJobs)
 
   useEffect(() => {
     fetch('/api/batch-limits')
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data?.maxBatchSize) setMaxBatchItems(data.maxBatchSize)
-        if (typeof data?.delayMs === 'number') setBatchDelayMs(data.delayMs)
       })
       .catch(() => {})
 
@@ -62,21 +74,35 @@ export default function BatchPhotoModal({ menuId, items, onClose, onItemImageGen
   const limitedCount = itemsToProcess.length
   const isLimited = totalSelected > limitedCount
 
-  const total = limitedCount
-  const completedCount = useMemo(() => Object.values(progress).filter(s => s === 'completed' || s === 'failed').length, [progress])
+  const completedCount = useMemo(() => Object.values(progress).filter(s => s === 'completed').length, [progress])
   const failedCount = useMemo(() => Object.values(progress).filter(s => s === 'failed').length, [progress])
+  const activeCount = useMemo(() => Object.values(progress).filter(s => s === 'queued' || s === 'processing').length, [progress])
 
   const itemIdsToProcess = useMemo(() => itemsToProcess.map(it => it.id), [itemsToProcess])
 
   useEffect(() => {
-    const initial: Record<string, BatchProgressUpdate['status']> = {}
+    if (submittedJobs) return
+
+    const initial: Record<string, ImageGenerationJobStatus> = {}
     for (const id of itemIdsToProcess) initial[id] = 'queued'
     setProgress(initial)
-  }, [itemIdsToProcess])
+  }, [itemIdsToProcess, submittedJobs])
+
+  useEffect(() => {
+    if (!submittedJobs) return
+
+    setProgress(prev => {
+      const next: Record<string, ImageGenerationJobStatus> = {}
+      for (const job of submittedJobs) {
+        const latestJob = imageGenerationStatus?.latestByItem[job.menuItemId]
+        next[job.itemId] = latestJob?.status || prev[job.itemId] || job.status
+      }
+      return next
+    })
+  }, [imageGenerationStatus, submittedJobs])
 
   const startBatch = async () => {
     setRunning(true)
-    setResults(null)
     try {
       const styleParams = {
         angle: params.angle,
@@ -93,41 +119,59 @@ export default function BatchPhotoModal({ menuId, items, onClose, onItemImageGen
         })
       }
 
-      const batchResults = await runBatchGenerationSequential(menuId, itemsToProcess, {
-        styleParams: styleParams as any,
-        numberOfVariations: 1,
-        delayMs: batchDelayMs,
-        referenceImages: params.settingReferenceImage ? [{
-          dataUrl: params.settingReferenceImage,
-          comment: '',
-          role: 'scene',
-          name: 'Setting'
-        }] : [],
-        onProgress: (update) => {
-          setProgress(prev => ({ ...prev, [update.itemId]: update.status }))
-        },
+      const response = await fetch('/api/image-generation/batches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          menuId,
+          itemIds: itemIdsToProcess,
+          styleParams,
+          numberOfVariations: 1,
+          referenceImages: params.settingReferenceImage ? [{
+            dataUrl: params.settingReferenceImage,
+            comment: '',
+            role: 'scene',
+            name: 'Setting'
+          }] : [],
+        }),
       })
+      const json = await response.json().catch(() => ({}))
 
-      for (const r of batchResults) {
-        if (r.status === 'success' && r.imageUrl) {
-          try {
-            const targetId = r.itemIdNormalized || r.itemId
-            await onItemImageGenerated(targetId, r.imageUrl, r.imageId)
-          } catch {}
-        }
+      if (!response.ok || !json?.success) {
+        throw new Error(json?.error || 'Failed to start batch image generation')
       }
 
-      setResults(batchResults)
-      const successes = batchResults.filter(r => r.status === 'success').length
-      const failures = batchResults.length - successes
+      const jobs = Array.isArray(json?.data?.jobs) ? json.data.jobs : []
+      if (jobs.length === 0) {
+        throw new Error('No image generation jobs were queued')
+      }
+
+      const submitted: SubmittedBatchJob[] = jobs.map((job: any, index: number): SubmittedBatchJob => {
+        const item = itemsToProcess[index] || itemsToProcess.find(candidate => candidate.id === job.menuItemId)
+        return {
+          id: job.id,
+          itemId: item?.id || job.menuItemId,
+          itemName: item?.name || 'Menu item',
+          menuItemId: job.menuItemId,
+          status: job.status || 'queued',
+        }
+      })
+
+      setSubmittedJobs(submitted)
+      const initialProgress: Record<string, ImageGenerationJobStatus> = {}
+      submitted.forEach((job) => {
+        initialProgress[job.itemId] = job.status
+      })
+      setProgress(initialProgress)
+      if (json?.data?.quota) setQuota(json.data.quota)
 
       showToast({
-        type: failures > 0 ? 'info' : 'success',
-        title: 'Batch complete',
-        description: `${successes} succeeded, ${failures} failed`
+        type: 'success',
+        title: 'Batch started',
+        description: `${submitted.length} photo${submitted.length === 1 ? '' : 's'} queued for background generation.`
       })
     } catch (e) {
-      showToast({ type: 'error', title: 'Batch failed', description: e instanceof Error ? e.message : 'Please try again.' })
+      showToast({ type: 'error', title: 'Batch could not start', description: e instanceof Error ? e.message : 'Please try again.' })
     } finally {
       setRunning(false)
     }
@@ -140,7 +184,7 @@ export default function BatchPhotoModal({ menuId, items, onClose, onItemImageGen
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-secondary-900/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-secondary-900/60 backdrop-blur-sm" onClick={running ? undefined : onClose} />
       
       <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
@@ -152,7 +196,7 @@ export default function BatchPhotoModal({ menuId, items, onClose, onItemImageGen
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {!results && (
+            {!submittedJobs && (
               <Button
                 variant="primary"
                 onClick={startBatch}
@@ -162,7 +206,7 @@ export default function BatchPhotoModal({ menuId, items, onClose, onItemImageGen
                 {running ? (
                   <div className="flex items-center gap-2">
                     <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />
-                    <span>Creating...</span>
+                    <span>Starting...</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -183,7 +227,7 @@ export default function BatchPhotoModal({ menuId, items, onClose, onItemImageGen
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
-          {!results ? (
+          {!submittedJobs ? (
             <>
               <AngleSelector selected={params.angle} onChange={(angle) => setParams(prev => ({ ...prev, angle }))} disabled={running} />
               <LightingSelector selected={params.lighting} onChange={(lighting) => setParams(prev => ({ ...prev, lighting }))} disabled={running} />
@@ -207,18 +251,58 @@ export default function BatchPhotoModal({ menuId, items, onClose, onItemImageGen
               </section>
             </>
           ) : (
-            <section className="text-center py-12">
-              <div className="w-20 h-20 bg-[#01B3BF]/5 text-[#01B3BF] rounded-full flex items-center justify-center mx-auto mb-6">
-                <Sparkles className="w-10 h-10" />
+            <section className="space-y-6">
+              <div className="rounded-2xl border border-[#01B3BF]/20 bg-[#01B3BF]/5 p-5">
+                <div className="flex items-start gap-4">
+                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#01B3BF]">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-secondary-900">Batch generation has started</h3>
+                    <p className="mt-2 text-sm leading-6 text-secondary-600">
+                      Your photos are now being generated in the background. This may take several minutes,
+                      cannot be cancelled, and the completed images should be reviewed before exporting your menu.
+                    </p>
+                    <p className="mt-3 text-sm font-medium text-secondary-700">
+                      You can close this window or navigate away while generation continues.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <h3 className="text-2xl font-bold text-secondary-900 mb-2">Batch Complete!</h3>
-              <p className="text-secondary-500 mb-8">
-                Generated {completedCount - failedCount} photos successfully.
-                {failedCount > 0 && ` ${failedCount} items failed.`}
-              </p>
-              <Button variant="outline" onClick={onClose} className="rounded-full px-8">
-                Back to Menu
-              </Button>
+
+              <section>
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-secondary-900">Job progress</h3>
+                    <p className="mt-1 text-xs text-secondary-500">
+                      {completedCount} of {submittedJobs.length} complete, {activeCount} active{failedCount > 0 ? `, ${failedCount} failed` : ''}
+                    </p>
+                  </div>
+                  <Button variant="outline" onClick={onClose} className="rounded-full px-5">
+                    Close
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  {submittedJobs.map((job, idx) => {
+                    const status = progress[job.itemId] || job.status
+                    const label = getImageGenerationJobLabel({ status }) || 'Queued'
+                    return (
+                      <div key={job.id} className="flex items-center gap-3 rounded-lg border border-secondary-100 bg-white p-3">
+                        <span className="w-5 text-[10px] font-bold text-secondary-400">{idx + 1}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-secondary-800">{job.itemName}</p>
+                          <p className="text-xs text-secondary-500">{label}</p>
+                        </div>
+                        {status === 'queued' && <Clock className="h-4 w-4 text-secondary-400" />}
+                        {status === 'processing' && <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#01B3BF]/30 border-t-[#01B3BF]" />}
+                        {status === 'completed' && <CheckCircle2 className="h-4 w-4 text-[#01B3BF]" />}
+                        {status === 'failed' && <span className="text-sm font-bold text-red-500">!</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
             </section>
           )}
         </div>

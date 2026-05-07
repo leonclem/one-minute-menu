@@ -256,6 +256,17 @@ describe('End-to-End Export Workflow', () => {
           })
         }
       }
+      if (table === 'image_generation_jobs') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                in: jest.fn(() => ({ count: 0, error: null }))
+              }))
+            }))
+          }))
+        }
+      }
       return {
         select: jest.fn(() => ({
           eq: jest.fn(() => ({

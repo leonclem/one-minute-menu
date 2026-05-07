@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/toast'
 import type { Menu } from '@/types'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
+import { useImageGenerationStatus } from '@/lib/image-generation/use-image-generation-status'
 
 const PENDING_JOB_EXPIRY_MS = 10 * 60 * 1000 // 10 minutes
 const CHECK_COOLDOWN_MS = 15 * 1000 // 15 seconds
@@ -67,6 +68,12 @@ export function MenuCard({
   const [isOnCooldown, setIsOnCooldown] = useState(false)
   // Configuration override carried from the template page, applied after the pending job resolves
   const [configOverride, setConfigOverride] = useState<{ templateId: string; configuration: any } | null>(null)
+  const {
+    data: imageGenerationStatus,
+    refresh: refreshImageGenerationStatus,
+  } = useImageGenerationStatus(menu.id)
+  const activeImageJobCount = imageGenerationStatus?.activeCount ?? 0
+  const hasActiveImageJobs = activeImageJobCount > 0
 
   useEffect(() => {
     try {
@@ -144,10 +151,22 @@ export function MenuCard({
   }
 
   const handleExport = async (type: 'pdf' | 'image') => {
-    setExportingType(type)
     const effectiveTemplateId = configOverride?.templateId || templateSelection?.template_id
     const effectiveConfig = configOverride?.configuration || templateSelection?.configuration
     try {
+      const latestImageStatus = await refreshImageGenerationStatus()
+      const activeCount = latestImageStatus?.activeCount ?? activeImageJobCount
+      if (activeCount > 0) {
+        showToast({
+          type: 'info',
+          title: 'Photos still generating',
+          description: 'Downloads will be available once background image generation finishes.',
+        })
+        return
+      }
+
+      setExportingType(type)
+
       // Fire pdf_export_started BEFORE any network call (Req 4.9)
       if (type === 'pdf') {
         captureEvent(ANALYTICS_EVENTS.PDF_EXPORT_STARTED, {
@@ -432,7 +451,13 @@ export function MenuCard({
 
               {/* Download Actions */}
               {hasDesign ? (
-                pendingJob ? (
+                hasActiveImageJobs ? (
+                  <div className="space-y-2">
+                    <p className="text-center text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      {activeImageJobCount} photo {activeImageJobCount === 1 ? 'is' : 'photos are'} still generating. Downloads unlock when finished.
+                    </p>
+                  </div>
+                ) : pendingJob ? (
                   <div className="space-y-2">
                     <p className="text-center text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                       Recent changes pending export

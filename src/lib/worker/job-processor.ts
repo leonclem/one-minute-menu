@@ -21,14 +21,19 @@ import { handleJobFailure } from './retry-strategy'
 import {
   ExportJob,
   ExtractionJob,
+  ImageGenerationJob,
   updateJobToCompleted,
   updateJobToFailed,
   updateJobStatus,
   resetJobToPendingWithBackoff,
   updateExtractionJobToCompleted,
   updateExtractionJobToFailed,
+  updateImageGenerationJobToCompleted,
+  updateImageGenerationJobToFailed,
+  resetImageGenerationJobToQueuedWithBackoff,
   getRetentionDaysForPlan,
 } from './database-client'
+import { analyticsOperations } from '@/lib/analytics-server'
 import { notificationService } from '@/lib/notification-service'
 import { createMenuExtractionService } from '@/lib/extraction/menu-extraction-service'
 import { createWorkerSupabaseClient } from '@/lib/supabase-worker'
@@ -299,6 +304,76 @@ export class JobProcessor {
     } catch (error) {
       logError('Extraction job failed', error as Error, { job_id: job.id })
       await updateExtractionJobToFailed(job.id, (error as Error).message)
+    }
+  }
+
+  /**
+   * Process a single AI image generation job.
+   */
+  async processImageGeneration(job: ImageGenerationJob): Promise<void> {
+    logInfo('Processing image generation job', {
+      job_id: job.id,
+      menu_id: job.menu_id,
+      menu_item_id: job.menu_item_id,
+      retry_count: job.retry_count,
+    })
+
+    try {
+      const { executeImageGenerationJob } = await import('@/lib/image-generation/job-executor')
+      const result = await executeImageGenerationJob(job)
+
+      await updateImageGenerationJobToCompleted(
+        job.id,
+        result.resultCount,
+        result.processingTimeMs
+      )
+
+      recordJobCompleted('image_generation', result.processingTimeMs / 1000)
+
+      try {
+        await analyticsOperations.recordGenerationSuccess(
+          job.user_id,
+          result.resultCount,
+          Number(job.estimated_cost ?? 0),
+          result.processingTimeMs,
+          {
+            aspect_ratio: job.api_params?.aspect_ratio,
+            number_of_images: job.number_of_variations,
+            menu_item_id: job.menu_item_id,
+          }
+        )
+        await analyticsOperations.checkGenerationCostThresholds()
+      } catch (e) {
+        logWarning('Image generation success analytics skipped', {
+          job_id: job.id,
+          error: e instanceof Error ? e.message : String(e),
+        })
+      }
+
+      try {
+        const { processPendingCutouts } = await import('@/lib/background-removal/cutout-worker')
+        const cutoutResult = await processPendingCutouts()
+        if (cutoutResult.processed > 0) {
+          logInfo('Processed pending cutouts after image generation job', {
+            job_id: job.id,
+            ...cutoutResult,
+          })
+        }
+      } catch (e) {
+        logWarning('Cutout batch failed after image generation job', {
+          job_id: job.id,
+          error: e instanceof Error ? e.message : String(e),
+        })
+      }
+
+      logInfo('Image generation job completed', {
+        job_id: job.id,
+        result_count: result.resultCount,
+        duration_ms: result.processingTimeMs,
+      })
+    } catch (error) {
+      logError('Image generation job failed', error as Error, { job_id: job.id })
+      await this.handleImageGenerationError(job, error as Error)
     }
   }
 
@@ -879,6 +954,35 @@ export class JobProcessor {
     logInfo('JobProcessor shutting down')
     await this.renderer.shutdown()
     logInfo('JobProcessor shutdown complete')
+  }
+
+  private async handleImageGenerationError(job: ImageGenerationJob, error: Error): Promise<void> {
+    const retryDecision = handleJobFailure(error, job.retry_count)
+    const errorCode = (error as any)?.code as string | undefined
+
+    if (retryDecision.should_retry) {
+      await resetImageGenerationJobToQueuedWithBackoff(
+        job.id,
+        retryDecision.retry_delay_seconds,
+        error.message
+      )
+
+      recordJobRetried('image_generation', job.retry_count + 1)
+      logInfo('Image generation job scheduled for retry', {
+        job_id: job.id,
+        retry_count: job.retry_count + 1,
+        retry_delay_seconds: retryDecision.retry_delay_seconds,
+        error_category: retryDecision.error_classification.category,
+      })
+      return
+    }
+
+    await updateImageGenerationJobToFailed(job.id, error.message, errorCode)
+    recordJobFailed('image_generation', retryDecision.error_classification.category)
+    logError('Image generation job marked failed', error, {
+      job_id: job.id,
+      error_category: retryDecision.error_classification.category,
+    })
   }
 }
 

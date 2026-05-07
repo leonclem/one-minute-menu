@@ -344,6 +344,35 @@ export interface ExportJob {
 }
 
 /**
+ * Image generation job type from database
+ */
+export interface ImageGenerationJob {
+  id: string
+  user_id: string
+  menu_id: string | null
+  menu_item_id: string
+  batch_id: string | null
+  status: 'queued' | 'processing' | 'completed' | 'failed'
+  prompt: string
+  negative_prompt: string | null
+  api_params: Record<string, any>
+  number_of_variations: number
+  result_count: number
+  error_message: string | null
+  error_code: string | null
+  processing_time: number | null
+  estimated_cost: number | null
+  retry_count: number
+  priority: number
+  worker_id: string | null
+  available_at: string
+  created_at: string
+  updated_at: string
+  started_at: string | null
+  completed_at: string | null
+}
+
+/**
  * Queue statistics interface
  */
 export interface QueueStats {
@@ -391,6 +420,28 @@ export async function claimJob(workerId: string): Promise<ExportJob | null> {
     // RPC returns array, get first result or null
     return data && data.length > 0 ? data[0] : null
   }, 'claimJob')
+}
+
+/**
+ * Atomic image generation job claiming
+ *
+ * @param workerId - Unique identifier for the worker claiming the job
+ * @returns Claimed image generation job or null if no jobs available
+ */
+export async function claimImageGenerationJob(workerId: string): Promise<ImageGenerationJob | null> {
+  return databaseClient.withRetry(async () => {
+    const client = databaseClient.getClient()
+
+    const { data, error } = await client.rpc('claim_image_generation_job', {
+      p_worker_id: workerId
+    }) as { data: ImageGenerationJob[] | null; error: any }
+
+    if (error) {
+      throw new Error(`Failed to claim image generation job: ${error.message}`)
+    }
+
+    return data && data.length > 0 ? data[0] : null
+  }, 'claimImageGenerationJob')
 }
 
 /**
@@ -506,6 +557,104 @@ export async function updateExtractionJobToFailed(
       throw new Error(`Failed to update extraction job to failed: ${error.message}`)
     }
   }, 'updateExtractionJobToFailed')
+}
+
+/**
+ * Update image generation job status to completed.
+ */
+export async function updateImageGenerationJobToCompleted(
+  jobId: string,
+  resultCount: number,
+  processingTime: number
+): Promise<void> {
+  return databaseClient.withRetry(async () => {
+    const client = databaseClient.getClient()
+
+    const { error } = await client
+      .from('image_generation_jobs')
+      .update({
+        status: 'completed' as const,
+        result_count: resultCount,
+        processing_time: processingTime,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('id', jobId)
+
+    if (error) {
+      throw new Error(`Failed to update image generation job to completed: ${error.message}`)
+    }
+  }, 'updateImageGenerationJobToCompleted')
+}
+
+/**
+ * Update image generation job status to failed.
+ */
+export async function updateImageGenerationJobToFailed(
+  jobId: string,
+  errorMessage: string,
+  errorCode?: string
+): Promise<void> {
+  return databaseClient.withRetry(async () => {
+    const client = databaseClient.getClient()
+
+    const { error } = await client
+      .from('image_generation_jobs')
+      .update({
+        status: 'failed' as const,
+        error_message: errorMessage,
+        error_code: errorCode,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('id', jobId)
+
+    if (error) {
+      throw new Error(`Failed to update image generation job to failed: ${error.message}`)
+    }
+  }, 'updateImageGenerationJobToFailed')
+}
+
+/**
+ * Reset image generation job to queued with exponential backoff.
+ */
+export async function resetImageGenerationJobToQueuedWithBackoff(
+  jobId: string,
+  retryDelaySeconds: number,
+  errorMessage: string
+): Promise<void> {
+  return databaseClient.withRetry(async () => {
+    const client = databaseClient.getClient()
+
+    const { data: currentJob, error: fetchError } = await client
+      .from('image_generation_jobs')
+      .select('retry_count')
+      .eq('id', jobId)
+      .single() as { data: { retry_count: number } | null; error: any }
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch image generation job for retry: ${fetchError.message}`)
+    }
+
+    const availableAt = new Date(Date.now() + retryDelaySeconds * 1000).toISOString()
+
+    const { error } = await client
+      .from('image_generation_jobs')
+      .update({
+        status: 'queued' as const,
+        retry_count: (currentJob?.retry_count || 0) + 1,
+        available_at: availableAt,
+        error_message: errorMessage,
+        worker_id: null,
+        started_at: null,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('id', jobId)
+
+    if (error) {
+      throw new Error(`Failed to reset image generation job with backoff: ${error.message}`)
+    }
+  }, 'resetImageGenerationJobToQueuedWithBackoff')
 }
 
 /**
@@ -836,17 +985,28 @@ export async function getQueueDepth(): Promise<number> {
   return databaseClient.withRetry(async () => {
     const client = databaseClient.getClient()
     
-    const { count, error } = await client
-      .from('export_jobs')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending')
-      .lte('available_at', new Date().toISOString())
+    const now = new Date().toISOString()
+    const [exportDepth, imageDepth] = await Promise.all([
+      client
+        .from('export_jobs')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+        .lte('available_at', now),
+      client
+        .from('image_generation_jobs')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'queued')
+        .lte('available_at', now),
+    ])
 
-    if (error) {
-      throw new Error(`Failed to get queue depth: ${error.message}`)
+    if (exportDepth.error) {
+      throw new Error(`Failed to get export queue depth: ${exportDepth.error.message}`)
+    }
+    if (imageDepth.error) {
+      throw new Error(`Failed to get image generation queue depth: ${imageDepth.error.message}`)
     }
 
-    return count || 0
+    return (exportDepth.count || 0) + (imageDepth.count || 0)
   }, 'getQueueDepth')
 }
 

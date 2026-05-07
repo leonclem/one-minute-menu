@@ -68,8 +68,8 @@ export async function runBatchGenerationSequential(
   const results: BatchGenerationResult[] = []
   const fetchImpl = options.fetchImpl || fetch
   const total = items.length
-  const maxPolls = options.maxPolls ?? 15
-  const pollDelayMs = options.pollDelayMs ?? 1500
+  const maxPolls = options.maxPolls ?? 90
+  const pollDelayMs = options.pollDelayMs ?? 2000
 
   for (let index = 0; index < items.length; index++) {
     const item = items[index]
@@ -108,7 +108,11 @@ export async function runBatchGenerationSequential(
         results.push({ itemId: item.id, status: 'failed', error: errMsg, errorCode })
         
         // Stop batch immediately for non-recoverable "stop" reasons
-        if (errorCode === 'QUOTA_EXCEEDED' || errorCode === 'EDIT_WINDOW_EXPIRED') {
+        if (
+          errorCode === 'QUOTA_EXCEEDED' ||
+          errorCode === 'EDIT_WINDOW_EXPIRED' ||
+          errorCode === 'IMAGE_GENERATION_ALREADY_ACTIVE'
+        ) {
           // Mark remaining items as not attempted
           for (let j = index + 1; j < items.length; j++) {
             results.push({ 

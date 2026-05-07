@@ -85,12 +85,51 @@ export default function GeneratePhotoModal({
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Generation failed')
 
-      showToast({
-        type: 'success',
-        title: 'Photo generated!',
-        description: 'Your new food photo is ready.'
-      })
-      onSuccess()
+      const jobId = result.data?.jobId as string | undefined
+      if (jobId) {
+        showToast({
+          type: 'info',
+          title: 'Generation started',
+          description: 'Your photo is being created. This can take a minute.',
+        })
+        const maxPolls = 120
+        const delayMs = 2000
+        for (let i = 0; i < maxPolls; i++) {
+          await new Promise(r => setTimeout(r, delayMs))
+          const statusRes = await fetch(`/api/generation-jobs/${jobId}`)
+          const statusJson = await statusRes.json()
+          if (!statusRes.ok) {
+            throw new Error(statusJson?.error || 'Failed to check generation status')
+          }
+          const job = statusJson.data?.job
+          if (!job) continue
+          if (job.status === 'failed') {
+            throw new Error(job.errorMessage || 'Generation failed')
+          }
+          if (job.status === 'completed') {
+            showToast({
+              type: 'success',
+              title: 'Photo generated!',
+              description: 'Your new food photo is ready.',
+            })
+            onSuccess()
+            return
+          }
+        }
+        throw new Error('Generation is taking longer than expected. Check back shortly.')
+      }
+
+      if (result.data?.images?.length) {
+        showToast({
+          type: 'success',
+          title: 'Photo generated!',
+          description: 'Your new food photo is ready.',
+        })
+        onSuccess()
+        return
+      }
+
+      throw new Error('Unexpected response from server')
     } catch (e: any) {
       showToast({
         type: 'error',

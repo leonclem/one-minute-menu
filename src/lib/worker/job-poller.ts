@@ -11,9 +11,9 @@
  * Requirements: 2.1, 2.3, 12.7, 12.8
  */
 
-import { claimJob, claimExtractionJob, getQueueDepth } from './database-client'
+import { claimJob, claimExtractionJob, claimImageGenerationJob, getQueueDepth } from './database-client'
 import { JobProcessor } from './job-processor'
-import type { ExportJob, ExtractionJob } from './database-client'
+import type { ExportJob, ExtractionJob, ImageGenerationJob } from './database-client'
 import { logJobEvent, logInfo, logWarning, logError } from './logger'
 import {
   updateQueueDepth,
@@ -146,7 +146,37 @@ export class JobPoller {
         }
       }
 
-      // 2. Attempt to claim an export job
+      // 2. Attempt to claim an image generation job
+      const imageGenerationJob = await this.claimImageGenerationJob()
+      if (imageGenerationJob) {
+        logInfo('Claimed image generation job', {
+          job_id: imageGenerationJob.id,
+          priority: imageGenerationJob.priority,
+          retry_count: imageGenerationJob.retry_count,
+        })
+
+        incrementProcessingJobs(this.workerId)
+        const jobPromise = this.processor.processImageGeneration(imageGenerationJob)
+
+        if (this.onJobStart) {
+          this.onJobStart(jobPromise)
+        }
+
+        await jobPromise
+        decrementProcessingJobs(this.workerId)
+
+        if (this.onJobComplete) {
+          this.onJobComplete()
+        }
+
+        // After processing a job, immediately check for more work
+        if (this.isRunning) {
+          this.poll()
+          return
+        }
+      }
+
+      // 3. Attempt to claim an export job
       const exportJob = await this.claimExportJob()
 
       if (exportJob) {
@@ -232,6 +262,20 @@ export class JobPoller {
       return await claimExtractionJob(this.workerId)
     } catch (error) {
       logError('Error claiming extraction job', error as Error, {
+        worker_id: this.workerId,
+      })
+      return null
+    }
+  }
+
+  /**
+   * Atomically claim one image generation job from the queue
+   */
+  private async claimImageGenerationJob(): Promise<ImageGenerationJob | null> {
+    try {
+      return await claimImageGenerationJob(this.workerId)
+    } catch (error) {
+      logError('Error claiming image generation job', error as Error, {
         worker_id: this.workerId,
       })
       return null

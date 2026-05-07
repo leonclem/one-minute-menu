@@ -1,24 +1,25 @@
 # Roadmap
 
-## Structural / Architectural
-- [ ] Image creation to background job
-- [ ] More definitive specification for every grid option (Show examples and get the IDE AI to describe every layout for creation in another LLM)
+## Bugs
+- [ ] *NEXT* Banner is missing for 1-column-tall
 
 ## /extracted
-- [ ] Collapse photo options sections once image generation starts and advise not to exit the page or refresh (what happens if user closes the tab?)
 - [ ] Advanced options: change plate colour (white, beige, black, none)
 - [ ] Advanced options: remove slate
 - [ ] Advanced options: add tags, e.g. Serving type: "Slice"
 - [ ] Advanced options: additional free text description
+- [ ] Investigate double mention of "match the perspective" in prompt
+- [ ] Investigate why plate is not always plain!
 
 ## SEO optimisation
 - [ ] Identify backlinks sites for SEO
 - [ ] "Best menu design for restaurant" Starter Story April 26 "I Make $17k/Month With One Strategy"
 
+## Structural / Architectural
+- [ ] More definitive specification for every grid option (Show examples and get the IDE AI to describe every layout for creation in another LLM)
+
 ## Social Media and Advertising
-- [x] Process to email those that have signed up and/or subscribed
-- [x] May the 4th menu
-- [ ] New video (all SM platforms) - build the May the 4th menu in under 5 minutes
+- [ ] New video (all SM platforms) - build a menu in under 5 minutes
 - [ ] Openclaw initial setup
 
 ## misc
@@ -32,8 +33,8 @@
 
 ## Deployment
 - [x] Upgrade Vercel package
+- [ ] Upgrade to Supabase Pro (and enable PITR)
 - [ ] Determine UAT requirements
-- [ ] Determine if database backup strategy exists (Supabase / Vercel)
 - [ ] Site under maintenance page / impending maintenance notice
 
 ## Allergens / Spice level / etc
@@ -46,10 +47,11 @@
 
 ## Bugs
 - [ ] Reset button on demo doesn't work for banner toggle (and possibly others)
-- [ ] Banner is missing for 1-column-tall
 - [ ] Pricing keeps defaulting to USD
 - [ ] When Image Style is set to "None", descriptions only have one line in most cases
 - [ ] Description still too short generally across layouts
+- [ ] Reset button on demo doesn't work for banner toggle (and possibly others)
+- [ ] Address cosmic menus style remnants
 
 ## "What's New?" page
 - [ ] "What's New?" page
@@ -234,6 +236,7 @@
 - [x] Users can no longer upload their own images
 - [x] Remove slate if user for provides background (and warning for users using background images)
 - [x] Menu Control Panel > Download Menu pages as PNG
+- [x] Collapse photo options sections once image generation starts and advise not to exit the page or refresh
 
 ## Image Generation Test Harness
 - [x] Reference image
@@ -387,6 +390,9 @@
 - [x] Currency Support (for package pricing / Stripe)
 - [x] Enable subscription cancellation process
 
+## Structural / Architectural
+- [x] Image creation to background job
+
 ## Allergens / Spice level / etc
 - [x] Determine list (V2 supports dietary indicators: vegetarian, vegan, halal, kosher, gluten-free)
 - [x] Consider design impact (V2 renders indicators within item tiles using INLINE mode)
@@ -422,6 +428,8 @@
 - [x] Share buttons on blog posts
 - [x] Business cards
 - [x] Update home page to show video with costs savings vs photographers, designers, etc.
+- [x] Process to email those that have signed up and/or subscribed
+- [x] May the 4th menu
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>

@@ -1,6 +1,12 @@
 // Server-side analytics operations
 
-import { createServerSupabaseClient } from './supabase-server'
+import { createAdminSupabaseClient, createServerSupabaseClient } from './supabase-server'
+
+function getAnalyticsSupabaseClient() {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createAdminSupabaseClient()
+    : createServerSupabaseClient()
+}
 
 /**
  * Server-side analytics operations
@@ -226,7 +232,7 @@ export const analyticsOperations = {
       metadata?: Record<string, any>
     }
   ): Promise<void> {
-    const supabase = createServerSupabaseClient()
+    const supabase = getAnalyticsSupabaseClient()
     const today = new Date().toISOString().split('T')[0]
 
     const { data: existing } = await supabase
@@ -386,7 +392,7 @@ export const analyticsOperations = {
     const monthlyThreshold = Number(process.env.GENERATION_ALERT_MONTHLY_USD || '0')
     if (!dailyThreshold && !monthlyThreshold) return
 
-    const supabase = createServerSupabaseClient()
+    const supabase = getAnalyticsSupabaseClient()
     const today = new Date().toISOString().split('T')[0]
     const monthStart = new Date()
     monthStart.setDate(1)

@@ -14,8 +14,9 @@ interface MenuItemActionsModalProps {
   allItems?: MenuItem[]
   onClose: () => void
   onItemUpdated: () => void
-  onManageImages?: () => void
+  onManageImages?: () => void | Promise<void>
   onEditDetails?: () => void
+  imageGenerationInProgress?: boolean
 }
 
 export default function MenuItemActionsModal({
@@ -26,7 +27,8 @@ export default function MenuItemActionsModal({
   onClose,
   onItemUpdated,
   onManageImages,
-  onEditDetails
+  onEditDetails,
+  imageGenerationInProgress = false
 }: MenuItemActionsModalProps) {
   const [loading, setLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -445,16 +447,29 @@ export default function MenuItemActionsModal({
             {/* Image management */}
             {onManageImages && (
               <button
-                onClick={() => { onManageImages(); onClose() }}
-                disabled={loading}
-                className="w-full text-left px-3 py-2 rounded-lg border border-ux-border hover:bg-ux-background-secondary transition-colors text-ux-text text-sm disabled:opacity-50 flex items-center justify-between gap-2"
+                onClick={() => {
+                  if (imageGenerationInProgress) return
+                  void onManageImages()
+                }}
+                disabled={loading || imageGenerationInProgress}
+                title={imageGenerationInProgress ? 'Photo generation is already in progress for this item.' : undefined}
+                className="w-full text-left px-3 py-2 rounded-lg border border-ux-border hover:bg-ux-background-secondary transition-colors text-ux-text text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between gap-2"
               >
-                <span>
-                  {item.imageSource !== 'none' || item.customImageUrl || item.aiImageId
-                    ? 'Manage photos'
-                    : 'Add photo / Create AI Photo'}
+                <span className="min-w-0">
+                  <span className="block">
+                    {imageGenerationInProgress
+                      ? 'Photo generation in progress'
+                      : item.imageSource !== 'none' || item.customImageUrl || item.aiImageId
+                        ? 'Manage photos'
+                        : 'Add photo / Create AI Photo'}
+                  </span>
+                  {imageGenerationInProgress && (
+                    <span className="mt-0.5 block text-[11px] text-ux-text-secondary">
+                      This will unlock when the background job finishes.
+                    </span>
+                  )}
                 </span>
-                {!(item.imageSource !== 'none' || item.customImageUrl || item.aiImageId) && (
+                {!imageGenerationInProgress && !(item.imageSource !== 'none' || item.customImageUrl || item.aiImageId) && (
                   <span className="text-[10px] bg-ux-primary/10 text-ux-primary px-1.5 py-0.5 rounded uppercase font-bold tracking-tight shrink-0">New</span>
                 )}
               </button>

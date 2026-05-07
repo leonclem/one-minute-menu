@@ -212,6 +212,98 @@ describe('UX Extracted Page', () => {
     const removeButton = await screen.findByRole('button', { name: /Remove Logo/i })
     expect(removeButton).toBeInTheDocument()
   })
+
+  it('renders background image job banner and thumbnail overlay', async () => {
+    const menuResponse = {
+      success: true,
+      data: {
+        id: 'menu-jobs',
+        name: 'Job Status Menu',
+        items: [{
+          id: 'item-1',
+          name: 'Burger',
+          price: 12,
+          description: 'Beef burger',
+          category: 'Mains',
+        }],
+      },
+    }
+
+    // @ts-ignore
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (url === '/api/user/edit-access') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ canEdit: true }),
+        })
+      }
+
+      if (url === '/api/menu-currency') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ currency: 'USD' }),
+        })
+      }
+
+      if (url === '/api/geo') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ country: 'US' }),
+        })
+      }
+
+      if (url === '/api/menus/menu-jobs/image-generation-status') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              menuId: 'menu-jobs',
+              hasActiveJobs: true,
+              activeCount: 1,
+              jobs: [],
+              activeJobs: [],
+              latestByItem: {
+                'item-1': {
+                  id: 'image-job-1',
+                  batchId: 'batch-1',
+                  menuId: 'menu-jobs',
+                  menuItemId: 'item-1',
+                  status: 'processing',
+                  numberOfVariations: 1,
+                  resultCount: 0,
+                  errorMessage: null,
+                  errorCode: null,
+                  retryCount: 0,
+                  createdAt: new Date().toISOString(),
+                  startedAt: new Date().toISOString(),
+                  completedAt: null,
+                },
+              },
+            },
+          }),
+        })
+      }
+
+      if (url === '/api/menus/menu-jobs') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => menuResponse,
+        })
+      }
+
+      return Promise.reject(new Error('not found'))
+    })
+
+    const { unmount } = render(<UXMenuExtractedClient menuId="menu-jobs" />)
+
+    expect(await screen.findByText(/1 photo job is still generating/i)).toBeInTheDocument()
+    expect(screen.getByText(/thumbnails update automatically/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Photo generation generating/i)).toBeInTheDocument()
+    expect(screen.getByText('Generating')).toBeInTheDocument()
+
+    unmount()
+  })
 })
 
 

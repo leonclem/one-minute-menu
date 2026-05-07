@@ -18,6 +18,12 @@ import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
 import { V2_TEMPLATE_OPTIONS } from '@/lib/templates/v2/template-options'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
+import {
+  getImageGenerationJobLabel,
+  isActiveImageGenerationJob,
+  isActiveCutoutStatus,
+  useImageGenerationStatus,
+} from '@/lib/image-generation/use-image-generation-status'
 
 const TEMPLATE_DRAFT_KEY = (menuId: string) => `templateDraft-${menuId}`
 
@@ -207,6 +213,27 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [deliveryEmail, setDeliveryEmail] = useState<string | null>(null)
 
   const isDemo = menuId.startsWith('demo-')
+  const {
+    data: imageGenerationStatus,
+    refresh: refreshImageGenerationStatus,
+  } = useImageGenerationStatus(menuId, !isDemo)
+  const latestImageJobByItem = useMemo(
+    () => imageGenerationStatus?.latestByItem ?? {},
+    [imageGenerationStatus?.latestByItem]
+  )
+  const imageStatusByItem = useMemo(
+    () => imageGenerationStatus?.imageByItem ?? {},
+    [imageGenerationStatus?.imageByItem]
+  )
+  const activeImageJobCount = imageGenerationStatus?.activeCount ?? 0
+  const activeCutoutCount = imageGenerationStatus?.activeCutoutCount ?? 0
+  const hasActiveImageJobs = activeImageJobCount > 0
+  const hasActiveCutouts = activeCutoutCount > 0
+  const hasActivePreviewImageWork = hasActiveImageJobs || hasActiveCutouts
+  const previousActiveImageItemIds = useRef<Set<string>>(new Set())
+  const previousImageFingerprintsByItem = useRef<Record<string, string>>({})
+  const [refreshingCompletedImageItemIds, setRefreshingCompletedImageItemIds] = useState<Set<string>>(() => new Set())
+  const [previewImageReadyPulse, setPreviewImageReadyPulse] = useState(false)
 
   // Selection State — demo users get curated defaults for best first impression
   const [templateId, setTemplateId] = useState(isDemo ? DEMO_DEFAULTS.templateId : '6-column-portrait-a3')
@@ -248,6 +275,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [layoutDocument, setLayoutDocument] = useState<LayoutDocumentV2 | null>(null)
   const [isPreviewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
+  const [previewAssetVersion, setPreviewAssetVersion] = useState<string | undefined>(undefined)
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
   const [zoom, setZoom] = useState(1.0)
 
@@ -810,8 +838,20 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     }
   }, [menuId])
 
+  const refreshMenuData = useCallback(async () => {
+    if (isDemoUser || isDemo) return null
+
+    const resp = await fetch(`/api/menus/${menuId}`, { cache: 'no-store' })
+    const data = await resp.json().catch(() => ({}))
+    if (!resp.ok || !data?.data) {
+      throw new Error(data?.error || 'Failed to refresh menu')
+    }
+    setMenu(data.data)
+    return data.data as Menu
+  }, [isDemo, isDemoUser, menuId])
+
   // Fetch layout preview
-  const fetchLayoutPreview = useCallback(async () => {
+  const fetchLayoutPreview = useCallback(async (assetVersion?: string) => {
     if (!menu) return
 
     setPreviewLoading(true)
@@ -876,6 +916,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           ...(effectiveFlagshipItemId ? { flagshipItemId: effectiveFlagshipItemId } : {}),
           engineVersion: 'v2'
         })
+        const effectiveAssetVersion = assetVersion ?? previewAssetVersion
+        if (effectiveAssetVersion) params.set('assetVersion', effectiveAssetVersion)
         resp = await fetch(`/api/menus/${menuId}/layout?${params.toString()}`)
       }
       
@@ -896,7 +938,68 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     } finally {
       setPreviewLoading(false)
     }
-  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, showMenuTitle, showCategoryTitles, showLogoTile, showCategoryHeaderTiles, isFlagshipTileVisible, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, effectiveFlagshipItemId, isDemoUser])
+  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, showMenuTitle, showCategoryTitles, showLogoTile, showCategoryHeaderTiles, isFlagshipTileVisible, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, effectiveFlagshipItemId, isDemoUser, previewAssetVersion])
+
+  useEffect(() => {
+    if (isDemo) return
+
+    const currentActiveItemIds = new Set(
+      (imageGenerationStatus?.activeJobs ?? []).map(job => job.menuItemId)
+    )
+    const completedItemIds = Array.from(previousActiveImageItemIds.current)
+      .filter(itemId => !currentActiveItemIds.has(itemId))
+
+    previousActiveImageItemIds.current = currentActiveItemIds
+
+    const currentImageFingerprints = Object.fromEntries(
+      Object.entries(imageStatusByItem).map(([itemId, image]) => [
+        itemId,
+        [
+          image.id,
+          image.desktopUrl ?? '',
+          image.cutoutUrl ?? '',
+          image.cutoutStatus,
+        ].join('|'),
+      ])
+    )
+    const previousImageFingerprints = previousImageFingerprintsByItem.current
+    const hasPreviousImageFingerprint = Object.keys(previousImageFingerprints).length > 0
+    previousImageFingerprintsByItem.current = currentImageFingerprints
+
+    const changedImageItemIds = hasPreviousImageFingerprint
+      ? Object.entries(currentImageFingerprints)
+          .filter(([itemId, fingerprint]) => previousImageFingerprints[itemId] !== fingerprint)
+          .map(([itemId]) => itemId)
+      : []
+
+    const refreshItemIds = Array.from(new Set([...completedItemIds, ...changedImageItemIds]))
+    if (refreshItemIds.length === 0) return
+
+    setRefreshingCompletedImageItemIds(prev => {
+      const next = new Set(prev)
+      refreshItemIds.forEach(itemId => next.add(itemId))
+      return next
+    })
+
+    const assetVersion = `${Date.now()}-${refreshItemIds.join('-')}`
+    setPreviewAssetVersion(assetVersion)
+    void refreshMenuData()
+      .catch((error) => {
+        console.warn('[Template] Failed to refresh menu after image update', error)
+      })
+      .then(() => fetchLayoutPreview(assetVersion))
+      .then(() => {
+        setPreviewImageReadyPulse(true)
+        window.setTimeout(() => setPreviewImageReadyPulse(false), 700)
+      })
+      .finally(() => {
+      setRefreshingCompletedImageItemIds(prev => {
+        const next = new Set(prev)
+        refreshItemIds.forEach(itemId => next.delete(itemId))
+        return next
+      })
+    })
+  }, [fetchLayoutPreview, imageGenerationStatus?.activeJobs, imageStatusByItem, isDemo, refreshMenuData])
 
   const handleImageTransformChange = useCallback((itemId: string, transform: ImageTransform) => {
     const mode = imageMode === 'none' ? 'stretch' : imageMode
@@ -1168,6 +1271,20 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const handleExportPDF = async () => {
     if (!menu || !layoutDocument || isExporting) return
 
+    if (!isDemoUser) {
+      const latestImageStatus = await refreshImageGenerationStatus()
+      const activeCount = latestImageStatus?.activeCount ?? activeImageJobCount
+      const activeCutouts = latestImageStatus?.activeCutoutCount ?? activeCutoutCount
+      if (activeCount > 0 || activeCutouts > 0) {
+        showToast({
+          type: 'info',
+          title: activeCount > 0 ? 'Photos still generating' : 'Cutouts still preparing',
+          description: 'Export will be available once background image processing finishes.',
+        })
+        return
+      }
+    }
+
     setIsExporting(true)
     setExportStatus('Submitting...')
     await flushImageTransformSaves()
@@ -1287,6 +1404,46 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     }
   }
 
+  const totalPages = layoutDocument?.pages?.length || 0
+  const currentPage = layoutDocument?.pages?.[currentPageIndex]
+  const pendingPreviewOverlays = useMemo(() => {
+    if (!layoutDocument?.pageSpec || !currentPage || imageMode === 'none') return []
+
+    return currentPage.tiles.flatMap((tile) => {
+      const content = tile.content as { itemId?: string; name?: string; showImage?: boolean }
+      if (!content.itemId || content.showImage === false) return []
+
+      const job = latestImageJobByItem[content.itemId]
+      const image = imageStatusByItem[content.itemId]
+      const cutoutIsActive = isActiveCutoutStatus(image?.cutoutStatus)
+      const isRefreshingCompleted = refreshingCompletedImageItemIds.has(content.itemId)
+      if (!job && !cutoutIsActive && !isRefreshingCompleted) return []
+      if (job?.status === 'completed' && !cutoutIsActive && !isRefreshingCompleted) return []
+
+      const region = currentPage.regions.find(r => r.id === tile.regionId)
+      if (!region) return []
+
+      const isFullBleed = tile.regionId === 'banner' || tile.regionId === 'footer'
+      const left = (isFullBleed ? 0 : layoutDocument.pageSpec.margins.left) + region.x + tile.x
+      const top = (isFullBleed ? 0 : layoutDocument.pageSpec.margins.top) + region.y + tile.y
+
+      return [{
+        id: `${tile.id}-${job?.id ?? image?.id ?? content.itemId}-${image?.cutoutStatus ?? 'image'}`,
+        left,
+        top,
+        width: tile.width,
+        height: tile.height,
+        label: isRefreshingCompleted
+          ? 'Updating photo'
+          : cutoutIsActive
+            ? 'Generating cutout'
+            : getImageGenerationJobLabel(job) || 'Generating',
+        isActive: isActiveImageGenerationJob(job) || cutoutIsActive,
+        isFailed: job?.status === 'failed' || image?.cutoutStatus === 'failed' || image?.cutoutStatus === 'timed_out',
+      }]
+    })
+  }, [currentPage, imageMode, imageStatusByItem, latestImageJobByItem, layoutDocument?.pageSpec, refreshingCompletedImageItemIds])
+
   if (loading) {
     return (
       <UXSection>
@@ -1298,8 +1455,6 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   }
 
   const palette = PALETTES_V2.find(p => p.id === paletteId) ?? DEFAULT_PALETTE_V2
-  const totalPages = layoutDocument?.pages?.length || 0
-  const currentPage = layoutDocument?.pages?.[currentPageIndex]
 
   return (
     <UXSection>
@@ -1311,6 +1466,19 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           Choose a style, colors, and options. See the live preview below.
         </p>
       </div>
+
+      {!isDemo && hasActivePreviewImageWork && (
+        <div className="mx-auto mb-6 max-w-[1600px] rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
+          <div className="font-semibold">
+            {hasActiveImageJobs
+              ? `${activeImageJobCount} photo ${activeImageJobCount === 1 ? 'is' : 'photos are'} still generating`
+              : `${activeCutoutCount} cutout ${activeCutoutCount === 1 ? 'is' : 'cutouts are'} still preparing`}
+          </div>
+          <p className="mt-1 text-amber-800">
+            Pending image tiles are marked in the preview. They will update automatically as soon as processing finishes.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-[1600px] mx-auto">
         {/* Left Column: Controls */}
@@ -1955,7 +2123,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                     <div className="text-4xl mb-4">⚠️</div>
                     <h3 className="text-lg font-bold text-red-600 mb-2">Preview Generation Failed</h3>
                     <p className="text-sm text-ux-text-secondary mb-6">{previewError}</p>
-                    <UXButton variant="outline" size="sm" onClick={fetchLayoutPreview}>Try Again</UXButton>
+                    <UXButton variant="outline" size="sm" onClick={() => void fetchLayoutPreview()}>Try Again</UXButton>
                   </div>
                 </div>
               ) : layoutDocument?.pageSpec && currentPage ? (
@@ -1969,10 +2137,13 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   }}
                 >
                   <div 
-                    className="shadow-2xl bg-white"
+                    className={`shadow-2xl bg-white transition-[filter,opacity,transform] duration-500 ease-out ${
+                      previewImageReadyPulse ? 'scale-[1.004] brightness-105' : ''
+                    }`}
                     style={{
                       width: layoutDocument.pageSpec.width,
                       height: layoutDocument.pageSpec.height,
+                      position: 'relative',
                       transform: `scale(${zoom})`,
                       transformOrigin: 'top left',
                     }}
@@ -2009,6 +2180,31 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                         onBannerTransformChange: imageEditUnlocked ? handleBannerTransformChange : undefined
                       }}
                     />
+                    {pendingPreviewOverlays.length > 0 && (
+                      <div className="pointer-events-none absolute inset-0 z-20">
+                        {pendingPreviewOverlays.map((overlay) => (
+                          <div
+                            key={overlay.id}
+                            className={`absolute flex items-center justify-center rounded-md border-2 border-dashed px-2 text-center text-[10px] font-bold uppercase tracking-wide transition-opacity duration-300 ${
+                              overlay.isFailed
+                                ? 'border-red-500 bg-red-500/20 text-red-900'
+                                : 'border-amber-500 bg-amber-400/25 text-amber-950'
+                            }`}
+                            style={{
+                              left: overlay.left,
+                              top: overlay.top,
+                              width: overlay.width,
+                              height: overlay.height,
+                            }}
+                            aria-hidden="true"
+                          >
+                            <span className="rounded bg-white/85 px-2 py-1 shadow-sm">
+                              {overlay.isActive && overlay.label !== 'Generating cutout' ? 'Generating photo' : overlay.label}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -2073,13 +2269,13 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
             className="w-full sm:w-auto min-w-[200px] shadow-lg"
             onClick={handleExportPDF}
             loading={isExporting}
-            disabled={!layoutDocument || !!previewError || isSaving || isExporting || !!cooldownRemaining}
+          disabled={!layoutDocument || !!previewError || isSaving || isExporting || !!cooldownRemaining || hasActivePreviewImageWork}
           >
             <span className="flex items-center gap-2">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              {cooldownRemaining ? `Available in ${cooldownRemaining}` : (exportStatus || 'Export PDF')}
+              {hasActivePreviewImageWork ? 'Waiting for photos' : cooldownRemaining ? `Available in ${cooldownRemaining}` : (exportStatus || 'Export PDF')}
             </span>
           </UXButton>
         )}
@@ -2095,6 +2291,12 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           {isDemoUser ? 'Confirm and Export →' : 'Save & Return'}
         </UXButton>
       </div>
+
+      {!isDemoUser && hasActivePreviewImageWork && (
+        <p className="mt-3 text-center text-sm text-white/85 text-hero-shadow-strong">
+          Export is locked until all queued photos and cutouts have finished.
+        </p>
+      )}
 
       {exportSuccessModalOpen && mounted && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">

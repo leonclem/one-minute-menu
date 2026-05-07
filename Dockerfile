@@ -64,7 +64,12 @@ RUN echo '{\n\
     "allowSyntheticDefaultImports": true\n  },\n  "include": [\n\
     "src/lib/worker/**/*",\n\
     "src/lib/extraction/**/*",\n\
+    "src/lib/image-generation/**/*",\n\
+    "src/lib/background-removal/**/*",\n\
     "src/lib/database.ts",\n\
+    "src/lib/nano-banana.ts",\n\
+    "src/lib/image-processing.ts",\n\
+    "src/lib/menu-item-image-sync.ts",\n\
     "src/lib/supabase-server.ts",\n\
     "src/lib/supabase-worker.ts",\n\
     "src/lib/supabase.ts",\n\

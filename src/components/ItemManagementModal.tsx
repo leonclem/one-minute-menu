@@ -386,6 +386,12 @@ export default function ItemManagementModal({
             title: 'Daily limit reached',
             description: result.error || 'Try again tomorrow.',
           })
+        } else if (result.code === 'IMAGE_GENERATION_ALREADY_ACTIVE') {
+          showToast({
+            type: 'info',
+            title: 'Already generating',
+            description: result.error || 'Wait for the current job to finish.',
+          })
         } else {
           setLastError({
             message: result.error || 'Failed to start image generation',
@@ -434,35 +440,47 @@ export default function ItemManagementModal({
           description: `Generated ${result.data.images.length} image${result.data.images.length === 1 ? '' : 's'} for ${itemName}`,
         })
       } else if (result.data?.jobId) {
-        // Asynchronous path - poll for completion
         const jobId = result.data.jobId
-        setGenerationJob(result.data)
-        
+        setGenerationJob(result.data.job ?? result.data)
+        showToast({
+          type: 'info',
+          title: 'Generation started',
+          description: 'Your photo is being created in the background.',
+        })
+
         const pollInterval = setInterval(async () => {
           try {
             const statusRes = await fetch(`/api/generation-jobs/${jobId}`)
             const statusJson = await statusRes.json()
-            
+
             if (!statusRes.ok) {
               clearInterval(pollInterval)
+              setGenerating(false)
               throw new Error(statusJson?.error || 'Failed to check generation status')
             }
-            
-            const job = statusJson.data
+
+            const job = statusJson.data?.job
+            if (!job) {
+              clearInterval(pollInterval)
+              setGenerating(false)
+              return
+            }
             setGenerationJob(job)
-            
+
+            if (job.status === 'queued' || job.status === 'processing') {
+              return
+            }
+
             if (job.status === 'completed') {
               clearInterval(pollInterval)
-              // Refresh variations to show new images
               const variationsRes = await fetch(`/api/menu-items/${itemId}/variations`)
               const variationsJson = await variationsRes.json()
               if (variationsRes.ok) {
                 const newVariations = variationsJson?.data?.variations || []
                 setVariations(newVariations)
-                
-                // Auto-select the most recently generated image
+
                 if (newVariations.length > 0) {
-                  const mostRecentImage = newVariations[newVariations.length - 1] // Get the most recently generated image
+                  const mostRecentImage = newVariations[newVariations.length - 1]
                   await selectAiImage(mostRecentImage.id)
                 }
               }
@@ -478,9 +496,13 @@ export default function ItemManagementModal({
               setLastError({
                 message: job.errorMessage || 'Image generation failed',
                 code: job.errorCode,
-                suggestions: statusJson.data?.errorSuggestions
+                suggestions: statusJson.data?.errorSuggestions,
               })
-              throw new Error(job.errorMessage || 'Image generation failed')
+              showToast({
+                type: 'error',
+                title: 'Generation failed',
+                description: job.errorMessage || 'Please try again.',
+              })
             }
           } catch (pollError: any) {
             clearInterval(pollInterval)
@@ -488,6 +510,8 @@ export default function ItemManagementModal({
             setError(pollError?.message || 'Failed to generate images')
           }
         }, 2000)
+      } else {
+        setGenerating(false)
       }
       
     } catch (error: any) {

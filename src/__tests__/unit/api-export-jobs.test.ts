@@ -63,17 +63,36 @@ describe('POST /api/export/jobs', () => {
   function setupSupabaseMock(options: {
     hourlyCount?: number
     pendingCount?: number
+    activeImageJobCount?: number
+    activeImageJobError?: string
     jobCreationSuccess?: boolean
     insertMock?: jest.Mock
   } = {}) {
     const {
       hourlyCount = 0,
       pendingCount = 0,
+      activeImageJobCount = 0,
+      activeImageJobError,
       jobCreationSuccess = true,
       insertMock
     } = options
     
     mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'image_generation_jobs') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                in: jest.fn(() => ({
+                  count: activeImageJobCount,
+                  error: activeImageJobError ? { message: activeImageJobError } : null,
+                }))
+              }))
+            }))
+          }))
+        }
+      }
+
       if (table === 'export_jobs') {
         return {
           select: jest.fn((columns: string, opts?: any) => {
@@ -350,6 +369,36 @@ describe('POST /api/export/jobs', () => {
           priority: 10
         })
       )
+    })
+  })
+
+  describe('active image generation gate', () => {
+    it('should reject export creation while queued or processing image jobs exist', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: TEST_USER_ID } },
+        error: null
+      })
+
+      mockMenuOperations.getMenu.mockResolvedValue({
+        id: TEST_MENU_ID,
+        name: 'Test Menu',
+        user_id: TEST_USER_ID
+      } as any)
+
+      setupSupabaseMock({ activeImageJobCount: 2 })
+
+      const request = createMockRequest({
+        menu_id: TEST_MENU_ID,
+        export_type: 'pdf'
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(409)
+      expect(data).toHaveProperty('code', 'IMAGE_GENERATION_ACTIVE')
+      expect(data.details).toEqual({ activeCount: 2 })
+      expect(mockCreateRenderSnapshot).not.toHaveBeenCalled()
     })
   })
   
@@ -752,6 +801,18 @@ describe('POST /api/export/jobs', () => {
       
       let callCount = 0
       mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'image_generation_jobs') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                eq: jest.fn(() => ({
+                  in: jest.fn(() => ({ count: 0, error: null }))
+                }))
+              }))
+            }))
+          }
+        }
+
         if (table === 'export_jobs') {
           return {
             select: jest.fn((columns: string, opts?: any) => {

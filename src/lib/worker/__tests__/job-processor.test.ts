@@ -10,7 +10,7 @@
 import { JobProcessor } from '../job-processor'
 import { PuppeteerRenderer } from '../puppeteer-renderer'
 import { StorageClient } from '../storage-client'
-import type { ExportJob } from '../database-client'
+import type { ExportJob, ImageGenerationJob } from '../database-client'
 import type { RenderSnapshot } from '@/types'
 
 // Mock dependencies
@@ -30,6 +30,10 @@ jest.mock('../database-client', () => ({
   updateJobToFailed: jest.fn(),
   resetJobToPendingWithBackoff: jest.fn(),
   updateJobStatus: jest.fn(),
+  updateImageGenerationJobToCompleted: jest.fn(),
+  updateImageGenerationJobToFailed: jest.fn(),
+  resetImageGenerationJobToQueuedWithBackoff: jest.fn(),
+  getRetentionDaysForPlan: jest.fn(() => 30),
 }))
 jest.mock('../snapshot', () => ({
   getRenderSnapshot: jest.fn(),
@@ -37,15 +41,22 @@ jest.mock('../snapshot', () => ({
 jest.mock('../output-validator', () => ({
   validateOutput: jest.fn(),
 }))
+jest.mock('@/lib/image-generation/job-executor', () => ({
+  executeImageGenerationJob: jest.fn(),
+}))
 
 import {
   updateJobToCompleted,
   updateJobToFailed,
   resetJobToPendingWithBackoff,
   updateJobStatus,
+  updateImageGenerationJobToCompleted,
+  updateImageGenerationJobToFailed,
+  resetImageGenerationJobToQueuedWithBackoff,
 } from '../database-client'
 import { getRenderSnapshot } from '../snapshot'
 import { validateOutput } from '../output-validator'
+import { executeImageGenerationJob } from '@/lib/image-generation/job-executor'
 
 describe('JobProcessor', () => {
   let processor: JobProcessor
@@ -419,6 +430,81 @@ describe('JobProcessor', () => {
 
       // Assert
       expect(mockRenderer.shutdown).toHaveBeenCalled()
+    })
+  })
+
+  describe('processImageGeneration()', () => {
+    const imageJob: ImageGenerationJob = {
+      id: 'image-job-123',
+      user_id: 'user-456',
+      menu_id: 'menu-789',
+      menu_item_id: 'item-123',
+      batch_id: 'batch-123',
+      status: 'processing',
+      prompt: 'A plated burger',
+      negative_prompt: null,
+      api_params: {},
+      number_of_variations: 1,
+      result_count: 0,
+      error_message: null,
+      error_code: null,
+      processing_time: null,
+      estimated_cost: 1,
+      retry_count: 0,
+      priority: 10,
+      worker_id: 'worker-1',
+      available_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      started_at: new Date().toISOString(),
+      completed_at: null,
+    }
+
+    it('should mark image generation jobs completed after successful execution', async () => {
+      ;(executeImageGenerationJob as jest.Mock).mockResolvedValue({
+        resultCount: 1,
+        processingTimeMs: 1250,
+      })
+
+      await processor.processImageGeneration(imageJob)
+
+      expect(executeImageGenerationJob).toHaveBeenCalledWith(imageJob)
+      expect(updateImageGenerationJobToCompleted).toHaveBeenCalledWith(
+        imageJob.id,
+        1,
+        1250
+      )
+      expect(updateImageGenerationJobToFailed).not.toHaveBeenCalled()
+      expect(resetImageGenerationJobToQueuedWithBackoff).not.toHaveBeenCalled()
+    })
+
+    it('should queue image generation jobs for retry on transient failure', async () => {
+      ;(executeImageGenerationJob as jest.Mock).mockRejectedValue(new Error('ETIMEDOUT'))
+
+      await processor.processImageGeneration(imageJob)
+
+      expect(resetImageGenerationJobToQueuedWithBackoff).toHaveBeenCalledWith(
+        imageJob.id,
+        expect.any(Number),
+        'ETIMEDOUT'
+      )
+      expect(updateImageGenerationJobToFailed).not.toHaveBeenCalled()
+    })
+
+    it('should mark image generation jobs failed after retry exhaustion', async () => {
+      const exhaustedJob = { ...imageJob, retry_count: 3 }
+      const error = new Error('ETIMEDOUT')
+      ;(error as any).code = 'GENERATION_TIMEOUT'
+      ;(executeImageGenerationJob as jest.Mock).mockRejectedValue(error)
+
+      await processor.processImageGeneration(exhaustedJob)
+
+      expect(updateImageGenerationJobToFailed).toHaveBeenCalledWith(
+        exhaustedJob.id,
+        'ETIMEDOUT',
+        'GENERATION_TIMEOUT'
+      )
+      expect(resetImageGenerationJobToQueuedWithBackoff).not.toHaveBeenCalled()
     })
   })
 })

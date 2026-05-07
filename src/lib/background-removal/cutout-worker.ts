@@ -1,4 +1,4 @@
-import { createAdminSupabaseClient } from '@/lib/supabase-server'
+import { createWorkerSupabaseClient } from '@/lib/supabase-worker'
 import { getBackgroundRemovalProvider } from './provider-factory'
 import { CutoutGenerationService } from './cutout-service'
 import { logger } from '@/lib/logger'
@@ -35,7 +35,8 @@ export interface WorkerResult {
 export async function processPendingCutouts(
   jobTimeoutMs: number = DEFAULT_JOB_TIMEOUT_MS
 ): Promise<WorkerResult> {
-  const supabase = createAdminSupabaseClient()
+  // Use the worker Supabase client so Docker/internal URL resolution works.
+  const supabase = createWorkerSupabaseClient()
   const provider = getBackgroundRemovalProvider()
   const service = new CutoutGenerationService(provider, supabase)
 
@@ -277,7 +278,8 @@ async function markImageFailed(
  * Returns the number of rows reset.
  */
 export async function retryFailedCutouts(menuId?: string): Promise<number> {
-  const supabase = createAdminSupabaseClient()
+  // Use the worker client so this works in Docker/Railway too.
+  const supabase = createWorkerSupabaseClient()
 
   // The above won't work for menu-level scoping since menu_item_id != menuId.
   // We need to join through cutout_generation_logs. Simpler approach: use the

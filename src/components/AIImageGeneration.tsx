@@ -93,7 +93,8 @@ export default function AIImageGeneration({
   const handleGenerateImage = async () => {
     setGenerating(true)
     setLastError(null)
-    
+    let backgroundJobQueued = false
+
     // Fire food_photo_generation_started at click of generate (Req 5.1)
     captureEvent(ANALYTICS_EVENTS.FOOD_PHOTO_GENERATION_STARTED)
     
@@ -151,6 +152,12 @@ export default function AIImageGeneration({
             title: 'Daily limit reached for this item',
             description: result.error || 'Try again tomorrow or generate for another item.',
           })
+        } else if (result.code === 'IMAGE_GENERATION_ALREADY_ACTIVE') {
+          showToast({
+            type: 'info',
+            title: 'Already generating',
+            description: result.error || 'Wait for the current photo job to finish for this item.',
+          })
         } else {
           // Store detailed error for inline display with suggestions
           setLastError({ code: result.code, message: result.error, suggestions: result.suggestions, retryAfter: result.retryAfter, filterReason: result.filterReason })
@@ -174,14 +181,20 @@ export default function AIImageGeneration({
         })
       }
 
-      // Synchronous path returns images directly
+      // Synchronous path (legacy): images returned directly
       if (result.data?.images?.length) {
         setGeneratedImages(result.data.images)
-        // Fire food_photo_generated on successful AI image generation
         captureEvent(ANALYTICS_EVENTS.FOOD_PHOTO_GENERATED)
       } else if (result.data?.jobId) {
-        setGenerationJob(result.data)
-        pollJobStatus(result.data.jobId)
+        backgroundJobQueued = true
+        setGenerationJob(result.data.job ?? result.data)
+        showToast({
+          type: 'info',
+          title: 'Generation started',
+          description: 'Your photo is being created in the background. This can take a minute.',
+        })
+        void pollJobStatus(result.data.jobId)
+        return
       }
       
     } catch (error) {
@@ -196,7 +209,9 @@ export default function AIImageGeneration({
         description: 'Please check your connection and try again.',
       })
     } finally {
-      setGenerating(false)
+      if (!backgroundJobQueued) {
+        setGenerating(false)
+      }
     }
   }
 
@@ -222,17 +237,14 @@ export default function AIImageGeneration({
 
         if (job.status === 'completed' && images.length > 0) {
           setGeneratedImages(images)
-          // Fire food_photo_generated on successful async AI image generation
           captureEvent(ANALYTICS_EVENTS.FOOD_PHOTO_GENERATED)
         } else if (job.status === 'failed') {
-          // If the job failed, display suggestions (if provided by API) and allow retry
           const suggestions: string[] | undefined = result.data?.errorSuggestions
           setLastError({
             code: job.errorCode,
             message: job.errorMessage || 'Generation failed',
             suggestions,
           })
-          // Fire food_photo_generation_failed with error_code only — no raw error message (Req 5.1, 5.3)
           captureEvent(ANALYTICS_EVENTS.FOOD_PHOTO_GENERATION_FAILED, {
             error_code: job.errorCode || 'job_failed',
           })
@@ -241,7 +253,14 @@ export default function AIImageGeneration({
             title: 'Generation failed',
             description: job.errorMessage || 'Please try again with different settings.',
           })
+        } else if (job.status === 'completed' && images.length === 0) {
+          showToast({
+            type: 'info',
+            title: 'Generation finished',
+            description: 'No images were returned. Try again or check your quota.',
+          })
         }
+        setGenerating(false)
       } catch (error) {
         console.error('Error polling job status:', error)
         showToast({
@@ -249,6 +268,7 @@ export default function AIImageGeneration({
           title: 'Status check failed',
           description: 'Please refresh the page to check generation status.',
         })
+        setGenerating(false)
       }
     }
 

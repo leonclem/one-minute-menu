@@ -199,6 +199,26 @@ async function estimateWaitTime(supabase: any): Promise<number | undefined> {
   }
 }
 
+async function getActiveImageGenerationJobCount(
+  supabase: any,
+  userId: string,
+  menuId: string
+): Promise<{ count: number; error?: string }> {
+  const { count, error } = await supabase
+    .from('image_generation_jobs')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('menu_id', menuId)
+    .in('status', ['queued', 'processing'])
+
+  if (error) {
+    console.error('[API] Failed to check active image generation jobs:', error)
+    return { count: 0, error: error.message }
+  }
+
+  return { count: count || 0 }
+}
+
 /**
  * GET /api/export/jobs
  * 
@@ -588,6 +608,29 @@ export async function POST(request: NextRequest) {
           code: 'MENU_NOT_FOUND'
         },
         { status: 403 }
+      )
+    }
+
+    const activeImageJobs = await getActiveImageGenerationJobCount(supabase, userId, typedBody.menu_id!)
+    if (activeImageJobs.error) {
+      return NextResponse.json<ErrorResponse>(
+        {
+          error: 'Failed to check image generation status',
+          code: 'IMAGE_GENERATION_STATUS_CHECK_FAILED',
+          details: { message: activeImageJobs.error }
+        },
+        { status: 500 }
+      )
+    }
+
+    if (activeImageJobs.count > 0) {
+      return NextResponse.json<ErrorResponse>(
+        {
+          error: 'Photos are still generating for this menu. Please export after background image generation finishes.',
+          code: 'IMAGE_GENERATION_ACTIVE',
+          details: { activeCount: activeImageJobs.count }
+        },
+        { status: 409 }
       )
     }
     

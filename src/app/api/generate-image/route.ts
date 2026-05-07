@@ -1,26 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { getNanoBananaClient, NanoBananaError } from '@/lib/nano-banana'
+import { NanoBananaError } from '@/lib/nano-banana'
 import { quotaOperations } from '@/lib/quota-management'
 import { analyticsOperations } from '@/lib/analytics-server'
+import {
+  getImageGenerationQueuePriority,
+  insertQueuedImageJobsConsumeQuotaAndRelease,
+  parseReferenceImagesForEnqueue,
+} from '@/lib/image-generation/enqueue-helpers'
 import { getPromptConstructionService } from '@/lib/prompt-construction'
-import { imageProcessingService } from '@/lib/image-processing'
 import { DatabaseError, assertUserCanEditMenu, userOperations } from '@/lib/database'
 import { getItemDailyGenerationLimit } from '@/lib/image-generation-limits'
-import { checkRateLimit, getBatchLimits } from '@/lib/rate-limiting'
+import { checkRateLimit } from '@/lib/rate-limiting'
 import type { 
   ImageGenerationRequest, 
   NanoBananaParams,
   MenuItem,
-  PhotoGenerationParams,
   UserPlan
 } from '@/types'
 import { PLAN_CONFIGS } from '@/types'
 import { logger } from '@/lib/logger'
-import { isCutoutFeatureEnabled } from '@/lib/background-removal/feature-flag'
-import { getBackgroundRemovalProvider } from '@/lib/background-removal/provider-factory'
-import { CutoutGenerationService } from '@/lib/background-removal/cutout-service'
-import { createAdminSupabaseClient } from '@/lib/supabase-server'
 
 export const runtime = 'nodejs'
 
@@ -29,14 +28,10 @@ export async function POST(request: NextRequest) {
   logger.info('🎨 [Generate Image] API called')
   
   try {
-    // Feature flag and fail-closed guard
+    // Feature flag (generation runs on the worker; web app only enqueues jobs)
     const disabled = process.env.AI_IMAGE_GENERATION_DISABLED === 'true'
-    const hasApiKey = !!process.env.NANO_BANANA_API_KEY
-    if (disabled || !hasApiKey) {
-      logger.warn('🛑 [Generate Image] Disabled via flag or missing API key', {
-        disabled,
-        hasApiKey
-      })
+    if (disabled) {
+      logger.warn('🛑 [Generate Image] Disabled via flag')
       return NextResponse.json(
         {
           error: 'Image creation is temporarily unavailable',
@@ -285,6 +280,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const { data: activeForItem, error: activeJobCheckError } = await supabase
+      .from('image_generation_jobs')
+      .select('id, menu_item_id, status')
+      .eq('menu_item_id', normalizedMenuItemId)
+      .in('status', ['queued', 'processing'])
+
+    if (activeJobCheckError) {
+      logger.warn('❌ [Generate Image] Failed to check active jobs:', activeJobCheckError)
+      return NextResponse.json(
+        { error: 'Failed to check image generation status', code: 'ACTIVE_JOB_CHECK_FAILED' },
+        { status: 500 }
+      )
+    }
+
+    if (activeForItem && activeForItem.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Image generation is already in progress for this item.',
+          code: 'IMAGE_GENERATION_ALREADY_ACTIVE',
+          activeJobs: activeForItem,
+        },
+        { status: 409 }
+      )
+    }
+
     // Phase 3.5: Validate requested resolution against plan limits
     const requestedResolution = (body.styleParams as any)?.resolution || '1k'
     const planConfig = PLAN_CONFIGS[plan]
@@ -316,38 +336,9 @@ export async function POST(request: NextRequest) {
       numberOfVariations: requestedVariations
     }
 
-    // Process reference images if provided
-    let reference_images: NanoBananaParams['reference_images'] = undefined
-    if (body.referenceImages && Array.isArray(body.referenceImages) && body.referenceImages.length > 0) {
-      logger.info(`📸 [Generate Image] Processing ${body.referenceImages.length} reference images`)
-      reference_images = []
-      for (let i = 0; i < body.referenceImages.length; i++) {
-        const ref = body.referenceImages[i]
-        if (i >= 3) break // Limit to 3
-
-        // Use a more robust regex that allows for optional whitespace/newlines and doesn't require anchors if we split
-        const dataUrl = (ref.dataUrl || '').trim()
-        const match = dataUrl.match(/^data:(image\/png|image\/jpeg|image\/webp);base64,/)
-        
-        if (match) {
-          const mimeType = match[1] as any
-          const data = dataUrl.substring(match[0].length).replace(/[\r\n\s]/g, '')
-          
-          if (data) {
-            logger.debug(`🖼️ [Generate Image] Reference ${i + 1}: type=${mimeType}, dataLen=${data.length}, comment="${ref.comment || ''}"`)
-            reference_images.push({
-              mimeType,
-              data,
-              role: ref.role || 'other',
-              comment: ref.comment
-            })
-          } else {
-            logger.warn(`⚠️ [Generate Image] Reference ${i + 1}: No data after header`)
-          }
-        } else {
-          logger.warn(`⚠️ [Generate Image] Reference ${i + 1}: Invalid dataUrl format (starts with ${dataUrl.substring(0, 30)}...)`)
-        }
-      }
+    const reference_images = parseReferenceImagesForEnqueue(body.referenceImages)
+    if (body.referenceImages?.length) {
+      logger.info(`📸 [Generate Image] Parsed ${reference_images?.length ?? 0} reference image(s)`)
     }
     
     // Build prompt using prompt construction service
@@ -398,7 +389,6 @@ export async function POST(request: NextRequest) {
     // Estimate cost
     const costEstimate = await quotaOperations.estimateCost(generationRequest)
     
-    // Synchronous generation path to support JSON-backed items (no UUID dependency)
     const apiParams: NanoBananaParams = {
       prompt: promptResult.prompt,
       negative_prompt: promptResult.negativePrompt,
@@ -411,221 +401,61 @@ export async function POST(request: NextRequest) {
       reference_mode: body.referenceMode || (reference_images ? 'composite' : undefined)
     }
 
-    // Create a job record to track this attempt (synchronous path)
-    const { data: jobRow, error: jobInsertError } = await supabase
-      .from('image_generation_jobs')
-      .insert({
-        user_id: user.id,
-        menu_item_id: normalizedMenuItemId,
-        status: 'processing',
-        prompt: promptResult.prompt,
-        negative_prompt: promptResult.negativePrompt,
-        api_params: apiParams,
-        number_of_variations: requestedVariations,
-        estimated_cost: costEstimate.estimatedTotal,
-        started_at: new Date().toISOString(),
-      })
-      .select('id')
-      .single()
+    const priority = getImageGenerationQueuePriority(plan)
 
-    if (jobInsertError || !jobRow) {
-      logger.error('❌ [Generate Image] Failed to create job record:', jobInsertError)
-      return NextResponse.json(
-        { error: 'Failed to start image generation' },
-        { status: 500 }
-      )
-    }
-
-    // Note: we deliberately do NOT invalidate cutouts on existing images for this menu item.
-    // Each ai_generated_image is independent — generating a new image has no effect on the
-    // pixel content of existing images, so their cutouts remain valid and should be preserved.
-
-    const startTime = Date.now()
-    const genResult = await getNanoBananaClient().generateImage(apiParams)
-    const processingTime = Date.now() - startTime
-
-    const images = [] as Array<{ id: string; originalUrl: string; thumbnailUrl: string; mobileUrl: string; desktopUrl: string; webpUrl?: string; jpegUrl?: string }>
-    for (const base64Image of genResult.images) {
-      const processed = await imageProcessingService.processGeneratedImage(
-        base64Image,
+    const { insertedJobs, quotaAfter } = await insertQueuedImageJobsConsumeQuotaAndRelease(supabase, {
+      userId: user.id,
+      jobs: [
         {
-          menuItemId: generationRequest.menuItemId,
-          generationJobId: jobRow.id,
-          originalPrompt: promptResult.prompt,
-          aspectRatio: generationRequest.styleParams.aspectRatio || '1:1',
-          generatedAt: new Date(),
-          // Store angle in metadata for gallery labeling
-          metadata: {
-            angle: body.styleParams?.angle
-          }
-        },
-        user.id
-      )
-
-      // Persist metadata so previous images can be fetched for comparison
-      await imageProcessingService.storeImageMetadata(processed)
-
-      images.push({
-        id: processed.id,
-        originalUrl: processed.originalUrl,
-        thumbnailUrl: processed.thumbnailUrl,
-        mobileUrl: processed.mobileUrl,
-        desktopUrl: processed.desktopUrl,
-        webpUrl: processed.webpUrl,
-        jpegUrl: processed.jpegUrl
-      })
-    }
-
-    // Mark first image as selected for convenience and update menu item
-    if (images[0]) {
-      const selectedImage = images[0]
-      logger.info('🎯 [Generate Image] Automatically selecting first variation', { imageId: selectedImage.id })
-
-      // Keep selection state consistent (unselect old + select new)
-      const { error: selectErr } = await supabase.rpc('select_ai_image_for_menu_item', {
-        p_menu_item_id: normalizedMenuItemId,
-        p_image_id: selectedImage.id
-      })
-      if (selectErr) {
-        logger.error('❌ [Generate Image] Failed to select image via RPC:', selectErr)
-      }
-
-      // Ensure menu_items references the newly selected AI image explicitly
-      const { error: miErr } = await supabase
-        .from('menu_items')
-        .update({
-          ai_image_id: selectedImage.id,
-          image_source: 'ai',
-          custom_image_url: null
-        })
-        .eq('id', normalizedMenuItemId)
-      if (miErr) logger.error('❌ [Generate Image] Failed to update menu_items:', miErr)
-
-      // Update menu JSON (both flat items and nested category items) to keep pages in sync
-      const currentMenuData = menuRow.menu_data || {}
-      const imageUpdate = {
-        aiImageId: selectedImage.id,
-        imageSource: 'ai' as const,
-        customImageUrl: null as string | null,
-      }
-      const updatedItems = (currentMenuData.items || []).map((it: any) =>
-        it.id === normalizedMenuItemId ? { ...it, ...imageUpdate } : it
-      )
-      const updatedCategories = (currentMenuData.categories || []).map((cat: any) => {
-        if (!Array.isArray(cat.items)) return cat
-        return {
-          ...cat,
-          items: cat.items.map((it: any) =>
-            it.id === normalizedMenuItemId ? { ...it, ...imageUpdate } : it
-          ),
-        }
-      })
-
-      const { error: menuUpdateErr } = await supabase
-        .from('menus')
-        .update({
-          menu_data: {
-            ...currentMenuData,
-            items: updatedItems,
-            categories: updatedCategories,
-          },
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', body.menuId)
-
-      if (menuUpdateErr) logger.error('❌ [Generate Image] Failed to update menu JSON:', menuUpdateErr)
-      else logger.info('✅ [Generate Image] Menu JSON updated with selected AI image')
-    }
-
-    // Consume quota immediately for synchronous generation
-    await quotaOperations.consumeQuota(user.id, requestedVariations)
-
-    // Update job as completed
-    await supabase
-      .from('image_generation_jobs')
-      .update({
-        status: 'completed',
-        result_count: genResult.images.length,
-        processing_time: processingTime,
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', jobRow.id)
-
-    // Create pending cutout jobs for generated images (best-effort, never blocks response)
-    // SKIP if a reference image was provided (Phase 2.6 feedback)
-    try {
-      const cutoutEnabled = isCutoutFeatureEnabled() && !body.referenceImages?.length
-      if (cutoutEnabled) {
-        const cutoutProvider = getBackgroundRemovalProvider()
-        const cutoutService = new CutoutGenerationService(cutoutProvider, createAdminSupabaseClient())
-        
-        // Calculate stagger delay for batch scenarios (Phase 3.2)
-        // When batchIndex is provided, delay cutout requests by batchIndex * 3000ms
-        // to space them across the batch and avoid rate limit bursts
-        const batchStaggerMs = (body.batchIndex ?? 0) * 3000
-        
-        for (const image of images) {
-          try {
-            // Apply stagger delay if this is part of a batch
-            if (batchStaggerMs > 0) {
-              logger.info(`⏳ [Generate Image] Staggering cutout request by ${batchStaggerMs}ms for batch index ${body.batchIndex}`)
-              await new Promise(resolve => setTimeout(resolve, batchStaggerMs))
-            }
-            
-            await cutoutService.requestCutout({
-              imageId: image.id,
-              imageUrl: image.originalUrl,
-              userId: user.id,
-              menuId: body.menuId,
-              menuItemId: normalizedMenuItemId,
-            })
-            logger.info(`✂️ [Generate Image] Cutout job created for image ${image.id}`)
-          } catch (cutoutErr) {
-            logger.warn(`⚠️ [Generate Image] Failed to create cutout job for image ${image.id}`, cutoutErr)
-          }
-        }
-      }
-    } catch (cutoutErr) {
-      logger.warn('⚠️ [Generate Image] Cutout integration error (non-blocking)', cutoutErr)
-    }
-
-    // Record generation analytics (best-effort)
-    try {
-      await analyticsOperations.recordGenerationSuccess(
-        user.id,
-        genResult.images.length,
-        costEstimate.estimatedTotal,
-        processingTime,
-        {
-          aspect_ratio: apiParams.aspect_ratio,
-          number_of_images: apiParams.number_of_images,
+          user_id: user.id,
+          menu_id: body.menuId,
           menu_item_id: normalizedMenuItemId,
-        }
-      )
-      // Check cost thresholds for alerts
-      await analyticsOperations.checkGenerationCostThresholds()
-    } catch (e) {
-      logger.warn('Failed to record generation analytics', e)
-    }
+          batch_id: null,
+          status: 'queued',
+          prompt: promptResult.prompt,
+          negative_prompt: promptResult.negativePrompt,
+          api_params: {
+            ...apiParams,
+            batch_index: body.batchIndex,
+            style_params: body.styleParams || {},
+            generation_notes: body.generationNotes,
+          },
+          number_of_variations: requestedVariations,
+          estimated_cost: costEstimate.estimatedTotal,
+          priority,
+          available_at: null,
+        },
+      ],
+      totalVariationUnits: requestedVariations,
+    })
+
+    const jobRow = insertedJobs[0]
+    const jobId = jobRow.id
 
     return NextResponse.json({
       success: true,
       data: {
+        jobId,
+        job: {
+          id: jobId,
+          userId: user.id,
+          menuItemId: normalizedMenuItemId,
+          menuId: body.menuId,
+          status: 'queued',
+          numberOfVariations: requestedVariations,
+          createdAt: jobRow.created_at,
+        },
         menuItemId: normalizedMenuItemId,
-        images,
         prompt: promptResult.prompt,
         negativePrompt: promptResult.negativePrompt,
-        processingTime,
         estimatedCost: costEstimate.estimatedTotal,
         quota: {
-          remaining: quotaStatus.remaining - requestedVariations,
-          used: quotaStatus.used + requestedVariations,
-          limit: quotaStatus.limit,
+          ...quotaAfter,
           itemDailyRemaining: remainingForToday - requestedVariations,
-          itemDailyLimit: DAILY_LIMIT
-        }
-      }
-    }, { status: 201 })
+          itemDailyLimit: DAILY_LIMIT,
+        },
+      },
+    }, { status: 202 })
     
   } catch (error) {
     logger.error('❌ [Generate Image] Error:', error)

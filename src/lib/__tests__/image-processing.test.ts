@@ -176,6 +176,43 @@ describe('ImageProcessingService', () => {
       });
     });
 
+    it('should normalize Docker storage URLs to the browser Supabase URL', async () => {
+      const previousPublicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const previousInternalUrl = process.env.SUPABASE_INTERNAL_URL;
+      process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321';
+      process.env.SUPABASE_INTERNAL_URL = 'http://host.docker.internal:54321';
+
+      mockSupabase.storage.getPublicUrl.mockImplementation((path: string) => ({
+        data: {
+          publicUrl: `http://host.docker.internal:54321/storage/v1/object/public/ai-generated-images/${path}`
+        }
+      }));
+
+      try {
+        const result = await imageProcessingService.processGeneratedImage(
+          mockBase64Data,
+          mockMetadata,
+          mockUserId
+        );
+
+        expect(result.desktopUrl).toMatch(
+          /^http:\/\/localhost:54321\/storage\/v1\/object\/public\/ai-generated-images\/user-123\/test-uuid-123\/desktop_\d+\.webp$/
+        );
+      } finally {
+        if (previousPublicUrl === undefined) {
+          delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+        } else {
+          process.env.NEXT_PUBLIC_SUPABASE_URL = previousPublicUrl;
+        }
+
+        if (previousInternalUrl === undefined) {
+          delete process.env.SUPABASE_INTERNAL_URL;
+        } else {
+          process.env.SUPABASE_INTERNAL_URL = previousInternalUrl;
+        }
+      }
+    });
+
     it('should handle upload errors gracefully', async () => {
       mockSupabase.storage.upload.mockResolvedValueOnce({
         data: null,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { UXSection, UXButton, UXCard } from '@/components/ux'
@@ -24,6 +24,11 @@ import BatchPhotoModal from '@/components/BatchPhotoModal'
 import BulkDeleteModal from '@/components/BulkDeleteModal'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
+import {
+  getImageGenerationJobLabel,
+  isActiveImageGenerationJob,
+  useImageGenerationStatus,
+} from '@/lib/image-generation/use-image-generation-status'
 
 // Constants for category management
 const DEFAULT_CATEGORY = 'Uncategorized'
@@ -98,6 +103,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const isNewExtraction = searchParams.get('newExtraction') === 'true'
   const { showToast } = useToast()
   const appliedRef = useRef(false)
+  const previousActiveImageJobCount = useRef(0)
 
   // Loading messages for the charismatic loading state
   const loadingMessages = useMemo(() => [
@@ -122,6 +128,25 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
 
   const isDemo = menuId.startsWith('demo-')
   const isReadOnly = !isDemo && canEdit === false
+  const {
+    data: imageGenerationStatus,
+    refresh: refreshImageGenerationStatus,
+  } = useImageGenerationStatus(menuId, !isDemo)
+  const latestImageJobByItem = imageGenerationStatus?.latestByItem ?? {}
+  const activeImageJobsByItem = imageGenerationStatus?.activeByItem ?? {}
+  const activeImageGenerationItemIds = useMemo(
+    () => new Set((imageGenerationStatus?.activeJobs ?? []).map(job => job.menuItemId)),
+    [imageGenerationStatus?.activeJobs]
+  )
+  const activeImageJobCount = imageGenerationStatus?.activeCount ?? 0
+
+  const isItemImageGenerationActive = useCallback((itemId: string) => {
+    return (
+      activeImageGenerationItemIds.has(itemId) ||
+      !!activeImageJobsByItem[itemId]?.length ||
+      isActiveImageGenerationJob(latestImageJobByItem[itemId])
+    )
+  }, [activeImageGenerationItemIds, activeImageJobsByItem, latestImageJobByItem])
 
   const blocked = (action: string) => {
     showToast({
@@ -1146,7 +1171,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     }
   }
 
-  const refreshAuthMenu = async () => {
+  const refreshAuthMenu = useCallback(async () => {
     try {
       const resp = await fetch(`/api/menus/${menuId}`)
       const json = await resp.json().catch(() => ({}))
@@ -1156,7 +1181,17 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
     } catch {
       // best-effort
     }
-  }
+  }, [menuId])
+
+  useEffect(() => {
+    if (isDemo) return
+
+    if (previousActiveImageJobCount.current > 0 && activeImageJobCount === 0) {
+      refreshAuthMenu()
+    }
+
+    previousActiveImageJobCount.current = activeImageJobCount
+  }, [activeImageJobCount, isDemo, refreshAuthMenu])
 
   const applyAIImageToMenuItem = async (
     itemId: string,
@@ -1864,6 +1899,17 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           </UXCard>
         )}
 
+        {!isDemo && activeImageJobCount > 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
+            <div className="font-semibold">
+              {activeImageJobCount} photo {activeImageJobCount === 1 ? 'job is' : 'jobs are'} still generating
+            </div>
+            <p className="mt-1 text-amber-800">
+              You can keep editing while thumbnails update automatically as each background job finishes.
+            </p>
+          </div>
+        )}
+
         {/* Extracted Items by Category */}
         <div className="space-y-6">
           {(categories || []).map((category) => {
@@ -2068,6 +2114,12 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                         : ((raw.customImageUrl as string | undefined)
                           || (raw.imageUrl as string | undefined))
                       const hasImage = typeof imageSrc === 'string' && imageSrc.length > 0
+                      const imageJob = !isDemo && typeof raw.id === 'string'
+                        ? latestImageJobByItem[raw.id]
+                        : undefined
+                      const imageJobLabel = getImageGenerationJobLabel(imageJob)
+                      const isImageJobActive = isActiveImageGenerationJob(imageJob)
+                      const shouldShowImageJobOverlay = !!imageJobLabel && imageJob?.status !== 'completed'
                       const price =
                         typeof raw.price === 'number'
                           ? raw.price
@@ -2224,7 +2276,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                           </div>
 
                           <div className="relative z-10 flex items-end gap-3 mt-auto pt-2">
-                            <div className="h-16 w-16 rounded-md border border-dashed border-ux-border bg-ux-background-secondary overflow-hidden flex items-center justify-center text-[11px] text-ux-text-secondary">
+                            <div className="relative h-16 w-16 rounded-md border border-dashed border-ux-border bg-ux-background-secondary overflow-hidden flex items-center justify-center text-[11px] text-ux-text-secondary">
                               {hasImage ? (
                                 <button
                                   type="button"
@@ -2260,6 +2312,21 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                                     <span className="text-[10px] leading-none">No photo</span>
                                   </div>
                                 )
+                              )}
+                              {imageJob && shouldShowImageJobOverlay && (
+                                <div
+                                  className={`absolute inset-0 flex flex-col items-center justify-center gap-1 px-1 text-center text-[10px] font-semibold ${
+                                    imageJob.status === 'failed'
+                                        ? 'bg-red-500/85 text-white'
+                                        : 'bg-amber-500/85 text-white'
+                                  }`}
+                                  aria-label={`Photo generation ${imageJobLabel.toLowerCase()}`}
+                                >
+                                  {isImageJobActive && (
+                                    <span className="h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden="true" />
+                                  )}
+                                  <span>{imageJobLabel}</span>
+                                </div>
                               )}
                             </div>
                             <div className="flex-1 flex flex-col items-end text-right gap-1">
@@ -2374,6 +2441,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             setShowBatchGeneration(false)
             setSelectedItemKeys(new Set())
             await refreshMenu()
+            refreshImageGenerationStatus()
           }}
           // In batch mode, avoid per-item toasts; the batch modal provides summary feedback.
           onItemImageGenerated={(itemId, imageUrl, imageId) => applyAIImageToMenuItem(itemId, imageUrl, { silent: true, closeModal: false, imageId })}
@@ -2635,12 +2703,28 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           menuId={menuId}
           availableCategories={categories}
           allItems={authMenu.items}
+          imageGenerationInProgress={isItemImageGenerationActive(activeMenuItem.id)}
           onClose={() => setActiveMenuItem(null)}
           onItemUpdated={async () => {
             await refreshMenu()
             setSelectedItemKeys(new Set()) // Clear selections after update
           }}
-          onManageImages={() => {
+          onManageImages={async () => {
+            const latestStatus = await refreshImageGenerationStatus()
+            const activeForItem =
+              latestStatus?.activeJobs?.some(job => job.menuItemId === activeMenuItem.id) ||
+              isActiveImageGenerationJob(latestStatus?.latestByItem?.[activeMenuItem.id]) ||
+              isItemImageGenerationActive(activeMenuItem.id)
+
+            if (activeForItem) {
+              showToast({
+                type: 'info',
+                title: 'Photo generation in progress',
+                description: 'Please wait for this item’s background photo generation to finish before managing photos.',
+              })
+              return
+            }
+
             setShowPhotoGallery(activeMenuItem)
             setActiveMenuItem(null)
           }}
@@ -2710,9 +2794,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             setShowBatchPhoto(false)
             setSelectedItemKeys(new Set())
             refreshAuthMenu()
-          }}
-          onItemImageGenerated={async (itemId, imageUrl, imageId) => {
-            await applyAIImageToMenuItem(itemId, imageUrl, { silent: true, closeModal: false, imageId })
+            refreshImageGenerationStatus()
           }}
         />
       )}

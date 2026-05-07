@@ -46,6 +46,43 @@ export interface OptimizedImage {
   };
 }
 
+function normalizeStoragePublicUrl(publicUrl: string): string {
+  const browserSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!browserSupabaseUrl) return publicUrl;
+
+  try {
+    const browserUrl = new URL(browserSupabaseUrl);
+    const storageUrl = new URL(publicUrl);
+    const configuredInternalOrigins = [
+      process.env.SUPABASE_INTERNAL_URL,
+      process.env.WORKER_SUPABASE_URL,
+    ]
+      .map((value) => {
+        try {
+          return value ? new URL(value).origin : null;
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+
+    const isKnownInternalUrl =
+      storageUrl.hostname === 'host.docker.internal' ||
+      storageUrl.hostname === 'localhost' ||
+      storageUrl.hostname === '127.0.0.1' ||
+      configuredInternalOrigins.includes(storageUrl.origin);
+
+    if (isKnownInternalUrl) {
+      storageUrl.protocol = browserUrl.protocol;
+      storageUrl.host = browserUrl.host;
+    }
+
+    return storageUrl.toString();
+  } catch {
+    return publicUrl;
+  }
+}
+
 export class ImageProcessingService {
   private readonly BUCKET_NAME = 'ai-generated-images';
   private readonly SIZES = {
@@ -250,7 +287,7 @@ export class ImageProcessingService {
       .from(this.BUCKET_NAME)
       .getPublicUrl(path);
 
-    return urlData.publicUrl;
+    return normalizeStoragePublicUrl(urlData.publicUrl);
   }
 
   /**

@@ -120,6 +120,7 @@ export async function GET(
     const bannerImageStyle = searchParams.get('bannerImageStyle') || undefined
     const fontStylePreset = searchParams.get('fontStylePreset') || undefined
     const flagshipItemId = searchParams.get('flagshipItemId') || undefined
+    const assetVersion = searchParams.get('assetVersion') || undefined
     
     if (!templateId) {
       return NextResponse.json(
@@ -196,6 +197,7 @@ export async function GET(
       bannerImageStyle,
       fontStylePreset,
       flagshipItemId,
+      assetVersion,
       structuralPaletteId,
     }
     // Full configuration still passed to the layout engine so banner/footer tiles have
