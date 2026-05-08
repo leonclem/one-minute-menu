@@ -26,31 +26,28 @@ export const THEME_PRESETS_V2: ThemePresetV2[] = [
   {
     id: 'galactic-menu',
     paletteId: 'galactic-menu',
-    tagline: 'A menu from another galaxy',
-    // Disable after Star Wars Day window. This is intentionally hard-coded for now.
-    enabledUntil: '2026-05-06T00:00:00.000Z',
+    tagline: 'A bold neon blue palette with dark space tones',
     lockedSelection: {
       // Lock: themed background (warp speed)
       texturesEnabled: true,
       textureId: 'warp-speed-bg',
-      // Lock: always show the banner with a preset title and standard font preset
+      // Lock: always show the banner
       showBanner: true,
-      bannerTitle: 'Galactic Menu',
       showBannerTitle: true,
       bannerSwapLayout: true,
       bannerImageStyle: 'none',
       showLogoTile: false,
       showCategoryHeaderTiles: false,
-      fontStylePreset: 'standard',
+      // Default to Future font — user can change this
+      fontStylePreset: 'future',
     },
-    // Restrict to a small cosmic choice set + mix (blank is allowed as neutral fallback).
+    // Restrict to a small choice set + mix (blank is allowed as neutral fallback).
     allowedSpacerTilePatternIds: [
       'mix',
       'none',
       'blank',
       'warp-speed',
       'targeting-grid',
-      'orbit-map',
     ],
   },
 ]

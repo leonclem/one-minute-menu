@@ -21,7 +21,7 @@ const VALID_IMAGE_MODES: readonly ImageModeV2[] = ['none', 'compact-rect', 'comp
 const layoutCache = new Map<string, { layout: any; timestamp: number }>()
 const CACHE_TTL = 3600000 // 1 hour in milliseconds
 const MAX_CACHE_SIZE = 100
-const LAYOUT_CACHE_VERSION = 'v10'
+const LAYOUT_CACHE_VERSION = 'v17'
 
 /**
  * Generate a cache key for a layout

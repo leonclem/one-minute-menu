@@ -10,6 +10,8 @@ interface CollapsibleSectionProps {
   className?: string
   isExpanded?: boolean
   onExpand?: (expanded: boolean) => void
+  /** Optional badge shown next to the title — use for warnings or status indicators */
+  badge?: React.ReactNode
 }
 
 export function CollapsibleSection({
@@ -19,6 +21,7 @@ export function CollapsibleSection({
   className,
   isExpanded: controlledExpanded,
   onExpand,
+  badge,
 }: CollapsibleSectionProps) {
   const [internalExpanded, setInternalExpanded] = useState(defaultExpanded)
   const isExpanded = controlledExpanded !== undefined ? controlledExpanded : internalExpanded
@@ -53,10 +56,13 @@ export function CollapsibleSection({
             : 'hover:bg-ux-surface-hover'
         )}
       >
-        <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
-          {title}
-        </h4>
-        <span className="text-ux-text-secondary text-base leading-none font-bold w-4 text-center">
+        <div className="flex items-center gap-2 min-w-0">
+          <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
+            {title}
+          </h4>
+          {badge}
+        </div>
+        <span className="text-ux-text-secondary text-base leading-none font-bold w-4 text-center shrink-0">
           {isExpanded ? '−' : '+'}
         </span>
       </div>

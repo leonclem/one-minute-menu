@@ -1303,9 +1303,9 @@ describe('V2 Renderer', () => {
       const textElements = result.elements.filter(e => e.type === 'text')
       expect(textElements.length).toBeGreaterThanOrEqual(2)
 
-      // Footer text should use xs font size by default
+      // Footer text should use xss font size by default (compact microcopy)
       textElements.forEach(el => {
-        expect(el.style.fontSize).toBe(TYPOGRAPHY_TOKENS_V2.fontSize.xs)
+        expect(el.style.fontSize).toBe(TYPOGRAPHY_TOKENS_V2.fontSize.xss)
       })
     })
 
@@ -1653,7 +1653,7 @@ describe('V2 Renderer', () => {
         'matte-paper-grain',
         'warp-speed',
         'targeting-grid',
-        'orbit-map',
+        'single-flower',
       ]
       expect(FILLER_PATTERN_IDS).toEqual(expected)
       expected.forEach(id => {
@@ -1666,10 +1666,12 @@ describe('V2 Renderer', () => {
 
     it('should return palette-adaptive SVG data URI for each pattern', () => {
       const palette = PALETTES_V2[0] ?? DEFAULT_PALETTE_V2
+      // Include bannerSurface since some patterns (e.g. single-flower) use it as their tile fill
       const paletteColors = [
         palette.colors.surface ?? palette.colors.border.light,
         palette.colors.border.light,
-        palette.colors.border.medium
+        palette.colors.border.medium,
+        palette.colors.bannerSurface,
       ].filter(Boolean)
       for (const id of FILLER_PATTERN_IDS) {
         const config = FILLER_PATTERN_REGISTRY.get(id)

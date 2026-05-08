@@ -285,7 +285,7 @@ export interface FlagshipCardContentV2 {
 export type BannerImageStyle = 'cutout' | 'stretch-fit' | 'none'
 
 /** Font style preset for banner title and section headers */
-export type FontStylePreset = 'strong' | 'fun' | 'standard' | 'serif'
+export type FontStylePreset = 'strong' | 'fun' | 'standard' | 'serif' | 'future' | 'handwriting' | 'elegant'
 
 /** Banner tile content (full banner on FIRST/SINGLE pages) */
 export interface BannerContentV2 {

@@ -11,7 +11,7 @@
  */
 
 import { acquirePage } from '../export/puppeteer-shared'
-import { getTextureDataURL } from '../export/texture-utils'
+import { getTextureDataURL, fetchImageAsDataURL } from '../export/texture-utils'
 import { logger } from '../../logger'
 import type { ImageModeV2, LayoutDocumentV2 } from './engine-types-v2'
 import {
@@ -22,7 +22,6 @@ import {
   PALETTE_TEXTURE_MAP,
   TEXTURE_REGISTRY,
   getFontStylePresetGoogleFontsUrl,
-  getGalacticThemeGoogleFontsUrl,
   getFontSet,
   type RenderOptionsV2,
 } from './renderer-v2'
@@ -261,6 +260,18 @@ async function generateImageHTML(
     const textureConfig = TEXTURE_REGISTRY.get(textureLookupId)
     if (textureConfig?.pdfTextureFile) {
       textureDataURL = (await getTextureDataURL(textureConfig.pdfTextureFile)) || undefined
+      if (textureDataURL && textureConfig.overlayOpacity !== undefined) {
+        // Overlay texture: inject as a separate div so palette colour shows through
+        customCSS += `
+        .page-texture-overlay-v2 {
+          background-image: url('${textureDataURL}') !important;
+          background-size: cover !important;
+          background-repeat: no-repeat !important;
+          opacity: ${textureConfig.overlayOpacity} !important;
+        }
+      `
+        textureDataURL = undefined // Don't pass to renderer — CSS handles it
+      }
     } else if (textureConfig) {
       // For CSS-based textures, inject the CSS props
       const cssProps = textureConfig.webCssExport('')
@@ -287,11 +298,20 @@ async function generateImageHTML(
   // (section headers, logo tiles, banner title). Both are needed for a correct render.
   const baseFontsUrl = generateBaseFontsUrl(extractUsedFontSets(document))
   const presetFontsUrl = getFontStylePresetGoogleFontsUrl(effectiveFontStylePreset)
-  const galacticFontsUrl = palette.id === 'galactic-menu' ? getGalacticThemeGoogleFontsUrl() : ''
-  const fontLinks = [baseFontsUrl, presetFontsUrl, galacticFontsUrl]
+  const fontLinks = [baseFontsUrl, presetFontsUrl]
     .filter(Boolean)
     .map(url => `<link rel="stylesheet" href="${url}" />`)
     .join('\n    ')
+
+  // Pre-fetch social media icons as base64 data URLs for export
+  const socialIconDataUrls: Record<string, string> = {}
+  const socialIconFiles = { instagram: 'instagram.png', facebook: 'facebook.png', x: 'x.png', tiktok: 'tiktok.png' }
+  await Promise.all(
+    Object.entries(socialIconFiles).map(async ([key, file]) => {
+      const dataUrl = await fetchImageAsDataURL(`/logos/${file}`, undefined, 2000, false).catch(() => null)
+      if (dataUrl) socialIconDataUrls[key] = dataUrl
+    })
+  )
 
   // Render React component to HTML
   const PT_TO_PX = 96 / 72
@@ -314,6 +334,7 @@ async function generateImageHTML(
         spacerTilePatternId: options.spacerTilePatternId,
         fontStylePreset: effectiveFontStylePreset,
         centreAlignment: options.centreAlignment === true,
+        socialIconDataUrls,
         showGridOverlay: false,
         showRegionBounds: false,
         showTileIds: false,

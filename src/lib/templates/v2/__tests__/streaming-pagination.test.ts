@@ -35,7 +35,7 @@ describe('Streaming Paginator', () => {
   describe('Region spacing', () => {
     it('adds a small buffer below the banner before the first body row', () => {
       const bannerHeight = template.banner?.heightPt ?? 0
-      const expectedBodyY = Math.max(0, bannerHeight - pageSpec.margins.top) + 12
+      const expectedBodyY = Math.max(0, bannerHeight - pageSpec.margins.top) + 6
       const ctx = initContext(template, pageSpec, { showBanner: true })
       const bodyRegion = ctx.currentPage.regions.find(r => r.id === 'body')
 
@@ -237,7 +237,7 @@ describe('Streaming Paginator', () => {
         if ((tile.content as any).showImage) {
           expect(tile.type).toBe('ITEM_CARD')
           expect(tile.rowSpan).toBe(2) // ITEM_CARD should span 2 rows
-          expect(tile.height).toBe(148) // 2 * 70 + 1 * 8 = 148pt
+          expect(tile.height).toBe(144) // 2 * 70 + 1 * 4 = 144pt (gapY=4)
         }
       })
     })
@@ -386,15 +386,15 @@ describe('Streaming Paginator', () => {
 
       expect(item1.type).toBe('ITEM_CARD')
       expect(item1.rowSpan).toBe(2)
-      expect(item1.height).toBe(148)
+      expect(item1.height).toBe(144) // 2 * 70 + 1 * 4 = 144pt (gapY=4)
 
       expect(item2.type).toBe('ITEM_CARD') // Now uses ITEM_CARD with placeholder for visual parity
       expect(item2.rowSpan).toBe(2)
-      expect(item2.height).toBe(148)
+      expect(item2.height).toBe(144) // 2 * 70 + 1 * 4 = 144pt (gapY=4)
 
       expect(item3.type).toBe('ITEM_CARD')
       expect(item3.rowSpan).toBe(2)
-      expect(item3.height).toBe(148)
+      expect(item3.height).toBe(144) // 2 * 70 + 1 * 4 = 144pt (gapY=4)
     })
   })
 

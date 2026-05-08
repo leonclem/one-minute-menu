@@ -121,9 +121,9 @@ describe('Per-section text-only integration (Menu → transformMenuToV2 → gene
     }
 
     if (entrantesFillers.length > 0) {
-      // Fillers in Entrantes (has images) match ITEM_CARD: 2*70+8 = 148pt
+      // Fillers in Entrantes (has images) match ITEM_CARD: 2*70+4 = 144pt (gapY=4)
       expect(entrantesFillers.every(f => f.rowSpan === 2)).toBe(true)
-      expect(entrantesFillers.every(f => f.height === 148)).toBe(true)
+      expect(entrantesFillers.every(f => f.height === 144)).toBe(true)
     }
   })
 

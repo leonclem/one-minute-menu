@@ -5,9 +5,9 @@ name: 4 column (portrait)
 page:
   size: A4_PORTRAIT
   margins:
-    top: 22.68    # ~8mm in points (reduced by 60%)
-    right: 25.51  # ~9mm (reduced by 40%)
-    bottom: 22.68
+    top: 14
+    right: 25.51    # ~9mm (reduced by 40%)
+    bottom: 14
     left: 25.51
 
 regions:
@@ -16,7 +16,7 @@ regions:
   title:
     height: 32
   footer:
-    height: 38
+    height: 28
 
 body:
   container:
@@ -24,7 +24,7 @@ body:
     cols: 4
     rowHeight: 70
     gapX: 8
-    gapY: 8
+    gapY: 4
 
 banner:
   enabled: true
@@ -82,7 +82,7 @@ tiles:
         decoration: "none"
       spacing:
         paddingLeft: 4
-        paddingTop: 24
+        paddingTop: 12
         paddingBottom: 0
       border:
         width: 0.6
@@ -93,13 +93,13 @@ tiles:
       descLines: 0
       indicatorAreaHeight: 0
       imageBoxHeight: 0
-      paddingTop: 8
+      paddingTop: 6
       paddingBottom: 4
-      totalHeight: 24
+      totalHeight: 22
 
-  # Grid math (rowHeight=70, gapY=8):
+  # Grid math (rowHeight=70, gapY=4):
   #   ITEM_TEXT_ROW: 1 row  → 1×70             = 70pt   (text-only items)
-  #   ITEM_CARD:     2 rows → 2×70 + 1×8       = 148pt  (items with images; featured use same footprint)
+  #   ITEM_CARD:     2 rows → 2×70 + 1×4       = 144pt  (items with images; featured use same footprint)
   ITEM_CARD:
     region: body
     rowSpan: 2
@@ -126,7 +126,7 @@ tiles:
       imageBoxHeight: 70
       paddingTop: 8
       paddingBottom: 8
-      totalHeight: 148
+      totalHeight: 144
 
   ITEM_TEXT_ROW:
     region: body
@@ -175,7 +175,7 @@ tiles:
       imageBoxHeight: 84
       paddingTop: 12
       paddingBottom: 8
-      totalHeight: 148
+      totalHeight: 144
 
   FOOTER_INFO:
     region: footer
@@ -196,7 +196,7 @@ tiles:
       imageBoxHeight: 0
       paddingTop: 4
       paddingBottom: 0
-      totalHeight: 38
+      totalHeight: 28
 
   # DECORATIVE_DIVIDER: full-width divider between sections
   # Height formula: 1 * 70 + 0 * 8 = 70pt

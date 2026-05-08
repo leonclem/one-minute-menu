@@ -38,7 +38,6 @@ import {
   TEXTURE_REGISTRY,
   PALETTE_TEXTURE_MAP,
   getFontStylePresetGoogleFontsUrl,
-  getGalacticThemeGoogleFontsUrl,
   BG_IMAGE_TEXT,
   blendHexTowards,
   getFlagshipBadgeMetrics,
@@ -106,16 +105,6 @@ function loadGoogleFonts(fontSetIds: string[]): void {
   document.head.appendChild(link)
 }
 
-function loadGalacticHeaderFonts(): void {
-  if (typeof window === 'undefined') return
-  const url = getGalacticThemeGoogleFontsUrl()
-  const existing = window.document.querySelector(`link[href="${url}"]`)
-  if (existing) return
-  const link = window.document.createElement('link')
-  link.rel = 'stylesheet'
-  link.href = url
-  window.document.head.appendChild(link)
-}
 
 // ============================================================================
 // Web Render Function
@@ -194,10 +183,9 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
     }
   }, [options.fontStylePreset])
 
-  // Galactic banner font (Orbitron / Anta) for preview + PDF export.
-  useEffect(() => {
-    if (palette?.id === 'galactic-menu') loadGalacticHeaderFonts()
-  }, [palette?.id])
+
+  // Galactic banner font (Orbitron / Anta) is now loaded via the fontStylePreset effect above
+  // when the 'future' preset is selected.
 
   const bgColor = palette?.colors.background || COLOR_TOKENS_V2.background.white
   const mutedTextColor = palette?.colors.textMuted || COLOR_TOKENS_V2.text.muted
@@ -212,7 +200,9 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
     || (texturesEnabled && palette?.id ? PALETTE_TEXTURE_MAP[palette.id] : undefined)
   if (resolvedTextureId) {
     const textureConfig = TEXTURE_REGISTRY.get(resolvedTextureId)
-    if (textureConfig) {
+    // Only merge texture CSS onto the background div when there's no overlayOpacity —
+    // overlay textures are rendered as a separate div so the palette colour shows through.
+    if (textureConfig && !textureConfig.overlayOpacity) {
       const textureUrl = textureConfig.pdfTextureFile
         ? (options.textureDataURL || `/textures/${textureConfig.pdfTextureFile}`)
         : ''
@@ -241,7 +231,7 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
         overflow: 'hidden'
       }}
     >
-      {/* Background layer (color + texture) - explicitly behind content so borders/shadows read clearly */}
+      {/* Background layer (color) - explicitly behind content so borders/shadows read clearly */}
       <div
         className="page-background-v2"
         style={{
@@ -251,6 +241,31 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
           ...backgroundStyle
         }}
       />
+
+      {/* Texture overlay — rendered as a separate div when the texture has overlayOpacity set,
+          so the palette background colour shows through underneath at full strength */}
+      {resolvedTextureId && (() => {
+        const textureConfig = TEXTURE_REGISTRY.get(resolvedTextureId)
+        if (!textureConfig?.overlayOpacity) return null
+        const textureUrl = textureConfig.pdfTextureFile
+          ? (options.textureDataURL || `/textures/${textureConfig.pdfTextureFile}`)
+          : ''
+        const cssProps = isExport
+          ? textureConfig.webCssExport(textureUrl)
+          : textureConfig.webCss(textureUrl)
+        return (
+          <div
+            className="page-texture-overlay-v2"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 0,
+              opacity: textureConfig.overlayOpacity,
+              ...cssProps as React.CSSProperties,
+            }}
+          />
+        )
+      })()}
 
       {/* Full-bleed banner — flush to top and side edges */}
       {bannerRegion && (

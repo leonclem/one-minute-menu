@@ -79,6 +79,10 @@ temp
 public
 !public/textures
 !public/textures/**
+!public/logos/instagram.png
+!public/logos/facebook.png
+!public/logos/x.png
+!public/logos/tiktok.png
 
 # Supabase local
 supabase/.branches

@@ -23,6 +23,14 @@ export function getPaletteSwatchColors(palette: ColorPaletteV2): [string, string
       palette.colors.menuTitle
     ]
   }
+  if (palette.id === 'galactic-menu') {
+    // Dark navy background, mid-blue surface, neon cyan accent — matches the template output
+    return [
+      palette.colors.background,   // #0B1020 dark navy
+      palette.colors.surface!,     // #101A33 mid blue
+      palette.colors.sectionHeader // #57E6FF neon cyan
+    ]
+  }
   return [
     palette.colors.background,
     palette.colors.itemTitle,

@@ -309,7 +309,7 @@ export const PALETTES_V2: ColorPaletteV2[] = [
   },
   {
     id: 'galactic-menu',
-    name: 'Galactic Menu',
+    name: 'Neon Blue',
     colors: {
       background: '#0B1020',
       surface: '#101A33',

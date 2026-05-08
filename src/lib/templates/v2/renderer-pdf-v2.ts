@@ -12,7 +12,7 @@
  */
 
 import { getSharedBrowser, acquirePage } from '../export/puppeteer-shared'
-import { getTextureDataURL } from '../export/texture-utils'
+import { getTextureDataURL, fetchImageAsDataURL } from '../export/texture-utils'
 import { createElement } from 'react'
 import LayoutPreviewV2 from './renderer-web-v2'
 import { logger } from '../../logger'
@@ -27,7 +27,6 @@ import {
   PALETTE_TEXTURE_MAP,
   getFontSet,
   getFontStylePresetGoogleFontsUrl,
-  getGalacticThemeGoogleFontsUrl,
   type RenderOptionsV2,
 } from './renderer-v2'
 import { COLOR_TOKENS_V2, PALETTES_V2, DEFAULT_PALETTE_V2 } from './palettes-v2'
@@ -260,7 +259,18 @@ async function generatePDFHTML(
         textureDataURL = await getTextureDataURL(textureConfig.pdfTextureFile) || undefined
         if (textureDataURL) {
           logger.info(`[PDFRendererV2] Texture loaded successfully (length: ${textureDataURL.length})`)
-          customCSS += `
+          if (textureConfig.overlayOpacity !== undefined) {
+            // Overlay texture: inject as a separate pseudo-element so palette colour shows through
+            customCSS += `
+        .page-texture-overlay-v2 {
+          background-image: url('${textureDataURL}') !important;
+          background-size: cover !important;
+          background-repeat: no-repeat !important;
+          opacity: ${textureConfig.overlayOpacity} !important;
+        }
+      `
+          } else {
+            customCSS += `
         .page-container-v2 {
           background-image: url('${textureDataURL}') !important;
           background-size: cover !important;
@@ -268,6 +278,7 @@ async function generatePDFHTML(
           background-blend-mode: normal !important;
         }
       `
+          }
         } else {
           logger.warn(`[PDFRendererV2] Failed to load texture for: ${textureLookupId}`)
         }
@@ -288,6 +299,16 @@ async function generatePDFHTML(
     }
   }
 
+  // Pre-fetch social media icons as base64 data URLs for export
+  const socialIconDataUrls: Record<string, string> = {}
+  const socialIconFiles = { instagram: 'instagram.png', facebook: 'facebook.png', x: 'x.png', tiktok: 'tiktok.png' }
+  await Promise.all(
+    Object.entries(socialIconFiles).map(async ([key, file]) => {
+      const dataUrl = await fetchImageAsDataURL(`/logos/${file}`, undefined, 2000, false).catch(() => null)
+      if (dataUrl) socialIconDataUrls[key] = dataUrl
+    })
+  )
+
   // Render options optimized for PDF
   const renderOptions: RenderOptionsV2 = {
     scale: 96 / 72, // Convert points to CSS pixels (96 DPI)
@@ -303,6 +324,7 @@ async function generatePDFHTML(
     spacerTilePatternId: options.spacerTilePatternId,
     fontStylePreset: (options.fontStylePreset as any) || undefined,
     centreAlignment: options.centreAlignment,
+    socialIconDataUrls,
     showGridOverlay: false,
     showRegionBounds: options.showRegionBounds || false,
     showTileIds: false,
@@ -401,15 +423,11 @@ function generatePDFCSS(document: LayoutDocumentV2, paletteId?: string, fontStyl
   // Prefer the explicitly-passed preset (user's selection) over what's embedded in the document
   const fontStylePreset = (fontStylePresetOverride as FontStylePreset | undefined) ?? extractFontStylePreset(document)
   const presetFontsUrl = getFontStylePresetGoogleFontsUrl(fontStylePreset)
-  const galacticFontsUrl = paletteId === 'galactic-menu'
-    ? getGalacticThemeGoogleFontsUrl()
-    : ''
 
   // Collect Google Fonts URLs for <link> tags (render-blocking, more reliable than @import)
   const fontLinkUrls: string[] = []
   if (googleFontsURL) fontLinkUrls.push(googleFontsURL)
   if (presetFontsUrl) fontLinkUrls.push(presetFontsUrl)
-  if (galacticFontsUrl) fontLinkUrls.push(galacticFontsUrl)
 
   const css = `
     /* CSS Reset for PDF */

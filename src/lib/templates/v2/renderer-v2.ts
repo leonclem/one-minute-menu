@@ -145,6 +145,12 @@ export interface RenderOptionsV2 {
   fontStylePreset?: FontStylePreset
   /** Centre-align category headings (and item tiles when spacer tiles = "None") */
   centreAlignment?: boolean
+  /**
+   * Pre-fetched base64 data URLs for social media icons (used in export mode).
+   * Keys match the platform names: 'instagram' | 'facebook' | 'x' | 'tiktok'.
+   * When absent, the renderer falls back to relative /logos/ paths (web preview only).
+   */
+  socialIconDataUrls?: Record<string, string>
 }
 
 // ============================================================================
@@ -318,6 +324,34 @@ export const FONT_STYLE_PRESETS: Record<FontStylePreset, FontStylePresetConfig> 
     bannerTitleWeight: 700,
     sectionHeaderWeight: 700,
   },
+  future: {
+    id: 'future',
+    label: 'Future',
+    bannerTitleFamily: '"Orbitron", "Anta", system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+    sectionHeaderFamily: '"Orbitron", "Anta", system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+    googleFonts: 'Orbitron:wght@400;500;600;700&family=Anta',
+    bannerTitleWeight: 600,
+    sectionHeaderWeight: 500,
+  },
+  handwriting: {
+    id: 'handwriting',
+    label: 'Handwriting',
+    bannerTitleFamily: '"Petit Formal Script", cursive',
+    sectionHeaderFamily: '"Petit Formal Script", cursive',
+    googleFonts: 'Petit+Formal+Script',
+    bannerTitleWeight: 600, // Petit Formal Script is weight 400 only
+    sectionHeaderWeight: 600,
+    sectionHeaderFontSizeMultiplier: 0.8, // Script fonts read small — bump size to compensate
+  },
+  elegant: {
+    id: 'elegant',
+    label: 'Elegant',
+    bannerTitleFamily: '"Josefin Sans", "Arial Narrow", sans-serif',
+    sectionHeaderFamily: '"Josefin Sans", "Arial Narrow", sans-serif',
+    googleFonts: 'Josefin+Sans:wght@100;200;300', // Light end of the weight range
+    bannerTitleWeight: 600,
+    sectionHeaderWeight: 600,
+  },
 }
 
 /**
@@ -330,9 +364,6 @@ export function getFontStylePresetGoogleFontsUrl(preset: FontStylePreset): strin
   return `https://fonts.googleapis.com/css2?family=${config.googleFonts}&display=swap`
 }
 
-export function getGalacticThemeGoogleFontsUrl(): string {
-  return 'https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Anta&display=swap'
-}
 
 // ============================================================================
 // Typography Tokens (Shared between Web and PDF)
@@ -502,6 +533,12 @@ export interface TextureConfig {
   webCss: (textureUrl: string) => Record<string, string>
   webCssExport: (textureUrl: string) => Record<string, string>
   pdfTextureFile: string
+  /**
+   * When set, the texture is rendered as a separate absolutely-positioned overlay
+   * at this opacity (0–1), so the palette background colour shows through underneath.
+   * Without this, the texture is merged directly onto the background div.
+   */
+  overlayOpacity?: number
 }
 
 // SVG data-URI textures (inline, no external files needed).
@@ -738,6 +775,40 @@ export const TEXTURE_REGISTRY = new Map<string, TextureConfig>([
     }),
     pdfTextureFile: 'dark-paper-2.png',
   }],
+  ['floral', {
+    label: 'Floral',
+    webCss: (url: string) => ({
+      backgroundImage: `url('${url}')`,
+      backgroundSize: 'cover',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
+    }),
+    webCssExport: (url: string) => ({
+      backgroundImage: `url('${url}')`,
+      backgroundSize: 'cover',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
+    }),
+    pdfTextureFile: 'floral.png',
+    overlayOpacity: 0.15,
+  }],
+  ['hearts', {
+    label: 'Hearts',
+    webCss: (url: string) => ({
+      backgroundImage: `url('${url}')`,
+      backgroundSize: 'cover',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
+    }),
+    webCssExport: (url: string) => ({
+      backgroundImage: `url('${url}')`,
+      backgroundSize: 'cover',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
+    }),
+    pdfTextureFile: 'hearts.png',
+    overlayOpacity: 0.15,
+  }],
   ['paper-grain', { label: 'Paper Grain', ...svgTexturePattern(SVG_TEXTURES.paperGrain, SVG_TEXTURES_EXPORT.paperGrain) }],
   // Legacy: old "Subtle Noise" ID; same effect as Paper Grain for saved configs
   ['subtle-noise', { label: 'Paper Grain', ...svgTexturePattern(SVG_TEXTURES.paperGrain, SVG_TEXTURES_EXPORT.paperGrain) }],
@@ -747,7 +818,7 @@ export const TEXTURE_REGISTRY = new Map<string, TextureConfig>([
   ['waves', { label: 'Waves', ...svgTexturePattern(SVG_TEXTURES.wave, SVG_TEXTURES_EXPORT.wave) }],
   ['linen', { label: 'Linen', ...svgTexturePattern(SVG_TEXTURES.linen, SVG_TEXTURES_EXPORT.linen) }],
   ['subtle-dots', { label: 'Subtle Dots', ...svgTexturePattern(SVG_TEXTURES.subtleDots, SVG_TEXTURES_EXPORT.subtleDots) }],
-  // Theme-only: non-selectable by users (not in TEXTURE_IDS).
+  // Dark-only: available for dark palettes (Neon Blue, Midnight Gold, Lunar Red & Gold).
   ['warp-speed-bg', {
     label: 'Warp Speed',
     webCss: () => ({
@@ -776,19 +847,22 @@ export const TEXTURE_IDS: string[] = [
   'stripes-diagonal',
   'waves',
   'linen',
+  'floral',
+  'hearts',
   'dark-paper',
+  'warp-speed-bg',
 ]
 
 /** Palette IDs that are dark-themed and pair well with dark-only textures */
-export const DARK_PALETTE_IDS = new Set(['midnight-gold', 'lunar-red-gold', 'elegant-dark'])
+export const DARK_PALETTE_IDS = new Set(['midnight-gold', 'lunar-red-gold', 'elegant-dark', 'galactic-menu'])
 
 /** Texture IDs that only work well on dark palettes */
-export const DARK_ONLY_TEXTURE_IDS = new Set(['dark-paper'])
+export const DARK_ONLY_TEXTURE_IDS = new Set(['dark-paper', 'warp-speed-bg'])
 
 /** Texture IDs that only work well on light palettes */
 export const LIGHT_ONLY_TEXTURE_IDS = new Set([
   'subtle-dots', 'paper-grain', 'stripes-horizontal', 'stripes-vertical',
-  'stripes-diagonal', 'waves', 'linen',
+  'stripes-diagonal', 'waves', 'linen', 'floral', 'hearts',
 ])
 
 // ============================================================================
@@ -946,7 +1020,7 @@ function starsSvg(palette: ColorPaletteV2): string {
   return fillerSvgDataUri(body, '0 0 96 96')
 }
 
-/** Retro targeting grid: rings + crosshair + small blips. */
+/** Retro Target: rings + crosshair + small blips. */
 function targetingGridSvg(palette: ColorPaletteV2): string {
   const { base, light, mid } = fillerPalette(palette)
   const accent = palette.colors.accent ?? palette.colors.sectionHeader ?? palette.colors.itemPrice
@@ -968,7 +1042,8 @@ function targetingGridSvg(palette: ColorPaletteV2): string {
   return fillerSvgDataUri(body, '0 0 96 96')
 }
 
-/** Orbit map: concentric orbits with small planets, subtle grid. */
+/** Orbit map: concentric orbits with small planets, subtle grid. Kept for potential future use. */
+// eslint-disable-next-line no-unused-vars
 function orbitMapSvg(palette: ColorPaletteV2): string {
   const { base, light, mid } = fillerPalette(palette)
   const accent = palette.colors.accent ?? palette.colors.itemPrice ?? palette.colors.sectionHeader
@@ -992,6 +1067,38 @@ function orbitMapSvg(palette: ColorPaletteV2): string {
   return fillerSvgDataUri(body, '0 0 96 96')
 }
 
+/** Single flower: a simple five-petal flower centred in the tile, palette-adaptive.
+ *  Tile background uses the palette accent/banner colour; petals are a lighter tint on top. */
+function singleFlowerSvg(palette: ColorPaletteV2): string {
+  // Tile fill: use the banner surface as the coloured background (e.g. pink for Blush Rose)
+  const tileFill = palette.colors.bannerSurface ?? palette.colors.border.medium
+  // Petals: white at reduced opacity so they read as a lighter tint of the tile colour
+  const petalFill = '#FFFFFF'
+  const petalOpacity = '0.55'
+  // Centre dot: slightly more opaque white
+  const centreFill = '#FFFFFF'
+  // Five petals arranged around the centre, drawn as ellipses rotated 72° apart
+  const petals = [0, 72, 144, 216, 288].map(deg => {
+    const rad = (deg * Math.PI) / 180
+    const cx = (48 + Math.cos(rad) * 14).toFixed(2)
+    const cy = (48 + Math.sin(rad) * 14).toFixed(2)
+    return `<ellipse cx="${cx}" cy="${cy}" rx="8" ry="5" fill="${petalFill}" opacity="${petalOpacity}" transform="rotate(${deg} ${cx} ${cy})"/>`
+  }).join('')
+  const body = [
+    '<defs>',
+    '<pattern id="sf" width="96" height="96" patternUnits="userSpaceOnUse">',
+    `<rect width="96" height="96" fill="${tileFill}"/>`,
+    petals,
+    // Centre circle
+    `<circle cx="48" cy="48" r="7" fill="${centreFill}" opacity="0.75"/>`,
+    `<circle cx="48" cy="48" r="3.5" fill="${tileFill}" opacity="0.70"/>`,
+    '</pattern>',
+    '</defs>',
+    '<rect width="96" height="96" fill="url(#sf)"/>',
+  ].join('')
+  return fillerSvgDataUri(body, '0 0 96 96')
+}
+
 /**
  * Registry mapping spacer tile pattern IDs to their configurations.
  * Patterns are palette-adaptive (base + accent from active palette).
@@ -1003,13 +1110,13 @@ export const FILLER_PATTERN_REGISTRY = new Map<string, FillerPatternConfig>([
   ['windowpane', { label: 'Windowpane Grid', getSvgDataUri: windowpaneSvg, tileSize: 28 }],
   ['matte-paper-grain', { label: 'Matte Paper Grain', getSvgDataUri: mattePaperGrainSvg }],
   ['warp-speed', { label: 'Stars', getSvgDataUri: starsSvg, tileSize: 96 }],
-  ['targeting-grid', { label: 'Targeting Grid', getSvgDataUri: targetingGridSvg, tileSize: 128, opacity: 0.76 }],
-  ['orbit-map', { label: 'Orbit Map', getSvgDataUri: orbitMapSvg, tileSize: 128, opacity: 0.74 }],
+  ['targeting-grid', { label: 'Retro Target', getSvgDataUri: targetingGridSvg, tileSize: 128, opacity: 0.76 }],
+  ['single-flower', { label: 'Flower', getSvgDataUri: singleFlowerSvg, tileSize: 96 }],
 ])
 
 /** Ordered list of spacer tile pattern IDs for dropdowns */
 export const FILLER_PATTERN_IDS = Array.from(FILLER_PATTERN_REGISTRY.keys())
-export const GALACTIC_FILLER_PATTERN_IDS = ['warp-speed', 'targeting-grid', 'orbit-map'] as const
+export const GALACTIC_FILLER_PATTERN_IDS = ['warp-speed', 'targeting-grid'] as const
 
 /** Map palette IDs to their default texture pattern (used for legacy texturesEnabled fallback) */
 export const PALETTE_TEXTURE_MAP: Record<string, string> = {
@@ -1436,12 +1543,9 @@ function renderSectionHeaderContent(
   
   // Apply font style preset override if set
   const presetConfig = options.fontStylePreset ? FONT_STYLE_PRESETS[options.fontStylePreset] : null
-  const galacticHeaderFontFamily = '"Orbitron", "Anta", system-ui, -apple-system, "Segoe UI", Arial, sans-serif'
-  const resolvedFontFamily = galactic
-    ? galacticHeaderFontFamily
-    : presetConfig
-      ? presetConfig.sectionHeaderFamily
-      : fontFamily
+  const resolvedFontFamily = presetConfig
+    ? presetConfig.sectionHeaderFamily
+    : fontFamily
   const resolvedFontWeight = presetConfig ? presetConfig.sectionHeaderWeight : (TYPOGRAPHY_TOKENS_V2.fontWeight[fontWeight as FontWeightV2] || TYPOGRAPHY_TOKENS_V2.fontWeight.semibold)
   
   // Add background if specified
@@ -3499,20 +3603,7 @@ function renderBannerContent(
   const preset = FONT_STYLE_PRESETS[content.fontStylePreset] || FONT_STYLE_PRESETS.standard
   const palette = getPalette(options)
   const galactic = isGalacticPalette(options)
-  const galacticBannerFontFamily = '"Orbitron", "Anta", system-ui, -apple-system, "Segoe UI", Arial, sans-serif'
-  const galacticTitleText = galactic ? (content.title || '').toUpperCase() : content.title
-  const galacticSubheadingText = 'A COSMIC INSPIRED SELECTION'
-  const getGalacticTitleFontSize = (availableWidth: number, bannerHeight: number) => {
-    // Orbitron is wide; size from width first so "GALACTIC MENU" never clips on A3/6-column.
-    const byWidth = availableWidth / Math.max(1, galacticTitleText.length * 1.08)
-    const byHeight = bannerHeight * 0.42
-    return Math.max(18, Math.min(byWidth, byHeight))
-  }
-  const getGalacticSubheadingFontSize = (availableWidth: number, bannerHeight: number) => {
-    const byWidth = availableWidth / Math.max(1, galacticSubheadingText.length * 0.86)
-    const byHeight = bannerHeight * 0.11
-    return Math.max(9, Math.min(byWidth, byHeight))
-  }
+  const titleText = content.title
   // Prefer live palette colors so the web preview updates instantly on palette change.
   // Fall back to baked-in content colors (used by PDF renderer and backward compat).
   const bannerSurface = options.palette?.colors?.bannerSurface ?? content.surfaceColor
@@ -3637,11 +3728,11 @@ function renderBannerContent(
           x: 0, y: 0,
           width: sidebarWidth,
           height: tile.height,
-          content: galacticTitleText,
+          content: titleText,
           style: {
             fontSize: sidebarFontSize,
             fontWeight: preset.bannerTitleWeight,
-            fontFamily: galactic ? galacticBannerFontFamily : preset.bannerTitleFamily,
+            fontFamily: preset.bannerTitleFamily,
             color: bannerText,
             textAlign: 'center',
             lineHeight: 1,
@@ -3744,80 +3835,25 @@ function renderBannerContent(
 
       // "MENU" large and horizontal in main zone
       if (showTitle) {
-        let titleFontSize = Math.max(20, Math.min(tile.height * 0.72, textZoneWidth * 0.35))
-        if (galactic) {
-          titleFontSize = getGalacticTitleFontSize(textZoneWidth, tile.height)
-        }
+        const titleFontSize = Math.max(20, Math.min(tile.height * 0.72, textZoneWidth * 0.35))
         const titleY = (tile.height - titleFontSize * 1.0) / 2
         elements.push({
           type: 'text',
           x: textZoneX,
           y: titleY,
           width: textZoneWidth,
-          content: galacticTitleText,
+          content: titleText,
           style: {
             fontSize: titleFontSize,
             fontWeight: preset.bannerTitleWeight,
-            fontFamily: galactic ? galacticBannerFontFamily : preset.bannerTitleFamily,
+            fontFamily: preset.bannerTitleFamily,
             color: bannerText,
-            textAlign: galactic ? 'center' : 'left',
+            textAlign: 'left',
             lineHeight: 1.0,
             zIndex: 4,
             textShadow: galactic ? neonTextGlow(palette, 'title') : undefined,
-            whiteSpace: galactic ? 'nowrap' : undefined,
           }
         })
-
-        if (galactic) {
-          const subFontSize = getGalacticSubheadingFontSize(textZoneWidth, tile.height)
-          const subY = Math.min(tile.height - subFontSize * 1.3, titleY + titleFontSize * 0.95)
-          const lineY = subY + subFontSize * 0.55
-          const lineColor = palette.colors.menuTitle ?? bannerText
-          const glow = `0 0 16px ${lineColor}AA, 0 0 30px ${lineColor}66, 0 0 46px ${lineColor}33`
-          const gap = Math.max(10, textZoneWidth * 0.02)
-          const textW = Math.min(textZoneWidth * 0.78, Math.max(160, textZoneWidth * 0.62))
-          const textX = textZoneX + (textZoneWidth - textW) / 2
-          const leftLineW = Math.max(24, textX - textZoneX - gap)
-          const rightLineW = Math.max(24, (textZoneX + textZoneWidth) - (textX + textW) - gap)
-          const lineH = 1.5
-
-          elements.push({
-            type: 'background',
-            x: textZoneX,
-            y: lineY,
-            width: leftLineW,
-            height: lineH,
-            content: '',
-            style: { backgroundColor: lineColor, opacity: 0.82, boxShadow: glow, zIndex: 3 }
-          })
-          elements.push({
-            type: 'background',
-            x: textX + textW + gap,
-            y: lineY,
-            width: rightLineW,
-            height: lineH,
-            content: '',
-            style: { backgroundColor: lineColor, opacity: 0.82, boxShadow: glow, zIndex: 3 }
-          })
-          elements.push({
-            type: 'text',
-            x: textX,
-            y: subY,
-            width: textW,
-            content: galacticSubheadingText,
-            style: {
-              fontSize: subFontSize,
-              fontWeight: 600,
-              fontFamily: galacticBannerFontFamily,
-              color: bannerText,
-              textAlign: 'center',
-              letterSpacing: 1.8,
-              textShadow: neonTextGlow(palette, 'header'),
-              zIndex: 4,
-              whiteSpace: 'nowrap',
-            }
-          })
-        }
       }
     }
 
@@ -3872,81 +3908,25 @@ function renderBannerContent(
     if (showTitle) {
       const padH = Math.max(12, tile.height * 0.08)
       const textZoneWidth = tile.width - heroZoneWidth - padH * 2
-      let titleFontSize = Math.max(20, tile.height * 0.72)
-      if (galactic) {
-        titleFontSize = getGalacticTitleFontSize(tile.width - heroZoneWidth, tile.height)
-      }
+      const titleFontSize = Math.max(20, tile.height * 0.72)
       const titleY = (tile.height - titleFontSize * 1.0) / 2
       elements.push({
         type: 'text',
-        x: galactic ? 0 : padH,
+        x: padH,
         y: titleY,
-        width: galactic ? (tile.width - heroZoneWidth) : textZoneWidth,
-        content: galacticTitleText,
+        width: textZoneWidth,
+        content: titleText,
         style: {
           fontSize: titleFontSize,
           fontWeight: preset.bannerTitleWeight,
-          fontFamily: galactic ? galacticBannerFontFamily : preset.bannerTitleFamily,
+          fontFamily: preset.bannerTitleFamily,
           color: bannerText,
-          textAlign: galactic ? 'center' : 'left',
+          textAlign: 'left',
           lineHeight: 1.0,
           zIndex: 4,
           textShadow: galactic ? neonTextGlow(palette, 'title') : undefined,
-          whiteSpace: galactic ? 'nowrap' : undefined,
         }
       })
-
-      if (galactic) {
-        const zoneW = tile.width - heroZoneWidth
-        const subFontSize = getGalacticSubheadingFontSize(zoneW, tile.height)
-        const subY = Math.min(tile.height - subFontSize * 1.3, titleY + titleFontSize * 0.95)
-        const lineY = subY + subFontSize * 0.55
-        const lineColor = palette.colors.menuTitle ?? bannerText
-        const glow = `0 0 16px ${lineColor}AA, 0 0 30px ${lineColor}66, 0 0 46px ${lineColor}33`
-        const gap = Math.max(10, zoneW * 0.02)
-        const textW = Math.min(zoneW * 0.78, Math.max(160, zoneW * 0.62))
-        const textX = (zoneW - textW) / 2
-        const leftLineW = Math.max(24, textX - gap)
-        const rightLineW = Math.max(24, zoneW - (textX + textW) - gap)
-        const lineH = 1.5
-
-        elements.push({
-          type: 'background',
-          x: 0,
-          y: lineY,
-          width: leftLineW,
-          height: lineH,
-          content: '',
-          style: { backgroundColor: lineColor, opacity: 0.82, boxShadow: glow, zIndex: 3 }
-        })
-        elements.push({
-          type: 'background',
-          x: textX + textW + gap,
-          y: lineY,
-          width: rightLineW,
-          height: lineH,
-          content: '',
-          style: { backgroundColor: lineColor, opacity: 0.82, boxShadow: glow, zIndex: 3 }
-        })
-        elements.push({
-          type: 'text',
-          x: textX,
-          y: subY,
-          width: textW,
-          content: galacticSubheadingText,
-          style: {
-            fontSize: subFontSize,
-            fontWeight: 600,
-            fontFamily: galacticBannerFontFamily,
-            color: bannerText,
-            textAlign: 'center',
-            letterSpacing: 1.8,
-            textShadow: neonTextGlow(palette, 'header'),
-            zIndex: 4,
-            whiteSpace: 'nowrap',
-          }
-        })
-      }
     }
   }
 
@@ -4106,41 +4086,24 @@ function renderFooterInfoContent(
   })
 
   const contactTypo = resolveSubElementTypography(tileStyle, 'contact', {
-    fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xs,
+    fontSize: TYPOGRAPHY_TOKENS_V2.fontSize.xss,
     fontWeight: TYPOGRAPHY_TOKENS_V2.fontWeight.normal,
-    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
+    lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight.tight,
   })
+  // Use the resolved font family from the contact typography (follows the template/palette font)
+  const footerFontFamily = contactTypo.fontFamily
   const fontSize = contactTypo.fontSize
   const lineHeight = contactTypo.lineHeight
   const defaultTextColor = tileStyle?.typography?.color || palette.colors.footerText
-  let currentY = paddingTop + borderWidth
 
-  const addText = (text: string, bold = false) => {
-    elements.push({
-      type: 'text',
-      x: paddingH,
-      y: currentY,
-      width: tile.width - (paddingH * 2),
-      content: text,
-      style: {
-        fontSize,
-        fontWeight: bold ? TYPOGRAPHY_TOKENS_V2.fontWeight.semibold : contactTypo.fontWeight,
-        fontFamily: contactTypo.fontFamily,
-        lineHeight,
-        color: defaultTextColor,
-        textAlign: 'center',
-      }
-    })
-    currentY += fontSize * lineHeight
-  }
+  // Pre-calculate text lines (address + contact) for vertical centring
+  const textLines: Array<{ text: string; bold: boolean }> = []
+  if (content.address) textLines.push({ text: content.address, bold: false })
 
-  if (content.address) addText(content.address)
-  
   let contactLine = ''
   if (content.phone) contactLine += content.phone
   if (content.email) contactLine += (contactLine ? ' • ' : '') + content.email
   if (content.socialMedia?.website) {
-    // Format website URL to be more user-friendly (www.example.com instead of https://example.com)
     let websiteDisplay = content.socialMedia.website
     if (websiteDisplay.startsWith('https://')) {
       websiteDisplay = 'www.' + websiteDisplay.substring(8)
@@ -4151,14 +4114,104 @@ function renderFooterInfoContent(
     }
     contactLine += (contactLine ? ' • ' : '') + websiteDisplay
   }
-  if (contactLine) addText(contactLine)
+  if (contactLine) textLines.push({ text: contactLine, bold: false })
 
-  let socialLine = ''
-  if (content.socialMedia?.instagram) socialLine += `Instagram: ${content.socialMedia.instagram}`
-  if (content.socialMedia?.facebook) socialLine += (socialLine ? ' • ' : '') + `Facebook: ${content.socialMedia.facebook}`
-  if (content.socialMedia?.x) socialLine += (socialLine ? ' • ' : '') + `X: ${content.socialMedia.x}`
-  if (content.socialMedia?.tiktok) socialLine += (socialLine ? ' • ' : '') + `TikTok: ${content.socialMedia.tiktok}`
-  if (socialLine) addText(socialLine)
+  // Social media: icon image + handle text, laid out horizontally and centred
+  const socialItems: Array<{ icon: string; handle: string }> = []
+  const iconUrls = options.socialIconDataUrls ?? {}
+  if (content.socialMedia?.instagram) socialItems.push({ icon: iconUrls['instagram'] ?? '/logos/instagram.png', handle: content.socialMedia.instagram })
+  if (content.socialMedia?.facebook) socialItems.push({ icon: iconUrls['facebook'] ?? '/logos/facebook.png', handle: content.socialMedia.facebook })
+  if (content.socialMedia?.x) socialItems.push({ icon: iconUrls['x'] ?? '/logos/x.png', handle: content.socialMedia.x })
+  if (content.socialMedia?.tiktok) socialItems.push({ icon: iconUrls['tiktok'] ?? '/logos/tiktok.png', handle: content.socialMedia.tiktok })
+
+  const hasSocialLine = socialItems.length > 0
+  const totalLines = textLines.length + (hasSocialLine ? 1 : 0)
+
+  // Vertically centre the whole block within the tile (below the border)
+  const totalTextHeight = totalLines * fontSize * lineHeight
+  const availableHeight = tile.height - borderWidth
+  let currentY = borderWidth + Math.max(paddingTop, (availableHeight - totalTextHeight) / 2)
+
+  // Render text lines (address, contact)
+  textLines.forEach(({ text, bold }) => {
+    elements.push({
+      type: 'text',
+      x: paddingH,
+      y: currentY,
+      width: tile.width - (paddingH * 2),
+      content: text,
+      style: {
+        fontSize,
+        fontWeight: bold ? TYPOGRAPHY_TOKENS_V2.fontWeight.semibold : contactTypo.fontWeight,
+        fontFamily: footerFontFamily,
+        lineHeight,
+        color: defaultTextColor,
+        textAlign: 'center',
+      }
+    })
+    currentY += fontSize * lineHeight
+  })
+
+  // Render social media line with real icons
+  if (hasSocialLine) {
+    const iconSize = fontSize * 1.1  // icon slightly taller than text cap height
+    const iconTextGap = 2            // gap between icon and handle text
+    const bulletGap = 6              // gap around bullet separator
+    const bulletText = ' • '
+    // Estimate character width for Inconsolata (monospace ~0.6× fontSize)
+    const charWidth = fontSize * 0.6
+    const bulletWidth = bulletText.length * charWidth
+
+    // Measure total width of the social row to centre it
+    let totalRowWidth = 0
+    socialItems.forEach((item, i) => {
+      const handleWidth = item.handle.length * charWidth
+      totalRowWidth += iconSize + iconTextGap + handleWidth
+      if (i < socialItems.length - 1) totalRowWidth += bulletWidth
+    })
+
+    const iconY = currentY + (fontSize * lineHeight - iconSize) / 2
+    let x = (tile.width - totalRowWidth) / 2
+
+    socialItems.forEach((item, i) => {
+      // Icon image
+      elements.push({
+        type: 'image',
+        x,
+        y: iconY,
+        width: iconSize,
+        height: iconSize,
+        content: item.icon,
+        style: { objectFit: 'contain' }
+      })
+      x += iconSize + iconTextGap
+
+      // Handle text
+      const handleWidth = item.handle.length * charWidth
+      elements.push({
+        type: 'text',
+        x,
+        y: currentY,
+        width: handleWidth,
+        content: item.handle,
+        style: {
+          fontSize,
+          fontWeight: contactTypo.fontWeight,
+          fontFamily: footerFontFamily,
+          lineHeight,
+          color: defaultTextColor,
+          textAlign: 'left',
+          whiteSpace: 'nowrap',
+        }
+      })
+      x += handleWidth
+
+      // Gap between social items — just whitespace, icons provide the visual separation
+      if (i < socialItems.length - 1) {
+        x += bulletWidth
+      }
+    })
+  }
 
   return { elements }
 }

@@ -77,7 +77,7 @@ describe('Template Loader V2', () => {
       expect(template.body.container.cols).toBe(3)
       expect(template.body.container.rowHeight).toBe(70)
       expect(template.body.container.gapX).toBe(10)
-      expect(template.body.container.gapY).toBe(8)
+      expect(template.body.container.gapY).toBe(4)
       expect(template.tiles.ITEM_CARD.rowSpan).toBe(2)
       expect(template.tiles.SECTION_HEADER.colSpan).toBe(3)
     })

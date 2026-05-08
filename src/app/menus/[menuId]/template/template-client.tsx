@@ -11,9 +11,9 @@ import type { Menu, ImageTransform, ImageTransformRecord } from '@/types'
 import { normalizeImageTransformRecord } from '@/types'
 import { normalizeDemoMenu } from '@/lib/demo-menu-normalizer'
 import { PageRenderer } from '@/lib/templates/v2/renderer-web-v2'
-import { PALETTES_V2, DEFAULT_PALETTE_V2, TEXTURE_IDS, TEXTURE_REGISTRY, DARK_PALETTE_IDS, DARK_ONLY_TEXTURE_IDS, LIGHT_ONLY_TEXTURE_IDS, FILLER_PATTERN_IDS, FILLER_PATTERN_REGISTRY, GALACTIC_FILLER_PATTERN_IDS, SPACER_BLANK_ID, getFontStylePresetGoogleFontsUrl } from '@/lib/templates/v2/renderer-v2'
+import { PALETTES_V2, DEFAULT_PALETTE_V2, TEXTURE_IDS, TEXTURE_REGISTRY, DARK_PALETTE_IDS, DARK_ONLY_TEXTURE_IDS, LIGHT_ONLY_TEXTURE_IDS, FILLER_PATTERN_IDS, FILLER_PATTERN_REGISTRY, SPACER_BLANK_ID, getFontStylePresetGoogleFontsUrl } from '@/lib/templates/v2/renderer-v2'
 import type { LayoutDocumentV2, ImageModeV2 } from '@/lib/templates/v2/engine-types-v2'
-import { getThemePresetByPaletteId, isThemePresetAvailable } from '@/lib/templates/v2/theme-presets-v2'
+
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
 import { V2_TEMPLATE_OPTIONS } from '@/lib/templates/v2/template-options'
@@ -107,7 +107,7 @@ function getRestoredState(
   showVenueName: boolean
   bannerSwapLayout: boolean
   bannerImageStyle: 'cutout' | 'stretch-fit' | 'none'
-  fontStylePreset: 'strong' | 'fun' | 'standard' | 'serif'
+  fontStylePreset: 'strong' | 'fun' | 'standard' | 'serif' | 'future' | 'handwriting' | 'elegant'
   flagshipItemId: string | null
   bannerHeroTransform: ImageTransform | undefined
   bannerLogoTransform: ImageTransform | undefined
@@ -158,10 +158,13 @@ function getRestoredState(
     config.bannerImageStyle === 'stretch-fit' ? 'stretch-fit' :
     config.bannerImageStyle === 'none' ? 'none' :
     'cutout'
-  const fontStylePreset: 'strong' | 'fun' | 'standard' | 'serif' =
+  const fontStylePreset: 'strong' | 'fun' | 'standard' | 'serif' | 'future' | 'handwriting' | 'elegant' =
     config.fontStylePreset === 'strong' ? 'strong' :
     config.fontStylePreset === 'fun' ? 'fun' :
     config.fontStylePreset === 'serif' ? 'serif' :
+    config.fontStylePreset === 'future' ? 'future' :
+    config.fontStylePreset === 'handwriting' ? 'handwriting' :
+    config.fontStylePreset === 'elegant' ? 'elegant' :
     'standard'
   const flagshipItemId = typeof config.flagshipItemId === 'string' ? config.flagshipItemId : null
 
@@ -262,7 +265,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [showVenueName, setShowVenueName] = useState(true)
   const [bannerSwapLayout, setBannerSwapLayout] = useState(false)
   const [bannerImageStyle, setBannerImageStyle] = useState<'cutout' | 'stretch-fit' | 'none'>('cutout')
-  const [fontStylePreset, setFontStylePreset] = useState<'strong' | 'fun' | 'standard' | 'serif'>('standard')
+  const [fontStylePreset, setFontStylePreset] = useState<'strong' | 'fun' | 'standard' | 'serif' | 'future' | 'handwriting' | 'elegant'>('standard')
   const [flagshipItemId, setFlagshipItemId] = useState<string | null>(null)
 
   // Derived: whether the currently selected template supports the banner feature
@@ -357,16 +360,9 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const effectiveFlagshipItemId = currentFlagshipItem?.id ?? null
   const isFlagshipTileVisible = effectiveFlagshipItemId !== null
 
-  // Theme presets (palette-bound)
-  const galacticPresetAvailable = isThemePresetAvailable('galactic-menu')
-  const activeThemePreset = getThemePresetByPaletteId(paletteId)
-  const isThemeActive = activeThemePreset !== null
-  const allowedSpacerTilePatternIds = activeThemePreset?.allowedSpacerTilePatternIds ?? null
-
   const palettesForGrid = useMemo(() => {
-    // When the galactic promo is active, it is shown via a featured wide button instead of the grid.
-    return galacticPresetAvailable ? PALETTES_V2.filter(p => p.id !== 'galactic-menu') : PALETTES_V2
-  }, [galacticPresetAvailable])
+    return PALETTES_V2
+  }, [])
 
   const buildCurrentConfiguration = useCallback(() => ({
     textOnly,
@@ -425,106 +421,9 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     bannerLogoTransform,
   ])
 
-  // Snapshot the user's previous non-theme config so exiting the promo restores it.
-  const previousNonThemeConfigRef = useRef<ReturnType<typeof buildCurrentConfiguration> | null>(null)
-  const latestNonThemeConfigRef = useRef<ReturnType<typeof buildCurrentConfiguration> | null>(null)
-
-  useEffect(() => {
-    if (isThemeActive) return
-    latestNonThemeConfigRef.current = buildCurrentConfiguration()
-  }, [buildCurrentConfiguration, isThemeActive])
-
-  const applyThemeLockedSelection = useCallback((nextPaletteId: string) => {
-    const preset = getThemePresetByPaletteId(nextPaletteId)
-    if (!preset) return
-
-    // Enforced locked values
-    setTextureId('warp-speed-bg')
-    if (preset.lockedSelection.showBanner !== undefined) setShowBanner(preset.lockedSelection.showBanner === true)
-    if (typeof preset.lockedSelection.bannerTitle === 'string') setBannerTitle(preset.lockedSelection.bannerTitle)
-    if (preset.lockedSelection.showBannerTitle !== undefined) setShowBannerTitle(preset.lockedSelection.showBannerTitle !== false)
-    if (preset.lockedSelection.bannerSwapLayout !== undefined) setBannerSwapLayout(preset.lockedSelection.bannerSwapLayout === true)
-    if (preset.lockedSelection.bannerImageStyle) setBannerImageStyle(preset.lockedSelection.bannerImageStyle as any)
-    if (preset.lockedSelection.showLogoTile !== undefined) setShowLogoTile(preset.lockedSelection.showLogoTile === true)
-    if (preset.lockedSelection.showCategoryHeaderTiles !== undefined) setShowCategoryHeaderTiles(preset.lockedSelection.showCategoryHeaderTiles === true)
-    if (preset.lockedSelection.fontStylePreset) setFontStylePreset(preset.lockedSelection.fontStylePreset as any)
-
-    // Restrict spacer patterns to a small allowed set; default to the first non-mix cosmic option when invalid.
-    const allowed = new Set(preset.allowedSpacerTilePatternIds)
-    if (!allowed.has(spacerTiles)) {
-      const fallback = preset.allowedSpacerTilePatternIds.find(id => id !== 'mix') ?? SPACER_BLANK_ID
-      setSpacerTiles(fallback)
-    }
-  }, [spacerTiles])
-
-  // If a saved config loads with a theme palette, ensure locked settings are applied.
-  useEffect(() => {
-    if (!activeThemePreset) return
-    applyThemeLockedSelection(activeThemePreset.paletteId)
-  }, [activeThemePreset?.id, applyThemeLockedSelection])
-
-  const restoreNonThemeConfiguration = useCallback((config: ReturnType<typeof buildCurrentConfiguration>) => {
-    // Palette is restored by caller so we can override it with the user's newly selected palette.
-    setTextureId(typeof config.textureId === 'string' && TEXTURE_REGISTRY.has(config.textureId) ? config.textureId : null)
-    setSpacerTiles(
-      config.spacerTiles === 'none' ? 'none'
-      : config.spacerTiles === 'mix' ? 'mix'
-      : config.spacerTiles === SPACER_BLANK_ID ? SPACER_BLANK_ID
-      : (typeof config.spacerTiles === 'string' && FILLER_PATTERN_REGISTRY.has(config.spacerTiles)) ? config.spacerTiles
-      : SPACER_BLANK_ID
-    )
-    setImageMode(config.imageMode as ImageModeV2)
-    setShowMenuTitle(config.showMenuTitle === true)
-    setShowVignette(config.showVignette !== false)
-    setItemBorders(config.itemBorders !== false)
-    setItemDropShadow(config.itemDropShadow !== false)
-    setFillItemTiles(config.fillItemTiles !== false)
-    setShowCategoryTitles(config.showCategoryTitles !== false)
-    setShowLogoTile(config.showLogoTile === true)
-    setShowCategoryHeaderTiles(config.showCategoryHeaderTiles === true)
-    setCentreAlignment(config.centreAlignment === true)
-    setShowBanner(config.showBanner !== false)
-    setBannerTitle(typeof config.bannerTitle === 'string' && config.bannerTitle.length > 0 ? config.bannerTitle : 'MENU')
-    setShowBannerTitle(config.showBannerTitle !== false)
-    setShowVenueName(config.showVenueName !== false)
-    setBannerSwapLayout(config.bannerSwapLayout === true)
-    setBannerImageStyle((config.bannerImageStyle as any) ?? 'cutout')
-    setFontStylePreset((config.fontStylePreset as any) ?? 'standard')
-    setFlagshipItemId(typeof config.flagshipItemId === 'string' ? config.flagshipItemId : null)
-    setBannerHeroTransform(config.bannerHeroTransform as any)
-    setBannerLogoTransform(config.bannerLogoTransform as any)
-  }, [])
-
   const handleSelectPalette = useCallback((nextPaletteId: string) => {
-    const nextPreset = getThemePresetByPaletteId(nextPaletteId)
-    const currentPreset = getThemePresetByPaletteId(paletteId)
-
-    // Enter theme: snapshot current settings once, then apply locked selection.
-    if (nextPreset && !currentPreset) {
-      previousNonThemeConfigRef.current = latestNonThemeConfigRef.current ?? buildCurrentConfiguration()
-      setPaletteId(nextPaletteId)
-      applyThemeLockedSelection(nextPaletteId)
-      return
-    }
-
-    // Exit theme: restore snapshot, then apply the user-selected palette.
-    if (!nextPreset && currentPreset) {
-      const snapshot = previousNonThemeConfigRef.current ?? latestNonThemeConfigRef.current
-      if (snapshot) restoreNonThemeConfiguration(snapshot)
-      previousNonThemeConfigRef.current = null
-      setPaletteId(nextPaletteId)
-      return
-    }
-
-    // Within theme: palette switching should be blocked by UI; keep safe fallback here.
-    if (nextPreset && currentPreset) {
-      setPaletteId(nextPaletteId)
-      applyThemeLockedSelection(nextPaletteId)
-      return
-    }
-
     setPaletteId(nextPaletteId)
-  }, [applyThemeLockedSelection, buildCurrentConfiguration, paletteId, restoreNonThemeConfiguration])
+  }, [])
 
   useEffect(() => {
     setMounted(true)
@@ -541,6 +440,13 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     link.href = url
     document.head.appendChild(link)
   }, [fontStylePreset])
+
+  // Neon Blue palette: force-uncheck tile options that don't render well with this palette
+  useEffect(() => {
+    if (paletteId !== 'galactic-menu') return
+    if (showLogoTile) setShowLogoTile(false)
+    if (showCategoryHeaderTiles) setShowCategoryHeaderTiles(false)
+  }, [paletteId, showLogoTile, showCategoryHeaderTiles])
 
   // Cooldown countdown timer for export rate limiting
   useEffect(() => {
@@ -601,11 +507,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   setBannerSwapLayout(r.bannerSwapLayout)
                   setBannerImageStyle(r.bannerImageStyle)
                   setFontStylePreset(r.fontStylePreset)
-                  // Prioritize the flagship item marked in the database if it exists,
-                // as it might have been updated on the /extracted page.
-                const dbFlagshipId = normalized.items?.find((i: any) => i.isFlagship)?.id || 
+                  // DB state is authoritative: use DB flagship if present, null if DB has no flagship.
+                // Do NOT fall back to the stale draft value when the flagship was cleared in the DB.
+                const dbFlagshipId = normalized.items?.find((i: any) => i.isFlagship)?.id ?? 
                                    normalized.categories?.flatMap((c: any) => c.items).find((i: any) => i.isFlagship)?.id
-                setFlagshipItemId(dbFlagshipId || r.flagshipItemId || null)
+                setFlagshipItemId(dbFlagshipId ?? null)
                   setBannerHeroTransform(r.bannerHeroTransform)
                   setBannerLogoTransform(r.bannerLogoTransform)
                   setCentreAlignment(r.centreAlignment)
@@ -643,11 +549,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   setBannerSwapLayout(r.bannerSwapLayout)
                   setBannerImageStyle(r.bannerImageStyle)
                   setFontStylePreset(r.fontStylePreset)
-                  // Prioritize the flagship item marked in the database if it exists,
-                // as it might have been updated on the /extracted page.
-                const dbFlagshipId = normalized.items?.find((i: any) => i.isFlagship)?.id || 
+                  // DB state is authoritative: use DB flagship if present, null if DB has no flagship.
+                // Do NOT fall back to the stale saved-selection value when the flagship was cleared in the DB.
+                const dbFlagshipId = normalized.items?.find((i: any) => i.isFlagship)?.id ?? 
                                    normalized.categories?.flatMap((c: any) => c.items).find((i: any) => i.isFlagship)?.id
-                setFlagshipItemId(dbFlagshipId || r.flagshipItemId || null)
+                setFlagshipItemId(dbFlagshipId ?? null)
                   setBannerHeroTransform(r.bannerHeroTransform)
                   setBannerLogoTransform(r.bannerLogoTransform)
                   setCentreAlignment(r.centreAlignment)
@@ -745,11 +651,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 setBannerSwapLayout(r.bannerSwapLayout)
                 setBannerImageStyle(r.bannerImageStyle)
                 setFontStylePreset(r.fontStylePreset)
-                // Prioritize the flagship item marked in the database if it exists,
-                // as it might have been updated on the /extracted page.
-                const dbFlagshipId = data.data.items?.find((i: any) => i.isFlagship)?.id || 
+                // DB state is authoritative: use DB flagship if present, null if DB has no flagship.
+                // Do NOT fall back to the stale draft value when the flagship was cleared in the DB.
+                const dbFlagshipId = data.data.items?.find((i: any) => i.isFlagship)?.id ?? 
                                    data.data.categories?.flatMap((c: any) => c.items).find((i: any) => i.isFlagship)?.id
-                setFlagshipItemId(dbFlagshipId || r.flagshipItemId || null)
+                setFlagshipItemId(dbFlagshipId ?? null)
                 setBannerHeroTransform(r.bannerHeroTransform)
                 setBannerLogoTransform(r.bannerLogoTransform)
                   setCentreAlignment(r.centreAlignment)
@@ -789,11 +695,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               setBannerSwapLayout(r.bannerSwapLayout)
               setBannerImageStyle(r.bannerImageStyle)
               setFontStylePreset(r.fontStylePreset)
-              // Prioritize the flagship item marked in the database if it exists,
-              // as it might have been updated on the /extracted page.
-              const dbFlagshipId = data.data.items?.find((i: any) => i.isFlagship)?.id || 
+              // DB state is authoritative: use DB flagship if present, null if DB has no flagship.
+              // Do NOT fall back to the stale saved-selection value when the flagship was cleared in the DB.
+              const dbFlagshipId = data.data.items?.find((i: any) => i.isFlagship)?.id ?? 
                                  data.data.categories?.flatMap((c: any) => c.items).find((i: any) => i.isFlagship)?.id
-              setFlagshipItemId(dbFlagshipId || r.flagshipItemId || null)
+              setFlagshipItemId(dbFlagshipId ?? null)
               setBannerHeroTransform(r.bannerHeroTransform)
               setBannerLogoTransform(r.bannerLogoTransform)
                   setCentreAlignment(r.centreAlignment)
@@ -1550,35 +1456,6 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 onExpand={(expanded) => setExpandedSection(expanded ? 'Color Palette' : null)}
               >
                 <div className="pt-2">
-                  {galacticPresetAvailable && (
-                    <button
-                      type="button"
-                      onClick={() => handleSelectPalette('galactic-menu')}
-                      className={`w-full mb-3 rounded-xl border-2 px-4 py-3 text-left transition-all ${
-                        paletteId === 'galactic-menu'
-                          ? 'border-ux-primary bg-ux-primary/10'
-                          : 'border-ux-border bg-gradient-to-r from-[#0B1020] via-[#101A33] to-[#0E2A3A] hover:border-ux-primary'
-                      }`}
-                      title="A menu from another galaxy"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className={`text-sm font-bold tracking-wide ${paletteId === 'galactic-menu' ? 'text-ux-primary' : 'text-white'}`}>
-                            Galactic
-                          </div>
-                          <div className={`${paletteId === 'galactic-menu' ? 'text-ux-text-secondary' : 'text-white/80'} text-[11px] leading-tight mt-0.5`}>
-                            A menu from another galaxy
-                          </div>
-                        </div>
-                        <div className="flex -space-x-1.5 shrink-0">
-                          {getPaletteSwatchColors(PALETTES_V2.find(p => p.id === 'galactic-menu') ?? DEFAULT_PALETTE_V2).map((color, i) => (
-                            <div key={i} className="h-6 w-6 rounded-full border-2 border-white/80 shadow-sm" style={{ backgroundColor: color }} />
-                          ))}
-                        </div>
-                      </div>
-                    </button>
-                  )}
-
                   <div className="grid grid-cols-3 gap-2">
                     {palettesForGrid.map((p) => {
                       const colors = getPaletteSwatchColors(p)
@@ -1603,13 +1480,6 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                       )
                     })}
                   </div>
-                  {isThemeActive && activeThemePreset?.tagline && (
-                    <div className="mt-3 rounded-lg border border-ux-border bg-ux-surface px-3 py-2">
-                      <div className="text-[11px] text-ux-text-secondary leading-snug">
-                        <span className="font-semibold text-ux-text">Theme active.</span> {activeThemePreset.tagline}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </CollapsibleSection>
 
@@ -1620,8 +1490,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 onExpand={(expanded) => setExpandedSection(expanded ? 'Banner & Footer' : null)}
               >
                 <div className="pt-2 space-y-3">
-                  {/* 10.1: Show Banner toggle — only shown when template supports banner */}
-                  {bannerSupported && !isThemeActive && (
+                  {/* Show Banner toggle — only shown when template supports banner */}
+                  {bannerSupported && (
                     <label className="flex items-center justify-between cursor-pointer group">
                       <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Show banner</span>
                       <input
@@ -1631,13 +1501,6 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                         className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
                       />
                     </label>
-                  )}
-                  {bannerSupported && isThemeActive && (
-                    <div className="rounded-lg border border-ux-border bg-ux-surface px-3 py-2">
-                      <div className="text-[11px] text-ux-text-secondary leading-snug">
-                        <span className="font-semibold text-ux-text">Banner locked for this theme.</span> The galactic preset always shows a banner titled <span className="font-semibold">Galactic Menu</span>.
-                      </div>
-                    </div>
                   )}
 
                   {/* Controls below are only relevant when banner is supported and enabled */}
@@ -1653,10 +1516,9 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                           type="text"
                           value={bannerTitle}
                           maxLength={30}
-                          onChange={(e) => !isThemeActive && setBannerTitle(e.target.value.slice(0, 30))}
-                          disabled={isThemeActive}
+                          onChange={(e) => setBannerTitle(e.target.value.slice(0, 30))}
                           placeholder="MENU"
-                          className="w-full px-3 py-2 text-sm border border-ux-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ux-primary bg-white text-ux-text disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="w-full px-3 py-2 text-sm border border-ux-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ux-primary bg-white text-ux-text"
                         />
                         <div className="flex justify-between mt-1">
                           {bannerTitle.length >= 16 && (
@@ -1679,12 +1541,9 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                               <button
                                 key={style}
                                 type="button"
-                                onClick={() => !isThemeActive && setBannerImageStyle(style)}
-                                disabled={isThemeActive}
+                                onClick={() => setBannerImageStyle(style)}
                                 className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 transition-all ${
-                                  isThemeActive
-                                    ? 'border-ux-border bg-white opacity-60 cursor-not-allowed'
-                                    : (isSelected ? 'border-ux-primary bg-ux-primary/5 hover:border-ux-primary' : 'border-ux-border bg-white hover:border-ux-primary')
+                                  isSelected ? 'border-ux-primary bg-ux-primary/5 hover:border-ux-primary' : 'border-ux-border bg-white hover:border-ux-primary'
                                 }`}
                               >
                                 <span className="text-[10px] font-medium text-ux-text text-center leading-tight">{labels[style]}</span>
@@ -1703,9 +1562,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                           id="show-banner-title-cb"
                           type="checkbox"
                           checked={showBannerTitle}
-                          disabled={isThemeActive}
-                          onChange={(e) => !isThemeActive && setShowBannerTitle(e.target.checked)}
-                          className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5 disabled:opacity-60 disabled:cursor-not-allowed"
+                          onChange={(e) => setShowBannerTitle(e.target.checked)}
+                          className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
                         />
                       </div>
 
@@ -1733,9 +1591,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                             id="banner-swap-layout-cb"
                             type="checkbox"
                             checked={bannerSwapLayout}
-                          disabled={isThemeActive}
-                          onChange={(e) => !isThemeActive && setBannerSwapLayout(e.target.checked)}
-                          className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5 disabled:opacity-60 disabled:cursor-not-allowed"
+                            onChange={(e) => setBannerSwapLayout(e.target.checked)}
+                            className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
                           />
                         </div>
                       )}
@@ -1745,24 +1602,32 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               </CollapsibleSection>
 
               {/* Background Texture */}
-              <CollapsibleSection 
-                title="Background Texture" 
-                isExpanded={expandedSection === 'Background Texture'}
-                onExpand={(expanded) => setExpandedSection(expanded ? 'Background Texture' : null)}
-              >
+              {(() => {
+                const isDark = DARK_PALETTE_IDS.has(paletteId)
+                const textureIncompatible = !!textureId && (
+                  (DARK_ONLY_TEXTURE_IDS.has(textureId) && !isDark) ||
+                  (LIGHT_ONLY_TEXTURE_IDS.has(textureId) && isDark)
+                )
+                return (
+                  <CollapsibleSection
+                    title="Background Texture"
+                    isExpanded={expandedSection === 'Background Texture'}
+                    onExpand={(expanded) => setExpandedSection(expanded ? 'Background Texture' : null)}
+                    badge={textureIncompatible ? (
+                      <span
+                        title="Current texture doesn't suit this palette — consider updating it"
+                        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-400 text-white text-[9px] font-bold leading-none shrink-0"
+                        aria-label="Texture may not suit this palette"
+                      >
+                        !
+                      </span>
+                    ) : undefined}
+                  >
                 <div className="pt-2">
-                  {isThemeActive && (
-                    <div className="mb-3 rounded-lg border border-ux-border bg-ux-surface px-3 py-2">
-                      <div className="text-[11px] text-ux-text-secondary leading-snug">
-                        <span className="font-semibold text-ux-text">Background locked for this theme.</span> The galactic preset uses a warp-speed backdrop.
-                      </div>
-                    </div>
-                  )}
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => !isThemeActive && setTextureId(null)}
-                      disabled={isThemeActive}
+                      onClick={() => setTextureId(null)}
                       className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 h-14 transition-all hover:border-ux-primary ${
                         textureId === null ? 'border-ux-primary bg-ux-primary/5' : 'border-ux-border bg-white'
                       }`}
@@ -1785,10 +1650,10 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                         <button
                           key={id}
                           type="button"
-                          onClick={() => !isThemeActive && !incompatible && setTextureId(id)}
-                          disabled={isThemeActive || incompatible}
+                          onClick={() => !incompatible && setTextureId(id)}
+                          disabled={incompatible}
                           className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 h-14 transition-all ${
-                            (isThemeActive || incompatible)
+                            incompatible
                               ? 'border-ux-border bg-white opacity-35 cursor-not-allowed'
                               : isSelected
                                 ? 'border-ux-primary bg-ux-primary/5 hover:border-ux-primary'
@@ -1803,6 +1668,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   </div>
                 </div>
               </CollapsibleSection>
+                )
+              })()}
 
               {/* Image Style */}
               <CollapsibleSection 
@@ -1866,27 +1733,14 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 onExpand={(expanded) => setExpandedSection(expanded ? 'Spacer Tiles' : null)}
               >
                 <div className="pt-2">
-                  {isThemeActive && (
-                    <div className="mb-3 rounded-lg border border-ux-border bg-ux-surface px-3 py-2">
-                      <div className="text-[11px] text-ux-text-secondary leading-snug">
-                        <span className="font-semibold text-ux-text">Cosmic spacers only.</span> Choose a galactic spacer style, or use <span className="font-semibold">Mix</span>.
-                      </div>
-                    </div>
-                  )}
                   <div className="grid grid-cols-3 gap-2">
-                    {(() => {
-                      const baseOptions: Array<{ value: string; label: string }> = [
-                        { value: 'none', label: 'None' },
-                        { value: SPACER_BLANK_ID, label: 'Blank' },
-                        { value: 'mix', label: 'Mix' },
-                        ...FILLER_PATTERN_IDS.map(id => ({ value: id, label: FILLER_PATTERN_REGISTRY.get(id)?.label ?? id })),
-                      ]
-                      if (!allowedSpacerTilePatternIds) return baseOptions
-                      const allowed = new Set(allowedSpacerTilePatternIds)
-                      return baseOptions.filter(o => allowed.has(o.value))
-                    })().map(({ value, label }) => {
+                    {[
+                      { value: 'none', label: 'None' },
+                      { value: SPACER_BLANK_ID, label: 'Blank' },
+                      { value: 'mix', label: 'Mix' },
+                      ...FILLER_PATTERN_IDS.map(id => ({ value: id, label: FILLER_PATTERN_REGISTRY.get(id)?.label ?? id })),
+                    ].map(({ value, label }) => {
                       const isSelected = spacerTiles === value
-                      const isGalacticSpacer = (GALACTIC_FILLER_PATTERN_IDS as readonly string[]).includes(value)
                       return (
                         <button
                           key={value}
@@ -1895,13 +1749,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                           className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 h-14 transition-all hover:border-ux-primary ${
                             isSelected
                               ? 'border-ux-primary bg-ux-primary/5'
-                              : (!isThemeActive && isGalacticSpacer)
-                                ? 'border-cyan-100/80 bg-[#111827] hover:border-cyan-300 shadow-sm'
-                                : 'border-ux-border bg-white'
+                              : 'border-ux-border bg-white'
                           }`}
                           title={label}
                         >
-                          <span className={`text-[10px] font-medium text-center leading-tight ${!isThemeActive && isGalacticSpacer ? 'text-white' : 'text-ux-text'}`}>{label}</span>
+                          <span className="text-[10px] font-medium text-center leading-tight text-ux-text">{label}</span>
                         </button>
                       )
                     })}
@@ -1916,27 +1768,17 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 onExpand={(expanded) => setExpandedSection(expanded ? 'Font Style' : null)}
               >
                 <div className="pt-2">
-                  {isThemeActive && (
-                    <div className="mb-3 rounded-lg border border-ux-border bg-ux-surface px-3 py-2">
-                      <div className="text-[11px] text-ux-text-secondary leading-snug">
-                        <span className="font-semibold text-ux-text">Font preset locked.</span> This theme uses <span className="font-semibold">Standard</span>.
-                      </div>
-                    </div>
-                  )}
                   <div className="grid grid-cols-2 gap-2">
-                    {(['standard', 'serif', 'fun', 'strong'] as const).map((preset) => {
-                      const labels = { standard: 'Standard', strong: 'Strong', fun: 'Fun', serif: 'Serif' }
+                    {(['standard', 'serif', 'fun', 'strong', 'future', 'handwriting', 'elegant'] as const).map((preset) => {
+                      const labels: Record<string, string> = { standard: 'Standard', strong: 'Strong', fun: 'Fun', serif: 'Serif', future: 'Future', handwriting: 'Handwriting', elegant: 'Elegant' }
                       const isSelected = fontStylePreset === preset
                       return (
                         <button
                           key={preset}
                           type="button"
-                          onClick={() => !isThemeActive && setFontStylePreset(preset)}
-                          disabled={isThemeActive}
+                          onClick={() => setFontStylePreset(preset)}
                           className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 transition-all ${
-                            isThemeActive
-                              ? 'border-ux-border bg-white opacity-60 cursor-not-allowed'
-                              : (isSelected ? 'border-ux-primary bg-ux-primary/5 hover:border-ux-primary' : 'border-ux-border bg-white hover:border-ux-primary')
+                            isSelected ? 'border-ux-primary bg-ux-primary/5 hover:border-ux-primary' : 'border-ux-border bg-white hover:border-ux-primary'
                           }`}
                         >
                           <span className="text-[10px] font-medium text-ux-text text-center leading-tight">{labels[preset]}</span>
@@ -1954,27 +1796,34 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 onExpand={(expanded) => setExpandedSection(expanded ? 'Display Options' : null)}
               >
                 <div className="pt-2 space-y-3">
-                  <label className={`flex items-center justify-between group ${isThemeActive ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
-                    <span className={`text-sm text-ux-text transition-colors ${isThemeActive ? '' : 'group-hover:text-ux-primary'}`}>Logo / title as tile</span>
-                    <input
-                      type="checkbox"
-                      checked={showLogoTile}
-                      disabled={isThemeActive}
-                      onChange={(e) => !isThemeActive && setShowLogoTile(e.target.checked)}
-                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5 disabled:cursor-not-allowed"
-                    />
-                  </label>
+                  {(() => {
+                    const tileOptionsDisabled = paletteId === 'galactic-menu'
+                    return (
+                      <>
+                        <label className={`flex items-center justify-between group ${tileOptionsDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                          <span className={`text-sm text-ux-text transition-colors ${tileOptionsDisabled ? '' : 'group-hover:text-ux-primary'}`}>Logo / title as tile</span>
+                          <input
+                            type="checkbox"
+                            checked={tileOptionsDisabled ? false : showLogoTile}
+                            disabled={tileOptionsDisabled}
+                            onChange={(e) => setShowLogoTile(e.target.checked)}
+                            className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5 disabled:cursor-not-allowed"
+                          />
+                        </label>
 
-                  <label className={`flex items-center justify-between group ${(!showCategoryTitles || isThemeActive) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-                    <span className={`text-sm text-ux-text transition-colors ${(!showCategoryTitles || isThemeActive) ? '' : 'group-hover:text-ux-primary'}`}>Category name as tiles</span>
-                    <input
-                      type="checkbox"
-                      checked={showCategoryHeaderTiles}
-                      disabled={!showCategoryTitles || isThemeActive}
-                      onChange={(e) => !isThemeActive && setShowCategoryHeaderTiles(e.target.checked)}
-                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5 disabled:cursor-not-allowed"
-                    />
-                  </label>
+                        <label className={`flex items-center justify-between group ${(tileOptionsDisabled || !showCategoryTitles) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                          <span className={`text-sm text-ux-text transition-colors ${(tileOptionsDisabled || !showCategoryTitles) ? '' : 'group-hover:text-ux-primary'}`}>Category name as tiles</span>
+                          <input
+                            type="checkbox"
+                            checked={tileOptionsDisabled ? false : showCategoryHeaderTiles}
+                            disabled={tileOptionsDisabled || !showCategoryTitles}
+                            onChange={(e) => setShowCategoryHeaderTiles(e.target.checked)}
+                            className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5 disabled:cursor-not-allowed"
+                          />
+                        </label>
+                      </>
+                    )
+                  })()}
 
                   <label className="flex items-center justify-between cursor-pointer group">
                     <span className="text-sm text-ux-text group-hover:text-ux-primary transition-colors">Show category title(s)</span>
