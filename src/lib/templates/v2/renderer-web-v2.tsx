@@ -214,9 +214,13 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
   }
   
   // Banner and footer render full-bleed (flush to page edges), bypassing content-box margins.
+  // Title also renders full-bleed when it has a bannerSurface background (1-column-tall title bar).
   const bannerRegion = page.regions.find(r => r.id === 'banner')
   const footerRegion = page.regions.find(r => r.id === 'footer')
-  const innerRegions = page.regions.filter(r => r.id !== 'banner' && r.id !== 'footer')
+  const titleRegion = page.regions.find(r => r.id === 'title')
+  const titleTile = titleRegion ? page.tiles.find(t => t.regionId === 'title') : undefined
+  const titleIsFullBleed = !!(titleTile && (titleTile as any).style?.background?.color === 'bannerSurface')
+  const innerRegions = page.regions.filter(r => r.id !== 'banner' && r.id !== 'footer' && !(r.id === 'title' && titleIsFullBleed))
 
   return (
     <div 
@@ -267,7 +271,7 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
         )
       })()}
 
-      {/* Full-bleed banner — flush to top and side edges */}
+      {/* Full-bleed banner — flush to top and side edges, above title bar */}
       {bannerRegion && (
         <FullBleedRegionRenderer
           region={bannerRegion}
@@ -275,6 +279,20 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
           pageSpec={pageSpec}
           options={options}
           edge="top"
+          zIndex={3}
+        />
+      )}
+
+      {/* Full-bleed title bar — sits immediately below the banner; z-index below banner so enlarged images overlap it */}
+      {titleIsFullBleed && titleRegion && (
+        <FullBleedRegionRenderer
+          region={titleRegion}
+          tiles={page.tiles.filter(t => t.regionId === 'title')}
+          pageSpec={pageSpec}
+          options={options}
+          edge="top"
+          topOverride={pageSpec.margins.top + titleRegion.y}
+          zIndex={2}
         />
       )}
 
@@ -305,7 +323,11 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
       {footerRegion && (
         <FullBleedRegionRenderer
           region={footerRegion}
-          tiles={page.tiles.filter(t => t.regionId === 'footer')}
+          tiles={page.tiles.filter(t => t.regionId === 'footer').map(t => ({
+            ...t,
+            // Extend tile height by bottom margin so footer text centres within the full-bleed area
+            height: t.height + pageSpec.margins.bottom,
+          }))}
           pageSpec={pageSpec}
           options={options}
           edge="bottom"
@@ -373,6 +395,8 @@ interface FullBleedRegionRendererProps {
   pageSpec: PageSpecV2
   options: RenderOptionsV2
   edge: 'top' | 'bottom'
+  topOverride?: number
+  zIndex?: number
 }
 
 /**
@@ -380,7 +404,7 @@ interface FullBleedRegionRendererProps {
  * Used for banner (top) and footer (bottom) so they span the full page width.
  * Tiles are re-rendered with width = pageSpec.width so internal layout fills the full bleed area.
  */
-function FullBleedRegionRenderer({ region, tiles, pageSpec, options, edge }: FullBleedRegionRendererProps) {
+function FullBleedRegionRenderer({ region, tiles, pageSpec, options, edge, topOverride, zIndex = 2 }: FullBleedRegionRendererProps) {
   const { scale } = options
   const fullWidth = pageSpec.width
 
@@ -396,7 +420,9 @@ function FullBleedRegionRenderer({ region, tiles, pageSpec, options, edge }: Ful
     width: fullWidth,
   }))
 
-  const top = edge === 'top' ? 0 : (pageSpec.height - renderHeight) * scale
+  const top = topOverride !== undefined
+    ? topOverride * scale
+    : edge === 'top' ? 0 : (pageSpec.height - renderHeight) * scale
 
   return (
     <div
@@ -407,7 +433,7 @@ function FullBleedRegionRenderer({ region, tiles, pageSpec, options, edge }: Ful
         top,
         width: fullWidth * scale,
         height: renderHeight * scale,
-        zIndex: 2,
+        zIndex,
         // Banner cutout images overflow upward — allow visible overflow on top edge
         overflow: edge === 'top' ? 'visible' : 'hidden',
       }}

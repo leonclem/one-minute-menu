@@ -148,7 +148,9 @@ function getRestoredState(
   const bannerTitle = typeof config.bannerTitle === 'string' && config.bannerTitle.length > 0
     ? config.bannerTitle
     : 'MENU'
-  const showBannerTitle = config.showBannerTitle !== false
+  const showBannerTitle = config.showBannerTitle !== undefined
+    ? config.showBannerTitle !== false
+    : mappedTemplateId !== '1-column-tall' // default false for 1-column-tall (too narrow for vertical title sidebar)
   const showVenueName = config.showVenueName !== false
   const showLogoTile = config.showLogoTile === true
   const showCategoryHeaderTiles = config.showCategoryHeaderTiles === true
@@ -157,6 +159,7 @@ function getRestoredState(
   const bannerImageStyle: 'cutout' | 'stretch-fit' | 'none' =
     config.bannerImageStyle === 'stretch-fit' ? 'stretch-fit' :
     config.bannerImageStyle === 'none' ? 'none' :
+    mappedTemplateId === '1-column-tall' ? 'none' : // default no hero image for narrow format
     'cutout'
   const fontStylePreset: 'strong' | 'fun' | 'standard' | 'serif' | 'future' | 'handwriting' | 'elegant' =
     config.fontStylePreset === 'strong' ? 'strong' :
@@ -182,7 +185,7 @@ function getRestoredState(
     textureId,
     spacerTiles,
     imageMode,
-    showMenuTitle: config.showMenuTitle === true,
+    showMenuTitle: config.showMenuTitle !== undefined ? config.showMenuTitle === true : mappedTemplateId === '1-column-tall',
     showVignette: config.showVignette !== false,
     itemBorders: config.itemBorders !== false,
     itemDropShadow: config.itemDropShadow !== false,
@@ -1436,7 +1439,16 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                       <button
                         key={t.id}
                         type="button"
-                        onClick={() => setTemplateId(t.id)}
+                        onClick={() => {
+                          setTemplateId(t.id)
+                          // Reset banner defaults when switching templates so per-template
+                          // defaults (e.g. 1-column-tall has no title/hero) are applied fresh.
+                          const r = getRestoredState(t.id, {})
+                          setShowBanner(r.showBanner)
+                          setShowBannerTitle(r.showBannerTitle)
+                          setBannerImageStyle(r.bannerImageStyle)
+                          setShowMenuTitle(r.showMenuTitle)
+                        }}
                         className={`w-full text-left rounded-lg border-2 px-3 py-2 transition-all hover:border-ux-primary ${
                           isSelected ? 'border-ux-primary bg-ux-primary/5' : 'border-ux-border bg-white'
                         }`}
@@ -1561,8 +1573,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                         <input
                           id="show-banner-title-cb"
                           type="checkbox"
-                          checked={showBannerTitle}
-                          onChange={(e) => setShowBannerTitle(e.target.checked)}
+                          checked={templateId === '1-column-tall' ? showMenuTitle : showBannerTitle}
+                          onChange={(e) => templateId === '1-column-tall' ? setShowMenuTitle(e.target.checked) : setShowBannerTitle(e.target.checked)}
                           className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
                         />
                       </div>
@@ -1581,8 +1593,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                         />
                       </div>
 
-                      {/* Switch layout — only relevant when venue name is shown */}
-                      {showVenueName && (
+                      {/* Switch layout — only relevant when venue name is shown; not applicable for 1-column-tall */}
+                      {showVenueName && templateId !== '1-column-tall' && (
                         <div className="flex items-center justify-between">
                           <label htmlFor="banner-swap-layout-cb" className="text-sm text-ux-text cursor-pointer">
                             Switch layout

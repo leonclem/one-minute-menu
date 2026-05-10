@@ -230,4 +230,4 @@ The `future` preset (Orbitron/Anta) is a general-purpose selectable font — not
 - **Dark palette textures.** Add the palette ID to `DARK_PALETTE_IDS` or dark-only textures won't appear for it.
 - **Texture incompatibility badge.** The amber `!` badge on the Background Texture heading is automatic — it appears whenever the active texture is incompatible with the current palette. No per-theme code needed.
 - **Font loading is automatic.** Any `FontStylePreset` registered in `FONT_STYLE_PRESETS` is loaded for preview and export via `getFontStylePresetGoogleFontsUrl()`. No separate font loading code needed.
-- **The `1-column-tall` template has `banner.enabled: false`.** This is a template design decision, not a theme issue.
+- **The `1-column-tall` template uses a compact banner** (`heightPt: 55`, no hero image). Pass `bannerImageStyle: 'none'` in the selection config to suppress the flagship image on this template.

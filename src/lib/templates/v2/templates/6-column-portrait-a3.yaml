@@ -186,7 +186,7 @@ tiles:
       typography:
         contact:
           fontSet: "modern-sans"
-          fontSize: "xss"
+          fontSize: "xxs"
           fontWeight: "normal"
       border:
         width: 1

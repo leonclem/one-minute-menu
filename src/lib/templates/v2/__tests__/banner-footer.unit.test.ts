@@ -272,6 +272,7 @@ const BANNER_ENABLED_TEMPLATES = new Set([
   '2-column-portrait',
   '6-column-portrait-a3',
   '5-column-landscape',
+  '1-column-tall',
 ])
 
 function getRestoredState(savedTemplateId: string, config: Record<string, unknown>) {
@@ -323,9 +324,9 @@ describe('14.2 getRestoredState banner/footer field mapping', () => {
       expect(r.showBanner).toBe(true)
     })
 
-    it('defaults to false for 1-column-tall (banner disabled)', () => {
+    it('defaults to true for 1-column-tall (banner now enabled)', () => {
       const r = getRestoredState('1-column-tall', {})
-      expect(r.showBanner).toBe(false)
+      expect(r.showBanner).toBe(true)
     })
 
     it('respects explicit showBanner: false in config', () => {
@@ -333,9 +334,9 @@ describe('14.2 getRestoredState banner/footer field mapping', () => {
       expect(r.showBanner).toBe(false)
     })
 
-    it('respects explicit showBanner: true in config', () => {
-      const r = getRestoredState('1-column-tall', { showBanner: true })
-      expect(r.showBanner).toBe(true)
+    it('respects explicit showBanner: false in config for 1-column-tall', () => {
+      const r = getRestoredState('1-column-tall', { showBanner: false })
+      expect(r.showBanner).toBe(false)
     })
   })
 
@@ -459,7 +460,7 @@ describe('14.2 getRestoredState banner/footer field mapping', () => {
     it('maps half-a4-tall-v2 to 1-column-tall', () => {
       const r = getRestoredState('half-a4-tall-v2', {})
       expect(r.mappedTemplateId).toBe('1-column-tall')
-      expect(r.showBanner).toBe(false)
+      expect(r.showBanner).toBe(true)
     })
   })
 })
@@ -511,12 +512,12 @@ describe('14.3 Template YAML banner config parsing', () => {
     expect(t.banner!.stripHeightPt).toBe(15)
   })
 
-  it('1-column-tall: enabled=false, heightPt=0, stripHeightPt=0', async () => {
+  it('1-column-tall: enabled=true, heightPt=55, stripHeightPt=12', async () => {
     const t = await loadTemplateV2('1-column-tall')
     expect(t.banner).toBeDefined()
-    expect(t.banner!.enabled).toBe(false)
-    expect(t.banner!.heightPt).toBe(0)
-    expect(t.banner!.stripHeightPt).toBe(0)
+    expect(t.banner!.enabled).toBe(true)
+    expect(t.banner!.heightPt).toBe(55)
+    expect(t.banner!.stripHeightPt).toBe(12)
   })
 })
 

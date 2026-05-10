@@ -775,13 +775,13 @@ describe('Feature: menu-banner-footer, Property 14: Banner proportionality by te
     )
   }, 120000)
 
-  it('no BANNER tile appears for templates with banner.enabled=false', async () => {
+  it('no BANNER tile appears when showBanner=false regardless of template banner config', async () => {
     await fc.assert(
       fc.asyncProperty(
         arbitraryMenu,
-        async (menu) => {
-          const templateId = '1-column-tall'
-          const selection: SelectionConfigV2 = { showBanner: true }
+        fc.constantFrom(...BANNER_SUPPORTED_TEMPLATES),
+        async (menu, templateId) => {
+          const selection: SelectionConfigV2 = { showBanner: false }
           const doc = await generateLayoutV2({ menu, templateId, selection })
           const bannerTiles = allTiles(doc).filter(t => t.type === 'BANNER')
           expect(bannerTiles).toHaveLength(0)

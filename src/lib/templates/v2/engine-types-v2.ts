@@ -578,6 +578,8 @@ export interface TemplateBannerConfigV2 {
   enabled: boolean
   heightPt: number
   stripHeightPt: number
+  /** When true, the title region is shown below the banner instead of being suppressed */
+  showTitleBar?: boolean
 }
 
 export interface TemplateV2 {

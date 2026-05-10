@@ -1480,8 +1480,50 @@ function renderTitleContent(
 ): TileRenderData {
   const palette = getPalette(options)
   const galactic = isGalacticPalette(options)
-  const elements: RenderElement[] = [
-    {
+  const tileStyle = (tile as any).style as TileStyleV2 | undefined
+
+  // Banner-bar mode: when the YAML sets style.background.color = "bannerSurface",
+  // render the title as a full-width colored strip using the palette banner colors.
+  const isBannerBar = tileStyle?.background?.color === 'bannerSurface'
+
+  const elements: RenderElement[] = []
+
+  if (isBannerBar) {
+    const preset = FONT_STYLE_PRESETS[options.fontStylePreset ?? 'standard'] || FONT_STYLE_PRESETS.standard
+    const fontSize = Math.min(TYPOGRAPHY_TOKENS_V2.fontSize.xl, tile.height * 0.80)
+    // Use palette surface color for the title bar — distinct from bannerSurface but still palette-aware
+    const titleBarBg = palette.colors.surface ?? palette.colors.bannerSurface
+    // Text uses menuTitle color which is designed to contrast with surface
+    const titleBarText = palette.colors.menuTitle
+
+    elements.push({
+      type: 'background',
+      x: 0,
+      y: 0,
+      width: tile.width,
+      height: tile.height,
+      content: '',
+      style: { backgroundColor: titleBarBg }
+    })
+    elements.push({
+      type: 'text',
+      x: 0,
+      y: 0,
+      width: tile.width,
+      height: tile.height,
+      content: content.menuName,
+      style: {
+        fontSize,
+        fontWeight: preset.bannerTitleWeight,
+        fontFamily: preset.bannerTitleFamily,
+        color: titleBarText,
+        textAlign: 'center',
+        letterSpacing: 2,
+        textShadow: galactic ? neonTextGlow(palette, 'title') : undefined,
+      }
+    })
+  } else {
+    elements.push({
       type: 'text',
       x: 0,
       y: 0,
@@ -1495,8 +1537,8 @@ function renderTitleContent(
         textAlign: 'center',
         textShadow: galactic ? neonTextGlow(palette, 'title') : undefined
       }
-    }
-  ]
+    })
+  }
 
   return { elements }
 }
@@ -3678,7 +3720,9 @@ function renderBannerContent(
   const showHero = hasHeroImage && content.bannerImageStyle !== 'none'
   const isCutout = content.bannerImageStyle === 'cutout'
   const hasVenueIdentity = content.showVenueName && (content.logoUrl || content.venueName)
-  const showTitle = content.showBannerTitle
+  // For compact banners (≤60pt tall), suppress the title sidebar — the narrow height
+  // doesn't give enough room for vertical text. The title bar below the banner handles it instead.
+  const showTitle = content.showBannerTitle && tile.height > 60
 
   // Resolve live-edit transforms (override persisted values from content)
   const logoTransform = options.bannerLogoTransform ?? content.logoTransform

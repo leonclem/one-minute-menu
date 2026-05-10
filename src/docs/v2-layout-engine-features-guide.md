@@ -327,7 +327,7 @@ In the database, these map to `menu_items.is_featured` and `menu_items.is_flagsh
 - `showCategoryHeaderTiles`: switches section headers from full-width rows to compact single-column body tiles while still forcing a new row before items. Like the body logo tile, their height matches the section's effective item mode.
 - `showFlagshipTile`: emits `FLAGSHIP_CARD` for the single flagship item and suppresses its regular body tile.
 
-When `showBanner` is enabled on the grid templates, the engine also leaves a small buffer between the banner/strip and the first body row so content does not sit flush against the banner edge. The narrow `1-column-tall` template remains the exception.
+When `showBanner` is enabled on the grid templates, the engine also leaves a small buffer between the banner/strip and the first body row so content does not sit flush against the banner edge. This applies to all templates including `1-column-tall`.
 
 ### Template requirements
 

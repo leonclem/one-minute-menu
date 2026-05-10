@@ -254,7 +254,8 @@ export const TemplateSchemaV2 = z.object({
   banner: z.object({
     enabled: z.boolean(),
     heightPt: z.number().min(0),
-    stripHeightPt: z.number().min(0)
+    stripHeightPt: z.number().min(0),
+    showTitleBar: z.boolean().optional(),
   }).optional(),
 
   itemIndicators: z.object({

@@ -1,15 +1,17 @@
 # Roadmap
 
 ## Bugs
-- [ ] *NEXT* Banner is missing for 1-column-tall
+- [x] Banner is missing for 1-column-tall
 
 ## /extracted
 - [ ] Advanced options: change plate colour (white, beige, black, none)
-- [ ] Advanced options: remove slate
+- [ ] Investigate why plate is not always plain
 - [ ] Advanced options: add tags, e.g. Serving type: "Slice"
 - [ ] Advanced options: additional free text description
 - [ ] Investigate double mention of "match the perspective" in prompt
-- [ ] Investigate why plate is not always plain!
+
+## Structural / Architectural
+- [ ] Quantity or sized pricing, e.g. S/M/L, 1/2/5/Box, 12"/18" pizza, etc.
 
 ## SEO optimisation
 - [ ] Identify backlinks sites for SEO
@@ -30,6 +32,8 @@
 - [ ] Stretch fit Image Style should be default for non-demo mode
 - [ ] Review number of controls in control panel
 - [ ] Better preservation of user configuration
+- [ ] Add whatsapp option to contact details
+- [ ] Cutout images should sit behind text (not on top)
 
 ## Deployment
 - [x] Upgrade Vercel package
@@ -46,12 +50,13 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Bugs
+- [ ] If the user closes the modal during singular image generation, the "generating image" overlay doesn't show over the thumbnail
 - [ ] Reset button on demo doesn't work for banner toggle (and possibly others)
 - [ ] Pricing keeps defaulting to USD
 - [ ] When Image Style is set to "None", descriptions only have one line in most cases
 - [ ] Description still too short generally across layouts
 - [ ] Reset button on demo doesn't work for banner toggle (and possibly others)
-- [ ] Address cosmic menus style remnants
+- [ ] Neon blue color palette shrinks menu items/rows vertically.  Not good for displaying text in menu items.
 
 ## "What's New?" page
 - [ ] "What's New?" page
@@ -100,6 +105,7 @@
 - [ ] Crop for large menus text extraction
 
 ## /extracted
+- [ ] Copy items between menus in same account
 - [ ] Add section notes (check Vienna original for ref.)
 - [ ] Add menu items notes (e.g. "ask to add level 49 spicy)
 - [ ] Single price for all items in a category (+ new category price tile) (can also allow for sets?)
@@ -170,7 +176,6 @@
 
 ## Structural / Architectural
 - [ ] Quantity or sized pricing, e.g. S/M/L, 1/2/5/Box, 12"/18" pizza, etc.
-- [ ] Migrate out of OneDrive on laptop development
 - [ ] Explore batch requests to Gemini image creation (saves costs)
 - [ ] Explore use of ChatGPT Images 2.0 (and other options?) as backup to remove single-dependency image generation
 - [ ] Playwright (Patrick Ellis YT video)
@@ -392,6 +397,7 @@
 
 ## Structural / Architectural
 - [x] Image creation to background job
+- [x] Migrate out of OneDrive on laptop development
 
 ## Allergens / Spice level / etc
 - [x] Determine list (V2 supports dietary indicators: vegetarian, vegan, halal, kosher, gluten-free)
@@ -430,6 +436,7 @@
 - [x] Update home page to show video with costs savings vs photographers, designers, etc.
 - [x] Process to email those that have signed up and/or subscribed
 - [x] May the 4th menu
+- [x] Mother's Day menu
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>> NOTES / REF. >>>>>>>>>>>>>

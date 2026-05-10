@@ -14,7 +14,7 @@ regions:
   header:
     height: 50
   title:
-    height: 28
+    height: 22
   footer:
     height: 30
 
@@ -27,9 +27,10 @@ body:
     gapY: 6
 
 banner:
-  enabled: false
-  heightPt: 0
-  stripHeightPt: 0
+  enabled: true
+  heightPt: 55
+  stripHeightPt: 12
+  showTitleBar: true
 
 tiles:
   LOGO:
@@ -58,14 +59,17 @@ tiles:
 
   TITLE:
     region: title
+    style:
+      background:
+        color: "bannerSurface"
     contentBudget:
       nameLines: 1
       descLines: 0
       indicatorAreaHeight: 0
       imageBoxHeight: 0
-      paddingTop: 4
-      paddingBottom: 4
-      totalHeight: 28
+      paddingTop: 0
+      paddingBottom: 0
+      totalHeight: 22
 
   SECTION_HEADER:
     region: body
@@ -73,7 +77,7 @@ tiles:
     style:
       typography:
         fontSet: "system-sans-bold"
-        fontSize: "2xl"
+        fontSize: "lg"
         fontWeight: "bold"
         textAlign: "center"
         lineHeight: "normal"
@@ -82,7 +86,7 @@ tiles:
         decoration: "none"
       spacing:
         paddingLeft: 8
-        paddingTop: 24
+        paddingTop: 20
         paddingBottom: 0
       border:
         width: 0.6

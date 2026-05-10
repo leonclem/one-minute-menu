@@ -397,7 +397,8 @@ export function createLogoTile(
  */
 export function createTitleTile(
   menu: EngineMenuV2,
-  template: TemplateV2
+  template: TemplateV2,
+  textOverride?: string
 ): Omit<TileInstanceV2, 'x' | 'y' | 'gridRow' | 'gridCol'> {
   const variant = template.tiles.TITLE
   
@@ -405,14 +406,14 @@ export function createTitleTile(
     id: `title-${menu.id}`,
     type: 'TITLE',
     regionId: variant.region,
-    width: 0, // Will be set by caller based on region width
-    height: variant.contentBudget?.totalHeight ?? 0, // Title uses content budget directly
+    width: 0,
+    height: variant.contentBudget?.totalHeight ?? 0,
     colSpan: 1,
     rowSpan: 1,
     layer: 'content',
     content: {
       type: 'TITLE',
-      menuName: menu.name,
+      menuName: textOverride ?? menu.name,
       venueName: menu.metadata.venueName,
     },
     style: variant.style,

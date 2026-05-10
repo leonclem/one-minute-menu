@@ -281,7 +281,7 @@ Static placement still handles:
 
 So the body-logo feature did not remove static placement; it suppresses the header logo when the body-grid logo mode is active and, when no banner is present, leaves only a small print-safe header buffer above the body/title stack.
 
-When a banner or continuation strip is present on grid templates, the paginator also leaves a small buffer below it before the first body row so opening content does not sit flush against the banner edge. The `1-column-tall` template remains exempt from that rule.
+When a banner or continuation strip is present on grid templates, the paginator also leaves a small buffer below it before the first body row so opening content does not sit flush against the banner edge.
 
 ### `searchRowFloor` — preventing item backfill above the header
 

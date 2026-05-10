@@ -72,7 +72,9 @@ export function calculateRegions(
     )
   }
 
-  const bodyY = headerHeight + titleHeight + bannerBodyOffset
+  // Position the title below the banner if banner is present, otherwise below the header
+  const titleY = headerHeight + bannerBodyOffset
+  const bodyY = titleY + titleHeight
 
   // All coordinates are CONTENT-BOX RELATIVE (x=0, y stacked from 0)
   const regions: RegionV2[] = [
@@ -86,7 +88,7 @@ export function calculateRegions(
     {
       id: 'title',
       x: 0,
-      y: headerHeight, // stacked below header
+      y: titleY, // below banner (or header when no banner)
       width: contentWidth,
       height: titleHeight, // Will be 0 if showMenuTitle is false
     },

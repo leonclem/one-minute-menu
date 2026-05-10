@@ -159,11 +159,9 @@ function resolveHeaderRegionHeight(
 
 /**
  * Add a small buffer below the banner/strip so body rows do not sit flush
- * against the banner edge. The narrow 1-column-tall format is exempt.
+ * against the banner edge.
  */
 function applyBannerBodyPadding(regions: RegionV2[], template: TemplateV2, selection?: SelectionConfigV2): void {
-  if (template.id === '1-column-tall') return
-
   const banner = regions.find(r => r.id === 'banner')
   if (!banner || banner.height <= 0) return
 
@@ -210,8 +208,11 @@ export function initContext(
   selection?: SelectionConfigV2
 ): StreamingContext {
   const bannerHeight = computeBannerHeight(template, selection)
-  // Suppress title region when banner is present (banner covers venue identity)
-  const showMenuTitle = bannerHeight === 0 && selection?.showMenuTitle === true
+  // For showTitleBar templates, title region is shown when showMenuTitle is true (user-controlled)
+  // For other templates, title is suppressed when banner is present
+  const showMenuTitle = template.banner?.showTitleBar === true
+    ? selection?.showMenuTitle === true
+    : (bannerHeight === 0 && selection?.showMenuTitle === true)
   const headerHeight = resolveHeaderRegionHeight(template, selection, bannerHeight)
   const regions = calculateRegions(pageSpec, template, showMenuTitle, bannerHeight, {
     headerHeightOverride: headerHeight,
@@ -338,8 +339,10 @@ export function startNewPage(ctx: StreamingContext, pageType: PageTypeV2): void 
   const bannerHeight = isFirstOrSingle
     ? computeBannerHeight(ctx.template, ctx.selection)
     : computeStripHeight(ctx.template, ctx.selection)
-  // Suppress title region when banner is present (banner covers venue identity)
-  const showMenuTitle = bannerHeight === 0 && ctx.selection?.showMenuTitle === true
+  // For showTitleBar templates, title region is shown when showMenuTitle is true (user-controlled)
+  const showMenuTitle = ctx.template.banner?.showTitleBar === true
+    ? ctx.selection?.showMenuTitle === true
+    : (bannerHeight === 0 && ctx.selection?.showMenuTitle === true)
   const headerHeight = resolveHeaderRegionHeight(ctx.template, ctx.selection, bannerHeight)
   const regions = calculateRegions(ctx.pageSpec, ctx.template, showMenuTitle, bannerHeight, {
     headerHeightOverride: headerHeight,
@@ -384,10 +387,16 @@ export function placeStaticTiles(
 ): void {
   const hasBanner = !!ctx.currentPage.regions.find(r => r.id === 'banner')
 
-  // Title tile is suppressed when a banner is present; banner covers venue identity
-  const showMenuTitle = !hasBanner && ctx.selection?.showMenuTitle === true
+  // For showTitleBar templates, title region is shown when showMenuTitle is true (user-controlled)
+  const showMenuTitle = ctx.template.banner?.showTitleBar === true
+    ? ctx.selection?.showMenuTitle === true
+    : (!hasBanner && ctx.selection?.showMenuTitle === true)
   if (showMenuTitle) {
-    const titleTile = createTitleTile(menu, ctx.template)
+    // For showTitleBar templates, use the banner title text ("MENU" etc) not the menu name
+    const titleText = ctx.template.banner?.showTitleBar === true
+      ? (ctx.selection?.bannerTitle?.trim() || 'MENU')
+      : menu.name
+    const titleTile = createTitleTile(menu, ctx.template, titleText)
     const titleRegion = ctx.currentPage.regions.find(r => r.id === 'title')!
     
     const placedTitle = placeTile(
