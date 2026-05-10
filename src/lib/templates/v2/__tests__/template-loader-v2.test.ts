@@ -91,7 +91,7 @@ describe('Template Loader V2', () => {
       expect(template.page.size).toBe('HALF_A4_TALL')
       expect(template.page.margins).toEqual({ top: 20, right: 15, bottom: 20, left: 15 })
       expect(template.body.container.cols).toBe(1)
-      expect(template.body.container.rowHeight).toBe(70)
+      expect(template.body.container.rowHeight).toBe(35)
       expect(template.body.container.gapX).toBe(0)
       expect(template.body.container.gapY).toBe(6)
       expect(template.tiles.SECTION_HEADER.colSpan).toBe(1)

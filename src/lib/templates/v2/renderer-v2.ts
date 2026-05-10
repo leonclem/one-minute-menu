@@ -1586,6 +1586,12 @@ function renderSectionHeaderContent(
     : fontFamily
   const resolvedFontWeight = presetConfig ? presetConfig.sectionHeaderWeight : (TYPOGRAPHY_TOKENS_V2.fontWeight[fontWeight as FontWeightV2] || TYPOGRAPHY_TOKENS_V2.fontWeight.semibold)
   
+  // For compact (1-column body) section header tiles, apply inverse chrome when
+  // no explicit tileStyle background is set. This mirrors the logo tile behaviour.
+  const inverseChrome = isCompactHeaderTile && !tileStyle?.background?.color
+    ? getInverseTileChrome(palette, 'sectionHeader')
+    : undefined
+
   // Add background if specified
   if (tileStyle?.background?.color) {
     elements.push({
@@ -1600,6 +1606,20 @@ function renderSectionHeaderContent(
         borderRadius: isCompactHeaderTile ? 0 : (tileStyle.background.borderRadius || 0)
       }
     })
+  } else if (inverseChrome) {
+    elements.push({
+      type: 'background',
+      x: 0,
+      y: 0,
+      width: tile.width,
+      height: tile.height,
+      content: '',
+      style: {
+        backgroundColor: inverseChrome.colors.background,
+        borderRadius: 0
+      }
+    })
+    pushFrameBorders(elements, tile, inverseChrome.colors.border, inverseChrome.borderWidth)
   }
 
   // Galactic section framing is handled at the region level (web/PDF renderer),
@@ -1796,7 +1816,7 @@ function renderSectionHeaderContent(
       fontSize: resolvedFontSize,
       fontWeight: resolvedFontWeight,
       lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight[lineHeight as LineHeightV2] || TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
-      color: tileStyle?.typography?.color || palette.colors.sectionHeader,
+      color: tileStyle?.typography?.color || (inverseChrome ? inverseChrome.colors.text : palette.colors.sectionHeader),
       // For centered headings with a decoration, we approximate-center the
       // bullet + label group via geometry, so the label's own textAlign
       // remains left-aligned to keep the bullet close to the first letter.

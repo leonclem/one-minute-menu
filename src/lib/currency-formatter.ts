@@ -58,10 +58,17 @@ export function formatCurrency(
   } = options;
 
   try {
+    const metadata = getCurrencyMetadata(normalizedCode);
+    const fractionDigits = metadata.decimalPlaces;
     const formatter = new Intl.NumberFormat(locale, {
       style: showSymbol ? 'currency' : 'decimal',
       currency: normalizedCode,
       currencyDisplay: showCode ? 'code' : 'symbol',
+      // Explicitly set fraction digits to override Node.js ICU defaults (e.g. IDR treated as 0-decimal)
+      ...(showSymbol && {
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
+      }),
     });
 
     return formatter.format(amount);

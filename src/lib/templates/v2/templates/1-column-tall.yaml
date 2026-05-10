@@ -86,7 +86,7 @@ tiles:
         decoration: "none"
       spacing:
         paddingLeft: 8
-        paddingTop: 10
+        paddingTop: 14
         paddingBottom: 0
       border:
         width: 0.6
