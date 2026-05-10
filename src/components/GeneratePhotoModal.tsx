@@ -21,6 +21,8 @@ interface GeneratePhotoModalProps {
   itemDescription?: string
   onClose: () => void
   onSuccess: () => void
+  /** Called as soon as a generation job is queued, before it completes */
+  onJobStarted?: () => void
 }
 
 export default function GeneratePhotoModal({
@@ -29,7 +31,8 @@ export default function GeneratePhotoModal({
   itemName,
   itemDescription,
   onClose,
-  onSuccess
+  onSuccess,
+  onJobStarted
 }: GeneratePhotoModalProps) {
   const [generating, setGenerating] = useState(false)
   const [params, setParams] = useState<PhotoGenerationParams>({
@@ -87,6 +90,8 @@ export default function GeneratePhotoModal({
 
       const jobId = result.data?.jobId as string | undefined
       if (jobId) {
+        // Notify parent immediately so the thumbnail overlay appears while the job runs
+        onJobStarted?.()
         showToast({
           type: 'info',
           title: 'Generation started',

@@ -849,6 +849,39 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     }
   }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, showMenuTitle, showCategoryTitles, showLogoTile, showCategoryHeaderTiles, isFlagshipTileVisible, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, effectiveFlagshipItemId, isDemoUser, previewAssetVersion])
 
+  // On initial status load, if there are recently completed jobs the menu data may not yet
+  // reflect (e.g. user navigated here after a single-item generation finished on /extracted),
+  // do a one-time refresh so the preview shows the latest images.
+  const initialStatusLoadedRef = useRef(false)
+  useEffect(() => {
+    if (isDemo || !imageGenerationStatus || initialStatusLoadedRef.current) return
+    initialStatusLoadedRef.current = true
+
+    const recentCompleted = imageGenerationStatus.recentCompletedJobs ?? []
+    if (recentCompleted.length === 0) return
+
+    // Check if any recently completed job's image is missing from the current menu data
+    const allItems = [
+      ...(menu?.items ?? []),
+      ...(menu?.categories?.flatMap(c => c.items) ?? []),
+    ]
+    const itemsWithImages = new Set(
+      allItems
+        .filter(item => item.customImageUrl || (item as any).imageUrl || (item as any).aiImageId)
+        .map(item => item.id)
+    )
+    const hasStaleItem = recentCompleted.some(
+      job => !itemsWithImages.has(job.menuItemId)
+    )
+    if (!hasStaleItem) return
+
+    // Refresh menu data and re-render the preview to pick up newly generated images
+    void refreshMenuData()
+      .catch(err => console.warn('[Template] Initial stale-image refresh failed', err))
+      .then(() => fetchLayoutPreview())
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageGenerationStatus])
+
   useEffect(() => {
     if (isDemo) return
 

@@ -2770,9 +2770,18 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           menuId={menuId}
           itemName={showGeneratePhoto.name}
           itemDescription={showGeneratePhoto.description}
-          onClose={() => setShowGeneratePhoto(null)}
+          onClose={() => {
+            setShowGeneratePhoto(null)
+            // Refresh status so any in-progress job is reflected on the thumbnail overlay
+            refreshImageGenerationStatus()
+          }}
+          onJobStarted={() => {
+            // Refresh status immediately so the thumbnail overlay appears right away
+            refreshImageGenerationStatus()
+          }}
           onSuccess={async () => {
             await refreshMenu()
+            refreshImageGenerationStatus()
             setShowGeneratePhoto(null)
             // Re-open gallery to show new photo
             if (showGeneratePhoto) {
