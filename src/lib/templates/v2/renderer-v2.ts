@@ -1552,7 +1552,6 @@ function renderSectionHeaderContent(
   const galactic = isGalacticPalette(options)
   const elements: RenderElement[] = []
   const isCompactHeaderTile = tile.regionId === 'body' && tile.colSpan === 1
-  const inverseChrome = isCompactHeaderTile ? getInverseTileChrome(palette, 'sectionHeader') : undefined
   
   // Get tile styling from template (passed through tile.style)
   const tileStyle = (tile as any).style as TileStyleV2 | undefined
@@ -1574,11 +1573,8 @@ function renderSectionHeaderContent(
   const paddingLeft = tileStyle?.spacing?.paddingLeft ?? 0
   const paddingRight = tileStyle?.spacing?.paddingRight ?? paddingLeft
   const paddingTop = tileStyle?.spacing?.paddingTop ?? 0
-  const compactHorizontalInset = isCompactHeaderTile
-    ? Math.max(8, 6 + (inverseChrome?.borderWidth ?? 0))
-    : 0
-  const effectivePaddingLeft = isCompactHeaderTile ? Math.max(paddingLeft, compactHorizontalInset) : paddingLeft
-  const effectivePaddingRight = isCompactHeaderTile ? Math.max(paddingRight, compactHorizontalInset) : paddingRight
+  const effectivePaddingLeft = paddingLeft
+  const effectivePaddingRight = paddingRight
   
   // Get font family from font set
   const fontFamily = getFontFamily(fontSet)
@@ -1718,37 +1714,22 @@ function renderSectionHeaderContent(
   // is consistent regardless of tile height (which varies with rowHeight).
   const sectionTextLineHeight = resolvedFontSize * resolvedLineHeight
   const hasBottomBorder = tileStyle?.border?.sides?.includes('bottom') && (tileStyle?.border?.width ?? 0) > 0
+  const explicitPaddingTop = tileStyle?.spacing?.paddingTop
   let textY: number
-  if (hasBottomBorder) {
+  if (explicitPaddingTop !== undefined && explicitPaddingTop > 0) {
+    // Template explicitly sets paddingTop — use it directly so the YAML controls
+    // text placement regardless of tile height or border presence.
+    textY = explicitPaddingTop
+  } else if (hasBottomBorder) {
     const borderTopEdge = tile.height - (tileStyle!.border!.width ?? 0)
     textY = Math.max(2, borderTopEdge - sectionTextLineHeight)
   } else {
     textY = paddingTop || tile.height / 2
   }
-  if (isCompactHeaderTile) {
+  // For compact (1-column) tiles, only override with vertical centering when
+  // no explicit paddingTop is set in the template — otherwise respect the YAML value.
+  if (isCompactHeaderTile && !explicitPaddingTop) {
     textY = Math.max(4, (tile.height - sectionTextLineHeight) / 2)
-  }
-
-  if (!galactic && isCompactHeaderTile && !tileStyle?.background?.color) {
-    elements.unshift({
-      type: 'background',
-      x: 0,
-      y: 0,
-      width: tile.width,
-      height: tile.height,
-      content: '',
-      style: {
-        backgroundColor: inverseChrome?.colors.background ?? blendHexTowards(
-          palette.colors.surface ?? palette.colors.background,
-          palette.colors.accent ?? palette.colors.itemPrice,
-          0.12
-        ),
-        borderRadius: 0
-      }
-    })
-    if (inverseChrome) {
-      pushFrameBorders(elements, tile, inverseChrome.colors.border, inverseChrome.borderWidth)
-    }
   }
 
   // Default: left-aligned label with optional decoration directly before it
@@ -1815,11 +1796,7 @@ function renderSectionHeaderContent(
       fontSize: resolvedFontSize,
       fontWeight: resolvedFontWeight,
       lineHeight: TYPOGRAPHY_TOKENS_V2.lineHeight[lineHeight as LineHeightV2] || TYPOGRAPHY_TOKENS_V2.lineHeight.normal,
-      color: tileStyle?.typography?.color || (
-        isCompactHeaderTile
-          ? (inverseChrome?.colors.text ?? blendHexTowards(palette.colors.sectionHeader, palette.colors.accent ?? palette.colors.itemPrice, 0.45))
-          : palette.colors.sectionHeader
-      ),
+      color: tileStyle?.typography?.color || palette.colors.sectionHeader,
       // For centered headings with a decoration, we approximate-center the
       // bullet + label group via geometry, so the label's own textAlign
       // remains left-aligned to keep the bullet close to the first letter.

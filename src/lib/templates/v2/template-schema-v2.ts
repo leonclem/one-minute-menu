@@ -204,7 +204,7 @@ export const TemplateSchemaV2 = z.object({
     container: z.object({
       type: z.literal('GRID'),
       cols: z.number().int().min(1).max(6),
-      rowHeight: z.number().min(50),
+      rowHeight: z.number().min(20),
       gapX: z.number().min(0),
       gapY: z.number().min(0)
     })

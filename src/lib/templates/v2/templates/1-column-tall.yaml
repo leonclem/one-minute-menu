@@ -22,7 +22,7 @@ body:
   container:
     type: GRID
     cols: 1
-    rowHeight: 70
+    rowHeight: 35
     gapX: 0
     gapY: 6
 
@@ -47,7 +47,7 @@ tiles:
   LOGO_BODY:
     region: body
     colSpan: 1
-    rowSpan: 1
+    rowSpan: 2
     contentBudget:
       nameLines: 0
       descLines: 0
@@ -55,7 +55,7 @@ tiles:
       imageBoxHeight: 54
       paddingTop: 8
       paddingBottom: 8
-      totalHeight: 70
+      totalHeight: 76
 
   TITLE:
     region: title
@@ -86,7 +86,7 @@ tiles:
         decoration: "none"
       spacing:
         paddingLeft: 8
-        paddingTop: 20
+        paddingTop: 10
         paddingBottom: 0
       border:
         width: 0.6
@@ -99,14 +99,14 @@ tiles:
       imageBoxHeight: 0
       paddingTop: 6
       paddingBottom: 4
-      totalHeight: 20
+      totalHeight: 35
 
   # ITEM_CARD available but narrow format favours ITEM_TEXT_ROW
   # Height formula: rowSpan * rowHeight + (rowSpan - 1) * gapY
-  #   = 2 * 70 + 1 * 6 = 146pt actual height
+  #   = 4 * 35 + 3 * 6 = 158pt actual height
   ITEM_CARD:
     region: body
-    rowSpan: 2
+    rowSpan: 4
     style:
       typography:
         name:
@@ -130,12 +130,14 @@ tiles:
       imageBoxHeight: 50
       paddingTop: 6
       paddingBottom: 6
-      totalHeight: 146
+      totalHeight: 158
 
   # Preferred tile type for narrow single-column format
+  # Height formula: rowSpan * rowHeight + (rowSpan - 1) * gapY
+  #   = 2 * 35 + 1 * 6 = 76pt actual height
   ITEM_TEXT_ROW:
     region: body
-    rowSpan: 1
+    rowSpan: 2
     style:
       typography:
         name:
@@ -159,12 +161,12 @@ tiles:
       imageBoxHeight: 0
       paddingTop: 6
       paddingBottom: 6
-      totalHeight: 70
+      totalHeight: 76
 
   FLAGSHIP_CARD:
     region: body
     colSpan: 1
-    rowSpan: 2
+    rowSpan: 4
     style:
       typography:
         name:
@@ -180,7 +182,7 @@ tiles:
       imageBoxHeight: 90
       paddingTop: 8
       paddingBottom: 8
-      totalHeight: 146
+      totalHeight: 158
 
   FOOTER_INFO:
     region: footer

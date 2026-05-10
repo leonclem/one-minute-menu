@@ -291,7 +291,7 @@ export function PageRenderer({ page, pageSpec, options }: PageRendererProps) {
           pageSpec={pageSpec}
           options={options}
           edge="top"
-          topOverride={pageSpec.margins.top + titleRegion.y}
+          topOverride={bannerRegion ? bannerRegion.height : pageSpec.margins.top + titleRegion.y}
           zIndex={2}
         />
       )}

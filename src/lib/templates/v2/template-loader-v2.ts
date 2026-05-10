@@ -186,10 +186,10 @@ function validateDerivedValues(
   }
   
   // Validate grid configuration
-  if (raw.body.container.rowHeight < 50) {
+  if (raw.body.container.rowHeight < 20) {
     errors.push(
       `Body rowHeight (${raw.body.container.rowHeight}pt) is too small. ` +
-      `Minimum 50pt required for readable text.`
+      `Minimum 20pt required for readable text.`
     )
   }
   
