@@ -1133,12 +1133,39 @@ function TileRenderer({ tile, options }: TileRendererProps) {
     ? renderData.elements.find(e => e.type === 'image' && e.style.zIndex === 4)
     : undefined
 
-  const heroOverlayFrame = heroImageElement ? {
-    left: heroImageElement.x * scale,
-    top: Math.max(0, heroImageElement.y * scale),
-    width: heroImageElement.width! * scale,
-    height: heroImageElement.height! * scale,
-  } : undefined
+  // For cutout hero images the element is intentionally oversized (1.8× tile height) and
+  // positioned with a negative y so the dish floats upward out of the banner. Using the raw
+  // element bounds as the overlay frame produces a box that extends far below the banner and
+  // off the right edge — confusing for users. Instead, clip the frame to the banner tile's
+  // own bounds so the teal edit box stays within the visible banner area.
+  const isCutoutHero = heroImageElement?.style.isCutout === true
+  const heroOverlayFrame = heroImageElement ? (() => {
+    const rawLeft = heroImageElement.x * scale
+    const rawTop = heroImageElement.y * scale
+    const rawRight = rawLeft + heroImageElement.width! * scale
+    const rawBottom = rawTop + heroImageElement.height! * scale
+    const tileW = tile.width * scale
+    const tileH = tile.height * scale
+    if (isCutoutHero) {
+      // Clamp to tile bounds — this is the region the user can meaningfully drag within
+      const clampedLeft = Math.max(0, Math.min(rawLeft, tileW))
+      const clampedTop = Math.max(0, Math.min(rawTop, tileH))
+      const clampedRight = Math.max(0, Math.min(rawRight, tileW))
+      const clampedBottom = Math.max(0, Math.min(rawBottom, tileH))
+      return {
+        left: clampedLeft,
+        top: clampedTop,
+        width: clampedRight - clampedLeft,
+        height: clampedBottom - clampedTop,
+      }
+    }
+    return {
+      left: rawLeft,
+      top: Math.max(0, rawTop),
+      width: heroImageElement.width! * scale,
+      height: heroImageElement.height! * scale,
+    }
+  })() : undefined
 
   const logoOverlayFrame = logoImageElement ? {
     left: logoImageElement.x * scale,
@@ -1147,7 +1174,10 @@ function TileRenderer({ tile, options }: TileRendererProps) {
     height: logoImageElement.height! * scale,
   } : undefined
   const isCutoutTile = hasImage && options.imageMode === 'cutout'
-  const tileZIndex = tile.layer === 'background' ? 0 : isCutoutTile ? 5 : 1
+  // All menu item tiles share the same z-index so no tile's stacking context sits above another's.
+  // Cutout images overflow visually via overflow:visible on the tile, but DOM order (image pushed
+  // before text elements) ensures text paints on top within each tile's own stacking context.
+  const tileZIndex = tile.layer === 'background' ? 0 : 1
 
   return (
     <div
@@ -1313,7 +1343,7 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
       const imageHeight = typeof baseStyle.height === 'number' ? baseStyle.height : parseFloat(String(baseStyle.height || 0))
       const isCircular = borderRadius && borderRadius > 0 && imageWidth > 0 && imageHeight > 0 &&
         Math.abs(borderRadius - imageWidth / 2) < 2 && Math.abs(imageWidth - imageHeight) < 2
-      const isCutoutImage = element.style.zIndex != null
+      const isCutoutImage = element.style.isCutout === true
       const hasTransform = !!element.style.transform
       const imgOverflow = isCutoutImage ? 'visible' : (isCircular || hasTransform) ? 'hidden' : 'visible'
       return (

@@ -1284,6 +1284,8 @@ export interface RenderStyle {
   textShadow?: string
   whiteSpace?: string
   zIndex?: number
+  /** Marks this image element as a cutout (transparent PNG, overflow visible, no background fill) */
+  isCutout?: boolean
   /** CSS transform string (e.g. 'scale(1.5)') for per-item image zoom */
   transform?: string
   /** CSS transform-origin string (e.g. '50% 70%') paired with transform */
@@ -2678,7 +2680,9 @@ function renderItemContent(
           objectFit: isCutoutMode ? 'contain' : 'cover',
           ...itemTransformStyle,
           boxShadow: isCutoutMode ? undefined : (imageShadow || undefined),
-          zIndex: isCutoutMode ? 10 : undefined,
+          // No explicit zIndex — DOM order (image before text) ensures text paints on top.
+          // isCutout signals the web renderer to use overflow:visible and transparent background.
+          isCutout: isCutoutMode ? true : undefined,
         }
       })
     } else {
@@ -3006,7 +3010,7 @@ function renderFeatureCardContent(
       color: isBackgroundMode ? lightenHexForDarkBackground(palette.colors.itemTitle, BG_IMAGE_TEXT.lightenBlendName) : palette.colors.itemTitle,
       textAlign: nameTypo.textAlign,
       textTransform: applyTextTransform(content.name, nameTypo.textTransform)[1],
-      textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
+      textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined,
     }
   })
   currentY += fitNameHeight + (hasDesc ? gapNameToDesc : gapDescToPrice)
@@ -3026,7 +3030,7 @@ function renderFeatureCardContent(
         color: isBackgroundMode ? BG_IMAGE_TEXT.descColor : palette.colors.itemDescription,
         textAlign: descTypo.textAlign,
         textTransform: applyTextTransform(content.description!, descTypo.textTransform)[1],
-        textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
+        textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined,
       }
     })
     currentY += fitDescHeight + gapDescToPrice
@@ -3045,7 +3049,7 @@ function renderFeatureCardContent(
       maxLines: 1,
       color: isBackgroundMode ? lightenHexForDarkBackground(palette.colors.itemPrice, BG_IMAGE_TEXT.lightenBlendPrice) : palette.colors.itemPrice,
       textAlign: priceTypo.textAlign, textTransform: priceTypo.textTransform,
-      textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined
+      textShadow: isBackgroundMode ? BG_IMAGE_TEXT.shadow : undefined,
     }
   })
   currentY += priceLineHeight + SPACING_V2.descToPrice
@@ -3191,6 +3195,7 @@ function renderFlagshipCardContent(
           borderRadius: mediaBorderRadius,
           objectFit: imageMode === 'cutout' ? 'contain' : 'cover',
           boxShadow: imageMode === 'cutout' ? undefined : '0 6px 18px rgba(0,0,0,0.12)',
+          isCutout: imageMode === 'cutout' ? true : undefined,
           ...transformStyle
         }
       })
@@ -3993,6 +3998,7 @@ function renderBannerContent(
           transform: heroTransformStyle.transform,
           transformOrigin: heroTransformStyle.transformOrigin,
           zIndex: 3,
+          isCutout: true,
         }
       })
     } else {
