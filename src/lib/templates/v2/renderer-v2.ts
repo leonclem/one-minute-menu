@@ -1553,7 +1553,7 @@ function renderSectionHeaderContent(
   const palette = getPalette(options)
   const galactic = isGalacticPalette(options)
   const elements: RenderElement[] = []
-  const isCompactHeaderTile = tile.regionId === 'body' && tile.colSpan === 1
+  const isCompactHeaderTile = tile.regionId === 'body' && content.isCompactTile === true
   
   // Get tile styling from template (passed through tile.style)
   const tileStyle = (tile as any).style as TileStyleV2 | undefined

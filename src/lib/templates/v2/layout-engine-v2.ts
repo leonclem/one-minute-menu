@@ -46,83 +46,7 @@ export interface LayoutEngineInputV2 {
   debug?: boolean
 }
 
-const GALACTIC_COMPACT_PORTRAIT_TEMPLATE_IDS = new Set([
-  '3-column-portrait',
-  '4-column-portrait',
-])
 
-function applyGalacticCompactPortraitDensity(
-  template: TemplateV2,
-  selection?: SelectionConfigV2
-): TemplateV2 {
-  if (
-    selection?.colourPaletteId !== 'galactic-menu' ||
-    !GALACTIC_COMPACT_PORTRAIT_TEMPLATE_IDS.has(template.id)
-  ) {
-    return template
-  }
-
-  const sectionHeader = template.tiles.SECTION_HEADER
-  const itemCard = template.tiles.ITEM_CARD
-  const itemTextRow = template.tiles.ITEM_TEXT_ROW
-
-  return {
-    ...template,
-    body: {
-      ...template.body,
-      container: {
-        ...template.body.container,
-        rowHeight: 64,
-        gapY: 6,
-      },
-    },
-    tiles: {
-      ...template.tiles,
-      SECTION_HEADER: {
-        ...sectionHeader,
-        style: {
-          ...sectionHeader.style,
-          spacing: {
-            ...sectionHeader.style?.spacing,
-            paddingTop: 10,
-            paddingBottom: 0,
-          },
-        },
-        contentBudget: {
-          ...sectionHeader.contentBudget,
-          paddingTop: 4,
-          paddingBottom: 2,
-          totalHeight: 20,
-        },
-      },
-      ...(itemCard
-        ? {
-            ITEM_CARD: {
-              ...itemCard,
-              contentBudget: {
-                ...itemCard.contentBudget,
-                nameLines: Math.min(itemCard.contentBudget.nameLines, 1),
-                descLines: Math.min(itemCard.contentBudget.descLines, 2),
-                paddingTop: 6,
-                paddingBottom: 6,
-                totalHeight: 134,
-              },
-            },
-          }
-        : {}),
-      ITEM_TEXT_ROW: {
-        ...itemTextRow,
-        contentBudget: {
-          ...itemTextRow.contentBudget,
-          descLines: Math.min(itemTextRow.contentBudget.descLines, 2),
-          paddingTop: 6,
-          paddingBottom: 6,
-          totalHeight: 64,
-        },
-      },
-    },
-  }
-}
 
 // =============================================================================
 // Main Layout Generation Function
@@ -148,10 +72,7 @@ export async function generateLayoutV2(
   input: LayoutEngineInputV2
 ): Promise<LayoutDocumentV2> {
   // Step 1: Load and validate template
-  const template = applyGalacticCompactPortraitDensity(
-    await loadTemplateV2(input.templateId),
-    input.selection
-  )
+  const template = await loadTemplateV2(input.templateId)
   
   // Step 2: Build page spec from input or template defaults
   // Priority: input.pageSpec > template.page configuration

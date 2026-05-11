@@ -646,7 +646,8 @@ describe('V2 Renderer', () => {
           type: 'SECTION_HEADER',
           sectionId: 'sec-1',
           label: 'Sandwiches',
-          isContinuation: false
+          isContinuation: false,
+          isCompactTile: true,
         } as SectionHeaderContentV2
       }
 
@@ -709,7 +710,8 @@ describe('V2 Renderer', () => {
           type: 'SECTION_HEADER',
           sectionId: 'sec-1',
           label: 'Lunch Entrees',
-          isContinuation: false
+          isContinuation: false,
+          isCompactTile: true,
         } as SectionHeaderContentV2,
         style: {
           typography: {
@@ -1590,7 +1592,8 @@ describe('V2 Renderer', () => {
           type: 'SECTION_HEADER',
           sectionId: 'sec-1',
           label: 'Mains',
-          isContinuation: false
+          isContinuation: false,
+          isCompactTile: true,
         } as SectionHeaderContentV2,
       }
 

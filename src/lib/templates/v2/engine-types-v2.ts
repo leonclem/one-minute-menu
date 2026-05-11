@@ -200,6 +200,9 @@ export interface SectionHeaderContentV2 {
   sectionId: string
   label: string
   isContinuation: boolean
+  /** True when the tile was explicitly placed as a compact body tile (showCategoryHeaderTiles=true).
+   * Distinct from a naturally 1-column template where colSpan happens to be 1. */
+  isCompactTile?: boolean
 }
 
 /** Item tile content (for both ITEM_CARD and ITEM_TEXT_ROW) */

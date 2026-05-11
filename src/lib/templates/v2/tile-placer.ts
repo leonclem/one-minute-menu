@@ -180,6 +180,7 @@ export function createSectionHeaderTile(
       sectionId: section.id,
       label: section.name,
       isContinuation,
+      isCompactTile: selection?.showCategoryHeaderTiles === true,
     },
     // Pass style information from template
     style: variant?.style,
