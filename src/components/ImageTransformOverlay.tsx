@@ -28,6 +28,7 @@ interface ImageTransformOverlayProps {
   onChange: (itemId: string, transform: ImageTransform) => void
   frame?: OverlayFrame
   highlightFrame?: OverlayFrame
+  zIndex?: number
 }
 
 /**
@@ -41,6 +42,7 @@ export function ImageTransformOverlay({
   onChange,
   frame,
   highlightFrame,
+  zIndex = 20,
 }: ImageTransformOverlayProps) {
   const isCutout = imageMode === 'cutout'
   const minScale = isCutout ? MIN_SCALE_CUTOUT : MIN_SCALE_DEFAULT
@@ -240,7 +242,7 @@ export function ImageTransformOverlay({
           inset: 0,
         }),
         cursor: dragState.current?.thresholdCrossed ? 'grabbing' : 'grab',
-        zIndex: 20,
+        zIndex,
         borderRadius: frame?.borderRadius ?? (isCutout ? 0 : 'inherit'),
         boxSizing: 'border-box',
         ...(isCutout ? {} : {

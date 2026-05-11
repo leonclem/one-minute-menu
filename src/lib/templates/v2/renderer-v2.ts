@@ -3789,7 +3789,7 @@ function renderBannerContent(
             alignItems: 'center',
             justifyContent: 'center',
             letterSpacing: 2,
-            zIndex: 4,
+            zIndex: 30,
             textShadow: galactic ? neonTextGlow(palette, 'title') : undefined,
           }
         })
@@ -3810,7 +3810,7 @@ function renderBannerContent(
           width: logoWidth,
           height: logoHeight,
           content: content.logoUrl,
-          style: { objectFit: 'contain', objectPosition: logoTransformStyle.objectPosition ?? 'left center', transform: logoTransformStyle.transform, transformOrigin: logoTransformStyle.transformOrigin, zIndex: 4 }
+          style: { objectFit: 'contain', objectPosition: logoTransformStyle.objectPosition ?? 'left center', transform: logoTransformStyle.transform, transformOrigin: logoTransformStyle.transformOrigin, zIndex: 30, isCutout: true }
         })
       } else if (content.venueName) {
         const venueFontSize = Math.max(18, Math.min(tile.height * 0.55, textZoneWidth * 0.16))
@@ -3828,7 +3828,7 @@ function renderBannerContent(
             color: bannerText,
             textAlign: 'left',
             lineHeight: 1.05,
-            zIndex: 4,
+            zIndex: 30,
           }
         })
       }
@@ -3850,7 +3850,7 @@ function renderBannerContent(
           width: logoH,
           height: logoW,
           content: content.logoUrl,
-          style: { objectFit: 'contain', objectPosition: 'center' }
+          style: { objectFit: 'contain', objectPosition: 'center', zIndex: 30, isCutout: true }
         })
       } else if (content.venueName) {
         const sidebarFontSize = Math.max(10, sidebarWidth * 0.55)
@@ -3874,6 +3874,7 @@ function renderBannerContent(
             alignItems: 'center',
             justifyContent: 'center',
             letterSpacing: 1,
+            zIndex: 30,
             textShadow: galactic ? neonTextGlow(palette, 'title') : undefined,
           }
         })
@@ -3896,7 +3897,7 @@ function renderBannerContent(
             color: bannerText,
             textAlign: 'left',
             lineHeight: 1.0,
-            zIndex: 4,
+            zIndex: 30,
             textShadow: galactic ? neonTextGlow(palette, 'title') : undefined,
           }
         })
@@ -3925,7 +3926,7 @@ function renderBannerContent(
         width: logoWidth,
         height: logoHeight,
         content: content.logoUrl,
-        style: { objectFit: 'contain', objectPosition: logoTransformStyle.objectPosition ?? 'left center', transform: logoTransformStyle.transform, transformOrigin: logoTransformStyle.transformOrigin, zIndex: 4 }
+        style: { objectFit: 'contain', objectPosition: logoTransformStyle.objectPosition ?? 'left center', transform: logoTransformStyle.transform, transformOrigin: logoTransformStyle.transformOrigin, zIndex: 30, isCutout: true }
       })
     } else if (content.venueName) {
       const venueFontSize = Math.max(18, Math.min(tile.height * 0.55, availW * 0.16))
@@ -3943,7 +3944,7 @@ function renderBannerContent(
           color: bannerText,
           textAlign: 'left',
           lineHeight: 1.05,
-          zIndex: 4,
+          zIndex: 30,
           textShadow: galactic ? neonTextGlow(palette, 'title') : undefined,
         }
       })
@@ -3969,7 +3970,7 @@ function renderBannerContent(
           color: bannerText,
           textAlign: 'left',
           lineHeight: 1.0,
-          zIndex: 4,
+          zIndex: 30,
           textShadow: galactic ? neonTextGlow(palette, 'title') : undefined,
         }
       })

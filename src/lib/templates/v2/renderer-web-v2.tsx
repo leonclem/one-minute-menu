@@ -1130,7 +1130,7 @@ function TileRenderer({ tile, options }: TileRendererProps) {
     ? renderData.elements.filter(e => e.type === 'image').at(-1) // hero is always last image element
     : undefined
   const logoImageElement = showBannerOverlays && hasLogoImage && renderData
-    ? renderData.elements.find(e => e.type === 'image' && e.style.zIndex === 4)
+    ? renderData.elements.find(e => e.type === 'image' && e.style.zIndex === 30)
     : undefined
 
   // For cutout hero images the element is intentionally oversized (1.8× tile height) and
@@ -1247,6 +1247,7 @@ function TileRenderer({ tile, options }: TileRendererProps) {
           currentTransform={options.bannerLogoTransform ?? bannerContent?.logoTransform}
           onChange={(_, transform) => options.onBannerTransformChange!('logo', transform)}
           frame={logoOverlayFrame}
+          zIndex={40}
         />
       )}
       
