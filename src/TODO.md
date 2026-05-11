@@ -1,21 +1,19 @@
 # Roadmap
 
-## Bugs
-- [x] Banner is missing for 1-column-tall
-
 ## /extracted
 - [ ] Advanced options: change plate colour (white, beige, black, none)
 - [ ] Investigate why plate is not always plain
 - [ ] Advanced options: add tags, e.g. Serving type: "Slice"
 - [ ] Advanced options: additional free text description
 - [ ] Investigate double mention of "match the perspective" in prompt
-
-## Structural / Architectural
-- [ ] Quantity or sized pricing, e.g. S/M/L, 1/2/5/Box, 12"/18" pizza, etc.
+- [ ] I would expect to see something that talks about the theme of the restaurant in the prompt, I don't currently.
 
 ## SEO optimisation
 - [ ] Identify backlinks sites for SEO
 - [ ] "Best menu design for restaurant" Starter Story April 26 "I Make $17k/Month With One Strategy"
+
+## Structural / Architectural
+- [ ] Quantity or sized pricing, e.g. S/M/L, 1/2/5/Box, 12"/18" pizza, etc.
 
 ## Structural / Architectural
 - [ ] More definitive specification for every grid option (Show examples and get the IDE AI to describe every layout for creation in another LLM)
@@ -33,7 +31,6 @@
 - [ ] Review number of controls in control panel
 - [ ] Better preservation of user configuration
 - [ ] Add whatsapp option to contact details
-- [ ] Cutout images should sit behind text (not on top)
 
 ## Deployment
 - [x] Upgrade Vercel package
@@ -56,7 +53,6 @@
 - [ ] When Image Style is set to "None", descriptions only have one line in most cases
 - [ ] Description still too short generally across layouts
 - [ ] Reset button on demo doesn't work for banner toggle (and possibly others)
-- [ ] Neon blue color palette shrinks menu items/rows vertically.  Not good for displaying text in menu items.
 
 ## "What's New?" page
 - [ ] "What's New?" page
