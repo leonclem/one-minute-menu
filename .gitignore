@@ -52,6 +52,7 @@ pids
 
 # Supabase
 .supabase/
+supabase/.temp/
 
 # Kiro
 .kiro/
