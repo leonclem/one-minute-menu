@@ -12,6 +12,8 @@ interface CollapsibleSectionProps {
   onExpand?: (expanded: boolean) => void
   /** Optional badge shown next to the title — use for warnings or status indicators */
   badge?: React.ReactNode
+  /** Optional icon shown before the title */
+  icon?: React.ReactNode
 }
 
 export function CollapsibleSection({
@@ -22,6 +24,7 @@ export function CollapsibleSection({
   isExpanded: controlledExpanded,
   onExpand,
   badge,
+  icon,
 }: CollapsibleSectionProps) {
   const [internalExpanded, setInternalExpanded] = useState(defaultExpanded)
   const isExpanded = controlledExpanded !== undefined ? controlledExpanded : internalExpanded
@@ -57,6 +60,7 @@ export function CollapsibleSection({
         )}
       >
         <div className="flex items-center gap-2 min-w-0">
+          {icon && <span className="text-ux-primary shrink-0 flex items-center">{icon}</span>}
           <h4 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
             {title}
           </h4>

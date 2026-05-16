@@ -16,6 +16,7 @@ export interface User {
   approvedAt?: Date
   adminNotified?: boolean
   onboardingCompleted?: boolean
+  firstTemplateVisitAt?: Date
   restaurantName?: string
   establishmentType?: string
   primaryCuisine?: string
@@ -166,6 +167,9 @@ export interface MenuItem {
 
   // Flagship item flag (one per menu, used for banner hero image)
   isFlagship?: boolean
+
+  // Placeholder item flag (sample items shown before user adds their own)
+  isPlaceholder?: boolean
   
   // AI Image Generation fields
   aiImageId?: string
@@ -514,6 +518,9 @@ export interface CreateMenuFormData {
   establishmentType?: string
   primaryCuisine?: string
   venueInfo?: VenueInfo
+  currency?: string
+  items?: MenuItem[]
+  categories?: MenuCategory[]
 }
 
 export const ESTABLISHMENT_TYPES = [
@@ -942,6 +949,9 @@ export interface RenderSnapshot {
 
       /** Featured item (per-category highlight in layout / PDF) */
       isFeatured?: boolean
+
+      /** Placeholder/sample item (not user-created) */
+      isPlaceholder?: boolean
 
       // Per-mode image positioning (zoom/pan) for PDF export
       imageTransform?: ImageTransformRecord

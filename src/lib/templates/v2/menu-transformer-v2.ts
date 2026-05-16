@@ -302,6 +302,7 @@ function transformItemToV2(
     indicators: transformIndicators(item),
     isFeatured: item.isFeatured ?? false,
     isFlagship: item.isFlagship ?? undefined,
+    isPlaceholder: item.isPlaceholder ?? undefined,
     imageTransform: normalizeImageTransformRecord(item.imageTransform),
   }
 }

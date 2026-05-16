@@ -540,6 +540,7 @@ export class JobProcessor {
         spacerTilePatternId: config?.spacerTilePatternId || (config?.spacerTiles !== 'none' ? config?.spacerTiles : undefined),
         fontStylePreset: config?.fontStylePreset || undefined,
         centreAlignment: config?.centreAlignment === true,
+        hideSampleLabels: false, // Always show SAMPLE stamp on placeholder items in exports
       })
 
       return Buffer.from(result.pdfBytes)
@@ -678,6 +679,7 @@ export class JobProcessor {
         spacerTilePatternId: config?.spacerTilePatternId || (config?.spacerTiles !== 'none' ? config?.spacerTiles : undefined),
         fontStylePreset: config?.fontStylePreset || undefined,
         centreAlignment: config?.centreAlignment === true,
+        hideSampleLabels: false, // Always show SAMPLE stamp on placeholder items in exports
       })
 
       return Buffer.from(result.imageBuffer)
@@ -731,6 +733,7 @@ export class JobProcessor {
           },
           isFlagship: item.isFlagship === true || item.is_flagship === true,
           isFeatured: item.isFeatured === true || item.is_featured === true,
+          isPlaceholder: item.isPlaceholder === true || item.is_placeholder === true,
           imageTransform: item.imageTransform
         })
       })

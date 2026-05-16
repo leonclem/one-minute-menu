@@ -22,6 +22,7 @@ export const ANALYTICS_EVENTS = {
   SUBSCRIPTION_STARTED: 'subscription_started',
   ADMIN_ANALYTICS_DISABLED: 'admin_analytics_disabled',
   ADMIN_ANALYTICS_ENABLED: 'admin_analytics_enabled',
+  FIRST_TEMPLATE_VISIT: 'first_template_visit',
 } as const
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS]

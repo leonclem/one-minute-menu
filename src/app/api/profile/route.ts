@@ -53,6 +53,7 @@ export async function PATCH(request: NextRequest) {
     const allowedUpdates = {
       username: body.username,
       onboardingCompleted: body.onboardingCompleted,
+      firstTemplateVisitAt: body.firstTemplateVisitAt,
       location: body.location,
       restaurantName: body.restaurantName,
       establishmentType: body.establishmentType,

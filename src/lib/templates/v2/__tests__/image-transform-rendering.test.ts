@@ -95,19 +95,19 @@ function getImageElement(tile: TileInstanceV2, options: RenderOptionsV2) {
 describe('ImageTransform – ITEM_CARD stretch mode', () => {
   const IMAGE_URL = 'https://example.com/pizza.jpg'
 
-  it('no transform → objectPosition defaults to "center 70%"', () => {
+  it('no transform → objectPosition defaults to "center 60%"', () => {
     const tile = makeItemTile(IMAGE_URL, undefined, 'stretch')
     const img = getImageElement(tile, baseOptions('stretch'))
     expect(img).toBeDefined()
-    expect(img!.style.objectPosition).toBe('center 70%')
+    expect(img!.style.objectPosition).toBe('center 60%')
     expect(img!.style.transform).toBeUndefined()
     expect(img!.style.transformOrigin).toBeUndefined()
   })
 
-  it('zero offsets, scale 1.0 → objectPosition "center 70%", no transform', () => {
+  it('zero offsets, scale 1.0 → objectPosition "center 60%", no transform', () => {
     const tile = makeItemTile(IMAGE_URL, rec('stretch', { offsetX: 0, offsetY: 0, scale: 1.0 }), 'stretch')
     const img = getImageElement(tile, baseOptions('stretch'))
-    expect(img!.style.objectPosition).toBe('center 70%')
+    expect(img!.style.objectPosition).toBe('center 60%')
     expect(img!.style.transform).toBeUndefined()
     expect(img!.style.transformOrigin).toBeUndefined()
   })
@@ -115,35 +115,35 @@ describe('ImageTransform – ITEM_CARD stretch mode', () => {
   it('positive offsetX → objectPosition uses calc() for X', () => {
     const tile = makeItemTile(IMAGE_URL, rec('stretch', { offsetX: 15, offsetY: 0, scale: 1.0 }), 'stretch')
     const img = getImageElement(tile, baseOptions('stretch'))
-    expect(img!.style.objectPosition).toBe('calc(50% + 15 * 1%) 70%')
+    expect(img!.style.objectPosition).toBe('calc(50% + 15 * 1%) 60%')
     expect(img!.style.transform).toBeUndefined()
   })
 
   it('negative offsetY → objectPosition uses calc() for Y', () => {
     const tile = makeItemTile(IMAGE_URL, rec('stretch', { offsetX: 0, offsetY: -20, scale: 1.0 }), 'stretch')
     const img = getImageElement(tile, baseOptions('stretch'))
-    expect(img!.style.objectPosition).toBe('center calc(70% + -20 * 1%)')
+    expect(img!.style.objectPosition).toBe('center calc(60% + -20 * 1%)')
     expect(img!.style.transform).toBeUndefined()
   })
 
   it('both offsets non-zero → both axes use calc()', () => {
     const tile = makeItemTile(IMAGE_URL, rec('stretch', { offsetX: 10, offsetY: -30, scale: 1.0 }), 'stretch')
     const img = getImageElement(tile, baseOptions('stretch'))
-    expect(img!.style.objectPosition).toBe('calc(50% + 10 * 1%) calc(70% + -30 * 1%)')
+    expect(img!.style.objectPosition).toBe('calc(50% + 10 * 1%) calc(60% + -30 * 1%)')
   })
 
   it('scale > 1.0 → transform and transformOrigin are set', () => {
     const tile = makeItemTile(IMAGE_URL, rec('stretch', { offsetX: 0, offsetY: 0, scale: 1.5 }), 'stretch')
     const img = getImageElement(tile, baseOptions('stretch'))
-    expect(img!.style.objectPosition).toBe('center 70%')
+    expect(img!.style.objectPosition).toBe('center 60%')
     expect(img!.style.transform).toBe('scale(1.5)')
-    expect(img!.style.transformOrigin).toBe('center 70%')
+    expect(img!.style.transformOrigin).toBe('center 60%')
   })
 
   it('scale > 1.0 with offsets → transformOrigin matches objectPosition', () => {
     const tile = makeItemTile(IMAGE_URL, rec('stretch', { offsetX: 10, offsetY: -20, scale: 2.0 }), 'stretch')
     const img = getImageElement(tile, baseOptions('stretch'))
-    const expectedPos = 'calc(50% + 10 * 1%) calc(70% + -20 * 1%)'
+    const expectedPos = 'calc(50% + 10 * 1%) calc(60% + -20 * 1%)'
     expect(img!.style.objectPosition).toBe(expectedPos)
     expect(img!.style.transform).toBe('scale(2)')
     expect(img!.style.transformOrigin).toBe(expectedPos)
@@ -242,7 +242,7 @@ describe('ImageTransform – options.imageTransforms override', () => {
     }
     const img = getImageElement(tile, options)
 
-    expect(img!.style.objectPosition).toBe('calc(50% + 20 * 1%) 70%')
+    expect(img!.style.objectPosition).toBe('calc(50% + 20 * 1%) 60%')
     expect(img!.style.transform).toBe('scale(2)')
   })
 
@@ -256,7 +256,7 @@ describe('ImageTransform – options.imageTransforms override', () => {
     const img = getImageElement(tile, options)
 
     expect(img!.style.transform).toBe('scale(1.5)')
-    expect(img!.style.objectPosition).toBe('center 70%')
+    expect(img!.style.objectPosition).toBe('center 60%')
   })
 })
 

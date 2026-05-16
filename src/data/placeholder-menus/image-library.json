@@ -1,0 +1,552 @@
+[
+  {
+    "suggested_image_key": "chinese_beef_chow_fun",
+    "cuisine": "Chinese",
+    "image_archetype": "fried_noodles",
+    "representative_item": "Beef Chow Fun",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Beef Chow Fun",
+    "generation_prompt": "Beef Chow Fun, Chinese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "chinese_char_siu_noodles",
+    "cuisine": "Chinese",
+    "image_archetype": "noodle_bowl",
+    "representative_item": "Char Siu Noodles",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Char Siu Noodles",
+    "generation_prompt": "Char Siu Noodles, Chinese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "chinese_kung_pao_chicken",
+    "cuisine": "Chinese",
+    "image_archetype": "stir_fry",
+    "representative_item": "Kung Pao Chicken",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Kung Pao Chicken, Mapo Tofu Rice",
+    "generation_prompt": "Kung Pao Chicken, Chinese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "chinese_mango_sago",
+    "cuisine": "Chinese",
+    "image_archetype": "dessert",
+    "representative_item": "Mango Sago",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Jasmine Iced Tea, Mango Sago",
+    "generation_prompt": "Mango Sago, Chinese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "chinese_xiao_long_bao",
+    "cuisine": "Chinese",
+    "image_archetype": "dumplings",
+    "representative_item": "Xiao Long Bao",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Crispy Spring Rolls, Xiao Long Bao",
+    "generation_prompt": "Xiao Long Bao, Chinese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "indian_butter_chicken",
+    "cuisine": "Indian",
+    "image_archetype": "curry",
+    "representative_item": "Butter Chicken",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Butter Chicken, Chole Bhature",
+    "generation_prompt": "Butter Chicken, Indian style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "indian_chicken_biryani",
+    "cuisine": "Indian",
+    "image_archetype": "rice_dish",
+    "representative_item": "Chicken Biryani",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Chicken Biryani",
+    "generation_prompt": "Chicken Biryani, Indian style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "indian_mango_lassi",
+    "cuisine": "Indian",
+    "image_archetype": "drink",
+    "representative_item": "Mango Lassi",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Gulab Jamun, Mango Lassi",
+    "generation_prompt": "Mango Lassi, Indian style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "indian_masala_dosa",
+    "cuisine": "Indian",
+    "image_archetype": "dosa",
+    "representative_item": "Masala Dosa",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Masala Dosa",
+    "generation_prompt": "Masala Dosa, Indian style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "indian_paneer_tikka",
+    "cuisine": "Indian",
+    "image_archetype": "grilled_starter",
+    "representative_item": "Paneer Tikka",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Paneer Tikka, Samosa Chaat",
+    "generation_prompt": "Paneer Tikka, Indian style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "italian_bruschetta_tomato",
+    "cuisine": "Italian",
+    "image_archetype": "starter",
+    "representative_item": "Bruschetta Tomato",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Bruschetta Tomato, Caprese Salad",
+    "generation_prompt": "Bruschetta Tomato, Italian style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "italian_lemon_spritz",
+    "cuisine": "Italian",
+    "image_archetype": "drink",
+    "representative_item": "Lemon Spritz",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Lemon Spritz",
+    "generation_prompt": "Lemon Spritz, Italian style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "italian_margherita_pizza",
+    "cuisine": "Italian",
+    "image_archetype": "pizza",
+    "representative_item": "Margherita Pizza",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Margherita Pizza",
+    "generation_prompt": "Margherita Pizza, Italian style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "italian_spaghetti_carbonara",
+    "cuisine": "Italian",
+    "image_archetype": "pasta",
+    "representative_item": "Spaghetti Carbonara",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Lasagne al Forno, Mushroom Risotto, Spaghetti Carbonara",
+    "generation_prompt": "Spaghetti Carbonara, Italian style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "italian_tiramisu_cup",
+    "cuisine": "Italian",
+    "image_archetype": "dessert",
+    "representative_item": "Tiramisu Cup",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Tiramisu Cup",
+    "generation_prompt": "Tiramisu Cup, Italian style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "japanese_chicken_karaage",
+    "cuisine": "Japanese",
+    "image_archetype": "fried_snack",
+    "representative_item": "Chicken Karaage",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Chicken Karaage, Vegetable Tempura",
+    "generation_prompt": "Chicken Karaage, Japanese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "japanese_matcha_cheesecake",
+    "cuisine": "Japanese",
+    "image_archetype": "dessert",
+    "representative_item": "Matcha Cheesecake",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Iced Yuzu Tea, Matcha Cheesecake",
+    "generation_prompt": "Matcha Cheesecake, Japanese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "japanese_salmon_sushi_set",
+    "cuisine": "Japanese",
+    "image_archetype": "sushi_platter",
+    "representative_item": "Salmon Sushi Set",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Miso Grilled Salmon, Salmon Sushi Set",
+    "generation_prompt": "Salmon Sushi Set, Japanese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "japanese_teriyaki_chicken_don",
+    "cuisine": "Japanese",
+    "image_archetype": "rice_bowl",
+    "representative_item": "Teriyaki Chicken Don",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Teriyaki Chicken Don",
+    "generation_prompt": "Teriyaki Chicken Don, Japanese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "japanese_tonkotsu_ramen",
+    "cuisine": "Japanese",
+    "image_archetype": "noodle_soup",
+    "representative_item": "Tonkotsu Ramen",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Tonkotsu Ramen",
+    "generation_prompt": "Tonkotsu Ramen, Japanese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "korean_bibimbap_bowl",
+    "cuisine": "Korean",
+    "image_archetype": "rice_bowl",
+    "representative_item": "Bibimbap Bowl",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Bibimbap Bowl",
+    "generation_prompt": "Bibimbap Bowl, Korean style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "korean_bulgogi_beef_rice",
+    "cuisine": "Korean",
+    "image_archetype": "rice_bowl",
+    "representative_item": "Bulgogi Beef Rice",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Bulgogi Beef Rice, Korean Egg Toast",
+    "generation_prompt": "Bulgogi Beef Rice, Korean style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "korean_dalgona_latte",
+    "cuisine": "Korean",
+    "image_archetype": "drink",
+    "representative_item": "Dalgona Latte",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Dalgona Latte, Hotteok Dessert",
+    "generation_prompt": "Dalgona Latte, Korean style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "korean_korean_fried_chicken",
+    "cuisine": "Korean",
+    "image_archetype": "fried_chicken",
+    "representative_item": "Korean Fried Chicken",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Korean Fried Chicken",
+    "generation_prompt": "Korean Fried Chicken, Korean style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "korean_tteokbokki",
+    "cuisine": "Korean",
+    "image_archetype": "spicy_snack",
+    "representative_item": "Tteokbokki",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Kimchi Pancake, Tteokbokki",
+    "generation_prompt": "Tteokbokki, Korean style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "local_chicken_rice_plate",
+    "cuisine": "Local (SG/Malay/Chinese/Indian)",
+    "image_archetype": "rice_plate",
+    "representative_item": "Chicken Rice Plate",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Chicken Rice Plate",
+    "generation_prompt": "Chicken Rice Plate, Local (SG/Malay/Chinese/Indian) style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "local_kaya_butter_toast",
+    "cuisine": "Local (SG/Malay/Chinese/Indian)",
+    "image_archetype": "toast",
+    "representative_item": "Kaya Butter Toast",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Kaya Butter Toast, Roti Prata Curry Dip",
+    "generation_prompt": "Kaya Butter Toast, Local (SG/Malay/Chinese/Indian) style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "local_laksa_noodle_bowl",
+    "cuisine": "Local (SG/Malay/Chinese/Indian)",
+    "image_archetype": "noodle_soup",
+    "representative_item": "Laksa Noodle Bowl",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Char Kway Teow, Laksa Noodle Bowl",
+    "generation_prompt": "Laksa Noodle Bowl, Local (SG/Malay/Chinese/Indian) style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "local_nasi_lemak_set",
+    "cuisine": "Local (SG/Malay/Chinese/Indian)",
+    "image_archetype": "rice_set",
+    "representative_item": "Nasi Lemak Set",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Nasi Lemak Set, Ondeh Ondeh Cake",
+    "generation_prompt": "Nasi Lemak Set, Local (SG/Malay/Chinese/Indian) style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "local_teh_tarik",
+    "cuisine": "Local (SG/Malay/Chinese/Indian)",
+    "image_archetype": "drink",
+    "representative_item": "Teh Tarik",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Teh Tarik",
+    "generation_prompt": "Teh Tarik, Local (SG/Malay/Chinese/Indian) style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "mexican_beef_burrito_bowl",
+    "cuisine": "Mexican",
+    "image_archetype": "rice_bowl",
+    "representative_item": "Beef Burrito Bowl",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Beef Burrito Bowl",
+    "generation_prompt": "Beef Burrito Bowl, Mexican style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "mexican_chicken_tacos",
+    "cuisine": "Mexican",
+    "image_archetype": "tacos",
+    "representative_item": "Chicken Tacos",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Chicken Tacos, Fish Tacos",
+    "generation_prompt": "Chicken Tacos, Mexican style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "mexican_churros_chocolate",
+    "cuisine": "Mexican",
+    "image_archetype": "dessert",
+    "representative_item": "Churros Chocolate",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Churros Chocolate, Horchata Iced Drink",
+    "generation_prompt": "Churros Chocolate, Mexican style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "mexican_loaded_nachos",
+    "cuisine": "Mexican",
+    "image_archetype": "sharing_snack",
+    "representative_item": "Loaded Nachos",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Elote Corn Cup, Loaded Nachos",
+    "generation_prompt": "Loaded Nachos, Mexican style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "mexican_quesadilla_cheese",
+    "cuisine": "Mexican",
+    "image_archetype": "flatbread",
+    "representative_item": "Quesadilla Cheese",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Quesadilla Cheese",
+    "generation_prompt": "Quesadilla Cheese, Mexican style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "other_crispy_sharing_bites",
+    "cuisine": "Other",
+    "image_archetype": "sharing_snack",
+    "representative_item": "Crispy Sharing Bites",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Chef's Small Plate, Crispy Sharing Bites",
+    "generation_prompt": "Crispy Sharing Bites, Other style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "other_grilled_market_protein",
+    "cuisine": "Other",
+    "image_archetype": "grilled_main",
+    "representative_item": "Grilled Market Protein",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Grilled Market Protein",
+    "generation_prompt": "Grilled Market Protein, Other style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "other_house_cooler",
+    "cuisine": "Other",
+    "image_archetype": "drink",
+    "representative_item": "House Cooler",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "House Cooler, Signature Sweet",
+    "generation_prompt": "House Cooler, Other style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "other_house_signature_bowl",
+    "cuisine": "Other",
+    "image_archetype": "signature_bowl",
+    "representative_item": "House Signature Bowl",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Fresh Garden Plate, House Signature Bowl",
+    "generation_prompt": "House Signature Bowl, Other style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "other_seasonal_flatbread",
+    "cuisine": "Other",
+    "image_archetype": "flatbread",
+    "representative_item": "Seasonal Flatbread",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Seasonal Flatbread",
+    "generation_prompt": "Seasonal Flatbread, Other style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "peranakan_nyonya_ayam_buah_keluak",
+    "cuisine": "Peranakan / Nyonya",
+    "image_archetype": "signature_stew",
+    "representative_item": "Ayam Buah Keluak",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Ayam Buah Keluak, Babi Pongteh, Nyonya Chap Chye",
+    "generation_prompt": "Ayam Buah Keluak, Peranakan / Nyonya style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "peranakan_nyonya_kueh_pie_tee",
+    "cuisine": "Peranakan / Nyonya",
+    "image_archetype": "small_plate",
+    "representative_item": "Kueh Pie Tee",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Kueh Pie Tee",
+    "generation_prompt": "Kueh Pie Tee, Peranakan / Nyonya style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "peranakan_nyonya_nyonya_laksa",
+    "cuisine": "Peranakan / Nyonya",
+    "image_archetype": "noodle_soup",
+    "representative_item": "Nyonya Laksa",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Nyonya Laksa",
+    "generation_prompt": "Nyonya Laksa, Peranakan / Nyonya style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "peranakan_nyonya_otak_otak",
+    "cuisine": "Peranakan / Nyonya",
+    "image_archetype": "grilled_snack",
+    "representative_item": "Otak Otak",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Otak Otak",
+    "generation_prompt": "Otak Otak, Peranakan / Nyonya style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "peranakan_nyonya_pulut_hitam",
+    "cuisine": "Peranakan / Nyonya",
+    "image_archetype": "dessert",
+    "representative_item": "Pulut Hitam",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Pandan Gula Melaka Cake, Pulut Hitam",
+    "generation_prompt": "Pulut Hitam, Peranakan / Nyonya style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "thai_vietnamese_beef_pho_bowl",
+    "cuisine": "Thai / Vietnamese",
+    "image_archetype": "noodle_soup",
+    "representative_item": "Beef Pho Bowl",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Beef Pho Bowl, Tom Yum Soup",
+    "generation_prompt": "Beef Pho Bowl, Thai / Vietnamese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "thai_vietnamese_fresh_summer_rolls",
+    "cuisine": "Thai / Vietnamese",
+    "image_archetype": "fresh_rolls",
+    "representative_item": "Fresh Summer Rolls",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Banh Mi Chicken, Fresh Summer Rolls",
+    "generation_prompt": "Fresh Summer Rolls, Thai / Vietnamese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "thai_vietnamese_green_curry_chicken",
+    "cuisine": "Thai / Vietnamese",
+    "image_archetype": "curry",
+    "representative_item": "Green Curry Chicken",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Green Curry Chicken",
+    "generation_prompt": "Green Curry Chicken, Thai / Vietnamese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "thai_vietnamese_pad_thai_prawns",
+    "cuisine": "Thai / Vietnamese",
+    "image_archetype": "fried_noodles",
+    "representative_item": "Pad Thai Prawns",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Pad Thai Prawns",
+    "generation_prompt": "Pad Thai Prawns, Thai / Vietnamese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "thai_vietnamese_thai_iced_tea",
+    "cuisine": "Thai / Vietnamese",
+    "image_archetype": "drink",
+    "representative_item": "Thai Iced Tea",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Mango Sticky Rice, Thai Iced Tea",
+    "generation_prompt": "Thai Iced Tea, Thai / Vietnamese style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "western_fusion_caesar_salad",
+    "cuisine": "Western / Fusion",
+    "image_archetype": "salad",
+    "representative_item": "Caesar Salad",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Caesar Salad, Grilled Chicken Bowl",
+    "generation_prompt": "Caesar Salad, Western / Fusion style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "western_fusion_chocolate_brownie",
+    "cuisine": "Western / Fusion",
+    "image_archetype": "dessert",
+    "representative_item": "Chocolate Brownie",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Berry Iced Tea, Chocolate Brownie",
+    "generation_prompt": "Chocolate Brownie, Western / Fusion style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "western_fusion_classic_cheeseburger",
+    "cuisine": "Western / Fusion",
+    "image_archetype": "burger",
+    "representative_item": "Classic Cheeseburger",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Classic Cheeseburger, Mac and Cheese",
+    "generation_prompt": "Classic Cheeseburger, Western / Fusion style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "western_fusion_fish_and_chips",
+    "cuisine": "Western / Fusion",
+    "image_archetype": "fried_main",
+    "representative_item": "Fish and Chips",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Fish and Chips",
+    "generation_prompt": "Fish and Chips, Western / Fusion style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  },
+  {
+    "suggested_image_key": "western_fusion_truffle_fries",
+    "cuisine": "Western / Fusion",
+    "image_archetype": "snack",
+    "representative_item": "Truffle Fries",
+    "image_priority": "P1",
+    "generate_now": true,
+    "mapped_items": "Truffle Fries",
+    "generation_prompt": "Truffle Fries, Western / Fusion style, appetising menu photography, clean background, natural light, realistic restaurant menu image, no text, no logos"
+  }
+]

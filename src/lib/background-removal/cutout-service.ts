@@ -7,6 +7,7 @@ import type {
 } from './types'
 import type { CutoutStatus } from '@/types'
 import { logger } from '@/lib/logger'
+import { syncMenuItemImageToJsonb } from '@/lib/menu-item-image-sync'
 
 const BUCKET_NAME = 'ai-generated-images'
 
@@ -146,7 +147,7 @@ export class CutoutGenerationService {
       // 2. Fetch the source image to get the URL for the provider
       const { data: imageRow, error: imgFetchError } = await this.supabase
         .from('ai_generated_images')
-        .select('id, original_url, cutout_generation_log_id')
+        .select('id, menu_item_id, original_url, cutout_generation_log_id')
         .eq('id', imageId)
         .single()
 
@@ -218,7 +219,19 @@ export class CutoutGenerationService {
         return
       }
 
-      // 8. Update log entry with success
+      // 8. Sync cutoutUrl + cutoutStatus back to the menu JSONB so the /template
+      //    page preview and exports pick up the cutout without requiring a page reload.
+      //    This is non-fatal — a failure here doesn't invalidate the cutout itself.
+      if (imageRow.menu_item_id) {
+        try {
+          await syncMenuItemImageToJsonb(this.supabase as any, imageRow.menu_item_id as string)
+          logger.info('[CutoutService] Synced cutout result to menu JSONB', { imageId, menuItemId: imageRow.menu_item_id })
+        } catch (syncErr) {
+          logger.warn('[CutoutService] Failed to sync cutout to menu JSONB (non-fatal)', { imageId, error: syncErr })
+        }
+      }
+
+      // 9. Update log entry with success
       await this.supabase
         .from('cutout_generation_logs')
         .update({

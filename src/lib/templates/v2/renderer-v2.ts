@@ -145,6 +145,8 @@ export interface RenderOptionsV2 {
   fontStylePreset?: FontStylePreset
   /** Centre-align category headings (and item tiles when spacer tiles = "None") */
   centreAlignment?: boolean
+  /** When true, suppress the "SAMPLE" stamp overlay on placeholder item tiles */
+  hideSampleLabels?: boolean
   /**
    * Pre-fetched base64 data URLs for social media icons (used in export mode).
    * Keys match the platform names: 'instagram' | 'facebook' | 'x' | 'tiktok'.
@@ -2666,7 +2668,7 @@ function renderItemContent(
 
     if (content.imageUrl) {
       const itemBaseX = 50
-      const itemBaseY = (imageMode === 'stretch' || isCutoutMode) ? 70 : 50
+      const itemBaseY = (imageMode === 'stretch' || isCutoutMode) ? 60 : 50
       const persistedItemTransform = resolveTransformForMode(content.imageTransform, imageMode)
       const effectiveItemTransform = options.imageTransforms?.get(content.itemId) ?? persistedItemTransform
       const itemTransformStyle = computeImageTransformStyle(effectiveItemTransform, itemBaseX, itemBaseY, isCutoutMode)
@@ -3813,7 +3815,12 @@ function renderBannerContent(
           style: { objectFit: 'contain', objectPosition: logoTransformStyle.objectPosition ?? 'left center', transform: logoTransformStyle.transform, transformOrigin: logoTransformStyle.transformOrigin, zIndex: 30, isCutout: true }
         })
       } else if (content.venueName) {
-        const venueFontSize = Math.max(18, Math.min(tile.height * 0.55, textZoneWidth * 0.16))
+        // Scale font size down for longer names so they fit on one line.
+        // Base size fits ~12 chars; beyond that, reduce proportionally.
+        const charCount = content.venueName.length
+        const baseFontSize = Math.max(18, Math.min(tile.height * 0.55, textZoneWidth * 0.16))
+        const charScaleFactor = charCount > 12 ? Math.max(0.45, 12 / charCount) : 1
+        const venueFontSize = Math.max(10, baseFontSize * charScaleFactor)
         const venueY = (tile.height - venueFontSize * 1.1) / 2
         elements.push({
           type: 'text',
@@ -3828,6 +3835,7 @@ function renderBannerContent(
             color: bannerText,
             textAlign: 'left',
             lineHeight: 1.05,
+            whiteSpace: 'nowrap',
             zIndex: 30,
           }
         })

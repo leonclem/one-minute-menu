@@ -640,7 +640,7 @@ function getFlagshipImageStyle(
 ): React.CSSProperties {
   const persistedTransform = resolveTransformForMode(content.imageTransform, imageMode)
   const effectiveTransform = options.imageTransforms?.get(content.itemId) ?? persistedTransform
-  const baseY = imageMode === 'stretch' ? 55 : 50
+  const baseY = imageMode === 'stretch' ? 56 : 50
   const transformStyle = computeImageTransformStyle(
     effectiveTransform,
     50,
@@ -678,6 +678,89 @@ interface FlagshipCardProps {
   content: FlagshipCardContentV2
   options: RenderOptionsV2
   scale: number
+}
+
+/**
+ * Ink-stamp "SAMPLE" overlay for placeholder tiles.
+ * Shared between regular item tiles and the flagship card.
+ */
+function SampleStamp({ tileId, tileWidth, tileHeight, scale, opacity = 1 }: { tileId: string; tileWidth: number; tileHeight: number; scale: number; opacity?: number }) {
+  const stampSize = Math.max(10, Math.min(tileWidth, tileHeight) * 0.18 * scale)
+  const filterId = `stamp-${tileId}`
+  const inkColor = 'rgba(200, 120, 120, 0.4)'
+  const dispScale = stampSize * 0.06
+
+  // The text is the anchor. We size the SVG around the text with generous padding
+  // so the border (drawn as a background rect behind the text) is never clipped.
+  // Rotation is applied via CSS transform on the SVG — the tile's overflow:hidden
+  // clips the final result at the tile boundary, which is fine.
+  const textW = stampSize * 5.0   // generous width for "SAMPLE" + letter-spacing
+  const textH = stampSize * 1.4
+  const borderPad = stampSize * 0.35
+  const rectX = -borderPad
+  const rectY = -borderPad
+  const rectW = textW + borderPad * 2
+  const rectH = textH + borderPad * 2
+  // SVG viewBox is centred on the text so rotation pivot is the stamp centre
+  const vbHalfW = rectW / 2 + stampSize * 0.5
+  const vbHalfH = rectH / 2 + stampSize * 0.5
+  const svgW = vbHalfW * 2
+  const svgH = vbHalfH * 2
+
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        pointerEvents: 'none',
+        zIndex: 5,
+      }}
+    >
+      <svg
+        width={svgW}
+        height={svgH}
+        viewBox={`${-vbHalfW} ${-vbHalfH} ${svgW} ${svgH}`}
+        style={{ transform: 'rotate(-28deg)', overflow: 'visible', userSelect: 'none', opacity }}
+      >
+        <defs>
+          <filter id={filterId} x="-50%" y="-50%" width="200%" height="200%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="9" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale={dispScale} xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+        {/* Border rect — positioned relative to the centred coordinate system */}
+        <rect
+          x={rectX - textW / 2}
+          y={rectY - textH / 2}
+          width={rectW}
+          height={rectH}
+          rx={stampSize * 0.14}
+          fill="none"
+          stroke={inkColor}
+          strokeWidth={Math.max(1.5, stampSize * 0.1)}
+          filter={`url(#${filterId})`}
+        />
+        {/* Stamp text — centred at origin */}
+        <text
+          x={0}
+          y={stampSize * 0.36}
+          textAnchor="middle"
+          fontSize={stampSize}
+          fontWeight="900"
+          fontFamily='"Arial Black", "Impact", sans-serif'
+          fill={inkColor}
+          letterSpacing={stampSize * 0.16}
+          filter={`url(#${filterId})`}
+        >
+          SAMPLE
+        </text>
+      </svg>
+    </div>
+  )
 }
 
 function FlagshipBadge({ tile, options, scale }: Omit<FlagshipCardProps, 'content'>) {
@@ -1005,6 +1088,11 @@ function FlagshipCard({ tile, content, options, scale }: FlagshipCardProps) {
           )}
         </div>
       ) : null}
+
+      {/* "SAMPLE" stamp for placeholder flagship items */}
+      {(content as any).isPlaceholder && content.imageUrl && !options.hideSampleLabels && (
+        <SampleStamp tileId={tile.id} tileWidth={tile.width} tileHeight={tile.height} scale={scale} opacity={0.42} />
+      )}
     </article>
   )
 }
@@ -1215,6 +1303,11 @@ function TileRenderer({ tile, options }: TileRendererProps) {
       {isFlagshipTile && flagshipContent && !options.showTileIds ? (
         <FlagshipBadge tile={tile} options={options} scale={scale} />
       ) : null}
+
+      {/* "SAMPLE" watermark for placeholder items — ink stamp style */}
+      {isMenuItemTile && tileContent && 'isPlaceholder' in tileContent && (tileContent as ItemContentV2).isPlaceholder && hasImage && !options.hideSampleLabels && (
+        <SampleStamp tileId={tile.id} tileWidth={tile.width} tileHeight={tile.height} scale={scale} />
+      )}
 
       {/* Image edit mode overlay */}
       {showOverlay && overlayItemId && options.onImageTransformChange && (

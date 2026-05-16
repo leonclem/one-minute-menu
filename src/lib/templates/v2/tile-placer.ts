@@ -258,6 +258,7 @@ export function createItemTile(
         indicators: item.indicators,
         imageTransform: item.imageTransform,
         isFeatured: item.isFeatured === true,
+        isPlaceholder: item.isPlaceholder === true,
       }
   
   return {
@@ -334,6 +335,7 @@ export function createFlagshipTile(
       currency: currency || '$',
       indicators: item.indicators,
       imageTransform: item.imageTransform,
+      ...(item.isPlaceholder ? { isPlaceholder: true } : {}),
     },
     style: variant?.style,
     contentBudget: variant?.contentBudget,

@@ -6,6 +6,7 @@ import { UXHeader, UXFooter, UXButton, UXInput, UXCard } from '@/components/ux'
 import { fetchJsonWithRetry } from '@/lib/retry'
 import { ESTABLISHMENT_TYPES, CUISINES } from '@/types'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
+import { getPlaceholderItems } from '@/data/placeholder-menus'
 
 export default function OnboardingClient({ 
   userEmail, 
@@ -25,7 +26,6 @@ export default function OnboardingClient({
     username: string;
   };
 }) {
-  const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
     name: initialData?.restaurantName || '',
     establishmentType: initialData?.establishmentType || '',
@@ -34,7 +34,20 @@ export default function OnboardingClient({
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [detectedMenuCurrency, setDetectedMenuCurrency] = useState<string>('USD')
   const router = useRouter()
+
+  // Detect user's likely menu currency for placeholder item pricing
+  useEffect(() => {
+    fetch('/api/geo')
+      .then(r => r.json())
+      .then(json => {
+        if (json?.data?.menuCurrency) {
+          setDetectedMenuCurrency(json.data.menuCurrency)
+        }
+      })
+      .catch(() => { /* fall back to USD (default) */ })
+  }, [])
 
   // Fire Google Ads conversion when a genuinely new user lands here,
   // regardless of whether they came via /register or /auth/signin
@@ -55,17 +68,12 @@ export default function OnboardingClient({
     }
   }, [isNewSignup])
 
-  const handleNext = () => {
-    if (step === 1 && !formData.name) {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formData.name) {
       setError('Please enter your restaurant name')
       return
     }
-    setError('')
-    setStep(step + 1)
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
     if (!formData.establishmentType || !formData.primaryCuisine) {
       setError('Please select both type and cuisine')
       return
@@ -75,7 +83,7 @@ export default function OnboardingClient({
     setError('')
 
     try {
-      // Update user profile instead of creating a menu
+      // 1. Update user profile
       const result = await fetchJsonWithRetry<{ success: boolean; data: any }>(
         '/api/profile',
         {
@@ -91,15 +99,46 @@ export default function OnboardingClient({
         }
       )
 
-      if (result.success) {
-        // Refresh to ensure the next page/layout sees the updated profile
+      if (!result.success) {
+        setError('Failed to complete onboarding. Please try again.')
+        return
+      }
+
+      // 2. Auto-create first menu with cuisine-matched placeholder items
+      const { items, categories } = getPlaceholderItems(
+        formData.primaryCuisine,
+        formData.establishmentType,
+        detectedMenuCurrency,
+      )
+      const menuName = formData.name
+      const menuResult = await fetchJsonWithRetry<{ success: boolean; data: any }>(
+        '/api/menus',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: menuName,
+            establishmentType: formData.establishmentType,
+            primaryCuisine: formData.primaryCuisine,
+            currency: detectedMenuCurrency,
+            items,
+            categories,
+          }),
+        }
+      )
+
+      if (menuResult.success && menuResult.data?.id) {
+        // 3. Redirect to template page for instant "wow" moment
         router.refresh()
-        // Small delay to let the refresh/revalidation propagate
+        setTimeout(() => {
+          router.push(`/menus/${menuResult.data.id}/template`)
+        }, 100)
+      } else {
+        // Menu creation failed -- still go to dashboard
+        router.refresh()
         setTimeout(() => {
           router.push(next || '/dashboard')
         }, 100)
-      } else {
-        setError('Failed to complete onboarding. Please try again.')
       }
     } catch (err) {
       setError('An error occurred. Please try again.')
@@ -143,15 +182,15 @@ export default function OnboardingClient({
 
           <UXCard>
             <div className="p-8">
-              {step === 1 ? (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-xl font-semibold text-ux-text mb-2">What&apos;s your restaurant called?</h2>
-                    <p className="text-sm text-ux-text-secondary mb-6">
-                      This will appear at the top of your digital menu.
-                    </p>
-                  </div>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-ux-text mb-2">Tell us about your place</h2>
+                  <p className="text-sm text-ux-text-secondary mb-6">
+                    We use these details to style your menu and generate better AI images.
+                  </p>
+                </div>
 
+                <div className="space-y-4">
                   <UXInput
                     label="Restaurant Name"
                     value={formData.name}
@@ -160,90 +199,53 @@ export default function OnboardingClient({
                     autoFocus
                   />
 
-                  {error && <p className="text-sm text-ux-error">{error}</p>}
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-ux-text">Establishment Type</label>
+                    <select
+                      className="input-ux w-full"
+                      value={formData.establishmentType}
+                      onChange={(e) => setFormData({ ...formData, establishmentType: e.target.value })}
+                      required
+                    >
+                      <option value="">Select a type...</option>
+                      {ESTABLISHMENT_TYPES.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                  <UXButton variant="primary" size="lg" className="w-full" onClick={handleNext}>
-                    Next Step
-                  </UXButton>
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-ux-text">Primary Cuisine</label>
+                    <select
+                      className="input-ux w-full"
+                      value={formData.primaryCuisine}
+                      onChange={(e) => setFormData({ ...formData, primaryCuisine: e.target.value })}
+                      required
+                    >
+                      <option value="">Select a cuisine...</option>
+                      {CUISINES.map((cuisine) => (
+                        <option key={cuisine.id} value={cuisine.id}>
+                          {cuisine.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div>
-                    <h2 className="text-xl font-semibold text-ux-text mb-2">Tell us more about your place</h2>
-                    <p className="text-sm text-ux-text-secondary mb-6">
-                      This helps our AI generate better images and style your menu perfectly.
-                    </p>
-                  </div>
 
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-ux-text">Establishment Type</label>
-                      <select
-                        className="input-ux w-full"
-                        value={formData.establishmentType}
-                        onChange={(e) => setFormData({ ...formData, establishmentType: e.target.value })}
-                        required
-                      >
-                        <option value="">Select a type...</option>
-                        {ESTABLISHMENT_TYPES.map((type) => (
-                          <option key={type.id} value={type.id}>
-                            {type.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                {error && <p className="text-sm text-ux-error">{error}</p>}
 
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-ux-text">Primary Cuisine</label>
-                      <select
-                        className="input-ux w-full"
-                        value={formData.primaryCuisine}
-                        onChange={(e) => setFormData({ ...formData, primaryCuisine: e.target.value })}
-                        required
-                      >
-                        <option value="">Select a cuisine...</option>
-                        {CUISINES.map((cuisine) => (
-                          <option key={cuisine.id} value={cuisine.id}>
-                            {cuisine.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <UXInput
-                      label="Username (optional)"
-                      value={formData.username}
-                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                      placeholder="e.g. golden-grill"
-                      helperText="Your public profile will be at gridmenu.com/u/your-username"
-                    />
-                  </div>
-
-                  {error && <p className="text-sm text-ux-error">{error}</p>}
-
-                  <div className="flex gap-4">
-                    <UXButton
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      className="flex-1"
-                      onClick={() => setStep(1)}
-                      disabled={loading}
-                    >
-                      Back
-                    </UXButton>
-                    <UXButton
-                      type="submit"
-                      variant="primary"
-                      size="lg"
-                      className="flex-1"
-                      loading={loading}
-                    >
-                      Go to Dashboard
-                    </UXButton>
-                  </div>
-                </form>
-              )}
+                <UXButton
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  loading={loading}
+                >
+                  Get Started!
+                </UXButton>
+              </form>
             </div>
           </UXCard>
         </div>

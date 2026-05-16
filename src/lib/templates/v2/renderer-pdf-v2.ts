@@ -76,6 +76,8 @@ export interface PDFExportOptionsV2 {
   fontStylePreset?: FontStylePreset
   /** Centre-align category headings and item text */
   centreAlignment?: boolean
+  /** When true, suppress the "SAMPLE" stamp overlay on placeholder item tiles */
+  hideSampleLabels?: boolean
 }
 
 export interface PDFExportResultV2 {
@@ -163,6 +165,7 @@ export async function renderToPdf(
       spacerTilePatternId: options.spacerTilePatternId,
       fontStylePreset: options.fontStylePreset,
       centreAlignment: options.centreAlignment,
+      hideSampleLabels: options.hideSampleLabels,
     })
     logger.info(`[PDFRendererV2] HTML generated in ${Date.now() - htmlStartTime}ms (HTML length: ${htmlContent.length})`)
 
@@ -239,7 +242,7 @@ export async function renderToPdf(
 async function generatePDFHTML(
   document: LayoutDocumentV2, 
   customCSS: string = '',
-  options: { showRegionBounds?: boolean; paletteId?: string; textureId?: string; texturesEnabled?: boolean; imageMode?: string; showVignette?: boolean; itemBorders?: boolean; itemDropShadow?: boolean; fillItemTiles?: boolean; spacerTilePatternId?: string; fontStylePreset?: string; centreAlignment?: boolean } = {}
+  options: { showRegionBounds?: boolean; paletteId?: string; textureId?: string; texturesEnabled?: boolean; imageMode?: string; showVignette?: boolean; itemBorders?: boolean; itemDropShadow?: boolean; fillItemTiles?: boolean; spacerTilePatternId?: string; fontStylePreset?: string; centreAlignment?: boolean; hideSampleLabels?: boolean } = {}
 ): Promise<string> {
   // Use dynamic import to avoid Next.js static analysis issues with react-dom/server
   // in Route Handlers and Server Components.
@@ -324,6 +327,7 @@ async function generatePDFHTML(
     spacerTilePatternId: options.spacerTilePatternId,
     fontStylePreset: (options.fontStylePreset as any) || undefined,
     centreAlignment: options.centreAlignment,
+    hideSampleLabels: options.hideSampleLabels,
     socialIconDataUrls,
     showGridOverlay: false,
     showRegionBounds: options.showRegionBounds || false,

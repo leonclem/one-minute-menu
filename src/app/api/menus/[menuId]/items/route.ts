@@ -18,7 +18,9 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const body = sanitizeMenuItemPayload(await request.json() as MenuItemFormData)
+    const rawBody = await request.json() as MenuItemFormData & { isFlagship?: boolean }
+    const { isFlagship, ...sanitizableFields } = rawBody
+    const body = sanitizeMenuItemPayload(sanitizableFields as MenuItemFormData)
     
     // Validate input
     const validation = validateMenuItem(body)
@@ -32,10 +34,45 @@ export async function POST(
     // Set default imageSource if not provided
     const itemData = {
       ...body,
+      ...(isFlagship !== undefined ? { isFlagship } : {}),
       imageSource: body.imageSource || 'none' as const
     }
     
     const menu = await menuItemOperations.addItem(params.menuId, user.id, itemData)
+
+    // Sync is_flagship to the menu_items table (source of truth for DB queries).
+    // The new item is the last one in the flat items array.
+    // We use upsert in case the sync trigger hasn't yet created the row.
+    if (isFlagship === true) {
+      const newItem = menu.items[menu.items.length - 1]
+      const newItemId = newItem?.id
+      if (newItemId) {
+        // Clear any existing flagship for this menu first
+        await supabase
+          .from('menu_items')
+          .update({ is_flagship: false })
+          .eq('menu_id', params.menuId)
+          .neq('id', newItemId)
+
+        // Upsert the new item row with is_flagship=true so it works whether
+        // the sync trigger has already created the row or not.
+        await supabase
+          .from('menu_items')
+          .upsert({
+            id: newItemId,
+            menu_id: params.menuId,
+            name: newItem.name,
+            description: newItem.description ?? null,
+            price: newItem.price,
+            category: newItem.category ?? null,
+            available: newItem.available ?? true,
+            order_index: newItem.order ?? 0,
+            image_source: newItem.imageSource ?? 'none',
+            custom_image_url: newItem.customImageUrl ?? null,
+            is_flagship: true,
+          }, { onConflict: 'id' })
+      }
+    }
     
     return NextResponse.json({
       success: true,
@@ -135,19 +172,12 @@ export async function DELETE(
     const body = await request.json().catch(() => ({}))
     const { itemIds } = body as { itemIds?: string[] }
 
-    console.log('[DELETE API] Request body:', body)
-    console.log('[DELETE API] itemIds:', itemIds)
-    console.log('[DELETE API] itemIds is array?', Array.isArray(itemIds))
-    console.log('[DELETE API] itemIds length:', itemIds?.length)
-
     let menu
     if (itemIds && Array.isArray(itemIds) && itemIds.length > 0) {
       // Batch delete specific items
-      console.log('[DELETE API] Using deleteMultipleItems')
       menu = await menuItemOperations.deleteMultipleItems(params.menuId, user.id, itemIds)
     } else {
       // Clear all items
-      console.log('[DELETE API] Using clearItems')
       menu = await menuItemOperations.clearItems(params.menuId, user.id)
     }
 

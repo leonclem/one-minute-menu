@@ -39,15 +39,19 @@ export async function syncMenuItemImageToJsonb(
   // - 'none'   → null
   let resolvedCustomImageUrl: string | null = null
   let resolvedAiImageId: string | null = null
+  let resolvedCutoutUrl: string | null = null
+  let resolvedCutoutStatus: string = 'not_requested'
 
   if (menuItem.image_source === 'ai' && menuItem.ai_image_id) {
     resolvedAiImageId = menuItem.ai_image_id
     const { data: aiImage } = await supabase
       .from('ai_generated_images')
-      .select('desktop_url, original_url')
+      .select('desktop_url, original_url, cutout_url, cutout_status')
       .eq('id', menuItem.ai_image_id)
       .single()
     resolvedCustomImageUrl = aiImage?.desktop_url || aiImage?.original_url || null
+    resolvedCutoutUrl = aiImage?.cutout_url || null
+    resolvedCutoutStatus = aiImage?.cutout_status || 'not_requested'
   } else if (menuItem.image_source === 'custom') {
     resolvedCustomImageUrl = menuItem.custom_image_url || null
   }
@@ -68,6 +72,8 @@ export async function syncMenuItemImageToJsonb(
     imageSource: menuItem.image_source as 'ai' | 'custom' | 'none',
     customImageUrl: resolvedCustomImageUrl,
     aiImageId: resolvedAiImageId,
+    cutoutUrl: resolvedCutoutUrl,
+    cutoutStatus: resolvedCutoutStatus,
   }
 
   const updatedItems = (menuData.items || []).map((item: any) =>

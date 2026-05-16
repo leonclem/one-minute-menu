@@ -114,6 +114,13 @@ export function AdminHubClient() {
                   >
                     Gemini 3.0 Pro (Test)
                   </a>
+                  <hr className="my-1 border-gray-200" />
+                  <a
+                    href="/admin/placeholder-images"
+                    className="block px-4 py-2 text-sm text-amber-700 font-semibold hover:bg-amber-50"
+                  >
+                    Placeholder Images
+                  </a>
                 </div>
               </div>
               <a

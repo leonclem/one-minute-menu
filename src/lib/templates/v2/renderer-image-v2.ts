@@ -61,6 +61,8 @@ export interface ImageExportOptionsV2 {
   centreAlignment?: boolean
   /** Image rendering mode */
   imageMode?: ImageModeV2
+  /** When true, suppress the "SAMPLE" stamp overlay on placeholder item tiles */
+  hideSampleLabels?: boolean
 }
 
 export interface ImageExportResultV2 {
@@ -143,6 +145,7 @@ export async function renderToImageV2(
       spacerTilePatternId: options.spacerTilePatternId,
       fontStylePreset: options.fontStylePreset,
       centreAlignment: options.centreAlignment,
+      hideSampleLabels: options.hideSampleLabels,
       pageGapPx,
     })
 
@@ -246,6 +249,7 @@ async function generateImageHTML(
     texturesEnabled?: boolean
     fontStylePreset?: any
     pageGapPx?: number
+    hideSampleLabels?: boolean
   } = {}
 ): Promise<string> {
   const { renderToString } = await import('react-dom/server')
@@ -334,6 +338,7 @@ async function generateImageHTML(
         spacerTilePatternId: options.spacerTilePatternId,
         fontStylePreset: effectiveFontStylePreset,
         centreAlignment: options.centreAlignment === true,
+        hideSampleLabels: options.hideSampleLabels,
         socialIconDataUrls,
         showGridOverlay: false,
         showRegionBounds: false,

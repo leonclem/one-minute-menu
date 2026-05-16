@@ -24,6 +24,15 @@ import {
   isActiveCutoutStatus,
   useImageGenerationStatus,
 } from '@/lib/image-generation/use-image-generation-status'
+import { hasPlaceholderItems } from '@/data/placeholder-menus'
+import { PlaceholderItemsDialog, isPlaceholderPopupDismissed } from '@/components/ux/PlaceholderItemsDialog'
+import { PlaceholderExportWarning, isExportWarningDismissed } from '@/components/ux/PlaceholderExportWarning'
+import { QuickItemCreator } from '@/components/ux/QuickItemCreator'
+import { OnboardingChecklist, isOnboardingComplete } from '@/components/ux/OnboardingChecklist'
+import { LogoUploadModal } from '@/components/ux/LogoUploadModal'
+import { AddItemModal } from '@/components/ux/AddItemModal'
+import { ContactDetailsModal } from '@/components/ux/ContactDetailsModal'
+import GeneratePhotoModal from '@/components/GeneratePhotoModal'
 
 const TEMPLATE_DRAFT_KEY = (menuId: string) => `templateDraft-${menuId}`
 
@@ -64,7 +73,7 @@ const DEMO_DEFAULTS_FINE_DINING = {
   showFlagshipTile: false,
   centreAlignment: false,
   bannerTitle: 'DINNER',
-  bannerImageStyle: 'cutout' as const,
+  bannerImageStyle: 'stretch-fit' as const,
   fontStylePreset: 'standard' as const,
   // Logo: scaled up and anchored near top so tail overflows below banner edge
   bannerLogoTransform: { scale: 2.0, offsetX: 0, offsetY: -25 } as ImageTransform,
@@ -140,7 +149,7 @@ function getRestoredState(
   const imageMode: ImageModeV2 =
     config.imageMode === 'none' || config.textOnly ? 'none' :
     (config.imageMode && ['none', 'compact-rect', 'compact-circle', 'stretch', 'background', 'cutout'].includes(config.imageMode as string))
-      ? (config.imageMode as ImageModeV2) : 'compact-rect'
+      ? (config.imageMode as ImageModeV2) : 'stretch'
 
   // Banner defaults: showBanner defaults to true if the template supports it
   const bannerEnabledByDefault = BANNER_ENABLED_TEMPLATES.has(mappedTemplateId)
@@ -159,8 +168,9 @@ function getRestoredState(
   const bannerImageStyle: 'cutout' | 'stretch-fit' | 'none' =
     config.bannerImageStyle === 'stretch-fit' ? 'stretch-fit' :
     config.bannerImageStyle === 'none' ? 'none' :
+    config.bannerImageStyle === 'cutout' ? 'cutout' :
     mappedTemplateId === '1-column-tall' ? 'none' : // default no hero image for narrow format
-    'cutout'
+    'stretch-fit'
   const fontStylePreset: 'strong' | 'fun' | 'standard' | 'serif' | 'future' | 'handwriting' | 'elegant' =
     config.fontStylePreset === 'strong' ? 'strong' :
     config.fontStylePreset === 'fun' ? 'fun' :
@@ -242,15 +252,15 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [previewImageReadyPulse, setPreviewImageReadyPulse] = useState(false)
 
   // Selection State — demo users get curated defaults for best first impression
-  const [templateId, setTemplateId] = useState(isDemo ? DEMO_DEFAULTS.templateId : '6-column-portrait-a3')
+  const [templateId, setTemplateId] = useState(isDemo ? DEMO_DEFAULTS.templateId : '4-column-portrait')
   const [paletteId, setPaletteId] = useState(isDemo ? DEMO_DEFAULTS.paletteId : 'elegant-cream')
-  const [imageMode, setImageMode] = useState<ImageModeV2>(isDemo ? DEMO_DEFAULTS.imageMode : 'compact-rect')
+  const [imageMode, setImageMode] = useState<ImageModeV2>(isDemo ? DEMO_DEFAULTS.imageMode : 'stretch')
   /** 'blank' = plain rectangle fillers, 'none' = no fillers, otherwise pattern ID */
-  const [spacerTiles, setSpacerTiles] = useState<'blank' | 'none' | string>(isDemo ? DEMO_DEFAULTS.spacerTiles : SPACER_BLANK_ID)
+  const [spacerTiles, setSpacerTiles] = useState<'blank' | 'none' | string>(isDemo ? DEMO_DEFAULTS.spacerTiles : 'diagonal-pinstripe')
   /** Derived: when imageMode is 'none', layout is text-only (no images). */
   const textOnly = imageMode === 'none'
   // Texture is applied as overlay when textureId is set; no separate "textures enabled" toggle
-  const [textureId, setTextureId] = useState<string | null>(isDemo ? DEMO_DEFAULTS.textureId : 'linen')
+  const [textureId, setTextureId] = useState<string | null>(isDemo ? DEMO_DEFAULTS.textureId : 'paper-grain')
   const [showMenuTitle, setShowMenuTitle] = useState(isDemo ? DEMO_DEFAULTS.showMenuTitle : false)
   const [showVignette, setShowVignette] = useState(isDemo ? DEMO_DEFAULTS.showVignette : true)
   const [itemBorders, setItemBorders] = useState(isDemo ? DEMO_DEFAULTS.itemBorders : true)
@@ -267,15 +277,59 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [showBannerTitle, setShowBannerTitle] = useState(true)
   const [showVenueName, setShowVenueName] = useState(true)
   const [bannerSwapLayout, setBannerSwapLayout] = useState(false)
-  const [bannerImageStyle, setBannerImageStyle] = useState<'cutout' | 'stretch-fit' | 'none'>('cutout')
+  const [bannerImageStyle, setBannerImageStyle] = useState<'cutout' | 'stretch-fit' | 'none'>('stretch-fit')
   const [fontStylePreset, setFontStylePreset] = useState<'strong' | 'fun' | 'standard' | 'serif' | 'future' | 'handwriting' | 'elegant'>('standard')
   const [flagshipItemId, setFlagshipItemId] = useState<string | null>(null)
 
   // Derived: whether the currently selected template supports the banner feature
   const bannerSupported = BANNER_ENABLED_TEMPLATES.has(templateId)
+
+  // Placeholder items state
+  const [hideSampleLabels, setHideSampleLabels] = useState(false)
+  const [showPlaceholderDialog, setShowPlaceholderDialog] = useState(false)
+  const [showExportWarning, setShowExportWarning] = useState(false)
+  const [showQuickItemCreator, setShowQuickItemCreator] = useState(false)
+  const [showLogoUpload, setShowLogoUpload] = useState(false)
+  const [showAddItem, setShowAddItem] = useState(false)
+  const [showContactDetails, setShowContactDetails] = useState(false)
+  const [generatePhotoItem, setGeneratePhotoItem] = useState<{ id: string; name: string; description?: string } | null>(null)
+  const pendingExportActionRef = useRef<(() => void) | null>(null)
+  const menuHasPlaceholders = useMemo(
+    () => menu ? hasPlaceholderItems(menu.items ?? []) : false,
+    [menu]
+  )
+  // Timing for "popular dish" prompt: track config changes and page load time
+  const configChangeCountRef = useRef(0)
+  const pageLoadedAtRef = useRef(Date.now())
+  const quickItemPromptShownRef = useRef(false)
+  const LS_KEY_QUICK_ITEM_SHOWN = `gridmenu:quickItemShown:${menuId}`
   
   // Control panel state — only one section expanded at a time
-  const [expandedSection, setExpandedSection] = useState<string | null>('Grid Layout')
+  // Grid Layout is collapsed by default when there are outstanding onboarding tasks;
+  // it opens once the menu loads and onboarding is already complete.
+  const [expandedSection, setExpandedSection] = useState<string | null>(null)
+  const expandedSectionInitialisedRef = useRef(false)
+  // Controls drawer — open by default on desktop, closed on mobile
+  const [controlsOpen, setControlsOpen] = useState(false)
+
+  // On mount, open controls on desktop
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setControlsOpen(true)
+    }
+  }, [])
+
+  // Once the menu loads for the first time, decide whether to open Grid Layout.
+  // If onboarding is already complete, open it immediately; otherwise leave it
+  // collapsed so the Get Started panel gets full attention.
+  useEffect(() => {
+    if (menu && !expandedSectionInitialisedRef.current && !isDemo) {
+      expandedSectionInitialisedRef.current = true
+      if (isOnboardingComplete(menu)) {
+        setExpandedSection('Grid Layout')
+      }
+    }
+  }, [menu, isDemo])
   
   // Preview State
   const [layoutDocument, setLayoutDocument] = useState<LayoutDocumentV2 | null>(null)
@@ -722,6 +776,68 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
 
     loadMenuData()
   }, [menuId, pathname, router, showToast])
+
+  // Show placeholder items dialog on first load for menus with placeholders.
+  // Use a ref so that subsequent menu refreshes (e.g. after image generation
+  // completes) don't re-open the dialog.
+  const placeholderDialogShownRef = useRef(false)
+  useEffect(() => {
+    if (!menu || isDemo || loading) return
+    if (placeholderDialogShownRef.current) return
+    if (hasPlaceholderItems(menu.items ?? []) && !isPlaceholderPopupDismissed()) {
+      placeholderDialogShownRef.current = true
+      setShowPlaceholderDialog(true)
+    }
+  }, [menu, isDemo, loading])
+
+  // Record first template visit for analytics
+  useEffect(() => {
+    if (isDemo || loading || !menu) return
+    fetch('/api/profile').then(r => r.json()).then(json => {
+      if (json?.data && !json.data.firstTemplateVisitAt) {
+        fetch('/api/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ firstTemplateVisitAt: new Date().toISOString() }),
+        }).catch(() => {})
+        captureEvent(ANALYTICS_EVENTS.FIRST_TEMPLATE_VISIT ?? 'first_template_visit', {
+          menu_id: menuId,
+          has_placeholders: hasPlaceholderItems(menu.items ?? []),
+        })
+      }
+    }).catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemo, loading, menuId])
+
+  // Track config changes and trigger "popular dish" prompt after engagement threshold
+  useEffect(() => {
+    if (isDemo || !menuHasPlaceholders || quickItemPromptShownRef.current) return
+    if (typeof window !== 'undefined' && localStorage.getItem(LS_KEY_QUICK_ITEM_SHOWN)) return
+    if (showQuickItemCreator) return
+
+    configChangeCountRef.current++
+    if (configChangeCountRef.current < 2) return
+
+    const elapsed = Date.now() - pageLoadedAtRef.current
+    if (elapsed < 20_000) {
+      const remaining = 20_000 - elapsed
+      const timer = setTimeout(() => {
+        if (!quickItemPromptShownRef.current && !showPlaceholderDialog) {
+          quickItemPromptShownRef.current = true
+          localStorage.setItem(LS_KEY_QUICK_ITEM_SHOWN, 'true')
+          setShowQuickItemCreator(true)
+        }
+      }, remaining)
+      return () => clearTimeout(timer)
+    }
+
+    if (!showPlaceholderDialog) {
+      quickItemPromptShownRef.current = true
+      localStorage.setItem(LS_KEY_QUICK_ITEM_SHOWN, 'true')
+      setShowQuickItemCreator(true)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId, paletteId, imageMode, textureId, fontStylePreset])
 
   // Load user's email address for export notifications (best-effort)
   useEffect(() => {
@@ -1210,7 +1326,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     }
   }
 
-  const handleExportPDF = async () => {
+  const executeExportPDF = async () => {
     if (!menu || !layoutDocument || isExporting) return
 
     if (!isDemoUser) {
@@ -1346,6 +1462,15 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     }
   }
 
+  const handleExportPDF = () => {
+    if (menuHasPlaceholders && !hideSampleLabels && !isExportWarningDismissed()) {
+      pendingExportActionRef.current = executeExportPDF
+      setShowExportWarning(true)
+      return
+    }
+    executeExportPDF()
+  }
+
   const totalPages = layoutDocument?.pages?.length || 0
   const currentPage = layoutDocument?.pages?.[currentPageIndex]
   const pendingPreviewOverlays = useMemo(() => {
@@ -1399,7 +1524,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const palette = PALETTES_V2.find(p => p.id === paletteId) ?? DEFAULT_PALETTE_V2
 
   return (
-    <UXSection>
+    <div className="py-8 px-4 sm:px-6 lg:px-8">
       <div className="mb-8 text-center">
         <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
           Configure Your Menu Layout
@@ -1422,10 +1547,40 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-[1600px] mx-auto">
+      <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-[1600px] mx-auto">
+
+        {/* Controls drawer — slides in from left on mobile, static sidebar on desktop */}
+        {/* Mobile backdrop */}
+        {controlsOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+            onClick={() => setControlsOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* Left Column: Controls */}
-        <div className="lg:col-span-4 space-y-6">
-          <UXCard className="overflow-visible">
+        <div className={`
+          fixed inset-y-0 left-0 z-40 w-80 overflow-y-auto bg-white shadow-2xl transition-transform duration-300 ease-in-out
+          lg:static lg:z-auto lg:w-auto lg:bg-transparent lg:shadow-none lg:overflow-visible lg:transition-none lg:col-span-4 lg:self-start
+          ${controlsOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}>
+          {/* Mobile drawer header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-white sticky top-0 z-10 lg:hidden">
+            <span className="font-semibold text-ux-text text-sm">Customise</span>
+            <button
+              type="button"
+              onClick={() => setControlsOpen(false)}
+              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-ux-text-secondary transition-colors"
+              aria-label="Close controls"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="overflow-visible rounded-xl border border-ux-border bg-white/70 shadow-sm">
             <div className="p-6 space-y-2">
               {/* Menu Summary */}
               <div className="flex items-center space-x-4 border-b pb-6 mb-2">
@@ -1459,11 +1614,24 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 )}
               </div>
 
+              {/* Onboarding checklist — shown at top when there are incomplete tasks */}
+              {!isDemo && (
+                <OnboardingChecklist
+                  menu={menu}
+                  menuId={menuId}
+                  onAddTopDish={() => { setShowQuickItemCreator(true); setControlsOpen(false) }}
+                  onUploadLogo={() => { setShowLogoUpload(true); setControlsOpen(false) }}
+                  onAddItems={() => { setShowAddItem(true); setControlsOpen(false) }}
+                  onAddContactDetails={() => { setShowContactDetails(true); setControlsOpen(false) }}
+                />
+              )}
+
               {/* Template Selection */}
               <CollapsibleSection 
                 title="Grid Layout" 
                 isExpanded={expandedSection === 'Grid Layout'}
-                onExpand={(expanded) => setExpandedSection(expanded ? 'Grid Layout' : null)}
+                onExpand={(expanded) => { setExpandedSection(expanded ? 'Grid Layout' : null) }}
+                icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>}
               >
                 <div className="pt-2 space-y-1.5">
                   {V2_TEMPLATE_OPTIONS.map((t) => {
@@ -1498,7 +1666,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               <CollapsibleSection 
                 title="Color Palette" 
                 isExpanded={expandedSection === 'Color Palette'}
-                onExpand={(expanded) => setExpandedSection(expanded ? 'Color Palette' : null)}
+                onExpand={(expanded) => { setExpandedSection(expanded ? 'Color Palette' : null) }}
+                icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18" fill="currentColor" opacity=".15"/><circle cx="9" cy="9" r="1.5" fill="currentColor"/><circle cx="15" cy="9" r="1.5" fill="currentColor"/><circle cx="9" cy="15" r="1.5" fill="currentColor"/><circle cx="15" cy="15" r="1.5" fill="currentColor"/></svg>}
               >
                 <div className="pt-2">
                   <div className="grid grid-cols-3 gap-2">
@@ -1532,7 +1701,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               <CollapsibleSection 
                 title="Banner & Footer" 
                 isExpanded={expandedSection === 'Banner & Footer'}
-                onExpand={(expanded) => setExpandedSection(expanded ? 'Banner & Footer' : null)}
+                onExpand={(expanded) => { setExpandedSection(expanded ? 'Banner & Footer' : null) }}
+                icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="5" rx="1"/><rect x="3" y="15" width="18" height="5" rx="1"/><path d="M8 9v6M12 9v6M16 9v6" strokeDasharray="2 2"/></svg>}
               >
                 <div className="pt-2 space-y-3">
                   {/* Show Banner toggle — only shown when template supports banner */}
@@ -1657,7 +1827,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   <CollapsibleSection
                     title="Background Texture"
                     isExpanded={expandedSection === 'Background Texture'}
-                    onExpand={(expanded) => setExpandedSection(expanded ? 'Background Texture' : null)}
+                    onExpand={(expanded) => { setExpandedSection(expanded ? 'Background Texture' : null) }}
+                    icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M4 4h2v2H4zM10 4h2v2h-2zM16 4h2v2h-2zM7 7h2v2H7zM13 7h2v2h-2zM19 7h2v2h-2zM4 10h2v2H4zM10 10h2v2h-2zM16 10h2v2h-2zM7 13h2v2H7zM13 13h2v2h-2zM4 16h2v2H4zM10 16h2v2h-2zM16 16h2v2h-2z" fill="currentColor" stroke="none" opacity=".6"/></svg>}
                     badge={textureIncompatible ? (
                       <span
                         title="Current texture doesn't suit this palette — consider updating it"
@@ -1720,7 +1891,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               <CollapsibleSection 
                 title="Image Style" 
                 isExpanded={expandedSection === 'Image Style'}
-                onExpand={(expanded) => setExpandedSection(expanded ? 'Image Style' : null)}
+                onExpand={(expanded) => { setExpandedSection(expanded ? 'Image Style' : null) }}
+                icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>}
               >
                 <div className="pt-2 space-y-1.5">
                   {(() => {
@@ -1775,7 +1947,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               <CollapsibleSection 
                 title="Spacer Tiles" 
                 isExpanded={expandedSection === 'Spacer Tiles'}
-                onExpand={(expanded) => setExpandedSection(expanded ? 'Spacer Tiles' : null)}
+                onExpand={(expanded) => { setExpandedSection(expanded ? 'Spacer Tiles' : null) }}
+                icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1" strokeDasharray="3 2"/><rect x="14" y="14" width="7" height="7" rx="1" strokeDasharray="3 2"/></svg>}
               >
                 <div className="pt-2">
                   <div className="grid grid-cols-3 gap-2">
@@ -1810,7 +1983,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               <CollapsibleSection 
                 title="Font Style" 
                 isExpanded={expandedSection === 'Font Style'}
-                onExpand={(expanded) => setExpandedSection(expanded ? 'Font Style' : null)}
+                onExpand={(expanded) => { setExpandedSection(expanded ? 'Font Style' : null) }}
+                icon={<span className="text-[13px] font-black leading-none tracking-tight" aria-hidden="true">Aa</span>}
               >
                 <div className="pt-2">
                   <div className="grid grid-cols-2 gap-2">
@@ -1838,7 +2012,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               <CollapsibleSection 
                 title="Display Options" 
                 isExpanded={expandedSection === 'Display Options'}
-                onExpand={(expanded) => setExpandedSection(expanded ? 'Display Options' : null)}
+                onExpand={(expanded) => { setExpandedSection(expanded ? 'Display Options' : null) }}
+                icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4" strokeLinecap="round"/><circle cx="12" cy="12" r="3"/></svg>}
               >
                 <div className="pt-2 space-y-3">
                   {(() => {
@@ -1924,14 +2099,26 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                       className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
                     />
                   </label>
+
+                  <label className={`flex items-center justify-between group ${!menuHasPlaceholders ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                    <span className={`text-sm text-ux-text transition-colors ${!menuHasPlaceholders ? '' : 'group-hover:text-ux-primary'}`}>Hide SAMPLE labels</span>
+                    <input
+                      type="checkbox"
+                      checked={hideSampleLabels}
+                      disabled={!menuHasPlaceholders}
+                      onChange={(e) => setHideSampleLabels(e.target.checked)}
+                      className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5 disabled:cursor-not-allowed"
+                    />
+                  </label>
                 </div>
               </CollapsibleSection>
             </div>
-          </UXCard>
+          </div>
         </div>
 
         {/* Right Column: Preview */}
-        <div className="lg:col-span-8 space-y-4">
+        <div className="lg:col-span-8 space-y-4 relative">
+
           <UXCard className="bg-neutral-100 min-h-[600px] flex flex-col">
             <div className="p-4 border-b bg-white flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center space-x-2">
@@ -2071,7 +2258,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                         onImageTransformChange: imageEditUnlocked ? handleImageTransformChange : undefined,
                         bannerHeroTransform,
                         bannerLogoTransform,
-                        onBannerTransformChange: imageEditUnlocked ? handleBannerTransformChange : undefined
+                        onBannerTransformChange: imageEditUnlocked ? handleBannerTransformChange : undefined,
+                        hideSampleLabels,
                       }}
                     />
                     {pendingPreviewOverlays.length > 0 && (
@@ -2218,6 +2406,114 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         </div>,
         document.body
       )}
-    </UXSection>
+      {/* Quick item creator prompt */}
+      <QuickItemCreator
+        open={showQuickItemCreator}
+        menuId={menuId}
+        onClose={() => setShowQuickItemCreator(false)}
+        onItemCreated={async () => {
+          const resp = await fetch(`/api/menus/${menuId}`)
+          const json = await resp.json().catch(() => ({}))
+          if (json.data) setMenu(json.data)
+        }}
+        onImageGenerationQueued={async () => {
+          // Job is now in the DB — start polling so the "Generating..." overlay
+          // appears and the preview auto-updates when the image completes.
+          await refreshImageGenerationStatus()
+        }}
+        categories={menu?.categories?.map(c => c.name) ?? []}
+      />
+
+      {/* Placeholder items welcome dialog */}
+      <PlaceholderItemsDialog
+        open={showPlaceholderDialog}
+        onKeepSamples={() => setShowPlaceholderDialog(false)}
+      />
+
+      {/* Export warning when placeholder items are present */}
+      <PlaceholderExportWarning
+        open={showExportWarning}
+        onProceed={() => {
+          setShowExportWarning(false)
+          pendingExportActionRef.current?.()
+          pendingExportActionRef.current = null
+        }}
+        onCancel={() => {
+          setShowExportWarning(false)
+          pendingExportActionRef.current = null
+        }}
+      />
+
+      {/* Onboarding: logo upload */}
+      {showLogoUpload && !isDemo && (
+        <LogoUploadModal
+          menuId={menuId}
+          logoUrl={menu?.logoUrl ?? null}
+          onSuccess={(updatedMenu) => setMenu(updatedMenu)}
+          onClose={() => setShowLogoUpload(false)}
+        />
+      )}
+
+      {/* Onboarding: add menu item */}
+      {showAddItem && !isDemo && (
+        <AddItemModal
+          menuId={menuId}
+          categories={menu?.categories?.map(c => c.name) ?? []}
+          onSuccess={(updatedMenu) => setMenu(updatedMenu)}
+          onItemCreated={(newItem) => {
+            // Chain straight into photo generation for the new item
+            setGeneratePhotoItem({ id: newItem.id, name: newItem.name, description: newItem.description })
+          }}
+          onClose={() => setShowAddItem(false)}
+        />
+      )}
+
+      {/* Onboarding: contact details */}
+      {showContactDetails && !isDemo && (
+        <ContactDetailsModal
+          menuId={menuId}
+          initialVenueInfo={menu?.venueInfo}
+          onSuccess={(updatedMenu) => setMenu(updatedMenu)}
+          onClose={() => setShowContactDetails(false)}
+        />
+      )}
+
+      {/* Generate photo for a newly added item (chained from AddItemModal) */}
+      {generatePhotoItem && !isDemo && (
+        <GeneratePhotoModal
+          itemId={generatePhotoItem.id}
+          menuId={menuId}
+          itemName={generatePhotoItem.name}
+          itemDescription={generatePhotoItem.description}
+          onClose={() => setGeneratePhotoItem(null)}
+          onJobStarted={() => {
+            void refreshImageGenerationStatus()
+          }}
+          onSuccess={async () => {
+            setGeneratePhotoItem(null)
+            await refreshMenuData()
+            void refreshImageGenerationStatus()
+          }}
+        />
+      )}
+
+      {/* Mobile-only floating Customise button — portalled to body so fixed positioning
+          is always relative to the visual viewport, never affected by layout transforms */}
+      {mounted && typeof document !== 'undefined' && createPortal(
+        <button
+          type="button"
+          onClick={() => setControlsOpen(v => !v)}
+          className="lg:hidden fixed z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow-xl text-sm font-semibold bg-ux-primary text-white hover:bg-ux-primary/90 transition-all duration-200"
+          style={{ bottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))', left: '1rem' }}
+          aria-label="Toggle customise panel"
+        >
+          <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+          </svg>
+          Customise
+        </button>,
+        document.body
+      )}
+    </div>
   )
 }

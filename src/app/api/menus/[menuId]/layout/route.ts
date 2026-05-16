@@ -121,6 +121,7 @@ export async function GET(
     const fontStylePreset = searchParams.get('fontStylePreset') || undefined
     const flagshipItemId = searchParams.get('flagshipItemId') || undefined
     const assetVersion = searchParams.get('assetVersion') || undefined
+    const hidePlaceholderItems = searchParams.get('hidePlaceholderItems') === 'true'
     
     if (!templateId) {
       return NextResponse.json(
@@ -171,6 +172,16 @@ export async function GET(
         { status: 404 }
       )
     }
+
+    // Filter out placeholder items when requested
+    if (hidePlaceholderItems) {
+      menu.items = (menu.items ?? []).filter(item => !item.isPlaceholder)
+      if (menu.categories) {
+        menu.categories = menu.categories
+          .map(cat => ({ ...cat, items: cat.items.filter(item => !item.isPlaceholder) }))
+          .filter(cat => cat.items.length > 0)
+      }
+    }
     
     // Configuration object for cache and engine.
     const cacheKeyConfig = {
@@ -186,6 +197,7 @@ export async function GET(
       showFlagshipTile,
       centreAlignment,
       engineVersion,
+      hidePlaceholderItems,
       showBanner,
       bannerTitle,
       showBannerTitle,

@@ -1,19 +1,6 @@
 import React from 'react'
 import { render } from '@testing-library/react'
 
-// Mock UXProgressSteps so we can assert props without rendering the full component
-const mockUXProgressSteps = jest.fn(() => null)
-jest.mock('@/components/ux', () => {
-  const actual = jest.requireActual('@/components/ux')
-  return {
-    ...actual,
-    UXProgressSteps: (props: any) => {
-      mockUXProgressSteps(props)
-      return null
-    },
-  }
-})
-
 // Mock usePathname to simulate different steps
 let mockPathname = '/menus/test-menu/upload'
 jest.mock('next/navigation', () => ({
@@ -39,7 +26,7 @@ describe('ClientFlowShell (single-page workflow shell)', () => {
     window.scrollTo = jest.fn()
   })
 
-  it('derives current step from pathname and renders UXProgressSteps', () => {
+  it('derives current step from pathname and persists progress', () => {
     mockPathname = '/menus/demo-test-menu/extract'
 
     render(
@@ -48,12 +35,6 @@ describe('ClientFlowShell (single-page workflow shell)', () => {
       </ClientFlowShell>,
     )
 
-    expect(mockUXProgressSteps).toHaveBeenCalledWith(
-      expect.objectContaining({
-        currentStep: 'extract',
-        menuId: 'demo-test-menu',
-      }),
-    )
     expect(mockSaveUXProgress).toHaveBeenCalledWith('demo-test-menu', 'extract')
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
   })
@@ -67,11 +48,6 @@ describe('ClientFlowShell (single-page workflow shell)', () => {
       </ClientFlowShell>,
     )
 
-    expect(mockUXProgressSteps).toHaveBeenCalledWith(
-      expect.objectContaining({
-        currentStep: 'upload',
-      }),
-    )
     expect(mockSaveUXProgress).toHaveBeenCalledWith('demo-test-menu', 'upload')
   })
 })

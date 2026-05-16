@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { UXCard } from '@/components/ux'
 import { DeleteMenuDialog } from './DeleteMenuDialog'
+import { PlaceholderExportWarning, isExportWarningDismissed } from '@/components/ux/PlaceholderExportWarning'
+import { hasPlaceholderItems } from '@/data/placeholder-menus'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/toast'
 import type { Menu } from '@/types'
@@ -54,6 +56,11 @@ export function MenuCard({
   
   // Track exporting status per type
   const [exportingType, setExportingType] = useState<'pdf' | 'image' | null>(null)
+
+  // Placeholder export warning state
+  const [showExportWarning, setShowExportWarning] = useState(false)
+  const pendingExportActionRef = useRef<(() => void) | null>(null)
+  const menuHasPlaceholders = hasPlaceholderItems(menu.items ?? [])
 
   // Pending export job detected from sessionStorage (written by template page on PDF export).
   // Includes the configuration that was live at export time so we can use it immediately.
@@ -150,7 +157,7 @@ export function MenuCard({
     setShowDeleteDialog(true)
   }
 
-  const handleExport = async (type: 'pdf' | 'image') => {
+  const executeExport = async (type: 'pdf' | 'image') => {
     const effectiveTemplateId = configOverride?.templateId || templateSelection?.template_id
     const effectiveConfig = configOverride?.configuration || templateSelection?.configuration
     try {
@@ -270,6 +277,15 @@ export function MenuCard({
     } finally {
       setExportingType(null)
     }
+  }
+
+  const handleExport = (type: 'pdf' | 'image') => {
+    if (menuHasPlaceholders && !isExportWarningDismissed()) {
+      pendingExportActionRef.current = () => executeExport(type)
+      setShowExportWarning(true)
+      return
+    }
+    executeExport(type)
   }
 
   const handleDownload = async (job: { job_id: string }, exportType: 'pdf' | 'image') => {
@@ -530,6 +546,19 @@ export function MenuCard({
         menuName={menu.name}
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
+      />
+
+      <PlaceholderExportWarning
+        open={showExportWarning}
+        onProceed={() => {
+          setShowExportWarning(false)
+          pendingExportActionRef.current?.()
+          pendingExportActionRef.current = null
+        }}
+        onCancel={() => {
+          setShowExportWarning(false)
+          pendingExportActionRef.current = null
+        }}
       />
     </>
   )

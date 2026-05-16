@@ -15,13 +15,15 @@ export interface ValidationResult {
 export function validateMenu(data: Partial<MenuFormData>): ValidationResult {
   const errors: ValidationError[] = []
   
-  // Validate name
-  if (!data.name) {
-    errors.push({ field: 'name', message: 'Menu name is required' })
-  } else if (data.name.length < VALIDATION_RULES.menu.name.minLength) {
-    errors.push({ field: 'name', message: 'Menu name is too short' })
-  } else if (data.name.length > VALIDATION_RULES.menu.name.maxLength) {
-    errors.push({ field: 'name', message: 'Menu name is too long' })
+  // Validate name only when explicitly provided (partial update support)
+  if ('name' in data) {
+    if (!data.name) {
+      errors.push({ field: 'name', message: 'Menu name is required' })
+    } else if (data.name.length < VALIDATION_RULES.menu.name.minLength) {
+      errors.push({ field: 'name', message: 'Menu name is too short' })
+    } else if (data.name.length > VALIDATION_RULES.menu.name.maxLength) {
+      errors.push({ field: 'name', message: 'Menu name is too long' })
+    }
   }
   
   // Validate items if provided

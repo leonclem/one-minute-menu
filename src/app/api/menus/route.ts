@@ -76,6 +76,9 @@ export async function POST(request: NextRequest) {
       establishmentType: body.establishmentType || profile?.establishmentType,
       primaryCuisine: body.primaryCuisine || profile?.primaryCuisine,
       venueInfo: body.venueInfo || profile?.defaultVenueInfo || {},
+      currency: body.currency,
+      items: body.items,
+      categories: body.categories,
     })
 
     // Ensure dashboard reflects newly created menu on next client navigation

@@ -38,10 +38,21 @@ export default function PhotoGalleryModal({
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false)
   const { showToast } = useToast()
 
+  // Placeholder items have non-UUID IDs (e.g. "placeholder-italian-pizza-margherita").
+  // Their photos are shared sample assets — they can't be managed per-user.
+  const isUuid = (val: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(val)
+  const isPlaceholderItem = !isUuid(itemId)
+
   // Primary brand color: #01B3BF
   // Secondary brand color: #F8BC02
 
   useEffect(() => {
+    // Placeholder items use shared sample photos — no per-user variations to load.
+    if (isPlaceholderItem) {
+      setLoading(false)
+      return
+    }
+
     let mounted = true
 
     const loadVariations = async (showLoader: boolean, isPolling: boolean = false) => {
@@ -495,6 +506,27 @@ export default function PhotoGalleryModal({
           ) : (
             // Gallery Grid View
             <>
+              {isPlaceholderItem ? (
+                /* ── Placeholder item notice ── */
+                <div className="flex flex-col items-center justify-center py-12 gap-4 text-center">
+                  <div className="w-14 h-14 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+                    <ImageOff className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-secondary-800">This is a sample item</p>
+                    <p className="text-xs text-secondary-500 mt-1 max-w-xs">
+                      Sample items use shared placeholder photos that are preserved for all users. You can delete this item from your menu, but the photo itself cannot be changed or removed.
+                    </p>
+                  </div>
+                  <button
+                    onClick={onClose}
+                    className="mt-2 px-4 py-2 rounded-xl bg-secondary-100 text-secondary-700 text-sm font-medium hover:bg-secondary-200 transition-colors"
+                  >
+                    Got it
+                  </button>
+                </div>
+              ) : (
+              <>
               {/* ── Action buttons — same 3-col grid as the image tiles below ── */}
               <div className="grid grid-cols-3 gap-3 mb-8">
                 {/* Generate photo */}
@@ -559,6 +591,8 @@ export default function PhotoGalleryModal({
                 </div>
               )}
             </>
+            )} {/* end isPlaceholderItem conditional */}
+          </>
           )}
         </div>
 

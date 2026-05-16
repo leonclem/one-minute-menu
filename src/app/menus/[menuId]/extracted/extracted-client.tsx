@@ -671,7 +671,11 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   }
 
   const handleBackToExtraction = () => {
-    router.push(`/menus/${menuId}/extract`)
+    if (isDemo) {
+      router.push('/demo/sample')
+    } else {
+      router.push(`/menus/${menuId}/extract`)
+    }
   }
 
   const refreshMenu = async () => {
@@ -1652,7 +1656,43 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
           <div className="p-6 relative z-10">
             <div className="flex flex-col md:flex-row md:justify-between gap-6">
               <div className="flex-1 min-w-0">
-                {logoUrl && (
+                {/* Logo display area — shows logo if present, or an upload prompt if not */}
+                {!isDemo && !isReadOnly && (
+                  <div className="mb-4">
+                    {logoUrl ? (
+                      <div className="flex items-center gap-3 group">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={logoUrl}
+                          alt={baseMenu?.name || 'Restaurant logo'}
+                          className="max-h-20 w-auto object-contain"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowLogoUpload(true)}
+                          className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-ux-text-secondary hover:text-ux-primary border border-ux-border hover:border-ux-primary rounded-lg bg-ux-background hover:bg-ux-primary/5"
+                          aria-label="Manage logo"
+                        >
+                          <ImageUp className="h-3 w-3" />
+                          Manage logo
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowLogoUpload(true)}
+                        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-ux-text-secondary hover:text-ux-primary border border-dashed border-ux-border hover:border-ux-primary rounded-lg bg-ux-background-secondary hover:bg-ux-primary/5 transition-colors"
+                      >
+                        <ImageUp className="h-4 w-4" />
+                        Add your logo
+                      </button>
+                    )}
+                  </div>
+                )}
+                {/* Demo or read-only: just show the logo if present */}
+                {(isDemo || isReadOnly) && logoUrl && (
                   <div className="mb-4">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -1806,7 +1846,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                         </div>
                       ) : (
                     <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div className="flex flex-wrap gap-3">
                         {isDemo && (
                           <UXButton
                             variant="warning"
@@ -1822,22 +1862,11 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                           <UXButton
                             variant="warning"
                             size="md"
-                            onClick={() => setShowLogoUpload(true)}
-                            disabled={loading}
-                          >
-                            <ImageUp className="hidden sm:inline-block h-4 w-4 mr-2" />
-                            {logoUrl ? 'Manage logo' : 'Upload logo'}
-                          </UXButton>
-                        )}
-                        {!isDemo && !isReadOnly && (
-                          <UXButton
-                            variant="warning"
-                            size="md"
                             onClick={() => router.push(`/menus/${menuId}/upload`)}
                             disabled={loading}
                           >
                             <ImageUp className="hidden sm:inline-block h-4 w-4 mr-2" />
-                            Scan another page
+                            Scan an existing menu photo
                           </UXButton>
                         )}
                         {!isReadOnly && (
@@ -1888,8 +1917,6 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                             </UXButton>
                           </>
                         )}
-                      </div>
-                      <div className="hidden">{/* Close the grid div properly */}
                       </div>
                     </>
                   )}
@@ -2263,9 +2290,16 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                               </button>
                               )}
                               <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-ux-text leading-tight">
-                                  {raw.name}
-                                </h4>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="font-medium text-ux-text leading-tight">
+                                    {raw.name}
+                                  </h4>
+                                  {(raw as MenuItem).isPlaceholder && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-red-100 text-red-500 border border-red-200 shrink-0">
+                                      Sample
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                             {raw.description && (
@@ -2361,7 +2395,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             }}
             disabled={loading}
           >
-            {isDemo ? '← Back to Extraction' : '← Back to Dashboard'}
+            {isDemo ? '← Back to Sample Selection' : '← Back to Dashboard'}
           </UXButton>
           
           <UXButton

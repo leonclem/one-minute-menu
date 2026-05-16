@@ -2,7 +2,6 @@
 
 import { useEffect, ReactNode, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
-import { UXProgressSteps } from '@/components/ux'
 import { saveUXProgress, type UXFlowStep } from '@/lib/ux-progress'
 
 interface ClientFlowShellProps {
@@ -26,7 +25,6 @@ export default function ClientFlowShell({ menuId, children }: ClientFlowShellPro
   }, [pathname])
 
   const currentStep = pathnameInfo.step
-  const flowMenuId = pathnameInfo.menuId
 
   useEffect(() => {
     if (!pathname || !menuId) return
@@ -35,15 +33,10 @@ export default function ClientFlowShell({ menuId, children }: ClientFlowShellPro
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [pathname, menuId, currentStep])
 
-  const isDemo = flowMenuId?.startsWith('demo-') || menuId?.startsWith('demo-')
-
   return (
-    <>
-      {isDemo && <UXProgressSteps currentStep={currentStep} menuId={menuId} />}
-      <div key={pathname} className="ux-route-fade w-full">
-        {children}
-      </div>
-    </>
+    <div key={pathname} className="ux-route-fade w-full">
+      {children}
+    </div>
   )
 }
 

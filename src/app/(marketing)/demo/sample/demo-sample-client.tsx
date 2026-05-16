@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { UXWrapper, UXSection, UXCard, UXButton, UXProgressSteps } from '@/components/ux'
+import { UXWrapper, UXSection, UXCard, UXButton } from '@/components/ux'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { useToast } from '@/components/ui'
+import ZoomableImageModal from '@/components/ZoomableImageModal'
 import type { Menu } from '@/types'
 import { normalizeDemoMenu } from '@/lib/demo-menu-normalizer'
 
@@ -107,6 +108,7 @@ Black raspberry
 export default function DemoSampleClient() {
   const [selectedMenu, setSelectedMenu] = useState<SampleMenu | null>(null)
   const [loading, setLoading] = useState(false)
+  const [zoomMenu, setZoomMenu] = useState<SampleMenu | null>(null)
   const router = useRouter()
   const { showToast } = useToast()
 
@@ -149,8 +151,11 @@ export default function DemoSampleClient() {
       const menu: Menu = normalizeDemoMenu(result.data) as Menu
       const flowMenuId = menu.id?.startsWith('demo-') ? menu.id : `demo-${menu.id}`
 
-      // Store demo menu data in sessionStorage for the demo flow, include imageUrl for preview consistency
-      const demoWithImage = { ...menu, imageUrl: sampleMenu.imageUrl }
+      // Parse the sample text into menu items now, so /extracted has them immediately
+      const extractedItems = parseSampleTextToItems(sampleMenu.extractedText)
+
+      // Store demo menu data in sessionStorage for the demo flow, include imageUrl and pre-parsed items
+      const demoWithImage = { ...menu, imageUrl: sampleMenu.imageUrl, items: extractedItems }
       sessionStorage.setItem('demoMenu', JSON.stringify(demoWithImage))
 
       trackConversionEvent({
@@ -166,11 +171,11 @@ export default function DemoSampleClient() {
       showToast({
         type: 'success',
         title: 'Sample menu selected',
-        description: 'Starting automatic text extraction...'
+        description: 'Extracting menu items...'
       })
 
-      // Navigate directly to extraction since we have sample text
-      router.push(`/menus/${flowMenuId}/extract`)
+      // Navigate directly to extracted results, skipping the extract preview step
+      router.push(`/menus/${flowMenuId}/extracted`)
       
     } catch (error) {
       console.error('Error creating demo menu:', error)
@@ -188,18 +193,25 @@ export default function DemoSampleClient() {
   return (
     <UXWrapper variant="centered">
       <UXSection>
-        <div className="mb-2">
-          <UXProgressSteps currentStep="upload" menuId="demo" clickable={false} />
-        </div>
-        {/* Page heading styled like the upload page */}
+        {/* Page heading */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
-            Select starting point
+            Choose a sample menu to get started
           </h1>
           <p className="mt-2 text-white/90 text-hero-shadow-strong">
-            Try our menu creation process with one of these example photos
+            Tap a photo to zoom in, then hit <strong>Use this photo</strong> — our AI will extract the items automatically
           </p>
         </div>
+
+        {/* Zoom modal */}
+        {zoomMenu && (
+          <ZoomableImageModal
+            isOpen={!!zoomMenu}
+            onClose={() => setZoomMenu(null)}
+            url={zoomMenu.imageUrl}
+            alt={`${zoomMenu.name} preview`}
+          />
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {SAMPLE_MENUS.map((sampleMenu) => (
@@ -221,32 +233,58 @@ export default function DemoSampleClient() {
                 </p>
               </div>
 
-              {/* Menu Image */}
+              {/* Menu Image — zoomable */}
               {sampleMenu.imageUrl ? (
-                <div className="w-full h-56 md:h-64 overflow-visible flex items-center justify-center relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                  src={sampleMenu.imageUrl}
-                    alt={`${sampleMenu.name} preview`}
-                    className="h-full max-w-full object-contain drop-shadow-md md:drop-shadow-lg"
-                    loading="lazy"
-                    decoding="async"
-                  onError={(e) => {
-                    // Try simple extension fallback from .jpg -> .png once
-                    const el = e.currentTarget as HTMLImageElement
-                    if (el.dataset.fallbackTried !== '1' && sampleMenu.imageUrl.endsWith('.jpg')) {
-                      el.dataset.fallbackTried = '1'
-                      el.src = sampleMenu.imageUrl.replace(/\\.jpg$/i, '.png')
-                    } else {
-                      // Final fallback to placeholder style background
-                      el.style.display = 'none'
-                      const parent = el.parentElement
-                      if (parent) {
-                        parent.innerHTML = '<div class=\"placeholder-ux w-full h-48 flex items-center justify-center\"><span class=\"text-ux-text-secondary text-sm\">Preview unavailable</span></div>'
-                      }
-                    }
-                  }}
-                  />
+                <div className="w-full h-56 md:h-64 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setZoomMenu(sampleMenu)}
+                    className="relative inline-flex items-center justify-center focus:outline-none group cursor-zoom-in"
+                    aria-label={`Zoom in on ${sampleMenu.name} photo`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={sampleMenu.imageUrl}
+                      alt={`${sampleMenu.name} preview`}
+                      className="max-h-56 md:max-h-64 max-w-full object-contain drop-shadow-md md:drop-shadow-lg"
+                      loading="lazy"
+                      decoding="async"
+                      onError={(e) => {
+                        const el = e.currentTarget as HTMLImageElement
+                        if (el.dataset.fallbackTried !== '1' && sampleMenu.imageUrl.endsWith('.jpg')) {
+                          el.dataset.fallbackTried = '1'
+                          el.src = sampleMenu.imageUrl.replace(/\.jpg$/i, '.png')
+                        } else {
+                          el.style.display = 'none'
+                          const parent = el.parentElement
+                          if (parent) {
+                            parent.innerHTML = '<div class="placeholder-ux w-full h-48 flex items-center justify-center"><span class="text-ux-text-secondary text-sm">Preview unavailable</span></div>'
+                          }
+                        }
+                      }}
+                    />
+                    {/* Zoom hint — centred over the image, fades in on hover */}
+                    <span
+                      className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+                      aria-hidden="true"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="w-10 h-10 drop-shadow-[0_1px_4px_rgba(0,0,0,0.7)]"
+                      >
+                        <circle cx="11" cy="11" r="7" />
+                        <line x1="16.5" y1="16.5" x2="22" y2="22" />
+                        <line x1="8" y1="11" x2="14" y2="11" />
+                        <line x1="11" y1="8" x2="11" y2="14" />
+                      </svg>
+                    </span>
+                  </button>
                 </div>
               ) : (
                 <div className="placeholder-ux w-full h-56 md:h-64 flex items-center justify-center shadow-md md:shadow-lg">
@@ -291,4 +329,64 @@ export default function DemoSampleClient() {
       </UXSection>
     </UXWrapper>
   )
+}
+
+// Parse sample menu text into menu items (mirrors the logic in extract-client.tsx)
+function parseSampleTextToItems(text: string) {
+  const lines = text.split('\n').filter(line => line.trim())
+  const items = []
+  let currentCategory = ''
+  let itemOrder = 0
+  let currentItem: any = null
+
+  for (const line of lines) {
+    const trimmedLine = line.trim()
+
+    // Skip empty lines and restaurant name
+    if (!trimmedLine || trimmedLine.includes('RESTAURANT') || trimmedLine.includes('CAFE')) {
+      continue
+    }
+
+    // Category header: all caps, no price, has letters, length > 2
+    if (trimmedLine === trimmedLine.toUpperCase() && !trimmedLine.includes('$') && /[A-Z]/.test(trimmedLine) && trimmedLine.length > 2) {
+      currentCategory = trimmedLine
+      currentItem = null
+      continue
+    }
+
+    // Menu item: has a price
+    const priceMatch = trimmedLine.match(/\$(\d+\.?\d*)/)
+    if (priceMatch) {
+      const price = parseFloat(priceMatch[1])
+      let namePart = trimmedLine.substring(0, trimmedLine.indexOf('$')).trim()
+      if (namePart.endsWith('-')) namePart = namePart.slice(0, -1).trim()
+
+      const priceEndIndex = trimmedLine.indexOf(priceMatch[0]) + priceMatch[0].length
+      let description = trimmedLine.substring(priceEndIndex).trim()
+      if (description.startsWith('-')) description = description.substring(1).trim()
+
+      const newItem = {
+        id: `demo-item-${Date.now()}-${itemOrder}`,
+        name: namePart,
+        description: description || '',
+        price,
+        available: true,
+        category: currentCategory || 'Main',
+        order: itemOrder,
+        confidence: 0.95,
+        imageSource: 'none' as const,
+      }
+
+      items.push(newItem)
+      currentItem = newItem
+      itemOrder++
+    } else if (currentItem) {
+      // Continuation line — append to previous item's description
+      currentItem.description = currentItem.description
+        ? `${currentItem.description} ${trimmedLine}`
+        : trimmedLine
+    }
+  }
+
+  return items
 }

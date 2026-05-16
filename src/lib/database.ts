@@ -5,6 +5,7 @@ import type { Menu, MenuItem, User, PlanLimits, MenuTheme, UserPlan } from '@/ty
 import { PLAN_CONFIGS } from '@/types'
 import { computeSha256FromUrl } from '@/lib/utils'
 import { ensureBackwardCompatibility } from '@/lib/menu-data-migration'
+import { fixPlaceholderImageUrls } from '@/data/placeholder-menus'
 
 // Re-export migration utilities for convenience
 export * from '@/lib/menu-data-migration'
@@ -123,6 +124,7 @@ export const userOperations = {
       approvedAt: data.approved_at ? new Date(data.approved_at) : undefined,
       adminNotified: data.admin_notified || false,
       onboardingCompleted: data.onboarding_completed || false,
+      firstTemplateVisitAt: data.first_template_visit_at ? new Date(data.first_template_visit_at) : undefined,
       restaurantName: data.restaurant_name || undefined,
       establishmentType: data.establishment_type || undefined,
       primaryCuisine: data.primary_cuisine || undefined,
@@ -154,6 +156,7 @@ export const userOperations = {
     }
     if (updates.adminNotified !== undefined) updateData.admin_notified = updates.adminNotified
     if (updates.onboardingCompleted !== undefined) updateData.onboarding_completed = updates.onboardingCompleted
+    if (updates.firstTemplateVisitAt !== undefined) updateData.first_template_visit_at = updates.firstTemplateVisitAt instanceof Date ? updates.firstTemplateVisitAt.toISOString() : updates.firstTemplateVisitAt
     if (updates.restaurantName !== undefined) updateData.restaurant_name = updates.restaurantName
     if (updates.establishmentType !== undefined) updateData.establishment_type = updates.establishmentType
     if (updates.primaryCuisine !== undefined) updateData.primary_cuisine = updates.primaryCuisine
@@ -183,6 +186,7 @@ export const userOperations = {
       approvedAt: data.approved_at ? new Date(data.approved_at) : undefined,
       adminNotified: data.admin_notified || false,
       onboardingCompleted: data.onboarding_completed || false,
+      firstTemplateVisitAt: data.first_template_visit_at ? new Date(data.first_template_visit_at) : undefined,
       restaurantName: data.restaurant_name || undefined,
       establishmentType: data.establishment_type || undefined,
       primaryCuisine: data.primary_cuisine || undefined,
@@ -409,6 +413,9 @@ export const menuOperations = {
     establishmentType?: string;
     primaryCuisine?: string;
     venueInfo?: any;
+    currency?: string;
+    items?: any[];
+    categories?: any[];
   }): Promise<Menu> {
     // Check plan limits first
     const { allowed } = await userOperations.checkPlanLimits(userId, 'menus')
@@ -424,6 +431,11 @@ export const menuOperations = {
     
     const supabase = createServerSupabaseClient()
     
+    const theme = getDefaultTheme()
+    if (menuData.currency) {
+      theme.layout.currency = menuData.currency
+    }
+
     const newMenu = {
       user_id: userId,
       name: menuData.name,
@@ -434,8 +446,9 @@ export const menuOperations = {
       status: 'draft' as const,
       current_version: 1,
       menu_data: {
-        items: [],
-        theme: getDefaultTheme(),
+        items: menuData.items || [],
+        categories: menuData.categories || undefined,
+        theme,
         paymentInfo: null,
       }
     }
@@ -864,10 +877,51 @@ export const menuItemOperations = {
       id: generateId(),
       order: menu.items.length,
     }
-    
-    const updatedItems = [...menu.items, newItem]
-    
-    return menuOperations.updateMenu(menuId, userId, { items: updatedItems })
+
+    // If the new item is being set as flagship, clear the existing flagship first
+    // (one flagship per menu). isFeatured is independent and not affected.
+    // If the new item is being set as featured, clear any existing featured item
+    // in the same category first (one featured per category).
+    let updatedItems: MenuItem[]
+    let updatedCategories = menu.categories
+
+    const clearFlagshipInCategories = (categories: any[]): any[] =>
+      categories.map(cat => ({
+        ...cat,
+        items: (cat.items || []).map((i: any) => ({ ...i, isFlagship: false })),
+        subcategories: cat.subcategories ? clearFlagshipInCategories(cat.subcategories) : undefined,
+      }))
+
+    const clearFeaturedInCategoryItems = (items: any[], categoryName: string): any[] =>
+      items.map(i => i.category === categoryName ? { ...i, isFeatured: false } : i)
+
+    const clearFeaturedInCategories = (categories: any[], categoryName: string): any[] =>
+      categories.map(cat => ({
+        ...cat,
+        items: cat.name === categoryName
+          ? (cat.items || []).map((i: any) => ({ ...i, isFeatured: false }))
+          : (cat.items || []),
+        subcategories: cat.subcategories ? clearFeaturedInCategories(cat.subcategories, categoryName) : undefined,
+      }))
+
+    if (newItem.isFlagship) {
+      updatedItems = [...menu.items.map(i => ({ ...i, isFlagship: false })), newItem]
+      if (updatedCategories && updatedCategories.length > 0) {
+        updatedCategories = clearFlagshipInCategories(updatedCategories)
+      }
+    } else {
+      updatedItems = [...menu.items, newItem]
+    }
+
+    if (newItem.isFeatured && newItem.category) {
+      updatedItems = clearFeaturedInCategoryItems(updatedItems.filter(i => i.id !== newItem.id), newItem.category)
+      updatedItems = [...updatedItems, newItem]
+      if (updatedCategories && updatedCategories.length > 0) {
+        updatedCategories = clearFeaturedInCategories(updatedCategories, newItem.category)
+      }
+    }
+
+    return menuOperations.updateMenu(menuId, userId, { items: updatedItems, categories: updatedCategories })
   },
 
   async updateItem(menuId: string, userId: string, itemId: string, updates: Partial<MenuItem>): Promise<Menu> {
@@ -919,9 +973,23 @@ export const menuItemOperations = {
     }
 
     // Standard update (no flagship change, or clearing flagship)
-    const updatedItems = menu.items.map(item =>
+    let updatedItems = menu.items.map(item =>
       item.id === itemId ? { ...item, ...effectiveUpdates } : item
     )
+
+    // Enforce one-featured-per-category: if this update sets isFeatured=true,
+    // clear isFeatured on all other items in the same category.
+    if (effectiveUpdates.isFeatured === true) {
+      const targetItem = updatedItems.find(i => i.id === itemId)
+      const targetCategory = targetItem?.category
+      if (targetCategory) {
+        updatedItems = updatedItems.map(item =>
+          item.id !== itemId && item.category === targetCategory
+            ? { ...item, isFeatured: false }
+            : item
+        )
+      }
+    }
 
     // Also update in categories to keep data in sync
     let updatedCategories = menu.categories
@@ -929,9 +997,14 @@ export const menuItemOperations = {
       const updateItemInCategories = (categories: any[]): any[] => {
         return categories.map(category => ({
           ...category,
-          items: category.items.map((item: any) =>
-            item.id === itemId ? { ...item, ...effectiveUpdates } : item
-          ),
+          items: category.items.map((item: any) => {
+            if (item.id === itemId) return { ...item, ...effectiveUpdates }
+            // Clear isFeatured on siblings in the same category if needed
+            if (effectiveUpdates.isFeatured === true && category.name === updatedItems.find(i => i.id === itemId)?.category) {
+              return { ...item, isFeatured: false }
+            }
+            return item
+          }),
           subcategories: category.subcategories
             ? updateItemInCategories(category.subcategories)
             : undefined,
@@ -947,15 +1020,9 @@ export const menuItemOperations = {
     const menu = await menuOperations.getMenu(menuId, userId)
     if (!menu) throw new DatabaseError('Menu not found')
     
-    console.log('[DELETE ITEM] Attempting to delete item:', itemId)
-    console.log('[DELETE ITEM] Current items:', menu.items.map(i => ({ id: i.id, name: i.name })))
-    
     const updatedItems = menu.items
       .filter(item => item.id !== itemId)
       .map((item, index) => ({ ...item, order: index })) // Reorder
-    
-    console.log('[DELETE ITEM] Items after filter:', updatedItems.map(i => ({ id: i.id, name: i.name })))
-    console.log('[DELETE ITEM] Deleted count:', menu.items.length - updatedItems.length)
     
     // Also delete from categories to keep data in sync
     let updatedCategories = menu.categories
@@ -979,16 +1046,10 @@ export const menuItemOperations = {
     const menu = await menuOperations.getMenu(menuId, userId)
     if (!menu) throw new DatabaseError('Menu not found')
     
-    console.log('[DELETE MULTIPLE] Attempting to delete items:', itemIds)
-    console.log('[DELETE MULTIPLE] Current items:', menu.items.map(i => ({ id: i.id, name: i.name })))
-    
     const itemIdsSet = new Set(itemIds)
     const updatedItems = menu.items
       .filter(item => !itemIdsSet.has(item.id))
       .map((item, index) => ({ ...item, order: index })) // Reorder
-    
-    console.log('[DELETE MULTIPLE] Items after filter:', updatedItems.map(i => ({ id: i.id, name: i.name })))
-    console.log('[DELETE MULTIPLE] Deleted count:', menu.items.length - updatedItems.length)
     
     // Also delete from categories to keep data in sync
     let updatedCategories = menu.categories
@@ -1011,8 +1072,6 @@ export const menuItemOperations = {
   async clearItems(menuId: string, userId: string): Promise<Menu> {
     const menu = await menuOperations.getMenu(menuId, userId)
     if (!menu) throw new DatabaseError('Menu not found')
-    console.log('[CLEAR ITEMS] Clearing all items from menu:', menuId)
-    console.log('[CLEAR ITEMS] Current item count:', menu.items.length)
     // Clear both items and categories to avoid items being rehydrated from categories
     return menuOperations.updateMenu(menuId, userId, { items: [], categories: [] })
   },
@@ -1043,8 +1102,10 @@ async function transformMenuFromDB(dbMenu: any): Promise<Menu> {
     establishmentType: dbMenu.establishment_type || undefined,
     primaryCuisine: dbMenu.primary_cuisine || undefined,
     venueInfo: dbMenu.venue_info || undefined,
-    items: menuData.items || [],
-    categories: menuData.categories || undefined,
+    items: fixPlaceholderImageUrls(menuData.items || []),
+    categories: menuData.categories
+      ? menuData.categories.map((cat: any) => ({ ...cat, items: fixPlaceholderImageUrls(cat.items || []) }))
+      : undefined,
     theme: menuData.theme || getDefaultTheme(),
     version: dbMenu.current_version,
     status: dbMenu.status,
@@ -1062,21 +1123,7 @@ async function transformMenuFromDB(dbMenu: any): Promise<Menu> {
   }
   
   // Enrich menu items with AI image URLs
-  console.log('🖼️ [Transform Menu] Before enriching with image URLs:', menu.items?.map(item => ({
-    id: item.id,
-    name: item.name,
-    aiImageId: item.aiImageId,
-    imageSource: item.imageSource,
-    customImageUrl: item.customImageUrl
-  })))
   await enrichMenuItemsWithImageUrls(menu)
-  console.log('🖼️ [Transform Menu] After enriching with image URLs:', menu.items?.map(item => ({
-    id: item.id,
-    name: item.name,
-    aiImageId: item.aiImageId,
-    imageSource: item.imageSource,
-    customImageUrl: item.customImageUrl
-  })))
   
   // Ensure backward compatibility between items and categories
   const compatibleMenu = ensureBackwardCompatibility(menu)
@@ -1176,11 +1223,8 @@ async function enrichMenuItemsWithImageUrls(menu: Menu): Promise<void> {
   
   // If no AI images to fetch, return early
   if (aiImageIds.length === 0) {
-    console.log('🖼️ [Enrich Images] No AI image IDs found to fetch')
     return
   }
-  
-  console.log('🖼️ [Enrich Images] Fetching AI images for IDs:', aiImageIds)
   
   // Fetch all AI image URLs in one query
   const { data: aiImages, error } = await supabase
@@ -1193,9 +1237,9 @@ async function enrichMenuItemsWithImageUrls(menu: Menu): Promise<void> {
     return // Non-fatal: continue without images
   }
   
-  console.log('🖼️ [Enrich Images] Fetched AI images:', aiImages)
-  
-  // Create a lookup map
+  if (!aiImages || aiImages.length === 0) {
+    return
+  }
   const imageUrlMap = new Map<string, { desktopUrl: string; cutoutUrl: string | null; cutoutStatus: string | null }>()
   aiImages?.forEach(img => {
     if (img.desktop_url) {
@@ -1212,19 +1256,10 @@ async function enrichMenuItemsWithImageUrls(menu: Menu): Promise<void> {
     menu.items.forEach(item => {
       if (item.aiImageId && item.imageSource === 'ai') {
         const imgData = imageUrlMap.get(item.aiImageId)
-        console.log('🖼️ [Enrich Images] Processing item:', {
-          itemId: item.id,
-          itemName: item.name,
-          aiImageId: item.aiImageId,
-          imageSource: item.imageSource,
-          foundUrl: imgData?.desktopUrl,
-          mapSize: imageUrlMap.size
-        })
         if (imgData) {
           item.customImageUrl = imgData.desktopUrl
           item.cutoutUrl = imgData.cutoutUrl
           item.cutoutStatus = (imgData.cutoutStatus as import('@/types').CutoutStatus) ?? undefined
-          console.log('🖼️ [Enrich Images] Set customImageUrl for', item.name, ':', imgData.desktopUrl)
         }
       }
     })
@@ -1316,8 +1351,10 @@ export async function getMenuAsAdmin(menuId: string): Promise<Menu | null> {
     establishmentType: dbMenu.establishment_type || undefined,
     primaryCuisine: dbMenu.primary_cuisine || undefined,
     venueInfo: dbMenu.venue_info || undefined,
-    items: menuData.items || [],
-    categories: menuData.categories || undefined,
+    items: fixPlaceholderImageUrls(menuData.items || []),
+    categories: menuData.categories
+      ? menuData.categories.map((cat: any) => ({ ...cat, items: fixPlaceholderImageUrls(cat.items || []) }))
+      : undefined,
     theme: menuData.theme || getDefaultTheme(),
     version: dbMenu.current_version,
     status: dbMenu.status,

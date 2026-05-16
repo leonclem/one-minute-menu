@@ -220,6 +220,8 @@ export interface ItemContentV2 {
   imageTransform?: import('@/types').ImageTransformRecord
   /** When true, tile uses featured chrome (tint / border / badge) at same footprint as regular items */
   isFeatured?: boolean
+  /** Placeholder/sample item */
+  isPlaceholder?: boolean
 }
 
 /** Filler tile content */
@@ -497,6 +499,8 @@ export interface EngineItemV2 {
   isFeatured?: boolean
   /** Flagship item designation — one per menu, used for banner hero image */
   isFlagship?: boolean
+  /** Placeholder/sample item (not user-created) */
+  isPlaceholder?: boolean
   imageTransform?: import('@/types').ImageTransformRecord
 }
 

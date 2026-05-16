@@ -382,6 +382,9 @@ export async function createRenderSnapshot(
 
           isFeatured: item.isFeatured === true || item.is_featured === true,
 
+          // Placeholder item designation — items from the sample/demo set
+          isPlaceholder: item.isPlaceholder === true || item.is_placeholder === true,
+
           // Per-mode image positioning (zoom/pan) for PDF export — prefer menu_items
           imageTransform: transformById.get(item.id) ?? item.imageTransform
         })),

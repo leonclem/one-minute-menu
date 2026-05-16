@@ -66,13 +66,13 @@ describe('DemoSampleClient (sample demo flow)', () => {
     )
 
     await waitFor(() => {
-      // After API responds, should show success toast and navigate to extract step
+      // After API responds, should show success toast and navigate directly to extracted results
       expect(mockShowToast).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'success',
         }),
       )
-      expect(mockPush).toHaveBeenCalledWith('/menus/demo-menu-demo-1/extract')
+      expect(mockPush).toHaveBeenCalledWith('/menus/demo-menu-demo-1/extracted')
     })
 
     // demo_completed should also be tracked with menuId
