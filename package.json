@@ -23,6 +23,7 @@
     "deploy:vercel": "vercel --prod",
     "scan:secrets": "node scripts/scan-secrets.js",
     "prewarm:demo-pdf": "node scripts/prewarm-demo-pdf-cache.js",
+    "sync:placeholder-images": "node scripts/sync-placeholder-images.js",
     "test:emails:only": "node scripts/send-test-emails.js --to"
   },
   "dependencies": {

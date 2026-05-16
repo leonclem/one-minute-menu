@@ -546,6 +546,9 @@ export function createBannerTile(
     textColor,
     heroTransform: selection.bannerHeroTransform,
     logoTransform: selection.bannerLogoTransform,
+    heroItemName: flagshipItem?.name,
+    heroLabelPosition: selection.bannerHeroLabelPosition,
+    heroLabelColor: selection.bannerHeroLabelColor,
   }
 
   return {

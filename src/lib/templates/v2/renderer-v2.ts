@@ -147,6 +147,10 @@ export interface RenderOptionsV2 {
   centreAlignment?: boolean
   /** When true, suppress the "SAMPLE" stamp overlay on placeholder item tiles */
   hideSampleLabels?: boolean
+  /** Live override for the banner hero image label position (bypasses server round-trip in web preview) */
+  bannerHeroLabelPosition?: 'top' | 'bottom' | 'none'
+  /** Live override for the banner hero image label colour (bypasses server round-trip in web preview) */
+  bannerHeroLabelColor?: 'light' | 'dark'
   /**
    * Pre-fetched base64 data URLs for social media icons (used in export mode).
    * Keys match the platform names: 'instagram' | 'facebook' | 'x' | 'tiktok'.
@@ -1286,6 +1290,10 @@ export interface RenderStyle {
   textShadow?: string
   whiteSpace?: string
   zIndex?: number
+  /** CSS overflow (e.g. 'hidden') */
+  overflow?: string
+  /** CSS text-overflow (e.g. 'ellipsis') */
+  textOverflow?: string
   /** Marks this image element as a cutout (transparent PNG, overflow visible, no background fill) */
   isCutout?: boolean
   /** CSS transform string (e.g. 'scale(1.5)') for per-item image zoom */
@@ -3988,6 +3996,10 @@ function renderBannerContent(
   // ── Hero image ────────────────────────────────────────────────────────────
   if (showHero) {
     const heroTransform = options.bannerHeroTransform ?? content.heroTransform
+    const labelPosition = content.heroLabelPosition ?? 'bottom'
+    const labelTextColor = content.heroLabelColor === 'dark' ? 'rgba(30,20,10,0.82)' : 'rgba(255,255,255,0.88)'
+    const showLabel = !!content.heroItemName && labelPosition !== 'none'
+
     if (isCutout) {
       const imageUrl = content.heroImageCutoutUrl || content.heroImageUrl!
       const heroSize = tile.height * 1.8
@@ -4010,6 +4022,38 @@ function renderBannerContent(
           isCutout: true,
         }
       })
+
+      // Subtle item name label — small caption anchoring the floating cutout to the banner.
+      // Sits at the bottom (or top) of the hero zone, centred, no background.
+      if (showLabel) {
+        const labelFontSize = Math.max(6, Math.min(8, tile.height * 0.10))
+        const labelMaxWidth = heroZoneWidth * 0.88
+        const labelX = tile.width - heroZoneWidth + (heroZoneWidth - labelMaxWidth) / 2
+        const edgePad = Math.max(3, tile.height * 0.04)
+        const labelY = labelPosition === 'top'
+          ? edgePad
+          : tile.height - labelFontSize - edgePad
+        elements.push({
+          type: 'text',
+          x: labelX,
+          y: labelY,
+          width: labelMaxWidth,
+          content: content.heroItemName!,
+          style: {
+            fontSize: labelFontSize,
+            fontWeight: 500,
+            fontFamily: preset.bannerTitleFamily,
+            color: labelTextColor,
+            textAlign: 'center',
+            lineHeight: 1,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            letterSpacing: 0.5,
+            zIndex: 9,
+          }
+        })
+      }
     } else {
       const imageUrl = content.heroImageUrl!
       const heroTransformStyle = computeImageTransformStyle(heroTransform, 50, 50)
@@ -4027,6 +4071,38 @@ function renderBannerContent(
           transformOrigin: heroTransformStyle.transformOrigin,
         }
       })
+
+      // Subtle item name label — sits at the bottom (or top) of the hero photo zone.
+      // No background; relies on the photo providing enough contrast.
+      if (showLabel) {
+        const labelFontSize = Math.max(6, Math.min(8, tile.height * 0.10))
+        const heroX = tile.width - heroZoneWidth
+        const labelPadH = Math.max(6, heroZoneWidth * 0.06)
+        const edgePad = Math.max(3, tile.height * 0.04)
+        const labelY = labelPosition === 'top'
+          ? edgePad
+          : tile.height - labelFontSize - edgePad
+        elements.push({
+          type: 'text',
+          x: heroX + labelPadH,
+          y: labelY,
+          width: heroZoneWidth - labelPadH * 2,
+          content: content.heroItemName!,
+          style: {
+            fontSize: labelFontSize,
+            fontWeight: 500,
+            fontFamily: preset.bannerTitleFamily,
+            color: labelTextColor,
+            textAlign: 'left',
+            lineHeight: 1,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            letterSpacing: 0.5,
+            zIndex: 5,
+          }
+        })
+      }
     }
   }
 

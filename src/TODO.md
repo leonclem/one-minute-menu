@@ -1,8 +1,6 @@
 # Roadmap
 
 ## /template
-- [ ] Item name label for flagship item in banner
-- [ ] Reset button on demo doesn't work for Banner & Footer and Font Style controls
 
 ## SEO optimisation
 - [ ] Identify backlinks sites for SEO
@@ -30,8 +28,6 @@
 
 ## /template
 - [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
-- [ ] Review number of controls in control panel
-- [ ] Better preservation of user configuration
 - [ ] Add whatsapp option to contact details
 
 ## Deployment
@@ -49,7 +45,6 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Bugs
-- [ ] If the user closes the modal during singular image generation, the "generating image" overlay doesn't show over the thumbnail
 - [ ] Pricing keeps defaulting to USD
 - [ ] When Image Style is set to "None", descriptions only have one line in most cases
 - [ ] Description still too short generally across layouts
@@ -124,7 +119,6 @@
 - [ ] Allow cropping of image
 
 ## /template
-- [x] If one or less categories, with less than 5 items in menu, populate with dummy data (otherwise menus look bad) → Replaced by placeholder items system
 - [ ] Hand tool to navigate preview pane
 - [ ] Advise that locked menus (free plan) can't be exported
 - [ ] Upload branding colours
@@ -275,6 +269,8 @@
 - [x] Flagship as 2x1 large tiles
 - [x] Logo / category headers as special filler tiles
 - [x] Decouple non-structural template changes from API call
+- [x] Item name label for flagship item in banner
+- [x] Reset button on demo doesn't work for Banner and Font Style controls
 
 ### GridMenu V2 Layout Engine
 - [x] Complete V2 architecture implementation

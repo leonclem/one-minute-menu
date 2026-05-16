@@ -1,5 +1,5 @@
 /**
- * Unit Tests: Menu Banner & Footer
+ * Unit Tests: Menu Banner
  * Feature: menu-banner-footer
  *
  * Covers:

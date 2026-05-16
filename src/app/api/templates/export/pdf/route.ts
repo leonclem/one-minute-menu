@@ -150,6 +150,8 @@ async function handleNewTemplateEngine(
         bannerSwapLayout: finalConfiguration.bannerSwapLayout === true,
         bannerImageStyle: finalConfiguration.bannerImageStyle || undefined,
         fontStylePreset: finalConfiguration.fontStylePreset || undefined,
+        bannerHeroLabelPosition: (finalConfiguration.bannerHeroLabelPosition === 'top' || finalConfiguration.bannerHeroLabelPosition === 'none' || finalConfiguration.bannerHeroLabelPosition === 'bottom') ? finalConfiguration.bannerHeroLabelPosition : undefined,
+        bannerHeroLabelColor: (finalConfiguration.bannerHeroLabelColor === 'light' || finalConfiguration.bannerHeroLabelColor === 'dark') ? finalConfiguration.bannerHeroLabelColor : undefined,
         showLogoTile: finalConfiguration.showLogoTile === true,
         showCategoryHeaderTiles: finalConfiguration.showCategoryHeaderTiles === true,
         showFlagshipTile: finalConfiguration.showFlagshipTile === true,

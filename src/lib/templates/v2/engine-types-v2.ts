@@ -311,6 +311,12 @@ export interface BannerContentV2 {
   heroTransform?: import('@/types').ImageTransform
   /** Optional transform for the logo image */
   logoTransform?: import('@/types').ImageTransform
+  /** Name of the flagship item shown as the hero image — used for the subtle image label */
+  heroItemName?: string
+  /** Position of the item name label on the hero image ('top' | 'bottom' | 'none', default 'bottom') */
+  heroLabelPosition?: 'top' | 'bottom' | 'none'
+  /** Colour of the item name label ('light' = white text, 'dark' = near-black text, default 'light') */
+  heroLabelColor?: 'light' | 'dark'
 }
 
 /** Banner strip tile content (thin colored strip on CONTINUATION/FINAL pages) */
@@ -559,6 +565,10 @@ export interface SelectionConfigV2 {
   bannerSwapLayout?: boolean
   /** Hero image rendering mode */
   bannerImageStyle?: BannerImageStyle
+  /** Position of the flagship item name label on the banner hero image ('top' | 'bottom' | 'none', default 'bottom') */
+  bannerHeroLabelPosition?: 'top' | 'bottom' | 'none'
+  /** Colour of the flagship item name label ('light' = white text, 'dark' = dark text, default 'light') */
+  bannerHeroLabelColor?: 'light' | 'dark'
   /** Font style preset for banner title and section headers */
   fontStylePreset?: FontStylePreset
   /** Persisted transform for the banner hero (flagship) image */

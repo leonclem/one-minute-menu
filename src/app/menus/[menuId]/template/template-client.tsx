@@ -53,6 +53,21 @@ const DEMO_DEFAULTS = {
   showCategoryHeaderTiles: false,
   showFlagshipTile: false,
   centreAlignment: false,
+  // Banner
+  showBanner: true,
+  bannerTitle: 'BRUNCH',
+  showBannerTitle: true,
+  showVenueName: true,
+  bannerSwapLayout: false,
+  bannerImageStyle: 'cutout' as const,
+  bannerHeroLabelPosition: 'bottom' as const,
+  bannerHeroLabelColor: 'light' as const,
+  bannerHeroTransform: undefined as ImageTransform | undefined,
+  bannerLogoTransform: undefined as ImageTransform | undefined,
+  // Font
+  fontStylePreset: 'fun' as const,
+  // Flagship item name used to re-derive the ID on reset
+  flagshipItemName: 'Country Tartine',
 }
 
 /** Fine Dining specific demo defaults */
@@ -72,13 +87,23 @@ const DEMO_DEFAULTS_FINE_DINING = {
   showCategoryHeaderTiles: false,
   showFlagshipTile: false,
   centreAlignment: false,
+  // Banner
+  showBanner: true,
   bannerTitle: 'DINNER',
+  showBannerTitle: true,
+  showVenueName: true,
+  bannerSwapLayout: false,
   bannerImageStyle: 'stretch-fit' as const,
-  fontStylePreset: 'standard' as const,
+  bannerHeroLabelPosition: 'bottom' as const,
+  bannerHeroLabelColor: 'light' as const,
   // Logo: scaled up and anchored near top so tail overflows below banner edge
   bannerLogoTransform: { scale: 2.0, offsetX: 0, offsetY: -25 } as ImageTransform,
   // Hero: slightly bigger, shifted up ~30%
   bannerHeroTransform: { scale: 1.4, offsetX: 0, offsetY: -10 } as ImageTransform,
+  // Font
+  fontStylePreset: 'standard' as const,
+  // Flagship item name used to re-derive the ID on reset
+  flagshipItemName: 'Tenderloin of Beef Wellington',
 }
 
 /** Build validated state from saved templateId + configuration (API or session draft). */
@@ -121,6 +146,8 @@ function getRestoredState(
   bannerHeroTransform: ImageTransform | undefined
   bannerLogoTransform: ImageTransform | undefined
   centreAlignment: boolean
+  bannerHeroLabelPosition: 'top' | 'bottom' | 'none'
+  bannerHeroLabelColor: 'light' | 'dark'
 } {
   const mappedTemplateId =
     savedTemplateId === 'classic-grid-cards' || savedTemplateId === 'simple-rows' || savedTemplateId === 'classic-cards-v2' ? '4-column-portrait' :
@@ -169,7 +196,6 @@ function getRestoredState(
     config.bannerImageStyle === 'stretch-fit' ? 'stretch-fit' :
     config.bannerImageStyle === 'none' ? 'none' :
     config.bannerImageStyle === 'cutout' ? 'cutout' :
-    mappedTemplateId === '1-column-tall' ? 'none' : // default no hero image for narrow format
     'stretch-fit'
   const fontStylePreset: 'strong' | 'fun' | 'standard' | 'serif' | 'future' | 'handwriting' | 'elegant' =
     config.fontStylePreset === 'strong' ? 'strong' :
@@ -215,6 +241,8 @@ function getRestoredState(
     bannerHeroTransform,
     bannerLogoTransform,
     centreAlignment: config.centreAlignment === true,
+    bannerHeroLabelPosition: (config.bannerHeroLabelPosition === 'top' || config.bannerHeroLabelPosition === 'none') ? config.bannerHeroLabelPosition : 'bottom',
+    bannerHeroLabelColor: config.bannerHeroLabelColor === 'dark' ? 'dark' : 'light',
   }
 }
 
@@ -271,13 +299,15 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [showCategoryHeaderTiles, setShowCategoryHeaderTiles] = useState(isDemo ? DEMO_DEFAULTS.showCategoryHeaderTiles : false)
   const [centreAlignment, setCentreAlignment] = useState(isDemo ? DEMO_DEFAULTS.centreAlignment : false)
   
-  // Banner & footer state
+  // Banner state
   const [showBanner, setShowBanner] = useState(true)
   const [bannerTitle, setBannerTitle] = useState('MENU')
   const [showBannerTitle, setShowBannerTitle] = useState(true)
   const [showVenueName, setShowVenueName] = useState(true)
   const [bannerSwapLayout, setBannerSwapLayout] = useState(false)
   const [bannerImageStyle, setBannerImageStyle] = useState<'cutout' | 'stretch-fit' | 'none'>('stretch-fit')
+  const [bannerHeroLabelPosition, setBannerHeroLabelPosition] = useState<'top' | 'bottom' | 'none'>('bottom')
+  const [bannerHeroLabelColor, setBannerHeroLabelColor] = useState<'light' | 'dark'>('light')
   const [fontStylePreset, setFontStylePreset] = useState<'strong' | 'fun' | 'standard' | 'serif' | 'future' | 'handwriting' | 'elegant'>('standard')
   const [flagshipItemId, setFlagshipItemId] = useState<string | null>(null)
 
@@ -450,6 +480,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     flagshipItemId: effectiveFlagshipItemId ?? undefined,
     bannerHeroTransform: bannerHeroTransform ?? undefined,
     bannerLogoTransform: bannerLogoTransform ?? undefined,
+    bannerHeroLabelPosition,
+    bannerHeroLabelColor,
   }), [
     textOnly,
     spacerTiles,
@@ -476,15 +508,48 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
     effectiveFlagshipItemId,
     bannerHeroTransform,
     bannerLogoTransform,
+    bannerHeroLabelPosition,
+    bannerHeroLabelColor,
   ])
 
   const handleSelectPalette = useCallback((nextPaletteId: string) => {
     setPaletteId(nextPaletteId)
   }, [])
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const handleDemoReset = useCallback(() => {
+    const isBreakfastMenu = menu?.name?.toLowerCase().includes('breakfast') ?? false
+    const d = isBreakfastMenu ? DEMO_DEFAULTS : DEMO_DEFAULTS_FINE_DINING
+    setTemplateId(d.templateId)
+    setPaletteId(d.paletteId)
+    setImageMode(d.imageMode)
+    setSpacerTiles(d.spacerTiles)
+    setTextureId(d.textureId)
+    setShowMenuTitle(d.showMenuTitle)
+    setShowVignette(d.showVignette)
+    setItemBorders(d.itemBorders)
+    setItemDropShadow(d.itemDropShadow)
+    setFillItemTiles(d.fillItemTiles)
+    setShowCategoryTitles(d.showCategoryTitles)
+    setShowLogoTile(d.showLogoTile)
+    setShowCategoryHeaderTiles(d.showCategoryHeaderTiles)
+    setCentreAlignment(d.centreAlignment)
+    setShowBanner(d.showBanner)
+    setBannerTitle(d.bannerTitle)
+    setShowBannerTitle(d.showBannerTitle)
+    setShowVenueName(d.showVenueName)
+    setBannerSwapLayout(d.bannerSwapLayout)
+    setBannerImageStyle(d.bannerImageStyle)
+    setBannerHeroLabelPosition(d.bannerHeroLabelPosition)
+    setBannerHeroLabelColor(d.bannerHeroLabelColor)
+    setBannerHeroTransform(d.bannerHeroTransform)
+    setBannerLogoTransform(d.bannerLogoTransform)
+    setFontStylePreset(d.fontStylePreset)
+    // Re-derive flagship from menu items
+    const flagshipItem = menu?.items?.find(
+      (item: any) => item.isFlagship || item.name === d.flagshipItemName
+    )
+    setFlagshipItemId(flagshipItem?.id ?? null)
+  }, [menu])
 
   // Inject Google Fonts <link> for the active font style preset
   useEffect(() => {
@@ -572,6 +637,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   setBannerHeroTransform(r.bannerHeroTransform)
                   setBannerLogoTransform(r.bannerLogoTransform)
                   setCentreAlignment(r.centreAlignment)
+                  setBannerHeroLabelPosition(r.bannerHeroLabelPosition)
+                  setBannerHeroLabelColor(r.bannerHeroLabelColor)
                   setLoading(false)
                   return
                 }
@@ -614,6 +681,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   setBannerHeroTransform(r.bannerHeroTransform)
                   setBannerLogoTransform(r.bannerLogoTransform)
                   setCentreAlignment(r.centreAlignment)
+                  setBannerHeroLabelPosition(r.bannerHeroLabelPosition)
+                  setBannerHeroLabelColor(r.bannerHeroLabelColor)
                   restoredFromSelection = true
                 }
               } catch {
@@ -716,6 +785,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 setBannerHeroTransform(r.bannerHeroTransform)
                 setBannerLogoTransform(r.bannerLogoTransform)
                   setCentreAlignment(r.centreAlignment)
+                setBannerHeroLabelPosition(r.bannerHeroLabelPosition)
+                setBannerHeroLabelColor(r.bannerHeroLabelColor)
                 setLoading(false)
                 return
               }
@@ -760,6 +831,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
               setBannerHeroTransform(r.bannerHeroTransform)
               setBannerLogoTransform(r.bannerLogoTransform)
                   setCentreAlignment(r.centreAlignment)
+              setBannerHeroLabelPosition(r.bannerHeroLabelPosition)
+              setBannerHeroLabelColor(r.bannerHeroLabelColor)
             }
           }
         } catch (e) {
@@ -904,6 +977,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         bannerImageStyle,
         fontStylePreset,
         flagshipItemId: effectiveFlagshipItemId ?? undefined,
+        bannerHeroLabelPosition,
+        bannerHeroLabelColor,
         engineVersion: 'v2'
       }
 
@@ -939,6 +1014,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
           bannerImageStyle,
           fontStylePreset,
           ...(effectiveFlagshipItemId ? { flagshipItemId: effectiveFlagshipItemId } : {}),
+          bannerHeroLabelPosition,
+          bannerHeroLabelColor,
           engineVersion: 'v2'
         })
         const effectiveAssetVersion = assetVersion ?? previewAssetVersion
@@ -1227,6 +1304,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       flagshipItemId: effectiveFlagshipItemId ?? undefined,
       bannerHeroTransform: bannerHeroTransform ?? undefined,
       bannerLogoTransform: bannerLogoTransform ?? undefined,
+      bannerHeroLabelPosition,
+      bannerHeroLabelColor,
     }
     draftConfigRef.current = { templateId, configuration }
     if (draftWriteTimeout.current) clearTimeout(draftWriteTimeout.current)
@@ -1261,7 +1340,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         sessionStorage.setItem(TEMPLATE_DRAFT_KEY(menuId), JSON.stringify(draftConfigRef.current))
       }
     }
-  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, itemBorders, itemDropShadow, fillItemTiles, showCategoryTitles, showLogoTile, showCategoryHeaderTiles, isFlagshipTileVisible, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, flagshipItemId, bannerHeroTransform, bannerLogoTransform, isDemo])
+  }, [menu, menuId, templateId, paletteId, imageMode, spacerTiles, textOnly, textureId, showMenuTitle, showVignette, itemBorders, itemDropShadow, fillItemTiles, showCategoryTitles, showLogoTile, showCategoryHeaderTiles, isFlagshipTileVisible, centreAlignment, showBanner, bannerTitle, showBannerTitle, showVenueName, bannerSwapLayout, bannerImageStyle, fontStylePreset, flagshipItemId, bannerHeroTransform, bannerLogoTransform, bannerHeroLabelPosition, bannerHeroLabelColor, isDemo])
 
   const handleSelectTemplate = async () => {
     if (!menu) return
@@ -1591,21 +1670,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 </div>
                 {isDemoUser && (
                   <button
-                    onClick={() => {
-                      setTemplateId(DEMO_DEFAULTS.templateId)
-                      setPaletteId(DEMO_DEFAULTS.paletteId)
-                      setImageMode(DEMO_DEFAULTS.imageMode)
-                      setSpacerTiles(DEMO_DEFAULTS.spacerTiles)
-                      setTextureId(DEMO_DEFAULTS.textureId)
-                      setShowMenuTitle(DEMO_DEFAULTS.showMenuTitle)
-                      setShowVignette(DEMO_DEFAULTS.showVignette)
-                      setItemBorders(DEMO_DEFAULTS.itemBorders)
-                      setItemDropShadow(DEMO_DEFAULTS.itemDropShadow)
-                      setFillItemTiles(DEMO_DEFAULTS.fillItemTiles)
-                      setShowCategoryTitles(DEMO_DEFAULTS.showCategoryTitles)
-                      setShowLogoTile(DEMO_DEFAULTS.showLogoTile)
-                      setShowCategoryHeaderTiles(DEMO_DEFAULTS.showCategoryHeaderTiles)
-                    }}
+                    onClick={handleDemoReset}
                     className="shrink-0 text-xs text-ux-text-secondary hover:text-ux-primary border border-ux-border hover:border-ux-primary rounded px-2 py-1 transition-colors"
                     title="Reset all settings to defaults"
                   >
@@ -1697,11 +1762,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                 </div>
               </CollapsibleSection>
 
-              {/* Banner & Footer */}
+              {/* Banner */}
               <CollapsibleSection 
-                title="Banner & Footer" 
-                isExpanded={expandedSection === 'Banner & Footer'}
-                onExpand={(expanded) => { setExpandedSection(expanded ? 'Banner & Footer' : null) }}
+                title="Banner" 
+                isExpanded={expandedSection === 'Banner'}
+                onExpand={(expanded) => { setExpandedSection(expanded ? 'Banner' : null) }}
                 icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="5" rx="1"/><rect x="3" y="15" width="18" height="5" rx="1"/><path d="M8 9v6M12 9v6M16 9v6" strokeDasharray="2 2"/></svg>}
               >
                 <div className="pt-2 space-y-3">
@@ -1721,52 +1786,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   {/* Controls below are only relevant when banner is supported and enabled */}
                   {bannerSupported && showBanner && (
                     <>
-                      {/* Title text input */}
-                      <div>
-                        <label htmlFor="banner-title-input" className="block text-xs font-semibold text-ux-text-secondary uppercase tracking-wider mb-1 pl-2">
-                          Title
-                        </label>
-                        <input
-                          id="banner-title-input"
-                          type="text"
-                          value={bannerTitle}
-                          maxLength={30}
-                          onChange={(e) => setBannerTitle(e.target.value.slice(0, 30))}
-                          placeholder="MENU"
-                          className="w-full px-3 py-2 text-sm border border-ux-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ux-primary bg-white text-ux-text"
-                        />
-                        <div className="flex justify-between mt-1">
-                          {bannerTitle.length >= 16 && (
-                            <p className="text-xs text-amber-600">Long titles may wrap or be truncated in the banner</p>
-                          )}
-                          <p className={`text-xs ml-auto ${bannerTitle.length >= 28 ? 'text-red-500' : 'text-ux-text-secondary'}`}>
-                            {bannerTitle.length}/30
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Banner Image Style selector — immediately after Title */}
-                      <div>
-                        <p className="text-xs font-semibold text-ux-text-secondary uppercase tracking-wider mb-2 pl-2">Banner image style</p>
-                        <div className="grid grid-cols-3 gap-2">
-                          {(['cutout', 'stretch-fit', 'none'] as const).map((style) => {
-                            const labels = { cutout: 'Cutout', 'stretch-fit': 'Stretch', none: 'None' }
-                            const isSelected = bannerImageStyle === style
-                            return (
-                              <button
-                                key={style}
-                                type="button"
-                                onClick={() => setBannerImageStyle(style)}
-                                className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 transition-all ${
-                                  isSelected ? 'border-ux-primary bg-ux-primary/5 hover:border-ux-primary' : 'border-ux-border bg-white hover:border-ux-primary'
-                                }`}
-                              >
-                                <span className="text-[10px] font-medium text-ux-text text-center leading-tight">{labels[style]}</span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
+                      {/* Checkboxes first */}
 
                       {/* Show menu title toggle */}
                       <div className="flex items-center justify-between">
@@ -1810,6 +1830,105 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                             className="rounded text-ux-primary focus:ring-ux-primary h-5 w-5"
                           />
                         </div>
+                      )}
+
+                      {/* Divider between checkboxes and button groups */}
+                      <div className="border-t border-ux-border/50" />
+
+                      {/* Title text input */}
+                      {(templateId === '1-column-tall' ? showMenuTitle : showBannerTitle) && (
+                        <div>
+                          <label htmlFor="banner-title-input" className="block text-xs font-semibold text-ux-text-secondary uppercase tracking-wider mb-1 pl-2">
+                            Title
+                          </label>
+                          <input
+                            id="banner-title-input"
+                            type="text"
+                            value={bannerTitle}
+                            maxLength={30}
+                            onChange={(e) => setBannerTitle(e.target.value.slice(0, 30))}
+                            placeholder="MENU"
+                            className="w-full px-3 py-2 text-sm border border-ux-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ux-primary bg-white text-ux-text"
+                          />
+                          <p className="text-xs text-ux-text-secondary mt-1 pl-1">
+                            {templateId === '1-column-tall' ? 'Shown as a subheading below the banner' : 'Shown vertically in the banner sidebar — keep it short'}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Banner Image Style selector */}
+                      <div>
+                        <p className="text-xs font-semibold text-ux-text-secondary uppercase tracking-wider mb-2 pl-2">Banner image style</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(['cutout', 'stretch-fit', 'none'] as const).map((style) => {
+                            const labels = { cutout: 'Cutout', 'stretch-fit': 'Stretch', none: 'None' }
+                            const isSelected = bannerImageStyle === style
+                            return (
+                              <button
+                                key={style}
+                                type="button"
+                                onClick={() => setBannerImageStyle(style)}
+                                className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 transition-all ${
+                                  isSelected ? 'border-ux-primary bg-ux-primary/5 hover:border-ux-primary' : 'border-ux-border bg-white hover:border-ux-primary'
+                                }`}
+                              >
+                                <span className="text-[10px] font-medium text-ux-text text-center leading-tight">{labels[style]}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Image label controls — only relevant when a hero image is shown */}
+                      {bannerImageStyle !== 'none' && effectiveFlagshipItemId && (
+                        <>
+                          {/* Label position */}
+                          <div>
+                            <p className="text-xs font-semibold text-ux-text-secondary uppercase tracking-wider mb-2 pl-2">Image label</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {(['bottom', 'top', 'none'] as const).map((pos) => {
+                                const posLabels = { bottom: 'Bottom', top: 'Top', none: 'None' }
+                                const isSelected = bannerHeroLabelPosition === pos
+                                return (
+                                  <button
+                                    key={pos}
+                                    type="button"
+                                    onClick={() => setBannerHeroLabelPosition(pos)}
+                                    className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 transition-all ${
+                                      isSelected ? 'border-ux-primary bg-ux-primary/5 hover:border-ux-primary' : 'border-ux-border bg-white hover:border-ux-primary'
+                                    }`}
+                                  >
+                                    <span className="text-[10px] font-medium text-ux-text text-center leading-tight">{posLabels[pos]}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Label colour — only shown when label is visible */}
+                          {bannerHeroLabelPosition !== 'none' && (
+                            <div>
+                              <p className="text-xs font-semibold text-ux-text-secondary uppercase tracking-wider mb-2 pl-2">Label colour</p>
+                              <div className="grid grid-cols-2 gap-2">
+                                {(['light', 'dark'] as const).map((c) => {
+                                  const isSelected = bannerHeroLabelColor === c
+                                  return (
+                                    <button
+                                      key={c}
+                                      type="button"
+                                      onClick={() => setBannerHeroLabelColor(c)}
+                                      className={`flex items-center justify-center rounded-lg border-2 p-2 transition-all ${
+                                        isSelected ? 'border-ux-primary bg-ux-primary/5 hover:border-ux-primary' : 'border-ux-border bg-white hover:border-ux-primary'
+                                      }`}
+                                    >
+                                      <span className="text-[10px] font-medium text-ux-text text-center leading-tight">{c === 'light' ? 'Light' : 'Dark'}</span>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </>
                   )}
@@ -2260,6 +2379,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                         bannerLogoTransform,
                         onBannerTransformChange: imageEditUnlocked ? handleBannerTransformChange : undefined,
                         hideSampleLabels,
+                        bannerHeroLabelPosition,
+                        bannerHeroLabelColor,
                       }}
                     />
                     {pendingPreviewOverlays.length > 0 && (

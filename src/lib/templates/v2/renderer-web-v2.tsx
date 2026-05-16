@@ -1213,6 +1213,28 @@ function TileRenderer({ tile, options }: TileRendererProps) {
   const hasHeroImage = !!(bannerContent?.heroImageUrl || bannerContent?.heroImageCutoutUrl) && bannerContent?.bannerImageStyle !== 'none'
   const hasLogoImage = !!bannerContent?.logoUrl
 
+  // Live label override: when options carry label settings, use them instead of the
+  // server-baked values so position/colour changes are instant without a round-trip.
+  // We also need to strip the server-baked label text elements from renderData so they
+  // don't double-render alongside the live overlay.
+  const liveHeroLabelPosition = isBannerTile && options.bannerHeroLabelPosition !== undefined
+    ? options.bannerHeroLabelPosition
+    : bannerContent?.heroLabelPosition ?? 'bottom'
+  const liveHeroLabelColor = isBannerTile && options.bannerHeroLabelColor !== undefined
+    ? options.bannerHeroLabelColor
+    : bannerContent?.heroLabelColor ?? 'light'
+  const hasLiveHeroLabel = isBannerTile && !!bannerContent?.heroItemName && hasHeroImage && liveHeroLabelPosition !== 'none'
+  // When live overrides are active, filter out the server-baked label text elements
+  // (identified as high-zIndex text elements in the hero zone — zIndex 5 or 9).
+  const filteredRenderData = isBannerTile && (options.bannerHeroLabelPosition !== undefined || options.bannerHeroLabelColor !== undefined) && renderData
+    ? {
+        ...renderData,
+        elements: renderData.elements.filter(el =>
+          !(el.type === 'text' && (el.style.zIndex === 5 || el.style.zIndex === 9) && el.x >= tile.width * 0.5)
+        )
+      }
+    : renderData
+
   // Find hero and logo image elements from render data
   const heroImageElement = showBannerOverlays && hasHeroImage && renderData
     ? renderData.elements.filter(e => e.type === 'image').at(-1) // hero is always last image element
@@ -1292,7 +1314,7 @@ function TileRenderer({ tile, options }: TileRendererProps) {
           scale={scale}
         />
       ) : (
-        renderData?.elements.map((element, index) => (
+        filteredRenderData?.elements.map((element, index) => (
           <RenderElementComponent
             key={`${tile.id}-element-${index}`}
             element={element}
@@ -1303,6 +1325,79 @@ function TileRenderer({ tile, options }: TileRendererProps) {
       {isFlagshipTile && flagshipContent && !options.showTileIds ? (
         <FlagshipBadge tile={tile} options={options} scale={scale} />
       ) : null}
+
+      {/* Banner hero image label — rendered client-side so position/colour changes
+          are instant without a server round-trip. Mirrors the geometry in renderBannerContent. */}
+      {hasLiveHeroLabel && (() => {
+        const heroWidthRatio = 0.48
+        const heroZoneWidth = tile.width * heroWidthRatio
+        const labelFontSize = Math.max(6, Math.min(8, tile.height * 0.10)) * scale
+        const edgePad = Math.max(3, tile.height * 0.04) * scale
+        const labelTextColor = liveHeroLabelColor === 'dark' ? 'rgba(30,20,10,0.82)' : 'rgba(255,255,255,0.88)'
+        const isCutoutStyle = bannerContent?.bannerImageStyle === 'cutout'
+
+        if (isCutoutStyle) {
+          const labelMaxWidth = heroZoneWidth * 0.88 * scale
+          const labelX = (tile.width - heroZoneWidth + (heroZoneWidth - heroZoneWidth * 0.88) / 2) * scale
+          const labelY = liveHeroLabelPosition === 'top'
+            ? edgePad
+            : tile.height * scale - labelFontSize - edgePad
+          return (
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: labelX,
+                top: labelY,
+                width: labelMaxWidth,
+                fontSize: labelFontSize,
+                fontWeight: 500,
+                color: labelTextColor,
+                textAlign: 'center',
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                letterSpacing: 0.5,
+                zIndex: 9,
+                pointerEvents: 'none',
+              }}
+            >
+              {bannerContent!.heroItemName}
+            </div>
+          )
+        } else {
+          const heroX = (tile.width - heroZoneWidth) * scale
+          const labelPadH = Math.max(6, heroZoneWidth * 0.06) * scale
+          const labelY = liveHeroLabelPosition === 'top'
+            ? edgePad
+            : tile.height * scale - labelFontSize - edgePad
+          return (
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: heroX + labelPadH,
+                top: labelY,
+                width: (heroZoneWidth * scale) - labelPadH * 2,
+                fontSize: labelFontSize,
+                fontWeight: 500,
+                color: labelTextColor,
+                textAlign: 'left',
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                letterSpacing: 0.5,
+                zIndex: 5,
+                pointerEvents: 'none',
+              }}
+            >
+              {bannerContent!.heroItemName}
+            </div>
+          )
+        }
+      })()}
 
       {/* "SAMPLE" watermark for placeholder items — ink stamp style */}
       {isMenuItemTile && tileContent && 'isPlaceholder' in tileContent && (tileContent as ItemContentV2).isPlaceholder && hasImage && !options.hideSampleLabels && (
@@ -1402,7 +1497,7 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
       : element.style.maxLines ? '-webkit-box' : (element.style.display as React.CSSProperties['display'] ?? 'flex'),
     WebkitLineClamp: element.style.maxLines,
     WebkitBoxOrient: element.style.maxLines ? 'vertical' : undefined,
-    overflow: element.style.maxLines ? 'hidden' : undefined,
+    overflow: element.style.maxLines ? 'hidden' : (element.style.overflow ?? undefined),
     alignItems: element.style.alignItems as React.CSSProperties['alignItems']
       ?? (element.style.maxLines ? undefined : 'center'),
     justifyContent: element.style.justifyContent as React.CSSProperties['justifyContent']
@@ -1414,6 +1509,7 @@ function RenderElementComponent({ element, scale }: RenderElementComponentProps)
     letterSpacing: element.style.letterSpacing ? element.style.letterSpacing * scale : undefined,
     textShadow: element.style.textShadow,
     whiteSpace: element.style.whiteSpace as React.CSSProperties['whiteSpace'],
+    textOverflow: element.style.textOverflow,
     writingMode: element.style.writingMode as React.CSSProperties['writingMode'],
     textOrientation: element.style.textOrientation as React.CSSProperties['textOrientation'],
     transform: element.style.writingMode ? element.style.transform : undefined,

@@ -65,26 +65,39 @@ export function isBannerEnabled(
 }
 
 /**
+ * Determine if the template supports a banner strip (thin coloured bar).
+ * True whenever template.banner.enabled is set, regardless of showBanner.
+ * Used to always show a strip even when the full banner is hidden.
+ */
+function isStripSupported(template: TemplateV2): boolean {
+  return !!template.banner?.enabled
+}
+
+/**
  * Compute banner height for FIRST/SINGLE pages.
- * Returns 0 when banner is disabled.
+ * Returns stripHeightPt when the full banner is disabled but the template
+ * supports a strip — so a thin bar is always present on page 1.
+ * Returns 0 only when the template has no banner support at all.
  */
 export function computeBannerHeight(
   template: TemplateV2,
   selection?: SelectionConfigV2
 ): number {
-  if (!isBannerEnabled(template, selection)) return 0
+  if (!isStripSupported(template)) return 0
+  if (!isBannerEnabled(template, selection)) return template.banner!.stripHeightPt
   return template.banner!.heightPt
 }
 
 /**
  * Compute banner strip height for CONTINUATION/FINAL pages.
- * Returns 0 when banner is disabled.
+ * Returns 0 when the template has no banner support at all.
+ * Ignores showBanner — the strip always shows on continuation pages.
  */
 export function computeStripHeight(
   template: TemplateV2,
   selection?: SelectionConfigV2
 ): number {
-  if (!isBannerEnabled(template, selection)) return 0
+  if (!isStripSupported(template)) return 0
   return template.banner!.stripHeightPt
 }
 
@@ -410,9 +423,10 @@ export function placeStaticTiles(
   if (bannerRegion) {
     const { surfaceColor, textColor } = getBannerColors(ctx.selection)
     const isFirstOrSingle = pageType === 'FIRST' || pageType === 'SINGLE'
+    const showFullBanner = isBannerEnabled(ctx.template, ctx.selection)
 
-    if (isFirstOrSingle) {
-      // Full banner on FIRST/SINGLE pages
+    if (isFirstOrSingle && showFullBanner) {
+      // Full banner on FIRST/SINGLE pages when banner is enabled
       const flagshipItem = findFlagshipItem(menu)
       const bannerTile = createBannerTile(
         menu,
@@ -431,7 +445,7 @@ export function placeStaticTiles(
       )
       logPlacement(ctx, 'placed', placedBanner.id, 'Static banner tile')
     } else {
-      // Banner strip on CONTINUATION/FINAL pages
+      // Strip on CONTINUATION/FINAL pages, or on FIRST/SINGLE when showBanner is off
       const stripTile = createBannerStripTile(menu, bannerRegion.height, surfaceColor)
       const placedStrip = placeTile(
         ctx,
@@ -440,7 +454,7 @@ export function placeStaticTiles(
         bannerRegion,
         ctx.template
       )
-      logPlacement(ctx, 'placed', placedStrip.id, 'Static banner strip tile')
+      logPlacement(ctx, 'placed', placedStrip.id, isFirstOrSingle ? 'Static banner strip tile (banner hidden)' : 'Static banner strip tile')
     }
   }
 

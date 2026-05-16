@@ -662,10 +662,16 @@ describe('Streaming Paginator', () => {
       const logoTiles = firstPage.tiles.filter(t => t.type === 'LOGO')
       const headerRegion = firstPage.regions.find(r => r.id === 'header')
       const bodyRegion = firstPage.regions.find(r => r.id === 'body')
+      const stripTiles = firstPage.tiles.filter(t => t.type === 'BANNER_STRIP')
 
       expect(logoTiles).toHaveLength(0)
       expect(headerRegion?.height).toBe(0)
-      expect(bodyRegion?.y).toBe(0)
+      // showBanner:false still places a thin strip. The strip is full-bleed and
+      // fits within the top margin, so bodyY = max(0, stripHeightPt - margins.top) + 6
+      expect(stripTiles).toHaveLength(1)
+      const stripHeightPt = template.banner!.stripHeightPt
+      const expectedBodyY = Math.max(0, stripHeightPt - pageSpec.margins.top) + 6
+      expect(bodyRegion?.y).toBeCloseTo(expectedBodyY, 1)
     })
 
     it('should place the logo in the body grid and suppress the header logo', () => {
@@ -699,8 +705,13 @@ describe('Streaming Paginator', () => {
       expect(bodyLogo).toBeDefined()
       expect(bodyLogo?.gridRow).toBe(0)
       expect(sectionHeader).toBeDefined()
-      expect(headerRegion?.height).toBe(8)
-      expect(bodyRegion?.y).toBe(8)
+      // showBanner:false places a strip (stripHeightPt) instead of the full banner.
+      // The strip is full-bleed and fits within the top margin, so the header buffer
+      // is not needed — resolveHeaderRegionHeight returns 0 when bannerHeight > 0.
+      expect(headerRegion?.height).toBe(0)
+      const stripHeightPt = template.banner!.stripHeightPt
+      const expectedBodyY = Math.max(0, stripHeightPt - pageSpec.margins.top) + 6
+      expect(bodyRegion?.y).toBeCloseTo(expectedBodyY, 1)
       expect(bodyLogo!.y).toBeLessThan(sectionHeader!.y)
     })
 

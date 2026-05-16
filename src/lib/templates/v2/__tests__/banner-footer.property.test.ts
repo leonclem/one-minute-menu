@@ -1,5 +1,5 @@
 /**
- * Property-Based Tests: Menu Banner & Footer
+ * Property-Based Tests: Menu Banner
  * Feature: menu-banner-footer
  *
  * Properties 1–20 covering banner/strip placement, surface color consistency,
@@ -170,7 +170,7 @@ function allTiles(doc: Awaited<ReturnType<typeof generateLayoutV2>>) {
 describe('Feature: menu-banner-footer, Property 1: Banner disabled omits all banner elements', () => {
   beforeEach(() => clearTemplateCache())
 
-  it('should produce zero BANNER or BANNER_STRIP tiles when showBanner is false', async () => {
+  it('should produce zero BANNER tiles (but still a BANNER_STRIP) when showBanner is false', async () => {
     await fc.assert(
       fc.asyncProperty(
         arbitraryMenu,
@@ -179,10 +179,13 @@ describe('Feature: menu-banner-footer, Property 1: Banner disabled omits all ban
         async (menu, templateId, config) => {
           const selection: SelectionConfigV2 = { ...config, showBanner: false }
           const doc = await generateLayoutV2({ menu, templateId, selection })
-          const bannerTiles = allTiles(doc).filter(
-            t => t.type === 'BANNER' || t.type === 'BANNER_STRIP'
-          )
-          expect(bannerTiles).toHaveLength(0)
+          const tiles = allTiles(doc)
+          // Full BANNER tiles must never appear when showBanner is false
+          const fullBannerTiles = tiles.filter(t => t.type === 'BANNER')
+          expect(fullBannerTiles).toHaveLength(0)
+          // A thin BANNER_STRIP is always placed (one per page) for visual continuity
+          const stripTiles = tiles.filter(t => t.type === 'BANNER_STRIP')
+          expect(stripTiles).toHaveLength(doc.pages.length)
         }
       ),
       { numRuns: 100 }

@@ -119,6 +119,10 @@ export async function GET(
     const bannerSwapLayout = searchParams.get('bannerSwapLayout') === 'true' // default false
     const bannerImageStyle = searchParams.get('bannerImageStyle') || undefined
     const fontStylePreset = searchParams.get('fontStylePreset') || undefined
+    const bannerHeroLabelPositionRaw = searchParams.get('bannerHeroLabelPosition')
+    const bannerHeroLabelPosition = (bannerHeroLabelPositionRaw === 'top' || bannerHeroLabelPositionRaw === 'none' || bannerHeroLabelPositionRaw === 'bottom') ? bannerHeroLabelPositionRaw : undefined
+    const bannerHeroLabelColorRaw = searchParams.get('bannerHeroLabelColor')
+    const bannerHeroLabelColor = (bannerHeroLabelColorRaw === 'light' || bannerHeroLabelColorRaw === 'dark') ? bannerHeroLabelColorRaw : undefined
     const flagshipItemId = searchParams.get('flagshipItemId') || undefined
     const assetVersion = searchParams.get('assetVersion') || undefined
     const hidePlaceholderItems = searchParams.get('hidePlaceholderItems') === 'true'
@@ -206,6 +210,8 @@ export async function GET(
       bannerImageStyle,
       fontStylePreset,
       flagshipItemId,
+      bannerHeroLabelPosition,
+      bannerHeroLabelColor,
       assetVersion,
     }
     // Full configuration still passed to the layout engine so banner/footer tiles have
@@ -306,6 +312,8 @@ export async function GET(
           bannerSwapLayout,
           bannerImageStyle: bannerImageStyle as any,
           fontStylePreset: fontStylePreset as any,
+          bannerHeroLabelPosition: bannerHeroLabelPosition as any,
+          bannerHeroLabelColor: bannerHeroLabelColor as any,
         },
         debug: true
       }, 'v2')
@@ -385,6 +393,8 @@ export async function POST(
       bannerSwapLayout = false,
       bannerImageStyle,
       fontStylePreset,
+      bannerHeroLabelPosition,
+      bannerHeroLabelColor,
       centreAlignment = false,
     } = configuration
     const imageMode = rawImageMode === 'none' ? 'stretch' : rawImageMode
@@ -471,6 +481,8 @@ export async function POST(
           bannerSwapLayout,
           bannerImageStyle: bannerImageStyle as any,
           fontStylePreset: fontStylePreset as any,
+          bannerHeroLabelPosition: bannerHeroLabelPosition as any,
+          bannerHeroLabelColor: bannerHeroLabelColor as any,
         },
         debug: true
       }, 'v2')

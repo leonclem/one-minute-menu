@@ -105,6 +105,8 @@ async function handleV2TemplateEngine(
       bannerSwapLayout: options.bannerSwapLayout === true,
       bannerImageStyle: options.bannerImageStyle || undefined,
       fontStylePreset: options.fontStylePreset || undefined,
+      bannerHeroLabelPosition: (options.bannerHeroLabelPosition === 'top' || options.bannerHeroLabelPosition === 'none' || options.bannerHeroLabelPosition === 'bottom') ? options.bannerHeroLabelPosition : undefined,
+      bannerHeroLabelColor: (options.bannerHeroLabelColor === 'light' || options.bannerHeroLabelColor === 'dark') ? options.bannerHeroLabelColor : undefined,
     },
     debug: false
   })

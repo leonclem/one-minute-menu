@@ -886,7 +886,7 @@ export interface RenderSnapshot {
     showLogoTile?: boolean
     showCategoryHeaderTiles?: boolean
     showFlagshipTile?: boolean
-    // Banner & footer fields
+    // Banner fields
     showBanner?: boolean
     bannerTitle?: string
     showVenueName?: boolean
