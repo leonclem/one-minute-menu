@@ -388,6 +388,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const [cooldownRemaining, setCooldownRemaining] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
 
+  // Set mounted=true after first render so portalled elements (floating button, modals) can render
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Initialize imageTransformRecords from menu items when menu changes
   useEffect(() => {
     if (!menu) return
@@ -1615,14 +1620,40 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
 
       {!isDemo && hasActivePreviewImageWork && (
         <div className="mx-auto mb-6 max-w-[1600px] rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
-          <div className="font-semibold">
-            {hasActiveImageJobs
-              ? `${activeImageJobCount} photo ${activeImageJobCount === 1 ? 'is' : 'photos are'} still generating`
-              : `${activeCutoutCount} cutout ${activeCutoutCount === 1 ? 'is' : 'cutouts are'} still preparing`}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="font-semibold">
+                {hasActiveImageJobs
+                  ? `${activeImageJobCount} ${activeImageJobCount === 1 ? 'photo is' : 'photos are'} still generating`
+                  : `${activeCutoutCount} ${activeCutoutCount === 1 ? 'cutout is' : 'cutouts are'} still preparing`}
+              </div>
+              <p className="mt-1 text-amber-800">
+                Pending image tiles are marked in the preview. They will update automatically as soon as processing finishes.
+              </p>
+            </div>
+            {!hasActiveImageJobs && hasActiveCutouts && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const images = imageGenerationStatus?.activeCutoutImages ?? []
+                  if (images.length === 0) return
+                  await Promise.all(
+                    images.map(img =>
+                      fetch('/api/cutout/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ imageId: img.id }),
+                      })
+                    )
+                  )
+                  await refreshImageGenerationStatus()
+                }}
+                className="shrink-0 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 transition-colors"
+              >
+                Cancel pending
+              </button>
+            )}
           </div>
-          <p className="mt-1 text-amber-800">
-            Pending image tiles are marked in the preview. They will update automatically as soon as processing finishes.
-          </p>
         </div>
       )}
 
