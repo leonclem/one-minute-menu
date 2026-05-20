@@ -28,6 +28,7 @@ export function AuthOTPForm({
 }: AuthOTPFormProps) {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [mounted, setMounted] = useState(false)
@@ -101,17 +102,18 @@ export function AuthOTPForm({
           } else {
             userMessage = 'There was a problem creating your account. Please try again or contact support.'
           }
-        } else if (error.message.includes('rate limit')) {
-          userMessage = 'Too many requests. Please wait a few minutes before trying again.'
+        } else if (error.message.includes('rate limit') || error.message.includes('For security purposes')) {
+          userMessage = 'A magic link was recently sent to this email. Please check your inbox and spam folder.'
         }
         
         setError(userMessage)
       } else {
+        setSent(true)
         if (isLocalDev) {
            setMessage('Development mode: Check the Supabase logs or MailDev at http://localhost:54324 for the magic link!')
         } else {
           if (type === 'signup') {
-            setMessage('🎉 Exciting! Check your email for your magic link to join the GridMenu pilot!')
+            setMessage('🎉 Exciting! Check your email for your magic link to get started with GridMenu!')
           } else {
             setMessage('Check your email for the magic link to sign in!')
           }
@@ -184,9 +186,10 @@ export function AuthOTPForm({
           variant="primary"
           size="lg"
           loading={loading}
+          disabled={sent}
           className="w-full"
         >
-          {loading ? 'Sending magic link...' : buttonText}
+          {loading ? 'Sending magic link...' : sent ? 'Magic link sent — check your email' : buttonText}
         </UXButton>
 
         {message && (

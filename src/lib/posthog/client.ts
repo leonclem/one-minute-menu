@@ -71,7 +71,17 @@ export async function initializePostHogIfAllowed(): Promise<void> {
       autocapture: true,
       session_recording: {
         maskAllInputs: true,
-        maskInputOptions: { password: true, email: true },
+        maskInputOptions: { password: true },
+        // Unmask email-type inputs globally so register/signin flows are
+        // visible in replays (critical for debugging signup issues).
+        // Sensitive email fields in dashboard/admin are already inside
+        // `data-ph-mask` subtrees which mask rendered text.
+        maskInputFn: (text: string, element?: HTMLElement) => {
+          // If the input lives inside a data-ph-mask subtree, mask it
+          if (element?.closest('[data-ph-mask]')) return '*'.repeat(text.length)
+          // Otherwise show the value (e.g. register/signin email field)
+          return text
+        },
         // Only mask text nodes that live inside an element tagged with
         // `data-ph-mask` (e.g. address fields on settings/new-menu, or the
         // admin route subtree via src/app/admin/layout.tsx). GridMenu's UI

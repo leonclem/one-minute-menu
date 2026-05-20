@@ -81,11 +81,33 @@ describe('client.ts — init-options shape', () => {
 
   it('passes the exact session_recording shape', async () => {
     const options = await getInitOptions()
-    expect(options.session_recording).toEqual({
-      maskAllInputs: true,
-      maskInputOptions: { password: true, email: true },
-      maskTextSelector: '[data-ph-mask], [data-ph-mask] *',
-    })
+    const sessionRecording = options.session_recording as Record<string, unknown>
+    expect(sessionRecording.maskAllInputs).toBe(true)
+    expect(sessionRecording.maskInputOptions).toEqual({ password: true })
+    expect(sessionRecording.maskTextSelector).toBe('[data-ph-mask], [data-ph-mask] *')
+    expect(typeof sessionRecording.maskInputFn).toBe('function')
+  })
+
+  it('maskInputFn masks inputs inside data-ph-mask subtrees', async () => {
+    const options = await getInitOptions()
+    const sessionRecording = options.session_recording as Record<string, unknown>
+    const maskInputFn = sessionRecording.maskInputFn as (text: string, element?: HTMLElement) => string
+
+    // Element inside a data-ph-mask subtree should be masked
+    const maskedParent = document.createElement('div')
+    maskedParent.setAttribute('data-ph-mask', 'test')
+    const maskedInput = document.createElement('input')
+    maskedParent.appendChild(maskedInput)
+    expect(maskInputFn('secret@email.com', maskedInput)).toBe('****************')
+
+    // Element NOT inside a data-ph-mask subtree should be visible
+    const unmaskedInput = document.createElement('input')
+    document.body.appendChild(unmaskedInput)
+    expect(maskInputFn('visible@email.com', unmaskedInput)).toBe('visible@email.com')
+    document.body.removeChild(unmaskedInput)
+
+    // No element provided — should return text as-is
+    expect(maskInputFn('test@example.com')).toBe('test@example.com')
   })
 
   it('passes capture_pageview, capture_pageleave, autocapture', async () => {
