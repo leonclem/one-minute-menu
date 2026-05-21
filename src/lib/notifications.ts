@@ -48,10 +48,10 @@ export async function sendAdminNewUserAlert(profile: User): Promise<boolean> {
     to: ADMIN_EMAIL,
     from: FROM_EMAIL,
     fromName: FROM_NAME,
-    subject: `New Pilot Registration: ${profile.email}`,
+    subject: `New User Registration: ${profile.email}`,
     text: `A new user has registered and is pending approval.\n\nEmail: ${profile.email}\nUser ID: ${profile.id}\n\nApprove them here: ${APP_URL}/admin?tab=user-management`,
     html: emailShell(`
-      <h2 style="color: #1a202c; margin-top: 0;">New Pilot Registration</h2>
+      <h2 style="color: #1a202c; margin-top: 0;">New User Registration</h2>
       <p style="color: #4a5568; font-size: 16px;">A new user has registered and is awaiting your approval.</p>
       <div style="background-color: #f0fdfe; padding: 16px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #01B3BF;">
         <p style="margin: 0; color: #4a5568;"><strong>Email:</strong> ${profile.email}</p>
@@ -79,10 +79,10 @@ export async function sendUserApprovalNotification(profile: User): Promise<void>
     from: FROM_EMAIL,
     fromName: FROM_NAME,
     subject: 'Welcome to GridMenu — your account is ready!',
-    text: `Great news! Your GridMenu pilot account has been approved. You can now create your brand new menus!\n\nGet started here: ${APP_URL}/dashboard`,
+    text: `Great news! Your GridMenu account has been approved. You can now create your brand new menus!\n\nGet started here: ${APP_URL}/dashboard`,
     html: emailShell(`
       <h2 style="color: #1a202c; margin-top: 0;">You're In!</h2>
-      <p style="color: #4a5568; font-size: 16px;">Your GridMenu pilot account has been approved.</p>
+      <p style="color: #4a5568; font-size: 16px;">Your GridMenu account has been approved.</p>
       <p style="color: #4a5568; font-size: 16px;">Head to your dashboard to start creating your first photo-perfect menu.</p>
       ${primaryButton(`${APP_URL}/dashboard`, 'Go to Dashboard')}
       <p style="color: #718096; font-size: 14px; margin-top: 32px; border-top: 1px solid #edf2f7; padding-top: 20px;">

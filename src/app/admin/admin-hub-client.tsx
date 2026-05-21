@@ -28,7 +28,7 @@ type TabId = 'overview' | 'user-management' | 'menu-metrics' | 'costs' | 'metric
 
 const tabs: { id: TabId; label: string; description: string; hidden?: boolean }[] = [
   { id: 'overview', label: 'Overview', description: 'Quick stats and alerts' },
-  { id: 'user-management', label: 'Users', description: 'Pilot approval and management' },
+  { id: 'user-management', label: 'Users', description: 'User approval and management' },
   { id: 'menu-metrics', label: 'Menu Metrics', description: 'Platform menu statistics' },
   { id: 'costs', label: 'Cost Monitoring', description: 'Spending and controls' },
   { id: 'metrics', label: 'Extraction Metrics', description: 'Performance and quality' },
@@ -113,6 +113,13 @@ export function AdminHubClient() {
                     className="block px-4 py-2 text-sm text-purple-700 font-semibold hover:bg-purple-50"
                   >
                     Gemini 3.0 Pro (Test)
+                  </a>
+                  <hr className="my-1 border-gray-200" />
+                  <a
+                    href="/admin/prompt-review"
+                    className="block px-4 py-2 text-sm text-teal-700 font-semibold hover:bg-teal-50"
+                  >
+                    Prompt Review
                   </a>
                   <hr className="my-1 border-gray-200" />
                   <a

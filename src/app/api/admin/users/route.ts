@@ -25,7 +25,7 @@ export async function GET() {
     }
 
     /**
-     * "Verified inbox" signal for pilot approvals:
+     * "Verified inbox" signal for user approvals:
      * Supabase can create auth.users + profiles at OTP request time (before the link is clicked),
      * and local/prod settings can make auth fields hard to rely on.
      *

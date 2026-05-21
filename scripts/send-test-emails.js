@@ -139,12 +139,12 @@ function buildEmails() {
     // 1 — Admin new user alert
     {
       num: 1,
-      label: 'Admin — New Pilot Registration',
+      label: 'Admin — New User Registration',
       to: ADMIN_EMAIL === 'admin@gridmenu.ai' ? recipient : ADMIN_EMAIL,
-      subject: `New Pilot Registration: ${user.email}`,
+      subject: `New User Registration: ${user.email}`,
       text: `A new user has registered and is pending approval.\n\nEmail: ${user.email}\nUser ID: ${user.id}\n\nApprove them here: ${APP_URL}/admin?tab=user-management`,
       html: emailShell(`
-        <h2 style="color: #1a202c; margin-top: 0;">New Pilot Registration</h2>
+        <h2 style="color: #1a202c; margin-top: 0;">New User Registration</h2>
         <p style="color: #4a5568; font-size: 16px;">A new user has registered and is awaiting your approval.</p>
         ${infoBox(`
           <p style="margin: 0; color: #4a5568;"><strong>Email:</strong> ${user.email}</p>
@@ -160,10 +160,10 @@ function buildEmails() {
       label: 'User — Account Approved',
       to: recipient,
       subject: 'Welcome to GridMenu — your account is ready!',
-      text: `Great news! Your GridMenu pilot account has been approved. You can now create your brand new menus!\n\nGet started here: ${APP_URL}/dashboard`,
+      text: `Great news! Your GridMenu account has been approved. You can now create your brand new menus!\n\nGet started here: ${APP_URL}/dashboard`,
       html: emailShell(`
         <h2 style="color: #1a202c; margin-top: 0;">You're In!</h2>
-        <p style="color: #4a5568; font-size: 16px;">Your GridMenu pilot account has been approved.</p>
+        <p style="color: #4a5568; font-size: 16px;">Your GridMenu account has been approved.</p>
         <p style="color: #4a5568; font-size: 16px;">Head to your dashboard to start creating your first photo-perfect menu.</p>
         ${primaryButton(`${APP_URL}/dashboard`, 'Go to Dashboard')}
         ${signOff('Welcome aboard,<br>The GridMenu Team')}
