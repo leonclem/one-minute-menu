@@ -597,11 +597,14 @@ export interface ValidationError extends AppError {
 
 // AI Image Generation Types
 
+export type PlatingColour = 'white' | 'beige' | 'black' | 'none'
+
 export interface PhotoGenerationParams {
   angle: 'overhead' | '45' | 'front'
   lighting: 'natural' | 'studio' | 'moody'
   settingReferenceImage?: string // data URL of venue/table photo
   resolution?: '1k' | '4k'
+  platingColour?: PlatingColour
   // Populated automatically from menu/profile — never set by UI
   establishmentType?: string
   primaryCuisine?: string

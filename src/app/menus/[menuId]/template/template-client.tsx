@@ -341,6 +341,8 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const expandedSectionInitialisedRef = useRef(false)
   // Controls drawer — open by default on desktop, closed on mobile
   const [controlsOpen, setControlsOpen] = useState(false)
+  // Pulse the Customise button to draw attention if the user hasn't opened it
+  const [customisePulse, setCustomisePulse] = useState(false)
 
   // On mount, open controls on desktop
   useEffect(() => {
@@ -348,6 +350,19 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
       setControlsOpen(true)
     }
   }, [])
+
+  // After 8 s on mobile, if the panel still hasn't been opened, start pulsing
+  // the Customise button every 4 s to draw the user's eye.
+  useEffect(() => {
+    if (controlsOpen) {
+      setCustomisePulse(false)
+      return
+    }
+    const startDelay = setTimeout(() => {
+      setCustomisePulse(true)
+    }, 8000)
+    return () => clearTimeout(startDelay)
+  }, [controlsOpen])
 
   // Once the menu loads for the first time, decide whether to open Grid Layout.
   // If onboarding is already complete, open it immediately; otherwise leave it
@@ -1560,25 +1575,71 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
   const pendingPreviewOverlays = useMemo(() => {
     if (!layoutDocument?.pageSpec || !currentPage || imageMode === 'none') return []
 
-    return currentPage.tiles.flatMap((tile) => {
-      const content = tile.content as { itemId?: string; name?: string; showImage?: boolean }
-      if (!content.itemId || content.showImage === false) return []
+    const overlays: Array<{
+      id: string
+      left: number
+      top: number
+      width: number
+      height: number
+      label: string
+      isActive: boolean
+      isFailed: boolean
+    }> = []
+
+    for (const tile of currentPage.tiles) {
+      const content = tile.content as { itemId?: string; name?: string; showImage?: boolean; type?: string; bannerImageStyle?: string }
+
+      // ── Banner tile: show overlay when the flagship item's image is generating
+      // and the banner is configured to show an image (cutout or stretch-fit).
+      if (content.type === 'BANNER' && bannerImageStyle !== 'none' && effectiveFlagshipItemId) {
+        const job = latestImageJobByItem[effectiveFlagshipItemId]
+        const image = imageStatusByItem[effectiveFlagshipItemId]
+        const cutoutIsActive = bannerImageStyle === 'cutout' && isActiveCutoutStatus(image?.cutoutStatus)
+        const isRefreshingCompleted = refreshingCompletedImageItemIds.has(effectiveFlagshipItemId)
+
+        const hasActiveWork = (job && isActiveImageGenerationJob(job)) || cutoutIsActive || isRefreshingCompleted
+        const isCompleted = job?.status === 'completed' && !cutoutIsActive && !isRefreshingCompleted
+
+        if (hasActiveWork && !isCompleted) {
+          const region = currentPage.regions.find(r => r.id === tile.regionId)
+          if (region) {
+            overlays.push({
+              id: `banner-flagship-${effectiveFlagshipItemId}-${job?.id ?? image?.id ?? 'gen'}`,
+              left: region.x + tile.x,
+              top: region.y + tile.y,
+              width: tile.width,
+              height: tile.height,
+              label: isRefreshingCompleted
+                ? 'Updating photo'
+                : cutoutIsActive
+                  ? 'Generating cutout'
+                  : getImageGenerationJobLabel(job) || 'Generating',
+              isActive: isActiveImageGenerationJob(job) || cutoutIsActive,
+              isFailed: job?.status === 'failed' || image?.cutoutStatus === 'failed' || image?.cutoutStatus === 'timed_out',
+            })
+          }
+        }
+        continue
+      }
+
+      // ── Regular item tiles
+      if (!content.itemId || content.showImage === false) continue
 
       const job = latestImageJobByItem[content.itemId]
       const image = imageStatusByItem[content.itemId]
       const cutoutIsActive = isActiveCutoutStatus(image?.cutoutStatus)
       const isRefreshingCompleted = refreshingCompletedImageItemIds.has(content.itemId)
-      if (!job && !cutoutIsActive && !isRefreshingCompleted) return []
-      if (job?.status === 'completed' && !cutoutIsActive && !isRefreshingCompleted) return []
+      if (!job && !cutoutIsActive && !isRefreshingCompleted) continue
+      if (job?.status === 'completed' && !cutoutIsActive && !isRefreshingCompleted) continue
 
       const region = currentPage.regions.find(r => r.id === tile.regionId)
-      if (!region) return []
+      if (!region) continue
 
       const isFullBleed = tile.regionId === 'banner' || tile.regionId === 'footer'
       const left = (isFullBleed ? 0 : layoutDocument.pageSpec.margins.left) + region.x + tile.x
       const top = (isFullBleed ? 0 : layoutDocument.pageSpec.margins.top) + region.y + tile.y
 
-      return [{
+      overlays.push({
         id: `${tile.id}-${job?.id ?? image?.id ?? content.itemId}-${image?.cutoutStatus ?? 'image'}`,
         left,
         top,
@@ -1591,9 +1652,11 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
             : getImageGenerationJobLabel(job) || 'Generating',
         isActive: isActiveImageGenerationJob(job) || cutoutIsActive,
         isFailed: job?.status === 'failed' || image?.cutoutStatus === 'failed' || image?.cutoutStatus === 'timed_out',
-      }]
-    })
-  }, [currentPage, imageMode, imageStatusByItem, latestImageJobByItem, layoutDocument?.pageSpec, refreshingCompletedImageItemIds])
+      })
+    }
+
+    return overlays
+  }, [currentPage, imageMode, imageStatusByItem, latestImageJobByItem, layoutDocument?.pageSpec, refreshingCompletedImageItemIds, bannerImageStyle, effectiveFlagshipItemId])
 
   if (loading) {
     return (
@@ -2563,10 +2626,16 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         open={showQuickItemCreator}
         menuId={menuId}
         onClose={() => setShowQuickItemCreator(false)}
-        onItemCreated={async () => {
+        onItemCreated={async (newItemId) => {
           const resp = await fetch(`/api/menus/${menuId}`)
           const json = await resp.json().catch(() => ({}))
-          if (json.data) setMenu(json.data)
+          if (json.data) {
+            setMenu(json.data)
+            // Immediately wire up the new flagship so the banner reflects it
+            if (newItemId) setFlagshipItemId(newItemId)
+          }
+          // Snap back to page 1 so the user sees the banner with the new item
+          setCurrentPageIndex(0)
         }}
         onImageGenerationQueued={async () => {
           // Job is now in the DB — start polling so the "Generating..." overlay
@@ -2655,7 +2724,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         <button
           type="button"
           onClick={() => setControlsOpen(v => !v)}
-          className="lg:hidden fixed z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow-xl text-sm font-semibold bg-ux-primary text-white hover:bg-ux-primary/90 transition-all duration-200"
+          className={`lg:hidden fixed z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow-xl text-sm font-semibold bg-ux-warning text-ux-text hover:brightness-95 transition-all duration-200${customisePulse ? ' animate-customise-pulse' : ''}`}
           style={{ bottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))', left: '1rem' }}
           aria-label="Toggle customise panel"
         >

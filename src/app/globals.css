@@ -389,6 +389,20 @@
     animation: uxFadeInUp 220ms ease-out both;
   }
 
+  /* Customise button attention pulse — fires when user hasn't opened the panel */
+  @keyframes customisePulse {
+    0%    { transform: scale(1);    box-shadow: 0 10px 25px -3px rgba(0,0,0,0.2); }
+    8%    { transform: scale(1.13); box-shadow: 0 14px 30px -3px rgba(255,193,7,0.55); }
+    15%   { transform: scale(0.97); box-shadow: 0 10px 25px -3px rgba(0,0,0,0.2); }
+    20%   { transform: scale(1.07); box-shadow: 0 12px 28px -3px rgba(255,193,7,0.4); }
+    26%   { transform: scale(1);    box-shadow: 0 10px 25px -3px rgba(0,0,0,0.2); }
+    100%  { transform: scale(1);    box-shadow: 0 10px 25px -3px rgba(0,0,0,0.2); }
+  }
+
+  .animate-customise-pulse {
+    animation: customisePulse 4s ease-in-out infinite;
+  }
+
   /* Template background textures */
   .template-bg-elegant-dark {
     position: relative;

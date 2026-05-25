@@ -36,7 +36,7 @@ describe('PromptConstructionService', () => {
       expect(result.prompt).toContain('Grilled Salmon — Fresh Atlantic salmon with quinoa and roasted vegetables.')
       expect(result.prompt).toContain('Plated on a warm beige circular ceramic plate')
       expect(result.prompt).toContain('Three-quarter (45 degree) camera angle')
-      expect(result.prompt).toContain('Soft natural window light')
+      expect(result.prompt).toContain('Soft natural light from the left, gentle shadows, no windows or light sources visible')
       expect(result.prompt).toContain('Photoreal food photography')
       expect(result.prompt).toContain('No people, no humans, no hands')
       expect(result.appliedTemplate).toBe('v2-narrative')

@@ -110,12 +110,19 @@ export class PromptConstructionService {
     // anchor the plate on a dark slate surface for cutout clarity.
     // If a reference image is provided, we omit the default surface to avoid "plate on slate on table" issues.
     const hasReference = !!params.settingReferenceImage
-    const surfaceStr = hasReference ? '' : `, resting on a ${this.getDefaultSurface(params.establishmentType)}`
+    const platingColour = params.platingColour || 'beige'
+    
+    // Build plating clause — 'none' omits plate description entirely (for future vessel support)
+    const platingClause = this.getPlatingClause(platingColour)
+    
+    // Surface selection: contrast with the plate colour for clean cutout segmentation.
+    // Dark plates need a lighter surface; light plates need a dark surface.
+    const surfaceStr = hasReference ? '' : `, resting on a ${this.getSurfaceForPlating(platingColour, params.establishmentType)}`
     const categoryContext = this.getCategoryContext(params.itemCategory)
     const subjectClause = [
       `${dishName} — ${normalizedDescription}.`,
       categoryContext,
-      `Plated on a warm beige circular ceramic plate${surfaceStr}.`
+      platingClause ? `${platingClause}${surfaceStr}.` : undefined
     ].filter(Boolean).join(' ')
 
     // 2. Camera Angle
@@ -131,19 +138,30 @@ export class PromptConstructionService {
       : `${angleMap[params.angle]}, shallow depth of field, dish in sharp focus.`
 
     // 3. Lighting
-    const lightingMap: Record<string, string> = {
-      natural: 'Soft natural window light from the left, gentle shadows',
+    // When a reference image is supplied the scene already defines the environment,
+    // so we match its lighting rather than imposing restrictions (e.g. the reference
+    // may legitimately contain windows). Without a reference we keep the explicit
+    // exclusion to prevent the model from rendering the light source itself.
+    const lightingMapStandalone: Record<string, string> = {
+      natural: 'Soft natural light from the left, gentle shadows, no windows or light sources visible',
       studio: 'Professional studio softbox lighting, clean even illumination, controlled shadows',
       moody: 'Moody restaurant ambiance, dramatic low lighting, warm accent lights, rich shadows'
     }
+    const lightingMapWithReference: Record<string, string> = {
+      natural: 'Soft natural light from the left, gentle shadows. Match the lighting of the reference image.',
+      studio: 'Professional studio softbox lighting, clean even illumination. Match the lighting of the reference image.',
+      moody: 'Moody restaurant ambiance, dramatic low lighting, warm accent lights. Match the lighting of the reference image.'
+    }
+    const lightingMap = hasReference ? lightingMapWithReference : lightingMapStandalone
     const lightingClause = lightingMap[params.lighting] ?? lightingMap['natural']
 
     // 4. Background & Cuisine Context
     // With a reference image the scene is defined by the reference — no need to re-state it.
-    // Without one, reinforce the dark surface so the model doesn't drift to a neutral/white background.
+    // Without one, reinforce contrast for cutout segmentation.
+    // Dark plates on light surfaces need a light background; light plates on dark surfaces need a dark background.
     const backgroundClause = params.settingReferenceImage
       ? ''
-      : 'Dark background, no clutter, strong contrast between plate and surface.'
+      : this.getBackgroundClause(platingColour)
     const cuisineContext = this.getCuisineContext(params.primaryCuisine)
 
     // 5. Reference Instructions
@@ -184,6 +202,63 @@ export class PromptConstructionService {
       // Default to dark slate — provides contrast with the beige ceramic plate
       // and creates clean separation for cutout generation
       default: return 'dark slate surface'
+    }
+  }
+
+  /**
+   * Build the plating description clause based on user-selected colour.
+   * Returns empty string for 'none' — used when the vessel type will be specified
+   * separately (future: bowl, glass, board, etc.)
+   */
+  private getPlatingClause(platingColour: string): string {
+    switch (platingColour) {
+      case 'white': return 'Plated on a clean white circular ceramic plate'
+      case 'beige': return 'Plated on a warm beige circular ceramic plate'
+      case 'black': return 'Plated on a matte black circular ceramic plate'
+      case 'none': return '' // No plate description — vessel will be specified separately in future
+      default: return 'Plated on a warm beige circular ceramic plate'
+    }
+  }
+
+  /**
+   * Select the surface/background that provides maximum contrast with the plate colour.
+   * Critical for cutout segmentation — the plate edge must be clearly distinguishable
+   * from the surface it sits on.
+   *
+   * Light plates (white, beige) → dark surface (slate, dark wood)
+   * Dark plates (black) → lighter surface (light marble, light wood)
+   * No plate → use establishment default
+   */
+  private getSurfaceForPlating(platingColour: string, establishmentType?: string): string {
+    switch (platingColour) {
+      case 'black':
+        // Black plate needs a lighter surface for contrast
+        return 'light marble countertop'
+      case 'white':
+      case 'beige':
+        // Light plates need dark surface — use establishment-specific or default dark slate
+        return this.getDefaultSurface(establishmentType)
+      case 'none':
+        // No plate specified — use establishment default
+        return this.getDefaultSurface(establishmentType)
+      default:
+        return this.getDefaultSurface(establishmentType)
+    }
+  }
+
+  /**
+   * Build the background clause to reinforce contrast for cutout segmentation.
+   * Dark plates need a lighter background; light plates need a dark background.
+   */
+  private getBackgroundClause(platingColour: string): string {
+    switch (platingColour) {
+      case 'black':
+        return 'Light neutral background, no clutter, strong contrast between plate and surface.'
+      case 'white':
+      case 'beige':
+      case 'none':
+      default:
+        return 'Dark background, no clutter, strong contrast between plate and surface.'
     }
   }
 
