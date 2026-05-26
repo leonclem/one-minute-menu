@@ -96,6 +96,8 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
   const [activeMenuItem, setActiveMenuItem] = useState<MenuItem | null>(null)
   const [showBulkDelete, setShowBulkDelete] = useState(false)
   const [showReviewAcknowledge, setShowReviewAcknowledge] = useState(false)
+  const [deletingSampleItems, setDeletingSampleItems] = useState(false)
+  const [showDeleteSampleConfirm, setShowDeleteSampleConfirm] = useState(false)
   const [menuCurrency, setMenuCurrency] = useState<string>('USD')
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -697,6 +699,42 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
       setLogoUrl(json?.data?.logoUrl ?? null)
     } catch (error) {
       console.error('Error refreshing menu:', error)
+    }
+  }
+
+  const handleDeleteSampleItems = async () => {
+    if (!authMenu) return
+    const sampleItems = authMenu.items.filter(item => item.isPlaceholder)
+    if (sampleItems.length === 0) return
+
+    setDeletingSampleItems(true)
+    try {
+      const itemIds = sampleItems.map(item => item.id)
+      const response = await fetch(`/api/menus/${menuId}/items`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemIds }),
+      })
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err?.error || 'Failed to delete sample items')
+      }
+      await refreshMenu()
+      setShowDeleteSampleConfirm(false)
+      showToast({
+        type: 'success',
+        title: 'Sample items deleted',
+        description: `${sampleItems.length} sample item${sampleItems.length === 1 ? '' : 's'} removed.`,
+      })
+    } catch (error) {
+      console.error('Error deleting sample items:', error)
+      showToast({
+        type: 'error',
+        title: 'Failed to delete sample items',
+        description: error instanceof Error ? error.message : 'Please try again.',
+      })
+    } finally {
+      setDeletingSampleItems(false)
     }
   }
 
@@ -1915,6 +1953,21 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                               </svg>
                               {selectedCount > 0 ? `Delete Selected (${selectedCount})` : 'Delete Selected'}
                             </UXButton>
+                            {/* Delete sample items — only shown when placeholder items exist */}
+                            {(authMenu?.items.some(item => item.isPlaceholder) ?? false) && (
+                              <UXButton
+                                variant="outline"
+                                size="md"
+                                onClick={() => setShowDeleteSampleConfirm(true)}
+                                disabled={loading || isReadOnly}
+                                className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 disabled:opacity-40"
+                              >
+                                <svg className="hidden sm:inline-block h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Remove Sample Items
+                              </UXButton>
+                            )}
                           </>
                         )}
                       </div>
@@ -2636,6 +2689,99 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                     Add Category
                   </UXButton>
                 </div>
+              </div>
+            </UXCard>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Delete Sample Items Confirmation Modal */}
+      {!isDemo && showDeleteSampleConfirm && mounted && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md">
+            <UXCard>
+              <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-ux-border/60">
+                <h3 className="text-sm font-semibold text-ux-text">
+                  Remove Sample Items
+                </h3>
+                <button
+                  type="button"
+                  className="h-7 w-7 flex items-center justify-center rounded-full text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-primary transition-colors"
+                  onClick={() => setShowDeleteSampleConfirm(false)}
+                  aria-label="Close"
+                  disabled={deletingSampleItems}
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                {(() => {
+                  const sampleItems = authMenu?.items.filter(item => item.isPlaceholder) ?? []
+                  const realItems = authMenu?.items.filter(item => !item.isPlaceholder) ?? []
+                  const affectedCategories = [...new Set(sampleItems.map(i => normalizeCategory(i.category)))]
+                  const emptiedCategories = affectedCategories.filter(catName => {
+                    const realInCat = realItems.filter(i => normalizeCategory(i.category) === catName)
+                    return realInCat.length === 0
+                  })
+                  return (
+                    <>
+                      <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <p className="text-sm text-red-800">
+                            This will permanently delete{' '}
+                            <strong>{sampleItems.length} sample item{sampleItems.length === 1 ? '' : 's'}</strong>
+                            {emptiedCategories.length > 0 && (
+                              <> and remove <strong>{emptiedCategories.length} now-empty categor{emptiedCategories.length === 1 ? 'y' : 'ies'}</strong></>
+                            )}.
+                          </p>
+                          {realItems.length > 0 ? (
+                            <p className="text-sm text-red-700">
+                              Your <strong>{realItems.length} real item{realItems.length === 1 ? '' : 's'}</strong> will not be affected.
+                            </p>
+                          ) : (
+                            <p className="text-sm text-red-700">
+                              Your menu will be empty afterwards — you can add items manually or scan a menu photo.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <UXButton
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowDeleteSampleConfirm(false)}
+                          disabled={deletingSampleItems}
+                        >
+                          Cancel
+                        </UXButton>
+                        <UXButton
+                          variant="primary"
+                          size="sm"
+                          onClick={handleDeleteSampleItems}
+                          disabled={deletingSampleItems}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          {deletingSampleItems ? (
+                            <>
+                              <div className="animate-spin mr-2 h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full" />
+                              Deleting…
+                            </>
+                          ) : (
+                            `Delete ${sampleItems.length} Sample Item${sampleItems.length === 1 ? '' : 's'}`
+                          )}
+                        </UXButton>
+                      </div>
+                    </>
+                  )
+                })()}
               </div>
             </UXCard>
           </div>
