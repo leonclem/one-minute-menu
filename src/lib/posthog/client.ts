@@ -11,6 +11,18 @@ import {
 let initialized = false
 let posthogModule: typeof import('posthog-js') | null = null
 
+/** Flush callback registered by helper.ts to avoid a circular static import. */
+let _flushCallback: (() => void) | null = null
+
+/**
+ * Register the pre-init queue flush function. Called once by helper.ts at
+ * module load time so the `loaded` callback can invoke it synchronously
+ * without a dynamic import (which would be a macrotask and break tests).
+ */
+export function registerFlushCallback(fn: () => void): void {
+  _flushCallback = fn
+}
+
 /**
  * Returns whether PostHog has been successfully initialized on this page load.
  */
@@ -92,13 +104,22 @@ export async function initializePostHogIfAllowed(): Promise<void> {
       persistence: 'localStorage+cookie',
       loaded: (_ph: unknown) => {
         initialized = true
-        // Dynamic import avoids a circular dependency: helper.ts imports from
-        // client.ts (isPostHogInitialized, getPostHog), so we cannot statically
-        // import helper.ts here. The dynamic import is safe because by the time
-        // the `loaded` callback fires, the module graph is fully resolved.
-        import('./helper')
-          .then((m: { flushPreInitQueue: () => void }) => m.flushPreInitQueue())
-          .catch(() => {})
+        // Invoke the flush callback registered by helper.ts. Using a registered
+        // callback instead of a dynamic import makes the flush synchronous and
+        // avoids the macrotask delay that breaks tests.
+        if (_flushCallback) {
+          try {
+            _flushCallback()
+          } catch {
+            /* swallow */
+          }
+        } else {
+          // Fallback: dynamic import for environments where helper.ts hasn't
+          // registered yet (e.g. if client.ts is loaded in isolation).
+          import('./helper')
+            .then((m: { flushPreInitQueue: () => void }) => m.flushPreInitQueue())
+            .catch(() => {})
+        }
       },
     })
   } catch (error) {

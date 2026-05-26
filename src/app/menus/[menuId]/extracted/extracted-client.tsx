@@ -1954,7 +1954,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                               {selectedCount > 0 ? `Delete Selected (${selectedCount})` : 'Delete Selected'}
                             </UXButton>
                             {/* Delete sample items — only shown when placeholder items exist */}
-                            {(authMenu?.items.some(item => item.isPlaceholder) ?? false) && (
+                            {(authMenu?.items?.some(item => item.isPlaceholder) ?? false) && (
                               <UXButton
                                 variant="outline"
                                 size="md"
@@ -2721,7 +2721,7 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
                 {(() => {
                   const sampleItems = authMenu?.items.filter(item => item.isPlaceholder) ?? []
                   const realItems = authMenu?.items.filter(item => !item.isPlaceholder) ?? []
-                  const affectedCategories = [...new Set(sampleItems.map(i => normalizeCategory(i.category)))]
+                  const affectedCategories = Array.from(new Set(sampleItems.map(i => normalizeCategory(i.category))))
                   const emptiedCategories = affectedCategories.filter(catName => {
                     const realInCat = realItems.filter(i => normalizeCategory(i.category) === catName)
                     return realInCat.length === 0

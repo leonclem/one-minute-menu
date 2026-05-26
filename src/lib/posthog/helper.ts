@@ -10,6 +10,7 @@ import {
   isPostHogInitialized,
   posthogOptInCapturingIfLoaded,
   posthogOptOutCapturingIfLoaded,
+  registerFlushCallback,
 } from './client'
 import { isDistinctIdSafe, sanitizePersonProperties, sanitizeProperties } from './sanitize'
 
@@ -63,9 +64,9 @@ export function flushPreInitQueue(): void {
   }
 }
 
-// ---------------------------------------------------------------------------
-// §7 Opt-out helpers
-// ---------------------------------------------------------------------------
+// Register the flush callback with client.ts so the `loaded` callback can
+// invoke it synchronously without a dynamic import.
+registerFlushCallback(flushPreInitQueue)
 
 /**
  * Returns true if the user has set the admin opt-out flag in localStorage.

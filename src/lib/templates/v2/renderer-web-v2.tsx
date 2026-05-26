@@ -1224,9 +1224,12 @@ function TileRenderer({ tile, options }: TileRendererProps) {
     ? options.bannerHeroLabelColor
     : bannerContent?.heroLabelColor ?? 'light'
   const hasLiveHeroLabel = isBannerTile && !!bannerContent?.heroItemName && hasHeroImage && liveHeroLabelPosition !== 'none'
-  // When live overrides are active, filter out the server-baked label text elements
-  // (identified as high-zIndex text elements in the hero zone — zIndex 5 or 9).
-  const filteredRenderData = isBannerTile && (options.bannerHeroLabelPosition !== undefined || options.bannerHeroLabelColor !== undefined) && renderData
+  // Always filter out the server-baked label text elements when the client-side live overlay
+  // will render the hero item name (hasLiveHeroLabel). Previously this only fired when the
+  // override options were explicitly set, which meant the export path (where those options
+  // are not passed) rendered both the server-baked element and the live overlay simultaneously,
+  // causing the item name to appear twice.
+  const filteredRenderData = hasLiveHeroLabel && renderData
     ? {
         ...renderData,
         elements: renderData.elements.filter(el =>
