@@ -117,7 +117,9 @@ export class PromptConstructionService {
     
     // Surface selection: contrast with the plate colour for clean cutout segmentation.
     // Dark plates need a lighter surface; light plates need a dark surface.
-    const surfaceStr = hasReference ? '' : `, resting on a ${this.getSurfaceForPlating(platingColour, params.establishmentType)}`
+    // Wooden board is its own surface — no additional surface clause needed.
+    const surfaceBase = hasReference ? '' : this.getSurfaceForPlating(platingColour, params.establishmentType)
+    const surfaceStr = surfaceBase ? `, resting on a ${surfaceBase}` : ''
     const categoryContext = this.getCategoryContext(params.itemCategory)
     const subjectClause = [
       `${dishName} — ${normalizedDescription}.`,
@@ -165,9 +167,12 @@ export class PromptConstructionService {
     const cuisineContext = this.getCuisineContext(params.primaryCuisine)
 
     // 5. Reference Instructions
+    // Use "food" instead of "dish" for non-plate presentations (wood board, none) to avoid
+    // the model interpreting "dish" as a ceramic plate and compositing the wrong vessel.
     let referenceInstructions = ''
     if (params.settingReferenceImage) {
-      referenceInstructions = '\nPlace the dish naturally into the scene shown in the reference image. Match the perspective, lighting direction, and surface. Keep geometry realistic - no warped plates, no floating food.'
+      const subjectWord = (platingColour === 'wood' || platingColour === 'none') ? 'food' : 'dish'
+      referenceInstructions = `\nPlace the ${subjectWord} naturally into the scene shown in the reference image. Match the perspective, lighting direction, and surface. Keep geometry realistic - no warped plates, no floating food.`
     }
 
     // 6. Constraints (Always Inline)
@@ -215,6 +220,7 @@ export class PromptConstructionService {
       case 'white': return 'Plated on a clean white circular ceramic plate'
       case 'beige': return 'Plated on a warm beige circular ceramic plate'
       case 'black': return 'Plated on a matte black circular ceramic plate'
+      case 'wood': return 'Served on a rustic wooden serving board'
       case 'none': return '' // No plate description — vessel will be specified separately in future
       default: return 'Plated on a warm beige circular ceramic plate'
     }
@@ -238,6 +244,9 @@ export class PromptConstructionService {
       case 'beige':
         // Light plates need dark surface — use establishment-specific or default dark slate
         return this.getDefaultSurface(establishmentType)
+      case 'wood':
+        // Wooden board is its own surface — no additional surface needed; return empty to avoid "board on board"
+        return ''
       case 'none':
         // No plate specified — use establishment default
         return this.getDefaultSurface(establishmentType)
@@ -254,6 +263,9 @@ export class PromptConstructionService {
     switch (platingColour) {
       case 'black':
         return 'Light neutral background, no clutter, strong contrast between plate and surface.'
+      case 'wood':
+        // Wooden board reads well against a dark background — keeps the warm wood tones prominent
+        return 'Dark background, no clutter, warm wood tones prominent.'
       case 'white':
       case 'beige':
       case 'none':

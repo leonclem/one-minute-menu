@@ -119,6 +119,7 @@ const PLATING_OPTIONS: VariableOption<PlatingColour>[] = [
   { value: 'white', label: 'White plate' },
   { value: 'beige', label: 'Beige plate (default)' },
   { value: 'black', label: 'Black plate' },
+  { value: 'wood', label: 'Wooden board' },
   { value: 'none', label: 'None (no plate)' },
 ]
 

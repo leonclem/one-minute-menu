@@ -157,8 +157,11 @@ describe('Property 9: Pre-init queue FIFO flush integrity', () => {
           const { initializePostHogIfAllowed } = await import('../client')
           const initPromise = initializePostHogIfAllowed()
 
-          // Enqueue events BEFORE init completes (loaded callback not yet called)
+          // Import helper BEFORE triggering the loaded callback so that
+          // registerFlushCallback() runs and the synchronous flush path is used.
           const { captureEvent } = await import('../helper')
+
+          // Enqueue events BEFORE init completes (loaded callback not yet called)
           for (const [eventName, props] of events) {
             captureEvent(
               eventName as AnalyticsEventName,
@@ -172,7 +175,7 @@ describe('Property 9: Pre-init queue FIFO flush integrity', () => {
           }
           await initPromise
 
-          // Wait for the dynamic import of helper.ts inside the loaded callback to resolve
+          // One microtask tick is sufficient when the synchronous flush path is used
           await new Promise((resolve) => setTimeout(resolve, 0))
 
           const N = events.length
@@ -230,6 +233,8 @@ describe('Property 9: Pre-init queue FIFO flush integrity', () => {
     const { initializePostHogIfAllowed } = await import('../client')
     const initPromise = initializePostHogIfAllowed()
 
+    // Import helper BEFORE triggering the loaded callback so that
+    // registerFlushCallback() runs and the synchronous flush path is used.
     const { captureEvent, flushPreInitQueue } = await import('../helper')
 
     // Enqueue 3 events

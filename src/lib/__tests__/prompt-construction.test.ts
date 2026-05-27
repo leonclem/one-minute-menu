@@ -94,6 +94,34 @@ describe('PromptConstructionService', () => {
       expect(result.prompt).toContain('Place the dish naturally into the scene shown in the reference image')
       expect(result.prompt).toContain('Match the perspective, lighting direction, and surface')
     })
+
+    it('should use "food" instead of "dish" in reference instructions when plating is wood', () => {
+      const params: PhotoGenerationParams = {
+        angle: '45',
+        lighting: 'natural',
+        platingColour: 'wood',
+        settingReferenceImage: 'data:image/jpeg;base64,abc'
+      }
+
+      const result = service.buildPromptV2(sampleItem, params)
+
+      expect(result.prompt).toContain('Place the food naturally into the scene shown in the reference image')
+      expect(result.prompt).not.toContain('Place the dish naturally')
+    })
+
+    it('should use "food" instead of "dish" in reference instructions when plating is none', () => {
+      const params: PhotoGenerationParams = {
+        angle: '45',
+        lighting: 'natural',
+        platingColour: 'none',
+        settingReferenceImage: 'data:image/jpeg;base64,abc'
+      }
+
+      const result = service.buildPromptV2(sampleItem, params)
+
+      expect(result.prompt).toContain('Place the food naturally into the scene shown in the reference image')
+      expect(result.prompt).not.toContain('Place the dish naturally')
+    })
     
     it('should omit default surface when settingReferenceImage is provided', () => {
       const params: PhotoGenerationParams = {
@@ -107,6 +135,20 @@ describe('PromptConstructionService', () => {
       expect(result.prompt).toContain('Plated on a warm beige circular ceramic plate.')
       expect(result.prompt).not.toContain('resting on a')
       expect(result.prompt).not.toContain('dark slate surface')
+    })
+
+    it('should use wooden board clause and omit surface for wood plating', () => {
+      const params: PhotoGenerationParams = {
+        angle: '45',
+        lighting: 'natural',
+        platingColour: 'wood'
+      }
+
+      const result = service.buildPromptV2(sampleItem, params)
+
+      expect(result.prompt).toContain('Served on a rustic wooden serving board')
+      expect(result.prompt).not.toContain('resting on a')
+      expect(result.prompt).not.toContain('circular ceramic plate')
     })
 
     it('should always include the constraints clause', () => {

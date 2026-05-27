@@ -242,12 +242,13 @@ export default function GeneratePhotoModal({
               <div className="mt-4 space-y-6">
                 {/* Plating Colour */}
                 <div>
-                  <h4 className="text-xs font-bold text-secondary-700 uppercase tracking-wider mb-3">Plating Colour</h4>
-                  <div className="grid grid-cols-4 gap-2">
+                  <h4 className="text-xs font-bold text-secondary-700 uppercase tracking-wider mb-3">Plating</h4>
+                  <div className="grid grid-cols-5 gap-2">
                     {([
                       { id: 'white', label: 'White', swatch: 'bg-white border border-secondary-200' },
                       { id: 'beige', label: 'Beige', swatch: 'bg-[#E8DCC8]' },
                       { id: 'black', label: 'Black', swatch: 'bg-secondary-900' },
+                      { id: 'wood', label: 'Wood', swatch: 'bg-[#8B5E3C]' },
                       { id: 'none', label: 'None', swatch: 'bg-secondary-100 border border-dashed border-secondary-300' },
                     ] as const).map((option) => (
                       <button
@@ -269,11 +270,13 @@ export default function GeneratePhotoModal({
                     ))}
                   </div>
                   <p className="text-[10px] text-secondary-400 mt-2">
-                    {params.platingColour === 'none' 
+                    {params.platingColour === 'none'
                       ? 'No plate specified — dish will be presented without a defined plate.'
                       : params.platingColour === 'black'
                         ? 'Black plate — light marble surface for contrast.'
-                        : `${params.platingColour === 'white' ? 'White' : 'Beige'} plate — dark slate surface for contrast.`
+                        : params.platingColour === 'wood'
+                          ? 'Wooden board — rustic serving board presentation.'
+                          : `${params.platingColour === 'white' ? 'White' : 'Beige'} plate — dark slate surface for contrast.`
                     }
                   </p>
                 </div>

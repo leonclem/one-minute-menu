@@ -597,7 +597,7 @@ export interface ValidationError extends AppError {
 
 // AI Image Generation Types
 
-export type PlatingColour = 'white' | 'beige' | 'black' | 'none'
+export type PlatingColour = 'white' | 'beige' | 'black' | 'wood' | 'none'
 
 export interface PhotoGenerationParams {
   angle: 'overhead' | '45' | 'front'
