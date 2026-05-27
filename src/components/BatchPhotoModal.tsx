@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, Clock, Sparkles, X } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronUp, Clock, Sparkles, X, Zap } from 'lucide-react'
+import Link from 'next/link'
 import { useToast } from '@/components/ui'
 import { Button } from '@/components/ui'
-import type { PhotoGenerationParams, QuotaStatus } from '@/types'
+import type { PhotoGenerationParams, PlatingColour, QuotaStatus } from '@/types'
 import type { BatchGenerationItem } from '@/lib/batch-generation'
 import {
   getImageGenerationJobLabel,
@@ -38,8 +39,10 @@ export default function BatchPhotoModal({ menuId, items, onClose }: BatchPhotoMo
   const [params, setParams] = useState<PhotoGenerationParams>({
     angle: '45',
     lighting: 'natural',
-    resolution: '1k'
+    resolution: '1k',
+    platingColour: 'beige',
   })
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [quota, setQuota] = useState<QuotaStatus | null>(null)
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<Record<string, ImageGenerationJobStatus>>({})
@@ -108,6 +111,7 @@ export default function BatchPhotoModal({ menuId, items, onClose }: BatchPhotoMo
         angle: params.angle,
         lighting: params.lighting,
         resolution: params.resolution,
+        platingColour: params.platingColour,
         presentation: params.angle === 'overhead' ? 'overhead' : params.angle === 'front' ? 'closeup' : 'white_plate'
       }
 
@@ -232,6 +236,104 @@ export default function BatchPhotoModal({ menuId, items, onClose }: BatchPhotoMo
               <AngleSelector selected={params.angle} onChange={(angle) => setParams(prev => ({ ...prev, angle }))} disabled={running} />
               <LightingSelector selected={params.lighting} onChange={(lighting) => setParams(prev => ({ ...prev, lighting }))} disabled={running} />
               <SettingReferenceSlot value={params.settingReferenceImage} onChange={(dataUrl) => setParams(prev => ({ ...prev, settingReferenceImage: dataUrl }))} disabled={running} />
+
+              {/* Advanced Options */}
+              <section className="border-t border-secondary-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="w-full flex items-center justify-between py-2 text-left group"
+                  disabled={running}
+                >
+                  <h3 className="text-sm font-bold text-secondary-900 uppercase tracking-wider">Advanced Options</h3>
+                  <div className="text-secondary-400 group-hover:text-secondary-600 transition-colors">
+                    {showAdvanced ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </div>
+                </button>
+
+                {showAdvanced && (
+                  <div className="mt-4 space-y-6">
+                    {/* Plating */}
+                    <div>
+                      <h4 className="text-xs font-bold text-secondary-700 uppercase tracking-wider mb-3">Plating</h4>
+                      <div className="grid grid-cols-5 gap-2">
+                        {([
+                          { id: 'white', label: 'White', swatch: 'bg-white border border-secondary-200' },
+                          { id: 'beige', label: 'Beige', swatch: 'bg-[#E8DCC8]' },
+                          { id: 'black', label: 'Black', swatch: 'bg-secondary-900' },
+                          { id: 'wood',  label: 'Wood',  swatch: 'bg-[#8B5E3C]' },
+                          { id: 'none',  label: 'None',  swatch: 'bg-secondary-100 border border-dashed border-secondary-300' },
+                        ] as const).map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            disabled={running}
+                            onClick={() => setParams(prev => ({ ...prev, platingColour: option.id as PlatingColour }))}
+                            className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                              params.platingColour === option.id
+                                ? 'border-[#01B3BF] bg-[#01B3BF]/5'
+                                : 'border-secondary-100 hover:border-secondary-200'
+                            } ${running ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            <div className={`w-8 h-8 rounded-full ${option.swatch} shadow-sm`} />
+                            <span className="text-[10px] font-bold text-secondary-600 uppercase tracking-wider">{option.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-secondary-400 mt-2">
+                        {params.platingColour === 'none'
+                          ? 'No plate specified — dish will be presented without a defined plate.'
+                          : params.platingColour === 'black'
+                            ? 'Black plate — light marble surface for contrast.'
+                            : params.platingColour === 'wood'
+                              ? 'Wooden board — rustic serving board presentation.'
+                              : `${params.platingColour === 'white' ? 'White' : 'Beige'} plate — dark slate surface for contrast.`
+                        }
+                      </p>
+                    </div>
+
+                    {/* Resolution */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 pr-4">
+                        <h4 className="text-xs font-bold text-secondary-700 uppercase tracking-wider">Resolution</h4>
+                        <p className="text-[10px] text-secondary-400 font-medium mt-1">
+                          {params.resolution === '4k' ? 'Ultra-high definition (4K) enabled' : 'High-definition (1K) output'}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="flex bg-secondary-100 p-1 rounded-xl">
+                          {(['1k', '4k'] as const).map((res) => {
+                            const is4k = res === '4k'
+                            const isLocked = is4k && quota?.plan === 'free'
+                            return (
+                              <button
+                                key={res}
+                                disabled={isLocked || running}
+                                onClick={() => setParams(prev => ({ ...prev, resolution: res }))}
+                                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                  params.resolution === res
+                                    ? 'bg-white text-secondary-900 shadow-sm'
+                                    : isLocked
+                                      ? 'text-secondary-300 cursor-not-allowed'
+                                      : 'text-secondary-400 hover:text-secondary-600'
+                                }`}
+                              >
+                                {res.toUpperCase()}
+                                {isLocked && <Zap className="w-3 h-3 fill-secondary-300 text-secondary-300" />}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        {quota?.plan === 'free' && (
+                          <Link href="/pricing" className="text-[9px] text-secondary-400 font-bold uppercase tracking-tight hover:text-secondary-600 transition-colors">
+                            Upgrade for <span className="text-[#F8BC02]">4K Resolution</span>
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </section>
               
               <section>
                 <h3 className="text-sm font-bold text-secondary-900 uppercase tracking-wider mb-4">Items in this batch</h3>

@@ -1,4 +1,4 @@
-import type { ImageGenerationParams } from '@/types'
+import type { ImageGenerationParams, PhotoGenerationParams } from '@/types'
 
 export type BatchGenerationItem = {
   id: string
@@ -29,7 +29,7 @@ export type BatchProgressUpdate = {
 }
 
 export interface RunBatchOptions {
-  styleParams: ImageGenerationParams
+  styleParams: PhotoGenerationParams | ImageGenerationParams
   numberOfVariations?: number
   referenceImages?: Array<{
     dataUrl: string

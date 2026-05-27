@@ -2,10 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import Link from 'next/link'
+import { ChevronDown, ChevronUp, Zap } from 'lucide-react'
 import { useToast } from '@/components/ui'
 import { UXButton, UXCard } from '@/components/ux'
-import type { ImageGenerationParams } from '@/types'
+import type { PhotoGenerationParams, PlatingColour, QuotaStatus } from '@/types'
 import { runBatchGenerationSequential, type BatchGenerationItem, type BatchGenerationResult, type BatchProgressUpdate } from '@/lib/batch-generation'
+
+import AngleSelector from './photo-generation/AngleSelector'
+import LightingSelector from './photo-generation/LightingSelector'
 
 interface BatchAIImageGenerationProps {
   menuId: string
@@ -14,27 +19,20 @@ interface BatchAIImageGenerationProps {
   onItemImageGenerated: (itemId: string, imageUrl: string, imageId?: string) => Promise<void> | void
 }
 
-const STYLE_PRESETS = [
-  { id: 'modern', name: 'Modern', description: 'Clean, contemporary presentation' },
-  { id: 'rustic', name: 'Rustic', description: 'Warm, homestyle appearance' },
-  { id: 'elegant', name: 'Elegant', description: 'Sophisticated, fine dining' },
-  { id: 'casual', name: 'Casual', description: 'Relaxed, everyday dining' },
-] as const
-
 /** Fallback batch limits (Free plan defaults) */
 const DEFAULT_MAX_BATCH_ITEMS = 5
 const DEFAULT_DELAY_MS = 3000
 
 export default function BatchAIImageGeneration({ menuId, items, onClose, onItemImageGenerated }: BatchAIImageGenerationProps) {
   const { showToast } = useToast()
-  const [selectedStyle, setSelectedStyle] = useState<string>('modern')
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [advancedParams, setAdvancedParams] = useState<Partial<ImageGenerationParams>>({
-    negativePrompt: '',
-    customPromptAdditions: '',
+
+  const [params, setParams] = useState<PhotoGenerationParams>({
+    angle: '45',
     lighting: 'natural',
-    presentation: 'white_plate',
+    resolution: '1k',
+    platingColour: 'beige',
   })
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [referenceImages, setReferenceImages] = useState<Array<{
     id: string
     dataUrl: string
@@ -45,6 +43,7 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<Record<string, BatchProgressUpdate['status']>>({})
   const [results, setResults] = useState<BatchGenerationResult[] | null>(null)
+  const [quota, setQuota] = useState<QuotaStatus | null>(null)
 
   // Plan-based batch limits (fetched on mount)
   const [maxBatchItems, setMaxBatchItems] = useState(DEFAULT_MAX_BATCH_ITEMS)
@@ -58,6 +57,13 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
         if (typeof data?.delayMs === 'number') setBatchDelayMs(data.delayMs)
       })
       .catch(() => { /* use defaults */ })
+
+    fetch('/api/quota')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.success) setQuota(data.data.quota)
+      })
+      .catch(() => {})
   }, [])
 
   const totalSelected = items.length
@@ -69,7 +75,6 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
   const completedCount = useMemo(() => Object.values(progress).filter(s => s === 'completed' || s === 'failed').length, [progress])
   const failedCount = useMemo(() => Object.values(progress).filter(s => s === 'failed').length, [progress])
 
-  // Stable list of item IDs to process — only changes when maxBatchItems changes (after fetch)
   const itemIdsToProcess = useMemo(() => items.slice(0, maxBatchItems).map(it => it.id), [items.length, maxBatchItems]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -78,19 +83,19 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
     setProgress(initial)
   }, [itemIdsToProcess])
 
+  const buildStyleParams = (): PhotoGenerationParams => ({
+    angle: params.angle,
+    lighting: params.lighting,
+    resolution: params.resolution,
+    platingColour: params.platingColour,
+    // Map to legacy presentation field so the API route continues to work
+    presentation: params.angle === 'overhead' ? 'overhead' : params.angle === 'front' ? 'closeup' : 'white_plate',
+  } as any)
+
   const startBatch = async () => {
     setRunning(true)
     setResults(null)
     try {
-      const styleParams: ImageGenerationParams = {
-        style: selectedStyle as any,
-        presentation: advancedParams.presentation || 'white_plate',
-        lighting: advancedParams.lighting || 'natural',
-        negativePrompt: advancedParams.negativePrompt || '',
-        customPromptAdditions: advancedParams.customPromptAdditions || '',
-        hasReferenceImage: referenceImages.length > 0,
-      }
-
       if (isLimited) {
         showToast({
           type: 'info',
@@ -100,14 +105,14 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
       }
 
       const batchResults = await runBatchGenerationSequential(menuId, itemsToProcess, {
-        styleParams,
+        styleParams: buildStyleParams(),
         numberOfVariations: 1,
         delayMs: batchDelayMs,
         referenceImages: referenceImages.map(img => ({
           dataUrl: img.dataUrl,
           comment: img.comment,
           name: img.name,
-          role: img.role
+          role: img.role,
         })),
         onProgress: (update) => {
           setProgress(prev => ({ ...prev, [update.itemId]: update.status }))
@@ -120,7 +125,7 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
             const targetId = r.itemIdNormalized || r.itemId
             await onItemImageGenerated(targetId, r.imageUrl, r.imageId)
           } catch {
-            // If updating item fails, keep result as success but user will see image later
+            // keep result as success
           }
         }
       }
@@ -134,23 +139,11 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
 
       if (editWindowExpired) {
         const first = batchResults.find(r => r.errorCode === 'EDIT_WINDOW_EXPIRED')
-        showToast({
-          type: 'info',
-          title: 'Edits locked',
-          description: first?.error || 'Your edit window has expired. Purchase a Creator Pack or subscribe to Grid+ to continue.'
-        })
+        showToast({ type: 'info', title: 'Edits locked', description: first?.error || 'Your edit window has expired.' })
       } else if (quotaExceeded) {
-        showToast({
-          type: 'info',
-          title: 'Monthly limit reached',
-          description: 'Upgrade to generate more images this month.'
-        })
+        showToast({ type: 'info', title: 'Monthly limit reached', description: 'Upgrade to generate more images this month.' })
       } else {
-        showToast({
-          type: failures > 0 ? 'info' : 'success',
-          title: 'Batch complete',
-          description: `${successes} succeeded, ${failures} failed`
-        })
+        showToast({ type: failures > 0 ? 'info' : 'success', title: 'Batch complete', description: `${successes} succeeded, ${failures} failed` })
       }
     } catch (e) {
       showToast({ type: 'error', title: 'Batch failed', description: e instanceof Error ? e.message : 'Please try again.' })
@@ -167,7 +160,6 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
     if (failedItems.length === 0) return
 
     setRunning(true)
-    // Reset progress for failed items
     setProgress(prev => {
       const next = { ...prev }
       for (const it of failedItems) next[it.id] = 'queued'
@@ -176,17 +168,8 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
     setResults(null)
 
     try {
-      const styleParams: ImageGenerationParams = {
-        style: selectedStyle as any,
-        presentation: advancedParams.presentation || 'white_plate',
-        lighting: advancedParams.lighting || 'natural',
-        negativePrompt: advancedParams.negativePrompt || '',
-        customPromptAdditions: advancedParams.customPromptAdditions || '',
-        hasReferenceImage: referenceImages.length > 0,
-      }
-
       const retryResults = await runBatchGenerationSequential(menuId, failedItems, {
-        styleParams,
+        styleParams: buildStyleParams(),
         numberOfVariations: 1,
         delayMs: batchDelayMs,
         referenceImages: referenceImages.map(img => ({
@@ -205,20 +188,14 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
           try {
             const targetId = r.itemIdNormalized || r.itemId
             await onItemImageGenerated(targetId, r.imageUrl, r.imageId)
-          } catch {
-            // keep result as success
-          }
+          } catch { /* keep result as success */ }
         }
       }
 
       setResults(retryResults)
       const successes = retryResults.filter(r => r.status === 'success').length
       const failures = retryResults.length - successes
-      showToast({
-        type: failures > 0 ? 'info' : 'success',
-        title: 'Retry complete',
-        description: `${successes} succeeded, ${failures} failed`,
-      })
+      showToast({ type: failures > 0 ? 'info' : 'success', title: 'Retry complete', description: `${successes} succeeded, ${failures} failed` })
     } catch (e) {
       showToast({ type: 'error', title: 'Retry failed', description: e instanceof Error ? e.message : 'Please try again.' })
     } finally {
@@ -236,14 +213,19 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
 
   return createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
+
+          {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {isLimited
-                ? `Create Photos for ${limitedCount} of ${totalSelected} Selected Items`
-                : `Create Photos for ${limitedCount} Selected Items`}
-            </h2>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {isLimited
+                  ? `Create Photos for ${limitedCount} of ${totalSelected} Selected Items`
+                  : `Create Photos for ${limitedCount} Selected Items`}
+              </h2>
+              <p className="text-sm text-secondary-500 mt-0.5">Configure your AI photos</p>
+            </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600" disabled={running} aria-label="Close">
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
@@ -251,97 +233,146 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
 
           {isLimited && (
             <div className="mb-6 p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-800">
-              You have selected <strong>{totalSelected}</strong> items. The free plan allows batch creation of up to <strong>{limitedCount}</strong> items at a time. <a href="/pricing" className="underline font-medium">Upgrade</a> for larger batches.
+              You have selected <strong>{totalSelected}</strong> items. The free plan allows batch creation of up to <strong>{limitedCount}</strong> items at a time.{' '}
+              <a href="/pricing" className="underline font-medium">Upgrade</a> for larger batches.
             </div>
           )}
 
-          {/* Style Selection */}
+          {/* Angle */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-3">Choose a style</label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {STYLE_PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  onClick={() => setSelectedStyle(preset.id)}
-                  className={`p-3 border-2 rounded-lg text-left transition-colors ${selectedStyle === preset.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
-                  disabled={running}
-                >
-                  <div className="font-medium text-gray-900 text-sm">{preset.name}</div>
-                  <div className="text-xs text-gray-600 mt-0.5">{preset.description}</div>
-                </button>
-              ))}
-            </div>
+            <AngleSelector
+              selected={params.angle}
+              onChange={(angle) => setParams(prev => ({ ...prev, angle }))}
+              disabled={running}
+            />
+          </div>
+
+          {/* Lighting */}
+          <div className="mb-6">
+            <LightingSelector
+              selected={params.lighting}
+              onChange={(lighting) => setParams(prev => ({ ...prev, lighting }))}
+              disabled={running}
+            />
           </div>
 
           {/* Advanced Options */}
-          <div className="mb-6">
-            <button onClick={() => setShowAdvanced(!showAdvanced)} className="flex items-center text-sm text-gray-600 hover:text-gray-800" disabled={running}>
-              <svg className={`h-4 w-4 mr-1 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              Advanced options (optional)
+          <section className="border-t border-secondary-100 pt-4 mb-6">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="w-full flex items-center justify-between py-2 text-left group"
+              disabled={running}
+            >
+              <h3 className="text-sm font-bold text-secondary-900 uppercase tracking-wider">Advanced Options</h3>
+              <div className="text-secondary-400 group-hover:text-secondary-600 transition-colors">
+                {showAdvanced ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              </div>
             </button>
+
             {showAdvanced && (
-              <div className="mt-3 space-y-4 p-4 bg-gray-50 rounded-lg">
+              <div className="mt-4 space-y-6">
+
+                {/* Plating */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Exclude from image (negative prompt)</label>
-                  <input type="text" value={advancedParams.negativePrompt || ''} onChange={(e) => setAdvancedParams(prev => ({ ...prev, negativePrompt: e.target.value }))} placeholder="e.g., people, text, utensils" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={running} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Additional details</label>
-                  <input type="text" value={advancedParams.customPromptAdditions || ''} onChange={(e) => setAdvancedParams(prev => ({ ...prev, customPromptAdditions: e.target.value }))} placeholder="e.g., garnished with herbs, served in a bowl" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={running} />
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lighting</label>
-                    <select className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm" value={advancedParams.lighting || 'natural'} onChange={(e) => setAdvancedParams(prev => ({ ...prev, lighting: e.target.value as any }))} disabled={running}>
-                      <option value="natural">Natural</option>
-                      <option value="warm">Warm</option>
-                      <option value="studio">Studio</option>
-                      <option value="cinematic">Cinematic (Dramatic)</option>
-                      <option value="golden_hour">Golden Hour</option>
-                    </select>
+                  <h4 className="text-xs font-bold text-secondary-700 uppercase tracking-wider mb-3">Plating</h4>
+                  <div className="grid grid-cols-5 gap-2">
+                    {([
+                      { id: 'white', label: 'White', swatch: 'bg-white border border-secondary-200' },
+                      { id: 'beige', label: 'Beige', swatch: 'bg-[#E8DCC8]' },
+                      { id: 'black', label: 'Black', swatch: 'bg-secondary-900' },
+                      { id: 'wood',  label: 'Wood',  swatch: 'bg-[#8B5E3C]' },
+                      { id: 'none',  label: 'None',  swatch: 'bg-secondary-100 border border-dashed border-secondary-300' },
+                    ] as const).map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        disabled={running}
+                        onClick={() => setParams(prev => ({ ...prev, platingColour: option.id as PlatingColour }))}
+                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                          params.platingColour === option.id
+                            ? 'border-[#01B3BF] bg-[#01B3BF]/5'
+                            : 'border-secondary-100 hover:border-secondary-200'
+                        } ${running ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <div className={`w-8 h-8 rounded-full ${option.swatch} shadow-sm`} />
+                        <span className="text-[10px] font-bold text-secondary-600 uppercase tracking-wider">{option.label}</span>
+                      </button>
+                    ))}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Presentation</label>
-                    <select className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm" value={advancedParams.presentation || 'white_plate'} onChange={(e) => setAdvancedParams(prev => ({ ...prev, presentation: e.target.value as any }))} disabled={running}>
-                      <option value="white_plate">White plate</option>
-                      <option value="wooden_board">Wooden board</option>
-                      <option value="overhead">Overhead</option>
-                      <option value="closeup">Close-up</option>
-                      <option value="bokeh">Shallow focus (Bokeh)</option>
-                      <option value="none">None / Use Reference</option>
-                    </select>
-                  </div>
+                  <p className="text-[10px] text-secondary-400 mt-2">
+                    {params.platingColour === 'none'
+                      ? 'No plate specified — dish will be presented without a defined plate.'
+                      : params.platingColour === 'black'
+                        ? 'Black plate — light marble surface for contrast.'
+                        : params.platingColour === 'wood'
+                          ? 'Wooden board — rustic serving board presentation.'
+                          : `${params.platingColour === 'white' ? 'White' : 'Beige'} plate — dark slate surface for contrast.`
+                    }
+                  </p>
                 </div>
 
-                {advancedParams.presentation === 'none' && referenceImages.length === 0 && (
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-md mt-3">
-                    <div className="flex gap-2">
-                      <svg className="h-5 w-5 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="text-xs text-blue-700">
-                        Please add a reference photo below to use this setting, or choose a presentation style above.
-                      </p>
+                {/* Resolution */}
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 pr-4">
+                    <h4 className="text-xs font-bold text-secondary-700 uppercase tracking-wider">Resolution</h4>
+                    <p className="text-[10px] text-secondary-400 font-medium mt-1">
+                      {params.resolution === '4k' ? 'Ultra-high definition (4K) enabled' : 'High-definition (1K) output'}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex bg-secondary-100 p-1 rounded-xl">
+                      {(['1k', '4k'] as const).map((res) => {
+                        const is4k = res === '4k'
+                        const isLocked = is4k && quota?.plan === 'free'
+                        return (
+                          <button
+                            key={res}
+                            disabled={isLocked || running}
+                            onClick={() => setParams(prev => ({ ...prev, resolution: res }))}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                              params.resolution === res
+                                ? 'bg-white text-secondary-900 shadow-sm'
+                                : isLocked
+                                  ? 'text-secondary-300 cursor-not-allowed'
+                                  : 'text-secondary-400 hover:text-secondary-600'
+                            }`}
+                          >
+                            {res.toUpperCase()}
+                            {isLocked && <Zap className="w-3 h-3 fill-secondary-300 text-secondary-300" />}
+                          </button>
+                        )
+                      })}
                     </div>
+                    {quota?.plan === 'free' && (
+                      <Link href="/pricing" className="text-[9px] text-secondary-400 font-bold uppercase tracking-tight hover:text-secondary-600 transition-colors">
+                        Upgrade for <span className="text-[#F8BC02]">4K Resolution</span>
+                      </Link>
+                    )}
                   </div>
-                )}
+                </div>
 
-                <div className="border-t border-gray-200 pt-4 mt-4">
+                {/* Reference Photos */}
+                <div className="border-t border-gray-200 pt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Reference Photos ({referenceImages.length}/3)</label>
+                    <h4 className="text-xs font-bold text-secondary-700 uppercase tracking-wider">Reference Photos ({referenceImages.length}/3)</h4>
                     {referenceImages.length < 3 && (
                       <div className="relative">
-                        <input type="file" accept="image/png,image/jpeg,image/webp" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={async (e) => {
-                          const file = e.target.files?.[0]
-                          if (!file) return
-                          if (file.size > 7 * 1024 * 1024) { showToast({ type: 'error', title: 'File too large', description: 'Max size is 7MB' }); return }
-                          const reader = new FileReader()
-                          reader.onload = () => {
-                            setReferenceImages(prev => [...prev, { id: `upload_${Date.now()}`, dataUrl: reader.result as string, name: file.name, comment: '', role: 'scene' }])
-                            setAdvancedParams(prev => ({ ...prev, presentation: 'none' }))
-                          }
-                          reader.readAsDataURL(file)
-                        }} />
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            if (file.size > 7 * 1024 * 1024) { showToast({ type: 'error', title: 'File too large', description: 'Max size is 7MB' }); return }
+                            const reader = new FileReader()
+                            reader.onload = () => {
+                              setReferenceImages(prev => [...prev, { id: `upload_${Date.now()}`, dataUrl: reader.result as string, name: file.name, comment: '', role: 'scene' }])
+                            }
+                            reader.readAsDataURL(file)
+                          }}
+                        />
                         <UXButton variant="outline" size="sm" className="text-xs">Add Photo</UXButton>
                       </div>
                     )}
@@ -357,7 +388,12 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
                             </div>
                             <div className="flex-1 flex flex-col justify-between gap-2">
                               <div className="flex items-center justify-between gap-2">
-                                <select value={ref.role} onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, role: e.target.value } : r))} className="text-[10px] px-2 py-1 border border-gray-200 rounded bg-white font-medium text-gray-700 w-full sm:w-auto" disabled={running}>
+                                <select
+                                  value={ref.role}
+                                  onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, role: e.target.value } : r))}
+                                  className="text-[10px] px-2 py-1 border border-gray-200 rounded bg-white font-medium text-gray-700 w-full sm:w-auto"
+                                  disabled={running}
+                                >
                                   <option value="dish">Dish / Subject</option>
                                   <option value="scene">Table / Scene</option>
                                   <option value="style">Style / Lighting</option>
@@ -366,7 +402,14 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
                                 </select>
                                 <button onClick={() => setReferenceImages(prev => prev.filter(r => r.id !== ref.id))} className="text-[10px] text-red-500 hover:text-red-700 font-medium uppercase sm:hidden" disabled={running}>Remove</button>
                               </div>
-                              <textarea placeholder="e.g., use this plate, match the lighting, remove herbs" value={ref.comment} onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, comment: e.target.value } : r))} className="w-full text-xs p-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-ux-primary focus:border-ux-primary resize-none bg-white/80" rows={1} disabled={running} />
+                              <textarea
+                                placeholder="e.g., use this plate, match the lighting, remove herbs"
+                                value={ref.comment}
+                                onChange={(e) => setReferenceImages(prev => prev.map(r => r.id === ref.id ? { ...r, comment: e.target.value } : r))}
+                                className="w-full text-xs p-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-ux-primary focus:border-ux-primary resize-none bg-white/80"
+                                rows={1}
+                                disabled={running}
+                              />
                               <div className="hidden sm:flex justify-end">
                                 <button onClick={() => setReferenceImages(prev => prev.filter(r => r.id !== ref.id))} className="text-[10px] text-red-500 hover:text-red-700 font-medium uppercase tracking-wider transition-colors" disabled={running}>Remove</button>
                               </div>
@@ -377,13 +420,14 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
                     </div>
                   ) : (
                     <div className="text-center py-6 border-2 border-dashed border-gray-200 rounded-lg">
-                      <p className="text-xs text-gray-400">No reference photos added.<br/>Upload one to guide the generation.</p>
+                      <p className="text-xs text-gray-400">No reference photos added.<br />Upload one to guide the generation.</p>
                     </div>
                   )}
                 </div>
+
               </div>
             )}
-          </div>
+          </section>
 
           {/* Item list and progress */}
           <div className="mb-6">
@@ -398,10 +442,10 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
                       <div className="truncate text-sm text-gray-900" title={it.name}>{it.name}</div>
                     </div>
                     <div className="text-xs">
-                      {status === 'queued' && <span className="text-gray-500">Queued</span>}
-                      {status === 'processing' && <span className="text-blue-600">Processing…</span>}
-                      {status === 'completed' && <span className="text-green-600">Completed</span>}
-                      {status === 'failed' && <span className="text-red-600">Failed</span>}
+                      {status === 'queued'      && <span className="text-gray-500">Queued</span>}
+                      {status === 'processing'  && <span className="text-blue-600">Processing…</span>}
+                      {status === 'completed'   && <span className="text-green-600">Completed</span>}
+                      {status === 'failed'      && <span className="text-red-600">Failed</span>}
                     </div>
                   </div>
                 )
@@ -414,13 +458,12 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
             <div className="mb-4 p-3 bg-gray-50 rounded">
               <div className="text-sm text-gray-800">
                 Completed {completedCount}/{total}.{' '}
-                {failedCount > 0 ? (
-                  <span className="text-red-600">Failed {failedCount}.</span>
-                ) : (
-                  <span className="text-green-600">All succeeded.</span>
-                )}
+                {failedCount > 0
+                  ? <span className="text-red-600">Failed {failedCount}.</span>
+                  : <span className="text-green-600">All succeeded.</span>
+                }
               </div>
-              {failedCount > 0 && results.filter(r => r.status === 'failed').length > 0 && (
+              {failedCount > 0 && (
                 <div className="mt-2 space-y-1">
                   {results.filter(r => r.status === 'failed').map(r => {
                     const item = itemsToProcess.find(it => it.id === r.itemId)
@@ -436,17 +479,19 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
             </div>
           )}
 
+          {/* Quota */}
+          <div className="mb-4 flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${quota ? 'bg-[#01B3BF]' : 'bg-secondary-300'}`} />
+            <p className="text-[10px] text-secondary-500 uppercase font-bold tracking-widest">
+              {quota ? `${quota.remaining} generations remaining` : 'Syncing quota...'}
+            </p>
+          </div>
+
           {/* Actions */}
           <div className="flex gap-3">
             <UXButton variant="outline" onClick={onClose} disabled={running} className="flex-1">Close</UXButton>
             {results && failedCount > 0 ? (
-              <UXButton
-                variant="primary"
-                onClick={retryFailed}
-                loading={running}
-                disabled={running}
-                className="flex-1"
-              >
+              <UXButton variant="primary" onClick={retryFailed} loading={running} disabled={running} className="flex-1">
                 Retry Failed ({failedCount})
               </UXButton>
             ) : (
@@ -454,13 +499,14 @@ export default function BatchAIImageGeneration({ menuId, items, onClose, onItemI
                 variant="primary"
                 onClick={startBatch}
                 loading={running}
-                disabled={running || !!results || (advancedParams.presentation === 'none' && referenceImages.length === 0)}
+                disabled={running || !!results}
                 className="flex-1"
               >
                 {results ? 'Batch Completed' : (running ? 'Creating…' : 'Create Photos')}
               </UXButton>
             )}
           </div>
+
         </div>
       </div>
     </div>,
