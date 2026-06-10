@@ -1,18 +1,27 @@
 # Roadmap
 
-## /template
+- [ ] Supabase "On May 30, 2026, new Supabase projects won't expose tables in the "public" schema to the Data API by default"
+- [ ] Still seem to be able to edit menu items and design after expiry (test with local user onlyclem@hotmail.com).  Maybe this is fine IF no edits have occurred and we can send a chaser email instead.
 
 ## SEO optimisation
-- [ ] Identify backlinks sites for SEO
-- [ ] "Best menu design for restaurant" Starter Story April 26 "I Make $17k/Month With One Strategy"
+- [ ] "How to design a restaurant menu" Starter Story Build May 26 "How to Get 1,000 Downloads On Your App in 30 Days (From Scratch)"
 
 ## /extracted
-- [ ] Advanced options: change plate colour (white, beige, black, none)
-- [ ] Investigate why plate is not always plain
-- [ ] Advanced options: add tags, e.g. Serving type: "Slice"
+- [x] If user uploads a menu photo and sample items exist - add a checked checkbox (clearly labelled) "Delete sample items" (and only delete the sample items once new items are extracted and created from the upload.
+- [x] Advanced options: change plate colour (white, beige, black, none)
 - [ ] Advanced options: additional free text description
-- [ ] Investigate double mention of "match the perspective" in prompt
-- [ ] I would expect to see something that talks about the theme of the restaurant in the prompt, I don't currently.
+- [ ] Advanced options: detect item name and/or category to offer serving type and vessel, e.g. "slice"/"whole" and "wooden board"/"plate"
+- [ ] Help icons for advanced options
+- [ ] Prompt review: Why are we not using JSON key/value structure?
+- [ ] Prompt review: "Presented as a whole or sliced pizza" in prompt
+- [ ] Prompt review: Investigate double mention of "match the perspective" in prompt (when users supply a background image)
+- [ ] Prompt review: The theme of the restaurant doesn't appear to be included currently.
+- [ ] Prompt review: Investigate why plate is not always plain in some examples.  Perhaps need to be more specific about no markings.
+- [ ] Add section notes (check Vienna original for ref.)
+- [ ] Add menu items notes (e.g. "ask to add level 49 spicy")
+
+## Bugs
+- [ ] Why is cutout worker still appearing in Vercel logs?
 
 ## Structural / Architectural
 - [ ] Quantity or sized pricing, e.g. S/M/L, 1/2/5/Box, 12"/18" pizza, etc.
@@ -23,11 +32,15 @@
 - [ ] Openclaw initial setup
 
 ## misc
-- [ ] Remove the word "Pilot" from emails
 - [ ] Explore MCP, e.g. Stripe MCP, Figma, Zapier, etc.
+- [ ] Scrape branding from user website
+- [ ] Allow paid users to host on GridMenu (or safe area that has permanent availability if this is risky)
+- [ ] Instant translations
 
 ## /template
-- [ ] Advice for print, e.g. use glossy, silk or satin laminated card for darks/blacks, or gentle transitions, low opacity for subtle Textures/Gradients
+- [ ] Display Option to omit currency symbol
+- [ ] Menu title is at risk of entering bleed area
+- [ ] Advice for print, e.g. "Full bleed guidelines", when to use glossy vs matte
 - [ ] Add whatsapp option to contact details
 
 ## Deployment
@@ -51,6 +64,7 @@
 - [ ] Image style "Background".  If no image for menu item, text is unreadable
 - [ ] Image style "Background".  Text is too small and sits too close to "House Special" for flagship items
 - [ ] Image style "None", we lost the star icon to replace "Popular" sticker on featured items
+- [ ] Browser dark mode overriding menu preview?  See PostHog Columbia user 20/05/26
 
 ## "What's New?" page
 - [ ] "What's New?" page
@@ -101,8 +115,6 @@
 
 ## /extracted
 - [ ] Copy items between menus in same account
-- [ ] Add section notes (check Vienna original for ref.)
-- [ ] Add menu items notes (e.g. "ask to add level 49 spicy)
 - [ ] Single price for all items in a category (+ new category price tile) (can also allow for sets?)
 - [ ] Sometimes not enough space for menu item description.  We need to warn user about or limit the characters for menu item creation.
 - [ ] "Enhance this image" feature#
@@ -271,6 +283,7 @@
 - [x] Decouple non-structural template changes from API call
 - [x] Item name label for flagship item in banner
 - [x] Reset button on demo doesn't work for Banner and Font Style controls
+- [x] Make flagship photo gen. mandatory
 
 ### GridMenu V2 Layout Engine
 - [x] Complete V2 architecture implementation
@@ -402,11 +415,12 @@
 - [x] Consider design impact (V2 renders indicators within item tiles using INLINE mode)
 - [x] Implement (V2 has full ItemIndicatorsV2 support with configurable rendering modes)
 
-## Misc.
+## misc.
 - [x] Updates FAQ with battle card Qs
 - [x] Footer should use real social media handles (with icons)
 - [x] Advanced menu options: Currency selection
-- [x] Free plan is allowing as many images as I like!!!
+- [x] Remove the word "Pilot" from emails
+- [x] Periodic pulsing/bulging customise button.  Also - switch to yellow (it gets lost in the footer when users scroll down)
 
 ## SEO optimisation
 - [x] Update content keywords "QR menu,digital menu,restaurant menu,mobile menu,QR code menu"
@@ -416,6 +430,8 @@
 - [x] Ensure image file names are relevant to search
 - [x] Ensure image file alt text are relevant to search (be descriptive, and avoid keyword stuffing)
 - [x] Use Open Graph (OG) meta tags for social media sharing
+- [x] Identify and post backlinks sites for SEO (Product Hunt, betalist, Crunchbase, AlternativeTo)
+- [x] "Best menu design for restaurant" Starter Story April 26 "I Make $17k/Month With One Strategy"
 
 ## Market awareness
 - [x] Create Facebook page (https://www.facebook.com/gridmenu/)
