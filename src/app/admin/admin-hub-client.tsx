@@ -123,6 +123,13 @@ export function AdminHubClient() {
                   </a>
                   <hr className="my-1 border-gray-200" />
                   <a
+                    href="/admin/photo-control"
+                    className="block px-4 py-2 text-sm text-green-700 font-semibold hover:bg-green-50"
+                  >
+                    Photo Control (Food Editor)
+                  </a>
+                  <hr className="my-1 border-gray-200" />
+                  <a
                     href="/admin/placeholder-images"
                     className="block px-4 py-2 text-sm text-amber-700 font-semibold hover:bg-amber-50"
                   >

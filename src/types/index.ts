@@ -708,6 +708,11 @@ export interface NanoBananaParams {
    * Optional image size (e.g., "1K", "2K", "4K"). Used by Gemini 3 Pro.
    */
   image_size?: string
+  /**
+   * Optional thinking level for reasoning-driven models.
+   * "high" or "dynamic" forces deeper spatial reasoning.
+   */
+  thinking_level?: 'high' | 'dynamic' | 'standard'
 }
 
 export interface GenerationQuota {

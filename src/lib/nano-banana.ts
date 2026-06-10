@@ -230,13 +230,17 @@ export class NanoBananaClient {
       }
 
       // Gemini 3.1 Flash Image uses a different request structure than standard Gemini Pro
-      const generationConfig = {
+      const generationConfig: any = {
         candidateCount,
         responseModalities: ['IMAGE'],
         imageConfig: {
           aspectRatio: requestParams.aspect_ratio || '1:1',
           imageSize: requestParams.image_size || '1k'
         }
+      }
+
+      if (requestParams.thinking_level) {
+        generationConfig.thinkingLevel = requestParams.thinking_level.toUpperCase()
       }
 
       const requestBody: any = {
