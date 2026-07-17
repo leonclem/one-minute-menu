@@ -1138,3 +1138,32 @@ The MVP should be judged against one core question:
 
 If yes, GridMenu has a stronger and simpler product wedge than the original menu-builder-first proposition.
 
+---
+
+## 16. Addendum — 17 July 2026 (in-repo additions)
+
+Requirements added after the original document was produced. Tracked in `PIVOT_TRACKER.md` like
+all other sections.
+
+### 16.1 Supplementary page review
+
+All supplementary/ancillary pages must be reviewed for relevancy, accuracy, and tone against the
+new Photo Studio positioning, and updated or retired accordingly:
+
+- Settings
+- Support
+- Pricing
+- Privacy Policy
+- Terms of Service
+- Contact Us
+
+Considerations:
+
+- Copy referring to menus, restaurateurs, or menu-builder plans may need rewording or removal.
+- Pricing page depends on the credits/packaging decisions in §8 and should be revisited alongside
+  Phase 5.
+- Legal pages (Privacy, Terms) must reflect AI image generation, upload of user photographs, and
+  watermarking behaviour.
+- Timing: after the Photo Studio surface exists (Phase 1+), before any public/beta launch
+  (Phase 6 at the latest).
+

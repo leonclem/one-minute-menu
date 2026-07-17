@@ -25,7 +25,11 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-17 | Pro model credit cost (Q8) | Model-dependent: NB Pro should consume more credits than NB2 since it costs GridMenu more. |
 | 2026-07-17 | Existing subscribers (Q9) | Irrelevant — no current subscribers. Blank canvas. |
 | 2026-07-17 | Menu export visibility (Q10) | Keep, but as a low-visibility secondary offering. |
-| 2026-07-17 | Git workflow (§9.2) | Deviation from doc: instead of one long-lived pivot branch, use short-lived chunk branches off `main`, merged quickly behind feature flags (trunk-based). Rationale: no production users to protect, and long-lived branches are harder to merge and riskier for a developer newer to branching. |
+| 2026-07-17 | Git workflow (§9.2) | Deviation from doc: instead of one long-lived pivot branch, use short-lived chunk branches off `main`, merged quickly behind feature flags (trunk-based). Rationale: no production users to protect, and long-lived branches are harder to merge and riskier for a developer newer to branching. Confirmed by LC. Full workflow: `docs/pivot/GIT_WORKFLOW.md`. |
+| 2026-07-17 | Branch naming | `studio/chunk-NN-<slug>` (avoids "pivot" label ageing badly; branch names are ephemeral anyway). Chunk 1 branch renamed accordingly. |
+| 2026-07-17 | Deployment | `main` does not auto-deploy (confirmed: `vercel.json` disables it). Production deploys are manual by LC once testing/build are green — checklist in `docs/pivot/GIT_WORKFLOW.md`. |
+| 2026-07-17 | Tracker enforcement | Cursor rule `.cursor/rules/pivot-tracker.mdc` instructs the agent to update this tracker in the same commit as related work, log deviations, and guide git operations per the workflow doc. |
+| 2026-07-17 | Supplementary pages | New requirement added as §16.1 addendum to the requirements doc: review Settings, Support, Pricing, Privacy, Terms, Contact Us for relevancy to the new positioning before public/beta launch. |
 
 ---
 
@@ -69,10 +73,16 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | Ref | Requirement | Status | Notes |
 |---|---|---|---|
 | 9.1 | Reuse existing repo | Built | Confirmed; no new repo. |
-| 9.2 | Pivot branch workflow | Deviation | See decisions log 2026-07-17: chunk branches off `main` instead of one long-lived branch. |
+| 9.2 | Pivot branch workflow | Deviation | See decisions log 2026-07-17: chunk branches off `main` instead of one long-lived branch. Workflow doc: `docs/pivot/GIT_WORKFLOW.md`. |
 | 9.3 | Feature flags (product mode, legacy menus, etc.) | Not started | Chunk 1. Env-var based, matching existing `NEXT_PUBLIC_*` pattern. |
 | 9.4 | Route group structure | Not started | Existing app is not route-grouped as in doc; adopt incrementally rather than restructure up front (likely deviation — record when decided). |
 | 9.5 | Migrate admin sandbox to FOH | Not started | Chunk 2. |
+
+### Addendum requirements (§16)
+
+| Ref | Requirement | Phase | Status | Notes |
+|---|---|---|---|---|
+| 16.1 | Review supplementary pages (Settings, Support, Pricing, Privacy, Terms, Contact Us) for new positioning | 1–6 | Not started | Added 2026-07-17. Legal pages must cover AI generation, photo uploads, watermarking. Complete before public/beta launch. |
 
 ### Development phases (§10)
 
@@ -93,5 +103,5 @@ Subject to change; record changes as new dated rows rather than editing old ones
 
 | Chunk | Scope | Branch | Status |
 |---|---|---|---|
-| 1 | Phase 0: pivot docs, feature flags, hide legacy nav, verify + document generation pipeline | `pivot/photo-studio-mvp` | In progress — see `docs/pivot/BUILD_PLAN_CHUNK_01.md` |
-| 2 | Phase 1: customer-facing `/studio` shell with persistence | TBD | Planned |
+| 1 | Phase 0: pivot docs, feature flags, hide legacy nav, verify + document generation pipeline | `studio/chunk-01-foundations` | In progress — see `docs/pivot/BUILD_PLAN_CHUNK_01.md` |
+| 2 | Phase 1: customer-facing `/studio` shell with persistence | `studio/chunk-02-studio-shell` | Planned |
