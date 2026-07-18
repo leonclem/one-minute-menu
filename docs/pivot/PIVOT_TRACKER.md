@@ -32,6 +32,10 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-17 | Supplementary pages | New requirement added as §16.1 addendum to the requirements doc: review Settings, Support, Pricing, Privacy, Terms, Contact Us for relevancy to the new positioning before public/beta launch. |
 | 2026-07-17 | Feature flags scope (§9.3) | Deviation from doc: omit `NEXT_PUBLIC_ENABLE_EXPERIMENTAL_CAMERA` and `NEXT_PUBLIC_ENABLE_PLATING_SWAP` until those features exist (avoid dead config). |
 | 2026-07-17 | Marketing CTAs | Follow-up: homepage / marketing CTAs left unchanged in Chunk 1; revisit with landing-page decision (Q2). |
+| 2026-07-18 | Studio persistence (§7.2) | Deviation / deferral: Chunk 2 ships minimal `studio_images` table only; full projects/dishes/image_assets model deferred to Chunk 3. |
+| 2026-07-18 | Studio landing | Chunk 2 adds Studio to primary nav when flag enabled; post-login landing remains dashboard/onboarding (nav-only). |
+| 2026-07-18 | Studio FOH controls | First shell omits camera/composition section and model selector; lighting + garnish/sides + staged changes only. |
+| 2026-07-18 | Pre-credits cost guard | `STUDIO_DAILY_GENERATION_LIMIT` (default 25) gates `/api/studio/mutate` until Phase 5 credits. |
 
 ---
 
@@ -41,25 +45,25 @@ Subject to change; record changes as new dated rows rather than editing old ones
 
 | Ref | Requirement | Status | Notes |
 |---|---|---|---|
-| 5.1 | User controls, not prompt boxes | Not started | Sandbox already control-based; FOH surface pending. |
+| 5.1 | User controls, not prompt boxes | Built | `/studio` uses lighting + garnish/sides controls; no prompt box. |
 | 5.2 | Preserve the dish (identity lock defaults) | Not started | Partially exists in photo-control prompt composer; needs review against §5.2 list. |
-| 5.3 | Stage changes before generation (max 3, summary, reset) | Not started | Pending-changes concept exists in sandbox. |
+| 5.3 | Stage changes before generation (max 3, summary, reset) | Built | Pending-changes panel + max 3 in `/studio` (same engine as sandbox). |
 | 5.4 | MVP prioritises reliable transformations | Not started | Governs control selection in Chunks 2+. |
 
 ### MVP features (§7)
 
 | Ref | Requirement | Phase | Status | Notes |
 |---|---|---|---|---|
-| 7.1 | Customer-facing `/studio` route | 1 | Not started | Chunk 2 (planned). Legacy menu nav hide (part of §7.1 AC) done in Chunk 1 via flags. |
-| 7.2 | Project/dish/image data model | 2 | Not started | Minimal `image_assets`-style persistence may land early in Chunk 2 to satisfy §14 "saved against the user". |
-| 7.3 | Image library per dish | 2 | Not started | |
-| 7.4 | Lighting manipulation (6 styles + reference library) | 1/3 | Not started | Sandbox has Bright & Airy + Low-Key only. |
+| 7.1 | Customer-facing `/studio` route | 1 | Built | Flag-gated; nav link via `shouldShowStudioNav`. |
+| 7.2 | Project/dish/image data model | 2 | Deviation | Minimal `studio_images` only in Chunk 2; full model deferred to Chunk 3. |
+| 7.3 | Image library per dish | 2 | Not started | Chunk 2 has a flat recent-generations gallery (not per-dish). |
+| 7.4 | Lighting manipulation (6 styles + reference library) | 1/3 | In progress | FOH has Bright & Airy + Low-Key; reference library later. |
 | 7.5 | Background/surface swapping + library | 3 | Not started | |
 | 7.6 | Plating/vessel style library | 7 | Deferred | Admin-only/experimental per doc. |
-| 7.7 | Dish element manipulation (garnish/sides/clutter) | 1 | Not started | Garnish/sides exist in sandbox; clutter removal new. |
-| 7.8 | Rotation & composition controls (replace camera pitch) | 1 | Not started | Eye-Level to be removed from FOH / kept admin-only. |
+| 7.7 | Dish element manipulation (garnish/sides/clutter) | 1 | In progress | Garnish/sides in FOH; clutter removal still pending. |
+| 7.8 | Rotation & composition controls (replace camera pitch) | 1 | Not started | Omitted from first FOH shell; camera remains admin-only. |
 | 7.9 | Output packs | Post-MVP | Deferred | One output at a time first. |
-| 7.10 | Model selection (admin-visible only) | 1 | Not started | Friendly quality names for customers if exposed at all. |
+| 7.10 | Model selection (admin-visible only) | 1 | Built | FOH fixed to NB2/Flash; admin sandbox retains model selector. |
 
 ### Pricing & credits (§8)
 
@@ -78,7 +82,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 9.2 | Pivot branch workflow | Deviation | See decisions log 2026-07-17: chunk branches off `main` instead of one long-lived branch. Workflow doc: `docs/pivot/GIT_WORKFLOW.md`. |
 | 9.3 | Feature flags (product mode, legacy menus, etc.) | Built | `src/lib/product-mode.ts`. Env vars in `env.example`. Experimental camera / plating flags deferred until features exist. |
 | 9.4 | Route group structure | Not started | Existing app is not route-grouped as in doc; adopt incrementally rather than restructure up front (likely deviation — record when decided). |
-| 9.5 | Migrate admin sandbox to FOH | Not started | Chunk 2. |
+| 9.5 | Migrate admin sandbox to FOH | Built | Partial: customer `/studio` reuses photo-control lib; admin sandbox retained. |
 
 ### Addendum requirements (§16)
 
@@ -91,7 +95,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | Phase | Goal | Status | Chunk |
 |---|---|---|---|
 | 0 | Safety & setup (branch, flags, hide legacy nav, verify pipeline, document it) | Built | Chunk 1 — live Photo Control smoke check still manual (see `IMAGE_PIPELINE_NOTES.md`) |
-| 1 | Customer-facing Photo Studio shell | Not started | Chunk 2 (planned) |
+| 1 | Customer-facing Photo Studio shell | Built | Chunk 2 — `/studio` + `studio_images` persistence |
 | 2 | Image library per dish | Not started | |
 | 3 | Background & lighting reference libraries | Not started | |
 | 4 | Controlled prompt/state layer | Not started | Partially exists in `src/lib/photo-control/` (JSON state, delta, composer). |
@@ -106,4 +110,4 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | Chunk | Scope | Branch | Status |
 |---|---|---|---|
 | 1 | Phase 0: pivot docs, feature flags, hide legacy nav, verify + document generation pipeline | `studio/chunk-01-foundations` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_01.md` |
-| 2 | Phase 1: customer-facing `/studio` shell with persistence | `studio/chunk-02-studio-shell` | Planned |
+| 2 | Phase 1: customer-facing `/studio` shell with persistence | `studio/chunk-02-studio-shell` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_02.md` |

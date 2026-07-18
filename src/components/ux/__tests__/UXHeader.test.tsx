@@ -33,15 +33,18 @@ jest.mock('@/lib/dashboard-refresh', () => ({
 }))
 
 const mockShouldShowLegacyMenuNav = jest.fn()
+const mockShouldShowStudioNav = jest.fn()
 
 jest.mock('@/lib/product-mode', () => ({
   shouldShowLegacyMenuNav: () => mockShouldShowLegacyMenuNav(),
+  shouldShowStudioNav: () => mockShouldShowStudioNav(),
 }))
 
 describe('UXHeader', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockShouldShowLegacyMenuNav.mockReturnValue(true)
+    mockShouldShowStudioNav.mockReturnValue(false)
   })
 
   it('shows Dashboard for signed-in users when legacy menu nav is enabled', () => {
@@ -62,6 +65,22 @@ describe('UXHeader', () => {
     expect(screen.getAllByRole('link', { name: 'Settings' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('link', { name: 'Support' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('button', { name: 'Sign out' }).length).toBeGreaterThan(0)
+  })
+
+  it('shows Studio when studio nav is enabled', () => {
+    mockShouldShowStudioNav.mockReturnValue(true)
+
+    render(<UXHeader userEmail="user@example.com" />)
+
+    expect(screen.getAllByRole('link', { name: 'Studio' }).length).toBeGreaterThan(0)
+  })
+
+  it('hides Studio when studio nav is disabled', () => {
+    mockShouldShowStudioNav.mockReturnValue(false)
+
+    render(<UXHeader userEmail="user@example.com" />)
+
+    expect(screen.queryByRole('link', { name: 'Studio' })).not.toBeInTheDocument()
   })
 
   it('does not show Dashboard for signed-out users regardless of flag', () => {

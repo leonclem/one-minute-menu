@@ -117,4 +117,17 @@ describe('product-mode', () => {
       expect(shouldShowLegacyMenuNav()).toBe(true)
     })
   })
+
+  describe('shouldShowStudioNav', () => {
+    it('hides Studio by default', async () => {
+      const { shouldShowStudioNav } = await loadModule()
+      expect(shouldShowStudioNav()).toBe(false)
+    })
+
+    it('shows Studio when photo studio is enabled', async () => {
+      process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
+      const { shouldShowStudioNav } = await loadModule()
+      expect(shouldShowStudioNav()).toBe(true)
+    })
+  })
 })

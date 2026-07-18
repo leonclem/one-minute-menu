@@ -40,3 +40,11 @@ export function isLegacyMenusEnabled(): boolean {
 export function shouldShowLegacyMenuNav(): boolean {
   return !(getProductMode() === 'photo-studio' && !isLegacyMenusEnabled())
 }
+
+/**
+ * Whether primary nav should show the Studio link.
+ * Shown when the Photo Studio feature flag is enabled.
+ */
+export function shouldShowStudioNav(): boolean {
+  return isPhotoStudioEnabled()
+}

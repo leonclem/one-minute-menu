@@ -51,6 +51,12 @@
     },
     "src/app/api/admin/cutout-worker/route.ts": {
       "maxDuration": 120
+    },
+    "src/app/api/studio/extract/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/studio/mutate/route.ts": {
+      "maxDuration": 120
     }
   }
 }

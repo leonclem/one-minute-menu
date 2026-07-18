@@ -1,34 +1,36 @@
 /**
- * Photo Control — Phase B Mutation Route
+ * Photo Studio — Phase B Mutation Route (customer-facing)
  *
- * POST /api/admin/photo-control/mutate
+ * POST /api/studio/mutate
  *
- * Accepts a source image data URL, original/target MinimalSchema states, and a
- * directive. Composes the mutation prompt via `composePrompt`, dispatches to
- * `MutationEngine`, and returns the mutated image as a data URL.
- *
- * Requirements: 10.2, 10.3, 10.4, 10.5, 10.6, 13.1, 13.2, 13.3,
- *               14.1, 14.2, 14.3, 14.4, 16.2, 16.3
+ * Generates via MutationEngine (fixed standard model), persists the output to
+ * studio_images + storage, and returns the public URL.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdminApi } from '@/lib/admin-api-auth'
+import { requireUserApi } from '@/lib/user-api-auth'
 import { NanoBananaError } from '@/lib/nano-banana'
 import { getMutationEngine } from '@/lib/photo-control/mutation-engine'
 import { composePrompt } from '@/lib/photo-control/prompt-composer'
 import { parseAndValidateImageDataUrl } from '@/lib/photo-control/request-validation'
 import type { MinimalSchema } from '@/lib/photo-control/minimal-schema'
+import {
+  countTodayGeneratedStudioImages,
+  getStudioDailyGenerationLimit,
+  persistStudioImage,
+} from '@/lib/studio/persistence'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
+export const maxDuration = 120
+
+const STUDIO_MODEL = 'gemini-3.1-flash-image-preview'
 
 export async function POST(request: NextRequest) {
   try {
-    // ── 1. Auth gate (Requirements 13.1, 13.2, 13.3) ─────────────────────────
-    const admin = await requireAdminApi()
-    if (!admin.ok) return admin.response
+    const auth = await requireUserApi()
+    if (!auth.ok) return auth.response
 
-    // ── 2. API key check (Requirement 14.4) ───────────────────────────────────
     if (!process.env.NANO_BANANA_API_KEY) {
       return NextResponse.json(
         { error: 'Gemini API key not configured' },
@@ -36,16 +38,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ── 3. Parse request body ─────────────────────────────────────────────────
+    const dailyLimit = getStudioDailyGenerationLimit()
+    const usedToday = await countTodayGeneratedStudioImages(auth.user.id)
+    if (usedToday >= dailyLimit) {
+      return NextResponse.json(
+        {
+          error: `Daily generation limit of ${dailyLimit} reached. Try again tomorrow.`,
+          code: 'STUDIO_DAILY_LIMIT',
+        },
+        { status: 429 },
+      )
+    }
+
     const body = (await request.json()) as {
       sourceImageDataUrl?: unknown
       originalState?: unknown
       targetState?: unknown
       directive?: unknown
-      model?: unknown
+      sourceImageId?: unknown
     }
 
-    const { sourceImageDataUrl, originalState, targetState, directive, model } = body
+    const { sourceImageDataUrl, originalState, targetState, directive, sourceImageId } = body
 
     if (typeof sourceImageDataUrl !== 'string' || !sourceImageDataUrl) {
       return NextResponse.json(
@@ -75,30 +88,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ── 4. Validate sourceImageDataUrl format ─────────────────────────────────
     const parsed = parseAndValidateImageDataUrl(sourceImageDataUrl, {
       fieldLabel: 'sourceImageDataUrl',
     })
     if (!parsed.ok) {
-      const error =
-        parsed.error === 'sourceImageDataUrl contains no data'
-          ? 'Source image data URL contains no data'
-          : parsed.error === 'Image exceeds the 7 MB size limit'
-            ? 'Source image exceeds the 7 MB size limit'
-            : parsed.error
-      return NextResponse.json({ error }, { status: 400 })
+      return NextResponse.json({ error: parsed.error }, { status: 400 })
     }
 
     const { mimeType, base64: sourceImageBase64, byteLength: imageBytes } = parsed
 
-    // ── 5. Compose the mutation prompt (Requirements 10.1, 10.6, 11.2, 16.1) ─
     const compositionResult = composePrompt({
       directive: directive.trim(),
       originalState: originalState as MinimalSchema,
       targetState: targetState as MinimalSchema,
     })
 
-    // ── 6. Handle composition failure → 400 (Requirement 10.6) ───────────────
     if (!compositionResult.ok) {
       return NextResponse.json(
         { error: compositionResult.error, code: compositionResult.code },
@@ -106,46 +110,53 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    logger.info('🎨 [Photo Control Mutate] Request', {
-      userId: admin.user.id,
+    logger.info('🎨 [Studio Mutate] Request', {
+      userId: auth.user.id,
       mimeType,
       imageBytes,
       promptLength: compositionResult.prompt.length,
+      usedToday,
+      dailyLimit,
     })
 
-    // ── 7. Dispatch to MutationEngine (Requirements 10.2, 10.3, 10.7) ────────
     const engine = getMutationEngine()
-    const targetModel = typeof model === 'string' ? model : 'gemini-3.1-flash-image-preview'
-
-    const { imageBase64, thoughtSignature } = await engine.mutate({
+    const { imageBase64 } = await engine.mutate({
       sourceImageBase64,
       mimeType,
       prompt: compositionResult.prompt,
-      model: targetModel,
+      model: STUDIO_MODEL,
     })
 
-    logger.info('✅ [Photo Control Mutate] Success', {
-      userId: admin.user.id,
-      model: targetModel,
-      hasThoughtSignature: !!thoughtSignature,
+    const record = await persistStudioImage({
+      userId: auth.user.id,
+      role: 'generated',
+      imageBase64,
+      mimeType: 'image/png',
+      sourceImageId: typeof sourceImageId === 'string' ? sourceImageId : null,
+      prompt: compositionResult.prompt,
+      model: STUDIO_MODEL,
+      metadata: {
+        directive: directive.trim(),
+      },
     })
 
-    // ── 8. Return mutated image as data URL (Requirements 10.4, 16.2, 16.3) ──
+    logger.info('✅ [Studio Mutate] Success', {
+      userId: auth.user.id,
+      imageId: record.id,
+      model: STUDIO_MODEL,
+    })
+
     return NextResponse.json({
-      imageUrl: `data:image/png;base64,${imageBase64}`,
-      thoughtSignature: thoughtSignature ?? undefined,
-      model: targetModel,
+      imageUrl: record.public_url,
+      imageId: record.id,
+      model: STUDIO_MODEL,
     })
   } catch (error) {
-    // ── 9. Map NanoBananaError codes to HTTP statuses ─────────────────────────
-    // Requirements: 14.1, 14.2, 14.3, 14.4
     if (error instanceof NanoBananaError) {
       let status: number
 
       switch (error.code) {
         case 'CONTENT_POLICY_VIOLATION':
-          status = 403
-          break
         case 'SAFETY_FILTER_BLOCKED':
           status = 403
           break
@@ -166,7 +177,7 @@ export async function POST(request: NextRequest) {
           break
       }
 
-      logger.warn('⚠️ [Photo Control Mutate] NanoBananaError', {
+      logger.warn('⚠️ [Studio Mutate] NanoBananaError', {
         code: error.code,
         status,
         message: error.message,
@@ -184,7 +195,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    logger.error('❌ [Photo Control Mutate] Internal error', { error })
+    logger.error('❌ [Studio Mutate] Internal error', { error })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

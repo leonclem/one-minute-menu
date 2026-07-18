@@ -21,9 +21,7 @@ import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
-import { Camera_Control } from '../Camera_Control'
-import { Lighting_Control } from '../Lighting_Control'
-import { Component_Control } from '../Component_Control'
+import { Camera_Control, Lighting_Control, Component_Control } from '@/components/photo-controls'
 import { Image_Viewer, type PhotoControlError } from '../Image_Viewer'
 
 // ── Camera_Control ────────────────────────────────────────────────────────────

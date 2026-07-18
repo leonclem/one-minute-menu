@@ -46,9 +46,7 @@ import {
 } from '@/lib/photo-control/minimal-schema'
 import { type MinimalValidationResult } from '@/lib/photo-control/schema-validator'
 
-import { Camera_Control } from './Camera_Control'
-import { Lighting_Control } from './Lighting_Control'
-import { Component_Control } from './Component_Control'
+import { Camera_Control, Lighting_Control, Component_Control } from '@/components/photo-controls'
 import { Image_Viewer, type PhotoControlError } from './Image_Viewer'
 
 // ── Types ─────────────────────────────────────────────────────────────────────

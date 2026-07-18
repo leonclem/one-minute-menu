@@ -1,31 +1,24 @@
 /**
- * Photo Control — Phase A Extraction Route
+ * Photo Studio — Phase A Extraction Route (customer-facing)
  *
- * POST /api/admin/photo-control/extract
- *
- * Accepts a source image as a data URL, calls `GeminiExtractionClient` to
- * extract the visual structure, validates the raw JSON through
- * `MinimalSchemaValidator`, and returns the coerced schema + warnings.
- *
- * Requirements: 2.5, 13.1, 13.2, 13.3, 14.4
+ * POST /api/studio/extract
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdminApi } from '@/lib/admin-api-auth'
+import { requireUserApi } from '@/lib/user-api-auth'
 import { GeminiExtractionClient, UnparseableExtractionResponseError } from '@/lib/photo-control/gemini-extraction-client'
 import { MinimalSchemaValidator } from '@/lib/photo-control/schema-validator'
 import { parseAndValidateImageDataUrl } from '@/lib/photo-control/request-validation'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
+export const maxDuration = 120
 
 export async function POST(request: NextRequest) {
   try {
-    // ── 1. Auth gate (Requirements 13.1, 13.2, 13.3) ─────────────────────────
-    const admin = await requireAdminApi()
-    if (!admin.ok) return admin.response
+    const auth = await requireUserApi()
+    if (!auth.ok) return auth.response
 
-    // ── 2. API key check (Requirement 14.4) ───────────────────────────────────
     if (!process.env.NANO_BANANA_API_KEY) {
       return NextResponse.json(
         { error: 'Gemini API key not configured' },
@@ -33,7 +26,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ── 3. Parse request body ─────────────────────────────────────────────────
     const body = (await request.json()) as { imageDataUrl?: unknown }
     const { imageDataUrl } = body
 
@@ -44,7 +36,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ── 4–5. Validate data URL format + size ──────────────────────────────────
     const parsed = parseAndValidateImageDataUrl(imageDataUrl, { fieldLabel: 'imageDataUrl' })
     if (!parsed.ok) {
       return NextResponse.json({ error: parsed.error }, { status: 400 })
@@ -52,32 +43,28 @@ export async function POST(request: NextRequest) {
 
     const { mimeType, base64: imageBase64, byteLength: imageBytes } = parsed
 
-    logger.info('📸 [Photo Control Extract] Request', {
-      userId: admin.user.id,
+    logger.info('📸 [Studio Extract] Request', {
+      userId: auth.user.id,
       mimeType,
       imageBytes,
     })
 
-    // ── 6. Call GeminiExtractionClient (Requirement 2.5) ─────────────────────
     const client = new GeminiExtractionClient()
     const { raw } = await client.extract({ imageBase64, mimeType })
 
-    // ── 7. Validate raw JSON through MinimalSchemaValidator (Requirement 2.5) ─
     const validator = new MinimalSchemaValidator()
     const { strictConformance, data, warnings } = validator.validate(raw)
 
-    logger.info('✅ [Photo Control Extract] Success', {
-      userId: admin.user.id,
+    logger.info('✅ [Studio Extract] Success', {
+      userId: auth.user.id,
       strictConformance,
       warningCount: warnings.length,
     })
 
-    // ── 8. Return validated result ────────────────────────────────────────────
     return NextResponse.json({ strictConformance, data, warnings })
   } catch (error) {
-    // ── 9. Handle unparseable extraction response → 502 ──────────────────────
     if (error instanceof UnparseableExtractionResponseError) {
-      logger.warn('⚠️ [Photo Control Extract] Unparseable extraction response', {
+      logger.warn('⚠️ [Studio Extract] Unparseable extraction response', {
         error: error.message,
       })
       return NextResponse.json(
@@ -86,7 +73,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    logger.error('❌ [Photo Control Extract] Internal error', { error })
+    logger.error('❌ [Studio Extract] Internal error', { error })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
