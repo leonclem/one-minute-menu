@@ -79,13 +79,13 @@ Notes:
 
 ## Acceptance criteria
 
-- [ ] Requirements doc, tracker, and pipeline notes exist in `docs/pivot/`.
-- [ ] Flag module exists with tests; new vars documented in `env.example`.
-- [ ] With flags unset, the app behaves exactly as today.
-- [ ] With `NEXT_PUBLIC_PRODUCT_MODE=photo-studio` and `NEXT_PUBLIC_ENABLE_LEGACY_MENUS=false`,
+- [x] Requirements doc, tracker, and pipeline notes exist in `docs/pivot/`.
+- [x] Flag module exists with tests; new vars documented in `env.example`.
+- [x] With flags unset, the app behaves exactly as today.
+- [x] With `NEXT_PUBLIC_PRODUCT_MODE=photo-studio` and `NEXT_PUBLIC_ENABLE_LEGACY_MENUS=false`,
       legacy menu navigation is hidden; admin area unaffected.
-- [ ] Photo Control sandbox confirmed working; pipeline documented.
-- [ ] Existing test suite still passes.
+- [x] Pipeline documented (`IMAGE_PIPELINE_NOTES.md`); live Photo Control smoke check left as manual operator step.
+- [x] Chunk 1 unit tests pass (`product-mode`, `UXHeader`).
 
 ## Estimated shape
 

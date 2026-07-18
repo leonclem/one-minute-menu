@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useState } from 'react'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
+import { shouldShowLegacyMenuNav } from '@/lib/product-mode'
 
 interface UXHeaderProps {
   userEmail?: string
@@ -12,11 +13,14 @@ interface UXHeaderProps {
 
 export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const showLegacyMenuNav = shouldShowLegacyMenuNav()
 
-  // Navigation items
+  // Navigation items. Dashboard is the primary menu-builder entry and is
+  // hidden when product mode is photo-studio with legacy menus disabled.
+  // Routes remain reachable by URL; Phase 0 only hides navigation.
   const navigationItems = userEmail
     ? [
-        { href: '/dashboard', label: 'Dashboard' },
+        ...(showLegacyMenuNav ? [{ href: '/dashboard', label: 'Dashboard' }] : []),
         ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
         { href: '/dashboard/settings', label: 'Settings' },
         { href: '/pricing', label: 'Pricing' },

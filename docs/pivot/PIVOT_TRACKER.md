@@ -30,6 +30,8 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-17 | Deployment | `main` does not auto-deploy (confirmed: `vercel.json` disables it). Production deploys are manual by LC once testing/build are green — checklist in `docs/pivot/GIT_WORKFLOW.md`. |
 | 2026-07-17 | Tracker enforcement | Cursor rule `.cursor/rules/pivot-tracker.mdc` instructs the agent to update this tracker in the same commit as related work, log deviations, and guide git operations per the workflow doc. |
 | 2026-07-17 | Supplementary pages | New requirement added as §16.1 addendum to the requirements doc: review Settings, Support, Pricing, Privacy, Terms, Contact Us for relevancy to the new positioning before public/beta launch. |
+| 2026-07-17 | Feature flags scope (§9.3) | Deviation from doc: omit `NEXT_PUBLIC_ENABLE_EXPERIMENTAL_CAMERA` and `NEXT_PUBLIC_ENABLE_PLATING_SWAP` until those features exist (avoid dead config). |
+| 2026-07-17 | Marketing CTAs | Follow-up: homepage / marketing CTAs left unchanged in Chunk 1; revisit with landing-page decision (Q2). |
 
 ---
 
@@ -48,7 +50,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 
 | Ref | Requirement | Phase | Status | Notes |
 |---|---|---|---|---|
-| 7.1 | Customer-facing `/studio` route | 1 | Not started | Chunk 2 (planned). |
+| 7.1 | Customer-facing `/studio` route | 1 | Not started | Chunk 2 (planned). Legacy menu nav hide (part of §7.1 AC) done in Chunk 1 via flags. |
 | 7.2 | Project/dish/image data model | 2 | Not started | Minimal `image_assets`-style persistence may land early in Chunk 2 to satisfy §14 "saved against the user". |
 | 7.3 | Image library per dish | 2 | Not started | |
 | 7.4 | Lighting manipulation (6 styles + reference library) | 1/3 | Not started | Sandbox has Bright & Airy + Low-Key only. |
@@ -74,7 +76,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 |---|---|---|---|
 | 9.1 | Reuse existing repo | Built | Confirmed; no new repo. |
 | 9.2 | Pivot branch workflow | Deviation | See decisions log 2026-07-17: chunk branches off `main` instead of one long-lived branch. Workflow doc: `docs/pivot/GIT_WORKFLOW.md`. |
-| 9.3 | Feature flags (product mode, legacy menus, etc.) | Not started | Chunk 1. Env-var based, matching existing `NEXT_PUBLIC_*` pattern. |
+| 9.3 | Feature flags (product mode, legacy menus, etc.) | Built | `src/lib/product-mode.ts`. Env vars in `env.example`. Experimental camera / plating flags deferred until features exist. |
 | 9.4 | Route group structure | Not started | Existing app is not route-grouped as in doc; adopt incrementally rather than restructure up front (likely deviation — record when decided). |
 | 9.5 | Migrate admin sandbox to FOH | Not started | Chunk 2. |
 
@@ -88,7 +90,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 
 | Phase | Goal | Status | Chunk |
 |---|---|---|---|
-| 0 | Safety & setup (branch, flags, hide legacy nav, verify pipeline, document it) | In progress | Chunk 1 |
+| 0 | Safety & setup (branch, flags, hide legacy nav, verify pipeline, document it) | Built | Chunk 1 — live Photo Control smoke check still manual (see `IMAGE_PIPELINE_NOTES.md`) |
 | 1 | Customer-facing Photo Studio shell | Not started | Chunk 2 (planned) |
 | 2 | Image library per dish | Not started | |
 | 3 | Background & lighting reference libraries | Not started | |
@@ -103,5 +105,5 @@ Subject to change; record changes as new dated rows rather than editing old ones
 
 | Chunk | Scope | Branch | Status |
 |---|---|---|---|
-| 1 | Phase 0: pivot docs, feature flags, hide legacy nav, verify + document generation pipeline | `studio/chunk-01-foundations` | In progress — see `docs/pivot/BUILD_PLAN_CHUNK_01.md` |
+| 1 | Phase 0: pivot docs, feature flags, hide legacy nav, verify + document generation pipeline | `studio/chunk-01-foundations` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_01.md` |
 | 2 | Phase 1: customer-facing `/studio` shell with persistence | `studio/chunk-02-studio-shell` | Planned |
