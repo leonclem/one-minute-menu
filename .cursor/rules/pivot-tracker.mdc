@@ -19,6 +19,9 @@ When work builds, changes, or deviates from anything in
    dated row in the tracker's Decisions log. Never rewrite old decision rows.
 3. If a new chunk of work starts, add it to the chunk log and create
    `docs/pivot/BUILD_PLAN_CHUNK_NN.md` before implementing.
+4. If the chunk adds a DB migration, new env var, or other production action, append a row to
+   `docs/pivot/PENDING_PRODUCTION_DEPLOY.md` (status `Pending`) in the same commit. Do not
+   rely on git history alone for the deploy backlog.
 
 ## Git workflow (user needs guidance)
 

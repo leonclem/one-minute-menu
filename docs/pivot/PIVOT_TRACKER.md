@@ -36,6 +36,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-18 | Studio landing | Chunk 2 adds Studio to primary nav when flag enabled; post-login landing remains dashboard/onboarding (nav-only). |
 | 2026-07-18 | Studio FOH controls | First shell omits camera/composition section and model selector; lighting + garnish/sides + staged changes only. |
 | 2026-07-18 | Pre-credits cost guard | `STUDIO_DAILY_GENERATION_LIMIT` (default 25) gates `/api/studio/mutate` until Phase 5 credits. |
+| 2026-07-18 | Deploy backlog | Living checklist `docs/pivot/PENDING_PRODUCTION_DEPLOY.md` accumulates migrations/env vars across chunks until a deliberate production deploy. Prefer this over reconstructing from git branch history. |
 
 ---
 

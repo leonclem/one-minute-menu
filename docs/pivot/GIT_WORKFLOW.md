@@ -64,21 +64,26 @@ Safety notes:
 | **Preview (Vercel)** | Throwaway URL per deploy, for checking a build | `vercel` (no `--prod`) from the repo, or Vercel's automatic branch previews if enabled |
 | **Production (Vercel)** | Live site | Manual only — see checklist below |
 
+### Pending backlog (running total across chunks)
+
+Because many chunks may land on `main` before you deploy, do **not** reconstruct
+deploy steps from “everything since we branched.” Use the living backlog:
+
+**[PENDING_PRODUCTION_DEPLOY.md](PENDING_PRODUCTION_DEPLOY.md)**
+
+Each chunk that adds a migration or env var appends rows there. Before any
+production deploy, clear every `Pending` row for that environment.
+
 ### Production deploy checklist
 
 1. Merge the chunk to `main` and ensure you're on it: `git checkout main && git pull`.
-2. Run the test suite: `npm test`.
-3. Run the pre-deploy check: `npm run deploy-check`.
-4. **Environment variables:** if the chunk added env vars (e.g. the `NEXT_PUBLIC_PRODUCT_MODE`
-   flags), set them in the Vercel dashboard (Project → Settings → Environment Variables) for the
-   right environment *before* deploying. Feature flags default to legacy behaviour when unset, so
-   deploying without them is safe but ships no visible change.
-5. **Database migrations:** if the chunk added files in `supabase/migrations/`, apply them to the
-   production database first with `npx supabase db push` (linked to the production project).
-   Never use `supabase db reset` (see `.cursor/rules/no-destructive-db-commands.mdc`).
-6. Deploy: `npm run deploy:vercel` (runs `vercel --prod`).
-7. Smoke-test the live site; feature flags mean the pivot surface only appears where the env vars
-   enable it.
+2. Open [PENDING_PRODUCTION_DEPLOY.md](PENDING_PRODUCTION_DEPLOY.md) and apply every
+   `Pending` migration and env var for the target environment.
+3. Run the test suite: `npm test`.
+4. Run the pre-deploy check: `npm run deploy-check`.
+5. Deploy: `npm run deploy:vercel` (runs `vercel --prod`).
+6. Smoke-test the live site (see “Other production actions” in the pending backlog).
+7. Mark applied backlog rows `Applied` and add a row to the deploy history log.
 
 ### Rollback
 
