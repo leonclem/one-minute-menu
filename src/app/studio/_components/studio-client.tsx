@@ -341,8 +341,8 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white text-soft-shadow">Food Photo Studio</h1>
-        <p className="mt-1 text-sm text-white/80">
+        <h1 className="text-2xl font-bold text-gray-900">Food Photo Studio</h1>
+        <p className="mt-1 text-sm text-gray-600">
           Upload a dish photo, stage a few edits, and generate a polished version — no prompts
           required.
         </p>
@@ -350,7 +350,7 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
 
       {isHydrated && (
         <div
-          className="rounded-lg border border-blue-200 bg-blue-50/95 p-5 shadow-sm"
+          className="rounded-lg border border-ux-primary/25 bg-white/90 p-5 shadow-md backdrop-blur-sm"
           data-testid="generate-panel"
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -399,7 +399,7 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
 
       <div className="grid gap-8 lg:grid-cols-[1fr_1.5fr]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-white/10 bg-white/95 p-5 shadow-sm">
+          <section className="rounded-lg border border-black/[0.08] bg-white/90 p-5 shadow-md backdrop-blur-sm">
             <h2 className="mb-3 text-base font-semibold text-gray-900">Upload Photo</h2>
             <label
               htmlFor="studio-photo-upload"
@@ -437,7 +437,7 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
             )}
           </section>
 
-          <section className="rounded-lg border border-white/10 bg-white/95 p-5 shadow-sm">
+          <section className="rounded-lg border border-black/[0.08] bg-white/90 p-5 shadow-md backdrop-blur-sm">
             <h2 className="mb-4 text-base font-semibold text-gray-900">Edit Controls</h2>
             {!isHydrated && !isExtracting && (
               <p className="text-sm text-gray-500">
@@ -464,7 +464,7 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
         </div>
 
         <div className="space-y-6">
-          <section className="rounded-lg border border-white/10 bg-white/95 p-5 shadow-sm">
+          <section className="rounded-lg border border-black/[0.08] bg-white/90 p-5 shadow-md backdrop-blur-sm">
             <h2 className="mb-4 text-base font-semibold text-gray-900">Preview</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -526,7 +526,7 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
             )}
           </section>
 
-          <section className="rounded-lg border border-white/10 bg-white/95 p-5 shadow-sm">
+          <section className="rounded-lg border border-black/[0.08] bg-white/90 p-5 shadow-md backdrop-blur-sm">
             <h2 className="mb-4 text-base font-semibold text-gray-900">Recent generations</h2>
             {generatedGallery.length === 0 ? (
               <p className="text-sm text-gray-500">Generated images will appear here.</p>
