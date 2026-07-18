@@ -37,6 +37,9 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-18 | Studio FOH controls | First shell omits camera/composition section and model selector; lighting + garnish/sides + staged changes only. |
 | 2026-07-18 | Pre-credits cost guard | `STUDIO_DAILY_GENERATION_LIMIT` (default 25) gates `/api/studio/mutate` until Phase 5 credits. |
 | 2026-07-18 | Deploy backlog | Living checklist `docs/pivot/PENDING_PRODUCTION_DEPLOY.md` accumulates migrations/env vars across chunks until a deliberate production deploy. Prefer this over reconstructing from git branch history. |
+| 2026-07-18 | Studio data model (§7.2) | Chunk 3: `studio_dishes` + evolve `studio_images` (`dish_id`, `is_favourite`, `archived_at`). Defer `photo_projects` and `image_edits`; do not rename to `image_assets`. |
+| 2026-07-18 | Studio routes (§9.4) | Chunk 3 stays on `/studio` with in-page dish picker; `/studio/projects/*` deferred. |
+| 2026-07-18 | Library delete policy | Soft-archive hides variants; hard-delete removes DB + storage. Block hard-delete of a source while non-archived children reference it. Dish delete requires no active images. |
 
 ---
 
@@ -56,8 +59,8 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | Ref | Requirement | Phase | Status | Notes |
 |---|---|---|---|---|
 | 7.1 | Customer-facing `/studio` route | 1 | Built | Flag-gated; nav link via `shouldShowStudioNav`. |
-| 7.2 | Project/dish/image data model | 2 | Deviation | Minimal `studio_images` only in Chunk 2; full model deferred to Chunk 3. |
-| 7.3 | Image library per dish | 2 | Not started | Chunk 2 has a flat recent-generations gallery (not per-dish). |
+| 7.2 | Project/dish/image data model | 2 | Deviation | `studio_dishes` + evolved `studio_images`; projects/`image_assets`/`image_edits` deferred (see decisions 2026-07-18). |
+| 7.3 | Image library per dish | 2 | Built | Dish picker + per-dish gallery with favourite, use-as-working, archive, delete, download. |
 | 7.4 | Lighting manipulation (6 styles + reference library) | 1/3 | In progress | FOH has Bright & Airy + Low-Key; reference library later. |
 | 7.5 | Background/surface swapping + library | 3 | Not started | |
 | 7.6 | Plating/vessel style library | 7 | Deferred | Admin-only/experimental per doc. |
@@ -97,7 +100,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 |---|---|---|---|
 | 0 | Safety & setup (branch, flags, hide legacy nav, verify pipeline, document it) | Built | Chunk 1 — live Photo Control smoke check still manual (see `IMAGE_PIPELINE_NOTES.md`) |
 | 1 | Customer-facing Photo Studio shell | Built | Chunk 2 — `/studio` + `studio_images` persistence |
-| 2 | Image library per dish | Not started | |
+| 2 | Image library per dish | Built | Chunk 3 — `studio_dishes` + dish library on `/studio` |
 | 3 | Background & lighting reference libraries | Not started | |
 | 4 | Controlled prompt/state layer | Not started | Partially exists in `src/lib/photo-control/` (JSON state, delta, composer). |
 | 5 | Credits & usage control | Not started | |
@@ -111,4 +114,5 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | Chunk | Scope | Branch | Status |
 |---|---|---|---|
 | 1 | Phase 0: pivot docs, feature flags, hide legacy nav, verify + document generation pipeline | `studio/chunk-01-foundations` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_01.md` |
-| 2 | Phase 1: customer-facing `/studio` shell with persistence | `studio/chunk-02-studio-shell` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_02.md` |
+| 2 | Phase 1: customer-facing `/studio` shell with persistence | `studio/chunk-02-studio-shell` | Built — merged to `main` — see `docs/pivot/BUILD_PLAN_CHUNK_02.md` |
+| 3 | Phase 2: image library per dish (`studio_dishes` + dish-scoped gallery) | `studio/chunk-03-dish-library` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_03.md` |

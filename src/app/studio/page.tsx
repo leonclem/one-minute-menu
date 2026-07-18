@@ -9,7 +9,9 @@ import { isPhotoStudioEnabled } from '@/lib/product-mode'
 import { UXHeader, UXFooter } from '@/components/ux'
 import { PendingApproval } from '@/components/dashboard/PendingApproval'
 import { StudioClient } from './_components/studio-client'
-import type { StudioImageRecord } from '@/lib/studio/types'
+import { ensureDefaultStudioDish, listStudioDishes } from '@/lib/studio/dishes'
+import { listStudioImagesForDish } from '@/lib/studio/library'
+import type { StudioDishRecord, StudioImageRecord } from '@/lib/studio/types'
 
 /** Light studio backdrop — cream + soft gold + brand teal, no photo. */
 const studioBackdropStyle = {
@@ -39,15 +41,9 @@ export default async function StudioPage() {
     redirect('/auth/signin')
   }
 
-  const [profile, currentUser, galleryResult] = await Promise.all([
+  const [profile, currentUser] = await Promise.all([
     userOperations.getProfile(user.id),
     getCurrentUser(),
-    supabase
-      .from('studio_images')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(24),
   ])
 
   const isAdmin = currentUser?.role === 'admin'
@@ -68,7 +64,16 @@ export default async function StudioPage() {
     )
   }
 
-  const initialGallery = (galleryResult.data ?? []) as StudioImageRecord[]
+  let dishes: StudioDishRecord[] = await listStudioDishes(user.id)
+  if (dishes.length === 0) {
+    dishes = [await ensureDefaultStudioDish(user.id)]
+  }
+
+  const activeDishId = dishes[0].id
+  const initialGallery: StudioImageRecord[] = await listStudioImagesForDish(
+    user.id,
+    activeDishId,
+  )
 
   return (
     <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
@@ -77,7 +82,11 @@ export default async function StudioPage() {
         <UXHeader userEmail={user.email ?? undefined} isAdmin={isAdmin} />
       </div>
       <main className="container-ux py-10 md:py-12 flex-1">
-        <StudioClient initialGallery={initialGallery} />
+        <StudioClient
+          initialDishes={dishes}
+          initialActiveDishId={activeDishId}
+          initialGallery={initialGallery}
+        />
       </main>
       <UXFooter />
     </div>

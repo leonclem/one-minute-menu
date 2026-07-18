@@ -3,7 +3,7 @@
 /**
  * Customer-facing Food Photo Studio client.
  *
- * Upload → extract → hydrate → stage lighting/garnish/sides → generate → gallery.
+ * Dish library → upload → extract → stage lighting/garnish/sides → generate.
  */
 
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -20,7 +20,9 @@ import {
 } from '@/lib/photo-control/minimal-schema'
 import { type MinimalValidationResult } from '@/lib/photo-control/schema-validator'
 import { Lighting_Control, Component_Control } from '@/components/photo-controls'
-import type { StudioImageRecord } from '@/lib/studio/types'
+import type { StudioDishRecord, StudioImageRecord } from '@/lib/studio/types'
+import { DishPicker } from './dish-picker'
+import { StudioGallery } from './studio-gallery'
 
 type ExtractResponse = MinimalValidationResult
 
@@ -28,9 +30,12 @@ interface MutateResponse {
   imageUrl: string
   imageId: string
   model: string
+  dishId?: string
 }
 
 interface StudioClientProps {
+  initialDishes: StudioDishRecord[]
+  initialActiveDishId: string
   initialGallery: StudioImageRecord[]
 }
 
@@ -68,7 +73,42 @@ async function downloadImage(url: string, filename: string) {
   URL.revokeObjectURL(objectUrl)
 }
 
-export function StudioClient({ initialGallery }: StudioClientProps) {
+async function fetchAsSourceImage(url: string, fallbackMime: string): Promise<SourceImage> {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error('Failed to load image')
+  const blob = await response.blob()
+  const mimeType =
+    blob.type === 'image/jpeg' || blob.type === 'image/webp' || blob.type === 'image/png'
+      ? blob.type
+      : fallbackMime === 'image/jpeg' || fallbackMime === 'image/webp'
+        ? fallbackMime
+        : 'image/png'
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(new Error('Failed to read image'))
+    reader.readAsDataURL(blob)
+  })
+  return { dataUrl, mimeType, bytes: blob.size }
+}
+
+async function ensureDataUrl(url: string): Promise<string> {
+  if (url.startsWith('data:')) return url
+  const source = await fetchAsSourceImage(url, 'image/png')
+  return source.dataUrl
+}
+
+export function StudioClient({
+  initialDishes,
+  initialActiveDishId,
+  initialGallery,
+}: StudioClientProps) {
+  const [dishes, setDishes] = useState<StudioDishRecord[]>(initialDishes)
+  const [activeDishId, setActiveDishId] = useState(initialActiveDishId)
+  const [gallery, setGallery] = useState<StudioImageRecord[]>(initialGallery)
+  const [libraryBusy, setLibraryBusy] = useState(false)
+  const [libraryError, setLibraryError] = useState<string | null>(null)
+
   const [sourceImage, setSourceImage] = useState<SourceImage | null>(null)
   const [persistedSourceId, setPersistedSourceId] = useState<string | null>(null)
   const [editorState, setEditorState] = useState<EditorState>(makeDefaultEditorState())
@@ -84,7 +124,6 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
   const [mutationError, setMutationError] = useState<string | null>(null)
   const [pendingLimitMessage, setPendingLimitMessage] = useState<string | null>(null)
   const [baselineVersion, setBaselineVersion] = useState(0)
-  const [gallery, setGallery] = useState<StudioImageRecord[]>(initialGallery)
 
   const pendingDelta = useMemo(() => {
     void baselineVersion
@@ -94,6 +133,28 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
   const pendingChangeCount = pendingDelta.isEmpty ? 0 : countEditableChanges(pendingDelta)
   const hasPendingChanges = pendingChangeCount > 0
   const controlsDisabled = !isHydrated || isGenerating
+  const busy = libraryBusy || isExtracting || isGenerating
+
+  const resetEditorForNewSource = useCallback(() => {
+    setIsHydrated(false)
+    setEditorState(makeDefaultEditorState())
+    originalStateRef.current = makeDefaultEditorState()
+    setMutatedImageUrl(undefined)
+    setMutationError(null)
+    setExtractionError(null)
+    setStrictConformanceWarning(false)
+    setPendingLimitMessage(null)
+  }, [])
+
+  const loadGalleryForDish = useCallback(async (dishId: string) => {
+    const imagesRes = await fetch(`/api/studio/images?dishId=${encodeURIComponent(dishId)}`)
+    if (!imagesRes.ok) {
+      const err = await imagesRes.json().catch(() => null)
+      throw new Error((err as { error?: string } | null)?.error ?? 'Failed to load library')
+    }
+    const data = (await imagesRes.json()) as { images: StudioImageRecord[] }
+    setGallery(data.images ?? [])
+  }, [])
 
   const runExtraction = useCallback(async (image: SourceImage) => {
     setIsExtracting(true)
@@ -134,11 +195,120 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
     }
   }, [])
 
+  const handleSelectDish = useCallback(
+    async (dishId: string) => {
+      if (dishId === activeDishId) return
+      setLibraryBusy(true)
+      setLibraryError(null)
+      try {
+        setActiveDishId(dishId)
+        await loadGalleryForDish(dishId)
+        resetEditorForNewSource()
+        setSourceImage(null)
+        setPersistedSourceId(null)
+      } catch (err) {
+        setLibraryError(err instanceof Error ? err.message : 'Failed to switch dish')
+      } finally {
+        setLibraryBusy(false)
+      }
+    },
+    [activeDishId, loadGalleryForDish, resetEditorForNewSource],
+  )
+
+  const handleCreateDish = useCallback(
+    async (name: string) => {
+      setLibraryBusy(true)
+      setLibraryError(null)
+      try {
+        const res = await fetch('/api/studio/dishes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => null)
+          throw new Error((err as { error?: string } | null)?.error ?? 'Failed to create dish')
+        }
+        const data = (await res.json()) as { dish: StudioDishRecord }
+        setDishes((prev) => [data.dish, ...prev])
+        setActiveDishId(data.dish.id)
+        setGallery([])
+        resetEditorForNewSource()
+        setSourceImage(null)
+        setPersistedSourceId(null)
+      } catch (err) {
+        setLibraryError(err instanceof Error ? err.message : 'Failed to create dish')
+      } finally {
+        setLibraryBusy(false)
+      }
+    },
+    [resetEditorForNewSource],
+  )
+
+  const handleRenameDish = useCallback(async (dishId: string, name: string) => {
+    setLibraryBusy(true)
+    setLibraryError(null)
+    try {
+      const res = await fetch(`/api/studio/dishes/${dishId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error((err as { error?: string } | null)?.error ?? 'Failed to rename dish')
+      }
+      const data = (await res.json()) as { dish: StudioDishRecord }
+      setDishes((prev) => prev.map((d) => (d.id === dishId ? data.dish : d)))
+    } catch (err) {
+      setLibraryError(err instanceof Error ? err.message : 'Failed to rename dish')
+    } finally {
+      setLibraryBusy(false)
+    }
+  }, [])
+
+  const handleDeleteDish = useCallback(
+    async (dishId: string) => {
+      setLibraryBusy(true)
+      setLibraryError(null)
+      try {
+        const res = await fetch(`/api/studio/dishes/${dishId}`, { method: 'DELETE' })
+        if (!res.ok) {
+          const err = await res.json().catch(() => null)
+          throw new Error((err as { error?: string } | null)?.error ?? 'Failed to delete dish')
+        }
+        const remaining = dishes.filter((d) => d.id !== dishId)
+        setDishes(remaining)
+        const nextId = remaining[0]?.id
+        if (nextId) {
+          setActiveDishId(nextId)
+          await loadGalleryForDish(nextId)
+        } else {
+          setActiveDishId('')
+          setGallery([])
+        }
+        resetEditorForNewSource()
+        setSourceImage(null)
+        setPersistedSourceId(null)
+      } catch (err) {
+        setLibraryError(err instanceof Error ? err.message : 'Failed to delete dish')
+      } finally {
+        setLibraryBusy(false)
+      }
+    },
+    [dishes, loadGalleryForDish, resetEditorForNewSource],
+  )
+
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
       if (!file) return
       e.target.value = ''
+
+      if (!activeDishId) {
+        setExtractionError('Create or select a dish before uploading.')
+        return
+      }
 
       let dataUrl: string
       try {
@@ -157,20 +327,12 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
       const accepted = result.sourceImage
       setSourceImage(accepted)
       setPersistedSourceId(null)
-      setIsHydrated(false)
-      setEditorState(makeDefaultEditorState())
-      originalStateRef.current = makeDefaultEditorState()
-      setMutatedImageUrl(undefined)
-      setMutationError(null)
-      setExtractionError(null)
-      setStrictConformanceWarning(false)
-      setPendingLimitMessage(null)
+      resetEditorForNewSource()
 
-      // Persist source in the background; do not block extraction.
       void fetch('/api/studio/source', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageDataUrl: accepted.dataUrl }),
+        body: JSON.stringify({ imageDataUrl: accepted.dataUrl, dishId: activeDishId }),
       })
         .then(async (res) => {
           if (!res.ok) return
@@ -182,6 +344,7 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
                 {
                   id: data.imageId!,
                   user_id: '',
+                  dish_id: activeDishId,
                   role: 'source',
                   source_image_id: null,
                   storage_path: '',
@@ -192,6 +355,8 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
                   prompt: null,
                   model: null,
                   metadata: {},
+                  is_favourite: false,
+                  archived_at: null,
                   created_at: new Date().toISOString(),
                 },
                 ...prev,
@@ -203,8 +368,96 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
 
       await runExtraction(accepted)
     },
-    [runExtraction],
+    [activeDishId, resetEditorForNewSource, runExtraction],
   )
+
+  const handleUseAsWorking = useCallback(
+    async (image: StudioImageRecord) => {
+      setLibraryBusy(true)
+      setLibraryError(null)
+      try {
+        const working = await fetchAsSourceImage(image.public_url, image.mime_type)
+        setSourceImage(working)
+        setPersistedSourceId(image.id)
+        resetEditorForNewSource()
+        setMutatedImageUrl(undefined)
+        await runExtraction(working)
+      } catch (err) {
+        setLibraryError(err instanceof Error ? err.message : 'Failed to load image')
+      } finally {
+        setLibraryBusy(false)
+      }
+    },
+    [resetEditorForNewSource, runExtraction],
+  )
+
+  const handleToggleFavourite = useCallback(async (image: StudioImageRecord) => {
+    setLibraryBusy(true)
+    setLibraryError(null)
+    try {
+      const res = await fetch(`/api/studio/images/${image.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isFavourite: !image.is_favourite }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error((err as { error?: string } | null)?.error ?? 'Failed to update favourite')
+      }
+      const data = (await res.json()) as { image: StudioImageRecord }
+      setGallery((prev) =>
+        prev.map((item) => {
+          if (item.id === data.image.id) return data.image
+          if (data.image.is_favourite && item.dish_id === data.image.dish_id) {
+            return { ...item, is_favourite: false }
+          }
+          return item
+        }),
+      )
+    } catch (err) {
+      setLibraryError(err instanceof Error ? err.message : 'Failed to update favourite')
+    } finally {
+      setLibraryBusy(false)
+    }
+  }, [])
+
+  const handleArchive = useCallback(async (image: StudioImageRecord) => {
+    setLibraryBusy(true)
+    setLibraryError(null)
+    try {
+      const res = await fetch(`/api/studio/images/${image.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archive: true }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error((err as { error?: string } | null)?.error ?? 'Failed to archive')
+      }
+      setGallery((prev) => prev.filter((item) => item.id !== image.id))
+    } catch (err) {
+      setLibraryError(err instanceof Error ? err.message : 'Failed to archive')
+    } finally {
+      setLibraryBusy(false)
+    }
+  }, [])
+
+  const handleDeleteImage = useCallback(async (image: StudioImageRecord) => {
+    setLibraryBusy(true)
+    setLibraryError(null)
+    try {
+      const res = await fetch(`/api/studio/images/${image.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error((err as { error?: string } | null)?.error ?? 'Failed to delete')
+      }
+      setGallery((prev) => prev.filter((item) => item.id !== image.id))
+    } catch (err) {
+      setLibraryError(err instanceof Error ? err.message : 'Failed to delete')
+    } finally {
+      setLibraryBusy(false)
+    }
+  }, [])
 
   const applyStagedChange = useCallback((nextState: EditorState) => {
     const delta = computeDelta(originalStateRef.current, nextState)
@@ -235,7 +488,7 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
     const original = originalStateRef.current
     const nextState = editorState
     const delta = computeDelta(original, nextState)
-    if (delta.isEmpty || !sourceImage) return
+    if (delta.isEmpty || !sourceImage || !activeDishId) return
 
     const directive = generateDirective(delta, nextState)
     if (!directive) return
@@ -244,13 +497,14 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
     setMutationError(null)
     setPendingLimitMessage(null)
 
-    const currentSourceUrl = mutatedImageUrl ?? sourceImage.dataUrl
-
     try {
+      const currentSourceUrl = await ensureDataUrl(mutatedImageUrl ?? sourceImage.dataUrl)
+
       const response = await fetch('/api/studio/mutate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          dishId: activeDishId,
           sourceImageDataUrl: currentSourceUrl,
           originalState: original.schema,
           targetState: nextState.schema,
@@ -276,6 +530,7 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
         {
           id: data.imageId,
           user_id: '',
+          dish_id: activeDishId,
           role: 'generated',
           source_image_id: persistedSourceId,
           storage_path: '',
@@ -286,6 +541,8 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
           prompt: null,
           model: data.model,
           metadata: {},
+          is_favourite: false,
+          archived_at: null,
           created_at: new Date().toISOString(),
         },
         ...prev,
@@ -295,7 +552,7 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
     } finally {
       setIsGenerating(false)
     }
-  }, [sourceImage, mutatedImageUrl, editorState, persistedSourceId])
+  }, [sourceImage, mutatedImageUrl, editorState, persistedSourceId, activeDishId])
 
   const handleLightingChange = useCallback(
     (lighting: LightingValue) => {
@@ -336,8 +593,6 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
     [editorState, applyStagedChange],
   )
 
-  const generatedGallery = gallery.filter((item) => item.role === 'generated')
-
   return (
     <div className="space-y-8">
       <div>
@@ -347,6 +602,22 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
           required.
         </p>
       </div>
+
+      <DishPicker
+        dishes={dishes}
+        activeDishId={activeDishId}
+        busy={busy}
+        onSelect={(id) => void handleSelectDish(id)}
+        onCreate={handleCreateDish}
+        onRename={handleRenameDish}
+        onDelete={handleDeleteDish}
+      />
+
+      {libraryError && (
+        <p role="alert" className="text-sm text-red-800">
+          {libraryError}
+        </p>
+      )}
 
       {isHydrated && (
         <div
@@ -381,7 +652,7 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
               <button
                 type="button"
                 onClick={() => void submitPendingChanges()}
-                disabled={!hasPendingChanges || isGenerating || controlsDisabled}
+                disabled={!hasPendingChanges || isGenerating || controlsDisabled || !activeDishId}
                 className="min-w-[160px] rounded-md bg-blue-600 px-6 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
                 data-testid="generate-image-button"
               >
@@ -390,7 +661,10 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
             </div>
           </div>
           {pendingLimitMessage && (
-            <p role="alert" className="mt-4 text-xs text-amber-800 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+            <p
+              role="alert"
+              className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+            >
               {pendingLimitMessage}
             </p>
           )}
@@ -415,7 +689,7 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
                 accept="image/png,image/jpeg,image/webp"
                 className="sr-only"
                 onChange={handleFileChange}
-                disabled={isExtracting || isGenerating}
+                disabled={busy || !activeDishId}
                 aria-label="Upload food photo"
               />
             </label>
@@ -441,7 +715,7 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
             <h2 className="mb-4 text-base font-semibold text-gray-900">Edit Controls</h2>
             {!isHydrated && !isExtracting && (
               <p className="text-sm text-gray-500">
-                Upload a food photo to enable the editing controls.
+                Upload a food photo (or use one from the library) to enable editing controls.
               </p>
             )}
             {(isHydrated || isExtracting) && (
@@ -526,36 +800,19 @@ export function StudioClient({ initialGallery }: StudioClientProps) {
             )}
           </section>
 
-          <section className="rounded-lg border border-black/[0.08] bg-white/90 p-5 shadow-md backdrop-blur-sm">
-            <h2 className="mb-4 text-base font-semibold text-gray-900">Recent generations</h2>
-            {generatedGallery.length === 0 ? (
-              <p className="text-sm text-gray-500">Generated images will appear here.</p>
-            ) : (
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" data-testid="studio-gallery">
-                {generatedGallery.slice(0, 12).map((item) => (
-                  <li key={item.id} className="space-y-1">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={item.public_url}
-                      alt="Generated studio image"
-                      className="aspect-square w-full rounded-md border border-gray-200 object-cover"
-                    />
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-blue-700 hover:text-blue-900"
-                      onClick={() =>
-                        void downloadImage(item.public_url, `studio-${item.id}.png`).catch(
-                          () => setMutationError('Download failed.'),
-                        )
-                      }
-                    >
-                      Download
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          <StudioGallery
+            images={gallery}
+            busy={busy}
+            onUseAsWorking={(img) => void handleUseAsWorking(img)}
+            onToggleFavourite={(img) => void handleToggleFavourite(img)}
+            onArchive={(img) => void handleArchive(img)}
+            onDelete={(img) => void handleDeleteImage(img)}
+            onDownload={(img) =>
+              void downloadImage(img.public_url, `studio-${img.id}.png`).catch(() =>
+                setLibraryError('Download failed.'),
+              )
+            }
+          />
         </div>
       </div>
     </div>

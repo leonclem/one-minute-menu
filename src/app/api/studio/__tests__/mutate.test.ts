@@ -10,6 +10,7 @@ const mockMutate = jest.fn()
 const mockCountToday = jest.fn()
 const mockPersist = jest.fn()
 const mockGetLimit = jest.fn()
+const mockGetStudioDish = jest.fn()
 
 jest.mock('@/lib/user-api-auth', () => ({
   requireUserApi: () => mockRequireUserApi(),
@@ -23,6 +24,10 @@ jest.mock('@/lib/photo-control/mutation-engine', () => ({
   getMutationEngine: () => ({
     mutate: (...args: unknown[]) => mockMutate(...args),
   }),
+}))
+
+jest.mock('@/lib/studio/dishes', () => ({
+  getStudioDish: (...args: unknown[]) => mockGetStudioDish(...args),
 }))
 
 jest.mock('@/lib/studio/persistence', () => ({
@@ -52,6 +57,7 @@ function makeRequest(body: unknown) {
 const tinyPng = `data:image/png;base64,${Buffer.from('png').toString('base64')}`
 
 const validBody = {
+  dishId: 'dish-1',
   sourceImageDataUrl: tinyPng,
   originalState: {
     scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy' },
@@ -72,10 +78,12 @@ describe('POST /api/studio/mutate', () => {
     process.env.NANO_BANANA_API_KEY = 'test-key'
     mockGetLimit.mockReturnValue(25)
     mockCountToday.mockResolvedValue(0)
+    mockGetStudioDish.mockResolvedValue({ id: 'dish-1', name: 'Burger' })
     mockComposePrompt.mockReturnValue({ ok: true, prompt: 'composed prompt' })
     mockMutate.mockResolvedValue({ imageBase64: Buffer.from('out').toString('base64') })
     mockPersist.mockResolvedValue({
       id: 'gen-1',
+      dish_id: 'dish-1',
       public_url: 'https://cdn.example/gen-1.png',
     })
   })
@@ -117,9 +125,23 @@ describe('POST /api/studio/mutate', () => {
     const json = await res.json()
     expect(json.imageId).toBe('gen-1')
     expect(json.imageUrl).toBe('https://cdn.example/gen-1.png')
-    expect(mockPersist).toHaveBeenCalled()
+    expect(mockPersist).toHaveBeenCalledWith(
+      expect.objectContaining({ dishId: 'dish-1', userId: 'user-1' }),
+    )
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({ model: 'gemini-3.1-flash-image-preview' }),
     )
+  })
+
+  it('returns 400 when dishId is missing', async () => {
+    mockRequireUserApi.mockResolvedValue({
+      ok: true,
+      user: { id: 'user-1' },
+      supabase: {},
+    })
+
+    const { dishId: _omit, ...withoutDish } = validBody
+    const res = await POST(makeRequest(withoutDish))
+    expect(res.status).toBe(400)
   })
 })

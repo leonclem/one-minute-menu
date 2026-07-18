@@ -4,6 +4,7 @@
 
 import { randomUUID } from 'crypto'
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
+import { touchStudioDish } from '@/lib/studio/dishes'
 import type { StudioImageRecord, StudioImageRole } from '@/lib/studio/types'
 
 export type { StudioImageRecord, StudioImageRole } from '@/lib/studio/types'
@@ -12,6 +13,7 @@ const BUCKET_NAME = 'ai-generated-images'
 
 export interface PersistStudioImageInput {
   userId: string
+  dishId: string
   role: StudioImageRole
   /** Raw base64 (no data-URL prefix). */
   imageBase64: string
@@ -31,7 +33,6 @@ function extensionForMime(mimeType: string): string {
 function normalizeStoragePublicUrl(publicUrl: string): string {
   try {
     const url = new URL(publicUrl)
-    // Keep path as returned; only normalize accidental double slashes in pathname.
     url.pathname = url.pathname.replace(/\/{2,}/g, '/')
     return url.toString()
   } catch {
@@ -46,6 +47,10 @@ function normalizeStoragePublicUrl(publicUrl: string): string {
 export async function persistStudioImage(
   input: PersistStudioImageInput,
 ): Promise<StudioImageRecord> {
+  if (!input.dishId) {
+    throw new Error('dishId is required')
+  }
+
   const supabase = createAdminSupabaseClient()
   const imageId = randomUUID()
   const ext = extensionForMime(input.mimeType)
@@ -70,6 +75,7 @@ export async function persistStudioImage(
   const row = {
     id: imageId,
     user_id: input.userId,
+    dish_id: input.dishId,
     role: input.role,
     source_image_id: input.sourceImageId ?? null,
     storage_path: storagePath,
@@ -80,6 +86,8 @@ export async function persistStudioImage(
     prompt: input.prompt ?? null,
     model: input.model ?? null,
     metadata: input.metadata ?? {},
+    is_favourite: false,
+    archived_at: null as string | null,
   }
 
   const { data, error: insertError } = await supabase
@@ -89,10 +97,11 @@ export async function persistStudioImage(
     .single()
 
   if (insertError || !data) {
-    // Best-effort cleanup of the orphaned storage object
     await supabase.storage.from(BUCKET_NAME).remove([storagePath]).catch(() => undefined)
     throw new Error(`Failed to insert studio image row: ${insertError?.message ?? 'unknown'}`)
   }
+
+  await touchStudioDish(input.userId, input.dishId).catch(() => undefined)
 
   return data as StudioImageRecord
 }

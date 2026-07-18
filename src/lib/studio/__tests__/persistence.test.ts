@@ -18,16 +18,27 @@ jest.mock('@/lib/supabase-server', () => ({
         remove: mockRemove,
       }),
     },
-    from: () => ({
-      insert: (...args: unknown[]) => mockInsert(...args),
-      select: () => ({
-        eq: () => ({
+    from: (table: string) => {
+      if (table === 'studio_dishes') {
+        return {
+          update: () => ({
+            eq: () => ({
+              eq: () => Promise.resolve({ error: null }),
+            }),
+          }),
+        }
+      }
+      return {
+        insert: (...args: unknown[]) => mockInsert(...args),
+        select: () => ({
           eq: () => ({
-            gte: (...args: unknown[]) => mockGte(...args),
+            eq: () => ({
+              gte: (...args: unknown[]) => mockGte(...args),
+            }),
           }),
         }),
-      }),
-    }),
+      }
+    },
   }),
 }))
 
@@ -53,6 +64,7 @@ describe('studio persistence', () => {
       data: {
         id: 'img-1',
         user_id: 'user-1',
+        dish_id: 'dish-1',
         role: 'generated',
         source_image_id: null,
         storage_path: 'user-1/studio/img-1.png',
@@ -64,6 +76,8 @@ describe('studio persistence', () => {
         prompt: 'do the thing',
         model: 'gemini-3.1-flash-image-preview',
         metadata: {},
+        is_favourite: false,
+        archived_at: null,
         created_at: new Date().toISOString(),
       },
       error: null,
@@ -84,6 +98,7 @@ describe('studio persistence', () => {
   it('persistStudioImage uploads and inserts a row', async () => {
     const record = await persistStudioImage({
       userId: 'user-1',
+      dishId: 'dish-1',
       role: 'generated',
       imageBase64: Buffer.from('png-bytes').toString('base64'),
       mimeType: 'image/png',
@@ -94,7 +109,20 @@ describe('studio persistence', () => {
     expect(mockUpload).toHaveBeenCalled()
     expect(record.id).toBe('img-1')
     expect(record.role).toBe('generated')
+    expect(record.dish_id).toBe('dish-1')
     expect(record.public_url).toContain('ai-generated-images')
+  })
+
+  it('persistStudioImage requires dishId', async () => {
+    await expect(
+      persistStudioImage({
+        userId: 'user-1',
+        dishId: '',
+        role: 'source',
+        imageBase64: Buffer.from('png').toString('base64'),
+        mimeType: 'image/png',
+      }),
+    ).rejects.toThrow('dishId is required')
   })
 
   it('countTodayGeneratedStudioImages returns count', async () => {

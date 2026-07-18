@@ -14,6 +14,7 @@ import { getMutationEngine } from '@/lib/photo-control/mutation-engine'
 import { composePrompt } from '@/lib/photo-control/prompt-composer'
 import { parseAndValidateImageDataUrl } from '@/lib/photo-control/request-validation'
 import type { MinimalSchema } from '@/lib/photo-control/minimal-schema'
+import { getStudioDish } from '@/lib/studio/dishes'
 import {
   countTodayGeneratedStudioImages,
   getStudioDailyGenerationLimit,
@@ -56,9 +57,26 @@ export async function POST(request: NextRequest) {
       targetState?: unknown
       directive?: unknown
       sourceImageId?: unknown
+      dishId?: unknown
     }
 
-    const { sourceImageDataUrl, originalState, targetState, directive, sourceImageId } = body
+    const {
+      sourceImageDataUrl,
+      originalState,
+      targetState,
+      directive,
+      sourceImageId,
+      dishId,
+    } = body
+
+    if (typeof dishId !== 'string' || !dishId) {
+      return NextResponse.json({ error: 'dishId is required' }, { status: 400 })
+    }
+
+    const dish = await getStudioDish(auth.user.id, dishId)
+    if (!dish) {
+      return NextResponse.json({ error: 'Dish not found' }, { status: 404 })
+    }
 
     if (typeof sourceImageDataUrl !== 'string' || !sourceImageDataUrl) {
       return NextResponse.json(
@@ -129,6 +147,7 @@ export async function POST(request: NextRequest) {
 
     const record = await persistStudioImage({
       userId: auth.user.id,
+      dishId,
       role: 'generated',
       imageBase64,
       mimeType: 'image/png',
@@ -143,12 +162,14 @@ export async function POST(request: NextRequest) {
     logger.info('✅ [Studio Mutate] Success', {
       userId: auth.user.id,
       imageId: record.id,
+      dishId,
       model: STUDIO_MODEL,
     })
 
     return NextResponse.json({
       imageUrl: record.public_url,
       imageId: record.id,
+      dishId: record.dish_id,
       model: STUDIO_MODEL,
     })
   } catch (error) {

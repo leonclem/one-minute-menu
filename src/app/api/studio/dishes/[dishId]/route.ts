@@ -1,0 +1,78 @@
+/**
+ * Photo Studio dish — rename + delete
+ *
+ * PATCH  /api/studio/dishes/[dishId]  { name }
+ * DELETE /api/studio/dishes/[dishId]
+ */
+
+import { NextRequest, NextResponse } from 'next/server'
+import { requireUserApi } from '@/lib/user-api-auth'
+import { deleteStudioDish, getStudioDish, renameStudioDish } from '@/lib/studio/dishes'
+import { logger } from '@/lib/logger'
+
+export const runtime = 'nodejs'
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { dishId: string } },
+) {
+  try {
+    const auth = await requireUserApi()
+    if (!auth.ok) return auth.response
+
+    const { dishId } = params
+    const existing = await getStudioDish(auth.user.id, dishId)
+    if (!existing) {
+      return NextResponse.json({ error: 'Dish not found' }, { status: 404 })
+    }
+
+    const body = (await request.json()) as { name?: unknown }
+    if (typeof body.name !== 'string') {
+      return NextResponse.json({ error: 'name is required' }, { status: 400 })
+    }
+
+    try {
+      const dish = await renameStudioDish(auth.user.id, dishId, body.name)
+      return NextResponse.json({ dish })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to rename dish'
+      if (message.includes('required')) {
+        return NextResponse.json({ error: message }, { status: 400 })
+      }
+      throw err
+    }
+  } catch (error) {
+    logger.error('❌ [Studio Dishes] PATCH failed', { error })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { dishId: string } },
+) {
+  try {
+    const auth = await requireUserApi()
+    if (!auth.ok) return auth.response
+
+    const { dishId } = params
+    const existing = await getStudioDish(auth.user.id, dishId)
+    if (!existing) {
+      return NextResponse.json({ error: 'Dish not found' }, { status: 404 })
+    }
+
+    try {
+      await deleteStudioDish(auth.user.id, dishId)
+      return NextResponse.json({ ok: true })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete dish'
+      if (message.includes('Archive or delete')) {
+        return NextResponse.json({ error: message }, { status: 409 })
+      }
+      throw err
+    }
+  } catch (error) {
+    logger.error('❌ [Studio Dishes] DELETE failed', { error })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
