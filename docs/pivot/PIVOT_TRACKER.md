@@ -40,6 +40,11 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-18 | Studio data model (§7.2) | Chunk 3: `studio_dishes` + evolve `studio_images` (`dish_id`, `is_favourite`, `archived_at`). Defer `photo_projects` and `image_edits`; do not rename to `image_assets`. |
 | 2026-07-18 | Studio routes (§9.4) | Chunk 3 stays on `/studio` with in-page dish picker; `/studio/projects/*` deferred. |
 | 2026-07-18 | Library delete policy | Soft-archive hides variants; hard-delete removes DB + storage. Block hard-delete of a source while non-archived children reference it. Dish delete requires no active images. |
+| 2026-07-19 | Studio FOH UX shell | Control panel (left) + Preview/Variants (right); one accordion section open at a time (menu-builder pattern). Dish title + Upload/New; Download/Delete on Current only. |
+| 2026-07-19 | FOH add garnish/side | Disabled in customer Studio (remove-only). Add remains in admin Photo Control. Revisit after lighting/background quality is stable. |
+| 2026-07-19 | FOH rotation labels | Left 45° → `45-degree`, Overhead → `top-down`, Right 45° → `eye-level` (interim; true left/right yaw deferred). |
+| 2026-07-19 | FOH lighting labels | Natural → `bright-and-airy`, Moody → `low-key`, Studio → new `studio` enum value. Preview assets under `public/studio/controls/`. |
+| 2026-07-19 | Variant change audit | Per-generation `metadata.changeSummary` chips (vs previous working image). Cumulative vs OG deferred. Favourite/Archive FOH actions removed; click variant to load as Current. |
 
 ---
 
@@ -61,11 +66,11 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 7.1 | Customer-facing `/studio` route | 1 | Built | Flag-gated; nav link via `shouldShowStudioNav`. |
 | 7.2 | Project/dish/image data model | 2 | Deviation | `studio_dishes` + evolved `studio_images`; projects/`image_assets`/`image_edits` deferred (see decisions 2026-07-18). |
 | 7.3 | Image library per dish | 2 | Built | Dish picker + per-dish gallery with favourite, use-as-working, archive, delete, download. |
-| 7.4 | Lighting manipulation (6 styles + reference library) | 1/3 | In progress | FOH has Bright & Airy + Low-Key; reference library later. |
+| 7.4 | Lighting manipulation (6 styles + reference library) | 1/3 | In progress | FOH Natural / Moody / Studio tiles; curated reference library still Phase 3. |
 | 7.5 | Background/surface swapping + library | 3 | Not started | |
 | 7.6 | Plating/vessel style library | 7 | Deferred | Admin-only/experimental per doc. |
-| 7.7 | Dish element manipulation (garnish/sides/clutter) | 1 | In progress | Garnish/sides in FOH; clutter removal still pending. |
-| 7.8 | Rotation & composition controls (replace camera pitch) | 1 | Not started | Omitted from first FOH shell; camera remains admin-only. |
+| 7.7 | Dish element manipulation (garnish/sides/clutter) | 1 | In progress | FOH remove-only for garnish/sides; add deferred. Clutter removal still pending. |
+| 7.8 | Rotation & composition controls (replace camera pitch) | 1 | In progress | FOH rotation tiles (3 options); full composition/yaw later. |
 | 7.9 | Output packs | Post-MVP | Deferred | One output at a time first. |
 | 7.10 | Model selection (admin-visible only) | 1 | Built | FOH fixed to NB2/Flash; admin sandbox retains model selector. |
 

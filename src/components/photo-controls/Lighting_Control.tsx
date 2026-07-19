@@ -17,11 +17,13 @@ import { LIGHTING_VALUES, type LightingValue } from '@/lib/photo-control/minimal
 const LIGHTING_LABELS: Record<LightingValue, string> = {
   'low-key': 'Low-Key',
   'bright-and-airy': 'Bright & Airy',
+  studio: 'Studio',
 }
 
 const LIGHTING_DESCRIPTIONS: Record<LightingValue, string> = {
   'low-key': 'Dramatic lighting, rich shadows',
   'bright-and-airy': 'Clean high-key diffused light',
+  studio: 'Even commercial studio light',
 }
 
 export interface LightingControlProps {

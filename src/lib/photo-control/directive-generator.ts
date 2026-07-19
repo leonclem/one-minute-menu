@@ -112,6 +112,8 @@ function buildLightingClause(from: string, to: string): string {
       'Change the lighting to bright-and-airy high-key diffused light. Remove heavy shadows and keep the scene clean, bright, and airy.',
     'low-key':
       'Change the lighting to low-key dramatic light. Add richer shadows and a darker, moodier background while keeping the dish readable.',
+    studio:
+      'Change the lighting to clean commercial studio lighting: even, controlled key light with soft fill, neutral colour temperature, and a polished menu-photo look. Do not change the dish or add props.',
   }
 
   const instruction = lightingMap[to]

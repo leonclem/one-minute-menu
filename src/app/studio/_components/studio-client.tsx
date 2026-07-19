@@ -1,9 +1,7 @@
 'use client'
 
 /**
- * Customer-facing Food Photo Studio client.
- *
- * Dish library → upload → extract → stage lighting/garnish/sides → generate.
+ * Customer-facing Food Photo Studio — control panel + preview/variants shell.
  */
 
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -15,16 +13,25 @@ import { generateDirective } from '@/lib/photo-control/directive-generator'
 import { MAX_PENDING_CHANGES } from '@/lib/photo-control/edit-limits'
 import {
   CENTER,
+  type AngleValue,
   type EditorState,
   type LightingValue,
 } from '@/lib/photo-control/minimal-schema'
 import { type MinimalValidationResult } from '@/lib/photo-control/schema-validator'
-import { Lighting_Control, Component_Control } from '@/components/photo-controls'
+import { Component_Control } from '@/components/photo-controls'
+import { CollapsibleSection } from '@/components/ux'
+import { ConfirmDialog } from '@/components/ui'
+import { buildChangeSummary, readChangeSummary } from '@/lib/studio/change-summary'
+import {
+  STUDIO_LIGHTING_OPTIONS,
+  STUDIO_ROTATION_OPTIONS,
+} from '@/lib/studio/control-options'
 import type { StudioDishRecord, StudioImageRecord } from '@/lib/studio/types'
-import { DishPicker } from './dish-picker'
-import { StudioGallery } from './studio-gallery'
+import { StudioTextModal } from './studio-text-modal'
+import { VisualOptionTiles } from './visual-option-tiles'
 
 type ExtractResponse = MinimalValidationResult
+type ControlSection = 'rotation' | 'lighting' | 'garnishes' | null
 
 interface MutateResponse {
   imageUrl: string
@@ -98,6 +105,12 @@ async function ensureDataUrl(url: string): Promise<string> {
   return source.dataUrl
 }
 
+function sortVariants(images: StudioImageRecord[]): StudioImageRecord[] {
+  return [...images].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  )
+}
+
 export function StudioClient({
   initialDishes,
   initialActiveDishId,
@@ -106,8 +119,17 @@ export function StudioClient({
   const [dishes, setDishes] = useState<StudioDishRecord[]>(initialDishes)
   const [activeDishId, setActiveDishId] = useState(initialActiveDishId)
   const [gallery, setGallery] = useState<StudioImageRecord[]>(initialGallery)
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(
+    sortVariants(initialGallery).at(-1)?.id ?? null,
+  )
+  const [expandedSection, setExpandedSection] = useState<ControlSection>('lighting')
   const [libraryBusy, setLibraryBusy] = useState(false)
   const [libraryError, setLibraryError] = useState<string | null>(null)
+
+  const [createOpen, setCreateOpen] = useState(false)
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [deleteDishOpen, setDeleteDishOpen] = useState(false)
+  const [deleteImageOpen, setDeleteImageOpen] = useState(false)
 
   const [sourceImage, setSourceImage] = useState<SourceImage | null>(null)
   const [persistedSourceId, setPersistedSourceId] = useState<string | null>(null)
@@ -124,6 +146,15 @@ export function StudioClient({
   const [mutationError, setMutationError] = useState<string | null>(null)
   const [pendingLimitMessage, setPendingLimitMessage] = useState<string | null>(null)
   const [baselineVersion, setBaselineVersion] = useState(0)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const activeDish = dishes.find((d) => d.id === activeDishId) ?? dishes[0]
+  const variants = useMemo(() => sortVariants(gallery), [gallery])
+  const selectedImage = variants.find((v) => v.id === selectedImageId) ?? null
+  const currentPreviewUrl =
+    mutatedImageUrl ?? sourceImage?.dataUrl ?? selectedImage?.public_url ?? null
+  const changeChips = selectedImage ? readChangeSummary(selectedImage.metadata) : []
 
   const pendingDelta = useMemo(() => {
     void baselineVersion
@@ -153,7 +184,9 @@ export function StudioClient({
       throw new Error((err as { error?: string } | null)?.error ?? 'Failed to load library')
     }
     const data = (await imagesRes.json()) as { images: StudioImageRecord[] }
-    setGallery(data.images ?? [])
+    const next = data.images ?? []
+    setGallery(next)
+    setSelectedImageId(sortVariants(next).at(-1)?.id ?? null)
   }, [])
 
   const runExtraction = useCallback(async (image: SourceImage) => {
@@ -195,108 +228,25 @@ export function StudioClient({
     }
   }, [])
 
-  const handleSelectDish = useCallback(
-    async (dishId: string) => {
-      if (dishId === activeDishId) return
+  const selectVariant = useCallback(
+    async (image: StudioImageRecord) => {
+      setSelectedImageId(image.id)
       setLibraryBusy(true)
       setLibraryError(null)
       try {
-        setActiveDishId(dishId)
-        await loadGalleryForDish(dishId)
+        const working = await fetchAsSourceImage(image.public_url, image.mime_type)
+        setSourceImage(working)
+        setPersistedSourceId(image.id)
         resetEditorForNewSource()
-        setSourceImage(null)
-        setPersistedSourceId(null)
+        setMutatedImageUrl(undefined)
+        await runExtraction(working)
       } catch (err) {
-        setLibraryError(err instanceof Error ? err.message : 'Failed to switch dish')
+        setLibraryError(err instanceof Error ? err.message : 'Failed to load image')
       } finally {
         setLibraryBusy(false)
       }
     },
-    [activeDishId, loadGalleryForDish, resetEditorForNewSource],
-  )
-
-  const handleCreateDish = useCallback(
-    async (name: string) => {
-      setLibraryBusy(true)
-      setLibraryError(null)
-      try {
-        const res = await fetch('/api/studio/dishes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name }),
-        })
-        if (!res.ok) {
-          const err = await res.json().catch(() => null)
-          throw new Error((err as { error?: string } | null)?.error ?? 'Failed to create dish')
-        }
-        const data = (await res.json()) as { dish: StudioDishRecord }
-        setDishes((prev) => [data.dish, ...prev])
-        setActiveDishId(data.dish.id)
-        setGallery([])
-        resetEditorForNewSource()
-        setSourceImage(null)
-        setPersistedSourceId(null)
-      } catch (err) {
-        setLibraryError(err instanceof Error ? err.message : 'Failed to create dish')
-      } finally {
-        setLibraryBusy(false)
-      }
-    },
-    [resetEditorForNewSource],
-  )
-
-  const handleRenameDish = useCallback(async (dishId: string, name: string) => {
-    setLibraryBusy(true)
-    setLibraryError(null)
-    try {
-      const res = await fetch(`/api/studio/dishes/${dishId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        throw new Error((err as { error?: string } | null)?.error ?? 'Failed to rename dish')
-      }
-      const data = (await res.json()) as { dish: StudioDishRecord }
-      setDishes((prev) => prev.map((d) => (d.id === dishId ? data.dish : d)))
-    } catch (err) {
-      setLibraryError(err instanceof Error ? err.message : 'Failed to rename dish')
-    } finally {
-      setLibraryBusy(false)
-    }
-  }, [])
-
-  const handleDeleteDish = useCallback(
-    async (dishId: string) => {
-      setLibraryBusy(true)
-      setLibraryError(null)
-      try {
-        const res = await fetch(`/api/studio/dishes/${dishId}`, { method: 'DELETE' })
-        if (!res.ok) {
-          const err = await res.json().catch(() => null)
-          throw new Error((err as { error?: string } | null)?.error ?? 'Failed to delete dish')
-        }
-        const remaining = dishes.filter((d) => d.id !== dishId)
-        setDishes(remaining)
-        const nextId = remaining[0]?.id
-        if (nextId) {
-          setActiveDishId(nextId)
-          await loadGalleryForDish(nextId)
-        } else {
-          setActiveDishId('')
-          setGallery([])
-        }
-        resetEditorForNewSource()
-        setSourceImage(null)
-        setPersistedSourceId(null)
-      } catch (err) {
-        setLibraryError(err instanceof Error ? err.message : 'Failed to delete dish')
-      } finally {
-        setLibraryBusy(false)
-      }
-    },
-    [dishes, loadGalleryForDish, resetEditorForNewSource],
+    [resetEditorForNewSource, runExtraction],
   )
 
   const handleFileChange = useCallback(
@@ -306,7 +256,7 @@ export function StudioClient({
       e.target.value = ''
 
       if (!activeDishId) {
-        setExtractionError('Create or select a dish before uploading.')
+        setExtractionError('Create a dish before uploading.')
         return
       }
 
@@ -337,31 +287,28 @@ export function StudioClient({
         .then(async (res) => {
           if (!res.ok) return
           const data = (await res.json()) as { imageId?: string; imageUrl?: string }
-          if (data.imageId) {
+          if (data.imageId && data.imageUrl) {
             setPersistedSourceId(data.imageId)
-            if (data.imageUrl) {
-              setGallery((prev) => [
-                {
-                  id: data.imageId!,
-                  user_id: '',
-                  dish_id: activeDishId,
-                  role: 'source',
-                  source_image_id: null,
-                  storage_path: '',
-                  public_url: data.imageUrl!,
-                  mime_type: accepted.mimeType,
-                  width: null,
-                  height: null,
-                  prompt: null,
-                  model: null,
-                  metadata: {},
-                  is_favourite: false,
-                  archived_at: null,
-                  created_at: new Date().toISOString(),
-                },
-                ...prev,
-              ])
+            const row: StudioImageRecord = {
+              id: data.imageId,
+              user_id: '',
+              dish_id: activeDishId,
+              role: 'source',
+              source_image_id: null,
+              storage_path: '',
+              public_url: data.imageUrl,
+              mime_type: accepted.mimeType,
+              width: null,
+              height: null,
+              prompt: null,
+              model: null,
+              metadata: {},
+              is_favourite: false,
+              archived_at: null,
+              created_at: new Date().toISOString(),
             }
+            setGallery((prev) => [...prev, row])
+            setSelectedImageId(data.imageId)
           }
         })
         .catch(() => undefined)
@@ -370,94 +317,6 @@ export function StudioClient({
     },
     [activeDishId, resetEditorForNewSource, runExtraction],
   )
-
-  const handleUseAsWorking = useCallback(
-    async (image: StudioImageRecord) => {
-      setLibraryBusy(true)
-      setLibraryError(null)
-      try {
-        const working = await fetchAsSourceImage(image.public_url, image.mime_type)
-        setSourceImage(working)
-        setPersistedSourceId(image.id)
-        resetEditorForNewSource()
-        setMutatedImageUrl(undefined)
-        await runExtraction(working)
-      } catch (err) {
-        setLibraryError(err instanceof Error ? err.message : 'Failed to load image')
-      } finally {
-        setLibraryBusy(false)
-      }
-    },
-    [resetEditorForNewSource, runExtraction],
-  )
-
-  const handleToggleFavourite = useCallback(async (image: StudioImageRecord) => {
-    setLibraryBusy(true)
-    setLibraryError(null)
-    try {
-      const res = await fetch(`/api/studio/images/${image.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isFavourite: !image.is_favourite }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        throw new Error((err as { error?: string } | null)?.error ?? 'Failed to update favourite')
-      }
-      const data = (await res.json()) as { image: StudioImageRecord }
-      setGallery((prev) =>
-        prev.map((item) => {
-          if (item.id === data.image.id) return data.image
-          if (data.image.is_favourite && item.dish_id === data.image.dish_id) {
-            return { ...item, is_favourite: false }
-          }
-          return item
-        }),
-      )
-    } catch (err) {
-      setLibraryError(err instanceof Error ? err.message : 'Failed to update favourite')
-    } finally {
-      setLibraryBusy(false)
-    }
-  }, [])
-
-  const handleArchive = useCallback(async (image: StudioImageRecord) => {
-    setLibraryBusy(true)
-    setLibraryError(null)
-    try {
-      const res = await fetch(`/api/studio/images/${image.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ archive: true }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        throw new Error((err as { error?: string } | null)?.error ?? 'Failed to archive')
-      }
-      setGallery((prev) => prev.filter((item) => item.id !== image.id))
-    } catch (err) {
-      setLibraryError(err instanceof Error ? err.message : 'Failed to archive')
-    } finally {
-      setLibraryBusy(false)
-    }
-  }, [])
-
-  const handleDeleteImage = useCallback(async (image: StudioImageRecord) => {
-    setLibraryBusy(true)
-    setLibraryError(null)
-    try {
-      const res = await fetch(`/api/studio/images/${image.id}`, { method: 'DELETE' })
-      if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        throw new Error((err as { error?: string } | null)?.error ?? 'Failed to delete')
-      }
-      setGallery((prev) => prev.filter((item) => item.id !== image.id))
-    } catch (err) {
-      setLibraryError(err instanceof Error ? err.message : 'Failed to delete')
-    } finally {
-      setLibraryBusy(false)
-    }
-  }, [])
 
   const applyStagedChange = useCallback((nextState: EditorState) => {
     const delta = computeDelta(originalStateRef.current, nextState)
@@ -493,6 +352,8 @@ export function StudioClient({
     const directive = generateDirective(delta, nextState)
     if (!directive) return
 
+    const changeSummary = buildChangeSummary(delta)
+
     setIsGenerating(true)
     setMutationError(null)
     setPendingLimitMessage(null)
@@ -510,6 +371,7 @@ export function StudioClient({
           targetState: nextState.schema,
           directive,
           sourceImageId: persistedSourceId,
+          changeSummary,
         }),
       })
 
@@ -526,27 +388,27 @@ export function StudioClient({
       setMutatedImageUrl(data.imageUrl)
       originalStateRef.current = nextState
       setBaselineVersion((v) => v + 1)
-      setGallery((prev) => [
-        {
-          id: data.imageId,
-          user_id: '',
-          dish_id: activeDishId,
-          role: 'generated',
-          source_image_id: persistedSourceId,
-          storage_path: '',
-          public_url: data.imageUrl,
-          mime_type: 'image/png',
-          width: null,
-          height: null,
-          prompt: null,
-          model: data.model,
-          metadata: {},
-          is_favourite: false,
-          archived_at: null,
-          created_at: new Date().toISOString(),
-        },
-        ...prev,
-      ])
+      const row: StudioImageRecord = {
+        id: data.imageId,
+        user_id: '',
+        dish_id: activeDishId,
+        role: 'generated',
+        source_image_id: persistedSourceId,
+        storage_path: '',
+        public_url: data.imageUrl,
+        mime_type: 'image/png',
+        width: null,
+        height: null,
+        prompt: null,
+        model: data.model,
+        metadata: { changeSummary },
+        is_favourite: false,
+        archived_at: null,
+        created_at: new Date().toISOString(),
+      }
+      setGallery((prev) => [...prev, row])
+      setSelectedImageId(data.imageId)
+      setPersistedSourceId(data.imageId)
     } catch (err) {
       setMutationError(err instanceof Error ? err.message : 'Generation failed unexpectedly.')
     } finally {
@@ -554,267 +416,542 @@ export function StudioClient({
     }
   }, [sourceImage, mutatedImageUrl, editorState, persistedSourceId, activeDishId])
 
-  const handleLightingChange = useCallback(
-    (lighting: LightingValue) => {
-      applyStagedChange({
-        ...editorState,
-        schema: {
-          ...editorState.schema,
-          scene_setup: { ...editorState.schema.scene_setup, lighting },
-        },
-      })
+  const handleCreateDish = useCallback(
+    async (name: string) => {
+      setCreateOpen(false)
+      setLibraryBusy(true)
+      setLibraryError(null)
+      try {
+        const res = await fetch('/api/studio/dishes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => null)
+          throw new Error((err as { error?: string } | null)?.error ?? 'Failed to create dish')
+        }
+        const data = (await res.json()) as { dish: StudioDishRecord }
+        setDishes((prev) => [data.dish, ...prev])
+        setActiveDishId(data.dish.id)
+        setGallery([])
+        setSelectedImageId(null)
+        resetEditorForNewSource()
+        setSourceImage(null)
+        setPersistedSourceId(null)
+      } catch (err) {
+        setLibraryError(err instanceof Error ? err.message : 'Failed to create dish')
+      } finally {
+        setLibraryBusy(false)
+      }
     },
-    [editorState, applyStagedChange],
+    [resetEditorForNewSource],
   )
 
-  const handleGarnishesChange = useCallback(
-    (garnishes: string[]) => {
-      applyStagedChange({
-        ...editorState,
-        schema: {
-          ...editorState.schema,
-          food_components: { ...editorState.schema.food_components, garnishes },
-        },
-      })
+  const handleRenameDish = useCallback(
+    async (name: string) => {
+      if (!activeDish) return
+      setRenameOpen(false)
+      setLibraryBusy(true)
+      setLibraryError(null)
+      try {
+        const res = await fetch(`/api/studio/dishes/${activeDish.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => null)
+          throw new Error((err as { error?: string } | null)?.error ?? 'Failed to rename dish')
+        }
+        const data = (await res.json()) as { dish: StudioDishRecord }
+        setDishes((prev) => prev.map((d) => (d.id === data.dish.id ? data.dish : d)))
+      } catch (err) {
+        setLibraryError(err instanceof Error ? err.message : 'Failed to rename dish')
+      } finally {
+        setLibraryBusy(false)
+      }
     },
-    [editorState, applyStagedChange],
+    [activeDish],
   )
 
-  const handleSidesChange = useCallback(
-    (sides: string[]) => {
-      applyStagedChange({
-        ...editorState,
-        schema: {
-          ...editorState.schema,
-          food_components: { ...editorState.schema.food_components, sides },
-        },
-      })
-    },
-    [editorState, applyStagedChange],
-  )
+  const handleDeleteDish = useCallback(async () => {
+    if (!activeDish) return
+    setDeleteDishOpen(false)
+    setLibraryBusy(true)
+    setLibraryError(null)
+    try {
+      const res = await fetch(`/api/studio/dishes/${activeDish.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error((err as { error?: string } | null)?.error ?? 'Failed to delete dish')
+      }
+      const remaining = dishes.filter((d) => d.id !== activeDish.id)
+      setDishes(remaining)
+      const nextId = remaining[0]?.id
+      if (nextId) {
+        setActiveDishId(nextId)
+        await loadGalleryForDish(nextId)
+      } else {
+        setActiveDishId('')
+        setGallery([])
+        setSelectedImageId(null)
+      }
+      resetEditorForNewSource()
+      setSourceImage(null)
+      setPersistedSourceId(null)
+    } catch (err) {
+      setLibraryError(err instanceof Error ? err.message : 'Failed to delete dish')
+    } finally {
+      setLibraryBusy(false)
+    }
+  }, [activeDish, dishes, loadGalleryForDish, resetEditorForNewSource])
+
+  const handleDeleteImage = useCallback(async () => {
+    if (!selectedImage) return
+    setDeleteImageOpen(false)
+    setLibraryBusy(true)
+    setLibraryError(null)
+    try {
+      const res = await fetch(`/api/studio/images/${selectedImage.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error((err as { error?: string } | null)?.error ?? 'Failed to delete')
+      }
+      const next = gallery.filter((item) => item.id !== selectedImage.id)
+      setGallery(next)
+      const fallback = sortVariants(next).at(-1) ?? null
+      setSelectedImageId(fallback?.id ?? null)
+      setMutatedImageUrl(undefined)
+      if (fallback) {
+        await selectVariant(fallback)
+      } else {
+        setSourceImage(null)
+        setPersistedSourceId(null)
+        resetEditorForNewSource()
+      }
+    } catch (err) {
+      setLibraryError(err instanceof Error ? err.message : 'Failed to delete')
+    } finally {
+      setLibraryBusy(false)
+    }
+  }, [selectedImage, gallery, selectVariant, resetEditorForNewSource])
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Food Photo Studio</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Upload a dish photo, stage a few edits, and generate a polished version — no prompts
-          required.
-        </p>
-      </div>
+    <div className="space-y-6">
+      {/* Header: dish + actions */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 className="truncate text-2xl font-bold text-gray-900">
+              {activeDish?.name ?? 'Food Photo Studio'}
+            </h1>
+            {activeDish && (
+              <button
+                type="button"
+                aria-label="Rename dish"
+                disabled={busy}
+                className="rounded p-1 text-ux-primary hover:bg-ux-primary/10 disabled:opacity-50"
+                onClick={() => setRenameOpen(true)}
+              >
+                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-8.5 8.5A2 2 0 016.5 15.5H5v-1.5a2 2 0 01.586-1.414l8-8z" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {dishes.length > 1 && (
+            <label className="mt-2 block text-xs text-gray-500">
+              Switch dish
+              <select
+                className="mt-1 block w-full max-w-xs rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-800"
+                value={activeDishId}
+                disabled={busy}
+                onChange={(e) => {
+                  const id = e.target.value
+                  setLibraryBusy(true)
+                  setActiveDishId(id)
+                  void loadGalleryForDish(id)
+                    .then(() => {
+                      resetEditorForNewSource()
+                      setSourceImage(null)
+                      setPersistedSourceId(null)
+                    })
+                    .catch((err) =>
+                      setLibraryError(err instanceof Error ? err.message : 'Failed to switch dish'),
+                    )
+                    .finally(() => setLibraryBusy(false))
+                }}
+              >
+                {dishes.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
 
-      <DishPicker
-        dishes={dishes}
-        activeDishId={activeDishId}
-        busy={busy}
-        onSelect={(id) => void handleSelectDish(id)}
-        onCreate={handleCreateDish}
-        onRename={handleRenameDish}
-        onDelete={handleDeleteDish}
-      />
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={busy || !activeDishId}
+            className="rounded-md bg-ux-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Upload Photo
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            className="rounded-md bg-amber-400 px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-amber-300 disabled:opacity-50"
+            onClick={() => setCreateOpen(true)}
+          >
+            New
+          </button>
+          {activeDish && dishes.length > 1 && (
+            <button
+              type="button"
+              disabled={busy}
+              className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+              onClick={() => setDeleteDishOpen(true)}
+            >
+              Delete dish
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="sr-only"
+            onChange={handleFileChange}
+            disabled={busy || !activeDishId}
+            aria-label="Upload food photo"
+          />
+        </div>
+      </div>
 
       {libraryError && (
         <p role="alert" className="text-sm text-red-800">
           {libraryError}
         </p>
       )}
-
-      {isHydrated && (
-        <div
-          className="rounded-lg border border-ux-primary/25 bg-white/90 p-5 shadow-md backdrop-blur-sm"
-          data-testid="generate-panel"
-        >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-blue-900">Pending changes:</p>
-                <span
-                  className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800"
-                  data-testid="pending-change-count"
-                >
-                  {pendingChangeCount} / {MAX_PENDING_CHANGES}
-                </span>
-              </div>
-              <p className="text-xs text-blue-700">
-                Fewer changes per generate usually produce better results.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {hasPendingChanges && !isGenerating && (
-                <button
-                  type="button"
-                  onClick={handleDiscardPending}
-                  className="text-sm font-medium text-blue-700 hover:text-blue-900"
-                >
-                  Discard all
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => void submitPendingChanges()}
-                disabled={!hasPendingChanges || isGenerating || controlsDisabled || !activeDishId}
-                className="min-w-[160px] rounded-md bg-blue-600 px-6 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
-                data-testid="generate-image-button"
-              >
-                {isGenerating ? 'Generating…' : 'Generate image'}
-              </button>
-            </div>
-          </div>
-          {pendingLimitMessage && (
-            <p
-              role="alert"
-              className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
-            >
-              {pendingLimitMessage}
-            </p>
-          )}
-        </div>
+      {extractionError && (
+        <p role="alert" className="text-sm text-red-800">
+          {extractionError}
+        </p>
+      )}
+      {isExtracting && (
+        <p role="status" className="text-sm text-ux-primary">
+          Analysing photo structure…
+        </p>
+      )}
+      {strictConformanceWarning && isHydrated && (
+        <p role="status" className="text-xs text-amber-800">
+          Some values were adjusted to match allowed options. Controls are enabled.
+        </p>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_1.5fr]">
-        <div className="space-y-6">
-          <section className="rounded-lg border border-black/[0.08] bg-white/90 p-5 shadow-md backdrop-blur-sm">
-            <h2 className="mb-3 text-base font-semibold text-gray-900">Upload Photo</h2>
-            <label
-              htmlFor="studio-photo-upload"
-              className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center hover:border-blue-400 hover:bg-blue-50"
-            >
-              <span className="text-sm font-medium text-gray-700">
-                {sourceImage ? 'Replace photo' : 'Upload a food photo'}
-              </span>
-              <span className="mt-1 text-xs text-gray-500">PNG, JPEG, or WebP · max 7 MB</span>
-              <input
-                id="studio-photo-upload"
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                className="sr-only"
-                onChange={handleFileChange}
-                disabled={busy || !activeDishId}
-                aria-label="Upload food photo"
-              />
-            </label>
-
-            {isExtracting && (
-              <p role="status" className="mt-3 text-sm text-blue-800">
-                Analysing photo structure…
+      <div className="grid gap-6 lg:grid-cols-[minmax(280px,360px)_1fr]">
+        {/* Control panel */}
+        <section className="flex max-h-[70vh] flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md">
+          <div className="border-b bg-neutral-100 px-4 py-3">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
+              Control panel
+            </h2>
+          </div>
+          <div className="flex-1 space-y-1 overflow-y-auto p-3">
+            {!isHydrated && !isExtracting ? (
+              <p className="px-1 py-4 text-sm text-gray-500">
+                Upload a photo (or select a variant) to enable controls.
               </p>
-            )}
-            {!isExtracting && extractionError && (
-              <p role="alert" className="mt-3 text-sm text-red-800">
-                {extractionError}
-              </p>
-            )}
-            {isHydrated && strictConformanceWarning && (
-              <p role="status" className="mt-3 text-xs text-amber-800">
-                Some values were adjusted to match allowed options. Controls are enabled.
-              </p>
-            )}
-          </section>
-
-          <section className="rounded-lg border border-black/[0.08] bg-white/90 p-5 shadow-md backdrop-blur-sm">
-            <h2 className="mb-4 text-base font-semibold text-gray-900">Edit Controls</h2>
-            {!isHydrated && !isExtracting && (
-              <p className="text-sm text-gray-500">
-                Upload a food photo (or use one from the library) to enable editing controls.
-              </p>
-            )}
-            {(isHydrated || isExtracting) && (
-              <div className="space-y-5">
-                <Lighting_Control
-                  value={editorState.schema.scene_setup.lighting}
-                  onChange={handleLightingChange}
-                  disabled={controlsDisabled}
-                />
-                <Component_Control
-                  garnishes={editorState.schema.food_components.garnishes}
-                  sides={editorState.schema.food_components.sides}
-                  onGarnishesChange={handleGarnishesChange}
-                  onSidesChange={handleSidesChange}
-                  disabled={controlsDisabled}
-                />
-              </div>
-            )}
-          </section>
-        </div>
-
-        <div className="space-y-6">
-          <section className="rounded-lg border border-black/[0.08] bg-white/90 p-5 shadow-md backdrop-blur-sm">
-            <h2 className="mb-4 text-base font-semibold text-gray-900">Preview</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-                  Source
-                </p>
-                {sourceImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={sourceImage.dataUrl}
-                    alt="Source food photo"
-                    className="w-full rounded-md border border-gray-200 object-cover"
+            ) : (
+              <>
+                <CollapsibleSection
+                  title="Rotation"
+                  isExpanded={expandedSection === 'rotation'}
+                  onExpand={(open) => setExpandedSection(open ? 'rotation' : null)}
+                >
+                  <VisualOptionTiles
+                    options={STUDIO_ROTATION_OPTIONS}
+                    value={editorState.schema.scene_setup.angle}
+                    disabled={controlsDisabled}
+                    ariaLabel="Rotation"
+                    onChange={(angle: AngleValue) =>
+                      applyStagedChange({
+                        ...editorState,
+                        schema: {
+                          ...editorState.schema,
+                          scene_setup: { ...editorState.schema.scene_setup, angle },
+                        },
+                      })
+                    }
                   />
-                ) : (
-                  <div className="flex h-48 items-center justify-center rounded-md border border-dashed border-gray-300 text-sm text-gray-400">
-                    No photo yet
-                  </div>
+                </CollapsibleSection>
+
+                <CollapsibleSection
+                  title="Lighting"
+                  isExpanded={expandedSection === 'lighting'}
+                  onExpand={(open) => setExpandedSection(open ? 'lighting' : null)}
+                >
+                  <VisualOptionTiles
+                    options={STUDIO_LIGHTING_OPTIONS}
+                    value={editorState.schema.scene_setup.lighting}
+                    disabled={controlsDisabled}
+                    ariaLabel="Lighting"
+                    onChange={(lighting: LightingValue) =>
+                      applyStagedChange({
+                        ...editorState,
+                        schema: {
+                          ...editorState.schema,
+                          scene_setup: { ...editorState.schema.scene_setup, lighting },
+                        },
+                      })
+                    }
+                  />
+                </CollapsibleSection>
+
+                <CollapsibleSection
+                  title="Garnishes"
+                  isExpanded={expandedSection === 'garnishes'}
+                  onExpand={(open) => setExpandedSection(open ? 'garnishes' : null)}
+                >
+                  <Component_Control
+                    garnishes={editorState.schema.food_components.garnishes}
+                    sides={editorState.schema.food_components.sides}
+                    allowAdd={false}
+                    disabled={controlsDisabled}
+                    onGarnishesChange={(garnishes) =>
+                      applyStagedChange({
+                        ...editorState,
+                        schema: {
+                          ...editorState.schema,
+                          food_components: {
+                            ...editorState.schema.food_components,
+                            garnishes,
+                          },
+                        },
+                      })
+                    }
+                    onSidesChange={(sides) =>
+                      applyStagedChange({
+                        ...editorState,
+                        schema: {
+                          ...editorState.schema,
+                          food_components: {
+                            ...editorState.schema.food_components,
+                            sides,
+                          },
+                        },
+                      })
+                    }
+                  />
+                </CollapsibleSection>
+              </>
+            )}
+          </div>
+
+          <div className="space-y-2 border-t bg-white p-3">
+            {isHydrated && (
+              <div className="flex items-center justify-between gap-2 text-xs text-gray-600">
+                <span>
+                  Pending: {pendingChangeCount} / {MAX_PENDING_CHANGES}
+                </span>
+                {hasPendingChanges && !isGenerating && (
+                  <button
+                    type="button"
+                    className="font-medium text-ux-primary hover:underline"
+                    onClick={handleDiscardPending}
+                  >
+                    Discard
+                  </button>
                 )}
               </div>
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-                  Generated
-                </p>
-                {isGenerating ? (
-                  <div className="flex h-48 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-sm text-blue-700">
-                    Generating…
-                  </div>
-                ) : mutatedImageUrl ? (
-                  <div className="space-y-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={mutatedImageUrl}
-                      alt="Generated food photo"
-                      className="w-full rounded-md border border-gray-200 object-cover"
-                    />
-                    <button
-                      type="button"
-                      className="text-sm font-medium text-blue-700 hover:text-blue-900"
-                      onClick={() =>
-                        void downloadImage(mutatedImageUrl, `studio-${Date.now()}.png`).catch(
-                          () => setMutationError('Download failed.'),
-                        )
-                      }
-                    >
-                      Download
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex h-48 items-center justify-center rounded-md border border-dashed border-gray-300 text-sm text-gray-400">
-                    Generate to see output
-                  </div>
-                )}
-              </div>
+            )}
+            {pendingLimitMessage && (
+              <p role="alert" className="text-xs text-amber-800">
+                {pendingLimitMessage}
+              </p>
+            )}
+            <button
+              type="button"
+              data-testid="generate-image-button"
+              disabled={!hasPendingChanges || isGenerating || controlsDisabled || !activeDishId}
+              className="flex w-full items-center justify-center gap-2 rounded-md bg-ux-primary px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+              onClick={() => void submitPendingChanges()}
+            >
+              {isGenerating ? 'Generating…' : 'Generate'}
+            </button>
+          </div>
+        </section>
+
+        {/* Preview + variants */}
+        <section className="flex flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md">
+          <div className="border-b bg-neutral-100 px-4 py-3">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
+              Preview
+            </h2>
+          </div>
+          <div className="space-y-4 p-4">
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+                Current
+              </p>
+              {isGenerating ? (
+                <div className="flex aspect-[4/3] items-center justify-center rounded-md border border-ux-primary/30 bg-ux-primary/5 text-sm text-ux-primary">
+                  Generating…
+                </div>
+              ) : currentPreviewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={currentPreviewUrl}
+                  alt="Current studio image"
+                  className="max-h-[420px] w-full rounded-md border border-gray-200 object-contain"
+                />
+              ) : (
+                <div className="flex aspect-[4/3] items-center justify-center rounded-md border border-dashed border-gray-300 text-sm text-gray-400">
+                  Upload a photo to begin
+                </div>
+              )}
             </div>
+
+            {changeChips.length > 0 && (
+              <ul className="flex flex-wrap gap-1.5" aria-label="Changes vs previous image">
+                {changeChips.map((chip) => (
+                  <li
+                    key={chip}
+                    className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-700"
+                  >
+                    {chip}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={!currentPreviewUrl || busy}
+                className="flex flex-1 items-center justify-center gap-2 rounded-md bg-ux-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => {
+                  if (!currentPreviewUrl) return
+                  void downloadImage(
+                    currentPreviewUrl,
+                    `studio-${selectedImageId ?? Date.now()}.png`,
+                  ).catch(() => setLibraryError('Download failed.'))
+                }}
+              >
+                Download
+              </button>
+              <button
+                type="button"
+                disabled={!selectedImage || busy}
+                className="flex flex-1 items-center justify-center gap-2 rounded-md bg-rose-400 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => setDeleteImageOpen(true)}
+              >
+                Delete
+              </button>
+            </div>
+
             {mutationError && (
-              <p role="alert" className="mt-3 text-sm text-red-800">
+              <p role="alert" className="text-sm text-red-800">
                 {mutationError}
               </p>
             )}
-          </section>
 
-          <StudioGallery
-            images={gallery}
-            busy={busy}
-            onUseAsWorking={(img) => void handleUseAsWorking(img)}
-            onToggleFavourite={(img) => void handleToggleFavourite(img)}
-            onArchive={(img) => void handleArchive(img)}
-            onDelete={(img) => void handleDeleteImage(img)}
-            onDownload={(img) =>
-              void downloadImage(img.public_url, `studio-${img.id}.png`).catch(() =>
-                setLibraryError('Download failed.'),
-              )
-            }
-          />
-        </div>
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ux-text-secondary">
+                Variants
+              </p>
+              {variants.length === 0 ? (
+                <p className="text-sm text-gray-500" data-testid="studio-gallery-empty">
+                  Variants appear here after you upload and generate.
+                </p>
+              ) : (
+                <ul
+                  className="flex gap-2 overflow-x-auto pb-1"
+                  data-testid="studio-gallery"
+                >
+                  {variants.map((item) => {
+                    const isOg = item.role === 'source'
+                    const selected = item.id === selectedImageId
+                    const genIndex = variants
+                      .filter((v) => v.role === 'generated')
+                      .findIndex((v) => v.id === item.id)
+                    return (
+                      <li key={item.id} className="shrink-0">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          aria-pressed={selected}
+                          aria-label={isOg ? 'Original' : `Variant ${genIndex + 1}`}
+                          className={[
+                            'block w-20 overflow-hidden rounded-md border-2 transition-colors',
+                            selected
+                              ? 'border-ux-primary'
+                              : 'border-transparent hover:border-gray-300',
+                            busy && 'opacity-60',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                          onClick={() => void selectVariant(item)}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.public_url}
+                            alt=""
+                            className="aspect-square w-full object-cover"
+                          />
+                          <span className="block truncate bg-gray-50 px-1 py-0.5 text-center text-[10px] font-medium text-gray-600">
+                            {isOg ? 'OG' : `V${genIndex + 1}`}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
+
+      <StudioTextModal
+        open={createOpen}
+        title="New dish"
+        label="Dish name"
+        confirmText="Create"
+        onCancel={() => setCreateOpen(false)}
+        onConfirm={(name) => void handleCreateDish(name)}
+      />
+      <StudioTextModal
+        open={renameOpen}
+        title="Rename dish"
+        label="Dish name"
+        initialValue={activeDish?.name ?? ''}
+        confirmText="Save"
+        onCancel={() => setRenameOpen(false)}
+        onConfirm={(name) => void handleRenameDish(name)}
+      />
+      <ConfirmDialog
+        open={deleteDishOpen}
+        title="Delete dish?"
+        description="Archive or delete all images in this dish first if any remain. This cannot be undone."
+        confirmText="Delete dish"
+        variant="danger"
+        onCancel={() => setDeleteDishOpen(false)}
+        onConfirm={() => void handleDeleteDish()}
+      />
+      <ConfirmDialog
+        open={deleteImageOpen}
+        title="Delete this image?"
+        description="Permanently delete the current image from your library and storage."
+        confirmText="Delete"
+        variant="danger"
+        onCancel={() => setDeleteImageOpen(false)}
+        onConfirm={() => void handleDeleteImage()}
+      />
     </div>
   )
 }

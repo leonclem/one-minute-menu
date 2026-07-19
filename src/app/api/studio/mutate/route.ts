@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
       directive?: unknown
       sourceImageId?: unknown
       dishId?: unknown
+      changeSummary?: unknown
     }
 
     const {
@@ -67,7 +68,12 @@ export async function POST(request: NextRequest) {
       directive,
       sourceImageId,
       dishId,
+      changeSummary,
     } = body
+
+    const changeSummaryChips = Array.isArray(changeSummary)
+      ? changeSummary.filter((item): item is string => typeof item === 'string')
+      : []
 
     if (typeof dishId !== 'string' || !dishId) {
       return NextResponse.json({ error: 'dishId is required' }, { status: 400 })
@@ -156,6 +162,7 @@ export async function POST(request: NextRequest) {
       model: STUDIO_MODEL,
       metadata: {
         directive: directive.trim(),
+        changeSummary: changeSummaryChips,
       },
     })
 

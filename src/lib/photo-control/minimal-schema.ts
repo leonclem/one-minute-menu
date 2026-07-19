@@ -43,7 +43,7 @@ export const ANGLE_VALUES = [
 /**
  * Allowed `scene_setup.lighting` values. (Requirement 3.3)
  */
-export const LIGHTING_VALUES = ['low-key', 'bright-and-airy'] as const
+export const LIGHTING_VALUES = ['low-key', 'bright-and-airy', 'studio'] as const
 
 /**
  * Allowed `scene_setup.framing` values. (Requirement 3.4)

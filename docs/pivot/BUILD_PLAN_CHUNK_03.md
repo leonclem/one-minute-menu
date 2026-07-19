@@ -114,9 +114,18 @@ Append Pending rows to `PENDING_PRODUCTION_DEPLOY.md` for the new migration (+ s
 
 ## Gallery images (no seed assets)
 
-The dish library shows **the signed-in user’s own uploads and generations** — there is no
-curated example pack to install. Populate it by using `/studio` (upload → generate). Empty
-state copy explains this when a dish has no images yet.
+The dish **variants** strip shows **the signed-in user’s own uploads and generations** — there
+is no curated example pack. Populate it by using `/studio` (upload → generate).
+
+## UX revision (2026-07-19)
+
+Folded into Chunk 3 before merge:
+
+- Left control panel / right preview + variants; accordion one-open (CollapsibleSection).
+- Remove-only garnish/sides in FOH; rotation + lighting visual tiles.
+- Styled modals for dish create/rename; ConfirmDialog for deletes.
+- Per-generation `changeSummary` chips; Download/Delete on Current only.
+- Control preview PNGs: `public/studio/controls/{basename}.png` (see README there).
 
 ## Estimated shape
 

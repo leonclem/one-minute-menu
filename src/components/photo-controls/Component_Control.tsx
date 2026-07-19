@@ -25,6 +25,11 @@ export interface ComponentControlProps {
   onSidesChange: (sides: string[]) => void
   /** When true, all controls are disabled (before hydration or during mutation). */
   disabled?: boolean
+  /**
+   * When false, hide add inputs (FOH Studio: remove-only).
+   * Defaults to true for admin Photo Control.
+   */
+  allowAdd?: boolean
 }
 
 interface ComponentListProps {
@@ -33,6 +38,7 @@ interface ComponentListProps {
   onRemove: (item: string) => void
   onAdd: (item: string) => void
   disabled: boolean
+  allowAdd: boolean
   addPlaceholder: string
   addAriaLabel: string
 }
@@ -43,6 +49,7 @@ function ComponentList({
   onRemove,
   onAdd,
   disabled,
+  allowAdd,
   addPlaceholder,
   addAriaLabel,
 }: ComponentListProps) {
@@ -68,7 +75,7 @@ function ComponentList({
 
       {/* Existing items */}
       {items.length === 0 ? (
-        <p className="text-xs text-gray-400 italic mb-2">None</p>
+        <p className="text-xs text-gray-400 italic mb-2">None detected</p>
       ) : (
         <ul className="mb-2 space-y-1" aria-label={`${label} list`}>
           {items.map((item) => (
@@ -96,40 +103,41 @@ function ComponentList({
         </ul>
       )}
 
-      {/* Add new item */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={addPlaceholder}
-          disabled={disabled}
-          aria-label={addAriaLabel}
-          className={[
-            'flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
-            disabled && 'cursor-not-allowed opacity-50 bg-gray-100',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-        />
-        <button
-          type="button"
-          disabled={disabled || inputValue.trim().length === 0}
-          onClick={handleAdd}
-          aria-label={`Add ${label.toLowerCase()}`}
-          className={[
-            'rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700',
-            'hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors',
-            (disabled || inputValue.trim().length === 0) && 'cursor-not-allowed opacity-50',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-        >
-          Add
-        </button>
-      </div>
+      {allowAdd && (
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={addPlaceholder}
+            disabled={disabled}
+            aria-label={addAriaLabel}
+            className={[
+              'flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm',
+              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+              disabled && 'cursor-not-allowed opacity-50 bg-gray-100',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          />
+          <button
+            type="button"
+            disabled={disabled || inputValue.trim().length === 0}
+            onClick={handleAdd}
+            aria-label={`Add ${label.toLowerCase()}`}
+            className={[
+              'rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700',
+              'hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors',
+              (disabled || inputValue.trim().length === 0) && 'cursor-not-allowed opacity-50',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            Add
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -140,6 +148,7 @@ export function Component_Control({
   onGarnishesChange,
   onSidesChange,
   disabled = false,
+  allowAdd = true,
 }: ComponentControlProps) {
   const handleRemoveGarnish = (item: string) => {
     onGarnishesChange(garnishes.filter((g) => g !== item))
@@ -169,6 +178,7 @@ export function Component_Control({
         onRemove={handleRemoveGarnish}
         onAdd={handleAddGarnish}
         disabled={disabled}
+        allowAdd={allowAdd}
         addPlaceholder="e.g. lemon wedge"
         addAriaLabel="New garnish name"
       />
@@ -178,6 +188,7 @@ export function Component_Control({
         onRemove={handleRemoveSide}
         onAdd={handleAddSide}
         disabled={disabled}
+        allowAdd={allowAdd}
         addPlaceholder="e.g. roasted potatoes"
         addAriaLabel="New side name"
       />
