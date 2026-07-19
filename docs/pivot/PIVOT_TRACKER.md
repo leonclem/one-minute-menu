@@ -63,7 +63,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 5.1 | User controls, not prompt boxes | Built | `/studio` uses lighting + garnish/sides controls; no prompt box. |
 | 5.2 | Preserve the dish (identity lock defaults) | Not started | Partially exists in photo-control prompt composer; needs review against §5.2 list. |
 | 5.3 | Stage changes before generation (max 3, summary, reset) | Built | Pending-changes panel + max 3 in `/studio` (same engine as sandbox). |
-| 5.4 | MVP prioritises reliable transformations | Not started | Governs control selection in Chunks 2+. |
+| 5.4 | MVP prioritises reliable transformations | In progress | Lighting + background libraries shipped; plating/risky camera still deferred. |
 
 ### MVP features (§7)
 
@@ -72,8 +72,8 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 7.1 | Customer-facing `/studio` route | 1 | Built | Flag-gated; nav link via `shouldShowStudioNav`. |
 | 7.2 | Project/dish/image data model | 2 | Deviation | `studio_dishes` + evolved `studio_images`; projects/`image_assets`/`image_edits` deferred (see decisions 2026-07-18). |
 | 7.3 | Image library per dish | 2 | Built | Dish picker + per-dish gallery with favourite, use-as-working, archive, delete, download. |
-| 7.4 | Lighting manipulation (6 styles + reference library) | 1/3 | In progress | FOH Natural / Moody / Studio tiles; curated reference library still Phase 3. |
-| 7.5 | Background/surface swapping + library | 3 | Not started | |
+| 7.4 | Lighting manipulation (6 styles + reference library) | 1/3 | Built | DB `studio_lighting_styles` (6 seeded); FOH tiles from API; fragments resolved in mutate. |
+| 7.5 | Background/surface swapping + library | 3 | Built | DB `studio_background_styles` (8 seeded); FOH Background section; `canvas.background_style` editable. |
 | 7.6 | Plating/vessel style library | 7 | Deferred | Admin-only/experimental per doc. |
 | 7.7 | Dish element manipulation (garnish/sides/clutter) | 1 | In progress | FOH remove-only for garnish/sides; add deferred. Clutter removal still pending. |
 | 7.8 | Rotation & composition controls (replace camera pitch) | 1 | In progress | FOH rotation tiles (3 options); full composition/yaw later. |
@@ -112,7 +112,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 0 | Safety & setup (branch, flags, hide legacy nav, verify pipeline, document it) | Built | Chunk 1 — live Photo Control smoke check still manual (see `IMAGE_PIPELINE_NOTES.md`) |
 | 1 | Customer-facing Photo Studio shell | Built | Chunk 2 — `/studio` + `studio_images` persistence |
 | 2 | Image library per dish | Built | Chunk 3 — `studio_dishes` + dish library on `/studio` |
-| 3 | Background & lighting reference libraries | Not started | |
+| 3 | Background & lighting reference libraries | Built | Chunk 4 — `studio_*_styles` + admin CRUD + FOH tiles |
 | 4 | Controlled prompt/state layer | Not started | Partially exists in `src/lib/photo-control/` (JSON state, delta, composer). |
 | 5 | Credits & usage control | Not started | |
 | 6 | MVP market test | Not started | |
@@ -127,4 +127,4 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 1 | Phase 0: pivot docs, feature flags, hide legacy nav, verify + document generation pipeline | `studio/chunk-01-foundations` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_01.md` |
 | 2 | Phase 1: customer-facing `/studio` shell with persistence | `studio/chunk-02-studio-shell` | Built — merged to `main` — see `docs/pivot/BUILD_PLAN_CHUNK_02.md` |
 | 3 | Phase 2: image library per dish (`studio_dishes` + dish-scoped gallery) | `studio/chunk-03-dish-library` | Built — merged to `main` — see `docs/pivot/BUILD_PLAN_CHUNK_03.md` |
-| 4 | Phase 3: background & lighting reference libraries (DB-backed, admin-managed) | `studio/chunk-04-reference-libraries` | In progress — see `docs/pivot/BUILD_PLAN_CHUNK_04.md` |
+| 4 | Phase 3: background & lighting reference libraries (DB-backed, admin-managed) | `studio/chunk-04-reference-libraries` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_04.md` |

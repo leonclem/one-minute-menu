@@ -38,6 +38,22 @@ describe('change-summary', () => {
     expect(chips).toEqual(['Lighting → Moody', 'Rotation → Overhead'])
   })
 
+  it('builds chips for background style with label map', () => {
+    const chips = buildChangeSummary(
+      emptyDelta({
+        scalarChanges: [
+          {
+            path: 'canvas.background_style',
+            from: '',
+            to: 'dark-slate',
+          },
+        ],
+      }),
+      { backgroundLabels: { 'dark-slate': 'Dark Slate' } },
+    )
+    expect(chips).toEqual(['Background → Dark Slate'])
+  })
+
   it('builds chips for removed garnishes', () => {
     const chips = buildChangeSummary(
       emptyDelta({

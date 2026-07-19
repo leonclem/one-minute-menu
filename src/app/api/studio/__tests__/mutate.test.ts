@@ -38,6 +38,12 @@ jest.mock('@/lib/studio/persistence', () => ({
   persistStudioImage: (...args: unknown[]) => mockPersist(...args),
 }))
 
+jest.mock('@/lib/studio/resolve-style-directives', () => ({
+  resolveStyleDirectiveClauses: jest.fn(async () => ({ clauses: [] })),
+  mergeDirectiveWithStyleClauses: (directive: string, clauses: string[]) =>
+    [...clauses, directive].filter(Boolean).join(' '),
+}))
+
 jest.mock('@/lib/logger', () => ({
   logger: {
     info: jest.fn(),
@@ -63,12 +69,12 @@ const validBody = {
   sourceImageDataUrl: tinyPng,
   originalState: {
     scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy' },
-    canvas: { background: '', main_vessel: '' },
+    canvas: { background: '', background_style: '', main_vessel: '' },
     food_components: { main_item: 'burger', garnishes: [], sides: [] },
   },
   targetState: {
     scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'low-key' },
-    canvas: { background: '', main_vessel: '' },
+    canvas: { background: '', background_style: '', main_vessel: '' },
     food_components: { main_item: 'burger', garnishes: [], sides: [] },
   },
   directive: 'Change lighting to low-key',

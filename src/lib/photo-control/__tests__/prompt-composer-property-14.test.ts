@@ -46,6 +46,7 @@ const compress = (s: any) => ({
   },
   c: {
     b: s.canvas.background.slice(0, 50),
+    bs: (s.canvas.background_style ?? '').slice(0, 40),
     v: s.canvas.main_vessel.slice(0, 50),
   },
   f: {
@@ -71,6 +72,7 @@ const minimalSchemaArb: fc.Arbitrary<MinimalSchema> = fc.record({
   }),
   canvas: fc.record({
     background: fc.string({ minLength: 1, maxLength: 30 }),
+    background_style: fc.constantFrom('', 'clean-white-studio', 'dark-slate'),
     main_vessel: fc.string({ minLength: 1, maxLength: 30 }),
   }),
   food_components: fc.record({

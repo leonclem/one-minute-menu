@@ -2,14 +2,22 @@
  * @jest-environment node
  */
 
-import { ensureAngleRestageBaseline, ensureLightingRestageBaseline } from '../restage'
+import {
+  ensureAngleRestageBaseline,
+  ensureBackgroundRestageBaseline,
+  ensureLightingRestageBaseline,
+} from '../restage'
 import { CENTER, type EditorState } from '@/lib/photo-control/minimal-schema'
 
-function state(angle: EditorState['schema']['scene_setup']['angle'], lighting: EditorState['schema']['scene_setup']['lighting']): EditorState {
+function state(
+  angle: EditorState['schema']['scene_setup']['angle'],
+  lighting: EditorState['schema']['scene_setup']['lighting'],
+  backgroundStyle = '',
+): EditorState {
   return {
     schema: {
       scene_setup: { angle, framing: 'close-up', lighting },
-      canvas: { background: '', main_vessel: '' },
+      canvas: { background: '', background_style: backgroundStyle, main_vessel: '' },
       food_components: { main_item: 'x', garnishes: [], sides: [] },
     },
     position: { ...CENTER },
@@ -34,5 +42,16 @@ describe('restage', () => {
     const current = state('45-degree', 'low-key')
     const nextBaseline = ensureLightingRestageBaseline(current, current, 'low-key')
     expect(nextBaseline.schema.scene_setup.lighting).not.toBe('low-key')
+  })
+
+  it('nudges background baseline on re-apply', () => {
+    const current = state('45-degree', 'bright-and-airy', 'dark-slate')
+    const nextBaseline = ensureBackgroundRestageBaseline(
+      current,
+      current,
+      'dark-slate',
+      ['dark-slate', 'clean-white-studio'],
+    )
+    expect(nextBaseline.schema.canvas.background_style).not.toBe('dark-slate')
   })
 })

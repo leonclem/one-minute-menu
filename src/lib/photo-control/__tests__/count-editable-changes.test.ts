@@ -22,7 +22,7 @@ function editor(partial?: {
         framing: 'close-up',
         lighting: partial?.lighting ?? 'low-key',
       },
-      canvas: { background: '', main_vessel: '' },
+      canvas: { background: '', background_style: '', main_vessel: '' },
       food_components: {
         main_item: 'burger',
         garnishes: partial?.garnishes ?? [],

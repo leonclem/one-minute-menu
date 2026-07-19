@@ -27,7 +27,6 @@ import {
 } from '../schema-validator'
 import {
   ANGLE_VALUES,
-  LIGHTING_VALUES,
   FRAMING_VALUES,
   ENUM_DEFAULTS,
   MinimalSchemaZ,
@@ -65,13 +64,9 @@ function warningsFor(
   return result.warnings.filter((w) => w.path === path)
 }
 
-/** Warnings concerning any of the three Enum_Fields. */
+/** Warnings concerning Enum_Fields (angle/framing; lighting is a free style key). */
 function enumWarnings(result: MinimalValidationResult): MinimalValidationWarning[] {
-  const enumPaths = [
-    'scene_setup.angle',
-    'scene_setup.framing',
-    'scene_setup.lighting',
-  ]
+  const enumPaths = ['scene_setup.angle', 'scene_setup.framing']
   return result.warnings.filter((w) => enumPaths.includes(w.path))
 }
 
@@ -170,7 +165,24 @@ describe('MinimalSchemaValidator — result shape (Req 3.8)', () => {
     expect(result.strictConformance).toBe(false)
     expect(ANGLE_VALUES).toContain(result.data.scene_setup.angle)
     expect(FRAMING_VALUES).toContain(result.data.scene_setup.framing)
-    expect(LIGHTING_VALUES).toContain(result.data.scene_setup.lighting)
+    // Lighting falls back to the default style key when non-string.
+    expect(result.data.scene_setup.lighting).toBe('bright-and-airy')
+    expect(result.data.canvas.background_style).toBe('')
+  })
+
+  it('accepts arbitrary lighting style keys without failing strictConformance', () => {
+    const result = validateMinimalSchema({
+      scene_setup: {
+        angle: '45-degree',
+        framing: 'close-up',
+        lighting: 'soft-natural-window',
+      },
+      canvas: { background: 'table', main_vessel: 'plate', background_style: '' },
+      food_components: { main_item: 'salad', garnishes: [], sides: [] },
+    })
+
+    expect(result.strictConformance).toBe(true)
+    expect(result.data.scene_setup.lighting).toBe('soft-natural-window')
   })
 
   // Representative case: non-enum repair does not affect strictConformance.

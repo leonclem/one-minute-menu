@@ -28,25 +28,20 @@ import fc from 'fast-check'
 import { validateMinimalSchema } from '../schema-validator'
 import {
   ANGLE_VALUES,
-  LIGHTING_VALUES,
   FRAMING_VALUES,
   ENUM_DEFAULTS,
+  DEFAULT_LIGHTING_KEY,
   MinimalSchemaZ,
 } from '../minimal-schema'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-/** The three Enum_Field dotted paths constrained by the validator. */
-const ENUM_PATHS = [
-  'scene_setup.angle',
-  'scene_setup.framing',
-  'scene_setup.lighting',
-] as const
+/** Enum_Field dotted paths (lighting is a free style-key string since Chunk 4). */
+const ENUM_PATHS = ['scene_setup.angle', 'scene_setup.framing'] as const
 
 const ALLOWED_BY_PATH: Record<(typeof ENUM_PATHS)[number], readonly string[]> = {
   'scene_setup.angle': ANGLE_VALUES,
   'scene_setup.framing': FRAMING_VALUES,
-  'scene_setup.lighting': LIGHTING_VALUES,
 }
 
 // ── Shared assertion helpers ─────────────────────────────────────────────────
@@ -75,10 +70,13 @@ function assertUniversalInvariants(result: ReturnType<typeof validateMinimalSche
   // Minimal_Schema regardless of the strict-conformance flag.
   expect(MinimalSchemaZ.safeParse(result.data).success).toBe(true)
 
-  // 3.2/3.3/3.4 — every output Enum_Field is a member of its allowed set.
+  // 3.2/3.4 — every output Enum_Field is a member of its allowed set.
   expect(ANGLE_VALUES).toContain(result.data.scene_setup.angle)
   expect(FRAMING_VALUES).toContain(result.data.scene_setup.framing)
-  expect(LIGHTING_VALUES).toContain(result.data.scene_setup.lighting)
+  // Lighting is a style-key string (Chunk 4) — only require non-empty.
+  expect(typeof result.data.scene_setup.lighting).toBe('string')
+  expect(result.data.scene_setup.lighting.trim().length).toBeGreaterThan(0)
+  expect(typeof result.data.canvas.background_style).toBe('string')
 
   // 3.7 — garnishes/sides are arrays of strings.
   expect(Array.isArray(result.data.food_components.garnishes)).toBe(true)
@@ -209,7 +207,6 @@ function buildInput(obj: unknown, mode: WrapMode): unknown {
 interface StructuredCase {
   angle: FieldChoice
   framing: FieldChoice
-  lighting: FieldChoice
   malformNonEnum: boolean
   wrap: WrapMode
 }
@@ -217,17 +214,18 @@ interface StructuredCase {
 const structuredCaseArb: fc.Arbitrary<StructuredCase> = fc.record({
   angle: fieldChoiceArb(ANGLE_VALUES),
   framing: fieldChoiceArb(FRAMING_VALUES),
-  lighting: fieldChoiceArb(LIGHTING_VALUES),
   malformNonEnum: fc.boolean(),
   wrap: wrapModeArb,
 })
 
 /** Build the `scene_setup` object, omitting keys flagged for omission. */
 function buildSceneSetup(c: StructuredCase): Record<string, unknown> {
-  const scene: Record<string, unknown> = {}
+  const scene: Record<string, unknown> = {
+    // Lighting is a free style key — keep a stable in-set value for enum tests.
+    lighting: DEFAULT_LIGHTING_KEY,
+  }
   if (!c.angle.omit) scene['angle'] = c.angle.embed
   if (!c.framing.omit) scene['framing'] = c.framing.embed
-  if (!c.lighting.omit) scene['lighting'] = c.lighting.embed
   return scene
 }
 
@@ -315,15 +313,14 @@ describe('Feature: photo-control, Property 3: Enum-validation invariant', () => 
         // Universal invariants always hold.
         assertUniversalInvariants(result)
 
-        // Expected per-field coercion outcome.
+        // Expected per-field coercion outcome (angle/framing enums only).
         const fields: Array<{
-          name: 'angle' | 'framing' | 'lighting'
+          name: 'angle' | 'framing'
           path: (typeof ENUM_PATHS)[number]
           choice: FieldChoice
         }> = [
           { name: 'angle', path: 'scene_setup.angle', choice: c.angle },
           { name: 'framing', path: 'scene_setup.framing', choice: c.framing },
-          { name: 'lighting', path: 'scene_setup.lighting', choice: c.lighting },
         ]
 
         const anyCoerced = fields.some((f) => f.choice.coerced)
@@ -410,7 +407,7 @@ describe('Feature: photo-control, Property 3: Enum-validation invariant', () => 
           expect(result.strictConformance).toBe(false)
           expect(result.data.scene_setup.angle).toBe(ENUM_DEFAULTS['scene_setup.angle'])
           expect(result.data.scene_setup.framing).toBe(ENUM_DEFAULTS['scene_setup.framing'])
-          expect(result.data.scene_setup.lighting).toBe(ENUM_DEFAULTS['scene_setup.lighting'])
+          expect(result.data.scene_setup.lighting).toBe(DEFAULT_LIGHTING_KEY)
         },
       ),
       { numRuns: 100 },

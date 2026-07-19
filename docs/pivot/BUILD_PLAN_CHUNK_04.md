@@ -49,10 +49,10 @@ prompt fragments resolve server-side. Still behind `NEXT_PUBLIC_ENABLE_PHOTO_STU
 
 ## Acceptance criteria
 
-- [ ] Admin can list/create/update/deactivate lighting and background styles.
-- [ ] Authenticated Studio user sees active lighting + background style tiles.
-- [ ] Selecting a background stages a change and generates without altering the dish identity locks.
-- [ ] Lighting styles beyond the original 3 work via DB keys + prompt fragments.
-- [ ] Customer styles API never returns `prompt_fragment` / `negative_constraints`.
-- [ ] Admin Photo Control sandbox still works on its enum path.
-- [ ] Tests pass; tracker + pending deploy backlog updated in the same commits.
+- [x] Admin can list/create/update/deactivate lighting and background styles.
+- [x] Authenticated Studio user sees active lighting + background style tiles.
+- [x] Selecting a background stages a change and generates without altering the dish identity locks.
+- [x] Lighting styles beyond the original 3 work via DB keys + prompt fragments.
+- [x] Customer styles API never returns `prompt_fragment` / `negative_constraints`.
+- [x] Admin Photo Control sandbox still works on its enum path.
+- [x] Tests pass; tracker + pending deploy backlog updated in the same commits.
