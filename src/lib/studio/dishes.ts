@@ -3,9 +3,9 @@
  */
 
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
-import type { StudioDishRecord } from '@/lib/studio/types'
+import type { StudioDishListItem, StudioDishRecord } from '@/lib/studio/types'
 
-export type { StudioDishRecord } from '@/lib/studio/types'
+export type { StudioDishListItem, StudioDishRecord } from '@/lib/studio/types'
 
 const DEFAULT_DISH_NAME = 'My dishes'
 
@@ -28,6 +28,45 @@ export async function listStudioDishes(userId: string): Promise<StudioDishRecord
   }
 
   return (data ?? []) as StudioDishRecord[]
+}
+
+/**
+ * List dishes with Current variant public URLs for the dish picker modal.
+ */
+export async function listStudioDishesWithThumbnails(
+  userId: string,
+): Promise<StudioDishListItem[]> {
+  const dishes = await listStudioDishes(userId)
+  if (dishes.length === 0) return []
+
+  const currentIds = dishes
+    .map((d) => d.current_image_id)
+    .filter((id): id is string => typeof id === 'string' && id.length > 0)
+
+  const urlById = new Map<string, string>()
+  if (currentIds.length > 0) {
+    const supabase = createAdminSupabaseClient()
+    const { data, error } = await supabase
+      .from('studio_images')
+      .select('id, public_url')
+      .eq('user_id', userId)
+      .in('id', currentIds)
+
+    if (error) {
+      throw new Error(`Failed to load dish thumbnails: ${error.message}`)
+    }
+
+    for (const row of data ?? []) {
+      urlById.set(row.id as string, row.public_url as string)
+    }
+  }
+
+  return dishes.map((dish) => ({
+    ...dish,
+    current_image_url: dish.current_image_id
+      ? (urlById.get(dish.current_image_id) ?? null)
+      : null,
+  }))
 }
 
 /**

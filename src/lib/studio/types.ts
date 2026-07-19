@@ -10,6 +10,11 @@ export interface StudioDishRecord {
   updated_at: string
 }
 
+/** Dish row plus Current preview URL for picker UI. */
+export interface StudioDishListItem extends StudioDishRecord {
+  current_image_url: string | null
+}
+
 export interface StudioImageRecord {
   id: string
   user_id: string

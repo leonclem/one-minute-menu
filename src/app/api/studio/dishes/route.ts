@@ -10,7 +10,7 @@ import { requireUserApi } from '@/lib/user-api-auth'
 import {
   createStudioDish,
   ensureDefaultStudioDish,
-  listStudioDishes,
+  listStudioDishesWithThumbnails,
 } from '@/lib/studio/dishes'
 import { logger } from '@/lib/logger'
 
@@ -21,10 +21,10 @@ export async function GET() {
     const auth = await requireUserApi()
     if (!auth.ok) return auth.response
 
-    let dishes = await listStudioDishes(auth.user.id)
+    let dishes = await listStudioDishesWithThumbnails(auth.user.id)
     if (dishes.length === 0) {
-      const created = await ensureDefaultStudioDish(auth.user.id)
-      dishes = [created]
+      await ensureDefaultStudioDish(auth.user.id)
+      dishes = await listStudioDishesWithThumbnails(auth.user.id)
     }
 
     return NextResponse.json({ dishes })

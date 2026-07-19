@@ -34,7 +34,12 @@ import {
   ensureAngleRestageBaseline,
   ensureLightingRestageBaseline,
 } from '@/lib/studio/restage'
-import type { StudioDishRecord, StudioImageRecord } from '@/lib/studio/types'
+import type {
+  StudioDishListItem,
+  StudioDishRecord,
+  StudioImageRecord,
+} from '@/lib/studio/types'
+import { StudioDishPickerModal } from './studio-dish-picker-modal'
 import { StudioTextModal } from './studio-text-modal'
 import { VisualOptionTiles } from './visual-option-tiles'
 
@@ -153,6 +158,9 @@ export function StudioClient({
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteDishOpen, setDeleteDishOpen] = useState(false)
   const [deleteImageOpen, setDeleteImageOpen] = useState(false)
+  const [dishPickerOpen, setDishPickerOpen] = useState(false)
+  const [dishPickerItems, setDishPickerItems] = useState<StudioDishListItem[]>([])
+  const [dishPickerLoading, setDishPickerLoading] = useState(false)
 
   const [sourceImage, setSourceImage] = useState<SourceImage | null>(null)
   const [persistedSourceId, setPersistedSourceId] = useState<string | null>(null)
@@ -704,62 +712,81 @@ export function StudioClient({
     persistDishCurrent,
   ])
 
+  const openDishPicker = useCallback(async () => {
+    setDishPickerOpen(true)
+    setDishPickerLoading(true)
+    try {
+      const res = await fetch('/api/studio/dishes')
+      if (!res.ok) throw new Error('Failed to load dishes')
+      const data = (await res.json()) as { dishes: StudioDishListItem[] }
+      setDishPickerItems(data.dishes ?? [])
+      // Keep local dish list in sync (without requiring thumbnails on every row).
+      if (data.dishes?.length) {
+        setDishes(data.dishes.map(({ current_image_url: _url, ...dish }) => dish))
+      }
+    } catch (err) {
+      setLibraryError(err instanceof Error ? err.message : 'Failed to load dishes')
+      setDishPickerOpen(false)
+    } finally {
+      setDishPickerLoading(false)
+    }
+  }, [])
+
+  const handlePickDish = useCallback(
+    async (dishId: string) => {
+      setDishPickerOpen(false)
+      if (dishId === activeDishId) return
+      setLibraryBusy(true)
+      setLibraryError(null)
+      setActiveDishId(dishId)
+      try {
+        await loadGalleryForDish(
+          dishId,
+          dishes.find((d) => d.id === dishId) ??
+            dishPickerItems.find((d) => d.id === dishId),
+        )
+      } catch (err) {
+        setLibraryError(err instanceof Error ? err.message : 'Failed to switch dish')
+      } finally {
+        setLibraryBusy(false)
+      }
+    },
+    [activeDishId, dishPickerItems, dishes, loadGalleryForDish],
+  )
+
   return (
     <div className="space-y-6">
-      {/* Header: dish + actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="truncate text-2xl font-bold text-gray-900">
-              {activeDish?.name ?? 'Food Photo Studio'}
-            </h1>
-            {activeDish && (
-              <button
-                type="button"
-                aria-label="Rename dish"
-                disabled={busy}
-                className="rounded p-1 text-ux-primary hover:bg-ux-primary/10 disabled:opacity-50"
-                onClick={() => setRenameOpen(true)}
-              >
-                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-8.5 8.5A2 2 0 016.5 15.5H5v-1.5a2 2 0 01.586-1.414l8-8z" />
-                </svg>
-              </button>
-            )}
-          </div>
-          {dishes.length > 1 && (
-            <label className="mt-2 block text-xs text-gray-500">
-              Switch dish
-              <select
-                className="mt-1 block w-full max-w-xs rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-800"
-                value={activeDishId}
-                disabled={busy}
-                onChange={(e) => {
-                  const id = e.target.value
-                  setLibraryBusy(true)
-                  setLibraryError(null)
-                  setActiveDishId(id)
-                  void loadGalleryForDish(
-                    id,
-                    dishes.find((d) => d.id === id),
-                  )
-                    .catch((err) =>
-                      setLibraryError(err instanceof Error ? err.message : 'Failed to switch dish'),
-                    )
-                    .finally(() => setLibraryBusy(false))
-                }}
-              >
-                {dishes.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+      {/* Header: dish title aligned with action buttons */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <h1 className="truncate text-2xl font-bold leading-none text-gray-900">
+            {activeDish?.name ?? 'Food Photo Studio'}
+          </h1>
+          {activeDish && (
+            <button
+              type="button"
+              aria-label="Rename dish"
+              disabled={busy}
+              className="rounded p-1 text-ux-primary hover:bg-ux-primary/10 disabled:opacity-50"
+              onClick={() => setRenameOpen(true)}
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                <path d="M13.586 3.586a2 2 0 112.828 2.828l-8.5 8.5A2 2 0 016.5 15.5H5v-1.5a2 2 0 01.586-1.414l8-8z" />
+              </svg>
+            </button>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+            onClick={() => void openDishPicker()}
+            data-testid="studio-dishes-button"
+          >
+            Dishes
+          </button>
           <button
             type="button"
             disabled={busy || !activeDishId}
@@ -1066,6 +1093,16 @@ export function StudioClient({
           </div>
         </section>
       </div>
+
+      <StudioDishPickerModal
+        open={dishPickerOpen}
+        dishes={dishPickerItems}
+        activeDishId={activeDishId}
+        busy={busy}
+        loading={dishPickerLoading}
+        onClose={() => setDishPickerOpen(false)}
+        onSelect={(id) => void handlePickDish(id)}
+      />
 
       <StudioTextModal
         open={createOpen}

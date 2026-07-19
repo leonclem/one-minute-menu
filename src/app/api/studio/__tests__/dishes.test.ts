@@ -5,7 +5,7 @@
 import { NextRequest } from 'next/server'
 
 const mockRequireUserApi = jest.fn()
-const mockList = jest.fn()
+const mockListWithThumbs = jest.fn()
 const mockEnsure = jest.fn()
 const mockCreate = jest.fn()
 
@@ -14,7 +14,7 @@ jest.mock('@/lib/user-api-auth', () => ({
 }))
 
 jest.mock('@/lib/studio/dishes', () => ({
-  listStudioDishes: (...args: unknown[]) => mockList(...args),
+  listStudioDishesWithThumbnails: (...args: unknown[]) => mockListWithThumbs(...args),
   ensureDefaultStudioDish: (...args: unknown[]) => mockEnsure(...args),
   createStudioDish: (...args: unknown[]) => mockCreate(...args),
 }))
@@ -45,7 +45,9 @@ describe('GET/POST /api/studio/dishes', () => {
       user: { id: 'u1' },
       supabase: {},
     })
-    mockList.mockResolvedValue([])
+    mockListWithThumbs
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 'd1', name: 'My dishes', current_image_url: null }])
     mockEnsure.mockResolvedValue({ id: 'd1', name: 'My dishes' })
 
     const res = await GET()
