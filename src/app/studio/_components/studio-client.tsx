@@ -15,7 +15,6 @@ import {
   CENTER,
   type AngleValue,
   type EditorState,
-  type LightingValue,
 } from '@/lib/photo-control/minimal-schema'
 import { type MinimalValidationResult } from '@/lib/photo-control/schema-validator'
 import { Component_Control } from '@/components/photo-controls'
@@ -25,6 +24,10 @@ import { buildChangeSummary, readChangeSummary } from '@/lib/studio/change-summa
 import {
   STUDIO_LIGHTING_OPTIONS,
   STUDIO_ROTATION_OPTIONS,
+  backgroundStylesToOptions,
+  lightingStylesToOptions,
+  styleLabelMap,
+  FOH_STYLE_EXCLUDE_PATHS,
 } from '@/lib/studio/control-options'
 import {
   editorStateToMetadata,
@@ -32,19 +35,22 @@ import {
 } from '@/lib/studio/editor-state-storage'
 import {
   ensureAngleRestageBaseline,
+  ensureBackgroundRestageBaseline,
   ensureLightingRestageBaseline,
 } from '@/lib/studio/restage'
 import type {
+  StudioBackgroundStyleDisplay,
   StudioDishListItem,
   StudioDishRecord,
   StudioImageRecord,
+  StudioLightingStyleDisplay,
 } from '@/lib/studio/types'
 import { StudioDishPickerModal } from './studio-dish-picker-modal'
 import { StudioTextModal } from './studio-text-modal'
 import { VisualOptionTiles } from './visual-option-tiles'
 
 type ExtractResponse = MinimalValidationResult
-type ControlSection = 'rotation' | 'lighting' | 'garnishes' | null
+type ControlSection = 'rotation' | 'lighting' | 'background' | 'garnishes' | null
 
 interface MutateResponse {
   imageUrl: string
@@ -153,6 +159,8 @@ export function StudioClient({
   const [expandedSection, setExpandedSection] = useState<ControlSection>('lighting')
   const [libraryBusy, setLibraryBusy] = useState(false)
   const [libraryError, setLibraryError] = useState<string | null>(null)
+  const [lightingStyles, setLightingStyles] = useState<StudioLightingStyleDisplay[]>([])
+  const [backgroundStyles, setBackgroundStyles] = useState<StudioBackgroundStyleDisplay[]>([])
 
   const [createOpen, setCreateOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
@@ -196,6 +204,53 @@ export function StudioClient({
   const hasPendingChanges = pendingChangeCount > 0
   const controlsDisabled = !isHydrated || isGenerating
   const busy = libraryBusy || isExtracting || isGenerating
+
+  const lightingOptions = useMemo(() => {
+    if (lightingStyles.length > 0) return lightingStylesToOptions(lightingStyles)
+    return STUDIO_LIGHTING_OPTIONS
+  }, [lightingStyles])
+
+  const backgroundOptions = useMemo(
+    () => backgroundStylesToOptions(backgroundStyles),
+    [backgroundStyles],
+  )
+
+  const lightingLabelMap = useMemo(() => styleLabelMap(lightingStyles), [lightingStyles])
+  const backgroundLabelMap = useMemo(
+    () => styleLabelMap(backgroundStyles),
+    [backgroundStyles],
+  )
+
+  const lightingKeys = useMemo(
+    () => lightingOptions.map((option) => option.value),
+    [lightingOptions],
+  )
+  const backgroundKeys = useMemo(
+    () => backgroundOptions.map((option) => option.value),
+    [backgroundOptions],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const response = await fetch('/api/studio/styles')
+        if (!response.ok) return
+        const data = (await response.json()) as {
+          lighting?: StudioLightingStyleDisplay[]
+          background?: StudioBackgroundStyleDisplay[]
+        }
+        if (cancelled) return
+        setLightingStyles(Array.isArray(data.lighting) ? data.lighting : [])
+        setBackgroundStyles(Array.isArray(data.background) ? data.background : [])
+      } catch {
+        // Keep static lighting fallback when styles API is unavailable.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const resetEditorForNewSource = useCallback(() => {
     setIsHydrated(false)
@@ -475,11 +530,12 @@ export function StudioClient({
   )
 
   const stageLighting = useCallback(
-    (lighting: LightingValue) => {
+    (lighting: string) => {
       originalStateRef.current = ensureLightingRestageBaseline(
         originalStateRef.current,
         editorState,
         lighting,
+        lightingKeys,
       )
       setBaselineVersion((v) => v + 1)
       applyStagedChange({
@@ -490,7 +546,30 @@ export function StudioClient({
         },
       })
     },
-    [applyStagedChange, editorState],
+    [applyStagedChange, editorState, lightingKeys],
+  )
+
+  const stageBackground = useCallback(
+    (backgroundStyle: string) => {
+      originalStateRef.current = ensureBackgroundRestageBaseline(
+        originalStateRef.current,
+        editorState,
+        backgroundStyle,
+        backgroundKeys,
+      )
+      setBaselineVersion((v) => v + 1)
+      applyStagedChange({
+        ...editorState,
+        schema: {
+          ...editorState.schema,
+          canvas: {
+            ...editorState.schema.canvas,
+            background_style: backgroundStyle,
+          },
+        },
+      })
+    },
+    [applyStagedChange, backgroundKeys, editorState],
   )
 
   const handleDiscardPending = useCallback(() => {
@@ -504,10 +583,15 @@ export function StudioClient({
     const delta = computeDelta(original, nextState)
     if (delta.isEmpty || !sourceImage || !activeDishId) return
 
-    const directive = generateDirective(delta, nextState)
+    const directive = generateDirective(delta, nextState, {
+      excludePaths: FOH_STYLE_EXCLUDE_PATHS,
+    })
     if (!directive) return
 
-    const changeSummary = buildChangeSummary(delta)
+    const changeSummary = buildChangeSummary(delta, {
+      lightingLabels: lightingLabelMap,
+      backgroundLabels: backgroundLabelMap,
+    })
 
     setIsGenerating(true)
     setMutationError(null)
@@ -579,7 +663,15 @@ export function StudioClient({
     } finally {
       setIsGenerating(false)
     }
-  }, [sourceImage, mutatedImageUrl, editorState, persistedSourceId, activeDishId])
+  }, [
+    sourceImage,
+    mutatedImageUrl,
+    editorState,
+    persistedSourceId,
+    activeDishId,
+    lightingLabelMap,
+    backgroundLabelMap,
+  ])
 
   const handleCreateDish = useCallback(
     async (name: string) => {
@@ -881,12 +973,32 @@ export function StudioClient({
                   onExpand={(open) => setExpandedSection(open ? 'lighting' : null)}
                 >
                   <VisualOptionTiles
-                    options={STUDIO_LIGHTING_OPTIONS}
+                    options={lightingOptions}
                     value={editorState.schema.scene_setup.lighting}
                     disabled={controlsDisabled}
                     ariaLabel="Lighting"
                     onChange={stageLighting}
                   />
+                </CollapsibleSection>
+
+                <CollapsibleSection
+                  title="Background"
+                  isExpanded={expandedSection === 'background'}
+                  onExpand={(open) => setExpandedSection(open ? 'background' : null)}
+                >
+                  {backgroundOptions.length === 0 ? (
+                    <p className="text-xs text-gray-500">
+                      No background styles available yet.
+                    </p>
+                  ) : (
+                    <VisualOptionTiles
+                      options={backgroundOptions}
+                      value={editorState.schema.canvas.background_style ?? ''}
+                      disabled={controlsDisabled}
+                      ariaLabel="Background"
+                      onChange={stageBackground}
+                    />
+                  )}
                 </CollapsibleSection>
 
                 <CollapsibleSection

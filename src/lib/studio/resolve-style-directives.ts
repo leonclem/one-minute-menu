@@ -10,11 +10,6 @@ import {
   resolveLightingStyle,
 } from '@/lib/studio/reference-libraries'
 
-export const FOH_STYLE_EXCLUDE_PATHS = [
-  'scene_setup.lighting',
-  'canvas.background_style',
-] as const
-
 export async function resolveStyleDirectiveClauses(
   originalState: MinimalSchema,
   targetState: MinimalSchema,

@@ -69,6 +69,15 @@ export function controlAssetSrc(basename: string): string {
   return `/studio/controls/${basename}.png`
 }
 
+/**
+ * Scalar paths whose directive clauses are resolved server-side from the DB
+ * reference libraries (never emit client-side prompt fragments).
+ */
+export const FOH_STYLE_EXCLUDE_PATHS = [
+  'scene_setup.lighting',
+  'canvas.background_style',
+] as const
+
 export function lightingStylesToOptions(
   styles: StudioLightingStyleDisplay[],
 ): StudioVisualOption<string>[] {

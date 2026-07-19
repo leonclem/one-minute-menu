@@ -39,7 +39,11 @@ export function VisualOptionTiles<T extends string>({
   ariaLabel,
 }: VisualOptionTilesProps<T>) {
   return (
-    <div role="radiogroup" aria-label={ariaLabel} className="grid grid-cols-3 gap-2">
+    <div
+      role="radiogroup"
+      aria-label={ariaLabel}
+      className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto pr-0.5"
+    >
       {options.map((option) => {
         const selected = option.value === value
         return (
