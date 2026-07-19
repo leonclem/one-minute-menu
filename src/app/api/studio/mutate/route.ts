@@ -13,7 +13,7 @@ import { NanoBananaError } from '@/lib/nano-banana'
 import { getMutationEngine } from '@/lib/photo-control/mutation-engine'
 import { composePrompt } from '@/lib/photo-control/prompt-composer'
 import { parseAndValidateImageDataUrl } from '@/lib/photo-control/request-validation'
-import type { MinimalSchema } from '@/lib/photo-control/minimal-schema'
+import { CENTER, type MinimalSchema } from '@/lib/photo-control/minimal-schema'
 import { getStudioDish, setStudioDishCurrentImage } from '@/lib/studio/dishes'
 import { editorStateToMetadata } from '@/lib/studio/editor-state-storage'
 import {
@@ -21,7 +21,10 @@ import {
   getStudioDailyGenerationLimit,
   persistStudioImage,
 } from '@/lib/studio/persistence'
-import { CENTER, type MinimalSchema } from '@/lib/photo-control/minimal-schema'
+import {
+  mergeDirectiveWithStyleClauses,
+  resolveStyleDirectiveClauses,
+} from '@/lib/studio/resolve-style-directives'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -123,10 +126,37 @@ export async function POST(request: NextRequest) {
 
     const { mimeType, base64: sourceImageBase64, byteLength: imageBytes } = parsed
 
+    const originalSchema = originalState as MinimalSchema
+    const targetSchema = targetState as MinimalSchema
+
+    // Normalize optional Chunk 4 field on older clients / persisted states.
+    if (typeof originalSchema.canvas?.background_style !== 'string') {
+      originalSchema.canvas = {
+        ...originalSchema.canvas,
+        background_style: '',
+      }
+    }
+    if (typeof targetSchema.canvas?.background_style !== 'string') {
+      targetSchema.canvas = {
+        ...targetSchema.canvas,
+        background_style: '',
+      }
+    }
+
+    const styleResolution = await resolveStyleDirectiveClauses(originalSchema, targetSchema)
+    if (styleResolution.error) {
+      return NextResponse.json({ error: styleResolution.error }, { status: 400 })
+    }
+
+    const mergedDirective = mergeDirectiveWithStyleClauses(
+      directive.trim(),
+      styleResolution.clauses,
+    )
+
     const compositionResult = composePrompt({
-      directive: directive.trim(),
-      originalState: originalState as MinimalSchema,
-      targetState: targetState as MinimalSchema,
+      directive: mergedDirective,
+      originalState: originalSchema,
+      targetState: targetSchema,
     })
 
     if (!compositionResult.ok) {
@@ -163,10 +193,10 @@ export async function POST(request: NextRequest) {
       prompt: compositionResult.prompt,
       model: STUDIO_MODEL,
       metadata: {
-        directive: directive.trim(),
+        directive: mergedDirective,
         changeSummary: changeSummaryChips,
         editorState: editorStateToMetadata({
-          schema: targetState as MinimalSchema,
+          schema: targetSchema,
           position: { ...CENTER },
         }),
       },
