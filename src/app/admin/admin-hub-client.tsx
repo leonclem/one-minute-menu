@@ -128,6 +128,12 @@ export function AdminHubClient() {
                   >
                     Photo Control (Food Editor)
                   </a>
+                  <a
+                    href="/admin/studio-styles"
+                    className="block px-4 py-2 text-sm text-green-700 font-semibold hover:bg-green-50"
+                  >
+                    Studio Style Libraries
+                  </a>
                   <hr className="my-1 border-gray-200" />
                   <a
                     href="/admin/placeholder-images"
