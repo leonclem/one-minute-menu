@@ -121,4 +121,4 @@ Subject to change; record changes as new dated rows rather than editing old ones
 |---|---|---|---|
 | 1 | Phase 0: pivot docs, feature flags, hide legacy nav, verify + document generation pipeline | `studio/chunk-01-foundations` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_01.md` |
 | 2 | Phase 1: customer-facing `/studio` shell with persistence | `studio/chunk-02-studio-shell` | Built — merged to `main` — see `docs/pivot/BUILD_PLAN_CHUNK_02.md` |
-| 3 | Phase 2: image library per dish (`studio_dishes` + dish-scoped gallery) | `studio/chunk-03-dish-library` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_03.md` |
+| 3 | Phase 2: image library per dish (`studio_dishes` + dish-scoped gallery) | `studio/chunk-03-dish-library` | Built — merged to `main` — see `docs/pivot/BUILD_PLAN_CHUNK_03.md` |
