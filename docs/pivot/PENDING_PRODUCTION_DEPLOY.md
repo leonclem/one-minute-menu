@@ -46,6 +46,7 @@ Prefer `npx supabase db push` against the linked production project (never
 | `supabase/migrations/070_studio_images.sql` | Chunk 2 | Pending | Creates `studio_images` + RLS. Required for `/api/studio/*` persistence. |
 | `supabase/migrations/071_studio_dishes.sql` | Chunk 3 | Pending | Creates `studio_dishes`, adds `dish_id`/`is_favourite`/`archived_at` to `studio_images`, backfills default dish. Apply after 070. |
 | `supabase/migrations/072_studio_dish_current_image.sql` | Chunk 3 | Pending | Adds `studio_dishes.current_image_id` for persisted Current variant per dish. Apply after 071. |
+| `supabase/migrations/073_studio_reference_libraries.sql` | Chunk 4 | Pending | Creates `studio_lighting_styles` + `studio_background_styles` with RLS and seed rows. Apply after 072. |
 
 ---
 
@@ -57,6 +58,7 @@ Non-env, non-migration steps that must not be forgotten.
 |---|---|---|---|
 | Smoke-test `/studio` after enabling flags | Chunk 2 | Pending | Upload → generate → download; confirm Admin Photo Control still works. |
 | Smoke-test dish library | Chunk 3 | Pending | Create/rename dish; upload; generate; favourite; use-as-working; archive/delete. |
+| Smoke-test reference libraries | Chunk 4 | Pending | Confirm lighting + background tiles load; generate with a background swap; admin can edit a style. |
 
 ---
 
