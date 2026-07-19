@@ -2,10 +2,15 @@
  * FOH Studio control options (labels + asset basenames + schema values).
  *
  * Preview images load from `/studio/controls/{basename}.png` (see public/).
- * Drop files named like `light-natural.png` into `public/studio/controls/`.
+ * Lighting/background options are primarily loaded from the DB reference
+ * libraries; the static lighting list below remains as a fallback.
  */
 
 import type { AngleValue, LightingValue } from '@/lib/photo-control/minimal-schema'
+import type {
+  StudioBackgroundStyleDisplay,
+  StudioLightingStyleDisplay,
+} from '@/lib/studio/types'
 
 export interface StudioVisualOption<T extends string> {
   id: string
@@ -25,6 +30,7 @@ export const STUDIO_ROTATION_OPTIONS: StudioVisualOption<AngleValue>[] = [
   { id: 'rotate-right45', label: 'Right 45°', assetBasename: 'rotate-right45', value: 'eye-level' },
 ]
 
+/** Fallback lighting tiles when the styles API is unavailable. */
 export const STUDIO_LIGHTING_OPTIONS: StudioVisualOption<LightingValue>[] = [
   {
     id: 'light-natural',
@@ -42,10 +48,13 @@ const ANGLE_FOH_LABELS: Partial<Record<AngleValue, string>> = {
   'eye-level': 'Right 45°',
 }
 
-const LIGHTING_FOH_LABELS: Record<LightingValue, string> = {
+const LIGHTING_FOH_LABELS: Record<string, string> = {
   'bright-and-airy': 'Natural',
   'low-key': 'Moody',
   studio: 'Studio',
+  'soft-natural-window': 'Soft Window',
+  'clean-delivery': 'Delivery',
+  'warm-restaurant': 'Warm Ambient',
 }
 
 export function fohAngleLabel(value: string): string {
@@ -53,9 +62,37 @@ export function fohAngleLabel(value: string): string {
 }
 
 export function fohLightingLabel(value: string): string {
-  return LIGHTING_FOH_LABELS[value as LightingValue] ?? value
+  return LIGHTING_FOH_LABELS[value] ?? value
 }
 
 export function controlAssetSrc(basename: string): string {
   return `/studio/controls/${basename}.png`
+}
+
+export function lightingStylesToOptions(
+  styles: StudioLightingStyleDisplay[],
+): StudioVisualOption<string>[] {
+  return styles.map((style) => ({
+    id: `light-${style.key}`,
+    label: style.name,
+    assetBasename: style.thumbnail_path || `light-${style.key}`,
+    value: style.key,
+  }))
+}
+
+export function backgroundStylesToOptions(
+  styles: StudioBackgroundStyleDisplay[],
+): StudioVisualOption<string>[] {
+  return styles.map((style) => ({
+    id: `bg-${style.key}`,
+    label: style.name,
+    assetBasename: style.thumbnail_path || `bg-${style.key}`,
+    value: style.key,
+  }))
+}
+
+export function styleLabelMap(
+  styles: Array<{ key: string; name: string }>,
+): Record<string, string> {
+  return Object.fromEntries(styles.map((style) => [style.key, style.name]))
 }

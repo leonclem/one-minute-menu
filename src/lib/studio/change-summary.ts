@@ -5,18 +5,33 @@
 import type { StateDelta } from '@/lib/photo-control/minimal-schema'
 import { fohAngleLabel, fohLightingLabel } from '@/lib/studio/control-options'
 
-export function buildChangeSummary(delta: StateDelta): string[] {
+export interface ChangeSummaryLabelMaps {
+  lightingLabels?: Record<string, string>
+  backgroundLabels?: Record<string, string>
+}
+
+export function buildChangeSummary(
+  delta: StateDelta,
+  labels?: ChangeSummaryLabelMaps,
+): string[] {
   if (delta.isEmpty) return []
 
   const chips: string[] = []
 
   for (const change of delta.scalarChanges ?? []) {
     if (change.path === 'scene_setup.lighting') {
-      chips.push(`Lighting → ${fohLightingLabel(change.to)}`)
+      const label =
+        labels?.lightingLabels?.[change.to] ?? fohLightingLabel(change.to)
+      chips.push(`Lighting → ${label}`)
     } else if (change.path === 'scene_setup.angle') {
       chips.push(`Rotation → ${fohAngleLabel(change.to)}`)
     } else if (change.path === 'scene_setup.framing') {
       chips.push(`Framing → ${change.to}`)
+    } else if (change.path === 'canvas.background_style') {
+      const label =
+        labels?.backgroundLabels?.[change.to] ??
+        (change.to.trim() ? change.to : 'Original')
+      chips.push(`Background → ${label}`)
     }
   }
 

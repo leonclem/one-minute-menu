@@ -231,6 +231,7 @@ export function composePrompt(input: CompositionInput): CompositionResult {
     },
     c: {
       b: s.canvas.background.slice(0, 50),
+      bs: (s.canvas.background_style ?? '').slice(0, 40),
       v: s.canvas.main_vessel.slice(0, 50),
     },
     f: {

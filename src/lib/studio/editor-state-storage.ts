@@ -25,6 +25,13 @@ export function readEditorStateFromMetadata(
   const schema = raw.schema as unknown as MinimalSchema
   if (!schema.scene_setup || !schema.food_components) return null
 
+  // Chunk 2/3 rows may lack background_style — default to empty.
+  if (!schema.canvas) {
+    schema.canvas = { background: '', background_style: '', main_vessel: '' }
+  } else if (typeof schema.canvas.background_style !== 'string') {
+    schema.canvas.background_style = ''
+  }
+
   const position = isRecord(raw.position)
     ? {
         x: typeof raw.position.x === 'number' ? raw.position.x : 0,

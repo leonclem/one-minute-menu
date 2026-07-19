@@ -84,7 +84,7 @@ function makeDefaultEditorState(): EditorState {
   return {
     schema: {
       scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy' },
-      canvas: { background: '', main_vessel: '' },
+      canvas: { background: '', background_style: '', main_vessel: '' },
       food_components: { main_item: '', garnishes: [], sides: [] },
     },
     position: { ...CENTER },

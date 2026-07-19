@@ -17,8 +17,8 @@
  *
  * The `StateDelta` captures exactly the state that the editor controls can
  * change:
- *  - the three `scene_setup` `Enum_Field`s (`angle`, `framing`, `lighting`) as
- *    scalar changes (Requirement 9.3);
+ *  - `scene_setup.angle`, `scene_setup.framing`, `scene_setup.lighting`, and
+ *    `canvas.background_style` as scalar changes (Requirement 9.3 + Chunk 4);
  *  - `food_components.garnishes` and `food_components.sides` as set-based
  *    additions/removals (Requirement 9.2);
  *  - the editor-only `position` (`AbstractCoordinate`) when it changes.
@@ -44,29 +44,29 @@ import {
   type ArrayDiff,
   type EditorState,
   type FramingValue,
-  type LightingValue,
   type MinimalSchema,
   type StateDelta,
 } from './minimal-schema'
 
 // ============================================================================
-// Enum scalar field descriptors
+// Editable scalar field descriptors
 // ============================================================================
 
 /**
- * The three `scene_setup` `Enum_Field` paths captured as scalar changes, in a
- * fixed, deterministic order. (Requirement 9.3)
+ * Editable scalar paths captured as scalar changes, in a fixed, deterministic
+ * order. (Requirement 9.3 + Chunk 4 background_style)
  */
-const ENUM_FIELD_PATHS = [
+const SCALAR_FIELD_PATHS = [
   'scene_setup.angle',
   'scene_setup.framing',
   'scene_setup.lighting',
+  'canvas.background_style',
 ] as const
 
-type EnumScalarPath = (typeof ENUM_FIELD_PATHS)[number]
+type ScalarPath = (typeof SCALAR_FIELD_PATHS)[number]
 
-/** Read the current value of an enum scalar field from a schema. */
-function readEnumField(schema: MinimalSchema, path: EnumScalarPath): string {
+/** Read the current value of an editable scalar field from a schema. */
+function readScalarField(schema: MinimalSchema, path: ScalarPath): string {
   switch (path) {
     case 'scene_setup.angle':
       return schema.scene_setup.angle
@@ -74,11 +74,13 @@ function readEnumField(schema: MinimalSchema, path: EnumScalarPath): string {
       return schema.scene_setup.framing
     case 'scene_setup.lighting':
       return schema.scene_setup.lighting
+    case 'canvas.background_style':
+      return schema.canvas.background_style ?? ''
   }
 }
 
-/** Write an enum scalar field value onto a schema (mutates the passed schema). */
-function writeEnumField(schema: MinimalSchema, path: string, value: string): void {
+/** Write an editable scalar field value onto a schema (mutates the passed schema). */
+function writeScalarField(schema: MinimalSchema, path: string, value: string): void {
   switch (path) {
     case 'scene_setup.angle':
       schema.scene_setup.angle = value as AngleValue
@@ -87,11 +89,13 @@ function writeEnumField(schema: MinimalSchema, path: string, value: string): voi
       schema.scene_setup.framing = value as FramingValue
       break
     case 'scene_setup.lighting':
-      schema.scene_setup.lighting = value as LightingValue
+      schema.scene_setup.lighting = value
+      break
+    case 'canvas.background_style':
+      schema.canvas.background_style = value
       break
     default:
-      // Unknown scalar path: ignore. computeDelta only ever emits the three
-      // known enum paths, so this branch is defensive only.
+      // Unknown scalar path: ignore. computeDelta only ever emits known paths.
       break
   }
 }
@@ -196,9 +200,9 @@ function cloneCoordinate(coordinate: AbstractCoordinate): AbstractCoordinate {
  */
 export function computeDelta(original: EditorState, target: EditorState): StateDelta {
   const scalarChanges: StateDelta['scalarChanges'] = []
-  for (const path of ENUM_FIELD_PATHS) {
-    const from = readEnumField(original.schema, path)
-    const to = readEnumField(target.schema, path)
+  for (const path of SCALAR_FIELD_PATHS) {
+    const from = readScalarField(original.schema, path)
+    const to = readScalarField(target.schema, path)
     if (from !== to) {
       scalarChanges.push({ path, from, to })
     }
@@ -267,7 +271,7 @@ export function applyDelta(original: EditorState, delta: StateDelta): EditorStat
   const schema = cloneSchema(original.schema)
 
   for (const change of delta.scalarChanges) {
-    writeEnumField(schema, change.path, change.to)
+    writeScalarField(schema, change.path, change.to)
   }
 
   schema.food_components.garnishes = applyArrayDiff(

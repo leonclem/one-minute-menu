@@ -237,24 +237,45 @@ const LEAVE_UNCHANGED_CLAUSE =
  *
  * (Requirements 5.3, 6.3, 6.4, 7.3, 8.4, 8.5, 9.6, 11.1, 11.3)
  */
+export interface GenerateDirectiveOptions {
+  /**
+   * Scalar paths to skip when building clauses. FOH Studio uses this to omit
+   * lighting/background so `/api/studio/mutate` can inject DB-resolved fragments.
+   */
+  excludePaths?: readonly string[]
+}
+
 export function generateDirective(
   delta: StateDelta,
   context: EditorState,
+  options?: GenerateDirectiveOptions,
 ): string | null {
   // Return null for empty / no-op deltas. (Requirements 5.4, 7.4, 8.6)
   if (delta.isEmpty) {
     return null
   }
 
+  const excluded = new Set(options?.excludePaths ?? [])
   const clauses: string[] = []
 
-  // ── Scalar enum changes ──────────────────────────────────────────────────
+  // ── Scalar changes ───────────────────────────────────────────────────────
 
   for (const change of delta.scalarChanges) {
+    if (excluded.has(change.path)) {
+      continue
+    }
     if (change.path === 'scene_setup.angle') {
       clauses.push(buildAngleClause(change.to))
     } else if (change.path === 'scene_setup.lighting') {
+      // Admin sandbox fallback; FOH excludes this path and resolves from DB.
       clauses.push(buildLightingClause(change.from, change.to))
+    } else if (change.path === 'canvas.background_style') {
+      // Admin/fallback only — FOH excludes and resolves from DB.
+      clauses.push(
+        `Change only the background/surface to style "${change.to}". ` +
+          `Keep the dish, vessel, food count, and core food appearance locked. ` +
+          `Do not add props, cutlery, napkins, or clutter.`,
+      )
     }
     // scene_setup.framing: no directive rule specified in design; skip silently
     // (framing is not exposed as a user-facing control in v1)

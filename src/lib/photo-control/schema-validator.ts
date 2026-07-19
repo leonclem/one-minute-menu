@@ -29,9 +29,9 @@
 
 import {
   ANGLE_VALUES,
-  LIGHTING_VALUES,
   FRAMING_VALUES,
   ENUM_DEFAULTS,
+  DEFAULT_LIGHTING_KEY,
   MinimalSchemaZ,
   type MinimalSchema,
   type EnumFieldPath,
@@ -130,21 +130,22 @@ export class MinimalSchemaValidator {
       'scene_setup.framing',
       warnings,
     )
-    const lighting = this.coerceEnum(
-      sceneSetup?.['lighting'],
-      LIGHTING_VALUES,
-      'scene_setup.lighting',
-      warnings,
-    )
+    // Lighting is a style-key string (Chunk 4). Accept any non-empty string;
+    // default when missing. Not part of enum strictConformance.
+    const lighting = this.coerceLightingKey(sceneSetup?.['lighting'], warnings)
 
     // strictConformance is true iff NO enum field was coerced. (Requirement 3.9)
-    const strictConformance =
-      !angle.coerced && !framing.coerced && !lighting.coerced
+    const strictConformance = !angle.coerced && !framing.coerced
 
     // --- Non-enum fields: repair with hydratable fallbacks; warn only. ---
     const background = this.coerceString(
       canvas?.['background'],
       'canvas.background',
+      warnings,
+    )
+    const backgroundStyle = this.coerceString(
+      canvas?.['background_style'] ?? '',
+      'canvas.background_style',
       warnings,
     )
     const mainVessel = this.coerceString(
@@ -172,10 +173,11 @@ export class MinimalSchemaValidator {
       scene_setup: {
         angle: angle.value,
         framing: framing.value,
-        lighting: lighting.value,
+        lighting,
       },
       canvas: {
         background,
+        background_style: backgroundStyle,
         main_vessel: mainVessel,
       },
       food_components: {
@@ -226,6 +228,25 @@ export class MinimalSchemaValidator {
       severity: 'medium',
     })
     return { value: defaultValue, coerced: true }
+  }
+
+  /**
+   * Coerce `scene_setup.lighting` to a non-empty style-key string.
+   * Missing/non-string values default to {@link DEFAULT_LIGHTING_KEY}.
+   */
+  private coerceLightingKey(
+    rawValue: unknown,
+    warnings: MinimalValidationWarning[],
+  ): string {
+    if (typeof rawValue === 'string' && rawValue.trim().length > 0) {
+      return rawValue.trim()
+    }
+    warnings.push({
+      path: 'scene_setup.lighting',
+      message: `Missing or non-string scene_setup.lighting; defaulted to "${DEFAULT_LIGHTING_KEY}".`,
+      severity: 'low',
+    })
+    return DEFAULT_LIGHTING_KEY
   }
 
   /**

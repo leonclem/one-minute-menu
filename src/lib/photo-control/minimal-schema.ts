@@ -41,7 +41,10 @@ export const ANGLE_VALUES = [
 ] as const
 
 /**
- * Allowed `scene_setup.lighting` values. (Requirement 3.3)
+ * Legacy admin-sandbox lighting values (Photo Control UI).
+ *
+ * FOH Studio lighting is a DB style-key string (Chunk 4); this tuple remains for
+ * the admin `Lighting_Control` and as the extraction default set.
  */
 export const LIGHTING_VALUES = ['low-key', 'bright-and-airy', 'studio'] as const
 
@@ -52,24 +55,28 @@ export const FRAMING_VALUES = ['close-up', 'medium', 'wide'] as const
 
 /** Union of allowed camera-angle values. */
 export type AngleValue = (typeof ANGLE_VALUES)[number]
-/** Union of allowed lighting values. */
+/** Legacy admin lighting union; FOH accepts any active style key string. */
 export type LightingValue = (typeof LIGHTING_VALUES)[number]
 /** Union of allowed framing values. */
 export type FramingValue = (typeof FRAMING_VALUES)[number]
+
+/** Default lighting style key when extraction omits a value. */
+export const DEFAULT_LIGHTING_KEY = 'bright-and-airy'
 
 /**
  * Coercion defaults for each `Enum_Field`, keyed by dotted schema path.
  *
  * When the `MinimalSchemaValidator` encounters an out-of-set enum value it
  * coerces to these defaults and records exactly one warning. (Requirement 3.5)
+ *
+ * Note: `scene_setup.lighting` is a free style-key string (Chunk 4) and is no
+ * longer coerced against `LIGHTING_VALUES` — see schema-validator.
  */
 export const ENUM_DEFAULTS = {
   'scene_setup.angle': '45-degree', // most-dishes default per best-practices guide
-  'scene_setup.lighting': 'bright-and-airy',
   'scene_setup.framing': 'close-up',
 } as const satisfies {
   'scene_setup.angle': AngleValue
-  'scene_setup.lighting': LightingValue
   'scene_setup.framing': FramingValue
 }
 
@@ -110,10 +117,17 @@ export const MinimalSchemaZ = z.object({
   scene_setup: z.object({
     angle: z.enum(ANGLE_VALUES),
     framing: z.enum(FRAMING_VALUES),
-    lighting: z.enum(LIGHTING_VALUES),
+    /** Lighting style key (DB library or legacy admin enum value). */
+    lighting: z.string(),
   }),
   canvas: z.object({
+    /** Free-text extracted background description (non-editable). */
     background: z.string(),
+    /**
+     * Selected background/surface style key from the reference library.
+     * Empty string means "no library style selected / keep extracted background".
+     */
+    background_style: z.string().default(''),
     main_vessel: z.string(),
   }),
   food_components: z.object({
