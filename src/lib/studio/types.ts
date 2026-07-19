@@ -5,6 +5,7 @@ export interface StudioDishRecord {
   user_id: string
   name: string
   description: string | null
+  current_image_id: string | null
   created_at: string
   updated_at: string
 }

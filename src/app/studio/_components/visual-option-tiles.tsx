@@ -50,9 +50,7 @@ export function VisualOptionTiles<T extends string>({
             aria-checked={selected}
             aria-label={option.label}
             disabled={disabled}
-            onClick={() => {
-              if (!selected) onChange(option.value)
-            }}
+            onClick={() => onChange(option.value)}
             className={[
               'rounded-md border p-1.5 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-ux-primary/40',
               selected

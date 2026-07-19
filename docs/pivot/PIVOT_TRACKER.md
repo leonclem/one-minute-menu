@@ -45,6 +45,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-19 | FOH rotation labels | Left 45° → `45-degree`, Overhead → `top-down`, Right 45° → `eye-level` (interim; true left/right yaw deferred). |
 | 2026-07-19 | FOH lighting labels | Natural → `bright-and-airy`, Moody → `low-key`, Studio → new `studio` enum value. Preview assets under `public/studio/controls/`. |
 | 2026-07-19 | Variant change audit | Per-generation `metadata.changeSummary` chips (vs previous working image). Cumulative vs OG deferred. Favourite/Archive FOH actions removed; click variant to load as Current. |
+| 2026-07-19 | Dish current + editor JSON | `studio_dishes.current_image_id` persists Current across sessions; `metadata.editorState` stores extract/target JSON per variant. Re-clicking an already-selected rotation/lighting tile restages Generate. |
 
 ---
 

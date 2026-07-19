@@ -100,6 +100,37 @@ export async function setStudioImageFavourite(
   return data as StudioImageRecord
 }
 
+export async function updateStudioImageMetadata(
+  userId: string,
+  imageId: string,
+  metadataPatch: Record<string, unknown>,
+): Promise<StudioImageRecord> {
+  const supabase = createAdminSupabaseClient()
+  const image = await getStudioImage(userId, imageId)
+  if (!image) {
+    throw new Error('Image not found')
+  }
+
+  const nextMetadata = {
+    ...(image.metadata ?? {}),
+    ...metadataPatch,
+  }
+
+  const { data, error } = await supabase
+    .from('studio_images')
+    .update({ metadata: nextMetadata })
+    .eq('user_id', userId)
+    .eq('id', imageId)
+    .select('*')
+    .single()
+
+  if (error || !data) {
+    throw new Error(`Failed to update image metadata: ${error?.message ?? 'unknown'}`)
+  }
+
+  return data as StudioImageRecord
+}
+
 export async function archiveStudioImage(
   userId: string,
   imageId: string,

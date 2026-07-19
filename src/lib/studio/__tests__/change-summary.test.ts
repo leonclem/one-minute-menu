@@ -9,7 +9,10 @@ function emptyDelta(overrides: Partial<StateDelta> = {}): StateDelta {
   return {
     isEmpty: false,
     scalarChanges: [],
-    arrayChanges: {},
+    arrays: {
+      garnishes: { added: [], removed: [] },
+      sides: { added: [], removed: [] },
+    },
     ...overrides,
   }
 }
@@ -38,8 +41,9 @@ describe('change-summary', () => {
   it('builds chips for removed garnishes', () => {
     const chips = buildChangeSummary(
       emptyDelta({
-        arrayChanges: {
+        arrays: {
           garnishes: { added: [], removed: ['cilantro'] },
+          sides: { added: [], removed: [] },
         },
       }),
     )

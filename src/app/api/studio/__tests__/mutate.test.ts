@@ -11,6 +11,7 @@ const mockCountToday = jest.fn()
 const mockPersist = jest.fn()
 const mockGetLimit = jest.fn()
 const mockGetStudioDish = jest.fn()
+const mockSetCurrentImage = jest.fn()
 
 jest.mock('@/lib/user-api-auth', () => ({
   requireUserApi: () => mockRequireUserApi(),
@@ -28,6 +29,7 @@ jest.mock('@/lib/photo-control/mutation-engine', () => ({
 
 jest.mock('@/lib/studio/dishes', () => ({
   getStudioDish: (...args: unknown[]) => mockGetStudioDish(...args),
+  setStudioDishCurrentImage: (...args: unknown[]) => mockSetCurrentImage(...args),
 }))
 
 jest.mock('@/lib/studio/persistence', () => ({
@@ -79,6 +81,7 @@ describe('POST /api/studio/mutate', () => {
     mockGetLimit.mockReturnValue(25)
     mockCountToday.mockResolvedValue(0)
     mockGetStudioDish.mockResolvedValue({ id: 'dish-1', name: 'Burger' })
+    mockSetCurrentImage.mockResolvedValue({ id: 'dish-1' })
     mockComposePrompt.mockReturnValue({ ok: true, prompt: 'composed prompt' })
     mockMutate.mockResolvedValue({ imageBase64: Buffer.from('out').toString('base64') })
     mockPersist.mockResolvedValue({

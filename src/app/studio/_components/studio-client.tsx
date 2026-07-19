@@ -4,7 +4,7 @@
  * Customer-facing Food Photo Studio — control panel + preview/variants shell.
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { validateAndAcceptImage, type SourceImage } from '@/lib/photo-control/image-uploader'
 import { hydrate } from '@/lib/photo-control/hydrator'
@@ -26,6 +26,14 @@ import {
   STUDIO_LIGHTING_OPTIONS,
   STUDIO_ROTATION_OPTIONS,
 } from '@/lib/studio/control-options'
+import {
+  editorStateToMetadata,
+  readEditorStateFromMetadata,
+} from '@/lib/studio/editor-state-storage'
+import {
+  ensureAngleRestageBaseline,
+  ensureLightingRestageBaseline,
+} from '@/lib/studio/restage'
 import type { StudioDishRecord, StudioImageRecord } from '@/lib/studio/types'
 import { StudioTextModal } from './studio-text-modal'
 import { VisualOptionTiles } from './visual-option-tiles'
@@ -111,6 +119,19 @@ function sortVariants(images: StudioImageRecord[]): StudioImageRecord[] {
   )
 }
 
+function resolveCurrentImage(
+  dish: StudioDishRecord | undefined,
+  images: StudioImageRecord[],
+): StudioImageRecord | null {
+  const sorted = sortVariants(images)
+  if (sorted.length === 0) return null
+  if (dish?.current_image_id) {
+    const match = sorted.find((img) => img.id === dish.current_image_id)
+    if (match) return match
+  }
+  return sorted[sorted.length - 1] ?? null
+}
+
 export function StudioClient({
   initialDishes,
   initialActiveDishId,
@@ -119,9 +140,11 @@ export function StudioClient({
   const [dishes, setDishes] = useState<StudioDishRecord[]>(initialDishes)
   const [activeDishId, setActiveDishId] = useState(initialActiveDishId)
   const [gallery, setGallery] = useState<StudioImageRecord[]>(initialGallery)
-  const [selectedImageId, setSelectedImageId] = useState<string | null>(
-    sortVariants(initialGallery).at(-1)?.id ?? null,
-  )
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(() => {
+    const dish = initialDishes.find((d) => d.id === initialActiveDishId)
+    return resolveCurrentImage(dish, initialGallery)?.id ?? null
+  })
+  const didActivateInitialRef = useRef(false)
   const [expandedSection, setExpandedSection] = useState<ControlSection>('lighting')
   const [libraryBusy, setLibraryBusy] = useState(false)
   const [libraryError, setLibraryError] = useState<string | null>(null)
@@ -177,19 +200,43 @@ export function StudioClient({
     setPendingLimitMessage(null)
   }, [])
 
-  const loadGalleryForDish = useCallback(async (dishId: string) => {
-    const imagesRes = await fetch(`/api/studio/images?dishId=${encodeURIComponent(dishId)}`)
-    if (!imagesRes.ok) {
-      const err = await imagesRes.json().catch(() => null)
-      throw new Error((err as { error?: string } | null)?.error ?? 'Failed to load library')
-    }
-    const data = (await imagesRes.json()) as { images: StudioImageRecord[] }
-    const next = data.images ?? []
-    setGallery(next)
-    setSelectedImageId(sortVariants(next).at(-1)?.id ?? null)
+  const persistDishCurrent = useCallback(
+    async (dishId: string, imageId: string | null) => {
+      const res = await fetch(`/api/studio/dishes/${dishId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentImageId: imageId }),
+      })
+      if (!res.ok) return
+      const data = (await res.json()) as { dish: StudioDishRecord }
+      setDishes((prev) => prev.map((d) => (d.id === dishId ? data.dish : d)))
+    },
+    [],
+  )
+
+  const persistEditorState = useCallback(async (imageId: string, state: EditorState) => {
+    const res = await fetch(`/api/studio/images/${imageId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ editorState: state }),
+    })
+    if (!res.ok) return
+    const data = (await res.json()) as { image: StudioImageRecord }
+    setGallery((prev) => prev.map((img) => (img.id === imageId ? data.image : img)))
   }, [])
 
-  const runExtraction = useCallback(async (image: SourceImage) => {
+  const applyHydratedState = useCallback((state: EditorState, strictWarning = false) => {
+    setEditorState(state)
+    originalStateRef.current = state
+    setBaselineVersion((v) => v + 1)
+    setIsHydrated(true)
+    setStrictConformanceWarning(strictWarning)
+    setPendingLimitMessage(null)
+    setMutationError(null)
+    setExtractionError(null)
+  }, [])
+
+  const runExtraction = useCallback(async (image: SourceImage): Promise<EditorState | null> => {
     setIsExtracting(true)
     setExtractionError(null)
 
@@ -206,7 +253,7 @@ export function StudioClient({
           (err as { error?: string } | null)?.error ??
             `Extraction failed (HTTP ${response.status})`,
         )
-        return
+        return null
       }
 
       const data = (await response.json()) as ExtractResponse
@@ -216,38 +263,86 @@ export function StudioClient({
         warnings: data.warnings,
       })
 
-      setEditorState(hydratedState)
-      originalStateRef.current = hydratedState
-      setBaselineVersion((v) => v + 1)
-      setIsHydrated(true)
-      setStrictConformanceWarning(!data.strictConformance)
+      applyHydratedState(hydratedState, !data.strictConformance)
+      return hydratedState
     } catch (err) {
       setExtractionError(err instanceof Error ? err.message : 'Extraction failed unexpectedly.')
+      return null
     } finally {
       setIsExtracting(false)
     }
-  }, [])
+  }, [applyHydratedState])
 
-  const selectVariant = useCallback(
-    async (image: StudioImageRecord) => {
+  const activateImage = useCallback(
+    async (
+      image: StudioImageRecord,
+      options?: { persistCurrent?: boolean },
+    ) => {
       setSelectedImageId(image.id)
       setLibraryBusy(true)
       setLibraryError(null)
+      setMutatedImageUrl(undefined)
       try {
         const working = await fetchAsSourceImage(image.public_url, image.mime_type)
         setSourceImage(working)
         setPersistedSourceId(image.id)
-        resetEditorForNewSource()
-        setMutatedImageUrl(undefined)
-        await runExtraction(working)
+
+        const stored = readEditorStateFromMetadata(image.metadata)
+        if (stored) {
+          applyHydratedState(stored)
+        } else {
+          setIsHydrated(false)
+          const extracted = await runExtraction(working)
+          if (extracted) {
+            await persistEditorState(image.id, extracted)
+          }
+        }
+
+        if (options?.persistCurrent !== false && image.dish_id) {
+          await persistDishCurrent(image.dish_id, image.id)
+        }
       } catch (err) {
         setLibraryError(err instanceof Error ? err.message : 'Failed to load image')
       } finally {
         setLibraryBusy(false)
       }
     },
-    [resetEditorForNewSource, runExtraction],
+    [applyHydratedState, persistDishCurrent, persistEditorState, runExtraction],
   )
+
+  const loadGalleryForDish = useCallback(
+    async (dishId: string, dishRecord?: StudioDishRecord) => {
+      const imagesRes = await fetch(`/api/studio/images?dishId=${encodeURIComponent(dishId)}`)
+      if (!imagesRes.ok) {
+        const err = await imagesRes.json().catch(() => null)
+        throw new Error((err as { error?: string } | null)?.error ?? 'Failed to load library')
+      }
+      const data = (await imagesRes.json()) as { images: StudioImageRecord[] }
+      const next = data.images ?? []
+      setGallery(next)
+      const dish = dishRecord ?? dishes.find((d) => d.id === dishId)
+      const current = resolveCurrentImage(dish, next)
+      setSelectedImageId(current?.id ?? null)
+      if (current) {
+        await activateImage(current, { persistCurrent: false })
+      } else {
+        resetEditorForNewSource()
+        setSourceImage(null)
+        setPersistedSourceId(null)
+      }
+    },
+    [activateImage, dishes, resetEditorForNewSource],
+  )
+
+  useEffect(() => {
+    if (didActivateInitialRef.current) return
+    didActivateInitialRef.current = true
+    const dish = initialDishes.find((d) => d.id === initialActiveDishId)
+    const current = resolveCurrentImage(dish, initialGallery)
+    if (current) {
+      void activateImage(current, { persistCurrent: false })
+    }
+  }, [activateImage, initialActiveDishId, initialDishes, initialGallery])
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -279,6 +374,8 @@ export function StudioClient({
       setPersistedSourceId(null)
       resetEditorForNewSource()
 
+      const extracted = await runExtraction(accepted)
+
       void fetch('/api/studio/source', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -289,6 +386,10 @@ export function StudioClient({
           const data = (await res.json()) as { imageId?: string; imageUrl?: string }
           if (data.imageId && data.imageUrl) {
             setPersistedSourceId(data.imageId)
+            const metadata =
+              extracted != null
+                ? { editorState: editorStateToMetadata(extracted) }
+                : {}
             const row: StudioImageRecord = {
               id: data.imageId,
               user_id: '',
@@ -302,20 +403,28 @@ export function StudioClient({
               height: null,
               prompt: null,
               model: null,
-              metadata: {},
+              metadata,
               is_favourite: false,
               archived_at: null,
               created_at: new Date().toISOString(),
             }
             setGallery((prev) => [...prev, row])
             setSelectedImageId(data.imageId)
+            if (extracted) {
+              await persistEditorState(data.imageId, extracted)
+            }
+            await persistDishCurrent(activeDishId, data.imageId)
           }
         })
         .catch(() => undefined)
-
-      await runExtraction(accepted)
     },
-    [activeDishId, resetEditorForNewSource, runExtraction],
+    [
+      activeDishId,
+      persistDishCurrent,
+      persistEditorState,
+      resetEditorForNewSource,
+      runExtraction,
+    ],
   )
 
   const applyStagedChange = useCallback((nextState: EditorState) => {
@@ -337,6 +446,44 @@ export function StudioClient({
     setEditorState(nextState)
     setPendingLimitMessage(null)
   }, [])
+
+  const stageAngle = useCallback(
+    (angle: AngleValue) => {
+      originalStateRef.current = ensureAngleRestageBaseline(
+        originalStateRef.current,
+        editorState,
+        angle,
+      )
+      setBaselineVersion((v) => v + 1)
+      applyStagedChange({
+        ...editorState,
+        schema: {
+          ...editorState.schema,
+          scene_setup: { ...editorState.schema.scene_setup, angle },
+        },
+      })
+    },
+    [applyStagedChange, editorState],
+  )
+
+  const stageLighting = useCallback(
+    (lighting: LightingValue) => {
+      originalStateRef.current = ensureLightingRestageBaseline(
+        originalStateRef.current,
+        editorState,
+        lighting,
+      )
+      setBaselineVersion((v) => v + 1)
+      applyStagedChange({
+        ...editorState,
+        schema: {
+          ...editorState.schema,
+          scene_setup: { ...editorState.schema.scene_setup, lighting },
+        },
+      })
+    },
+    [applyStagedChange, editorState],
+  )
 
   const handleDiscardPending = useCallback(() => {
     setEditorState(originalStateRef.current)
@@ -401,7 +548,10 @@ export function StudioClient({
         height: null,
         prompt: null,
         model: data.model,
-        metadata: { changeSummary },
+        metadata: {
+          changeSummary,
+          editorState: editorStateToMetadata(nextState),
+        },
         is_favourite: false,
         archived_at: null,
         created_at: new Date().toISOString(),
@@ -409,6 +559,13 @@ export function StudioClient({
       setGallery((prev) => [...prev, row])
       setSelectedImageId(data.imageId)
       setPersistedSourceId(data.imageId)
+      setDishes((prev) =>
+        prev.map((d) =>
+          d.id === activeDishId ? { ...d, current_image_id: data.imageId } : d,
+        ),
+      )
+      const working = await fetchAsSourceImage(data.imageUrl, 'image/png')
+      setSourceImage(working)
     } catch (err) {
       setMutationError(err instanceof Error ? err.message : 'Generation failed unexpectedly.')
     } finally {
@@ -524,18 +681,28 @@ export function StudioClient({
       setSelectedImageId(fallback?.id ?? null)
       setMutatedImageUrl(undefined)
       if (fallback) {
-        await selectVariant(fallback)
+        await activateImage(fallback)
       } else {
         setSourceImage(null)
         setPersistedSourceId(null)
         resetEditorForNewSource()
+        if (activeDishId) {
+          await persistDishCurrent(activeDishId, null)
+        }
       }
     } catch (err) {
       setLibraryError(err instanceof Error ? err.message : 'Failed to delete')
     } finally {
       setLibraryBusy(false)
     }
-  }, [selectedImage, gallery, selectVariant, resetEditorForNewSource])
+  }, [
+    selectedImage,
+    gallery,
+    activateImage,
+    resetEditorForNewSource,
+    activeDishId,
+    persistDishCurrent,
+  ])
 
   return (
     <div className="space-y-6">
@@ -570,13 +737,12 @@ export function StudioClient({
                 onChange={(e) => {
                   const id = e.target.value
                   setLibraryBusy(true)
+                  setLibraryError(null)
                   setActiveDishId(id)
-                  void loadGalleryForDish(id)
-                    .then(() => {
-                      resetEditorForNewSource()
-                      setSourceImage(null)
-                      setPersistedSourceId(null)
-                    })
+                  void loadGalleryForDish(
+                    id,
+                    dishes.find((d) => d.id === id),
+                  )
                     .catch((err) =>
                       setLibraryError(err instanceof Error ? err.message : 'Failed to switch dish'),
                     )
@@ -678,15 +844,7 @@ export function StudioClient({
                     value={editorState.schema.scene_setup.angle}
                     disabled={controlsDisabled}
                     ariaLabel="Rotation"
-                    onChange={(angle: AngleValue) =>
-                      applyStagedChange({
-                        ...editorState,
-                        schema: {
-                          ...editorState.schema,
-                          scene_setup: { ...editorState.schema.scene_setup, angle },
-                        },
-                      })
-                    }
+                    onChange={stageAngle}
                   />
                 </CollapsibleSection>
 
@@ -700,15 +858,7 @@ export function StudioClient({
                     value={editorState.schema.scene_setup.lighting}
                     disabled={controlsDisabled}
                     ariaLabel="Lighting"
-                    onChange={(lighting: LightingValue) =>
-                      applyStagedChange({
-                        ...editorState,
-                        schema: {
-                          ...editorState.schema,
-                          scene_setup: { ...editorState.schema.scene_setup, lighting },
-                        },
-                      })
-                    }
+                    onChange={stageLighting}
                   />
                 </CollapsibleSection>
 
@@ -895,7 +1045,7 @@ export function StudioClient({
                           ]
                             .filter(Boolean)
                             .join(' ')}
-                          onClick={() => void selectVariant(item)}
+                          onClick={() => void activateImage(item)}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img

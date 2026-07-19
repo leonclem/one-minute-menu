@@ -1,13 +1,19 @@
 /**
- * Photo Studio dish — rename + delete
+ * Photo Studio dish — rename / set current image / delete
  *
- * PATCH  /api/studio/dishes/[dishId]  { name }
+ * PATCH  /api/studio/dishes/[dishId]  { name? } | { currentImageId? }
  * DELETE /api/studio/dishes/[dishId]
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUserApi } from '@/lib/user-api-auth'
-import { deleteStudioDish, getStudioDish, renameStudioDish } from '@/lib/studio/dishes'
+import {
+  deleteStudioDish,
+  getStudioDish,
+  renameStudioDish,
+  setStudioDishCurrentImage,
+} from '@/lib/studio/dishes'
+import { getStudioImage } from '@/lib/studio/library'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -26,21 +32,43 @@ export async function PATCH(
       return NextResponse.json({ error: 'Dish not found' }, { status: 404 })
     }
 
-    const body = (await request.json()) as { name?: unknown }
-    if (typeof body.name !== 'string') {
-      return NextResponse.json({ error: 'name is required' }, { status: 400 })
+    const body = (await request.json()) as {
+      name?: unknown
+      currentImageId?: unknown
     }
 
-    try {
-      const dish = await renameStudioDish(auth.user.id, dishId, body.name)
-      return NextResponse.json({ dish })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to rename dish'
-      if (message.includes('required')) {
-        return NextResponse.json({ error: message }, { status: 400 })
+    if (typeof body.name === 'string') {
+      try {
+        const dish = await renameStudioDish(auth.user.id, dishId, body.name)
+        return NextResponse.json({ dish })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to rename dish'
+        if (message.includes('required')) {
+          return NextResponse.json({ error: message }, { status: 400 })
+        }
+        throw err
       }
-      throw err
     }
+
+    if (body.currentImageId === null || typeof body.currentImageId === 'string') {
+      const imageId = body.currentImageId
+      if (typeof imageId === 'string') {
+        const image = await getStudioImage(auth.user.id, imageId)
+        if (!image || image.dish_id !== dishId) {
+          return NextResponse.json(
+            { error: 'Image not found on this dish' },
+            { status: 404 },
+          )
+        }
+      }
+      const dish = await setStudioDishCurrentImage(auth.user.id, dishId, imageId)
+      return NextResponse.json({ dish })
+    }
+
+    return NextResponse.json(
+      { error: 'Provide name or currentImageId' },
+      { status: 400 },
+    )
   } catch (error) {
     logger.error('❌ [Studio Dishes] PATCH failed', { error })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

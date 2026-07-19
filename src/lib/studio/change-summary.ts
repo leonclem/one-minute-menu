@@ -10,7 +10,7 @@ export function buildChangeSummary(delta: StateDelta): string[] {
 
   const chips: string[] = []
 
-  for (const change of delta.scalarChanges) {
+  for (const change of delta.scalarChanges ?? []) {
     if (change.path === 'scene_setup.lighting') {
       chips.push(`Lighting → ${fohLightingLabel(change.to)}`)
     } else if (change.path === 'scene_setup.angle') {
@@ -20,20 +20,22 @@ export function buildChangeSummary(delta: StateDelta): string[] {
     }
   }
 
-  if (delta.arrayChanges.garnishes) {
-    for (const name of delta.arrayChanges.garnishes.removed) {
+  const garnishes = delta.arrays?.garnishes
+  if (garnishes) {
+    for (const name of garnishes.removed) {
       chips.push(`Removed garnish: ${name}`)
     }
-    for (const name of delta.arrayChanges.garnishes.added) {
+    for (const name of garnishes.added) {
       chips.push(`Added garnish: ${name}`)
     }
   }
 
-  if (delta.arrayChanges.sides) {
-    for (const name of delta.arrayChanges.sides.removed) {
+  const sides = delta.arrays?.sides
+  if (sides) {
+    for (const name of sides.removed) {
       chips.push(`Removed side: ${name}`)
     }
-    for (const name of delta.arrayChanges.sides.added) {
+    for (const name of sides.added) {
       chips.push(`Added side: ${name}`)
     }
   }

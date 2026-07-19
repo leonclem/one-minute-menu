@@ -45,6 +45,7 @@ Prefer `npx supabase db push` against the linked production project (never
 |---|---|---|---|
 | `supabase/migrations/070_studio_images.sql` | Chunk 2 | Pending | Creates `studio_images` + RLS. Required for `/api/studio/*` persistence. |
 | `supabase/migrations/071_studio_dishes.sql` | Chunk 3 | Pending | Creates `studio_dishes`, adds `dish_id`/`is_favourite`/`archived_at` to `studio_images`, backfills default dish. Apply after 070. |
+| `supabase/migrations/072_studio_dish_current_image.sql` | Chunk 3 | Pending | Adds `studio_dishes.current_image_id` for persisted Current variant per dish. Apply after 071. |
 
 ---
 

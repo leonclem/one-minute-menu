@@ -14,12 +14,14 @@ import { getMutationEngine } from '@/lib/photo-control/mutation-engine'
 import { composePrompt } from '@/lib/photo-control/prompt-composer'
 import { parseAndValidateImageDataUrl } from '@/lib/photo-control/request-validation'
 import type { MinimalSchema } from '@/lib/photo-control/minimal-schema'
-import { getStudioDish } from '@/lib/studio/dishes'
+import { getStudioDish, setStudioDishCurrentImage } from '@/lib/studio/dishes'
+import { editorStateToMetadata } from '@/lib/studio/editor-state-storage'
 import {
   countTodayGeneratedStudioImages,
   getStudioDailyGenerationLimit,
   persistStudioImage,
 } from '@/lib/studio/persistence'
+import { CENTER, type MinimalSchema } from '@/lib/photo-control/minimal-schema'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -163,8 +165,14 @@ export async function POST(request: NextRequest) {
       metadata: {
         directive: directive.trim(),
         changeSummary: changeSummaryChips,
+        editorState: editorStateToMetadata({
+          schema: targetState as MinimalSchema,
+          position: { ...CENTER },
+        }),
       },
     })
+
+    await setStudioDishCurrentImage(auth.user.id, dishId, record.id).catch(() => undefined)
 
     logger.info('✅ [Studio Mutate] Success', {
       userId: auth.user.id,

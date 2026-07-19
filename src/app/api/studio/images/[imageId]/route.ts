@@ -1,7 +1,7 @@
 /**
  * Photo Studio image library actions
  *
- * PATCH  /api/studio/images/[imageId]  { isFavourite? | archive? }
+ * PATCH  /api/studio/images/[imageId]  { isFavourite? | archive? | editorState? }
  * DELETE /api/studio/images/[imageId]
  */
 
@@ -12,7 +12,10 @@ import {
   deleteStudioImage,
   getStudioImage,
   setStudioImageFavourite,
+  updateStudioImageMetadata,
 } from '@/lib/studio/library'
+import { editorStateToMetadata } from '@/lib/studio/editor-state-storage'
+import type { EditorState } from '@/lib/photo-control/minimal-schema'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -34,6 +37,7 @@ export async function PATCH(
     const body = (await request.json()) as {
       isFavourite?: unknown
       archive?: unknown
+      editorState?: unknown
     }
 
     if (body.archive === true) {
@@ -62,8 +66,15 @@ export async function PATCH(
       }
     }
 
+    if (body.editorState && typeof body.editorState === 'object') {
+      const image = await updateStudioImageMetadata(auth.user.id, imageId, {
+        editorState: editorStateToMetadata(body.editorState as EditorState),
+      })
+      return NextResponse.json({ image })
+    }
+
     return NextResponse.json(
-      { error: 'Provide isFavourite (boolean) and/or archive: true' },
+      { error: 'Provide isFavourite, archive: true, and/or editorState' },
       { status: 400 },
     )
   } catch (error) {

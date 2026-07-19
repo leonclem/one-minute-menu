@@ -113,6 +113,30 @@ export async function renameStudioDish(
   return data as StudioDishRecord
 }
 
+export async function setStudioDishCurrentImage(
+  userId: string,
+  dishId: string,
+  imageId: string | null,
+): Promise<StudioDishRecord> {
+  const supabase = createAdminSupabaseClient()
+  const { data, error } = await supabase
+    .from('studio_dishes')
+    .update({
+      current_image_id: imageId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId)
+    .eq('id', dishId)
+    .select('*')
+    .single()
+
+  if (error || !data) {
+    throw new Error(`Failed to set current image: ${error?.message ?? 'unknown'}`)
+  }
+
+  return data as StudioDishRecord
+}
+
 /**
  * Delete a dish only when it has no active (non-archived) images.
  * Archived images for the dish are hard-deleted (DB + storage) first.
