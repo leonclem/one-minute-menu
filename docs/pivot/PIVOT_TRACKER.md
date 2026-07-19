@@ -46,6 +46,11 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-19 | FOH lighting labels | Natural → `bright-and-airy`, Moody → `low-key`, Studio → new `studio` enum value. Preview assets under `public/studio/controls/`. |
 | 2026-07-19 | Variant change audit | Per-generation `metadata.changeSummary` chips (vs previous working image). Cumulative vs OG deferred. Favourite/Archive FOH actions removed; click variant to load as Current. |
 | 2026-07-19 | Dish current + editor JSON | `studio_dishes.current_image_id` persists Current across sessions; `metadata.editorState` stores extract/target JSON per variant. Re-clicking an already-selected rotation/lighting tile restages Generate. |
+| 2026-07-19 | Reference libraries storage (§7.4/§7.5) | Chunk 4 ships DB-backed `studio_lighting_styles` + `studio_background_styles` with admin CRUD (not typed code-only config). |
+| 2026-07-19 | Lighting schema (§7.4) | `scene_setup.lighting` becomes a style-key string (no longer fixed enum) so admins can add styles without a schema deploy. |
+| 2026-07-19 | Background schema (§7.5) | Add editable `canvas.background_style` (library key). Free-text `canvas.background` remains extract-only / non-editable. |
+| 2026-07-19 | Prompt fragments | Resolved server-side in `/api/studio/mutate`. Customer styles API returns display fields only (never fragments/constraints). |
+| 2026-07-19 | Admin Photo Control vs FOH styles | FOH uses DB libraries; admin sandbox keeps hardcoded lighting enum/directives for now (consolidation deferred). Thumbnails are static paths under `public/studio/controls/`; admin upload deferred. |
 
 ---
 
@@ -122,3 +127,4 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 1 | Phase 0: pivot docs, feature flags, hide legacy nav, verify + document generation pipeline | `studio/chunk-01-foundations` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_01.md` |
 | 2 | Phase 1: customer-facing `/studio` shell with persistence | `studio/chunk-02-studio-shell` | Built — merged to `main` — see `docs/pivot/BUILD_PLAN_CHUNK_02.md` |
 | 3 | Phase 2: image library per dish (`studio_dishes` + dish-scoped gallery) | `studio/chunk-03-dish-library` | Built — merged to `main` — see `docs/pivot/BUILD_PLAN_CHUNK_03.md` |
+| 4 | Phase 3: background & lighting reference libraries (DB-backed, admin-managed) | `studio/chunk-04-reference-libraries` | In progress — see `docs/pivot/BUILD_PLAN_CHUNK_04.md` |
