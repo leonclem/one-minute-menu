@@ -10,11 +10,25 @@ import {
   resolveLightingStyle,
 } from '@/lib/studio/reference-libraries'
 
+import type {
+  StudioBackgroundStyleRecord,
+  StudioLightingStyleRecord,
+} from '@/lib/studio/types'
+
 export async function resolveStyleDirectiveClauses(
   originalState: MinimalSchema,
   targetState: MinimalSchema,
-): Promise<{ clauses: string[]; error?: string }> {
+): Promise<{
+  clauses: string[]
+  error?: string
+  lightingStyle?: StudioLightingStyleRecord | null
+  backgroundStyle?: StudioBackgroundStyleRecord | null
+  surfaceStyle?: StudioBackgroundStyleRecord | null
+}> {
   const clauses: string[] = []
+  let lightingStyle: StudioLightingStyleRecord | null = null
+  let backgroundStyle: StudioBackgroundStyleRecord | null = null
+  let surfaceStyle: StudioBackgroundStyleRecord | null = null
 
   const fromLighting = originalState.scene_setup?.lighting ?? ''
   const toLighting = targetState.scene_setup?.lighting ?? ''
@@ -26,6 +40,7 @@ export async function resolveStyleDirectiveClauses(
         error: `Unknown or inactive lighting style: ${toLighting}`,
       }
     }
+    lightingStyle = style
     clauses.push(
       buildStyleDirectiveClause(style.prompt_fragment, style.negative_constraints),
     )
@@ -41,12 +56,29 @@ export async function resolveStyleDirectiveClauses(
         error: `Unknown or inactive background style: ${toBackground}`,
       }
     }
+    backgroundStyle = style
     clauses.push(
       buildStyleDirectiveClause(style.prompt_fragment, style.negative_constraints),
     )
   }
 
-  return { clauses }
+  const fromSurface = originalState.canvas?.surface_style ?? ''
+  const toSurface = targetState.canvas?.surface_style ?? ''
+  if (toSurface && toSurface !== fromSurface) {
+    const style = await resolveBackgroundStyle(toSurface)
+    if (!style) {
+      return {
+        clauses: [],
+        error: `Unknown or inactive surface style: ${toSurface}`,
+      }
+    }
+    surfaceStyle = style
+    clauses.push(
+      buildStyleDirectiveClause(style.prompt_fragment, style.negative_constraints),
+    )
+  }
+
+  return { clauses, lightingStyle, backgroundStyle, surfaceStyle }
 }
 
 /** Prepend resolved style clauses to a client-built directive. */

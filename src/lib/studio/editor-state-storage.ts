@@ -25,11 +25,21 @@ export function readEditorStateFromMetadata(
   const schema = raw.schema as unknown as MinimalSchema
   if (!schema.scene_setup || !schema.food_components) return null
 
+  // Normalize optional spin on older clients/persisted states.
+  if (typeof schema.scene_setup.spin !== 'string') {
+    schema.scene_setup.spin = '0'
+  }
+
   // Chunk 2/3 rows may lack background_style — default to empty.
   if (!schema.canvas) {
-    schema.canvas = { background: '', background_style: '', main_vessel: '' }
-  } else if (typeof schema.canvas.background_style !== 'string') {
-    schema.canvas.background_style = ''
+    schema.canvas = { background: '', background_style: '', surface_style: '', main_vessel: '' }
+  } else {
+    if (typeof schema.canvas.background_style !== 'string') {
+      schema.canvas.background_style = ''
+    }
+    if (typeof schema.canvas.surface_style !== 'string') {
+      schema.canvas.surface_style = ''
+    }
   }
 
   const position = isRecord(raw.position)

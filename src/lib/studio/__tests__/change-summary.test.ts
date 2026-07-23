@@ -35,7 +35,7 @@ describe('change-summary', () => {
         ],
       }),
     )
-    expect(chips).toEqual(['Lighting → Moody', 'Rotation → Overhead'])
+    expect(chips).toEqual(['Lighting → Moody', 'Camera Height → Overhead'])
   })
 
   it('builds chips for background style with label map', () => {
@@ -47,11 +47,31 @@ describe('change-summary', () => {
             from: '',
             to: 'dark-slate',
           },
+          {
+            path: 'canvas.surface_style',
+            from: '',
+            to: 'granite-light',
+          },
         ],
       }),
-      { backgroundLabels: { 'dark-slate': 'Dark Slate' } },
+      { backgroundLabels: { 'dark-slate': 'Dark Slate', 'granite-light': 'Light Granite' } },
     )
-    expect(chips).toEqual(['Background → Dark Slate'])
+    expect(chips).toEqual(['Background → Dark Slate', 'Surface → Light Granite'])
+  })
+
+  it('builds chips for dish spin', () => {
+    const chips = buildChangeSummary(
+      emptyDelta({
+        scalarChanges: [
+          {
+            path: 'scene_setup.spin',
+            from: '0',
+            to: 'left-45',
+          },
+        ],
+      }),
+    )
+    expect(chips).toEqual(['Dish Spin → Spin Left 45°'])
   })
 
   it('builds chips for removed garnishes', () => {

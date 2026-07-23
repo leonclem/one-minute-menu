@@ -551,13 +551,13 @@ Default should be conservative:
 
 ---
 
-## 7.8 Subject Rotation and Composition
+## 7.8 Subject Rotation and Composition (DEFERRED / PARKED)
 
 ### Requirement
 
-Replace risky camera-angle manipulation with safer subject/composition controls.
+[DEFERRED BEYOND CURRENT PHASE] Replace risky camera-angle manipulation with safer subject/composition controls.
 
-Recommended controls:
+Recommended controls (Deferred to future roadmap):
 
 - rotate dish left/right within same visual plane;
 - centre dish;
@@ -572,7 +572,7 @@ Recommended controls:
 
 ### Camera-angle caveat
 
-True pitch changes should be hidden from MVP or kept experimental.
+[DEFERRED BEYOND CURRENT PHASE] True pitch changes should be hidden from MVP or kept experimental.
 
 Allowed MVP camera/composition options:
 
@@ -584,10 +584,10 @@ Allowed MVP camera/composition options:
 
 ### Acceptance criteria
 
-- Customer-facing UI does not promise reliable eye-level/0° conversion.
-- Any “overhead” feature is clearly treated as a transformation that may be best-effort.
-- Same-plane rotation avoids major background hallucination.
-- Output still preserves dish identity and vessel unless otherwise requested.
+- [PARKED] Customer-facing UI does not promise reliable eye-level/0° conversion.
+- [PARKED] Any “overhead” feature is clearly treated as a transformation that may be best-effort.
+- [PARKED] Same-plane rotation avoids major background hallucination.
+- [PARKED] Output still preserves dish identity and vessel unless otherwise requested.
 
 ---
 

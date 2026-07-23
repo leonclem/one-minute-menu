@@ -157,9 +157,18 @@ describe('studio library', () => {
     expect(archived.archived_at).toBeTruthy()
   })
 
-  it('blocks delete when active children exist', async () => {
+  it('blocks delete when active children exist for a source image', async () => {
+    mockMaybeSingle.mockResolvedValue({ data: { ...baseImage, role: 'source' }, error: null })
     mockChildCount.mockResolvedValue({ count: 1, error: null })
     await expect(deleteStudioImage('u1', 'img-1')).rejects.toThrow('Archive or delete')
+  })
+
+  it('allows delete when active children exist for a generated image', async () => {
+    mockMaybeSingle.mockResolvedValue({ data: { ...baseImage, role: 'generated' }, error: null })
+    mockChildCount.mockResolvedValue({ count: 1, error: null })
+    await expect(deleteStudioImage('u1', 'img-1')).resolves.toBeUndefined()
+    expect(mockDelete).toHaveBeenCalled()
+    expect(mockRemove).toHaveBeenCalledWith(['u1/studio/img-1.png'])
   })
 
   it('deletes image and storage object', async () => {

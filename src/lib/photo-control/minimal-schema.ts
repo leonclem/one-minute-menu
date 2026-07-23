@@ -53,12 +53,19 @@ export const LIGHTING_VALUES = ['low-key', 'bright-and-airy', 'studio'] as const
  */
 export const FRAMING_VALUES = ['close-up', 'medium', 'wide'] as const
 
+/**
+ * Allowed horizontal dish rotation (spin) values.
+ */
+export const SPIN_VALUES = ['0', 'left-45', 'right-45'] as const
+
 /** Union of allowed camera-angle values. */
 export type AngleValue = (typeof ANGLE_VALUES)[number]
 /** Legacy admin lighting union; FOH accepts any active style key string. */
 export type LightingValue = (typeof LIGHTING_VALUES)[number]
 /** Union of allowed framing values. */
 export type FramingValue = (typeof FRAMING_VALUES)[number]
+/** Union of allowed spin values. */
+export type SpinValue = (typeof SPIN_VALUES)[number]
 
 /** Default lighting style key when extraction omits a value. */
 export const DEFAULT_LIGHTING_KEY = 'bright-and-airy'
@@ -75,9 +82,11 @@ export const DEFAULT_LIGHTING_KEY = 'bright-and-airy'
 export const ENUM_DEFAULTS = {
   'scene_setup.angle': '45-degree', // most-dishes default per best-practices guide
   'scene_setup.framing': 'close-up',
+  'scene_setup.spin': '0',
 } as const satisfies {
   'scene_setup.angle': AngleValue
   'scene_setup.framing': FramingValue
+  'scene_setup.spin': SpinValue
 }
 
 /** Dotted path identifier for an `Enum_Field`. */
@@ -119,15 +128,22 @@ export const MinimalSchemaZ = z.object({
     framing: z.enum(FRAMING_VALUES),
     /** Lighting style key (DB library or legacy admin enum value). */
     lighting: z.string(),
+    /** Horizontal rotation/spin of the dish. */
+    spin: z.enum(SPIN_VALUES).default('0'),
   }),
   canvas: z.object({
     /** Free-text extracted background description (non-editable). */
     background: z.string(),
     /**
-     * Selected background/surface style key from the reference library.
+     * Selected background/backdrop style key from the reference library.
      * Empty string means "no library style selected / keep extracted background".
      */
     background_style: z.string().default(''),
+    /**
+     * Selected tabletop surface style key from the reference library.
+     * Empty string means "no library style selected / keep extracted surface".
+     */
+    surface_style: z.string().default(''),
     main_vessel: z.string(),
   }),
   food_components: z.object({

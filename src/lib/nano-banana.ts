@@ -239,7 +239,7 @@ export class NanoBananaClient {
         }
       }
 
-      if (requestParams.thinking_level) {
+      if (requestParams.thinking_level && !model.includes('pro') && !model.includes('flash')) {
         generationConfig.thinkingLevel = requestParams.thinking_level.toUpperCase()
       }
 

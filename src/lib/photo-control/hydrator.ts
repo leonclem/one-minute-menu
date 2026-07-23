@@ -106,6 +106,7 @@ export function hydrateFromSchema(schema: MinimalSchema): HydrationResult {
       canvas: {
         background: schema.canvas.background,
         background_style: schema.canvas.background_style ?? '',
+        surface_style: schema.canvas.surface_style ?? '',
         main_vessel: schema.canvas.main_vessel,
       },
       food_components: {

@@ -266,15 +266,38 @@ export function generateDirective(
     }
     if (change.path === 'scene_setup.angle') {
       clauses.push(buildAngleClause(change.to))
+    } else if (change.path === 'scene_setup.spin') {
+      if (change.to === 'left-45') {
+        clauses.push(
+          'Rotate the entire dish, vessel, and its contents 45 degrees counter-clockwise (to the left) within the same horizontal visual plane. ' +
+          'MANDATORY VERTICAL ANGLE DENIAL: The vertical camera height, camera pitch, elevation, zoom, and perspective MUST remain absolutely identical to the original image. ' +
+          'HORIZONTAL ORBIT FORCE: The camera must horizontally orbit around the dish, or the main dish itself must spin on the surface, moving all food arrangements and containers 45 degrees counter-clockwise around the center.'
+        )
+      } else if (change.to === 'right-45') {
+        clauses.push(
+          'Rotate the entire dish, vessel, and its contents 45 degrees clockwise (to the right) within the same horizontal visual plane. ' +
+          'MANDATORY VERTICAL ANGLE DENIAL: The vertical camera height, camera pitch, elevation, zoom, and perspective MUST remain absolutely identical to the original image. ' +
+          'HORIZONTAL ORBIT FORCE: The camera must horizontally orbit around the dish, or the main dish itself must spin on the surface, moving all food arrangements and containers 45 degrees clockwise around the center.'
+        )
+      } else if (change.to === '0') {
+        clauses.push(
+          'Return the dish, vessel, and its contents to their original, unrotated horizontal orientation.'
+        )
+      }
     } else if (change.path === 'scene_setup.lighting') {
       // Admin sandbox fallback; FOH excludes this path and resolves from DB.
       clauses.push(buildLightingClause(change.from, change.to))
     } else if (change.path === 'canvas.background_style') {
       // Admin/fallback only — FOH excludes and resolves from DB.
       clauses.push(
-        `Change only the background/surface to style "${change.to}". ` +
-          `Keep the dish, vessel, food count, and core food appearance locked. ` +
-          `Do not add props, cutlery, napkins, or clutter.`,
+        `Change only the background backdrop to style "${change.to}". ` +
+          `Keep the tabletop surface, its shadows, and the dish itself completely locked.`,
+      )
+    } else if (change.path === 'canvas.surface_style') {
+      // Admin/fallback only — FOH excludes and resolves from DB.
+      clauses.push(
+        `Change only the tabletop surface to style "${change.to}". ` +
+          `Keep the background backdrop, its shadows, and the dish itself completely locked.`,
       )
     }
     // scene_setup.framing: no directive rule specified in design; skip silently

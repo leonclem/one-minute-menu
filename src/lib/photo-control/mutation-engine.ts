@@ -30,6 +30,17 @@ import type { NanoBananaParams } from '@/types'
 // Types
 // ============================================================================
 
+export interface StyleReferenceImage {
+  /** Base64-encoded reference image data (no data-URL prefix). */
+  data: string
+  /** MIME type of the reference image. */
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp'
+  /** Role of the reference image. */
+  role: 'style' | 'scene' | 'layout' | 'other'
+  /** Optional instruction/comment for how the model should use this image. */
+  comment?: string
+}
+
 /**
  * Input to the mutation engine.
  *
@@ -46,6 +57,8 @@ export interface MutationInput {
   prompt: string
   /** Optional model override (e.g. 'gemini-3.1-pro-preview'). */
   model?: string
+  /** Optional style reference images (e.g. lighting, background, plating). */
+  styleReferences?: StyleReferenceImage[]
 }
 
 /**
@@ -135,12 +148,10 @@ export class MutationEngine {
   async mutate(input: MutationInput): Promise<MutationOutput> {
     const client = getNanoBananaClient()
 
-    // For angle changes, we need to be careful with reference images.
-    // If we are changing to eye-level, the source image (usually 45-degree)
-    // acts as a very strong anchor that prevents the model from changing perspective.
-    // We will only pass the steering images if they are specifically helpful
-    // and don't contain conflicting information.
-    
+    const targetModel = input.model || 'gemini-3.1-flash-image-preview'
+    const isPro = targetModel.includes('pro')
+    const maxRefs = isPro ? 14 : 3
+
     const referenceImages: ReferenceImage[] = [
       {
         mimeType: input.mimeType,
@@ -149,13 +160,31 @@ export class MutationEngine {
       },
     ]
 
-    // Add steering images as structural alignment guides.
+    // Add user-selected style reference images (lighting, background, plating) first.
+    // These take priority as they represent explicit user choices.
+    if (input.styleReferences && input.styleReferences.length > 0) {
+      for (const ref of input.styleReferences) {
+        if (referenceImages.length < maxRefs) {
+          referenceImages.push({
+            mimeType: ref.mimeType,
+            data: ref.data,
+            role: ref.role,
+            comment: ref.comment,
+          })
+        }
+      }
+    }
+
+    // Add static steering images as structural alignment guides if there is still room.
     // These help the model break its 45-degree bias by providing explicit
     // visual anchors for the target perspective.
-    referenceImages.push(...this.steeringImages)
-
-    const targetModel = input.model || 'gemini-3.1-flash-image-preview'
-    const isPro = targetModel.includes('pro')
+    if (referenceImages.length < maxRefs) {
+      for (const steeringImg of this.steeringImages) {
+        if (referenceImages.length < maxRefs) {
+          referenceImages.push(steeringImg)
+        }
+      }
+    }
 
     const result = await client.generateImage({
       prompt: input.prompt,
@@ -164,7 +193,8 @@ export class MutationEngine {
       safety_filter_level: 'block_some',
       person_generation: 'dont_allow',
       number_of_images: 1,
-      thinking_level: isPro ? 'high' : undefined,
+      // Gemini 3 Pro does not support thinkingLevel in generationConfig; only Flash supports it.
+      thinking_level: isPro ? undefined : 'high',
     })
 
     // Guard: the API must return at least one image. (Requirement 10.5)

@@ -17,15 +17,20 @@ prompt fragments resolve server-side. Still behind `NEXT_PUBLIC_ENABLE_PHOTO_STU
    style-key string so admins can add styles without a schema deploy. Add
    editable `canvas.background_style` (key); keep free-text `canvas.background`
    as the extracted source description (non-editable).
-3. **Prompt fragments stay server-side.** Customer `GET /api/studio/styles`
-   returns display fields only. `/api/studio/mutate` resolves fragments +
-   negative constraints and merges them into the directive (§5.1).
+3. **Prompt fragments and reference images resolved server-side.** Customer
+   `GET /api/studio/styles` returns display fields only. `/api/studio/mutate`
+   resolves style keys, loads their corresponding reference images from
+   `public/studio/controls/`, converts them to base64, and passes them to the
+   MutationEngine as reference images (`role: 'style'` for lighting,
+   `role: 'scene'` for background). Prompt fragments and negative constraints
+   are also appended to the directive for hybrid multi-modal steering.
 4. **FOH omits lighting/background from client directive** via
    `generateDirective(..., { excludePaths })`. Admin Photo Control sandbox
    retains the existing hardcoded `buildLightingClause` path (consolidation
    deferred).
-5. **Thumbnails are static paths** under `public/studio/controls/`; admin
-   upload UI deferred.
+5. **Thumbnails double as reference images** under `public/studio/controls/`;
+   admin upload UI deferred. Reference images are loaded dynamically on the
+   server to guide the generation.
 
 ## Scope
 
@@ -52,7 +57,7 @@ prompt fragments resolve server-side. Still behind `NEXT_PUBLIC_ENABLE_PHOTO_STU
 - [x] Admin can list/create/update/deactivate lighting and background styles.
 - [x] Authenticated Studio user sees active lighting + background style tiles.
 - [x] Selecting a background stages a change and generates without altering the dish identity locks.
-- [x] Lighting styles beyond the original 3 work via DB keys + prompt fragments.
+- [x] Lighting and background styles work via DB keys + reference images + prompt fragments.
 - [x] Customer styles API never returns `prompt_fragment` / `negative_constraints`.
 - [x] Admin Photo Control sandbox still works on its enum path.
 - [x] Tests pass; tracker + pending deploy backlog updated in the same commits.

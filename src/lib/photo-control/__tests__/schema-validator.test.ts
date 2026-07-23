@@ -126,6 +126,7 @@ describe('MinimalSchemaValidator — result shape (Req 3.8)', () => {
       angle: 'top-down',
       framing: 'medium',
       lighting: 'bright-and-airy',
+      spin: '0',
     })
   })
 
@@ -183,6 +184,21 @@ describe('MinimalSchemaValidator — result shape (Req 3.8)', () => {
 
     expect(result.strictConformance).toBe(true)
     expect(result.data.scene_setup.lighting).toBe('soft-natural-window')
+  })
+
+  it('accepts arbitrary surface style keys without failing strictConformance', () => {
+    const result = validateMinimalSchema({
+      scene_setup: {
+        angle: '45-degree',
+        framing: 'close-up',
+        lighting: 'bright-and-airy',
+      },
+      canvas: { background: 'table', main_vessel: 'plate', background_style: '', surface_style: 'granite-light' },
+      food_components: { main_item: 'salad', garnishes: [], sides: [] },
+    })
+
+    expect(result.strictConformance).toBe(true)
+    expect(result.data.canvas.surface_style).toBe('granite-light')
   })
 
   // Representative case: non-enum repair does not affect strictConformance.

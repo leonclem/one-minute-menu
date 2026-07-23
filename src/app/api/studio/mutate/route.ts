@@ -8,9 +8,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import fs from 'fs'
+import path from 'path'
 import { requireUserApi } from '@/lib/user-api-auth'
 import { NanoBananaError } from '@/lib/nano-banana'
-import { getMutationEngine } from '@/lib/photo-control/mutation-engine'
+import { getMutationEngine, type StyleReferenceImage } from '@/lib/photo-control/mutation-engine'
 import { composePrompt } from '@/lib/photo-control/prompt-composer'
 import { parseAndValidateImageDataUrl } from '@/lib/photo-control/request-validation'
 import { CENTER, type MinimalSchema } from '@/lib/photo-control/minimal-schema'
@@ -31,6 +33,30 @@ export const runtime = 'nodejs'
 export const maxDuration = 120
 
 const STUDIO_MODEL = 'gemini-3.1-flash-image-preview'
+
+function loadStyleReferenceImage(
+  thumbnailPath: string | null | undefined,
+  role: 'style' | 'scene',
+  styleName: string,
+): StyleReferenceImage | null {
+  if (!thumbnailPath) return null
+  try {
+    const subPath = thumbnailPath.includes('/') ? thumbnailPath : `controls/${thumbnailPath}`
+    const filePath = path.join(process.cwd(), 'public', 'studio', `${subPath}.png`)
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath).toString('base64')
+      return {
+        data,
+        mimeType: 'image/png',
+        role,
+        comment: `Reference image for ${role === 'style' ? 'lighting and color palette' : 'background environment and surface tabletop'}: ${styleName}`,
+      }
+    }
+  } catch (err) {
+    logger.warn(`⚠️ [Studio Mutate] Failed to load style reference image for ${styleName}:`, err)
+  }
+  return null
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,6 +90,7 @@ export async function POST(request: NextRequest) {
       sourceImageId?: unknown
       dishId?: unknown
       changeSummary?: unknown
+      model?: unknown
     }
 
     const {
@@ -74,6 +101,7 @@ export async function POST(request: NextRequest) {
       sourceImageId,
       dishId,
       changeSummary,
+      model,
     } = body
 
     const changeSummaryChips = Array.isArray(changeSummary)
@@ -129,6 +157,20 @@ export async function POST(request: NextRequest) {
     const originalSchema = originalState as MinimalSchema
     const targetSchema = targetState as MinimalSchema
 
+    // Normalize optional spin field on older clients / persisted states.
+    if (typeof originalSchema.scene_setup?.spin !== 'string') {
+      originalSchema.scene_setup = {
+        ...originalSchema.scene_setup,
+        spin: '0',
+      }
+    }
+    if (typeof targetSchema.scene_setup?.spin !== 'string') {
+      targetSchema.scene_setup = {
+        ...targetSchema.scene_setup,
+        spin: '0',
+      }
+    }
+
     // Normalize optional Chunk 4 field on older clients / persisted states.
     if (typeof originalSchema.canvas?.background_style !== 'string') {
       originalSchema.canvas = {
@@ -140,6 +182,19 @@ export async function POST(request: NextRequest) {
       targetSchema.canvas = {
         ...targetSchema.canvas,
         background_style: '',
+      }
+    }
+
+    if (typeof originalSchema.canvas?.surface_style !== 'string') {
+      originalSchema.canvas = {
+        ...originalSchema.canvas,
+        surface_style: '',
+      }
+    }
+    if (typeof targetSchema.canvas?.surface_style !== 'string') {
+      targetSchema.canvas = {
+        ...targetSchema.canvas,
+        surface_style: '',
       }
     }
 
@@ -175,12 +230,46 @@ export async function POST(request: NextRequest) {
       dailyLimit,
     })
 
+    const requestedModel = typeof model === 'string' && model === 'gemini-3-pro-image'
+      ? 'gemini-3-pro-image'
+      : STUDIO_MODEL
+
+    const styleReferences: StyleReferenceImage[] = []
+
+    if (styleResolution.lightingStyle) {
+      const img = loadStyleReferenceImage(
+        styleResolution.lightingStyle.thumbnail_path,
+        'style',
+        styleResolution.lightingStyle.name,
+      )
+      if (img) styleReferences.push(img)
+    }
+
+    if (styleResolution.backgroundStyle) {
+      const img = loadStyleReferenceImage(
+        styleResolution.backgroundStyle.thumbnail_path,
+        'scene',
+        styleResolution.backgroundStyle.name,
+      )
+      if (img) styleReferences.push(img)
+    }
+
+    if (styleResolution.surfaceStyle) {
+      const img = loadStyleReferenceImage(
+        styleResolution.surfaceStyle.thumbnail_path,
+        'scene',
+        styleResolution.surfaceStyle.name,
+      )
+      if (img) styleReferences.push(img)
+    }
+
     const engine = getMutationEngine()
     const { imageBase64 } = await engine.mutate({
       sourceImageBase64,
       mimeType,
       prompt: compositionResult.prompt,
-      model: STUDIO_MODEL,
+      model: requestedModel,
+      styleReferences,
     })
 
     const record = await persistStudioImage({
@@ -191,7 +280,7 @@ export async function POST(request: NextRequest) {
       mimeType: 'image/png',
       sourceImageId: typeof sourceImageId === 'string' ? sourceImageId : null,
       prompt: compositionResult.prompt,
-      model: STUDIO_MODEL,
+      model: requestedModel,
       metadata: {
         directive: mergedDirective,
         changeSummary: changeSummaryChips,
@@ -208,14 +297,14 @@ export async function POST(request: NextRequest) {
       userId: auth.user.id,
       imageId: record.id,
       dishId,
-      model: STUDIO_MODEL,
+      model: requestedModel,
     })
 
     return NextResponse.json({
       imageUrl: record.public_url,
       imageId: record.id,
       dishId: record.dish_id,
-      model: STUDIO_MODEL,
+      model: requestedModel,
     })
   } catch (error) {
     if (error instanceof NanoBananaError) {

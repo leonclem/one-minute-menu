@@ -30,6 +30,7 @@
 import {
   ANGLE_VALUES,
   FRAMING_VALUES,
+  SPIN_VALUES,
   ENUM_DEFAULTS,
   DEFAULT_LIGHTING_KEY,
   MinimalSchemaZ,
@@ -130,12 +131,18 @@ export class MinimalSchemaValidator {
       'scene_setup.framing',
       warnings,
     )
+    const spin = this.coerceEnum(
+      sceneSetup?.['spin'] ?? '0',
+      SPIN_VALUES,
+      'scene_setup.spin',
+      warnings,
+    )
     // Lighting is a style-key string (Chunk 4). Accept any non-empty string;
     // default when missing. Not part of enum strictConformance.
     const lighting = this.coerceLightingKey(sceneSetup?.['lighting'], warnings)
 
     // strictConformance is true iff NO enum field was coerced. (Requirement 3.9)
-    const strictConformance = !angle.coerced && !framing.coerced
+    const strictConformance = !angle.coerced && !framing.coerced && !spin.coerced
 
     // --- Non-enum fields: repair with hydratable fallbacks; warn only. ---
     const background = this.coerceString(
@@ -146,6 +153,11 @@ export class MinimalSchemaValidator {
     const backgroundStyle = this.coerceString(
       canvas?.['background_style'] ?? '',
       'canvas.background_style',
+      warnings,
+    )
+    const surfaceStyle = this.coerceString(
+      canvas?.['surface_style'] ?? '',
+      'canvas.surface_style',
       warnings,
     )
     const mainVessel = this.coerceString(
@@ -174,10 +186,12 @@ export class MinimalSchemaValidator {
         angle: angle.value,
         framing: framing.value,
         lighting,
+        spin: spin.value,
       },
       canvas: {
         background,
         background_style: backgroundStyle,
+        surface_style: surfaceStyle,
         main_vessel: mainVessel,
       },
       food_components: {

@@ -21,13 +21,19 @@ export interface StudioVisualOption<T extends string> {
 }
 
 /**
- * Rotation tiles. Schema has no left/right yaw yet — Right 45° maps to
- * `eye-level` as an interim distinct camera change (logged in tracker).
+ * Camera height options. Hides problematic 'eye-level' entirely.
  */
-export const STUDIO_ROTATION_OPTIONS: StudioVisualOption<AngleValue>[] = [
-  { id: 'rotate-left45', label: 'Left 45°', assetBasename: 'rotate-left45', value: '45-degree' },
-  { id: 'rotate-overhead', label: 'Overhead', assetBasename: 'rotate-overhead', value: 'top-down' },
-  { id: 'rotate-right45', label: 'Right 45°', assetBasename: 'rotate-right45', value: 'eye-level' },
+export const STUDIO_CAMERA_ANGLE_OPTIONS: StudioVisualOption<AngleValue>[] = [
+  { id: 'angle-45', label: 'Angled', assetBasename: 'ui/ui-rotate-left45', value: '45-degree' },
+  { id: 'angle-overhead', label: 'Overhead', assetBasename: 'ui/ui-rotate-overhead', value: 'top-down' },
+]
+
+/**
+ * Dish horizontal rotation (spin) options.
+ */
+export const STUDIO_SPIN_OPTIONS: StudioVisualOption<string>[] = [
+  { id: 'spin-left45', label: 'Spin Left 45°', assetBasename: 'ui/ui-rotate-left45', value: 'left-45' },
+  { id: 'spin-right45', label: 'Spin Right 45°', assetBasename: 'ui/ui-rotate-right45', value: 'right-45' },
 ]
 
 /** Fallback lighting tiles when the styles API is unavailable. */
@@ -35,17 +41,17 @@ export const STUDIO_LIGHTING_OPTIONS: StudioVisualOption<LightingValue>[] = [
   {
     id: 'light-natural',
     label: 'Natural',
-    assetBasename: 'light-natural',
+    assetBasename: 'lighting/lighting-natural',
     value: 'bright-and-airy',
   },
-  { id: 'light-moody', label: 'Moody', assetBasename: 'light-moody', value: 'low-key' },
-  { id: 'light-studio', label: 'Studio', assetBasename: 'light-studio', value: 'studio' },
+  { id: 'light-moody', label: 'Moody', assetBasename: 'lighting/lighting-moody', value: 'low-key' },
+  { id: 'light-studio', label: 'Studio', assetBasename: 'lighting/lighting-studio', value: 'studio' },
 ]
 
 const ANGLE_FOH_LABELS: Partial<Record<AngleValue, string>> = {
-  '45-degree': 'Left 45°',
+  '45-degree': 'Angled',
   'top-down': 'Overhead',
-  'eye-level': 'Right 45°',
+  'eye-level': 'Eye-Level',
 }
 
 const LIGHTING_FOH_LABELS: Record<string, string> = {
@@ -66,6 +72,9 @@ export function fohLightingLabel(value: string): string {
 }
 
 export function controlAssetSrc(basename: string): string {
+  if (basename.includes('/')) {
+    return `/studio/${basename}.png`
+  }
   return `/studio/controls/${basename}.png`
 }
 
@@ -76,6 +85,7 @@ export function controlAssetSrc(basename: string): string {
 export const FOH_STYLE_EXCLUDE_PATHS = [
   'scene_setup.lighting',
   'canvas.background_style',
+  'canvas.surface_style',
 ] as const
 
 export function lightingStylesToOptions(

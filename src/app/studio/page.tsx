@@ -86,6 +86,7 @@ export default async function StudioPage() {
           initialDishes={dishes}
           initialActiveDishId={activeDishId}
           initialGallery={initialGallery}
+          isAdmin={isAdmin}
         />
       </main>
       <UXFooter />

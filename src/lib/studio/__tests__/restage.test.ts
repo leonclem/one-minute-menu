@@ -5,6 +5,7 @@
 import {
   ensureAngleRestageBaseline,
   ensureBackgroundRestageBaseline,
+  ensureSurfaceRestageBaseline,
   ensureLightingRestageBaseline,
 } from '../restage'
 import { CENTER, type EditorState } from '@/lib/photo-control/minimal-schema'
@@ -13,11 +14,12 @@ function state(
   angle: EditorState['schema']['scene_setup']['angle'],
   lighting: EditorState['schema']['scene_setup']['lighting'],
   backgroundStyle = '',
+  surfaceStyle = '',
 ): EditorState {
   return {
     schema: {
       scene_setup: { angle, framing: 'close-up', lighting },
-      canvas: { background: '', background_style: backgroundStyle, main_vessel: '' },
+      canvas: { background: '', background_style: backgroundStyle, surface_style: surfaceStyle, main_vessel: '' },
       food_components: { main_item: 'x', garnishes: [], sides: [] },
     },
     position: { ...CENTER },
@@ -53,5 +55,16 @@ describe('restage', () => {
       ['dark-slate', 'clean-white-studio'],
     )
     expect(nextBaseline.schema.canvas.background_style).not.toBe('dark-slate')
+  })
+
+  it('nudges surface baseline on re-apply', () => {
+    const current = state('45-degree', 'bright-and-airy', '', 'granite-light')
+    const nextBaseline = ensureSurfaceRestageBaseline(
+      current,
+      current,
+      'granite-light',
+      ['granite-light', 'marble-light'],
+    )
+    expect(nextBaseline.schema.canvas.surface_style).not.toBe('granite-light')
   })
 })

@@ -57,7 +57,7 @@ describe('background_style delta', () => {
     const target = state('dark-slate')
     const delta = computeDelta(original, target)
     const directive = generateDirective(delta, target)
-    expect(directive).toContain('background/surface')
+    expect(directive).toContain('background backdrop')
     expect(directive).toContain('dark-slate')
   })
 })

@@ -43,6 +43,7 @@ const compress = (s: any) => ({
     a: s.scene_setup.angle,
     f: s.scene_setup.framing,
     l: s.scene_setup.lighting,
+    sp: s.scene_setup.spin ?? '0',
   },
   c: {
     b: s.canvas.background.slice(0, 50),

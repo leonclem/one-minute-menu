@@ -24,7 +24,10 @@ export function buildChangeSummary(
         labels?.lightingLabels?.[change.to] ?? fohLightingLabel(change.to)
       chips.push(`Lighting → ${label}`)
     } else if (change.path === 'scene_setup.angle') {
-      chips.push(`Rotation → ${fohAngleLabel(change.to)}`)
+      chips.push(`Camera Height → ${fohAngleLabel(change.to)}`)
+    } else if (change.path === 'scene_setup.spin') {
+      const spinLabel = change.to === 'left-45' ? 'Spin Left 45°' : change.to === 'right-45' ? 'Spin Right 45°' : 'Original'
+      chips.push(`Dish Spin → ${spinLabel}`)
     } else if (change.path === 'scene_setup.framing') {
       chips.push(`Framing → ${change.to}`)
     } else if (change.path === 'canvas.background_style') {
@@ -32,6 +35,11 @@ export function buildChangeSummary(
         labels?.backgroundLabels?.[change.to] ??
         (change.to.trim() ? change.to : 'Original')
       chips.push(`Background → ${label}`)
+    } else if (change.path === 'canvas.surface_style') {
+      const label =
+        labels?.backgroundLabels?.[change.to] ??
+        (change.to.trim() ? change.to : 'Original')
+      chips.push(`Surface → ${label}`)
     }
   }
 

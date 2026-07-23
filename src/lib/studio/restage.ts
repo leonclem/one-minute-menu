@@ -14,6 +14,10 @@ function alternateAngle(value: AngleValue): AngleValue {
   return (ANGLE_VALUES.find((candidate) => candidate !== value) ?? 'top-down') as AngleValue
 }
 
+function alternateSpin(value: string): string {
+  return value === '0' ? 'left-45' : '0'
+}
+
 function alternateLighting(value: string, knownKeys?: readonly string[]): string {
   const pool = knownKeys && knownKeys.length > 0 ? knownKeys : LIGHTING_VALUES
   return pool.find((candidate) => candidate !== value) ?? `${value}__restage`
@@ -94,6 +98,51 @@ export function ensureBackgroundRestageBaseline(
       canvas: {
         ...baseline.schema.canvas,
         background_style: alternateBackgroundStyle(value, knownKeys),
+      },
+    },
+  }
+}
+
+export function ensureSurfaceRestageBaseline(
+  baseline: EditorState,
+  current: EditorState,
+  value: string,
+  knownKeys?: readonly string[],
+): EditorState {
+  const currentStyle = current.schema.canvas.surface_style ?? ''
+  const baselineStyle = baseline.schema.canvas.surface_style ?? ''
+  if (baselineStyle !== value || currentStyle !== value) {
+    return baseline
+  }
+  return {
+    ...baseline,
+    schema: {
+      ...baseline.schema,
+      canvas: {
+        ...baseline.schema.canvas,
+        surface_style: alternateBackgroundStyle(value, knownKeys),
+      },
+    },
+  }
+}
+
+export function ensureSpinRestageBaseline(
+  baseline: EditorState,
+  current: EditorState,
+  value: string,
+): EditorState {
+  const currentSpin = current.schema.scene_setup.spin ?? '0'
+  const baselineSpin = baseline.schema.scene_setup.spin ?? '0'
+  if (baselineSpin !== value || currentSpin !== value) {
+    return baseline
+  }
+  return {
+    ...baseline,
+    schema: {
+      ...baseline.schema,
+      scene_setup: {
+        ...baseline.schema.scene_setup,
+        spin: alternateSpin(value),
       },
     },
   }

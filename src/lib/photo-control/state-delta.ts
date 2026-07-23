@@ -46,6 +46,7 @@ import {
   type FramingValue,
   type MinimalSchema,
   type StateDelta,
+  type SpinValue,
 } from './minimal-schema'
 
 // ============================================================================
@@ -60,7 +61,9 @@ const SCALAR_FIELD_PATHS = [
   'scene_setup.angle',
   'scene_setup.framing',
   'scene_setup.lighting',
+  'scene_setup.spin',
   'canvas.background_style',
+  'canvas.surface_style',
 ] as const
 
 type ScalarPath = (typeof SCALAR_FIELD_PATHS)[number]
@@ -74,8 +77,12 @@ function readScalarField(schema: MinimalSchema, path: ScalarPath): string {
       return schema.scene_setup.framing
     case 'scene_setup.lighting':
       return schema.scene_setup.lighting
+    case 'scene_setup.spin':
+      return schema.scene_setup.spin ?? '0'
     case 'canvas.background_style':
       return schema.canvas.background_style ?? ''
+    case 'canvas.surface_style':
+      return schema.canvas.surface_style ?? ''
   }
 }
 
@@ -91,8 +98,14 @@ function writeScalarField(schema: MinimalSchema, path: string, value: string): v
     case 'scene_setup.lighting':
       schema.scene_setup.lighting = value
       break
+    case 'scene_setup.spin':
+      schema.scene_setup.spin = value as SpinValue
+      break
     case 'canvas.background_style':
       schema.canvas.background_style = value
+      break
+    case 'canvas.surface_style':
+      schema.canvas.surface_style = value
       break
     default:
       // Unknown scalar path: ignore. computeDelta only ever emits known paths.

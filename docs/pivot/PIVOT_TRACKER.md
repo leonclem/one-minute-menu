@@ -49,8 +49,12 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-19 | Reference libraries storage (§7.4/§7.5) | Chunk 4 ships DB-backed `studio_lighting_styles` + `studio_background_styles` with admin CRUD (not typed code-only config). |
 | 2026-07-19 | Lighting schema (§7.4) | `scene_setup.lighting` becomes a style-key string (no longer fixed enum) so admins can add styles without a schema deploy. |
 | 2026-07-19 | Background schema (§7.5) | Add editable `canvas.background_style` (library key). Free-text `canvas.background` remains extract-only / non-editable. |
-| 2026-07-19 | Prompt fragments | Resolved server-side in `/api/studio/mutate`. Customer styles API returns display fields only (never fragments/constraints). |
-| 2026-07-19 | Admin Photo Control vs FOH styles | FOH uses DB libraries; admin sandbox keeps hardcoded lighting enum/directives for now (consolidation deferred). Thumbnails are static paths under `public/studio/controls/`; admin upload deferred. |
+| 2026-07-19 | Prompt & Reference Image resolution | Resolved server-side in `/api/studio/mutate`. Resolves style keys, loads corresponding PNGs from `public/studio/controls/`, and passes them as base64 reference images (`role: 'style'` for lighting, `role: 'scene'` for background) alongside the prompt. Customer styles API returns display fields only (never fragments/constraints). |
+| 2026-07-19 | Admin Photo Control vs FOH styles | FOH uses DB libraries + reference images; admin sandbox keeps hardcoded lighting enum/directives for now (consolidation deferred). Thumbnails under `public/studio/controls/` double as the reference images; admin upload deferred. |
+| 2026-07-20 | Camera height & spin separation (§7.8) | Decoupled vertical camera height (Angled/Overhead) and horizontal dish rotation (Spin Left 45°/Spin Right 45°) into separate controls. Removed 'eye-level' camera height entirely from customer-facing options to prevent low-quality generations. |
+| 2026-07-20 | Subject Rotation and Composition (§7.8) | Deferred / Parked entirely. Perspective and rotation controls are unreliable with current AI models and have been removed from the `/studio` control panel for now to ensure a stable, high-quality core product experience. |
+| 2026-07-23 | Independent Background & Surface controls | Split the single background style field into `canvas.background_style` (for vertical backdrops/walls) and `canvas.surface_style` (for horizontal tabletop surfaces) to allow users to select and apply both independently at the same time. |
+| 2026-07-23 | Image delete policy | Refined deleteStudioImage to only block deletion of source images (role = 'source') when active children exist. Generated images (role = 'generated') can be deleted freely, with children's source_image_id set to null. |
 
 ---
 
@@ -76,7 +80,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 7.5 | Background/surface swapping + library | 3 | Built | DB `studio_background_styles` (8 seeded); FOH Background section; `canvas.background_style` editable. |
 | 7.6 | Plating/vessel style library | 7 | Deferred | Admin-only/experimental per doc. |
 | 7.7 | Dish element manipulation (garnish/sides/clutter) | 1 | In progress | FOH remove-only for garnish/sides; add deferred. Clutter removal still pending. |
-| 7.8 | Rotation & composition controls (replace camera pitch) | 1 | In progress | FOH rotation tiles (3 options); full composition/yaw later. |
+| 7.8 | Rotation & composition controls (replace camera pitch) | 1 | Deferred | Parked. Removed perspective and horizontal rotation controls entirely from FOH for now due to AI model perspective inconsistency. |
 | 7.9 | Output packs | Post-MVP | Deferred | One output at a time first. |
 | 7.10 | Model selection (admin-visible only) | 1 | Built | FOH fixed to NB2/Flash; admin sandbox retains model selector. |
 

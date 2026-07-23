@@ -23,7 +23,6 @@ import { ConfirmDialog } from '@/components/ui'
 import { buildChangeSummary, readChangeSummary } from '@/lib/studio/change-summary'
 import {
   STUDIO_LIGHTING_OPTIONS,
-  STUDIO_ROTATION_OPTIONS,
   backgroundStylesToOptions,
   lightingStylesToOptions,
   styleLabelMap,
@@ -34,8 +33,8 @@ import {
   readEditorStateFromMetadata,
 } from '@/lib/studio/editor-state-storage'
 import {
-  ensureAngleRestageBaseline,
   ensureBackgroundRestageBaseline,
+  ensureSurfaceRestageBaseline,
   ensureLightingRestageBaseline,
 } from '@/lib/studio/restage'
 import type {
@@ -63,6 +62,7 @@ interface StudioClientProps {
   initialDishes: StudioDishRecord[]
   initialActiveDishId: string
   initialGallery: StudioImageRecord[]
+  isAdmin?: boolean
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -78,7 +78,7 @@ function makeDefaultEditorState(): EditorState {
   return {
     schema: {
       scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy' },
-      canvas: { background: '', background_style: '', main_vessel: '' },
+      canvas: { background: '', background_style: '', surface_style: '', main_vessel: '' },
       food_components: { main_item: '', garnishes: [], sides: [] },
     },
     position: { ...CENTER },
@@ -147,6 +147,7 @@ export function StudioClient({
   initialDishes,
   initialActiveDishId,
   initialGallery,
+  isAdmin,
 }: StudioClientProps) {
   const [dishes, setDishes] = useState<StudioDishRecord[]>(initialDishes)
   const [activeDishId, setActiveDishId] = useState(initialActiveDishId)
@@ -161,6 +162,7 @@ export function StudioClient({
   const [libraryError, setLibraryError] = useState<string | null>(null)
   const [lightingStyles, setLightingStyles] = useState<StudioLightingStyleDisplay[]>([])
   const [backgroundStyles, setBackgroundStyles] = useState<StudioBackgroundStyleDisplay[]>([])
+  const [selectedModel, setSelectedModel] = useState<string>('gemini-3.1-flash-image-preview')
 
   const [createOpen, setCreateOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
@@ -210,10 +212,15 @@ export function StudioClient({
     return STUDIO_LIGHTING_OPTIONS
   }, [lightingStyles])
 
-  const backgroundOptions = useMemo(
-    () => backgroundStylesToOptions(backgroundStyles),
-    [backgroundStyles],
-  )
+  const surfaceOptions = useMemo(() => {
+    const filtered = backgroundStyles.filter((style) => style.category === 'surface')
+    return backgroundStylesToOptions(filtered)
+  }, [backgroundStyles])
+
+  const backdropOptions = useMemo(() => {
+    const filtered = backgroundStyles.filter((style) => style.category === 'backdrop')
+    return backgroundStylesToOptions(filtered)
+  }, [backgroundStyles])
 
   const lightingLabelMap = useMemo(() => styleLabelMap(lightingStyles), [lightingStyles])
   const backgroundLabelMap = useMemo(
@@ -226,8 +233,8 @@ export function StudioClient({
     [lightingOptions],
   )
   const backgroundKeys = useMemo(
-    () => backgroundOptions.map((option) => option.value),
-    [backgroundOptions],
+    () => backgroundStyles.map((style) => style.key),
+    [backgroundStyles],
   )
 
   useEffect(() => {
@@ -510,25 +517,6 @@ export function StudioClient({
     setPendingLimitMessage(null)
   }, [])
 
-  const stageAngle = useCallback(
-    (angle: AngleValue) => {
-      originalStateRef.current = ensureAngleRestageBaseline(
-        originalStateRef.current,
-        editorState,
-        angle,
-      )
-      setBaselineVersion((v) => v + 1)
-      applyStagedChange({
-        ...editorState,
-        schema: {
-          ...editorState.schema,
-          scene_setup: { ...editorState.schema.scene_setup, angle },
-        },
-      })
-    },
-    [applyStagedChange, editorState],
-  )
-
   const stageLighting = useCallback(
     (lighting: string) => {
       originalStateRef.current = ensureLightingRestageBaseline(
@@ -565,6 +553,29 @@ export function StudioClient({
           canvas: {
             ...editorState.schema.canvas,
             background_style: backgroundStyle,
+          },
+        },
+      })
+    },
+    [applyStagedChange, backgroundKeys, editorState],
+  )
+
+  const stageSurface = useCallback(
+    (surfaceStyle: string) => {
+      originalStateRef.current = ensureSurfaceRestageBaseline(
+        originalStateRef.current,
+        editorState,
+        surfaceStyle,
+        backgroundKeys,
+      )
+      setBaselineVersion((v) => v + 1)
+      applyStagedChange({
+        ...editorState,
+        schema: {
+          ...editorState.schema,
+          canvas: {
+            ...editorState.schema.canvas,
+            surface_style: surfaceStyle,
           },
         },
       })
@@ -611,6 +622,7 @@ export function StudioClient({
           directive,
           sourceImageId: persistedSourceId,
           changeSummary,
+          model: selectedModel,
         }),
       })
 
@@ -938,6 +950,34 @@ export function StudioClient({
         </p>
       )}
 
+      {isAdmin && isHydrated && (
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-teal-100 bg-teal-50/50 p-3 text-xs text-teal-800">
+          <div className="font-semibold">Admin Engine Mode:</div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setSelectedModel('gemini-3.1-flash-image-preview')}
+              className={`rounded px-2 py-1 font-medium transition ${
+                selectedModel === 'gemini-3.1-flash-image-preview'
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-white text-teal-800 border border-teal-200 hover:bg-teal-100/50'
+              }`}
+            >
+              NB2 (Flash)
+            </button>
+            <button
+              onClick={() => setSelectedModel('gemini-3-pro-image')}
+              className={`rounded px-2 py-1 font-medium transition ${
+                selectedModel === 'gemini-3-pro-image'
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-white text-teal-800 border border-teal-200 hover:bg-teal-100/50'
+              }`}
+            >
+              NB Pro (Gemini 3 Pro)
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-[minmax(280px,360px)_1fr]">
         {/* Control panel */}
         <section className="flex max-h-[70vh] flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md">
@@ -954,20 +994,6 @@ export function StudioClient({
             ) : (
               <>
                 <CollapsibleSection
-                  title="Rotation"
-                  isExpanded={expandedSection === 'rotation'}
-                  onExpand={(open) => setExpandedSection(open ? 'rotation' : null)}
-                >
-                  <VisualOptionTiles
-                    options={STUDIO_ROTATION_OPTIONS}
-                    value={editorState.schema.scene_setup.angle}
-                    disabled={controlsDisabled}
-                    ariaLabel="Rotation"
-                    onChange={stageAngle}
-                  />
-                </CollapsibleSection>
-
-                <CollapsibleSection
                   title="Lighting"
                   isExpanded={expandedSection === 'lighting'}
                   onExpand={(open) => setExpandedSection(open ? 'lighting' : null)}
@@ -982,24 +1008,46 @@ export function StudioClient({
                 </CollapsibleSection>
 
                 <CollapsibleSection
-                  title="Background"
-                  isExpanded={expandedSection === 'background'}
-                  onExpand={(open) => setExpandedSection(open ? 'background' : null)}
+                  title="Tabletop Surface"
+                  isExpanded={expandedSection === 'surface'}
+                  onExpand={(open) => setExpandedSection(open ? 'surface' : null)}
                 >
-                  {backgroundOptions.length === 0 ? (
+                  {surfaceOptions.length === 0 ? (
                     <p className="text-xs text-gray-500">
-                      No background styles available yet.
+                      No tabletop surfaces available yet.
                     </p>
                   ) : (
                     <VisualOptionTiles
-                      options={backgroundOptions}
-                      value={editorState.schema.canvas.background_style ?? ''}
+                      options={surfaceOptions}
+                      value={editorState.schema.canvas.surface_style ?? ''}
                       disabled={controlsDisabled}
-                      ariaLabel="Background"
-                      onChange={stageBackground}
+                      ariaLabel="Tabletop Surface"
+                      onChange={stageSurface}
                     />
                   )}
                 </CollapsibleSection>
+
+                {editorState.schema.scene_setup.angle !== 'top-down' && (
+                  <CollapsibleSection
+                    title="Studio Backdrop"
+                    isExpanded={expandedSection === 'backdrop'}
+                    onExpand={(open) => setExpandedSection(open ? 'backdrop' : null)}
+                  >
+                    {backdropOptions.length === 0 ? (
+                      <p className="text-xs text-gray-500">
+                        No studio backdrops available yet.
+                      </p>
+                    ) : (
+                      <VisualOptionTiles
+                        options={backdropOptions}
+                        value={editorState.schema.canvas.background_style ?? ''}
+                        disabled={controlsDisabled}
+                        ariaLabel="Studio Backdrop"
+                        onChange={stageBackground}
+                      />
+                    )}
+                  </CollapsibleSection>
+                )}
 
                 <CollapsibleSection
                   title="Garnishes"

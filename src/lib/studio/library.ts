@@ -169,24 +169,26 @@ export async function deleteStudioImage(userId: string, imageId: string): Promis
     throw new Error('Image not found')
   }
 
-  const { count, error: childError } = await supabase
-    .from('studio_images')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('source_image_id', imageId)
-    .is('archived_at', null)
+  if (image.role === 'source') {
+    const { count, error: childError } = await supabase
+      .from('studio_images')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('source_image_id', imageId)
+      .is('archived_at', null)
 
-  if (childError) {
-    throw new Error(`Failed to check dependent images: ${childError.message}`)
+    if (childError) {
+      throw new Error(`Failed to check dependent images: ${childError.message}`)
+    }
+
+    if ((count ?? 0) > 0) {
+      throw new Error(
+        'Archive or delete generated variants that use this image before deleting it.',
+      )
+    }
   }
 
-  if ((count ?? 0) > 0) {
-    throw new Error(
-      'Archive or delete generated variants that use this image before deleting it.',
-    )
-  }
-
-  // Clear source_image_id on archived children so FK does not block delete
+  // Clear source_image_id on all children so FK does not block delete
   await supabase
     .from('studio_images')
     .update({ source_image_id: null })
