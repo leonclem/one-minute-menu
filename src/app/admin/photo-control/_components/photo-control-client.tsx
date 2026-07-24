@@ -83,7 +83,7 @@ function parseDataUrl(dataUrl: string): { base64: string; mimeType: string } | n
 function makeDefaultEditorState(): EditorState {
   return {
     schema: {
-      scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy' },
+      scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy', spin: '0' },
       canvas: { background: '', background_style: '', surface_style: '', main_vessel: '' },
       food_components: { main_item: '', garnishes: [], sides: [] },
     },
@@ -630,7 +630,7 @@ export function PhotoControlClient() {
                   />
 
                   <Lighting_Control
-                    value={editorState.schema.scene_setup.lighting}
+                    value={editorState.schema.scene_setup.lighting as LightingValue}
                     onChange={handleLightingChange}
                     disabled={controlsDisabled}
                   />

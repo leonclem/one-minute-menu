@@ -84,22 +84,29 @@ export async function DELETE(
     }
     
     try {
-      // Delete image files from storage
-      const imageUrls = [
-        imageData.original_url,
-        imageData.thumbnail_url,
-        imageData.mobile_url,
-        imageData.desktop_url,
-        imageData.webp_url
-      ].filter(Boolean) // Remove null/undefined URLs
-      
-      for (const url of imageUrls) {
-        try {
-          await imageProcessingService.deleteImageFromStorage(url)
-        } catch (storageError) {
-          logger.warn(`Failed to delete image from storage: ${url}`, storageError)
-          // Continue with database cleanup even if storage deletion fails
+      // Clean up all generated files inside the storage directory (e.g., userId/imageId/*)
+      // This is extremely robust because it automatically catches progressive JPEGs and any other variants
+      const imageDir = `${menuData.user_id}/${imageId}`
+      try {
+        const { data: files } = await supabaseAdmin.storage
+          .from('ai-generated-images')
+          .list(imageDir)
+
+        if (files && files.length > 0) {
+          const filePaths = files.map(file => `${imageDir}/${file.name}`)
+          await supabaseAdmin.storage.from('ai-generated-images').remove(filePaths)
         }
+      } catch (storageError) {
+        logger.warn(`Failed to list/delete directory from storage: ${imageDir}`, storageError)
+      }
+
+      // Also clean up any associated background-removal cutout file
+      try {
+        await supabaseAdmin.storage
+          .from('ai-generated-images')
+          .remove([`cutouts/${imageId}/cutout.png`])
+      } catch (cutoutError) {
+        logger.warn(`Failed to delete cutout from storage for image ${imageId}`, cutoutError)
       }
       
       // Use database function to handle the deletion and cleanup using admin client

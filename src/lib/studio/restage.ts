@@ -8,13 +8,14 @@ import {
   LIGHTING_VALUES,
   type AngleValue,
   type EditorState,
+  type SpinValue,
 } from '@/lib/photo-control/minimal-schema'
 
 function alternateAngle(value: AngleValue): AngleValue {
   return (ANGLE_VALUES.find((candidate) => candidate !== value) ?? 'top-down') as AngleValue
 }
 
-function alternateSpin(value: string): string {
+function alternateSpin(value: SpinValue): SpinValue {
   return value === '0' ? 'left-45' : '0'
 }
 
@@ -142,7 +143,7 @@ export function ensureSpinRestageBaseline(
       ...baseline.schema,
       scene_setup: {
         ...baseline.schema.scene_setup,
-        spin: alternateSpin(value),
+        spin: alternateSpin(value as SpinValue),
       },
     },
   }

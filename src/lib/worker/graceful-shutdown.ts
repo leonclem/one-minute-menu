@@ -13,11 +13,15 @@
 import { JobPoller } from './job-poller'
 import { JobProcessor } from './job-processor'
 import { logWorkerEvent, logInfo, logWarning, logError } from './logger'
+import { StaleJobCleanup } from './stale-job-cleanup'
+import { FileCleanup } from './file-cleanup'
 
 export interface GracefulShutdownConfig {
   poller: JobPoller
   processor: JobProcessor
   shutdownTimeoutMs?: number
+  staleJobCleanup?: StaleJobCleanup
+  fileCleanup?: FileCleanup
 }
 
 export class GracefulShutdown {
@@ -26,11 +30,15 @@ export class GracefulShutdown {
   private shutdownTimeoutMs: number
   private isShuttingDown: boolean = false
   private currentJobPromise: Promise<void> | null = null
+  private staleJobCleanup?: StaleJobCleanup
+  private fileCleanup?: FileCleanup
 
   constructor(config: GracefulShutdownConfig) {
     this.poller = config.poller
     this.processor = config.processor
     this.shutdownTimeoutMs = config.shutdownTimeoutMs ?? 30000 // 30 seconds default
+    this.staleJobCleanup = config.staleJobCleanup
+    this.fileCleanup = config.fileCleanup
   }
 
   /**
@@ -83,6 +91,16 @@ export class GracefulShutdown {
       logInfo('Stopping job poller')
       await this.poller.stop()
       logInfo('Job poller stopped')
+
+      // Stop background cleanup services
+      if (this.staleJobCleanup) {
+        logInfo('Stopping stale job cleanup service')
+        this.staleJobCleanup.stop()
+      }
+      if (this.fileCleanup) {
+        logInfo('Stopping file cleanup service')
+        this.fileCleanup.stop()
+      }
 
       // Step 2: Wait for current job to complete (with timeout)
       // Requirement 8.2: Wait up to 30 seconds for current job to complete

@@ -49,7 +49,7 @@ import { StudioTextModal } from './studio-text-modal'
 import { VisualOptionTiles } from './visual-option-tiles'
 
 type ExtractResponse = MinimalValidationResult
-type ControlSection = 'rotation' | 'lighting' | 'background' | 'garnishes' | null
+type ControlSection = 'rotation' | 'lighting' | 'surface' | 'backdrop' | 'garnishes' | null
 
 interface MutateResponse {
   imageUrl: string
@@ -77,7 +77,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
 function makeDefaultEditorState(): EditorState {
   return {
     schema: {
-      scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy' },
+      scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy', spin: '0' },
       canvas: { background: '', background_style: '', surface_style: '', main_vessel: '' },
       food_components: { main_item: '', garnishes: [], sides: [] },
     },

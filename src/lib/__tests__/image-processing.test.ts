@@ -167,7 +167,7 @@ describe('ImageProcessingService', () => {
       );
 
       // Verify uploads were called with correct paths
-      expect(mockSupabase.storage.upload).toHaveBeenCalledTimes(6);
+      expect(mockSupabase.storage.upload).toHaveBeenCalledTimes(5);
       
       const uploadCalls = mockSupabase.storage.upload.mock.calls;
       uploadCalls.forEach((call: any) => {

@@ -102,6 +102,7 @@ export function hydrateFromSchema(schema: MinimalSchema): HydrationResult {
         angle: schema.scene_setup.angle,
         framing: schema.scene_setup.framing,
         lighting: schema.scene_setup.lighting,
+        spin: schema.scene_setup.spin,
       },
       canvas: {
         background: schema.canvas.background,

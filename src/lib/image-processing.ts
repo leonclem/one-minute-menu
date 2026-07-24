@@ -123,13 +123,12 @@ export class ImageProcessingService {
       const imageId = crypto.randomUUID();
       const timestamp = Date.now();
       
-      // Create different versions
-      const [thumbnail, mobile, desktop, webp, jpeg] = await Promise.all([
+      // Create different versions (excluding separate JPEG, as original is already JPEG)
+      const [thumbnail, mobile, desktop, webp] = await Promise.all([
         this.generateThumbnail(imageBuffer, this.SIZES.thumbnail),
         this.optimizeForSize(imageBuffer, this.SIZES.mobile, this.MAX_SIZES.mobile),
         this.optimizeForSize(imageBuffer, this.SIZES.desktop, this.MAX_SIZES.desktop),
-        this.convertToWebP(imageBuffer),
-        this.convertToJPEG(imageBuffer)
+        this.convertToWebP(imageBuffer)
       ]);
 
       // Upload all versions to Supabase Storage with user-specific paths
@@ -139,8 +138,7 @@ export class ImageProcessingService {
         this.uploadToStorage(`${basePath}/thumbnail_${timestamp}.webp`, thumbnail.buffer, 'image/webp'),
         this.uploadToStorage(`${basePath}/mobile_${timestamp}.webp`, mobile.buffer, 'image/webp'),
         this.uploadToStorage(`${basePath}/desktop_${timestamp}.webp`, desktop.buffer, 'image/webp'),
-        this.uploadToStorage(`${basePath}/webp_${timestamp}.webp`, webp.buffer, 'image/webp'),
-        this.uploadToStorage(`${basePath}/jpeg_${timestamp}.jpg`, jpeg.buffer, 'image/jpeg')
+        this.uploadToStorage(`${basePath}/webp_${timestamp}.webp`, webp.buffer, 'image/webp')
       ];
 
       const uploadResults = await Promise.all(uploadPromises);
@@ -152,7 +150,7 @@ export class ImageProcessingService {
         mobileUrl: uploadResults[2],
         desktopUrl: uploadResults[3],
         webpUrl: uploadResults[4],
-        jpegUrl: uploadResults[5],
+        jpegUrl: uploadResults[0], // Reuse original URL since it is already a high-resolution JPEG
         metadata,
         sizes: {
           original: originalSize,

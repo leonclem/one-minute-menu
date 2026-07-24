@@ -27,8 +27,10 @@ import { JobProcessor } from './job-processor'
 import { JobPoller } from './job-poller'
 import { GracefulShutdown } from './graceful-shutdown'
 import { HealthServer } from './health-server'
-import { logWorkerEvent, logInfo, logError } from './logger'
+import { logWorkerEvent, logInfo, logError, logWarning } from './logger'
 import { startMetricsServer } from './metrics-server'
+import { StaleJobCleanup } from './stale-job-cleanup'
+import { FileCleanup } from './file-cleanup'
 
 /**
  * Worker configuration loaded from environment variables
@@ -209,12 +211,47 @@ async function main() {
     })
     logInfo('Job poller initialized')
 
+    // Step 7.5: Initialize background cleanup services
+    logInfo('Initializing background cleanup services')
+    const staleJobIntervalMinutes = process.env.STALE_JOB_CHECK_INTERVAL_MINUTES
+      ? parseInt(process.env.STALE_JOB_CHECK_INTERVAL_MINUTES, 10)
+      : 5
+    const staleJobCleanup = new StaleJobCleanup({
+      intervalMs: staleJobIntervalMinutes * 60 * 1000,
+      runImmediately: true,
+      logger: {
+        info: (msg, meta) => logInfo(`[StaleJobCleanup] ${msg}`, meta),
+        warn: (msg, meta) => logWarning(`[StaleJobCleanup] ${msg}`, meta),
+        error: (msg, meta) => logError(`[StaleJobCleanup] ${msg}`, meta)
+      }
+    })
+
+    const fileCleanupAgeDays = process.env.FILE_CLEANUP_AGE_DAYS 
+      ? parseInt(process.env.FILE_CLEANUP_AGE_DAYS, 10) 
+      : 30
+    const fileCleanupIntervalHours = process.env.FILE_CLEANUP_INTERVAL_HOURS 
+      ? parseInt(process.env.FILE_CLEANUP_INTERVAL_HOURS, 10) 
+      : 24
+    const fileCleanup = new FileCleanup({
+      storageClient,
+      retentionDays: fileCleanupAgeDays,
+      intervalMs: fileCleanupIntervalHours * 60 * 60 * 1000,
+      logger: {
+        info: (msg, meta) => logInfo(`[FileCleanup] ${msg}`, meta),
+        warn: (msg, meta) => logWarning(`[FileCleanup] ${msg}`, meta),
+        error: (msg, meta) => logError(`[FileCleanup] ${msg}`, meta)
+      }
+    })
+    logInfo('Background cleanup services initialized')
+
     // Step 8: Initialize graceful shutdown handler
     logInfo('Initializing graceful shutdown handler')
     const gracefulShutdown = new GracefulShutdown({
       poller,
       processor,
       shutdownTimeoutMs: config.gracefulShutdownTimeoutMs,
+      staleJobCleanup,
+      fileCleanup,
     })
 
     // Connect job tracking callbacks
@@ -242,6 +279,12 @@ async function main() {
     logInfo('Starting metrics server')
     await startMetricsServer()
     logInfo('Metrics server started', { port: config.metricsPort })
+
+    // Step 11: Start background cleanup services
+    logInfo('Starting background cleanup services')
+    await staleJobCleanup.start()
+    await fileCleanup.start()
+    logInfo('Background cleanup services started')
 
     // Worker is ready
     logWorkerEvent.ready()
