@@ -41,12 +41,14 @@ For perspective shifts (especially from an overhead or 45° source image), prefi
 
 ---
 
-## 3. Prompt Budget Management (2000-Char Limit)
+## 3. Prompt Budget Management & Conciseness
 
-The `NanoBananaClient` enforces a hard **2000-character limit**. When combining natural language directives with JSON state anchors, the budget can be breached easily.
+The underlying Gemini 3.1 Flash Image (Nano Banana 2) and Gemini 3 Pro Image (Nano Banana Pro) models support massive context windows (131,072 and 65,536 tokens respectively). The hard 2000-character prompt limit has been removed from the `NanoBananaClient` and prompt composer.
+
+However, maintaining concise prompts and compact JSON state anchors remains a best practice to ensure fast generation times, lower costs, and optimal model focus.
 
 ### Extreme Compression Strategy
-If the codebase were lost, these are the essential rules for prompt generation:
+To keep prompts highly focused and clear:
 1. **Single-Letter JSON Keys**: Use `s` for scene, `a` for angle, `f` for framing, `c` for canvas, `v` for vessel, etc.
 2. **String Slicing**: Clamp all user-provided or extracted strings (dish names, descriptions, background details) to **50–100 characters**.
 3. **Narrative Essence**: Remove "fluff" words. Instead of *"Use an 85mm prime lens at f/1.8 to create a shallow depth of field"*, use *"85mm lens at f/1.8, shallow depth of field"*.

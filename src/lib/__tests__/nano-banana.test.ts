@@ -165,13 +165,6 @@ describe('NanoBananaClient', () => {
       )
     })
 
-    it('should throw error for prompt that is too long', async () => {
-      const longPrompt = 'a'.repeat(2001)
-      await expect(client.generateImage({ prompt: longPrompt })).rejects.toThrow(
-        new NanoBananaError('Prompt is too long (max 2000 characters)', 'PROMPT_TOO_LONG')
-      )
-    })
-
     it('should throw error for invalid number of images', async () => {
       await expect(client.generateImage({
         prompt: 'test',

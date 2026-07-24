@@ -9,33 +9,18 @@
  *    unchanged attributes). (Requirement 11.2)
  *  - The target `MinimalSchema` as a compact JSON anchor (desired end state).
  *
- * The `NanoBananaClient.validateParams()` rejects prompts longer than 2000
- * characters (`PROMPT_TOO_LONG`). This module enforces that budget defensively
- * and surfaces a `COMPOSITION_FAILURE` error if the composed prompt would
- * exceed it. (Requirements 10.1, 10.6, 16.1)
- *
  * Design notes:
  *  - The `Minimal_Schema` is intentionally tiny, so compact JSON serialization
- *    keeps the composition well under the 2000-char limit in normal usage.
+ *    keeps the composition extremely compact in normal usage.
  *  - All validation is done before serialization so callers receive a clear
  *    error message identifying which component is missing or unencodable.
  *  - This module has no I/O, no framework dependencies, and no mutable state.
  *    It is a pure mapping from `CompositionInput` to `CompositionResult`.
  *
- * Requirements: 10.1, 10.6, 11.2, 16.1
+ * Requirements: 10.1, 11.2
  */
 
 import type { MinimalSchema } from './minimal-schema'
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-/**
- * Maximum allowed prompt length in characters, matching the
- * `NanoBananaClient.validateParams()` budget. (Requirements 10.6, 16.1)
- */
-export const MAX_PROMPT_LENGTH = 2000
 
 // ============================================================================
 // Types
@@ -183,12 +168,11 @@ function failure(error: string): CompositionResult {
  *  1. `directive` must be a non-empty string.
  *  2. `originalState` and `targetState` must be non-null objects.
  *  3. Both states must be JSON-serializable (try/catch around `JSON.stringify`).
- *  4. The composed prompt must be ≤ `MAX_PROMPT_LENGTH` characters.
  *
  * Returns `{ ok: true, prompt }` on success.
  * Returns `{ ok: false, error, code: 'COMPOSITION_FAILURE' }` on any failure.
  *
- * (Requirements 10.1, 10.6, 11.2, 16.1)
+ * (Requirements 10.1, 11.2)
  */
 export function composePrompt(input: CompositionInput): CompositionResult {
   const { directive, originalState, targetState } = input
@@ -289,15 +273,6 @@ export function composePrompt(input: CompositionInput): CompositionResult {
     `Camera: ${cameraSpecJSON}`,
     `Meta: ${finalMetaJSON}`,
   ].join('\n')
-
-  // ── 6. Enforce the NanoBananaClient prompt budget ─────────────────────────
-  // (Requirement 10.6)
-  if (prompt.length > MAX_PROMPT_LENGTH) {
-    return failure(
-      `Composition failure: composed prompt is ${prompt.length} characters, ` +
-        `which exceeds the ${MAX_PROMPT_LENGTH}-character budget.`,
-    )
-  }
 
   return { ok: true, prompt }
 }

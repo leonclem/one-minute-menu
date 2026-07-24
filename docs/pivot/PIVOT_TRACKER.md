@@ -55,6 +55,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-20 | Subject Rotation and Composition (§7.8) | Deferred / Parked entirely. Perspective and rotation controls are unreliable with current AI models and have been removed from the `/studio` control panel for now to ensure a stable, high-quality core product experience. |
 | 2026-07-23 | Independent Background & Surface controls | Split the single background style field into `canvas.background_style` (for vertical backdrops/walls) and `canvas.surface_style` (for horizontal tabletop surfaces) to allow users to select and apply both independently at the same time. |
 | 2026-07-23 | Image delete policy | Refined deleteStudioImage to only block deletion of source images (role = 'source') when active children exist. Generated images (role = 'generated') can be deleted freely, with children's source_image_id set to null. |
+| 2026-07-24 | Prompt length limit removal | Removed the hardcoded 2000-character limit from NanoBananaClient and PromptComposer entirely. Rationale: Gemini 3.1 Flash Image (Nano Banana 2) and Gemini 3 Pro Image (Nano Banana Pro) models support 131k and 64k input tokens respectively (equivalent to 260k-520k characters), making the 2000-character limit an unnecessary local bottleneck that caused composition failures on detailed prompts. |
 
 ---
 

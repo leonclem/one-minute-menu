@@ -90,15 +90,6 @@ const invalidDirectiveArb: fc.Arbitrary<unknown> = fc.oneof(
   fc.boolean(),
 )
 
-/**
- * A directive that, when combined with two minimal schemas, produces a prompt
- * that exceeds the 2000-character budget.
- *
- * 'x'.repeat(2001) alone is already over budget before the state anchors are
- * appended, so the composed prompt will always exceed MAX_PROMPT_LENGTH.
- */
-const overBudgetDirectiveArb: fc.Arbitrary<string> = fc.constant('x'.repeat(2001))
-
 // ── Property 15: Composition-failure signaling ────────────────────────────────
 
 describe('Feature: photo-control, Property 15: Composition-failure signaling', () => {
@@ -198,29 +189,6 @@ describe('Feature: photo-control, Property 15: Composition-failure signaling', (
   })
 
   /**
-   * Over-budget prompt signals failure (Requirement 10.6):
-   *
-   * For any `CompositionInput` where the composed prompt would exceed 2000
-   * characters (directive alone is 2001+ characters), `composePrompt` returns
-   * `{ ok: false, code: 'COMPOSITION_FAILURE' }` with a non-empty error message.
-   */
-  it('returns COMPOSITION_FAILURE when the composed prompt exceeds the 2000-character budget', () => {
-    fc.assert(
-      fc.property(
-        overBudgetDirectiveArb,
-        validMinimalSchemaArb,
-        validMinimalSchemaArb,
-        (directive, originalState, targetState) => {
-          const input: CompositionInput = { directive, originalState, targetState }
-          const result = composePrompt(input)
-          expectCompositionFailure(result)
-        },
-      ),
-      { numRuns: 200 },
-    )
-  })
-
-  /**
    * Failure result shape invariant (Requirement 10.6):
    *
    * For any input that produces a failure, the result always has:
@@ -252,12 +220,6 @@ describe('Feature: photo-control, Property 15: Composition-failure signaling', (
         originalState: validMinimalSchemaArb,
         targetState: fc.oneof(fc.constant(null), fc.constant(undefined)) as fc.Arbitrary<MinimalSchema>,
       }) as unknown as fc.Arbitrary<CompositionInput>,
-      // Over-budget directive
-      fc.record({
-        directive: overBudgetDirectiveArb,
-        originalState: validMinimalSchemaArb,
-        targetState: validMinimalSchemaArb,
-      }),
     )
 
     fc.assert(

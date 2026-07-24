@@ -10,8 +10,7 @@
  *  2. Contains the compact JSON of originalState as a substring — grounding
  *     anchor (Req 11.2).
  *  3. Contains the compact JSON of targetState as a substring (Req 10.1).
- *  4. Is ≤ 2000 characters (Req 10.6, 16.1).
- *  5. Is self-contained: all three logical components (directive, original
+ *  4. Is self-contained: all three logical components (directive, original
  *     state, target state) are present in the single prompt string (Req 16.1).
  *
  * Note: the Source_Image is passed separately to the MutationEngine as an
@@ -25,7 +24,7 @@
  */
 
 import fc from 'fast-check'
-import { composePrompt, MAX_PROMPT_LENGTH } from '../prompt-composer'
+import { composePrompt } from '../prompt-composer'
 import {
   ANGLE_VALUES,
   LIGHTING_VALUES,
@@ -155,31 +154,6 @@ describe('Feature: photo-control, Property 14: Mutation request completeness (se
 
         const targetJSON = JSON.stringify(compress(targetState))
         expect(result.prompt).toContain(targetJSON)
-      }),
-      { numRuns: 200 },
-    )
-  })
-
-  /**
-   * Budget compliance (Requirements 10.6, 16.1):
-   *
-   * For any valid CompositionInput where the composed prompt would be within
-   * the 2000-char budget, `composePrompt` returns `{ ok: true }` and
-   * `prompt.length <= MAX_PROMPT_LENGTH`.
-   *
-   * The arbitraries above are constrained to keep the prompt well under budget,
-   * so this property verifies that the budget is always respected for typical
-   * valid inputs.
-   */
-  it('composed prompt length is within the 2000-character budget', () => {
-    fc.assert(
-      fc.property(directiveArb, minimalSchemaArb, minimalSchemaArb, (directive, originalState, targetState) => {
-        const result = composePrompt({ directive, originalState, targetState })
-
-        expect(result.ok).toBe(true)
-        if (!result.ok) return
-
-        expect(result.prompt.length).toBeLessThanOrEqual(MAX_PROMPT_LENGTH)
       }),
       { numRuns: 200 },
     )

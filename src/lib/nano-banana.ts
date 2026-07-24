@@ -404,13 +404,6 @@ export class NanoBananaClient {
       )
     }
 
-    if (params.prompt.length > 2000) {
-      throw new NanoBananaError(
-        'Prompt is too long (max 2000 characters)',
-        'PROMPT_TOO_LONG'
-      )
-    }
-
     if (params.number_of_images && (params.number_of_images < 1 || params.number_of_images > 4)) {
       throw new NanoBananaError(
         'Number of images must be between 1 and 4',
