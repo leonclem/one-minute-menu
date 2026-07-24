@@ -21,6 +21,7 @@ import { Component_Control } from '@/components/photo-controls'
 import { CollapsibleSection } from '@/components/ux'
 import { ConfirmDialog } from '@/components/ui'
 import { buildChangeSummary, readChangeSummary } from '@/lib/studio/change-summary'
+import { readValidationFromMetadata } from '@/lib/studio/output-validation'
 import {
   STUDIO_LIGHTING_OPTIONS,
   backgroundStylesToOptions,
@@ -56,6 +57,11 @@ interface MutateResponse {
   imageId: string
   model: string
   dishId?: string
+  validation?: {
+    status: 'pass' | 'warn' | 'fail' | 'skipped'
+    score: number
+    summary: string
+  }
 }
 
 interface StudioClientProps {
@@ -196,6 +202,9 @@ export function StudioClient({
   const currentPreviewUrl =
     mutatedImageUrl ?? sourceImage?.dataUrl ?? selectedImage?.public_url ?? null
   const changeChips = selectedImage ? readChangeSummary(selectedImage.metadata) : []
+  const validationSummary = selectedImage
+    ? readValidationFromMetadata(selectedImage.metadata)
+    : null
 
   const pendingDelta = useMemo(() => {
     void baselineVersion
@@ -655,6 +664,7 @@ export function StudioClient({
         metadata: {
           changeSummary,
           editorState: editorStateToMetadata(nextState),
+          ...(data.validation ? { validation: data.validation } : {}),
         },
         is_favourite: false,
         archived_at: null,
@@ -1165,6 +1175,24 @@ export function StudioClient({
                 ))}
               </ul>
             )}
+
+            {validationSummary &&
+              (validationSummary.status === 'warn' || validationSummary.status === 'fail') && (
+                <p
+                  role="status"
+                  data-testid="validation-indicator"
+                  className={
+                    validationSummary.status === 'fail'
+                      ? 'text-xs text-amber-900'
+                      : 'text-xs text-amber-800'
+                  }
+                >
+                  {validationSummary.status === 'fail'
+                    ? 'Quality check flagged this version — you can still download or edit further.'
+                    : 'Quality check noted a minor inconsistency — you can still download or edit further.'}
+                  {validationSummary.summary ? ` ${validationSummary.summary}` : ''}
+                </p>
+              )}
 
             <div className="flex gap-2">
               <button

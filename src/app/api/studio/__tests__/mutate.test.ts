@@ -4,7 +4,7 @@
 
 import { NextRequest } from 'next/server'
 
-const mockRequireUserApi = jest.fn()
+const mockRequireStudioApi = jest.fn()
 const mockComposePrompt = jest.fn()
 const mockMutate = jest.fn()
 const mockCountToday = jest.fn()
@@ -12,9 +12,10 @@ const mockPersist = jest.fn()
 const mockGetLimit = jest.fn()
 const mockGetStudioDish = jest.fn()
 const mockSetCurrentImage = jest.fn()
+const mockRunValidation = jest.fn()
 
-jest.mock('@/lib/user-api-auth', () => ({
-  requireUserApi: () => mockRequireUserApi(),
+jest.mock('@/lib/studio/studio-api-auth', () => ({
+  requireStudioApi: () => mockRequireStudioApi(),
 }))
 
 jest.mock('@/lib/photo-control/prompt-composer', () => ({
@@ -42,6 +43,20 @@ jest.mock('@/lib/studio/resolve-style-directives', () => ({
   resolveStyleDirectiveClauses: jest.fn(async () => ({ clauses: [] })),
   mergeDirectiveWithStyleClauses: (directive: string, clauses: string[]) =>
     [...clauses, directive].filter(Boolean).join(' '),
+}))
+
+jest.mock('@/lib/studio/output-validation', () => ({
+  runStudioOutputValidation: (...args: unknown[]) => mockRunValidation(...args),
+  clientValidationPayload: (result: {
+    status: string
+    score: number
+    summary: string
+  }) => ({
+    status: result.status,
+    score: result.score,
+    summary: result.summary,
+  }),
+  validationToMetadata: (result: unknown) => result,
 }))
 
 jest.mock('@/lib/logger', () => ({
@@ -95,10 +110,16 @@ describe('POST /api/studio/mutate', () => {
       dish_id: 'dish-1',
       public_url: 'https://cdn.example/gen-1.png',
     })
+    mockRunValidation.mockResolvedValue({
+      status: 'pass',
+      score: 100,
+      summary: 'Output looks consistent with the requested dish state.',
+      dimensions: [],
+    })
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockRequireUserApi.mockResolvedValue({
+    mockRequireStudioApi.mockResolvedValue({
       ok: false,
       response: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
     })
@@ -108,7 +129,7 @@ describe('POST /api/studio/mutate', () => {
   })
 
   it('returns 429 when daily limit reached', async () => {
-    mockRequireUserApi.mockResolvedValue({
+    mockRequireStudioApi.mockResolvedValue({
       ok: true,
       user: { id: 'user-1' },
       supabase: {},
@@ -123,7 +144,7 @@ describe('POST /api/studio/mutate', () => {
   })
 
   it('persists and returns public URL on success', async () => {
-    mockRequireUserApi.mockResolvedValue({
+    mockRequireStudioApi.mockResolvedValue({
       ok: true,
       user: { id: 'user-1' },
       supabase: {},
@@ -134,16 +155,47 @@ describe('POST /api/studio/mutate', () => {
     const json = await res.json()
     expect(json.imageId).toBe('gen-1')
     expect(json.imageUrl).toBe('https://cdn.example/gen-1.png')
+    expect(json.validation).toEqual({
+      status: 'pass',
+      score: 100,
+      summary: 'Output looks consistent with the requested dish state.',
+    })
     expect(mockPersist).toHaveBeenCalledWith(
-      expect.objectContaining({ dishId: 'dish-1', userId: 'user-1' }),
+      expect.objectContaining({
+        dishId: 'dish-1',
+        userId: 'user-1',
+        metadata: expect.objectContaining({
+          validation: expect.objectContaining({ status: 'pass' }),
+        }),
+      }),
     )
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({ model: 'gemini-3.1-flash-image-preview' }),
     )
   })
 
+  it('still returns 200 when validation is skipped after extract error', async () => {
+    mockRequireStudioApi.mockResolvedValue({
+      ok: true,
+      user: { id: 'user-1' },
+      supabase: {},
+    })
+    mockRunValidation.mockResolvedValue({
+      status: 'skipped',
+      score: 0,
+      summary: 'Output validation skipped after extract error.',
+      dimensions: [],
+    })
+
+    const res = await POST(makeRequest(validBody))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.imageId).toBe('gen-1')
+    expect(json.validation.status).toBe('skipped')
+  })
+
   it('returns 400 when dishId is missing', async () => {
-    mockRequireUserApi.mockResolvedValue({
+    mockRequireStudioApi.mockResolvedValue({
       ok: true,
       user: { id: 'user-1' },
       supabase: {},

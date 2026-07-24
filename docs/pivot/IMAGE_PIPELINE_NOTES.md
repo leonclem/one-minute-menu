@@ -48,10 +48,14 @@ Both require `requireAdminApi()` and `NANO_BANANA_API_KEY`. Max image ~7 MB; MIM
 | `hydrator.ts` | Turn extraction into editable EditorState |
 | `state-delta.ts` | Diff original vs target; count editable changes |
 | `directive-generator.ts` | Human-readable instruction from delta |
-| `prompt-composer.ts` | Directive + JSON anchors → model prompt (≤ ~2000 chars) |
+| `prompt-composer.ts` | Directive + JSON anchors → model prompt (concise by design; hard char cap removed) |
 | `mutation-engine.ts` | Calls `getNanoBananaClient().generateImage(...)` with source as inline dish reference |
+| `output-validator.ts` | Pure MinimalSchema compare → pass/warn/fail soft score (Chunk 5) |
 | `gemini-extraction-client.ts` | Extraction LLM call |
 | `edit-limits.ts` | `MAX_PENDING_CHANGES` |
+
+Studio mutate also runs optional post-gen re-extract (`STUDIO_OUTPUT_VALIDATION_ENABLED`,
+default on) and stores `metadata.validation` — never fails the generation on validation errors.
 
 ### Models (Photo Control UI)
 

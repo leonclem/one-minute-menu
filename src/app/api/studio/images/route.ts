@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserApi } from '@/lib/user-api-auth'
+import { requireStudioApi } from '@/lib/studio/studio-api-auth'
 import { getStudioDish } from '@/lib/studio/dishes'
 import { listStudioImagesForDish } from '@/lib/studio/library'
 import { logger } from '@/lib/logger'
@@ -14,7 +14,7 @@ export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireUserApi()
+    const auth = await requireStudioApi()
     if (!auth.ok) return auth.response
 
     const dishId = request.nextUrl.searchParams.get('dishId')

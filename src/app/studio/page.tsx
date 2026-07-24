@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getCurrentUser } from '@/lib/auth-utils'
 import { userOperations } from '@/lib/database'
 import { getFeatureFlag } from '@/lib/feature-flags'
-import { isPhotoStudioEnabled } from '@/lib/product-mode'
+import { canAccessPhotoStudio, isPhotoStudioEnabled } from '@/lib/product-mode'
 import { UXHeader, UXFooter } from '@/components/ux'
 import { PendingApproval } from '@/components/dashboard/PendingApproval'
 import { StudioClient } from './_components/studio-client'
@@ -48,6 +48,10 @@ export default async function StudioPage() {
 
   const isAdmin = currentUser?.role === 'admin'
   const requireAdminApproval = await getFeatureFlag('require_admin_approval')
+
+  if (!canAccessPhotoStudio(!!isAdmin)) {
+    notFound()
+  }
 
   if (requireAdminApproval && !isAdmin && profile && !profile.isApproved) {
     return (

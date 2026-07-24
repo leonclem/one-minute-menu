@@ -37,7 +37,7 @@ const mockShouldShowStudioNav = jest.fn()
 
 jest.mock('@/lib/product-mode', () => ({
   shouldShowLegacyMenuNav: () => mockShouldShowLegacyMenuNav(),
-  shouldShowStudioNav: () => mockShouldShowStudioNav(),
+  shouldShowStudioNav: (isAdmin?: boolean) => mockShouldShowStudioNav(isAdmin),
 }))
 
 describe('UXHeader', () => {
@@ -70,9 +70,19 @@ describe('UXHeader', () => {
   it('shows Studio when studio nav is enabled', () => {
     mockShouldShowStudioNav.mockReturnValue(true)
 
-    render(<UXHeader userEmail="user@example.com" />)
+    render(<UXHeader userEmail="admin@example.com" isAdmin />)
 
     expect(screen.getAllByRole('link', { name: 'Studio' }).length).toBeGreaterThan(0)
+    expect(mockShouldShowStudioNav).toHaveBeenCalledWith(true)
+  })
+
+  it('passes isAdmin=false into shouldShowStudioNav for non-admins', () => {
+    mockShouldShowStudioNav.mockReturnValue(false)
+
+    render(<UXHeader userEmail="user@example.com" />)
+
+    expect(mockShouldShowStudioNav).toHaveBeenCalledWith(false)
+    expect(screen.queryByRole('link', { name: 'Studio' })).not.toBeInTheDocument()
   })
 
   it('hides Studio when studio nav is disabled', () => {

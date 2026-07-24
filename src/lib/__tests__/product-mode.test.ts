@@ -7,6 +7,7 @@ describe('product-mode', () => {
     'NEXT_PUBLIC_PRODUCT_MODE',
     'NEXT_PUBLIC_ENABLE_PHOTO_STUDIO',
     'NEXT_PUBLIC_ENABLE_LEGACY_MENUS',
+    'NEXT_PUBLIC_STUDIO_ADMIN_ONLY',
   ] as const
 
   const originalEnv: Record<string, string | undefined> = {}
@@ -118,16 +119,60 @@ describe('product-mode', () => {
     })
   })
 
+  describe('isStudioAdminOnly', () => {
+    it('defaults to true when unset', async () => {
+      const { isStudioAdminOnly } = await loadModule()
+      expect(isStudioAdminOnly()).toBe(true)
+    })
+
+    it('returns false only when explicitly "false"', async () => {
+      process.env.NEXT_PUBLIC_STUDIO_ADMIN_ONLY = 'false'
+      const { isStudioAdminOnly } = await loadModule()
+      expect(isStudioAdminOnly()).toBe(false)
+    })
+  })
+
+  describe('canAccessPhotoStudio', () => {
+    it('denies everyone when studio flag is off', async () => {
+      const { canAccessPhotoStudio } = await loadModule()
+      expect(canAccessPhotoStudio(true)).toBe(false)
+      expect(canAccessPhotoStudio(false)).toBe(false)
+    })
+
+    it('allows only admins when studio on and admin-only default', async () => {
+      process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
+      const { canAccessPhotoStudio } = await loadModule()
+      expect(canAccessPhotoStudio(true)).toBe(true)
+      expect(canAccessPhotoStudio(false)).toBe(false)
+    })
+
+    it('allows any user when admin-only is disabled', async () => {
+      process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
+      process.env.NEXT_PUBLIC_STUDIO_ADMIN_ONLY = 'false'
+      const { canAccessPhotoStudio } = await loadModule()
+      expect(canAccessPhotoStudio(false)).toBe(true)
+      expect(canAccessPhotoStudio(true)).toBe(true)
+    })
+  })
+
   describe('shouldShowStudioNav', () => {
     it('hides Studio by default', async () => {
       const { shouldShowStudioNav } = await loadModule()
-      expect(shouldShowStudioNav()).toBe(false)
+      expect(shouldShowStudioNav(true)).toBe(false)
     })
 
-    it('shows Studio when photo studio is enabled', async () => {
+    it('hides Studio for non-admins when photo studio is enabled (admin-only default)', async () => {
       process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
       const { shouldShowStudioNav } = await loadModule()
-      expect(shouldShowStudioNav()).toBe(true)
+      expect(shouldShowStudioNav(false)).toBe(false)
+      expect(shouldShowStudioNav(true)).toBe(true)
+    })
+
+    it('shows Studio for non-admins when admin-only is off', async () => {
+      process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
+      process.env.NEXT_PUBLIC_STUDIO_ADMIN_ONLY = 'false'
+      const { shouldShowStudioNav } = await loadModule()
+      expect(shouldShowStudioNav(false)).toBe(true)
     })
   })
 })

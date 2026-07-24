@@ -42,9 +42,28 @@ export function shouldShowLegacyMenuNav(): boolean {
 }
 
 /**
- * Whether primary nav should show the Studio link.
- * Shown when the Photo Studio feature flag is enabled.
+ * Whether customer-facing `/studio` is restricted to admins.
+ * Defaults to true when unset (private-beta safety). Set to `false` to open
+ * Studio to all authenticated users once `NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true`.
  */
-export function shouldShowStudioNav(): boolean {
-  return isPhotoStudioEnabled()
+export function isStudioAdminOnly(): boolean {
+  return process.env.NEXT_PUBLIC_STUDIO_ADMIN_ONLY !== 'false'
+}
+
+/**
+ * Whether the signed-in user may open the FOH Photo Studio surface.
+ */
+export function canAccessPhotoStudio(isAdmin: boolean): boolean {
+  if (!isPhotoStudioEnabled()) return false
+  if (isStudioAdminOnly()) return isAdmin
+  return true
+}
+
+/**
+ * Whether primary nav should show the Studio link.
+ * Requires the Photo Studio feature flag; when admin-only mode is on, also
+ * requires `isAdmin`.
+ */
+export function shouldShowStudioNav(isAdmin = false): boolean {
+  return canAccessPhotoStudio(isAdmin)
 }

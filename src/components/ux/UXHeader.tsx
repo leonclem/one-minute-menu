@@ -14,11 +14,12 @@ interface UXHeaderProps {
 export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const showLegacyMenuNav = shouldShowLegacyMenuNav()
-  const showStudioNav = shouldShowStudioNav()
+  const showStudioNav = shouldShowStudioNav(isAdmin)
 
   // Navigation items. Dashboard is the primary menu-builder entry and is
   // hidden when product mode is photo-studio with legacy menus disabled.
-  // Studio appears when NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true.
+  // Studio appears when NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true (and admin-only
+  // gate passes when NEXT_PUBLIC_STUDIO_ADMIN_ONLY is on).
   const navigationItems = userEmail
     ? [
         ...(showStudioNav ? [{ href: '/studio', label: 'Studio' }] : []),

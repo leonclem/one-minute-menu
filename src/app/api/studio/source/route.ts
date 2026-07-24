@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserApi } from '@/lib/user-api-auth'
+import { requireStudioApi } from '@/lib/studio/studio-api-auth'
 import { parseAndValidateImageDataUrl } from '@/lib/photo-control/request-validation'
 import { getStudioDish } from '@/lib/studio/dishes'
 import { persistStudioImage } from '@/lib/studio/persistence'
@@ -15,7 +15,7 @@ export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireUserApi()
+    const auth = await requireStudioApi()
     if (!auth.ok) return auth.response
 
     const body = (await request.json()) as {

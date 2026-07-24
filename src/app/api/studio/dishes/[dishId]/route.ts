@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserApi } from '@/lib/user-api-auth'
+import { requireStudioApi } from '@/lib/studio/studio-api-auth'
 import {
   deleteStudioDish,
   getStudioDish,
@@ -23,7 +23,7 @@ export async function PATCH(
   { params }: { params: { dishId: string } },
 ) {
   try {
-    const auth = await requireUserApi()
+    const auth = await requireStudioApi()
     if (!auth.ok) return auth.response
 
     const { dishId } = params
@@ -80,7 +80,7 @@ export async function DELETE(
   { params }: { params: { dishId: string } },
 ) {
   try {
-    const auth = await requireUserApi()
+    const auth = await requireStudioApi()
     if (!auth.ok) return auth.response
 
     const { dishId } = params

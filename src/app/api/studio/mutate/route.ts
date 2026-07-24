@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
 import path from 'path'
-import { requireUserApi } from '@/lib/user-api-auth'
+import { requireStudioApi } from '@/lib/studio/studio-api-auth'
 import { NanoBananaError } from '@/lib/nano-banana'
 import { getMutationEngine, type StyleReferenceImage } from '@/lib/photo-control/mutation-engine'
 import { composePrompt } from '@/lib/photo-control/prompt-composer'
@@ -27,6 +27,11 @@ import {
   mergeDirectiveWithStyleClauses,
   resolveStyleDirectiveClauses,
 } from '@/lib/studio/resolve-style-directives'
+import {
+  clientValidationPayload,
+  runStudioOutputValidation,
+  validationToMetadata,
+} from '@/lib/studio/output-validation'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -60,7 +65,7 @@ function loadStyleReferenceImage(
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireUserApi()
+    const auth = await requireStudioApi()
     if (!auth.ok) return auth.response
 
     if (!process.env.NANO_BANANA_API_KEY) {
@@ -272,6 +277,14 @@ export async function POST(request: NextRequest) {
       styleReferences,
     })
 
+    // Soft post-gen validation: never fails the generation on extract/score errors.
+    const validationResult = await runStudioOutputValidation({
+      imageBase64,
+      mimeType: 'image/png',
+      expected: targetSchema,
+    })
+    const validationClient = clientValidationPayload(validationResult)
+
     const record = await persistStudioImage({
       userId: auth.user.id,
       dishId,
@@ -288,6 +301,7 @@ export async function POST(request: NextRequest) {
           schema: targetSchema,
           position: { ...CENTER },
         }),
+        validation: validationToMetadata(validationResult),
       },
     })
 
@@ -298,6 +312,8 @@ export async function POST(request: NextRequest) {
       imageId: record.id,
       dishId,
       model: requestedModel,
+      validationStatus: validationResult.status,
+      validationScore: validationResult.score,
     })
 
     return NextResponse.json({
@@ -305,6 +321,7 @@ export async function POST(request: NextRequest) {
       imageId: record.id,
       dishId: record.dish_id,
       model: requestedModel,
+      validation: validationClient,
     })
   } catch (error) {
     if (error instanceof NanoBananaError) {

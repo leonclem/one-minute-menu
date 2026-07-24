@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { requireUserApi } from '@/lib/user-api-auth'
+import { requireStudioApi } from '@/lib/studio/studio-api-auth'
 import {
   listActiveBackgroundStyles,
   listActiveLightingStyles,
@@ -16,7 +16,7 @@ export const runtime = 'nodejs'
 
 export async function GET() {
   try {
-    const auth = await requireUserApi()
+    const auth = await requireStudioApi()
     if (!auth.ok) return auth.response
 
     const [lighting, background] = await Promise.all([

@@ -2,12 +2,12 @@
  * @jest-environment node
  */
 
-const mockRequireUserApi = jest.fn()
+const mockRequireStudioApi = jest.fn()
 const mockListLighting = jest.fn()
 const mockListBackground = jest.fn()
 
-jest.mock('@/lib/user-api-auth', () => ({
-  requireUserApi: () => mockRequireUserApi(),
+jest.mock('@/lib/studio/studio-api-auth', () => ({
+  requireStudioApi: () => mockRequireStudioApi(),
 }))
 
 jest.mock('@/lib/studio/reference-libraries', () => ({
@@ -27,7 +27,7 @@ describe('GET /api/studio/styles', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockRequireUserApi.mockResolvedValue({
+    mockRequireStudioApi.mockResolvedValue({
       ok: false,
       response: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
     })
@@ -37,7 +37,7 @@ describe('GET /api/studio/styles', () => {
   })
 
   it('returns display-only lighting and background styles', async () => {
-    mockRequireUserApi.mockResolvedValue({
+    mockRequireStudioApi.mockResolvedValue({
       ok: true,
       user: { id: 'user-1' },
       supabase: {},

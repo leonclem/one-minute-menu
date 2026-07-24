@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserApi } from '@/lib/user-api-auth'
+import { requireStudioApi } from '@/lib/studio/studio-api-auth'
 import {
   archiveStudioImage,
   deleteStudioImage,
@@ -25,7 +25,7 @@ export async function PATCH(
   { params }: { params: { imageId: string } },
 ) {
   try {
-    const auth = await requireUserApi()
+    const auth = await requireStudioApi()
     if (!auth.ok) return auth.response
 
     const { imageId } = params
@@ -88,7 +88,7 @@ export async function DELETE(
   { params }: { params: { imageId: string } },
 ) {
   try {
-    const auth = await requireUserApi()
+    const auth = await requireStudioApi()
     if (!auth.ok) return auth.response
 
     const { imageId } = params

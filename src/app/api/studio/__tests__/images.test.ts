@@ -4,7 +4,7 @@
 
 import { NextRequest } from 'next/server'
 
-const mockRequireUserApi = jest.fn()
+const mockRequireStudioApi = jest.fn()
 const mockGetImage = jest.fn()
 const mockFavourite = jest.fn()
 const mockArchive = jest.fn()
@@ -12,8 +12,8 @@ const mockDelete = jest.fn()
 const mockGetDish = jest.fn()
 const mockListImages = jest.fn()
 
-jest.mock('@/lib/user-api-auth', () => ({
-  requireUserApi: () => mockRequireUserApi(),
+jest.mock('@/lib/studio/studio-api-auth', () => ({
+  requireStudioApi: () => mockRequireStudioApi(),
 }))
 
 jest.mock('@/lib/studio/library', () => ({
@@ -38,7 +38,7 @@ import { PATCH, DELETE } from '../images/[imageId]/route'
 describe('studio images API', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockRequireUserApi.mockResolvedValue({
+    mockRequireStudioApi.mockResolvedValue({
       ok: true,
       user: { id: 'u1' },
       supabase: {},

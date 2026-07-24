@@ -182,16 +182,20 @@ function buildAdditionClause(item: string, arrayType: 'garnishes' | 'sides'): st
 }
 
 /**
- * Build the subject-identity-preservation clause. (Requirement 11.1)
+ * Build the subject-identity-preservation clause. (Requirement 11.1 / §5.2)
  *
- * Always appended to every directive. References the physical texture, shape,
- * and structure of the main dish.
+ * Always appended to every directive. Locks dish identity, visible component
+ * counts, vessel, colours/textures, and forbids unsolicited props unless the
+ * user explicitly staged those changes elsewhere in the directive.
  */
 function buildIdentityPreservationClause(mainItem: string): string {
   const subject = mainItem.trim().length > 0 ? mainItem.trim() : 'the main dish'
   return (
     `Preserve the identity of ${subject}: ` +
-    `maintain texture, shape, and structure exactly as shown. ` +
+    `maintain texture, shape, structure, and colours exactly as shown. ` +
+    `Preserve visible ingredient and component counts. ` +
+    `Preserve the vessel/plate/bowl unless this directive explicitly changes it. ` +
+    `Do not add new food, props, hands, text, labels, logos, napkins, or cutlery unless explicitly requested. ` +
     `Keep entire subject and vessel visible, no cropping.`
   )
 }

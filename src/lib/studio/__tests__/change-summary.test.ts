@@ -35,7 +35,7 @@ describe('change-summary', () => {
         ],
       }),
     )
-    expect(chips).toEqual(['Lighting → Moody', 'Camera Height → Overhead'])
+    expect(chips).toEqual(['Lighting → Low-Key / Dramatic', 'Camera Height → Overhead'])
   })
 
   it('builds chips for background style with label map', () => {

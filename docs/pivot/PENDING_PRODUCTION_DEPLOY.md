@@ -32,6 +32,8 @@ non-local env you care about). Defaults in code are safe if unset unless noted.
 | `NEXT_PUBLIC_ENABLE_PHOTO_STUDIO` | Chunk 1 | `false` (off) | `true` to expose `/studio` + Studio nav | Pending | Required for customer Studio. |
 | `NEXT_PUBLIC_ENABLE_LEGACY_MENUS` | Chunk 1 | `true` | `false` with photo-studio mode to hide Dashboard nav | Pending | Optional soft-transition control. |
 | `STUDIO_DAILY_GENERATION_LIMIT` | Chunk 2 | `25` | Set explicitly if you want a different cap | Pending | Soft pre-credits cost guard. |
+| `STUDIO_OUTPUT_VALIDATION_ENABLED` | Chunk 5 | `true` (on when unset) | `true` for private beta quality signals; `false` to skip re-extract cost | Pending | Soft post-gen validation only; never blocks save/download. |
+| `NEXT_PUBLIC_STUDIO_ADMIN_ONLY` | Chunk 5 | `true` (on when unset) | `true` until ready for non-admin users; `false` to open FOH Studio | Pending | Gates `/studio` page, Studio nav, and `/api/studio/*`. Admin Photo Control sandbox unchanged. |
 
 ---
 
@@ -59,6 +61,7 @@ Non-env, non-migration steps that must not be forgotten.
 | Smoke-test `/studio` after enabling flags | Chunk 2 | Pending | Upload → generate → download; confirm Admin Photo Control still works. |
 | Smoke-test dish library | Chunk 3 | Pending | Create/rename dish; upload; generate; favourite; use-as-working; archive/delete. |
 | Smoke-test reference libraries | Chunk 4 | Pending | Confirm lighting + background tiles load; generate with a background swap; admin can edit a style. |
+| Smoke-test output validation | Chunk 5 | Pending | Generate in `/studio`; confirm warn/fail soft indicator can appear; with `STUDIO_OUTPUT_VALIDATION_ENABLED=false` generation still works without validation metadata. |
 
 ---
 

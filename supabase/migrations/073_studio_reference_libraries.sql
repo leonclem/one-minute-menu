@@ -208,12 +208,15 @@ CREATE POLICY "Admins can delete background styles"
 -- Seed: 6 lighting styles (§7.4) — keep existing keys for continuity
 -- ---------------------------------------------------------------------------
 
+-- First, delete styles that are no longer wanted to ensure a clean, tidied table
+DELETE FROM studio_lighting_styles WHERE key IN ('soft-natural-window', 'clean-delivery', 'warm-restaurant');
+
 INSERT INTO studio_lighting_styles
     (key, name, short_description, prompt_fragment, negative_constraints, thumbnail_path, sort_order)
 VALUES
     (
         'bright-and-airy',
-        'Bright & Airy',
+        'Window light',
         'Clean high-key diffused light',
         'Change the lighting to bright-and-airy high-key diffused light. Remove heavy shadows and keep the scene clean, bright, and airy.',
         'Do not add props, ingredients, hands, text, or logos. Do not change the dish or vessel.',
@@ -230,40 +233,22 @@ VALUES
         20
     ),
     (
-        'soft-natural-window',
-        'Soft Natural Window Light',
-        'Gentle side window illumination',
-        'Change the lighting to soft natural window light: gentle directional daylight from one side, soft falloff, natural colour temperature, and subtle shadows. Keep the dish readable and appetising.',
-        'Do not add props, ingredients, hands, text, or logos. Do not change the dish or vessel. Do not invent windows or architecture unless already present.',
-        'lighting/lighting-soft-window',
-        30
-    ),
-    (
-        'clean-delivery',
-        'Clean Delivery App Lighting',
-        'Even, app-menu friendly light',
-        'Change the lighting to clean delivery-app lighting: even, flattering, slightly cool-neutral illumination with minimal harsh shadows so the dish reads clearly at small thumbnail size.',
-        'Do not add props, ingredients, hands, text, or logos. Do not change the dish or vessel.',
-        'lighting/lighting-delivery',
-        40
-    ),
-    (
-        'warm-restaurant',
-        'Warm Restaurant Ambient',
-        'Warm ambient dining light',
-        'Change the lighting to warm restaurant ambient light: soft warm colour temperature, gentle ambient fill, and inviting dinner-table mood while keeping the food colours accurate.',
-        'Do not add props, ingredients, hands, text, or logos. Do not change the dish or vessel.',
-        'lighting/lighting-warm-restaurant',
-        50
-    ),
-    (
         'studio',
         'Premium Editorial / Studio',
         'Polished commercial studio light',
         'Change the lighting to clean commercial studio lighting: even, controlled key light with soft fill, neutral colour temperature, and a polished menu-photo look. Do not change the dish or add props.',
         'Do not add props, ingredients, hands, text, or logos. Do not change the dish or vessel.',
         'lighting/lighting-studio',
-        60
+        30
+    ),
+    (
+        'golden-hour',
+        'Golden Hour',
+        'Warm directional golden hour sunlight',
+        'Change the lighting to warm, directional golden hour sunlight. Add long, soft shadows and a beautiful warm golden glow across the scene.',
+        'Do not add props, ingredients, hands, text, or logos. Do not change the dish or vessel.',
+        'lighting/lighting-golden-hour',
+        40
     )
 ON CONFLICT (key) DO UPDATE SET
     name = EXCLUDED.name,
@@ -277,29 +262,12 @@ ON CONFLICT (key) DO UPDATE SET
 -- Seed: background/surface styles (§7.5)
 -- ---------------------------------------------------------------------------
 
+-- Delete styles that are no longer wanted to ensure a clean, tidied table
+DELETE FROM studio_background_styles WHERE key IN ('clean-white-studio', 'warm-beige-ceramic', 'marble-counter', 'neutral-delivery', 'premium-dark-restaurant', 'bright-cafe-table');
+
 INSERT INTO studio_background_styles
     (key, name, short_description, category, prompt_fragment, negative_constraints, thumbnail_path, sort_order)
 VALUES
-    (
-        'clean-white-studio',
-        'Clean White Studio',
-        'Seamless white studio surface',
-        'surface',
-        'Change only the tabletop surface supporting the dish to a clean seamless white studio surface. Keep the background/backdrop behind the table and the dish itself completely locked.',
-        'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
-        'surfaces/surface-clean-white',
-        10
-    ),
-    (
-        'warm-beige-ceramic',
-        'Warm Beige Ceramic',
-        'Warm beige ceramic tabletop',
-        'surface',
-        'Change only the tabletop surface supporting the dish to a warm beige ceramic tabletop with soft natural texture. Keep the background/backdrop behind the table and the dish itself completely locked.',
-        'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
-        'surfaces/surface-warm-beige',
-        20
-    ),
     (
         'dark-slate',
         'Dark Slate',
@@ -308,7 +276,7 @@ VALUES
         'Change only the tabletop surface supporting the dish to a dark slate stone surface with subtle natural texture. Keep the background/backdrop behind the table and the dish itself completely locked.',
         'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
         'surfaces/surface-dark-slate',
-        30
+        10
     ),
     (
         'rustic-wood',
@@ -318,47 +286,7 @@ VALUES
         'Change only the tabletop surface supporting the dish to a rustic wood tabletop with natural grain. Keep the background/backdrop behind the table and the dish itself completely locked.',
         'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
         'surfaces/surface-rustic-wood',
-        40
-    ),
-    (
-        'marble-counter',
-        'Marble Counter',
-        'Light marble countertop',
-        'surface',
-        'Change only the tabletop surface supporting the dish to a light marble countertop with subtle veining. Keep the background/backdrop behind the table and the dish itself completely locked.',
-        'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
-        'surfaces/surface-marble-counter',
-        50
-    ),
-    (
-        'neutral-delivery',
-        'Neutral Delivery Background',
-        'Neutral solid delivery-app backdrop',
-        'backdrop',
-        'Change only the vertical backdrop/wall behind the tabletop to a clean neutral delivery-app backdrop (soft light grey, seamless, distraction-free). Keep the tabletop surface, its shadows, and the dish itself completely locked.',
-        'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
-        'backdrops/backdrop-neutral-delivery',
-        60
-    ),
-    (
-        'premium-dark-restaurant',
-        'Premium Dark Restaurant',
-        'Dark premium restaurant surface',
-        'surface',
-        'Change only the tabletop surface supporting the dish to a premium dark restaurant surface (deep charcoal / black with soft falloff). Keep the background/backdrop behind the table and the dish itself completely locked.',
-        'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
-        'surfaces/surface-premium-dark',
-        70
-    ),
-    (
-        'bright-cafe-table',
-        'Bright Café Table',
-        'Bright light café tabletop',
-        'surface',
-        'Change only the tabletop surface supporting the dish to a bright café tabletop (light wood or pale laminate, airy). Keep the background/backdrop behind the table and the dish itself completely locked.',
-        'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
-        'surfaces/surface-bright-cafe',
-        80
+        20
     ),
     (
         'granite-light',
@@ -368,7 +296,7 @@ VALUES
         'Change only the tabletop surface supporting the dish to a polished light granite stone surface with subtle grey and white crystalline flecks. Keep the background/backdrop behind the table and the dish itself completely locked.',
         'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
         'surfaces/surface-granite-light',
-        90
+        30
     ),
     (
         'marble-light',
@@ -378,7 +306,17 @@ VALUES
         'Change only the tabletop surface supporting the dish to an elegant light marble surface with delicate soft grey veins. Keep the background/backdrop behind the table and the dish itself completely locked.',
         'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
         'surfaces/surface-marble-light',
-        100
+        40
+    ),
+    (
+        'white-tablecloth',
+        'White tablecloth',
+        'Clean white fabric tablecloth',
+        'surface',
+        'Change only the tabletop surface supporting the dish to a clean, crisp white fabric tablecloth with soft natural folds. Keep the background/backdrop behind the table and the dish itself completely locked.',
+        'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
+        'surfaces/surface-white-tablecloth',
+        50
     ),
     (
         'studio-nightsky',
@@ -388,7 +326,7 @@ VALUES
         'Change only the vertical backdrop/wall behind the tabletop to a deep dark nightsky backdrop with a subtle, soft midnight blue texture. Keep the tabletop surface, its shadows, and the dish itself completely locked.',
         'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
         'backdrops/backdrop-studio-nightsky',
-        110
+        60
     ),
     (
         'studio-red',
@@ -398,7 +336,27 @@ VALUES
         'Change only the vertical backdrop/wall behind the tabletop to a vibrant red studio backdrop with a subtle, soft texture. Keep the tabletop surface, its shadows, and the dish itself completely locked.',
         'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
         'backdrops/backdrop-studio-red',
-        120
+        70
+    ),
+    (
+        'studio-grey-white',
+        'Studio grey-white',
+        'Neutral grey-white studio backdrop',
+        'backdrop',
+        'Change only the vertical backdrop/wall behind the tabletop to a seamless, neutral grey-white studio backdrop with soft, professional studio lighting falloff. Keep the tabletop surface, its shadows, and the dish itself completely locked.',
+        'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
+        'backdrops/backdrop-grey-white',
+        80
+    ),
+    (
+        'studio-yellow',
+        'Studio yellow',
+        'Vibrant yellow studio backdrop',
+        'backdrop',
+        'Change only the vertical backdrop/wall behind the tabletop to a vibrant, solid yellow studio backdrop with soft, professional studio lighting falloff. Keep the tabletop surface, its shadows, and the dish itself completely locked.',
+        'Do not change the dish, vessel, or food. Do not add props, cutlery, napkins, or clutter.',
+        'backdrops/backdrop-studio-yellow',
+        90
     )
 ON CONFLICT (key) DO UPDATE SET
     name = EXCLUDED.name,

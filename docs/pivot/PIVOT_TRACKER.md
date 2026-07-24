@@ -56,6 +56,10 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-23 | Independent Background & Surface controls | Split the single background style field into `canvas.background_style` (for vertical backdrops/walls) and `canvas.surface_style` (for horizontal tabletop surfaces) to allow users to select and apply both independently at the same time. |
 | 2026-07-23 | Image delete policy | Refined deleteStudioImage to only block deletion of source images (role = 'source') when active children exist. Generated images (role = 'generated') can be deleted freely, with children's source_image_id set to null. |
 | 2026-07-24 | Prompt length limit removal | Removed the hardcoded 2000-character limit from NanoBananaClient and PromptComposer entirely. Rationale: Gemini 3.1 Flash Image (Nano Banana 2) and Gemini 3 Pro Image (Nano Banana Pro) models support 131k and 64k input tokens respectively (equivalent to 260k-520k characters), making the 2000-character limit an unnecessary local bottleneck that caused composition failures on detailed prompts. |
+| 2026-07-24 | Post-gen validation storage (§10 Phase 4) | No `image_edits` table yet. Persist soft validation on `studio_images.metadata.validation` (same pattern as `editorState` / `changeSummary`). |
+| 2026-07-24 | Output validation behaviour | Sync re-extract after Studio mutate; gate with `STUDIO_OUTPUT_VALIDATION_ENABLED` (default on). Soft-flag only — never block save/download/edit. Heuristic MinimalSchema compare (no second judge model). |
+| 2026-07-24 | Identity locks (§5.2) | Expanded always-on identity-preservation directive to cover component counts, vessel unless changed, colours/textures, and forbid unsolicited props/hands/text/cutlery. |
+| 2026-07-24 | FOH Studio admin-only | Customer `/studio` + `/api/studio/*` restricted to admins by default via `NEXT_PUBLIC_STUDIO_ADMIN_ONLY` (default on). Set `false` to open to all authenticated users once ready. Admin Photo Control sandbox unchanged. |
 
 ---
 
@@ -66,9 +70,9 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | Ref | Requirement | Status | Notes |
 |---|---|---|---|
 | 5.1 | User controls, not prompt boxes | Built | `/studio` uses lighting + garnish/sides controls; no prompt box. |
-| 5.2 | Preserve the dish (identity lock defaults) | Not started | Partially exists in photo-control prompt composer; needs review against §5.2 list. |
+| 5.2 | Preserve the dish (identity lock defaults) | Built | Identity clause expanded in Chunk 5; post-gen soft validation flags mismatches. |
 | 5.3 | Stage changes before generation (max 3, summary, reset) | Built | Pending-changes panel + max 3 in `/studio` (same engine as sandbox). |
-| 5.4 | MVP prioritises reliable transformations | In progress | Lighting + background libraries shipped; plating/risky camera still deferred. |
+| 5.4 | MVP prioritises reliable transformations | In progress | Lighting + background libraries + post-gen soft validation; plating/risky camera still deferred. |
 
 ### MVP features (§7)
 
@@ -118,7 +122,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 1 | Customer-facing Photo Studio shell | Built | Chunk 2 — `/studio` + `studio_images` persistence |
 | 2 | Image library per dish | Built | Chunk 3 — `studio_dishes` + dish library on `/studio` |
 | 3 | Background & lighting reference libraries | Built | Chunk 4 — `studio_*_styles` + admin CRUD + FOH tiles |
-| 4 | Controlled prompt/state layer | Not started | Partially exists in `src/lib/photo-control/` (JSON state, delta, composer). |
+| 4 | Controlled prompt/state layer | Built | Chunk 5 — extract/delta/compose + §5.2 identity locks + post-gen re-extract soft validation on `metadata.validation`. |
 | 5 | Credits & usage control | Not started | |
 | 6 | MVP market test | Not started | |
 | 7 | Plating/vessel experimentation | Deferred | |
@@ -132,4 +136,5 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 1 | Phase 0: pivot docs, feature flags, hide legacy nav, verify + document generation pipeline | `studio/chunk-01-foundations` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_01.md` |
 | 2 | Phase 1: customer-facing `/studio` shell with persistence | `studio/chunk-02-studio-shell` | Built — merged to `main` — see `docs/pivot/BUILD_PLAN_CHUNK_02.md` |
 | 3 | Phase 2: image library per dish (`studio_dishes` + dish-scoped gallery) | `studio/chunk-03-dish-library` | Built — merged to `main` — see `docs/pivot/BUILD_PLAN_CHUNK_03.md` |
-| 4 | Phase 3: background & lighting reference libraries (DB-backed, admin-managed) | `studio/chunk-04-reference-libraries` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_04.md` |
+| 4 | Phase 3: background & lighting reference libraries (DB-backed, admin-managed) | `studio/chunk-04-reference-libraries` | Built — merged to `main` — see `docs/pivot/BUILD_PLAN_CHUNK_04.md` |
+| 5 | Phase 4: controlled prompt/state layer (identity locks + post-gen validation) | `studio/chunk-05-prompt-state-layer` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_05.md` |

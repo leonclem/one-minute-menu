@@ -6,7 +6,7 @@
  * libraries; the static lighting list below remains as a fallback.
  */
 
-import type { AngleValue, LightingValue } from '@/lib/photo-control/minimal-schema'
+import type { AngleValue } from '@/lib/photo-control/minimal-schema'
 import type {
   StudioBackgroundStyleDisplay,
   StudioLightingStyleDisplay,
@@ -37,15 +37,16 @@ export const STUDIO_SPIN_OPTIONS: StudioVisualOption<string>[] = [
 ]
 
 /** Fallback lighting tiles when the styles API is unavailable. */
-export const STUDIO_LIGHTING_OPTIONS: StudioVisualOption<LightingValue>[] = [
+export const STUDIO_LIGHTING_OPTIONS: StudioVisualOption<string>[] = [
   {
     id: 'light-natural',
-    label: 'Natural',
+    label: 'Window light',
     assetBasename: 'lighting/lighting-natural',
     value: 'bright-and-airy',
   },
-  { id: 'light-moody', label: 'Moody', assetBasename: 'lighting/lighting-moody', value: 'low-key' },
-  { id: 'light-studio', label: 'Studio', assetBasename: 'lighting/lighting-studio', value: 'studio' },
+  { id: 'light-moody', label: 'Low-Key / Dramatic', assetBasename: 'lighting/lighting-moody', value: 'low-key' },
+  { id: 'light-studio', label: 'Premium Editorial / Studio', assetBasename: 'lighting/lighting-studio', value: 'studio' },
+  { id: 'light-golden-hour', label: 'Golden Hour', assetBasename: 'lighting/lighting-golden-hour', value: 'golden-hour' },
 ]
 
 const ANGLE_FOH_LABELS: Partial<Record<AngleValue, string>> = {
@@ -55,12 +56,10 @@ const ANGLE_FOH_LABELS: Partial<Record<AngleValue, string>> = {
 }
 
 const LIGHTING_FOH_LABELS: Record<string, string> = {
-  'bright-and-airy': 'Natural',
-  'low-key': 'Moody',
-  studio: 'Studio',
-  'soft-natural-window': 'Soft Window',
-  'clean-delivery': 'Delivery',
-  'warm-restaurant': 'Warm Ambient',
+  'bright-and-airy': 'Window light',
+  'low-key': 'Low-Key / Dramatic',
+  studio: 'Premium Editorial / Studio',
+  'golden-hour': 'Golden Hour',
 }
 
 export function fohAngleLabel(value: string): string {

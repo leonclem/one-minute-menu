@@ -4,13 +4,13 @@
 
 import { NextRequest } from 'next/server'
 
-const mockRequireUserApi = jest.fn()
+const mockRequireStudioApi = jest.fn()
 const mockListWithThumbs = jest.fn()
 const mockEnsure = jest.fn()
 const mockCreate = jest.fn()
 
-jest.mock('@/lib/user-api-auth', () => ({
-  requireUserApi: () => mockRequireUserApi(),
+jest.mock('@/lib/studio/studio-api-auth', () => ({
+  requireStudioApi: () => mockRequireStudioApi(),
 }))
 
 jest.mock('@/lib/studio/dishes', () => ({
@@ -31,7 +31,7 @@ describe('GET/POST /api/studio/dishes', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockRequireUserApi.mockResolvedValue({
+    mockRequireStudioApi.mockResolvedValue({
       ok: false,
       response: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
     })
@@ -40,7 +40,7 @@ describe('GET/POST /api/studio/dishes', () => {
   })
 
   it('ensures a default dish when none exist', async () => {
-    mockRequireUserApi.mockResolvedValue({
+    mockRequireStudioApi.mockResolvedValue({
       ok: true,
       user: { id: 'u1' },
       supabase: {},
@@ -58,7 +58,7 @@ describe('GET/POST /api/studio/dishes', () => {
   })
 
   it('creates a dish', async () => {
-    mockRequireUserApi.mockResolvedValue({
+    mockRequireStudioApi.mockResolvedValue({
       ok: true,
       user: { id: 'u1' },
       supabase: {},

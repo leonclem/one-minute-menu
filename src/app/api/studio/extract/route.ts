@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserApi } from '@/lib/user-api-auth'
+import { requireStudioApi } from '@/lib/studio/studio-api-auth'
 import { GeminiExtractionClient, UnparseableExtractionResponseError } from '@/lib/photo-control/gemini-extraction-client'
 import { MinimalSchemaValidator } from '@/lib/photo-control/schema-validator'
 import { parseAndValidateImageDataUrl } from '@/lib/photo-control/request-validation'
@@ -16,7 +16,7 @@ export const maxDuration = 120
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireUserApi()
+    const auth = await requireStudioApi()
     if (!auth.ok) return auth.response
 
     if (!process.env.NANO_BANANA_API_KEY) {
