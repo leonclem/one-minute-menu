@@ -63,6 +63,10 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-27 | Studio direct upload | Deviation from base64-through-Vercel pattern: FOH uploads source images directly to Supabase Storage (`ai-generated-images` bucket), then passes `imageId` through `/source`, `/extract`, and `/mutate`. Avoids Vercel 4.5 MB body limit. Product upload cap raised to 9 MiB (bucket hard limit 10 MiB). Admin Photo Control unchanged. Independent patch — see patches log. |
 | 2026-07-24 | Production deploy (Chunks 1–5) | First deliberate Studio pivot deploy to production: commit `42f35d5` on `main` (Chunk 5 validation, admin-only gate, style library refresh). Cumulative deploy of Chunks 1–5 backlog (migrations 070–073, Studio env vars, smoke tests). Direct-upload patch not included — discovered during prod testing after this deploy. See `docs/pivot/PRODUCTION_DEPLOY_BACKLOG.md` deploy history. |
 | 2026-07-27 | Git workflow | Supersedes 2026-07-17 chunk-branch workflow: commit directly to `main` / `origin/main` (no `studio/chunk-NN-*` branches for new work). Chunk branches retained in chunk log for Chunks 1–5 history only. Updated `docs/pivot/GIT_WORKFLOW.md`. |
+| 2026-07-27 | Phase 5 sequencing | Override: start Chunk 6 (Phase 5 Credits) planning/build before production deploy of the direct-upload patch. Patch remains Built / not deployed; deploy independently when ready. |
+| 2026-07-27 | Studio credits ledger | New `studio_credit_balances` + `studio_credit_ledger`; do not reuse menu `generation_quotas` / `user_packs`. Users start at 0 until admin grant (Q4). |
+| 2026-07-27 | Studio credit costs | Private beta defaults: NB2/Flash = 1 credit, NB Pro = 3 credits (`STUDIO_CREDIT_COST_NB2` / `STUDIO_CREDIT_COST_NB_PRO`). Bill successful mutate only; extract/upload free. Insufficient credits → HTTP 402 `STUDIO_INSUFFICIENT_CREDITS`. |
+| 2026-07-27 | Failed gens + dish circuit breaker (Q7) | No credit debit if mutate fails before persist. Billable provider failures (post-API Gemini/NanoBanana errors that likely incurred cost) increment per-dish consecutive failure count; after N (default 5, `STUDIO_DISH_FAILURE_LIMIT`) block further mutates on that dish until admin clears (`STUDIO_DISH_GENERATION_BLOCKED`). Success resets the counter. |
 
 ---
 
@@ -96,10 +100,10 @@ Subject to change; record changes as new dated rows rather than editing old ones
 
 | Ref | Requirement | Phase | Status | Notes |
 |---|---|---|---|---|
-| 8.1 | Usage ledger for generations | 5 | Not started | `generation_quotas` + `user_packs` exist from legacy model; assess reuse vs new ledger. |
-| 8.1 | Credit deduction around generation jobs | 5 | Not started | |
-| 8.1 | Admin credit grants (private beta) | 5 | Not started | Per decision Q4: yes, with spend limits. |
-| 8.1 | Stripe credit packs / plan packaging | 5+ | Deferred | Delay until user behaviour clearer. |
+| 8.1 | Usage ledger for generations | 5 | Built | Chunk 6: `studio_credit_balances` + `studio_credit_ledger` (not menu `generation_quotas`). |
+| 8.1 | Credit deduction around generation jobs | 5 | Built | Chunk 6: debit on successful Studio mutate only. |
+| 8.1 | Admin credit grants (private beta) | 5 | Built | Chunk 6: admin API + User Management “Studio credits” panel. |
+| 8.1 | Stripe credit packs / plan packaging | 5+ | Deferred | Delay until user behaviour clearer. Out of Chunk 6 scope. |
 
 ### Architecture (§9)
 
@@ -126,7 +130,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2 | Image library per dish | Built | Chunk 3 — `studio_dishes` + dish library on `/studio` |
 | 3 | Background & lighting reference libraries | Built | Chunk 4 — `studio_*_styles` + admin CRUD + FOH tiles |
 | 4 | Controlled prompt/state layer | Built | Chunk 5 — extract/delta/compose + §5.2 identity locks + post-gen re-extract soft validation on `metadata.validation`. |
-| 5 | Credits & usage control | Not started | |
+| 5 | Credits & usage control | Built | Chunk 6 — local; not yet deployed — `docs/pivot/BUILD_PLAN_CHUNK_06.md` |
 | 6 | MVP market test | Not started | |
 | 7 | Plating/vessel experimentation | Deferred | |
 
@@ -141,6 +145,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 3 | Phase 2: image library per dish (`studio_dishes` + dish-scoped gallery) | `studio/chunk-03-dish-library` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_03.md` |
 | 4 | Phase 3: background & lighting reference libraries (DB-backed, admin-managed) | `studio/chunk-04-reference-libraries` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_04.md` |
 | 5 | Phase 4: controlled prompt/state layer (identity locks + post-gen validation) | `studio/chunk-05-prompt-state-layer` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_05.md` |
+| 6 | Phase 5: credits & usage control (Studio ledger, mutate gate, admin grants, FOH balance, dish failure breaker) | `main` | Built — not yet deployed — see `docs/pivot/BUILD_PLAN_CHUNK_06.md` |
 
 ---
 

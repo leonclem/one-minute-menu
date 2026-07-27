@@ -63,6 +63,10 @@ interface MutateResponse {
     score: number
     summary: string
   }
+  credits?: {
+    cost: number
+    balanceAfter: number
+  }
 }
 
 interface StudioClientProps {
@@ -171,10 +175,13 @@ export function StudioClient({
   const [mutationError, setMutationError] = useState<string | null>(null)
   const [pendingLimitMessage, setPendingLimitMessage] = useState<string | null>(null)
   const [baselineVersion, setBaselineVersion] = useState(0)
+  const [creditBalance, setCreditBalance] = useState<number | null>(null)
+  const [creditCostNb2, setCreditCostNb2] = useState(1)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const activeDish = dishes.find((d) => d.id === activeDishId) ?? dishes[0]
+  const dishBlocked = Boolean(activeDish?.generation_blocked_at)
   const variants = useMemo(() => sortVariants(gallery), [gallery])
   const selectedImage = variants.find((v) => v.id === selectedImageId) ?? null
   const currentPreviewUrl =
@@ -191,7 +198,9 @@ export function StudioClient({
 
   const pendingChangeCount = pendingDelta.isEmpty ? 0 : countEditableChanges(pendingDelta)
   const hasPendingChanges = pendingChangeCount > 0
-  const controlsDisabled = !isHydrated || isGenerating
+  const controlsDisabled = !isHydrated || isGenerating || dishBlocked
+  const insufficientCredits =
+    creditBalance !== null && creditBalance < creditCostNb2
   const busy = libraryBusy || isUploading || isExtracting || isGenerating
 
   const lightingOptions = useMemo(() => {
@@ -239,6 +248,28 @@ export function StudioClient({
         setBackgroundStyles(Array.isArray(data.background) ? data.background : [])
       } catch {
         // Keep static lighting fallback when styles API is unavailable.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const response = await fetch('/api/studio/credits')
+        if (!response.ok) return
+        const data = (await response.json()) as {
+          balance?: number
+          costs?: { nb2?: number; nbPro?: number }
+        }
+        if (cancelled) return
+        if (typeof data.balance === 'number') setCreditBalance(data.balance)
+        if (typeof data.costs?.nb2 === 'number') setCreditCostNb2(data.costs.nb2)
+      } catch {
+        // Credits UI stays blank until available.
       }
     })()
     return () => {
@@ -647,15 +678,38 @@ export function StudioClient({
 
       if (!response.ok) {
         const err = await response.json().catch(() => null)
+        const payload = err as {
+          error?: string
+          code?: string
+          dishBlocked?: boolean
+        } | null
         setMutationError(
-          (err as { error?: string } | null)?.error ??
-            `Generation failed (HTTP ${response.status})`,
+          payload?.error ?? `Generation failed (HTTP ${response.status})`,
         )
+        if (
+          payload?.code === 'STUDIO_DISH_GENERATION_BLOCKED' ||
+          payload?.dishBlocked
+        ) {
+          setDishes((prev) =>
+            prev.map((d) =>
+              d.id === activeDishId
+                ? {
+                    ...d,
+                    generation_blocked_at: new Date().toISOString(),
+                    generation_blocked_reason: payload.error ?? 'Blocked',
+                  }
+                : d,
+            ),
+          )
+        }
         return
       }
 
       const data = (await response.json()) as MutateResponse
       setMutatedImageUrl(data.imageUrl)
+      if (data.credits && typeof data.credits.balanceAfter === 'number') {
+        setCreditBalance(data.credits.balanceAfter)
+      }
       originalStateRef.current = nextState
       setBaselineVersion((v) => v + 1)
       const row: StudioImageRecord = {
@@ -685,7 +739,15 @@ export function StudioClient({
       setPersistedSourceId(data.imageId)
       setDishes((prev) =>
         prev.map((d) =>
-          d.id === activeDishId ? { ...d, current_image_id: data.imageId } : d,
+          d.id === activeDishId
+            ? {
+                ...d,
+                current_image_id: data.imageId,
+                generation_failure_count: 0,
+                generation_blocked_at: null,
+                generation_blocked_reason: null,
+              }
+            : d,
         ),
       )
       setSourceImage(sourceImageFromRecord(data.imageUrl, 'image/png'))
@@ -1115,6 +1177,23 @@ export function StudioClient({
           </div>
 
           <div className="space-y-2 border-t bg-white p-3">
+            {creditBalance !== null && (
+              <p className="text-xs text-gray-600" data-testid="studio-credits-remaining">
+                Credits remaining: {creditBalance}
+                {creditCostNb2 > 0 ? ` · ${creditCostNb2} per generate` : ''}
+              </p>
+            )}
+            {dishBlocked && (
+              <p role="alert" className="text-xs text-amber-900">
+                Generations for this dish are paused after repeated provider failures.
+                Contact support to unblock.
+              </p>
+            )}
+            {insufficientCredits && !dishBlocked && (
+              <p role="alert" className="text-xs text-amber-900">
+                Not enough credits to generate. Ask an admin for a grant.
+              </p>
+            )}
             {isHydrated && (
               <div className="flex items-center justify-between gap-2 text-xs text-gray-600">
                 <span>
@@ -1139,7 +1218,14 @@ export function StudioClient({
             <button
               type="button"
               data-testid="generate-image-button"
-              disabled={!hasPendingChanges || isGenerating || controlsDisabled || !activeDishId}
+              disabled={
+                !hasPendingChanges ||
+                isGenerating ||
+                controlsDisabled ||
+                !activeDishId ||
+                insufficientCredits ||
+                dishBlocked
+              }
               className="flex w-full items-center justify-center gap-2 rounded-md bg-ux-primary px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
               onClick={() => void submitPendingChanges()}
             >

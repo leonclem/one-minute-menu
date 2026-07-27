@@ -5,6 +5,7 @@ import { UXButton } from '@/components/ux'
 import { getPlanFriendlyName, copyToClipboard } from '@/lib/utils'
 import { useToast, ConfirmDialog } from '@/components/ui'
 import { UserMenusPanel } from './UserMenusPanel'
+import { StudioCreditsPanel } from './StudioCreditsPanel'
 import { RegistrationGatingSettings } from './RegistrationGatingSettings'
 
 interface ManagedUser {
@@ -27,6 +28,7 @@ export function UserManagementTab() {
   const [userToDelete, setUserToDelete] = useState<ManagedUser | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [menuPanelUser, setMenuPanelUser] = useState<ManagedUser | null>(null)
+  const [creditsPanelUser, setCreditsPanelUser] = useState<ManagedUser | null>(null)
   const { showToast } = useToast()
 
   const fetchUsers = async () => {
@@ -246,6 +248,13 @@ export function UserManagementTab() {
                         Menus
                       </UXButton>
                       <UXButton
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCreditsPanelUser(user)}
+                      >
+                        Studio credits
+                      </UXButton>
+                      <UXButton
                         variant="primary"
                         size="sm"
                         onClick={() => handleApprove(user.id)}
@@ -327,6 +336,13 @@ export function UserManagementTab() {
                       >
                         Menus
                       </UXButton>
+                      <UXButton
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCreditsPanelUser(user)}
+                      >
+                        Studio credits
+                      </UXButton>
                       {user.role !== 'admin' && (
                         <UXButton
                           variant="outline"
@@ -361,6 +377,14 @@ export function UserManagementTab() {
           userId={menuPanelUser.id}
           userEmail={menuPanelUser.email}
           onClose={() => setMenuPanelUser(null)}
+        />
+      )}
+
+      {creditsPanelUser && (
+        <StudioCreditsPanel
+          userId={creditsPanelUser.id}
+          userEmail={creditsPanelUser.email}
+          onClose={() => setCreditsPanelUser(null)}
         />
       )}
     </div>

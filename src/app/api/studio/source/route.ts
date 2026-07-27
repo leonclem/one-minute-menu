@@ -24,6 +24,8 @@ export async function POST(request: NextRequest) {
       imageId?: unknown
       dishId?: unknown
       mimeType?: unknown
+      /** Rejected: old clients sent base64 through Vercel (413 risk). */
+      imageDataUrl?: unknown
     }
     const { imageId, dishId, mimeType, imageDataUrl } = body
 

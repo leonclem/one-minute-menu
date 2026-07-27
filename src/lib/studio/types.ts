@@ -48,6 +48,11 @@ export interface StudioDishRecord {
   name: string
   description: string | null
   current_image_id: string | null
+  /** Consecutive billable provider failures; reset on successful generate. */
+  generation_failure_count: number
+  /** When set, mutates for this dish are blocked until admin clears. */
+  generation_blocked_at: string | null
+  generation_blocked_reason: string | null
   created_at: string
   updated_at: string
 }

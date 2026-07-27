@@ -93,12 +93,20 @@ Kill-switches:
 
 Existing rough figure in `src/lib/quota-management.ts`: **~$0.02 per image** for menu generation estimates. Treat as a planning placeholder only.
 
-Photo Studio credit pricing should differentiate:
+**Menu generation** continues to use monthly `generation_quotas` / Creator Packs (unchanged).
+
+**Photo Studio (Chunk 6)** uses a separate ledger (`studio_credit_balances` +
+`studio_credit_ledger`). Successful `/api/studio/mutate` debits credits; upload /
+extract are free. Defaults: NB2/Flash = **1** credit, NB Pro = **3**
+(`STUDIO_CREDIT_COST_NB2` / `STUDIO_CREDIT_COST_NB_PRO`). Users start at **0**
+until an admin grant. Billable Gemini/NanoBanana failures increment a per-dish
+counter; after `STUDIO_DISH_FAILURE_LIMIT` (default 5) the dish is blocked until
+admin clears. See `docs/pivot/BUILD_PLAN_CHUNK_06.md`.
 
 | Model | Internal label | Relative cost (product decision) |
 |---|---|---|
-| Gemini 3.1 Flash Image / NB2 | Standard | Baseline credit cost |
-| Gemini 3 Pro Image / NB Pro | High quality | Higher credits (confirmed decision 2026-07-17) |
+| Gemini 3.1 Flash Image / NB2 | Standard | 1 credit (default) |
+| Gemini 3 Pro Image / NB Pro | High quality | 3 credits (default; Q8) |
 
 Alert thresholds (optional): `GENERATION_ALERT_DAILY_USD`, `GENERATION_ALERT_MONTHLY_USD` in `env.example`.
 

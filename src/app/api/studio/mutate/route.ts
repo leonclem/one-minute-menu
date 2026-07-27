@@ -32,6 +32,19 @@ import {
   runStudioOutputValidation,
   validationToMetadata,
 } from '@/lib/studio/output-validation'
+import {
+  assertCanAffordStudioCredits,
+  debitForStudioGeneration,
+  getCreditCostForModel,
+  StudioCreditsError,
+} from '@/lib/studio/credits'
+import {
+  assertDishNotBlocked,
+  isBillableProviderFailure,
+  recordBillableGenerationFailure,
+  recordGenerationSuccess,
+  StudioDishBlockedError,
+} from '@/lib/studio/generation-failures'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -64,6 +77,8 @@ function loadStyleReferenceImage(
 }
 
 export async function POST(request: NextRequest) {
+  let failureContext: { userId: string; dishId: string } | null = null
+
   try {
     const auth = await requireStudioApi()
     if (!auth.ok) return auth.response
@@ -72,18 +87,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Gemini API key not configured' },
         { status: 500 },
-      )
-    }
-
-    const dailyLimit = getStudioDailyGenerationLimit()
-    const usedToday = await countTodayGeneratedStudioImages(auth.user.id)
-    if (usedToday >= dailyLimit) {
-      return NextResponse.json(
-        {
-          error: `Daily generation limit of ${dailyLimit} reached. Try again tomorrow.`,
-          code: 'STUDIO_DAILY_LIMIT',
-        },
-        { status: 429 },
       )
     }
 
@@ -119,6 +122,29 @@ export async function POST(request: NextRequest) {
     if (!dish) {
       return NextResponse.json({ error: 'Dish not found' }, { status: 404 })
     }
+
+    failureContext = { userId: auth.user.id, dishId }
+
+    assertDishNotBlocked(dish)
+
+    const dailyLimit = getStudioDailyGenerationLimit()
+    const usedToday = await countTodayGeneratedStudioImages(auth.user.id)
+    if (usedToday >= dailyLimit) {
+      return NextResponse.json(
+        {
+          error: `Daily generation limit of ${dailyLimit} reached. Try again tomorrow.`,
+          code: 'STUDIO_DAILY_LIMIT',
+        },
+        { status: 429 },
+      )
+    }
+
+    const requestedModelEarly =
+      typeof model === 'string' && model === 'gemini-3-pro-image'
+        ? 'gemini-3-pro-image'
+        : STUDIO_MODEL
+    const creditCost = getCreditCostForModel(requestedModelEarly)
+    await assertCanAffordStudioCredits(auth.user.id, creditCost)
 
     if (typeof sourceImageId !== 'string' || !sourceImageId) {
       return NextResponse.json(
@@ -218,6 +244,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const requestedModel = requestedModelEarly
+
     logger.info('🎨 [Studio Mutate] Request', {
       userId: auth.user.id,
       mimeType,
@@ -225,11 +253,8 @@ export async function POST(request: NextRequest) {
       promptLength: compositionResult.prompt.length,
       usedToday,
       dailyLimit,
+      creditCost,
     })
-
-    const requestedModel = typeof model === 'string' && model === 'gemini-3-pro-image'
-      ? 'gemini-3-pro-image'
-      : STUDIO_MODEL
 
     const styleReferences: StyleReferenceImage[] = []
 
@@ -289,6 +314,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         directive: mergedDirective,
         changeSummary: changeSummaryChips,
+        cost_credits: creditCost,
         editorState: editorStateToMetadata({
           schema: targetSchema,
           position: { ...CENTER },
@@ -297,13 +323,25 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    const debit = await debitForStudioGeneration({
+      userId: auth.user.id,
+      cost: creditCost,
+      studioImageId: record.id,
+      model: requestedModel,
+    })
+
     await setStudioDishCurrentImage(auth.user.id, dishId, record.id).catch(() => undefined)
+    await recordGenerationSuccess(auth.user.id, dishId).catch((err) => {
+      logger.warn('⚠️ [Studio Mutate] Failed to reset dish failure counter', { err })
+    })
 
     logger.info('✅ [Studio Mutate] Success', {
       userId: auth.user.id,
       imageId: record.id,
       dishId,
       model: requestedModel,
+      creditCost,
+      balanceAfter: debit.balanceAfter,
       validationStatus: validationResult.status,
       validationScore: validationResult.score,
     })
@@ -314,8 +352,27 @@ export async function POST(request: NextRequest) {
       dishId: record.dish_id,
       model: requestedModel,
       validation: validationClient,
+      credits: { cost: debit.cost, balanceAfter: debit.balanceAfter },
     })
   } catch (error) {
+    if (error instanceof StudioDishBlockedError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: error.code,
+          failureCount: error.failureCount,
+        },
+        { status: error.status },
+      )
+    }
+
+    if (error instanceof StudioCreditsError) {
+      return NextResponse.json(
+        { error: error.message, code: 'STUDIO_INSUFFICIENT_CREDITS' },
+        { status: error.status },
+      )
+    }
+
     if (error instanceof StudioImageLoadError) {
       return NextResponse.json({ error: error.message }, { status: error.status })
     }
@@ -350,6 +407,34 @@ export async function POST(request: NextRequest) {
         status,
         message: error.message,
       })
+
+      if (failureContext && isBillableProviderFailure(error)) {
+        try {
+          const updated = await recordBillableGenerationFailure(
+            failureContext.userId,
+            failureContext.dishId,
+            error.code,
+          )
+          if (updated.generation_blocked_at) {
+            return NextResponse.json(
+              {
+                error: error.message,
+                code: error.code,
+                dishBlocked: true,
+                dishBlockCode: 'STUDIO_DISH_GENERATION_BLOCKED',
+                retryAfter: error.retryAfter,
+                filterReason: error.filterReason,
+                suggestions: error.suggestions,
+              },
+              { status },
+            )
+          }
+        } catch (recordErr) {
+          logger.warn('⚠️ [Studio Mutate] Failed to record billable failure', {
+            recordErr,
+          })
+        }
+      }
 
       return NextResponse.json(
         {
