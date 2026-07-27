@@ -36,7 +36,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-18 | Studio landing | Chunk 2 adds Studio to primary nav when flag enabled; post-login landing remains dashboard/onboarding (nav-only). |
 | 2026-07-18 | Studio FOH controls | First shell omits camera/composition section and model selector; lighting + garnish/sides + staged changes only. |
 | 2026-07-18 | Pre-credits cost guard | `STUDIO_DAILY_GENERATION_LIMIT` (default 25) gates `/api/studio/mutate` until Phase 5 credits. |
-| 2026-07-18 | Deploy backlog | Living checklist `docs/pivot/PENDING_PRODUCTION_DEPLOY.md` accumulates migrations/env vars across chunks until a deliberate production deploy. Prefer this over reconstructing from git branch history. |
+| 2026-07-18 | Deploy backlog | Living checklist `docs/pivot/PRODUCTION_DEPLOY_BACKLOG.md` accumulates migrations/env vars across chunks until a deliberate production deploy. Prefer this over reconstructing from git branch history. |
 | 2026-07-18 | Studio data model (§7.2) | Chunk 3: `studio_dishes` + evolve `studio_images` (`dish_id`, `is_favourite`, `archived_at`). Defer `photo_projects` and `image_edits`; do not rename to `image_assets`. |
 | 2026-07-18 | Studio routes (§9.4) | Chunk 3 stays on `/studio` with in-page dish picker; `/studio/projects/*` deferred. |
 | 2026-07-18 | Library delete policy | Soft-archive hides variants; hard-delete removes DB + storage. Block hard-delete of a source while non-archived children reference it. Dish delete requires no active images. |
@@ -60,6 +60,8 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-24 | Output validation behaviour | Sync re-extract after Studio mutate; gate with `STUDIO_OUTPUT_VALIDATION_ENABLED` (default on). Soft-flag only — never block save/download/edit. Heuristic MinimalSchema compare (no second judge model). |
 | 2026-07-24 | Identity locks (§5.2) | Expanded always-on identity-preservation directive to cover component counts, vessel unless changed, colours/textures, and forbid unsolicited props/hands/text/cutlery. |
 | 2026-07-24 | FOH Studio admin-only | Customer `/studio` + `/api/studio/*` restricted to admins by default via `NEXT_PUBLIC_STUDIO_ADMIN_ONLY` (default on). Set `false` to open to all authenticated users once ready. Admin Photo Control sandbox unchanged. |
+| 2026-07-27 | Studio direct upload | Deviation from base64-through-Vercel pattern: FOH uploads source images directly to Supabase Storage (`ai-generated-images` bucket), then passes `imageId` through `/source`, `/extract`, and `/mutate`. Avoids Vercel 4.5 MB body limit. Product upload cap raised to 9 MiB (bucket hard limit 10 MiB). Admin Photo Control unchanged. Independent patch — see patches log. |
+| 2026-07-24 | Production deploy (Chunks 1–5) | First deliberate Studio pivot deploy to production: commit `42f35d5` on `main` (Chunk 5 validation, admin-only gate, style library refresh). Cumulative deploy of Chunks 1–5 backlog (migrations 070–073, Studio env vars, smoke tests). Direct-upload patch not included — discovered during prod testing after this deploy. See `docs/pivot/PRODUCTION_DEPLOY_BACKLOG.md` deploy history. |
 
 ---
 
@@ -133,8 +135,19 @@ Subject to change; record changes as new dated rows rather than editing old ones
 
 | Chunk | Scope | Branch | Status |
 |---|---|---|---|
-| 1 | Phase 0: pivot docs, feature flags, hide legacy nav, verify + document generation pipeline | `studio/chunk-01-foundations` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_01.md` |
-| 2 | Phase 1: customer-facing `/studio` shell with persistence | `studio/chunk-02-studio-shell` | Built — merged to `main` — see `docs/pivot/BUILD_PLAN_CHUNK_02.md` |
-| 3 | Phase 2: image library per dish (`studio_dishes` + dish-scoped gallery) | `studio/chunk-03-dish-library` | Built — merged to `main` — see `docs/pivot/BUILD_PLAN_CHUNK_03.md` |
-| 4 | Phase 3: background & lighting reference libraries (DB-backed, admin-managed) | `studio/chunk-04-reference-libraries` | Built — merged to `main` — see `docs/pivot/BUILD_PLAN_CHUNK_04.md` |
-| 5 | Phase 4: controlled prompt/state layer (identity locks + post-gen validation) | `studio/chunk-05-prompt-state-layer` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_05.md` |
+| 1 | Phase 0: pivot docs, feature flags, hide legacy nav, verify + document generation pipeline | `studio/chunk-01-foundations` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_01.md` |
+| 2 | Phase 1: customer-facing `/studio` shell with persistence | `studio/chunk-02-studio-shell` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_02.md` |
+| 3 | Phase 2: image library per dish (`studio_dishes` + dish-scoped gallery) | `studio/chunk-03-dish-library` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_03.md` |
+| 4 | Phase 3: background & lighting reference libraries (DB-backed, admin-managed) | `studio/chunk-04-reference-libraries` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_04.md` |
+| 5 | Phase 4: controlled prompt/state layer (identity locks + post-gen validation) | `studio/chunk-05-prompt-state-layer` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_05.md` |
+
+---
+
+## 4. Patches log
+
+Work outside the requirements phase/chunk sequence (bug fixes, infra patches, etc.).
+Record in `docs/pivot/PATCH_<slug>_<date>.md` rather than as a new chunk.
+
+| Date | Scope | Branch | Status |
+|---|---|---|---|
+| 2026-07-27 | Direct-to-Supabase upload (413 fix, 9 MiB cap) | `main` | Built — not yet deployed — see `docs/pivot/PATCH_DIRECT_SUPABASE_UPLOAD_2026-07-27.md` |

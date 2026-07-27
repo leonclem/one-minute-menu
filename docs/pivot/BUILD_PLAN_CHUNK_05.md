@@ -110,7 +110,7 @@ New focused module(s) under `src/lib/photo-control/` (keep files lean), e.g.:
 
 - Update `PIVOT_TRACKER.md`: Phase 4 row → Built (or In progress→Built at end);
   §5.2 status; chunk log; Decisions log for the six items above.
-- Append `PENDING_PRODUCTION_DEPLOY.md` Pending row for
+- Append `PRODUCTION_DEPLOY_BACKLOG.md` Pending row for
   `STUDIO_OUTPUT_VALIDATION_ENABLED` (and any smoke note for validation).
 - Light touch on `IMAGE_PIPELINE_NOTES.md` or best-practices only if needed to
   describe the post-gen validation step (avoid large doc rewrites).

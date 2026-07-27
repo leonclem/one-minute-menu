@@ -5,6 +5,7 @@
 const mockUpload = jest.fn()
 const mockGetPublicUrl = jest.fn()
 const mockRemove = jest.fn()
+const mockDownload = jest.fn()
 const mockInsert = jest.fn()
 const mockSingle = jest.fn()
 const mockGte = jest.fn()
@@ -16,6 +17,7 @@ jest.mock('@/lib/supabase-server', () => ({
         upload: mockUpload,
         getPublicUrl: mockGetPublicUrl,
         remove: mockRemove,
+        download: mockDownload,
       }),
     },
     from: (table: string) => {
@@ -46,6 +48,7 @@ import {
   countTodayGeneratedStudioImages,
   getStudioDailyGenerationLimit,
   persistStudioImage,
+  registerStudioSourceImage,
 } from '../persistence'
 
 describe('studio persistence', () => {
@@ -53,6 +56,12 @@ describe('studio persistence', () => {
     jest.clearAllMocks()
     delete process.env.STUDIO_DAILY_GENERATION_LIMIT
     mockUpload.mockResolvedValue({ error: null })
+    mockDownload.mockResolvedValue({
+      data: {
+        arrayBuffer: async () => Buffer.from('png-bytes'),
+      },
+      error: null,
+    })
     mockGetPublicUrl.mockReturnValue({
       data: {
         publicUrl:
@@ -93,6 +102,43 @@ describe('studio persistence', () => {
   it('getStudioDailyGenerationLimit reads env', () => {
     process.env.STUDIO_DAILY_GENERATION_LIMIT = '10'
     expect(getStudioDailyGenerationLimit()).toBe(10)
+  })
+
+  it('registerStudioSourceImage inserts a row for an existing upload', async () => {
+    mockSingle.mockResolvedValueOnce({
+      data: {
+        id: 'img-upload-1',
+        user_id: 'user-1',
+        dish_id: 'dish-1',
+        role: 'source',
+        source_image_id: null,
+        storage_path: 'user-1/studio/img-upload-1.png',
+        public_url:
+          'https://example.supabase.co/storage/v1/object/public/ai-generated-images/u/studio/id.png',
+        mime_type: 'image/png',
+        width: null,
+        height: null,
+        prompt: null,
+        model: null,
+        metadata: {},
+        is_favourite: false,
+        archived_at: null,
+        created_at: new Date().toISOString(),
+      },
+      error: null,
+    })
+
+    const record = await registerStudioSourceImage({
+      userId: 'user-1',
+      dishId: 'dish-1',
+      imageId: 'img-upload-1',
+      mimeType: 'image/png',
+    })
+
+    expect(mockDownload).toHaveBeenCalled()
+    expect(mockUpload).not.toHaveBeenCalled()
+    expect(record.id).toBe('img-upload-1')
+    expect(record.role).toBe('source')
   })
 
   it('persistStudioImage uploads and inserts a row', async () => {

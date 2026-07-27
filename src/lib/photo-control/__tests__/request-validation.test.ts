@@ -25,13 +25,13 @@ describe('parseAndValidateImageDataUrl', () => {
   })
 
   it('rejects oversized images', () => {
-    const huge = Buffer.alloc(8 * 1024 * 1024, 1).toString('base64')
+    const huge = Buffer.alloc(10 * 1024 * 1024, 1).toString('base64')
     const result = parseAndValidateImageDataUrl(`data:image/jpeg;base64,${huge}`, {
       fieldLabel: 'sourceImageDataUrl',
     })
     expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.error).toMatch(/7 MB/)
+      expect(result.error).toMatch(/9 MB/)
     }
   })
 

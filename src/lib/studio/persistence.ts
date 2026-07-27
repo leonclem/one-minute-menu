@@ -5,11 +5,15 @@
 import { randomUUID } from 'crypto'
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
 import { touchStudioDish } from '@/lib/studio/dishes'
+import { downloadStudioStorageObject, StudioImageLoadError } from '@/lib/studio/image-bytes'
+import {
+  buildStudioStoragePath,
+  normalizeStoragePublicUrl,
+  STUDIO_STORAGE_BUCKET,
+} from '@/lib/studio/storage-paths'
 import type { StudioImageRecord, StudioImageRole } from '@/lib/studio/types'
 
 export type { StudioImageRecord, StudioImageRole } from '@/lib/studio/types'
-
-const BUCKET_NAME = 'ai-generated-images'
 
 export interface PersistStudioImageInput {
   userId: string
@@ -24,20 +28,62 @@ export interface PersistStudioImageInput {
   metadata?: Record<string, unknown>
 }
 
-function extensionForMime(mimeType: string): string {
-  if (mimeType === 'image/jpeg') return 'jpg'
-  if (mimeType === 'image/webp') return 'webp'
-  return 'png'
+export interface RegisterStudioSourceImageInput {
+  userId: string
+  dishId: string
+  imageId: string
+  mimeType: string
 }
 
-function normalizeStoragePublicUrl(publicUrl: string): string {
-  try {
-    const url = new URL(publicUrl)
-    url.pathname = url.pathname.replace(/\/{2,}/g, '/')
-    return url.toString()
-  } catch {
-    return publicUrl
+/**
+ * Register a source image the client uploaded directly to Supabase Storage.
+ */
+export async function registerStudioSourceImage(
+  input: RegisterStudioSourceImageInput,
+): Promise<StudioImageRecord> {
+  if (!input.dishId) {
+    throw new Error('dishId is required')
   }
+
+  const storagePath = buildStudioStoragePath(input.userId, input.imageId, input.mimeType)
+  await downloadStudioStorageObject(storagePath, input.userId)
+
+  const supabase = createAdminSupabaseClient()
+  const { data: urlData } = supabase.storage.from(STUDIO_STORAGE_BUCKET).getPublicUrl(storagePath)
+  const publicUrl = normalizeStoragePublicUrl(urlData.publicUrl)
+
+  const row = {
+    id: input.imageId,
+    user_id: input.userId,
+    dish_id: input.dishId,
+    role: 'source' as const,
+    source_image_id: null,
+    storage_path: storagePath,
+    public_url: publicUrl,
+    mime_type: input.mimeType,
+    width: null as number | null,
+    height: null as number | null,
+    prompt: null,
+    model: null,
+    metadata: {},
+    is_favourite: false,
+    archived_at: null as string | null,
+  }
+
+  const { data, error: insertError } = await supabase
+    .from('studio_images')
+    .insert(row)
+    .select('*')
+    .single()
+
+  if (insertError || !data) {
+    await supabase.storage.from(STUDIO_STORAGE_BUCKET).remove([storagePath]).catch(() => undefined)
+    throw new Error(`Failed to insert studio image row: ${insertError?.message ?? 'unknown'}`)
+  }
+
+  await touchStudioDish(input.userId, input.dishId).catch(() => undefined)
+
+  return data as StudioImageRecord
 }
 
 /**
@@ -53,12 +99,11 @@ export async function persistStudioImage(
 
   const supabase = createAdminSupabaseClient()
   const imageId = randomUUID()
-  const ext = extensionForMime(input.mimeType)
-  const storagePath = `${input.userId}/studio/${imageId}.${ext}`
+  const storagePath = buildStudioStoragePath(input.userId, imageId, input.mimeType)
   const buffer = Buffer.from(input.imageBase64, 'base64')
 
   const { error: uploadError } = await supabase.storage
-    .from(BUCKET_NAME)
+    .from(STUDIO_STORAGE_BUCKET)
     .upload(storagePath, buffer, {
       contentType: input.mimeType,
       cacheControl: '31536000',
@@ -69,7 +114,7 @@ export async function persistStudioImage(
     throw new Error(`Failed to upload studio image: ${uploadError.message}`)
   }
 
-  const { data: urlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(storagePath)
+  const { data: urlData } = supabase.storage.from(STUDIO_STORAGE_BUCKET).getPublicUrl(storagePath)
   const publicUrl = normalizeStoragePublicUrl(urlData.publicUrl)
 
   const row = {
@@ -97,7 +142,7 @@ export async function persistStudioImage(
     .single()
 
   if (insertError || !data) {
-    await supabase.storage.from(BUCKET_NAME).remove([storagePath]).catch(() => undefined)
+    await supabase.storage.from(STUDIO_STORAGE_BUCKET).remove([storagePath]).catch(() => undefined)
     throw new Error(`Failed to insert studio image row: ${insertError?.message ?? 'unknown'}`)
   }
 
@@ -133,3 +178,5 @@ export async function countTodayGeneratedStudioImages(userId: string): Promise<n
 
   return count ?? 0
 }
+
+export { StudioImageLoadError }

@@ -2,7 +2,7 @@
  * Photo Control — Image_Uploader
  *
  * Validates and accepts a single food photograph for the Photo Control editor.
- * Only `image/png`, `image/jpeg`, and `image/webp` files up to 7 MB are
+ * Only `image/png`, `image/jpeg`, and `image/webp` files up to 9 MB are
  * accepted. Any other file is rejected with a descriptive error message.
  *
  * Design notes:
@@ -17,6 +17,11 @@
  * Requirements: 1.1, 1.2, 1.3, 1.7
  */
 
+import {
+  PHOTO_CONTROL_MAX_IMAGE_BYTES,
+  PHOTO_CONTROL_MAX_IMAGE_MB,
+} from '@/lib/photo-control/request-validation'
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -27,8 +32,8 @@ export const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp'] as const
 /** Union of accepted MIME type literals. */
 export type AllowedMimeType = (typeof ALLOWED_MIME)[number]
 
-/** Maximum accepted file size in bytes (7 MB). (Requirement 1.3) */
-export const MAX_IMAGE_BYTES = 7 * 1024 * 1024
+/** Maximum accepted file size in bytes (9 MiB). (Requirement 1.3) */
+export const MAX_IMAGE_BYTES = PHOTO_CONTROL_MAX_IMAGE_BYTES
 
 // ============================================================================
 // Result Types
@@ -57,9 +62,41 @@ export type UploadResult =
   | { ok: true; sourceImage: SourceImage; error?: never }
   | { ok: false; sourceImage?: never; error: string }
 
+export type FileValidationResult =
+  | { ok: true; mimeType: AllowedMimeType; bytes: number }
+  | { ok: false; error: string }
+
 // ============================================================================
 // Validation Logic
 // ============================================================================
+
+/**
+ * Validate file type and size without requiring a data URL (for direct storage uploads).
+ */
+export function validateImageFileForUpload(
+  file: { type: string; size: number },
+): FileValidationResult {
+  if (!(ALLOWED_MIME as readonly string[]).includes(file.type)) {
+    const allowed = ALLOWED_MIME.join(', ')
+    return {
+      ok: false,
+      error: `File type "${file.type}" is not supported. Allowed types: ${allowed}.`,
+    }
+  }
+
+  if (file.size > MAX_IMAGE_BYTES) {
+    return {
+      ok: false,
+      error: `File size exceeds the ${PHOTO_CONTROL_MAX_IMAGE_MB} MB limit. Please upload a smaller image.`,
+    }
+  }
+
+  return {
+    ok: true,
+    mimeType: file.type as AllowedMimeType,
+    bytes: file.size,
+  }
+}
 
 /**
  * Validate and accept a single image file for the Photo Control editor.
@@ -67,12 +104,12 @@ export type UploadResult =
  * Accepts the file if and only if:
  *  1. Its MIME type is one of `image/png`, `image/jpeg`, or `image/webp`.
  *     (Requirement 1.1 / 1.2)
- *  2. Its size does not exceed 7 MB. (Requirement 1.3)
+ *  2. Its size does not exceed 9 MB. (Requirement 1.3)
  *  3. No `operationalReason` is supplied. (Requirement 1.7)
  *
  * On rejection the returned `error` message:
  *  - Names the allowed types when rejection is due to MIME type. (Req 1.2)
- *  - States the 7 MB limit when rejection is due to size. (Req 1.3)
+ *  - States the 9 MB limit when rejection is due to size. (Req 1.3)
  *  - Names the operational reason when one is supplied. (Req 1.7)
  *
  * @param file              The `File` object submitted by the user.
@@ -100,10 +137,9 @@ export function validateAndAcceptImage(
 
   // 2. Size check (Requirement 1.3)
   if (file.size > MAX_IMAGE_BYTES) {
-    const limitMb = MAX_IMAGE_BYTES / (1024 * 1024)
     return {
       ok: false,
-      error: `File size exceeds the ${limitMb} MB limit. Please upload a smaller image.`,
+      error: `File size exceeds the ${PHOTO_CONTROL_MAX_IMAGE_MB} MB limit. Please upload a smaller image.`,
     }
   }
 

@@ -10,7 +10,8 @@ export const PHOTO_CONTROL_VALID_MIME_TYPES = new Set([
 
 export type PhotoControlMimeType = 'image/png' | 'image/jpeg' | 'image/webp'
 
-export const PHOTO_CONTROL_MAX_IMAGE_BYTES = 7 * 1024 * 1024 // 7 MB
+export const PHOTO_CONTROL_MAX_IMAGE_BYTES = 9 * 1024 * 1024 // 9 MiB
+export const PHOTO_CONTROL_MAX_IMAGE_MB = PHOTO_CONTROL_MAX_IMAGE_BYTES / (1024 * 1024)
 
 export type ParseDataUrlResult =
   | { ok: true; mimeType: PhotoControlMimeType; base64: string; byteLength: number }
@@ -48,7 +49,7 @@ export function parseAndValidateImageDataUrl(
 
   const byteLength = Buffer.from(base64, 'base64').length
   if (byteLength > PHOTO_CONTROL_MAX_IMAGE_BYTES) {
-    return { ok: false, error: 'Image exceeds the 7 MB size limit' }
+    return { ok: false, error: `Image exceeds the ${PHOTO_CONTROL_MAX_IMAGE_MB} MB size limit` }
   }
 
   return { ok: true, mimeType, base64, byteLength }

@@ -13,6 +13,7 @@ const mockGetLimit = jest.fn()
 const mockGetStudioDish = jest.fn()
 const mockSetCurrentImage = jest.fn()
 const mockRunValidation = jest.fn()
+const mockLoadStudioImageBytes = jest.fn()
 
 jest.mock('@/lib/studio/studio-api-auth', () => ({
   requireStudioApi: () => mockRequireStudioApi(),
@@ -26,6 +27,18 @@ jest.mock('@/lib/photo-control/mutation-engine', () => ({
   getMutationEngine: () => ({
     mutate: (...args: unknown[]) => mockMutate(...args),
   }),
+}))
+
+jest.mock('@/lib/studio/image-bytes', () => ({
+  loadStudioImageBytes: (...args: unknown[]) => mockLoadStudioImageBytes(...args),
+  StudioImageLoadError: class StudioImageLoadError extends Error {
+    status: number
+    constructor(message: string, status = 400) {
+      super(message)
+      this.name = 'StudioImageLoadError'
+      this.status = status
+    }
+  },
 }))
 
 jest.mock('@/lib/studio/dishes', () => ({
@@ -77,11 +90,11 @@ function makeRequest(body: unknown) {
   })
 }
 
-const tinyPng = `data:image/png;base64,${Buffer.from('png').toString('base64')}`
+const tinyBase64 = Buffer.from('png').toString('base64')
 
 const validBody = {
   dishId: 'dish-1',
-  sourceImageDataUrl: tinyPng,
+  sourceImageId: 'src-1',
   originalState: {
     scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy' },
     canvas: { background: '', background_style: '', main_vessel: '' },
@@ -115,6 +128,11 @@ describe('POST /api/studio/mutate', () => {
       score: 100,
       summary: 'Output looks consistent with the requested dish state.',
       dimensions: [],
+    })
+    mockLoadStudioImageBytes.mockResolvedValue({
+      mimeType: 'image/png',
+      base64: tinyBase64,
+      byteLength: 3,
     })
   })
 
@@ -169,6 +187,7 @@ describe('POST /api/studio/mutate', () => {
         }),
       }),
     )
+    expect(mockLoadStudioImageBytes).toHaveBeenCalledWith('user-1', 'src-1')
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({ model: 'gemini-3.1-flash-image-preview' }),
     )

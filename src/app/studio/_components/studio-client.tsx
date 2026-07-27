@@ -6,7 +6,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { validateAndAcceptImage, type SourceImage } from '@/lib/photo-control/image-uploader'
+import type { AllowedMimeType, SourceImage } from '@/lib/photo-control/image-uploader'
+import { uploadStudioSourceFile, removeStudioStorageObject } from '@/lib/studio/client-upload'
 import { hydrate } from '@/lib/photo-control/hydrator'
 import { computeDelta, countEditableChanges } from '@/lib/photo-control/state-delta'
 import { generateDirective } from '@/lib/photo-control/directive-generator'
@@ -71,13 +72,14 @@ interface StudioClientProps {
   isAdmin?: boolean
 }
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(new Error('Failed to read file'))
-    reader.readAsDataURL(file)
-  })
+function sourceImageFromRecord(
+  publicUrl: string,
+  mimeType: string,
+  bytes = 0,
+): SourceImage {
+  const normalizedMime: AllowedMimeType =
+    mimeType === 'image/jpeg' || mimeType === 'image/webp' ? mimeType : 'image/png'
+  return { dataUrl: publicUrl, mimeType: normalizedMime, bytes }
 }
 
 function makeDefaultEditorState(): EditorState {
@@ -103,31 +105,6 @@ async function downloadImage(url: string, filename: string) {
   anchor.click()
   anchor.remove()
   URL.revokeObjectURL(objectUrl)
-}
-
-async function fetchAsSourceImage(url: string, fallbackMime: string): Promise<SourceImage> {
-  const response = await fetch(url)
-  if (!response.ok) throw new Error('Failed to load image')
-  const blob = await response.blob()
-  const mimeType =
-    blob.type === 'image/jpeg' || blob.type === 'image/webp' || blob.type === 'image/png'
-      ? blob.type
-      : fallbackMime === 'image/jpeg' || fallbackMime === 'image/webp'
-        ? fallbackMime
-        : 'image/png'
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(new Error('Failed to read image'))
-    reader.readAsDataURL(blob)
-  })
-  return { dataUrl, mimeType, bytes: blob.size }
-}
-
-async function ensureDataUrl(url: string): Promise<string> {
-  if (url.startsWith('data:')) return url
-  const source = await fetchAsSourceImage(url, 'image/png')
-  return source.dataUrl
 }
 
 function sortVariants(images: StudioImageRecord[]): StudioImageRecord[] {
@@ -185,6 +162,7 @@ export function StudioClient({
 
   const [isHydrated, setIsHydrated] = useState(false)
   const [isExtracting, setIsExtracting] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const [extractionError, setExtractionError] = useState<string | null>(null)
   const [strictConformanceWarning, setStrictConformanceWarning] = useState(false)
 
@@ -214,7 +192,7 @@ export function StudioClient({
   const pendingChangeCount = pendingDelta.isEmpty ? 0 : countEditableChanges(pendingDelta)
   const hasPendingChanges = pendingChangeCount > 0
   const controlsDisabled = !isHydrated || isGenerating
-  const busy = libraryBusy || isExtracting || isGenerating
+  const busy = libraryBusy || isUploading || isExtracting || isGenerating
 
   const lightingOptions = useMemo(() => {
     if (lightingStyles.length > 0) return lightingStylesToOptions(lightingStyles)
@@ -315,7 +293,14 @@ export function StudioClient({
     setExtractionError(null)
   }, [])
 
-  const runExtraction = useCallback(async (image: SourceImage): Promise<EditorState | null> => {
+  const runExtraction = useCallback(async (imageId: string): Promise<EditorState | null> => {
+    if (typeof imageId !== 'string' || !imageId) {
+      setExtractionError(
+        'Could not start extraction for this image. Refresh the page and try uploading again.',
+      )
+      return null
+    }
+
     setIsExtracting(true)
     setExtractionError(null)
 
@@ -323,7 +308,7 @@ export function StudioClient({
       const response = await fetch('/api/studio/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageDataUrl: image.dataUrl }),
+        body: JSON.stringify({ imageId }),
       })
 
       if (!response.ok) {
@@ -362,8 +347,7 @@ export function StudioClient({
       setLibraryError(null)
       setMutatedImageUrl(undefined)
       try {
-        const working = await fetchAsSourceImage(image.public_url, image.mime_type)
-        setSourceImage(working)
+        setSourceImage(sourceImageFromRecord(image.public_url, image.mime_type))
         setPersistedSourceId(image.id)
 
         const stored = readEditorStateFromMetadata(image.metadata)
@@ -371,7 +355,7 @@ export function StudioClient({
           applyHydratedState(stored)
         } else {
           setIsHydrated(false)
-          const extracted = await runExtraction(working)
+          const extracted = await runExtraction(image.id)
           if (extracted) {
             await persistEditorState(image.id, extracted)
           }
@@ -434,68 +418,97 @@ export function StudioClient({
         return
       }
 
-      let dataUrl: string
-      try {
-        dataUrl = await readFileAsDataUrl(file)
-      } catch {
-        setExtractionError('Failed to read the selected file.')
-        return
-      }
-
-      const result = validateAndAcceptImage(file, dataUrl)
-      if (!result.ok) {
-        setExtractionError(result.error)
-        return
-      }
-
-      const accepted = result.sourceImage
-      setSourceImage(accepted)
-      setPersistedSourceId(null)
+      setIsUploading(true)
+      setExtractionError(null)
       resetEditorForNewSource()
+      setSourceImage(null)
+      setPersistedSourceId(null)
 
-      const extracted = await runExtraction(accepted)
+      const upload = await uploadStudioSourceFile(file)
+      if (!upload.ok) {
+        setIsUploading(false)
+        setExtractionError(upload.error)
+        return
+      }
 
-      void fetch('/api/studio/source', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageDataUrl: accepted.dataUrl, dishId: activeDishId }),
-      })
-        .then(async (res) => {
-          if (!res.ok) return
-          const data = (await res.json()) as { imageId?: string; imageUrl?: string }
-          if (data.imageId && data.imageUrl) {
-            setPersistedSourceId(data.imageId)
-            const metadata =
-              extracted != null
-                ? { editorState: editorStateToMetadata(extracted) }
-                : {}
-            const row: StudioImageRecord = {
-              id: data.imageId,
-              user_id: '',
-              dish_id: activeDishId,
-              role: 'source',
-              source_image_id: null,
-              storage_path: '',
-              public_url: data.imageUrl,
-              mime_type: accepted.mimeType,
-              width: null,
-              height: null,
-              prompt: null,
-              model: null,
-              metadata,
-              is_favourite: false,
-              archived_at: null,
-              created_at: new Date().toISOString(),
-            }
-            setGallery((prev) => [...prev, row])
-            setSelectedImageId(data.imageId)
-            if (extracted) {
-              await persistEditorState(data.imageId, extracted)
-            }
-            await persistDishCurrent(activeDishId, data.imageId)
-          }
+      if (!upload.imageId) {
+        setIsUploading(false)
+        setExtractionError('Upload succeeded but the image reference was missing. Refresh and try again.')
+        return
+      }
+
+      setSourceImage(sourceImageFromRecord(upload.publicUrl, upload.mimeType, upload.bytes))
+
+      try {
+        const sourceRes = await fetch('/api/studio/source', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageId: upload.imageId,
+            dishId: activeDishId,
+            mimeType: upload.mimeType,
+          }),
         })
-        .catch(() => undefined)
+
+        if (!sourceRes.ok) {
+          const err = await sourceRes.json().catch(() => null)
+          await removeStudioStorageObject(upload.storagePath)
+          setExtractionError(
+            (err as { error?: string } | null)?.error ?? 'Failed to save uploaded image.',
+          )
+          return
+        }
+
+        const sourceData = (await sourceRes.json()) as {
+          imageId?: string
+          imageUrl?: string
+        }
+
+        if (!sourceData.imageId || !sourceData.imageUrl) {
+          await removeStudioStorageObject(upload.storagePath)
+          setExtractionError('Failed to save uploaded image.')
+          return
+        }
+
+        setPersistedSourceId(sourceData.imageId)
+        setSourceImage(
+          sourceImageFromRecord(sourceData.imageUrl, upload.mimeType, upload.bytes),
+        )
+
+        const extracted = await runExtraction(sourceData.imageId)
+
+        const metadata =
+          extracted != null ? { editorState: editorStateToMetadata(extracted) } : {}
+        const row: StudioImageRecord = {
+          id: sourceData.imageId,
+          user_id: '',
+          dish_id: activeDishId,
+          role: 'source',
+          source_image_id: null,
+          storage_path: upload.storagePath,
+          public_url: sourceData.imageUrl,
+          mime_type: upload.mimeType,
+          width: null,
+          height: null,
+          prompt: null,
+          model: null,
+          metadata,
+          is_favourite: false,
+          archived_at: null,
+          created_at: new Date().toISOString(),
+        }
+        setGallery((prev) => [...prev, row])
+        setSelectedImageId(sourceData.imageId)
+        if (extracted) {
+          await persistEditorState(sourceData.imageId, extracted)
+        }
+        await persistDishCurrent(activeDishId, sourceData.imageId)
+      } catch {
+        await removeStudioStorageObject(upload.storagePath)
+        setExtractionError('Upload failed unexpectedly.')
+      } finally {
+        setIsUploading(false)
+      }
     },
     [
       activeDishId,
@@ -601,7 +614,7 @@ export function StudioClient({
     const original = originalStateRef.current
     const nextState = editorState
     const delta = computeDelta(original, nextState)
-    if (delta.isEmpty || !sourceImage || !activeDishId) return
+    if (delta.isEmpty || !sourceImage || !activeDishId || !persistedSourceId) return
 
     const directive = generateDirective(delta, nextState, {
       excludePaths: FOH_STYLE_EXCLUDE_PATHS,
@@ -618,18 +631,15 @@ export function StudioClient({
     setPendingLimitMessage(null)
 
     try {
-      const currentSourceUrl = await ensureDataUrl(mutatedImageUrl ?? sourceImage.dataUrl)
-
       const response = await fetch('/api/studio/mutate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           dishId: activeDishId,
-          sourceImageDataUrl: currentSourceUrl,
+          sourceImageId: persistedSourceId,
           originalState: original.schema,
           targetState: nextState.schema,
           directive,
-          sourceImageId: persistedSourceId,
           changeSummary,
           model: selectedModel,
         }),
@@ -678,8 +688,7 @@ export function StudioClient({
           d.id === activeDishId ? { ...d, current_image_id: data.imageId } : d,
         ),
       )
-      const working = await fetchAsSourceImage(data.imageUrl, 'image/png')
-      setSourceImage(working)
+      setSourceImage(sourceImageFromRecord(data.imageUrl, 'image/png'))
     } catch (err) {
       setMutationError(err instanceof Error ? err.message : 'Generation failed unexpectedly.')
     } finally {
@@ -687,12 +696,12 @@ export function StudioClient({
     }
   }, [
     sourceImage,
-    mutatedImageUrl,
     editorState,
     persistedSourceId,
     activeDishId,
     lightingLabelMap,
     backgroundLabelMap,
+    selectedModel,
   ])
 
   const handleCreateDish = useCallback(
@@ -938,6 +947,7 @@ export function StudioClient({
           />
         </div>
       </div>
+      <p className="-mt-4 text-xs text-gray-500">PNG, JPEG, or WebP · up to 9 MB</p>
 
       {libraryError && (
         <p role="alert" className="text-sm text-red-800">
@@ -947,6 +957,11 @@ export function StudioClient({
       {extractionError && (
         <p role="alert" className="text-sm text-red-800">
           {extractionError}
+        </p>
+      )}
+      {isUploading && (
+        <p role="status" className="text-sm text-ux-primary">
+          Uploading image…
         </p>
       )}
       {isExtracting && (

@@ -13,14 +13,17 @@ docs live in `docs/pivot/`.
 When work builds, changes, or deviates from anything in
 `docs/pivot/GridMenu_Photo_Studio_Pivot_Requirements_2026-07-16.md`:
 
-1. Update the matching status row(s) in `docs/pivot/PIVOT_TRACKER.md` (traceability tables and
-   chunk log) **in the same commit** as the work.
+1. Update the matching status row(s) in `docs/pivot/PIVOT_TRACKER.md` (traceability tables,
+   chunk log, and patches log as applicable) **in the same commit** as the work.
 2. Record any deviation from the requirements document, or any new product decision, as a new
    dated row in the tracker's Decisions log. Never rewrite old decision rows.
 3. If a new chunk of work starts, add it to the chunk log and create
    `docs/pivot/BUILD_PLAN_CHUNK_NN.md` before implementing.
-4. If the chunk adds a DB migration, new env var, or other production action, append a row to
-   `docs/pivot/PENDING_PRODUCTION_DEPLOY.md` (status `Pending`) in the same commit. Do not
+4. If work is an independent patch (bug fix, infra change) outside the requirements phases,
+   add it to the patches log in `PIVOT_TRACKER.md` and create
+   `docs/pivot/PATCH_<slug>_<date>.md` — not a new chunk number.
+5. If the chunk or patch adds a DB migration, new env var, or other production action, append a row to
+   `docs/pivot/PRODUCTION_DEPLOY_BACKLOG.md` (status `Pending`) in the same commit. Do not
    rely on git history alone for the deploy backlog.
 
 ## Git workflow (user needs guidance)

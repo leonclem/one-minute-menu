@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireStudioApi } from '@/lib/studio/studio-api-auth'
 import { GeminiExtractionClient, UnparseableExtractionResponseError } from '@/lib/photo-control/gemini-extraction-client'
 import { MinimalSchemaValidator } from '@/lib/photo-control/schema-validator'
-import { parseAndValidateImageDataUrl } from '@/lib/photo-control/request-validation'
+import { loadStudioImageBytes, StudioImageLoadError } from '@/lib/studio/image-bytes'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -26,25 +26,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body = (await request.json()) as { imageDataUrl?: unknown }
-    const { imageDataUrl } = body
+    const body = (await request.json()) as { imageId?: unknown; imageDataUrl?: unknown }
+    const { imageId, imageDataUrl } = body
 
-    if (typeof imageDataUrl !== 'string' || !imageDataUrl) {
+    if (imageDataUrl !== undefined) {
       return NextResponse.json(
-        { error: 'imageDataUrl is required and must be a string' },
+        {
+          error:
+            'This page is using an outdated upload client. Hard-refresh the browser (Ctrl+Shift+R) and try again.',
+          code: 'LEGACY_UPLOAD_PAYLOAD',
+        },
         { status: 400 },
       )
     }
 
-    const parsed = parseAndValidateImageDataUrl(imageDataUrl, { fieldLabel: 'imageDataUrl' })
-    if (!parsed.ok) {
-      return NextResponse.json({ error: parsed.error }, { status: 400 })
+    if (typeof imageId !== 'string' || !imageId) {
+      return NextResponse.json(
+        { error: 'imageId is required and must be a string' },
+        { status: 400 },
+      )
     }
 
-    const { mimeType, base64: imageBase64, byteLength: imageBytes } = parsed
+    const { mimeType, base64: imageBase64, byteLength: imageBytes } =
+      await loadStudioImageBytes(auth.user.id, imageId)
 
     logger.info('📸 [Studio Extract] Request', {
       userId: auth.user.id,
+      imageId,
       mimeType,
       imageBytes,
     })
@@ -57,12 +65,17 @@ export async function POST(request: NextRequest) {
 
     logger.info('✅ [Studio Extract] Success', {
       userId: auth.user.id,
+      imageId,
       strictConformance,
       warningCount: warnings.length,
     })
 
     return NextResponse.json({ strictConformance, data, warnings })
   } catch (error) {
+    if (error instanceof StudioImageLoadError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+
     if (error instanceof UnparseableExtractionResponseError) {
       logger.warn('⚠️ [Studio Extract] Unparseable extraction response', {
         error: error.message,

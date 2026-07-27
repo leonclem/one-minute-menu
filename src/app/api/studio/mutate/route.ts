@@ -14,7 +14,7 @@ import { requireStudioApi } from '@/lib/studio/studio-api-auth'
 import { NanoBananaError } from '@/lib/nano-banana'
 import { getMutationEngine, type StyleReferenceImage } from '@/lib/photo-control/mutation-engine'
 import { composePrompt } from '@/lib/photo-control/prompt-composer'
-import { parseAndValidateImageDataUrl } from '@/lib/photo-control/request-validation'
+import { loadStudioImageBytes, StudioImageLoadError } from '@/lib/studio/image-bytes'
 import { CENTER, type MinimalSchema } from '@/lib/photo-control/minimal-schema'
 import { getStudioDish, setStudioDishCurrentImage } from '@/lib/studio/dishes'
 import { editorStateToMetadata } from '@/lib/studio/editor-state-storage'
@@ -88,22 +88,20 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as {
-      sourceImageDataUrl?: unknown
+      sourceImageId?: unknown
       originalState?: unknown
       targetState?: unknown
       directive?: unknown
-      sourceImageId?: unknown
       dishId?: unknown
       changeSummary?: unknown
       model?: unknown
     }
 
     const {
-      sourceImageDataUrl,
+      sourceImageId,
       originalState,
       targetState,
       directive,
-      sourceImageId,
       dishId,
       changeSummary,
       model,
@@ -122,9 +120,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Dish not found' }, { status: 404 })
     }
 
-    if (typeof sourceImageDataUrl !== 'string' || !sourceImageDataUrl) {
+    if (typeof sourceImageId !== 'string' || !sourceImageId) {
       return NextResponse.json(
-        { error: 'sourceImageDataUrl is required and must be a string' },
+        { error: 'sourceImageId is required and must be a string' },
         { status: 400 },
       )
     }
@@ -150,14 +148,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const parsed = parseAndValidateImageDataUrl(sourceImageDataUrl, {
-      fieldLabel: 'sourceImageDataUrl',
-    })
-    if (!parsed.ok) {
-      return NextResponse.json({ error: parsed.error }, { status: 400 })
-    }
-
-    const { mimeType, base64: sourceImageBase64, byteLength: imageBytes } = parsed
+    const { mimeType, base64: sourceImageBase64, byteLength: imageBytes } =
+      await loadStudioImageBytes(auth.user.id, sourceImageId)
 
     const originalSchema = originalState as MinimalSchema
     const targetSchema = targetState as MinimalSchema
@@ -291,7 +283,7 @@ export async function POST(request: NextRequest) {
       role: 'generated',
       imageBase64,
       mimeType: 'image/png',
-      sourceImageId: typeof sourceImageId === 'string' ? sourceImageId : null,
+      sourceImageId,
       prompt: compositionResult.prompt,
       model: requestedModel,
       metadata: {
@@ -324,6 +316,10 @@ export async function POST(request: NextRequest) {
       validation: validationClient,
     })
   } catch (error) {
+    if (error instanceof StudioImageLoadError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+
     if (error instanceof NanoBananaError) {
       let status: number
 

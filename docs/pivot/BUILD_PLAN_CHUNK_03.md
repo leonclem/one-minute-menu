@@ -49,7 +49,7 @@ Additive migration (e.g. `071_studio_dishes.sql`):
 - Backfill: existing `studio_images` rows get a per-user default dish
   (e.g. name `"My dishes"`) so the gallery does not empty for anyone who already generated.
 
-Append Pending rows to `PENDING_PRODUCTION_DEPLOY.md` for the new migration (+ smoke note).
+Append Pending rows to `PRODUCTION_DEPLOY_BACKLOG.md` for the new migration (+ smoke note).
 
 ### 2. Server / lib
 

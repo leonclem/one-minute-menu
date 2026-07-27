@@ -69,7 +69,7 @@ Safety notes:
 Because many chunks may land on `main` before you deploy, do **not** reconstruct
 deploy steps from “everything since we branched.” Use the living backlog:
 
-**[PENDING_PRODUCTION_DEPLOY.md](PENDING_PRODUCTION_DEPLOY.md)**
+**[PRODUCTION_DEPLOY_BACKLOG.md](PRODUCTION_DEPLOY_BACKLOG.md)**
 
 Each chunk that adds a migration or env var appends rows there. Before any
 production deploy, clear every `Pending` row for that environment.
@@ -77,7 +77,7 @@ production deploy, clear every `Pending` row for that environment.
 ### Production deploy checklist
 
 1. Merge the chunk to `main` and ensure you're on it: `git checkout main && git pull`.
-2. Open [PENDING_PRODUCTION_DEPLOY.md](PENDING_PRODUCTION_DEPLOY.md) and apply every
+2. Open [PRODUCTION_DEPLOY_BACKLOG.md](PRODUCTION_DEPLOY_BACKLOG.md) and apply every
    `Pending` migration and env var for the target environment.
 3. Run the test suite: `npm test`.
 4. Run the pre-deploy check: `npm run deploy-check`.
