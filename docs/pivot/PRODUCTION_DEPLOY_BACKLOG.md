@@ -5,8 +5,8 @@ non-local environment) before/at the next deliberate deploy. Updated in the
 **same commit** as each chunk that adds migrations or env vars.
 
 This is the source of truth for “what’s waiting to go live.” Do **not** rely on
-`git log` since an old branch — chunk branches are short-lived and merge to
-`main` often; once merged, branch history is a poor backlog.
+`git log` alone — multiple chunks/patches may land on `main` before a deliberate
+production deploy; commit history is a poor deploy checklist.
 
 **Last production deploy:** 2026-07-24 — Chunks 1–5 cumulative (`42f35d5` on
 `main`: *feat(studio): Chunk 5 validation, admin-only gate, and style library

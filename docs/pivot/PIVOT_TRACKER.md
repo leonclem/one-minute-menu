@@ -62,6 +62,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-24 | FOH Studio admin-only | Customer `/studio` + `/api/studio/*` restricted to admins by default via `NEXT_PUBLIC_STUDIO_ADMIN_ONLY` (default on). Set `false` to open to all authenticated users once ready. Admin Photo Control sandbox unchanged. |
 | 2026-07-27 | Studio direct upload | Deviation from base64-through-Vercel pattern: FOH uploads source images directly to Supabase Storage (`ai-generated-images` bucket), then passes `imageId` through `/source`, `/extract`, and `/mutate`. Avoids Vercel 4.5 MB body limit. Product upload cap raised to 9 MiB (bucket hard limit 10 MiB). Admin Photo Control unchanged. Independent patch — see patches log. |
 | 2026-07-24 | Production deploy (Chunks 1–5) | First deliberate Studio pivot deploy to production: commit `42f35d5` on `main` (Chunk 5 validation, admin-only gate, style library refresh). Cumulative deploy of Chunks 1–5 backlog (migrations 070–073, Studio env vars, smoke tests). Direct-upload patch not included — discovered during prod testing after this deploy. See `docs/pivot/PRODUCTION_DEPLOY_BACKLOG.md` deploy history. |
+| 2026-07-27 | Git workflow | Supersedes 2026-07-17 chunk-branch workflow: commit directly to `main` / `origin/main` (no `studio/chunk-NN-*` branches for new work). Chunk branches retained in chunk log for Chunks 1–5 history only. Updated `docs/pivot/GIT_WORKFLOW.md`. |
 
 ---
 

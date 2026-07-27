@@ -30,10 +30,10 @@ When work builds, changes, or deviates from anything in
 
 The user has limited git experience. Follow `docs/pivot/GIT_WORKFLOW.md`:
 
-- One short-lived branch per chunk, named `studio/chunk-NN-<slug>`, branched from up-to-date
-  `main` and merged back promptly. Do not create long-lived branches.
-- Proactively tell the user which branch work is happening on, and spell out any git commands
-  they need to run themselves rather than assuming knowledge.
+- Commit directly to `main` (pull first, push to `origin/main`). Do **not** create chunk
+  branches unless the user explicitly asks.
+- Proactively confirm they are on up-to-date `main`, and spell out any git commands they need
+  to run themselves rather than assuming knowledge.
 - Never run destructive git commands (`reset --hard`, `push --force`, history rewrites) without
   explicit approval.
 - Production deploys are manual (`main` does not auto-deploy). If a change requires env vars or
