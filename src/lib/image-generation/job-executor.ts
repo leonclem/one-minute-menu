@@ -26,7 +26,7 @@ export type ImageGenerationExecutionResult = {
   resultCount: number
 }
 
-function buildApiParams(job: ExecutableImageGenerationJob): NanoBananaParams {
+export function buildApiParams(job: ExecutableImageGenerationJob): NanoBananaParams {
   const apiParams = (job.api_params || {}) as Partial<NanoBananaParams> & Record<string, any>
 
   return {
@@ -38,6 +38,14 @@ function buildApiParams(job: ExecutableImageGenerationJob): NanoBananaParams {
     person_generation: apiParams.person_generation || 'dont_allow',
     context: apiParams.context || 'food',
   }
+}
+
+/**
+ * Resolves the aspect ratio written with generated-image metadata.
+ * Exported to observe the worker replay contract without changing it.
+ */
+export function recordedAspectRatioFor(apiParams: Pick<NanoBananaParams, 'aspect_ratio'>): string {
+  return apiParams.aspect_ratio || '1:1'
 }
 
 function getErrorCode(error: unknown): string | undefined {
@@ -77,7 +85,7 @@ export async function executeImageGenerationJob(
           menuItemId: job.menu_item_id,
           generationJobId: job.id,
           originalPrompt: apiParams.prompt,
-          aspectRatio: apiParams.aspect_ratio || '1:1',
+          aspectRatio: recordedAspectRatioFor(apiParams),
           generatedAt: new Date(),
           metadata: {
             angle: (job.api_params as any)?.style_params?.angle,
