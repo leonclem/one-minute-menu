@@ -1,6 +1,7 @@
 import { fetchJsonWithRetry, HttpError } from './retry'
 import type { NanoBananaParams, GenerationError } from '@/types'
 import { logger } from '@/lib/logger'
+import { modelSupportsThinkingLevel, referenceLimitForModel } from '@/lib/studio/model-config'
 import { createHash } from 'crypto'
 
 interface NanoBananaRateLimitInfo {
@@ -109,9 +110,8 @@ export interface GeminiRequest {
 /**
  * Builds the Gemini generateContent request without performing I/O.
  *
- * This intentionally preserves the current request shape, including the prompt
- * appends, image-config fallbacks, and thinking-level guard. Those behaviors are
- * corrected by later bugfix tasks; this function is the testable seam for them.
+ * The returned prompt is shared by the request body and outbound logging so
+ * logged prompt text remains character-identical to the model instruction.
  */
 export function buildGeminiRequest(
   params: NanoBananaParams,
@@ -123,32 +123,32 @@ export function buildGeminiRequest(
     : options.baseUrl || DEFAULT_GEMINI_IMAGE_BASE_URL
   const candidateCount = Math.min(Math.max(params.number_of_images || 1, 1), 4)
 
+  const isStudioFohMutation = params.request_scope === 'studio_foh_mutation'
+  const references = params.reference_images || []
+  const alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N']
   let finalPromptText = params.prompt
 
-  // If reference images are provided, guide the model with explicit instructions.
-  // We use the "Image A/B/C" syntax recommended for Nano Banana Pro.
-  if (params.reference_images && params.reference_images.length > 0) {
-    const alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N']
-    const roleInstructions: string[] = []
-
-    for (let i = 0; i < params.reference_images.length; i++) {
-      const r = params.reference_images[i]
-      const label = alphabet[i]
-      const role = r.role || 'other'
-      const comment = r.comment ? `. Instruction: ${r.comment}` : ''
-
-      let roleDesc = ''
-      if (role === 'dish') roleDesc = 'the primary subject/dish'
-      else if (role === 'scene') roleDesc = 'the background environment and context'
-      else if (role === 'style') roleDesc = 'the art style, lighting, and color palette'
-      else if (role === 'layout') roleDesc = 'the plating structure and composition layout'
-      else roleDesc = 'general visual context'
-
-      roleInstructions.push(`Use Image ${label} for ${roleDesc}${comment}.`)
+  if (isStudioFohMutation) {
+    if (references.length > 0) {
+      const labels = references.map((ref, index) => ref.label ?? alphabet[index])
+      finalPromptText =
+        `Edit the provided reference images (${labels.map((label) => `Image ${label}`).join(', ')}) while preserving their visual identity.\n\n` +
+        finalPromptText
     }
+  } else if (references.length > 0) {
+    const roleInstructions = references.map((reference, index) => {
+      const role = reference.role || 'other'
+      const comment = reference.comment ? `. Instruction: ${reference.comment}` : ''
+      let roleDescription = 'general visual context'
 
-    // We use a unified composition prompt as recommended by Nano Banana Pro tips.
-    // The specific roles (dish, scene, style, etc.) guide how the images are used.
+      if (role === 'dish') roleDescription = 'the primary subject/dish'
+      else if (role === 'scene') roleDescription = 'the background environment and context'
+      else if (role === 'style') roleDescription = 'the art style, lighting, and color palette'
+      else if (role === 'layout') roleDescription = 'the plating structure and composition layout'
+
+      return `Use Image ${alphabet[index]} for ${roleDescription}${comment}.`
+    })
+
     finalPromptText =
       `Compose a new image using the provided reference inputs:\n` +
       roleInstructions.join('\n') +
@@ -160,44 +160,58 @@ export function buildGeminiRequest(
     finalPromptText += `\nExclude: ${params.negative_prompt}`
   }
 
-  // Gemini 3.1 Flash Image uses prompt instructions for aspect ratio in the standard generateContent endpoint
-  if (params.aspect_ratio) {
+  if (!isStudioFohMutation && params.aspect_ratio) {
     finalPromptText += `\nAspect ratio: ${params.aspect_ratio}`
   }
 
   if (params.person_generation === 'dont_allow') {
     finalPromptText += `\nNo people in the image.`
   }
-  if (params.safety_filter_level) {
+
+  if (!isStudioFohMutation && params.safety_filter_level) {
     finalPromptText += `\nContent safety: ${params.safety_filter_level}`
   }
 
-  const loggedPrompt = `Generate an image of: ${finalPromptText}`
+  const loggedPrompt = isStudioFohMutation
+    ? finalPromptText
+    : `Generate an image of: ${finalPromptText}`
   const parts: Array<Record<string, unknown>> = [{ text: loggedPrompt }]
 
   // Add reference image(s) as inlineData parts (base64, no data URL prefix).
-  if (params.reference_images && params.reference_images.length > 0) {
-    for (const img of params.reference_images) {
-      parts.push({
-        inlineData: {
-          mimeType: img.mimeType,
-          data: img.data,
-        },
-      })
-    }
+  for (const image of references) {
+    parts.push({
+      inlineData: {
+        mimeType: image.mimeType,
+        data: image.data,
+      },
+    })
+  }
+
+  const imageConfig: Record<string, string> = isStudioFohMutation
+    ? {}
+    : {
+        aspectRatio: params.aspect_ratio || '1:1',
+        imageSize: params.image_size || '1k',
+      }
+  if (isStudioFohMutation && params.aspect_ratio) {
+    imageConfig.aspectRatio = params.aspect_ratio
+  }
+  if (isStudioFohMutation && params.image_size) {
+    imageConfig.imageSize = params.image_size.toUpperCase()
   }
 
   // Gemini 3.1 Flash Image uses a different request structure than standard Gemini Pro
   const generationConfig: Record<string, unknown> = {
     candidateCount,
     responseModalities: ['IMAGE'],
-    imageConfig: {
-      aspectRatio: params.aspect_ratio || '1:1',
-      imageSize: params.image_size || '1k'
-    }
+    imageConfig,
   }
 
-  if (params.thinking_level && !model.includes('pro') && !model.includes('flash')) {
+  if (isStudioFohMutation) {
+    if (params.thinking_level && modelSupportsThinkingLevel(model)) {
+      generationConfig.thinkingLevel = params.thinking_level.toUpperCase()
+    }
+  } else if (params.thinking_level && !model.includes('pro') && !model.includes('flash')) {
     generationConfig.thinkingLevel = params.thinking_level.toUpperCase()
   }
 
@@ -241,7 +255,6 @@ export class NanoBananaClient {
       safety_filter_level: 'block_some',
       person_generation: 'dont_allow',
       number_of_images: 1,
-      aspect_ratio: '1:1'
     }
   }
 
@@ -474,8 +487,7 @@ export class NanoBananaClient {
 
     if (params.reference_images && params.reference_images.length > 0) {
       const model = params.model || 'gemini-3.1-flash-image'
-      const isPro = model.includes('gemini-3') || model.includes('pro')
-      const maxRefs = isPro ? 14 : 3
+      const maxRefs = referenceLimitForModel(model)
       
       if (params.reference_images.length > maxRefs) {
         throw new NanoBananaError(`Too many reference images (max ${maxRefs} for ${model})`, 'INVALID_PARAMS')

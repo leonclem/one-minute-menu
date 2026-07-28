@@ -129,6 +129,7 @@ jest.mock('@/lib/logger', () => ({
 import { NanoBananaError } from '@/lib/nano-banana'
 import { StudioCreditsError } from '@/lib/studio/credits'
 import { StudioDishBlockedError } from '@/lib/studio/generation-failures'
+import { STUDIO_FLASH_MODEL, STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
 import { POST } from '../mutate/route'
 
 function makeRequest(body: unknown) {
@@ -292,7 +293,23 @@ describe('POST /api/studio/mutate', () => {
     expect(mockRecordSuccess).toHaveBeenCalledWith('user-1', 'dish-1')
     expect(mockLoadStudioImageBytes).toHaveBeenCalledWith('user-1', 'src-1')
     expect(mockMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ model: 'gemini-3.1-flash-image-preview' }),
+      expect.objectContaining({ model: STUDIO_FLASH_MODEL }),
+    )
+  })
+
+  it('uses the canonical configured Pro model when explicitly requested', async () => {
+    mockRequireStudioApi.mockResolvedValue({
+      ok: true,
+      user: { id: 'user-1' },
+      supabase: {},
+    })
+
+    const res = await POST(makeRequest({ ...validBody, model: STUDIO_PRO_MODEL }))
+
+    expect(res.status).toBe(200)
+    expect(mockGetCreditCost).toHaveBeenCalledWith(STUDIO_PRO_MODEL)
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ model: STUDIO_PRO_MODEL }),
     )
   })
 

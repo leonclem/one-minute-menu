@@ -1,16 +1,16 @@
 /**
  * Photo Control — MutationEngine (Phase B Image Mutation)
  *
- * Dispatches a composed mutation request to the NanoBananaClient, targeting
- * `gemini-3.1-flash-image-preview`, and returns the mutated image as a base64
- * string along with an optional thought signature for future multi-turn use.
+ * Dispatches a composed mutation request to the configured Studio Flash model
+ * and returns the mutated image as a base64 string along with an optional thought
+ * signature for future multi-turn use.
  *
  * Design notes:
  *  - Delegates to `getNanoBananaClient().generateImage(...)` with the source
  *    image passed as an inline base64 reference image with `role: 'dish'`.
  *    (Requirements 10.2, 10.7)
- *  - Always targets `gemini-3.1-flash-image-preview` explicitly via the
- *    `model` parameter. (Requirement 10.2)
+ *  - Resolves the default model through `STUDIO_FLASH_MODEL`, while allowing a
+ *    caller override via the `model` parameter. (Requirement 10.2)
  *  - Throws `NanoBananaError` with code `'NO_IMAGE_PRODUCED'` and status 502
  *    when the API returns an empty images array. (Requirement 10.5)
  *  - Exposes `thoughtSignature` in the response payload as a future extension
@@ -24,7 +24,17 @@
 import { getNanoBananaClient, NanoBananaError } from '../nano-banana'
 import fs from 'fs'
 import path from 'path'
+import sharp from 'sharp'
 import type { NanoBananaParams } from '@/types'
+import { logger } from '@/lib/logger'
+import {
+  configuredStudioImageSize,
+  configuredThinkingLevel,
+  modelSupportsThinkingLevel,
+  referenceLimitForModel,
+  STUDIO_FLASH_MODEL,
+} from '@/lib/studio/model-config'
+import { fitReferenceToSubject } from '@/lib/studio/reference-image-fit'
 
 // ============================================================================
 // Types
@@ -55,10 +65,14 @@ export interface MutationInput {
   mimeType: 'image/png' | 'image/jpeg' | 'image/webp'
   /** Composed directive + JSON anchors, ≤ 2000 chars. */
   prompt: string
-  /** Optional model override (e.g. 'gemini-3.1-pro-preview'). */
+  /** Optional canonical model override (for example, the configured Pro model). */
   model?: string
   /** Optional style reference images (e.g. lighting, background, plating). */
   styleReferences?: StyleReferenceImage[]
+  /** Attach static camera-angle steering references when an admin/sandbox caller opts in. */
+  includeSteeringImages?: boolean
+  /** Internal request discriminator forwarded only by the customer Studio mutation route. */
+  request_scope?: 'studio_foh_mutation'
 }
 
 /**
@@ -110,6 +124,7 @@ export class MutationEngine {
           data: fs.readFileSync(tablePath).toString('base64'),
           mimeType: 'image/png',
           role: 'style',
+          label: 'steering-angle-table.png',
           comment: 'Reference table for industry-standard camera angle terminology and synonyms.',
         })
       }
@@ -120,6 +135,7 @@ export class MutationEngine {
           data: fs.readFileSync(diagramPath).toString('base64'),
           mimeType: 'image/png',
           role: 'layout',
+          label: 'steering-angle-diagram.png',
           comment: 'Visual diagram showing the expected camera perspectives for Overhead, 45-Degree, and Eye-Level shots.',
         })
       }
@@ -133,7 +149,7 @@ export class MutationEngine {
    * Mutates the source image according to the composed prompt.
    *
    * Calls `getNanoBananaClient().generateImage(...)` with:
-   *  - `model`: `'gemini-3.1-flash-image-preview'` (Requirement 10.2)
+   *  - `model`: configured Studio Flash default or the caller override (Requirement 10.2)
    *  - `reference_images`: the source image as an inline base64 part with
    *    `role: 'dish'` plus optional steering images. (Requirement 10.7)
    *  - `safety_filter_level`: `'block_some'`
@@ -147,43 +163,90 @@ export class MutationEngine {
    */
   async mutate(input: MutationInput): Promise<MutationOutput> {
     const client = getNanoBananaClient()
+    const targetModel = input.model || STUDIO_FLASH_MODEL
+    const maxRefs = referenceLimitForModel(targetModel)
 
-    const targetModel = input.model || 'gemini-3.1-flash-image-preview'
-    const isPro = targetModel.includes('pro')
-    const maxRefs = isPro ? 14 : 3
-
-    const referenceImages: ReferenceImage[] = [
-      {
-        mimeType: input.mimeType,
-        data: input.sourceImageBase64,
-        role: 'dish',
-      },
+    const sourceReference: ReferenceImage = {
+      mimeType: input.mimeType,
+      data: input.sourceImageBase64,
+      role: 'dish',
+    }
+    const candidates: Array<{ image: ReferenceImage; name: string }> = [
+      { image: sourceReference, name: 'source photograph' },
     ]
 
-    // Add user-selected style reference images (lighting, background, plating) first.
-    // These take priority as they represent explicit user choices.
-    if (input.styleReferences && input.styleReferences.length > 0) {
-      for (const ref of input.styleReferences) {
-        if (referenceImages.length < maxRefs) {
-          referenceImages.push({
-            mimeType: ref.mimeType,
-            data: ref.data,
-            role: ref.role,
-            comment: ref.comment,
-          })
+    let subjectLimits: { pixels: number; bytes: number } | null = null
+    try {
+      const sourceBytes = Buffer.from(input.sourceImageBase64, 'base64')
+      const metadata = await sharp(sourceBytes).metadata()
+      if (metadata.width && metadata.height) {
+        subjectLimits = {
+          pixels: metadata.width * metadata.height,
+          bytes: sourceBytes.length,
         }
+      }
+    } catch {
+      // Each style-reference drop below is logged with its individual name.
+    }
+
+    const styleReferences = input.styleReferences || []
+    for (let index = 0; index < styleReferences.length; index += 1) {
+      const ref = styleReferences[index]
+      const referenceName = ref.comment || `${ref.role} style reference ${index + 1}`
+      if (!subjectLimits) {
+        logger.warn('[MutationEngine] Dropped reference image because source dimensions could not be read.', {
+          referenceName,
+          role: ref.role,
+          reason: 'subject_metrics_unavailable',
+        })
+        continue
+      }
+
+      const fitted = await fitReferenceToSubject({
+        ref,
+        subjectPixels: subjectLimits.pixels,
+        subjectBytes: subjectLimits.bytes,
+      })
+      if (!fitted) {
+        logger.warn('[MutationEngine] Dropped reference image after it could not fit the source subject.', {
+          referenceName,
+          role: ref.role,
+          reason: 'reference_fit_failed',
+        })
+        continue
+      }
+
+      candidates.push({
+        image: {
+          mimeType: fitted.mimeType,
+          data: fitted.data,
+          role: fitted.role,
+          comment: fitted.comment,
+        },
+        name: referenceName,
+      })
+    }
+
+    // The caller's explicit opt-in, rather than spare cap capacity, decides
+    // whether static angle references participate in this request.
+    if (input.includeSteeringImages) {
+      for (let index = 0; index < this.steeringImages.length; index += 1) {
+        const steeringImage = this.steeringImages[index]
+        candidates.push({
+          image: steeringImage,
+          name: steeringImage.label || steeringImage.comment || `steering reference ${index + 1}`,
+        })
       }
     }
 
-    // Add static steering images as structural alignment guides if there is still room.
-    // These help the model break its 45-degree bias by providing explicit
-    // visual anchors for the target perspective.
-    if (referenceImages.length < maxRefs) {
-      for (const steeringImg of this.steeringImages) {
-        if (referenceImages.length < maxRefs) {
-          referenceImages.push(steeringImg)
-        }
-      }
+    const referenceImages = candidates.slice(0, maxRefs).map(({ image }) => image)
+    for (const { image, name } of candidates.slice(maxRefs)) {
+      logger.warn('[MutationEngine] Dropped reference image because the model reference limit was reached.', {
+        referenceName: name,
+        role: image.role,
+        model: targetModel,
+        referenceLimit: maxRefs,
+      })
     }
 
     const result = await client.generateImage({
@@ -193,8 +256,10 @@ export class MutationEngine {
       safety_filter_level: 'block_some',
       person_generation: 'dont_allow',
       number_of_images: 1,
+      image_size: configuredStudioImageSize(),
+      request_scope: input.request_scope,
       // Gemini 3 Pro does not support thinkingLevel in generationConfig; only Flash supports it.
-      thinking_level: isPro ? undefined : 'high',
+      thinking_level: modelSupportsThinkingLevel(targetModel) ? configuredThinkingLevel() : undefined,
     })
 
     // Guard: the API must return at least one image. (Requirement 10.5)

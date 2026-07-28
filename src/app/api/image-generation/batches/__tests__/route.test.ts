@@ -9,6 +9,7 @@ import { assertUserCanEditMenu, DatabaseError, userOperations } from '@/lib/data
 import { quotaOperations } from '@/lib/quota-management'
 import { checkRateLimit, getBatchLimits } from '@/lib/rate-limiting'
 import { getItemDailyGenerationLimit } from '@/lib/image-generation-limits'
+import { insertQueuedImageJobsConsumeQuotaAndRelease } from '@/lib/image-generation/enqueue-helpers'
 
 jest.mock('@/lib/supabase-server')
 jest.mock('@/lib/logger', () => ({
@@ -48,6 +49,13 @@ jest.mock('@/lib/rate-limiting', () => ({
 jest.mock('@/lib/image-generation-limits', () => ({
   getItemDailyGenerationLimit: jest.fn(),
 }))
+jest.mock('@/lib/image-generation/enqueue-helpers', () => {
+  const actual = jest.requireActual('@/lib/image-generation/enqueue-helpers')
+  return {
+    ...actual,
+    insertQueuedImageJobsConsumeQuotaAndRelease: jest.fn(),
+  }
+})
 jest.mock('@/lib/prompt-construction', () => ({
   getPromptConstructionService: jest.fn(() => ({
     buildPrompt: jest.fn(() => ({
@@ -68,6 +76,9 @@ const mockQuotaOperations = quotaOperations as jest.Mocked<typeof quotaOperation
 const mockCheckRateLimit = checkRateLimit as jest.Mock
 const mockGetBatchLimits = getBatchLimits as jest.Mock
 const mockGetItemDailyGenerationLimit = getItemDailyGenerationLimit as jest.Mock
+const mockInsertQueued = insertQueuedImageJobsConsumeQuotaAndRelease as jest.MockedFunction<
+  typeof insertQueuedImageJobsConsumeQuotaAndRelease
+>
 
 const USER_ID = '123e4567-e89b-42d3-a456-426614174001'
 const MENU_ID = '123e4567-e89b-42d3-a456-426614174002'
@@ -232,6 +243,17 @@ describe('POST /api/image-generation/batches', () => {
     } as any)
     mockQuotaOperations.estimateCost.mockResolvedValue({ estimatedTotal: 1 } as any)
     mockQuotaOperations.consumeQuota.mockResolvedValue({ remaining: 9, limit: 10 } as any)
+    mockInsertQueued.mockResolvedValue({
+      insertedJobs: [{
+        id: 'job-1',
+        batch_id: 'batch-1',
+        menu_id: MENU_ID,
+        menu_item_id: ITEM_ID,
+        status: 'queued',
+        created_at: new Date().toISOString(),
+      }],
+      quotaAfter: { remaining: 9, limit: 10, plan: 'free', needsUpgrade: false },
+    } as any)
   })
 
   it('returns 429 when monthly quota is insufficient', async () => {
@@ -305,6 +327,10 @@ describe('POST /api/image-generation/batches', () => {
     expect(response.status).toBe(202)
     expect(data.success).toBe(true)
     expect(data.data.jobs).toHaveLength(1)
-    expect(mockQuotaOperations.consumeQuota).toHaveBeenCalledWith(USER_ID, 1)
+    expect(mockInsertQueued).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ userId: USER_ID, totalVariationUnits: 1 })
+    )
+    expect(mockInsertQueued.mock.calls[0][1].jobs[0].api_params.aspect_ratio).toBe('1:1')
   })
 })

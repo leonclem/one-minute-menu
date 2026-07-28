@@ -131,7 +131,8 @@ describe('NanoBananaClient', () => {
       await client.generateImage({ prompt: 'test prompt' })
 
       const body = mockFetchJsonWithRetry.mock.calls[0][1].body as string
-      expect(body).toContain('Generate an image of: test prompt')
+      expect(body).toContain('test prompt')
+      expect(body).toContain('Generate an image of:')
     })
 
     it('should throw error when API indicates policy violation (HTTP 403)', async () => {

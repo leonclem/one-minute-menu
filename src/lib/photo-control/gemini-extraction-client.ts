@@ -20,13 +20,13 @@
  */
 
 import { fetchJsonWithRetry } from '../retry'
+import { STUDIO_FLASH_MODEL } from '@/lib/studio/model-config'
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const GEMINI_MODEL = 'gemini-3.1-flash-image-preview'
-const GEMINI_BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
+const GEMINI_BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${STUDIO_FLASH_MODEL}:generateContent`
 
 /**
  * System prompt instructing the model to extract the photo's visual structure

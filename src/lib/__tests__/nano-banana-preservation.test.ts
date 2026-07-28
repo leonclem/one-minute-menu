@@ -121,16 +121,15 @@ describe('pre-fix golden snapshots for non-Studio requests', () => {
     expect(requestBodies).toMatchSnapshot()
   })
 
-  it('records the pre-fix worker replay fallback and matching image metadata', () => {
+  /** **Validates: Requirements 3.1** */
+  it('replays legacy jobs without a persisted ratio as explicit square requests with matching metadata', () => {
     const apiParams = buildApiParams(replayJobWithoutAspectRatio)
-    expect(apiParams).not.toHaveProperty('aspect_ratio')
-    expect(recordedAspectRatioFor(apiParams)).toBe('1:1')
+    const requestBody = requestBodyFor(apiParams)
+    const imageConfig = (requestBody.generationConfig as { imageConfig: Record<string, unknown> }).imageConfig
 
-    expect({
-      apiParams,
-      requestBody: requestBodyFor(apiParams),
-      imageMetadata: { aspectRatio: recordedAspectRatioFor(apiParams) },
-    }).toMatchSnapshot()
+    expect(apiParams.aspect_ratio).toBe('1:1')
+    expect(imageConfig.aspectRatio).toBe(apiParams.aspect_ratio)
+    expect(recordedAspectRatioFor(apiParams)).toBe(apiParams.aspect_ratio)
   })
 })
 

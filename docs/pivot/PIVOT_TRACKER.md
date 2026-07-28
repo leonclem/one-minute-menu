@@ -68,6 +68,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-27 | Studio credit costs | Private beta defaults: NB2/Flash = 1 credit, NB Pro = 3 credits (`STUDIO_CREDIT_COST_NB2` / `STUDIO_CREDIT_COST_NB_PRO`). Bill successful mutate only; extract/upload free. Insufficient credits → HTTP 402 `STUDIO_INSUFFICIENT_CREDITS`. |
 | 2026-07-28 | Production deploy (Chunk 6 + direct-upload patch) | Confirmed by LC: commit `e9c856c` is live in production, including migration `074`, the Chunk 6 credit env vars, and the direct-to-Supabase upload patch. Supersedes the 2026-07-27 "Phase 5 sequencing" row, which anticipated deploying the patch separately. Exact deploy date was not recorded; backlog and chunk/patch rows were stale and corrected retrospectively on 2026-07-28. Nothing committed to `main` is currently awaiting production. |
 | 2026-07-27 | Failed gens + dish circuit breaker (Q7) | No credit debit if mutate fails before persist. Billable provider failures (post-API Gemini/NanoBanana errors that likely incurred cost) increment per-dish consecutive failure count; after N (default 5, `STUDIO_DISH_FAILURE_LIMIT`) block further mutates on that dish until admin clears (`STUDIO_DISH_GENERATION_BLOCKED`). Success resets the counter. |
+| 2026-07-28 | Group A reference cap | Retire the hardcoded `maxRefs = 3` hedge: it was chosen under the removed 2,000-character prompt cap. The reference count is now an env-configurable dial, clamped to each model's documented limit, so multi-change predictability can be tuned without a deploy rather than frozen at that retired figure. |
 
 ---
 
@@ -158,3 +159,4 @@ Record in `docs/pivot/PATCH_<slug>_<date>.md` rather than as a new chunk.
 | Date | Scope | Branch | Status |
 |---|---|---|---|
 | 2026-07-27 | Direct-to-Supabase upload (413 fix, 9 MiB cap) | `main` | Deployed prod (`e9c856c`; confirmed by LC 2026-07-28) — see `docs/pivot/PATCH_DIRECT_SUPABASE_UPLOAD_2026-07-27.md` |
+| 2026-07-28 | Studio Group A model-call configuration defects (aspect ratio, reference cap, thinking level) | `main` | Built — not deployed; manual production deploy and the Group A backlog steps are pending. |

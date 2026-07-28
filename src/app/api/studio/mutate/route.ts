@@ -45,12 +45,13 @@ import {
   recordGenerationSuccess,
   StudioDishBlockedError,
 } from '@/lib/studio/generation-failures'
+import { STUDIO_FLASH_MODEL, STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
-const STUDIO_MODEL = 'gemini-3.1-flash-image-preview'
+const STUDIO_MODEL = STUDIO_FLASH_MODEL
 
 function loadStyleReferenceImage(
   thumbnailPath: string | null | undefined,
@@ -140,8 +141,8 @@ export async function POST(request: NextRequest) {
     }
 
     const requestedModelEarly =
-      typeof model === 'string' && model === 'gemini-3-pro-image'
-        ? 'gemini-3-pro-image'
+      typeof model === 'string' && model === STUDIO_PRO_MODEL
+        ? STUDIO_PRO_MODEL
         : STUDIO_MODEL
     const creditCost = getCreditCostForModel(requestedModelEarly)
     await assertCanAffordStudioCredits(auth.user.id, creditCost)
@@ -292,6 +293,7 @@ export async function POST(request: NextRequest) {
       prompt: compositionResult.prompt,
       model: requestedModel,
       styleReferences,
+      request_scope: 'studio_foh_mutation',
     })
 
     // Soft post-gen validation: never fails the generation on extract/score errors.

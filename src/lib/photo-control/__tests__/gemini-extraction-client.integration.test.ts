@@ -39,6 +39,7 @@ jest.mock('../../retry', () => {
 })
 
 import { fetchJsonWithRetry } from '../../retry'
+import { STUDIO_FLASH_MODEL } from '../../studio/model-config'
 import {
   GeminiExtractionClient,
   EXTRACTION_SYSTEM_PROMPT,
@@ -323,7 +324,7 @@ describe('GeminiExtractionClient — integration (mocked Gemini)', () => {
       const [url] = calls[0] as [string, ...unknown[]]
       expect(typeof url).toBe('string')
       expect(url).toContain('key=test-api-key')
-      expect(url).toContain('gemini-3.1-flash-image-preview')
+      expect(url).toContain(`/models/${STUDIO_FLASH_MODEL}:generateContent`)
       expect(url).toContain('generateContent')
     })
   })

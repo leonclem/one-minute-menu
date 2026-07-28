@@ -278,5 +278,6 @@ describe('POST /api/generate-image', () => {
     expect(data.data.job.menuItemId).toBe(ITEM_ID)
     expect(data.data.quota.itemDailyLimit).toBe(5)
     expect(mockInsertQueued).toHaveBeenCalledTimes(1)
+    expect(mockInsertQueued.mock.calls[0][1].jobs[0].api_params.aspect_ratio).toBe('1:1')
   })
 })

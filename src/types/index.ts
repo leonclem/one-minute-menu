@@ -679,6 +679,11 @@ export interface NanoBananaParams {
     mimeType: 'image/png' | 'image/jpeg' | 'image/webp'
     data: string
     /**
+     * Optional stable label shared with the scene descriptor (for example, "A" or "source").
+     * Defaults to the reference's position when omitted.
+     */
+    label?: string
+    /**
      * Optional app-level hint describing what this reference image represents.
      * For food context: "dish", "scene", "style", "other"
      * For general context: "subject", "background", "style", "other"
@@ -712,7 +717,12 @@ export interface NanoBananaParams {
    * Optional thinking level for reasoning-driven models.
    * "high" or "dynamic" forces deeper spatial reasoning.
    */
-  thinking_level?: 'high' | 'dynamic' | 'standard'
+  thinking_level?: 'minimal' | 'high' | 'dynamic' | 'standard'
+  /**
+   * Internal application discriminator for the customer Studio mutation route.
+   * It is not sent to Gemini and must not be set by legacy or admin callers.
+   */
+  request_scope?: 'studio_foh_mutation'
 }
 
 export interface GenerationQuota {

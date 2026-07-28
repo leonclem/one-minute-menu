@@ -21,7 +21,7 @@ function expectByteIdenticalBody(
 }
 
 describe('buildGeminiRequest', () => {
-  it('reproduces the current Studio request body byte-for-byte', () => {
+  it('builds the corrected Studio request body', () => {
     const params: NanoBananaParams = {
       prompt: 'Keep the plated dish unchanged while updating the scene.',
       negative_prompt: 'people, text',
@@ -30,21 +30,18 @@ describe('buildGeminiRequest', () => {
       safety_filter_level: 'block_some',
       person_generation: 'dont_allow',
       reference_mode: 'composite',
+      request_scope: 'studio_foh_mutation',
       reference_images: [
-        { mimeType: 'image/jpeg', data: 'c3ViamVjdA==', role: 'dish', comment: 'Preserve this dish.' },
+        { mimeType: 'image/jpeg', data: 'c3ViamVjdA==', label: 'source', role: 'dish', comment: 'Preserve this dish.' },
         { mimeType: 'image/png', data: 'c2NlbmU=', role: 'scene' },
         { mimeType: 'image/png', data: 'c3R5bGU=', role: 'style' },
       ],
     }
 
     const prompt =
-      'Generate an image of: Compose a new image using the provided reference inputs:\n' +
-      'Use Image A for the primary subject/dish. Instruction: Preserve this dish..\n' +
-      'Use Image B for the background environment and context.\n' +
-      'Use Image C for the art style, lighting, and color palette. \n' +
-      'Integrate the subject naturally into the environment while maintaining the requested style and layout.\n\n' +
+      'Edit the provided reference images (Image source, Image B, Image C) while preserving their visual identity.\n\n' +
       'Keep the plated dish unchanged while updating the scene.\n' +
-      'Exclude: people, text\nAspect ratio: 1:1\nNo people in the image.\nContent safety: block_some'
+      'Exclude: people, text\nNo people in the image.'
 
     expectByteIdenticalBody(params, {
         contents: [
@@ -61,14 +58,14 @@ describe('buildGeminiRequest', () => {
         generationConfig: {
           candidateCount: 2,
           responseModalities: ['IMAGE'],
-          imageConfig: { aspectRatio: '1:1', imageSize: '1k' },
+          imageConfig: { aspectRatio: '1:1' },
         },
       },
       'https://api.test.nanobanana.com/v1/generateContent?key=request-test-key'
     )
   })
 
-  it('reproduces the current legacy menu request body byte-for-byte', () => {
+  it('preserves the legacy menu request body when scope is absent', () => {
     const params: NanoBananaParams = {
       prompt: 'A menu tile for grilled salmon',
       negative_prompt: 'cutlery',
@@ -84,7 +81,9 @@ describe('buildGeminiRequest', () => {
         contents: [
           {
             role: 'user',
-            parts: [{ text: 'Generate an image of: A menu tile for grilled salmon\nExclude: cutlery\nAspect ratio: 16:9\nContent safety: block_most' }],
+            parts: [{
+              text: 'Generate an image of: A menu tile for grilled salmon\nExclude: cutlery\nAspect ratio: 16:9\nContent safety: block_most',
+            }],
           },
         ],
         generationConfig: {
@@ -97,7 +96,7 @@ describe('buildGeminiRequest', () => {
     )
   })
 
-  it('reproduces the current Pro request body byte-for-byte', () => {
+  it('preserves the unscoped Pro request body', () => {
     const params: NanoBananaParams = {
       prompt: 'A high-end menu photograph',
       aspect_ratio: '4:3',

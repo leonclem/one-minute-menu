@@ -31,6 +31,7 @@ export function buildApiParams(job: ExecutableImageGenerationJob): NanoBananaPar
 
   return {
     ...apiParams,
+    aspect_ratio: apiParams.aspect_ratio ?? '1:1',
     prompt: apiParams.prompt || job.prompt,
     negative_prompt: apiParams.negative_prompt || job.negative_prompt || undefined,
     number_of_images: apiParams.number_of_images || job.number_of_variations || 1,

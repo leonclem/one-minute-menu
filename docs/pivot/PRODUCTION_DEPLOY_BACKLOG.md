@@ -12,8 +12,11 @@ production deploy; commit history is a poor deploy checklist.
 patch (`e9c856c` on `main`). Confirmed live by LC on 2026-07-28; the exact deploy
 date was not recorded at the time.
 
-**Next pending:** Nothing outstanding. Everything committed to `main` up to and
-including `e9c856c` is live in production.
+**Next pending:** Group A Studio model-call configuration rollout: set or confirm
+`STUDIO_THINKING_LEVEL`, `STUDIO_IMAGE_SIZE`, and (if tuning is needed)
+`STUDIO_MAX_REFS`, then complete the Group A production smoke test after the
+manual app deploy. Everything committed to `main` up to and including `e9c856c`
+is live in production.
 
 **How to use**
 
@@ -44,6 +47,9 @@ non-local env you care about). Defaults in code are safe if unset unless noted.
 | `STUDIO_CREDIT_COST_NB2` | Chunk 6 | `1` | `1` unless pricing changes | Applied | Credit cost for Flash / NB2 Studio mutates. Live with Chunk 6 (`e9c856c`); default 1 unless overridden in Vercel. |
 | `STUDIO_CREDIT_COST_NB_PRO` | Chunk 6 | `3` | `3` unless pricing changes | Applied | Credit cost for Pro Studio mutates. Live with Chunk 6 (`e9c856c`); default 3 unless overridden in Vercel. |
 | `STUDIO_DISH_FAILURE_LIMIT` | Chunk 6 | `5` | `5` unless ops wants a different breaker | Applied | Consecutive billable provider failures before dish block. Live with Chunk 6 (`e9c856c`); default 5 unless overridden in Vercel. |
+| `STUDIO_THINKING_LEVEL` | Group A patch | `high` | `high` unless approved latency/cost evidence changes it | Pending | Flash-only; accepts `minimal` or `high`. Thinking tokens are billed even when their output is not inspected. |
+| `STUDIO_IMAGE_SIZE` | Group A patch | `2K` | `2K` | Pending | Studio sends uppercase documented size tokens (`1K`, `2K`, `4K`). |
+| `STUDIO_MAX_REFS` | Group A patch | Documented per-model limit (Flash: 10 object refs; Pro: 14 total) | Leave unset for the documented limit, or set a positive tuning value | Pending | The requested value is clamped to the applicable documented model limit and warns when clamped. |
 
 ---
 
@@ -75,6 +81,7 @@ Non-env, non-migration steps that must not be forgotten.
 | Smoke-test output validation | Chunk 5 | Applied | Prod 2026-07-24 (`42f35d5` deploy). |
 | Smoke-test Studio credits | Chunk 6 | Applied | Admin grant → `/studio` shows balance → generate decrements; 0 balance → 402; blocked dish after N billable failures cannot generate until admin clears. |
 | Smoke-test direct-upload (5–9 MiB) | Direct-upload patch | Applied | Large PNG upload no 413; extract + mutate OK. |
+| Smoke-test Group A Studio model-call configuration | Group A patch | Pending | After the manual deploy and required per-call approval, verify input-matched aspect ratio, configured Flash thinking level, uppercase image-size handling, and reference-cap override/clamping behaviour. |
 
 ---
 
