@@ -35,7 +35,10 @@ const GENERATION_RESPONSE = {
 
 type CapturedRequestBody = {
   contents: Array<{ parts: Array<{ text?: string }> }>
-  generationConfig: { imageConfig: Record<string, unknown>; thinkingLevel?: string }
+  generationConfig: {
+    imageConfig: Record<string, unknown>
+    thinkingConfig?: { thinkingLevel?: string }
+  }
 }
 
 function capturedRequestBody(): CapturedRequestBody {
@@ -167,7 +170,7 @@ describe('Studio request defects: forced square', () => {
         candidateCount: 1,
         responseModalities: ['IMAGE'],
         imageConfig: {},
-        thinkingLevel: 'HIGH',
+        thinkingConfig: { thinkingLevel: 'HIGH' },
       },
     })
   })
@@ -252,10 +255,10 @@ describe('Studio request defects: thinking level discarded', () => {
           request_scope: 'studio_foh_mutation',
         })
         const generationConfig = request.requestBody.generationConfig as {
-          thinkingLevel?: string
+          thinkingConfig?: { thinkingLevel?: string }
         }
 
-        expect(generationConfig.thinkingLevel).toBe('HIGH')
+        expect(generationConfig.thinkingConfig?.thinkingLevel).toBe('HIGH')
       }),
       { numRuns: 100 },
     )
@@ -269,7 +272,7 @@ describe('Studio request defects: thinking level discarded', () => {
       model: 'gemini-3.1-flash-image-preview',
     })
 
-    expect(request.generationConfig.thinkingLevel).toBe('HIGH')
+    expect(request.generationConfig.thinkingConfig?.thinkingLevel).toBe('HIGH')
   })
 
   it('uses the configured thinking level and image size with the shared default Studio model', async () => {
@@ -283,7 +286,7 @@ describe('Studio request defects: thinking level discarded', () => {
     })
     const [url] = mockFetchJsonWithRetry.mock.calls.at(-1) as [string, RequestInit]
 
-    expect(request.generationConfig.thinkingLevel).toBe('MINIMAL')
+    expect(request.generationConfig.thinkingConfig?.thinkingLevel).toBe('MINIMAL')
     expect(request.generationConfig.imageConfig).toEqual(expect.objectContaining({ imageSize: '4K' }))
     expect(request.generationConfig.imageConfig).not.toHaveProperty('aspectRatio')
     expect(url).toContain(`/models/${STUDIO_FLASH_MODEL}:generateContent`)
@@ -297,10 +300,10 @@ describe('Studio request defects: thinking level discarded', () => {
       request_scope: 'studio_foh_mutation',
     })
     const generationConfig = request.requestBody.generationConfig as {
-      thinkingLevel?: string
+      thinkingConfig?: { thinkingLevel?: string }
     }
 
-    expect(generationConfig).not.toHaveProperty('thinkingLevel')
+    expect(generationConfig).not.toHaveProperty('thinkingConfig')
   })
 })
 
@@ -726,5 +729,186 @@ describe('Studio request defects: reference limits and explicit steering opt-in 
     })
 
     expect(attachedSteeringCount(request)).toBe(0)
+  })
+})
+/**
+ * Feature: studio-json-metadata-defects, Property 2: Source-Only On The Customer Path (A2)
+ * **Validates: Requirements 2.3b, 3.2**
+ *
+ * This exploration deliberately runs against the current customer FOH mutation
+ * path before Group B. It must fail until the path drops style references and
+ * composePrompt emits the Tier 2 scene descriptor.
+ */
+type CustomerPathGenerationParams = Parameters<NanoBananaClient['generateImage']>[0]
+
+type ScenePayload = {
+  target?: Record<string, Record<string, unknown>>
+}
+
+const customerStyleAttributes: Record<string, string[]> = {
+  lighting: ['quality', 'temperature', 'shadows', 'falloff'],
+  backdrop: ['material', 'colour', 'falloff'],
+  surface: ['material', 'finish', 'colour'],
+}
+
+/** Extract the model-facing descriptor from either the future JSON payload or today's Target line. */
+function extractScenePayload(prompt: string): ScenePayload | null {
+  const targetLine = prompt.match(/^Target:\s*(\{.*\})$/m)
+  if (targetLine) {
+    try {
+      return { target: JSON.parse(targetLine[1]) as Record<string, Record<string, unknown>> }
+    } catch {
+      return null
+    }
+  }
+
+  // The fixed composer emits a pretty-printed JSON descriptor surrounded by
+  // framing prose. Find balanced JSON objects without depending on prose text.
+  for (let start = 0; start < prompt.length; start += 1) {
+    if (prompt[start] !== '{') continue
+    let depth = 0
+    let inString = false
+    let escaped = false
+    for (let end = start; end < prompt.length; end += 1) {
+      const character = prompt[end]
+      if (inString) {
+        if (escaped) escaped = false
+        else if (character === '\\') escaped = true
+        else if (character === '"') inString = false
+        continue
+      }
+      if (character === '"') {
+        inString = true
+      } else if (character === '{') {
+        depth += 1
+      } else if (character === '}') {
+        depth -= 1
+        if (depth === 0) {
+          try {
+            const parsed = JSON.parse(prompt.slice(start, end + 1)) as ScenePayload
+            if (parsed && typeof parsed === 'object' && parsed.target && typeof parsed.target === 'object') {
+              return parsed
+            }
+          } catch {
+            // Continue scanning for the next balanced object.
+          }
+          break
+        }
+      }
+    }
+  }
+
+  return null
+}
+
+function hasRequiredStyleAttributes(
+  section: Record<string, unknown> | undefined,
+  style: string,
+): boolean {
+  if (!section) return false
+  return customerStyleAttributes[style].every((attribute) => attribute in section) && !('reference' in section)
+}
+
+async function captureCustomerPathRequest(
+  stagedStyles: string[],
+): Promise<{ request: CapturedRequestBody; params: CustomerPathGenerationParams }> {
+  mockFetchJsonWithRetry.mockClear()
+  mockFetchJsonWithRetry.mockResolvedValue(GENERATION_RESPONSE)
+  const generateImageSpy = jest.spyOn(NanoBananaClient.prototype, 'generateImage')
+
+  try {
+    await new MutationEngine().mutate(studioMutationInput({
+      sourceImageBase64: TINY_PNG_BASE64,
+      mimeType: 'image/png',
+      prompt: `Customer FOH edit with staged styles: ${stagedStyles.join(', ') || 'none'}.`,
+      styleReferences: stagedStyles.map(styleReference),
+    }))
+
+    const params = generateImageSpy.mock.calls.at(-1)?.[0]
+    if (!params) throw new Error('Expected the customer FOH generation call to be captured.')
+    return { request: capturedRequestBody(), params }
+  } finally {
+    generateImageSpy.mockRestore()
+  }
+}
+
+const customerStagedStylesArbitrary = fc.subarray(['lighting', 'backdrop', 'surface'])
+
+describe('Studio request defects: source-only customer FOH references (A2)', () => {
+  beforeEach(() => {
+    process.env.NANO_BANANA_API_KEY = TEST_API_KEY
+    process.env.NANO_BANANA_BASE_URL = TEST_BASE_URL
+    mockFetchJsonWithRetry.mockReset()
+    mockFetchJsonWithRetry.mockResolvedValue(GENERATION_RESPONSE)
+  })
+
+  it('keeps only the source reference and carries every staged style in descriptor JSON', async () => {
+    await fc.assert(
+      fc.asyncProperty(customerStagedStylesArbitrary, async (stagedStyles) => {
+        const { request, params } = await captureCustomerPathRequest(stagedStyles)
+        const references = (params.reference_images || []) as Array<{ data: string; role?: string; label?: string }>
+        const payload = extractScenePayload(request.contents[0].parts[0].text as string)
+        const target = payload?.target
+
+        expect({
+          referenceCount: references.length,
+          sourceIsFirstAndUnchanged: references[0]?.role === 'dish' && references[0]?.data === TINY_PNG_BASE64,
+          allReferencesAreDish: references.every((reference) => reference.role === 'dish'),
+          hasSteeringReference: references.some((reference) =>
+            typeof reference.label === 'string' && reference.label.startsWith('steering-angle-'),
+          ),
+          stagedStyleSectionsHaveAttributes: stagedStyles.every((style) =>
+            hasRequiredStyleAttributes(target?.[style], style),
+          ),
+        }).toEqual({
+          referenceCount: 1,
+          sourceIsFirstAndUnchanged: true,
+          allReferencesAreDish: true,
+          hasSteeringReference: false,
+          stagedStyleSectionsHaveAttributes: true,
+        })
+      }),
+      { numRuns: 100 },
+    )
+  })
+
+  it('reproduces the concrete lighting + backdrop + surface customer request', async () => {
+    const { request, params } = await captureCustomerPathRequest(['lighting', 'backdrop', 'surface'])
+    const references = (params.reference_images || []) as Array<{ data: string; role?: string; label?: string }>
+    const payload = extractScenePayload(request.contents[0].parts[0].text as string)
+    const target = payload?.target
+
+    expect({
+      referenceCount: references.length,
+      referenceRoles: references.map((reference) => reference.role),
+      sourceBytesPreserved: references[0]?.data === TINY_PNG_BASE64,
+      lightingTarget: target?.lighting,
+      backdropTarget: target?.backdrop,
+      surfaceTarget: target?.surface,
+    }).toEqual({
+      referenceCount: 1,
+      referenceRoles: ['dish'],
+      sourceBytesPreserved: true,
+      lightingTarget: expect.objectContaining({
+        quality: expect.any(String),
+        temperature: expect.any(String),
+        shadows: expect.any(String),
+        falloff: expect.any(String),
+      }),
+      backdropTarget: expect.objectContaining({
+        material: expect.any(String),
+        colour: expect.any(String),
+        falloff: expect.any(String),
+      }),
+      surfaceTarget: expect.objectContaining({
+        material: expect.any(String),
+        finish: expect.any(String),
+        colour: expect.any(String),
+      }),
+    })
+
+    expect(target?.lighting).not.toHaveProperty('reference')
+    expect(target?.backdrop).not.toHaveProperty('reference')
+    expect(target?.surface).not.toHaveProperty('reference')
   })
 })

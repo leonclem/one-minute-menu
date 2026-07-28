@@ -209,7 +209,9 @@ export function buildGeminiRequest(
 
   if (isStudioFohMutation) {
     if (params.thinking_level && modelSupportsThinkingLevel(model)) {
-      generationConfig.thinkingLevel = params.thinking_level.toUpperCase()
+      generationConfig.thinkingConfig = {
+        thinkingLevel: params.thinking_level.toUpperCase(),
+      }
     }
   } else if (params.thinking_level && !model.includes('pro') && !model.includes('flash')) {
     generationConfig.thinkingLevel = params.thinking_level.toUpperCase()
