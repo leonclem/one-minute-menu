@@ -66,6 +66,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-27 | Phase 5 sequencing | Override: start Chunk 6 (Phase 5 Credits) planning/build before production deploy of the direct-upload patch. Patch remains Built / not deployed; deploy independently when ready. |
 | 2026-07-27 | Studio credits ledger | New `studio_credit_balances` + `studio_credit_ledger`; do not reuse menu `generation_quotas` / `user_packs`. Users start at 0 until admin grant (Q4). |
 | 2026-07-27 | Studio credit costs | Private beta defaults: NB2/Flash = 1 credit, NB Pro = 3 credits (`STUDIO_CREDIT_COST_NB2` / `STUDIO_CREDIT_COST_NB_PRO`). Bill successful mutate only; extract/upload free. Insufficient credits → HTTP 402 `STUDIO_INSUFFICIENT_CREDITS`. |
+| 2026-07-28 | Production deploy (Chunk 6 + direct-upload patch) | Confirmed by LC: commit `e9c856c` is live in production, including migration `074`, the Chunk 6 credit env vars, and the direct-to-Supabase upload patch. Supersedes the 2026-07-27 "Phase 5 sequencing" row, which anticipated deploying the patch separately. Exact deploy date was not recorded; backlog and chunk/patch rows were stale and corrected retrospectively on 2026-07-28. Nothing committed to `main` is currently awaiting production. |
 | 2026-07-27 | Failed gens + dish circuit breaker (Q7) | No credit debit if mutate fails before persist. Billable provider failures (post-API Gemini/NanoBanana errors that likely incurred cost) increment per-dish consecutive failure count; after N (default 5, `STUDIO_DISH_FAILURE_LIMIT`) block further mutates on that dish until admin clears (`STUDIO_DISH_GENERATION_BLOCKED`). Success resets the counter. |
 
 ---
@@ -145,7 +146,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 3 | Phase 2: image library per dish (`studio_dishes` + dish-scoped gallery) | `studio/chunk-03-dish-library` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_03.md` |
 | 4 | Phase 3: background & lighting reference libraries (DB-backed, admin-managed) | `studio/chunk-04-reference-libraries` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_04.md` |
 | 5 | Phase 4: controlled prompt/state layer (identity locks + post-gen validation) | `studio/chunk-05-prompt-state-layer` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_05.md` |
-| 6 | Phase 5: credits & usage control (Studio ledger, mutate gate, admin grants, FOH balance, dish failure breaker) | `main` | Built — not yet deployed — see `docs/pivot/BUILD_PLAN_CHUNK_06.md` |
+| 6 | Phase 5: credits & usage control (Studio ledger, mutate gate, admin grants, FOH balance, dish failure breaker) | `main` | Deployed prod (`e9c856c`; confirmed by LC 2026-07-28) — see `docs/pivot/BUILD_PLAN_CHUNK_06.md` |
 
 ---
 
@@ -156,4 +157,4 @@ Record in `docs/pivot/PATCH_<slug>_<date>.md` rather than as a new chunk.
 
 | Date | Scope | Branch | Status |
 |---|---|---|---|
-| 2026-07-27 | Direct-to-Supabase upload (413 fix, 9 MiB cap) | `main` | Built — not yet deployed — see `docs/pivot/PATCH_DIRECT_SUPABASE_UPLOAD_2026-07-27.md` |
+| 2026-07-27 | Direct-to-Supabase upload (413 fix, 9 MiB cap) | `main` | Deployed prod (`e9c856c`; confirmed by LC 2026-07-28) — see `docs/pivot/PATCH_DIRECT_SUPABASE_UPLOAD_2026-07-27.md` |

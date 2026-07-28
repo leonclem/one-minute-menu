@@ -8,14 +8,12 @@ This is the source of truth for “what’s waiting to go live.” Do **not** re
 `git log` alone — multiple chunks/patches may land on `main` before a deliberate
 production deploy; commit history is a poor deploy checklist.
 
-**Last production deploy:** 2026-07-24 — Chunks 1–5 cumulative (`42f35d5` on
-`main`: *feat(studio): Chunk 5 validation, admin-only gate, and style library
-refresh*).
+**Last production deploy:** Chunk 6 Studio credits + direct-to-Supabase upload
+patch (`e9c856c` on `main`). Confirmed live by LC on 2026-07-28; the exact deploy
+date was not recorded at the time.
 
-**Next pending:** Direct-to-Supabase upload patch (app only) + Chunk 6 Studio
-credits (migration `074` + credit env vars) — see
-`docs/pivot/PATCH_DIRECT_SUPABASE_UPLOAD_2026-07-27.md` and
-`docs/pivot/BUILD_PLAN_CHUNK_06.md`.
+**Next pending:** Nothing outstanding. Everything committed to `main` up to and
+including `e9c856c` is live in production.
 
 **How to use**
 
@@ -43,9 +41,9 @@ non-local env you care about). Defaults in code are safe if unset unless noted.
 | `STUDIO_DAILY_GENERATION_LIMIT` | Chunk 2 | `25` | Set explicitly if you want a different cap | Applied | Prod 2026-07-24 (`42f35d5`). Default 25 unless overridden in Vercel. |
 | `STUDIO_OUTPUT_VALIDATION_ENABLED` | Chunk 5 | `true` (on when unset) | `true` for private beta quality signals; `false` to skip re-extract cost | Applied | Prod 2026-07-24 (`42f35d5`). Default on when unset. |
 | `NEXT_PUBLIC_STUDIO_ADMIN_ONLY` | Chunk 5 | `true` (on when unset) | `true` until ready for non-admin users; `false` to open FOH Studio | Applied | Prod 2026-07-24 (`42f35d5`). Default on when unset. |
-| `STUDIO_CREDIT_COST_NB2` | Chunk 6 | `1` | `1` unless pricing changes | Pending | Credit cost for Flash / NB2 Studio mutates. |
-| `STUDIO_CREDIT_COST_NB_PRO` | Chunk 6 | `3` | `3` unless pricing changes | Pending | Credit cost for Pro Studio mutates. |
-| `STUDIO_DISH_FAILURE_LIMIT` | Chunk 6 | `5` | `5` unless ops wants a different breaker | Pending | Consecutive billable provider failures before dish block. |
+| `STUDIO_CREDIT_COST_NB2` | Chunk 6 | `1` | `1` unless pricing changes | Applied | Credit cost for Flash / NB2 Studio mutates. Live with Chunk 6 (`e9c856c`); default 1 unless overridden in Vercel. |
+| `STUDIO_CREDIT_COST_NB_PRO` | Chunk 6 | `3` | `3` unless pricing changes | Applied | Credit cost for Pro Studio mutates. Live with Chunk 6 (`e9c856c`); default 3 unless overridden in Vercel. |
+| `STUDIO_DISH_FAILURE_LIMIT` | Chunk 6 | `5` | `5` unless ops wants a different breaker | Applied | Consecutive billable provider failures before dish block. Live with Chunk 6 (`e9c856c`); default 5 unless overridden in Vercel. |
 
 ---
 
@@ -61,7 +59,7 @@ Prefer `npx supabase db push` against the linked production project (never
 | `supabase/migrations/071_studio_dishes.sql` | Chunk 3 | Applied | Prod 2026-07-24 (`42f35d5`). Apply after 070. |
 | `supabase/migrations/072_studio_dish_current_image.sql` | Chunk 3 | Applied | Prod 2026-07-24 (`42f35d5`). Apply after 071. |
 | `supabase/migrations/073_studio_reference_libraries.sql` | Chunk 4 | Applied | Prod 2026-07-24 (`42f35d5`; seed refresh also in Chunk 5 commit). Apply after 072. |
-| `supabase/migrations/074_studio_credits.sql` | Chunk 6 | Pending | Balances + ledger + `studio_apply_credit_delta` + dish failure/block columns. Apply after 073. |
+| `supabase/migrations/074_studio_credits.sql` | Chunk 6 | Applied | Balances + ledger + `studio_apply_credit_delta` + dish failure/block columns. Live with Chunk 6 (`e9c856c`). |
 
 ---
 
@@ -75,8 +73,8 @@ Non-env, non-migration steps that must not be forgotten.
 | Smoke-test dish library | Chunk 3 | Applied | Prod 2026-07-24 (`42f35d5` deploy). |
 | Smoke-test reference libraries | Chunk 4 | Applied | Prod 2026-07-24 (`42f35d5` deploy). |
 | Smoke-test output validation | Chunk 5 | Applied | Prod 2026-07-24 (`42f35d5` deploy). |
-| Smoke-test Studio credits | Chunk 6 | Pending | Admin grant → `/studio` shows balance → generate decrements; 0 balance → 402; blocked dish after N billable failures cannot generate until admin clears. |
-| Smoke-test direct-upload (5–9 MiB) | Direct-upload patch | Pending | After app deploy of patch: large PNG upload no 413; extract + mutate OK. |
+| Smoke-test Studio credits | Chunk 6 | Applied | Admin grant → `/studio` shows balance → generate decrements; 0 balance → 402; blocked dish after N billable failures cannot generate until admin clears. |
+| Smoke-test direct-upload (5–9 MiB) | Direct-upload patch | Applied | Large PNG upload no 413; extract + mutate OK. |
 
 ---
 
@@ -88,3 +86,4 @@ with confidence.
 | Date | What went live | Cleared backlog items |
 |---|---|---|
 | 2026-07-24 | Chunks 1–5 cumulative — commit `42f35d5` (*Chunk 5 validation, admin-only gate, and style library refresh*). Includes Studio shell, dish library, reference libraries, post-gen validation, admin-only FOH gate. | All env vars (Chunk 1–5), migrations `070`–`073`, smoke tests (Chunk 2–5). **Not included:** direct-upload patch (built locally after this deploy). |
+| 2026-07-27 / 28 (exact date not recorded) | Chunk 6 Studio credits + direct-to-Supabase upload patch — commit `e9c856c` (*feat(studio): implement Chunk 6 for credits and usage control*). Confirmed live by LC on 2026-07-28. | Migration `074`, Chunk 6 credit env vars (`STUDIO_CREDIT_COST_NB2`, `STUDIO_CREDIT_COST_NB_PRO`, `STUDIO_DISH_FAILURE_LIMIT`), Chunk 6 credits smoke test, direct-upload smoke test. Backlog rows were left stale at the time and corrected retrospectively on 2026-07-28. |
