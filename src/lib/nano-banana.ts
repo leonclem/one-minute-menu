@@ -91,6 +91,137 @@ export class NanoBananaError extends Error {
   }
 }
 
+const DEFAULT_GEMINI_IMAGE_BASE_URL =
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent'
+const DEFAULT_GEMINI_IMAGE_MODEL = 'gemini-3.1-flash-image-preview'
+
+export interface BuildGeminiRequestOptions {
+  apiKey?: string
+  baseUrl?: string
+}
+
+export interface GeminiRequest {
+  url: string
+  requestBody: Record<string, unknown>
+  loggedPrompt: string
+}
+
+/**
+ * Builds the Gemini generateContent request without performing I/O.
+ *
+ * This intentionally preserves the current request shape, including the prompt
+ * appends, image-config fallbacks, and thinking-level guard. Those behaviors are
+ * corrected by later bugfix tasks; this function is the testable seam for them.
+ */
+export function buildGeminiRequest(
+  params: NanoBananaParams,
+  options: BuildGeminiRequestOptions = {}
+): GeminiRequest {
+  const model = params.model || DEFAULT_GEMINI_IMAGE_MODEL
+  const baseUrl = params.model
+    ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+    : options.baseUrl || DEFAULT_GEMINI_IMAGE_BASE_URL
+  const candidateCount = Math.min(Math.max(params.number_of_images || 1, 1), 4)
+
+  let finalPromptText = params.prompt
+
+  // If reference images are provided, guide the model with explicit instructions.
+  // We use the "Image A/B/C" syntax recommended for Nano Banana Pro.
+  if (params.reference_images && params.reference_images.length > 0) {
+    const alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N']
+    const roleInstructions: string[] = []
+
+    for (let i = 0; i < params.reference_images.length; i++) {
+      const r = params.reference_images[i]
+      const label = alphabet[i]
+      const role = r.role || 'other'
+      const comment = r.comment ? `. Instruction: ${r.comment}` : ''
+
+      let roleDesc = ''
+      if (role === 'dish') roleDesc = 'the primary subject/dish'
+      else if (role === 'scene') roleDesc = 'the background environment and context'
+      else if (role === 'style') roleDesc = 'the art style, lighting, and color palette'
+      else if (role === 'layout') roleDesc = 'the plating structure and composition layout'
+      else roleDesc = 'general visual context'
+
+      roleInstructions.push(`Use Image ${label} for ${roleDesc}${comment}.`)
+    }
+
+    // We use a unified composition prompt as recommended by Nano Banana Pro tips.
+    // The specific roles (dish, scene, style, etc.) guide how the images are used.
+    finalPromptText =
+      `Compose a new image using the provided reference inputs:\n` +
+      roleInstructions.join('\n') +
+      ` \nIntegrate the subject naturally into the environment while maintaining the requested style and layout.\n\n` +
+      finalPromptText
+  }
+
+  if (params.negative_prompt) {
+    finalPromptText += `\nExclude: ${params.negative_prompt}`
+  }
+
+  // Gemini 3.1 Flash Image uses prompt instructions for aspect ratio in the standard generateContent endpoint
+  if (params.aspect_ratio) {
+    finalPromptText += `\nAspect ratio: ${params.aspect_ratio}`
+  }
+
+  if (params.person_generation === 'dont_allow') {
+    finalPromptText += `\nNo people in the image.`
+  }
+  if (params.safety_filter_level) {
+    finalPromptText += `\nContent safety: ${params.safety_filter_level}`
+  }
+
+  const loggedPrompt = `Generate an image of: ${finalPromptText}`
+  const parts: Array<Record<string, unknown>> = [{ text: loggedPrompt }]
+
+  // Add reference image(s) as inlineData parts (base64, no data URL prefix).
+  if (params.reference_images && params.reference_images.length > 0) {
+    for (const img of params.reference_images) {
+      parts.push({
+        inlineData: {
+          mimeType: img.mimeType,
+          data: img.data,
+        },
+      })
+    }
+  }
+
+  // Gemini 3.1 Flash Image uses a different request structure than standard Gemini Pro
+  const generationConfig: Record<string, unknown> = {
+    candidateCount,
+    responseModalities: ['IMAGE'],
+    imageConfig: {
+      aspectRatio: params.aspect_ratio || '1:1',
+      imageSize: params.image_size || '1k'
+    }
+  }
+
+  if (params.thinking_level && !model.includes('pro') && !model.includes('flash')) {
+    generationConfig.thinkingLevel = params.thinking_level.toUpperCase()
+  }
+
+  const requestBody = {
+    contents: [
+      {
+        role: 'user',
+        parts,
+      },
+    ],
+    generationConfig,
+  }
+
+  // Build URL with API key as query param per Gemini requirements
+  const url = new URL(baseUrl)
+  url.searchParams.set('key', options.apiKey || '')
+
+  return {
+    url: url.toString(),
+    requestBody,
+    loggedPrompt,
+  }
+}
+
 export class NanoBananaClient {
   private apiKey: string
   private baseUrl: string
@@ -132,141 +263,47 @@ export class NanoBananaClient {
       ...params
     }
 
-    // Determine model and base URL
-    const model = requestParams.model || 'gemini-3.1-flash-image-preview'
-    const baseUrl = params.model 
-      ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
-      : this.baseUrl
+    // Determine model
+    const model = requestParams.model || DEFAULT_GEMINI_IMAGE_MODEL
 
     // Validate parameters
     this.validateParams(requestParams)
 
     try {
-      const promptText = requestParams.prompt
-      const promptHash = createHash('sha256').update(promptText).digest('hex')
+      const { url, requestBody, loggedPrompt } = buildGeminiRequest(requestParams, {
+        apiKey: this.apiKey,
+        baseUrl: this.baseUrl,
+      })
+      const promptHash = createHash('sha256').update(loggedPrompt).digest('hex')
       const hasRef = !!(requestParams.reference_images && requestParams.reference_images.length > 0)
       const refMeta = hasRef
         ? requestParams.reference_images!.map((img) => ({ mimeType: img.mimeType, bytes: Buffer.from(img.data, 'base64').length }))
         : []
+      const candidateCount = Math.min(Math.max(requestParams.number_of_images || 1, 1), 4)
+      const generationConfig = requestBody.generationConfig as {
+        imageConfig: unknown
+      }
 
       // Important: never log reference image bytes; prompts can be logged for learning.
       logger.info('🎨 [Nano Banana] Outbound request', {
         model,
-        candidateCount: Math.min(Math.max(requestParams.number_of_images || 1, 1), 4),
+        candidateCount,
         aspectRatio: requestParams.aspect_ratio,
         imageSize: requestParams.image_size,
         hasReferenceImages: hasRef,
         referenceMode: requestParams.reference_mode || null,
         referenceImages: refMeta,
         promptHash,
-        promptText,
-        promptLength: promptText.length,
+        promptText: loggedPrompt,
+        promptLength: loggedPrompt.length,
       })
-      
-      // Translate our simplified params into Gemini generateContent request
-      const candidateCount = Math.min(Math.max(requestParams.number_of_images || 1, 1), 4)
-
-      let finalPromptText = promptText
-
-      // If reference images are provided, guide the model with explicit instructions.
-      // We use the "Image A/B/C" syntax recommended for Nano Banana Pro.
-      if (requestParams.reference_images && requestParams.reference_images.length > 0) {
-        const alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N']
-        const roleInstructions: string[] = []
-        
-        for (let i = 0; i < requestParams.reference_images.length; i++) {
-          const r = requestParams.reference_images[i]
-          const label = alphabet[i]
-          const role = r.role || 'other'
-          const comment = r.comment ? `. Instruction: ${r.comment}` : ''
-          
-          let roleDesc = ''
-          if (role === 'dish') roleDesc = 'the primary subject/dish'
-          else if (role === 'scene') roleDesc = 'the background environment and context'
-          else if (role === 'style') roleDesc = 'the art style, lighting, and color palette'
-          else if (role === 'layout') roleDesc = 'the plating structure and composition layout'
-          else roleDesc = 'general visual context'
-
-          roleInstructions.push(`Use Image ${label} for ${roleDesc}${comment}.`)
-        }
-
-        // We use a unified composition prompt as recommended by Nano Banana Pro tips.
-        // The specific roles (dish, scene, style, etc.) guide how the images are used.
-        finalPromptText =
-          `Compose a new image using the provided reference inputs:\n` +
-          roleInstructions.join('\n') +
-          ` \nIntegrate the subject naturally into the environment while maintaining the requested style and layout.\n\n` +
-          finalPromptText
-      }
-
-      if (requestParams.negative_prompt) {
-        finalPromptText += `\nExclude: ${requestParams.negative_prompt}`
-      }
-      
-      // Gemini 3.1 Flash Image uses prompt instructions for aspect ratio in the standard generateContent endpoint
-      if (requestParams.aspect_ratio) {
-        finalPromptText += `\nAspect ratio: ${requestParams.aspect_ratio}`
-      }
-      
-      if (requestParams.person_generation === 'dont_allow') {
-        finalPromptText += `\nNo people in the image.`
-      }
-      if (requestParams.safety_filter_level) {
-        finalPromptText += `\nContent safety: ${requestParams.safety_filter_level}`
-      }
-
-      const parts: any[] = [{ text: `Generate an image of: ${finalPromptText}` }]
-
-      // Add reference image(s) as inlineData parts (base64, no data URL prefix).
-      if (requestParams.reference_images && requestParams.reference_images.length > 0) {
-        for (const img of requestParams.reference_images) {
-          parts.push({
-            inlineData: {
-              mimeType: img.mimeType,
-              data: img.data,
-            },
-          })
-        }
-      }
-
-      // Gemini 3.1 Flash Image uses a different request structure than standard Gemini Pro
-      const generationConfig: any = {
-        candidateCount,
-        responseModalities: ['IMAGE'],
-        imageConfig: {
-          aspectRatio: requestParams.aspect_ratio || '1:1',
-          imageSize: requestParams.image_size || '1k'
-        }
-      }
-
-      if (requestParams.thinking_level && !model.includes('pro') && !model.includes('flash')) {
-        generationConfig.thinkingLevel = requestParams.thinking_level.toUpperCase()
-      }
-
-      const requestBody: any = {
-        contents: [
-          {
-            role: 'user',
-            parts,
-          },
-        ],
-        generationConfig,
-      }
-
-      // If we are using a model that supports imageConfig (like Gemini 3 Pro),
-      // it usually expects the 'imagen' or 'generateImage' endpoint, not 'generateContent'.
-      // For 'generateContent' with Flash Image, we should keep the config minimal.
-
-      // Build URL with API key as query param per Gemini requirements
-      const url = new URL(baseUrl)
-      url.searchParams.set('key', this.apiKey)
 
       // Log the exact URL being called for debugging
-      console.log('🔍 [Nano Banana] Making request to:', url.toString().replace(/key=[^&]+/, 'key=***'))
+      console.log('🔍 [Nano Banana] Making request to:', url.replace(/key=[^&]+/, 'key=***'))
       console.log('🔍 [Nano Banana] Request body summary:', {
         candidateCount,
         imageConfig: generationConfig.imageConfig,
-        promptLength: finalPromptText.length,
+        promptLength: loggedPrompt.length,
         referenceImageCount: requestParams.reference_images?.length || 0
       })
 
