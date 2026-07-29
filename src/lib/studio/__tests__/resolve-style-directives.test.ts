@@ -77,11 +77,7 @@ describe('resolve-style-directives', () => {
     )
 
     expect(result.error).toBeUndefined()
-    expect(result.clauses).toEqual([
-      'LIGHTING_CLAUSE No props.',
-      'BACKGROUND_CLAUSE',
-      'SURFACE_CLAUSE',
-    ])
+    expect(result.clauses).toBeUndefined()
     expect(result.lightingStyle).toEqual(mockLightingRecord)
     expect(result.backgroundStyle).toEqual(mockBackgroundRecord)
     expect(result.surfaceStyle).toEqual(mockSurfaceRecord)
@@ -96,10 +92,45 @@ describe('resolve-style-directives', () => {
     )
 
     expect(result.error).toContain('Unknown or inactive lighting style')
-    expect(result.clauses).toEqual([])
+    expect(result.clauses).toBeUndefined()
+    expect(result.lightingStyle).toBeUndefined()
   })
 
-  it('merges style clauses ahead of the client directive', () => {
+  it.each([
+    ['background', 'backgroundStyle', 'does-not-exist'],
+    ['surface', 'surfaceStyle', 'inactive-surface'],
+  ])('returns a 400-compatible error for unknown or inactive %s styles', async (_kind, field, key) => {
+    mockResolveBackground.mockResolvedValue(null)
+    const target = schema({ [field]: key } as { backgroundStyle?: string; surfaceStyle?: string })
+
+    const result = await resolveStyleDirectiveClauses(schema(), target)
+
+    expect(result.error).toBe(`Unknown or inactive ${_kind} style: ${key}`)
+    expect(result.clauses).toBeUndefined()
+  })
+
+  it('returns resolved rows without concatenating prompt or prohibition clauses', async () => {
+    const lightingRow = {
+      descriptor: { quality: 'clean studio', temperature: 'neutral' },
+      prompt_fragment: 'Use clean studio light.',
+      negative_constraints: 'Do not add props.',
+    }
+    mockResolveLighting.mockResolvedValue(lightingRow)
+
+    const result = await resolveStyleDirectiveClauses(
+      schema(),
+      schema({ lighting: 'studio' }),
+    )
+
+    expect(result).toEqual({
+      lightingStyle: lightingRow,
+      backgroundStyle: null,
+      surfaceStyle: null,
+    })
+    expect(JSON.stringify(result)).not.toContain('clauses')
+  })
+
+  it('merges style clauses ahead of the client directive for the sandbox path', () => {
     expect(
       mergeDirectiveWithStyleClauses('Keep the dish.', ['LIGHTING', 'BACKGROUND']),
     ).toBe('LIGHTING BACKGROUND Keep the dish.')

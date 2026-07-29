@@ -20,6 +20,7 @@ const mockGetCreditCost = jest.fn()
 const mockAssertDishNotBlocked = jest.fn()
 const mockRecordFailure = jest.fn()
 const mockRecordSuccess = jest.fn()
+const mockResolveStyles = jest.fn()
 const mockIsBillable = jest.fn()
 
 jest.mock('@/lib/studio/studio-api-auth', () => ({
@@ -99,7 +100,7 @@ jest.mock('@/lib/studio/generation-failures', () => {
 })
 
 jest.mock('@/lib/studio/resolve-style-directives', () => ({
-  resolveStyleDirectiveClauses: jest.fn(async () => ({ clauses: [] })),
+  resolveStyleDirectiveClauses: (...args: unknown[]) => mockResolveStyles(...args),
   mergeDirectiveWithStyleClauses: (directive: string, clauses: string[]) =>
     [...clauses, directive].filter(Boolean).join(' '),
 }))
@@ -195,6 +196,7 @@ describe('POST /api/studio/mutate', () => {
     mockAssertDishNotBlocked.mockImplementation(() => undefined)
     mockRecordSuccess.mockResolvedValue(undefined)
     mockIsBillable.mockReturnValue(true)
+    mockResolveStyles.mockResolvedValue({})
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -295,6 +297,48 @@ describe('POST /api/studio/mutate', () => {
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({ model: STUDIO_FLASH_MODEL }),
     )
+  })
+
+  it('passes resolved style rows to the descriptor without stacking prohibition clauses', async () => {
+    mockRequireStudioApi.mockResolvedValue({
+      ok: true,
+      user: { id: 'user-1' },
+      supabase: {},
+    })
+    mockResolveStyles.mockResolvedValue({
+      lightingStyle: {
+        descriptor: {
+          quality: 'clean studio light',
+          temperature: 'neutral',
+          shadows: 'soft',
+          falloff: 'gradual',
+        },
+        short_description: 'Studio lighting',
+        prompt_fragment: 'Use clean studio light.',
+        negative_constraints: 'Do not add props.',
+        thumbnail_path: null,
+        name: 'Studio',
+      },
+    })
+
+    const res = await POST(makeRequest(validBody))
+
+    expect(res.status).toBe(200)
+    const compositionInput = mockComposePrompt.mock.calls[0][0] as {
+      directive: string
+      descriptor: Record<string, unknown>
+    }
+    expect(compositionInput.directive).toBe(validBody.directive)
+    expect(compositionInput.descriptor.target).toMatchObject({
+      lighting: {
+        quality: 'clean studio light',
+        temperature: 'neutral',
+        shadows: 'soft',
+        falloff: 'gradual',
+      },
+    })
+    expect(JSON.stringify(compositionInput.descriptor)).not.toContain('negative_constraints')
+    expect(JSON.stringify(compositionInput.descriptor)).not.toContain('Do not add props.')
   })
 
   it('uses the canonical configured Pro model when explicitly requested', async () => {

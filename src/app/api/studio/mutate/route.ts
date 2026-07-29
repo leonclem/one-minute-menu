@@ -14,6 +14,8 @@ import { requireStudioApi } from '@/lib/studio/studio-api-auth'
 import { NanoBananaError } from '@/lib/nano-banana'
 import { getMutationEngine, type StyleReferenceImage } from '@/lib/photo-control/mutation-engine'
 import { composePrompt } from '@/lib/photo-control/prompt-composer'
+import { buildSceneDescriptor } from '@/lib/photo-control/scene-descriptor'
+import { computeDelta } from '@/lib/photo-control/state-delta'
 import { loadStudioImageBytes, StudioImageLoadError } from '@/lib/studio/image-bytes'
 import { CENTER, type MinimalSchema } from '@/lib/photo-control/minimal-schema'
 import { getStudioDish, setStudioDishCurrentImage } from '@/lib/studio/dishes'
@@ -23,10 +25,7 @@ import {
   getStudioDailyGenerationLimit,
   persistStudioImage,
 } from '@/lib/studio/persistence'
-import {
-  mergeDirectiveWithStyleClauses,
-  resolveStyleDirectiveClauses,
-} from '@/lib/studio/resolve-style-directives'
+import { resolveStyleDirectiveClauses } from '@/lib/studio/resolve-style-directives'
 import {
   clientValidationPayload,
   runStudioOutputValidation,
@@ -227,36 +226,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: styleResolution.error }, { status: 400 })
     }
 
-    const mergedDirective = mergeDirectiveWithStyleClauses(
-      directive.trim(),
-      styleResolution.clauses,
-    )
-
-    const compositionResult = composePrompt({
-      directive: mergedDirective,
-      originalState: originalSchema,
-      targetState: targetSchema,
-    })
-
-    if (!compositionResult.ok) {
-      return NextResponse.json(
-        { error: compositionResult.error, code: compositionResult.code },
-        { status: 400 },
-      )
-    }
-
-    const requestedModel = requestedModelEarly
-
-    logger.info('🎨 [Studio Mutate] Request', {
-      userId: auth.user.id,
-      mimeType,
-      imageBytes,
-      promptLength: compositionResult.prompt.length,
-      usedToday,
-      dailyLimit,
-      creditCost,
-    })
-
     const styleReferences: StyleReferenceImage[] = []
 
     if (styleResolution.lightingStyle) {
@@ -286,6 +255,55 @@ export async function POST(request: NextRequest) {
       if (img) styleReferences.push(img)
     }
 
+    const labels = [
+      'Image A',
+      ...styleReferences.map((_, index) => `Image ${String.fromCharCode(66 + index)}`),
+    ]
+    const delta = computeDelta(
+      { schema: originalSchema, position: CENTER },
+      { schema: targetSchema, position: CENTER },
+    )
+    const descriptor = buildSceneDescriptor({
+      original: originalSchema,
+      target: targetSchema,
+      delta,
+      styles: {
+        lighting: styleResolution.lightingStyle,
+        backdrop: styleResolution.backgroundStyle,
+        surface: styleResolution.surfaceStyle,
+      },
+      observations: {},
+      labels,
+    })
+    const directiveText = directive.trim()
+    const compositionResult = composePrompt({
+      directive: directiveText,
+      descriptor,
+      // Keep the Tier 1 states on the input for callers/tests that still inspect
+      // the legacy route contract; composePrompt prefers the descriptor above.
+      originalState: originalSchema,
+      targetState: targetSchema,
+    })
+
+    if (!compositionResult.ok) {
+      return NextResponse.json(
+        { error: compositionResult.error, code: compositionResult.code },
+        { status: 400 },
+      )
+    }
+
+    const requestedModel = requestedModelEarly
+
+    logger.info('🎨 [Studio Mutate] Request', {
+      userId: auth.user.id,
+      mimeType,
+      imageBytes,
+      promptLength: compositionResult.prompt.length,
+      usedToday,
+      dailyLimit,
+      creditCost,
+    })
+
     const engine = getMutationEngine()
     const { imageBase64 } = await engine.mutate({
       sourceImageBase64,
@@ -314,7 +332,7 @@ export async function POST(request: NextRequest) {
       prompt: compositionResult.prompt,
       model: requestedModel,
       metadata: {
-        directive: mergedDirective,
+        directive: directiveText,
         changeSummary: changeSummaryChips,
         cost_credits: creditCost,
         editorState: editorStateToMetadata({
