@@ -27,7 +27,6 @@ import {
 } from '@/lib/studio/persistence'
 import { resolveStyleDirectiveClauses } from '@/lib/studio/resolve-style-directives'
 import {
-  clientValidationPayload,
   runStudioOutputValidation,
   validationToMetadata,
 } from '@/lib/studio/output-validation'
@@ -344,7 +343,6 @@ export async function POST(request: NextRequest) {
         surface_style: styleResolution.surfaceStyle?.descriptor,
       },
     })
-    const validationClient = clientValidationPayload(validationResult)
 
     const generatedMetadata: Record<string, unknown> = {
       directive: directiveText,
@@ -400,7 +398,6 @@ export async function POST(request: NextRequest) {
       imageId: record.id,
       dishId: record.dish_id,
       model: requestedModel,
-      validation: validationClient,
       credits: { cost: debit.cost, balanceAfter: debit.balanceAfter },
     })
   } catch (error) {

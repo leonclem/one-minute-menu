@@ -107,15 +107,6 @@ jest.mock('@/lib/studio/resolve-style-directives', () => ({
 
 jest.mock('@/lib/studio/output-validation', () => ({
   runStudioOutputValidation: (...args: unknown[]) => mockRunValidation(...args),
-  clientValidationPayload: (result: {
-    status: string
-    score: number
-    summary: string
-  }) => ({
-    status: result.status,
-    score: result.score,
-    summary: result.summary,
-  }),
   validationToMetadata: (result: unknown) => result,
 }))
 
@@ -270,11 +261,7 @@ describe('POST /api/studio/mutate', () => {
     expect(json.imageId).toBe('gen-1')
     expect(json.imageUrl).toBe('https://cdn.example/gen-1.png')
     expect(json.credits).toEqual({ cost: 1, balanceAfter: 9 })
-    expect(json.validation).toEqual({
-      status: 'pass',
-      score: 100,
-      summary: 'Output looks consistent with the requested dish state.',
-    })
+    expect(json).not.toHaveProperty('validation')
     expect(mockPersist).toHaveBeenCalledWith(
       expect.objectContaining({
         dishId: 'dish-1',
@@ -393,7 +380,7 @@ describe('POST /api/studio/mutate', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.imageId).toBe('gen-1')
-    expect(json.validation.status).toBe('skipped')
+    expect(json).not.toHaveProperty('validation')
   })
 
   it('returns 400 when dishId is missing', async () => {

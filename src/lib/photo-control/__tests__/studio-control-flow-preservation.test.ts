@@ -472,11 +472,12 @@ describe('Property 11: Studio control-flow preservation', () => {
     process.env.STUDIO_OUTPUT_VALIDATION_ENABLED = 'false'
     const disabled = await mutate(request('/api/studio/mutate', createMutationBody()))
     expect(disabled.status).toBe(200)
-    expect((await disabled.json())).toMatchObject({
+    const disabledJson = await disabled.json()
+    expect(disabledJson).toMatchObject({
       imageId: 'generated-1',
       imageUrl: 'https://cdn.example/generated-1.png',
-      validation: { status: 'skipped' },
     })
+    expect(disabledJson).not.toHaveProperty('validation')
     expect(mockValidationExtract).not.toHaveBeenCalled()
     expect(mockPersist).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -492,11 +493,12 @@ describe('Property 11: Studio control-flow preservation', () => {
     mockValidationExtract.mockRejectedValueOnce(new Error('validation extract failed'))
     const softFailure = await mutate(request('/api/studio/mutate', createMutationBody()))
     expect(softFailure.status).toBe(200)
-    expect((await softFailure.json())).toMatchObject({
+    const softFailureJson = await softFailure.json()
+    expect(softFailureJson).toMatchObject({
       imageId: 'generated-1',
       imageUrl: 'https://cdn.example/generated-1.png',
-      validation: { status: 'skipped' },
     })
+    expect(softFailureJson).not.toHaveProperty('validation')
     expect(mockPersist).toHaveBeenCalled()
     expect(mockDebit).toHaveBeenCalled()
   })
@@ -505,8 +507,8 @@ describe('Property 11: Studio control-flow preservation', () => {
   it('keeps identity dimensions deterministic and persists the same validation metadata', async () => {
     const expected = createSchema()
     const actual = createSchema()
-    const first = scoreOutputAgainstExpected(expected, actual)
-    const second = scoreOutputAgainstExpected(expected, actual)
+    const first = scoreOutputAgainstExpected(expected, actual, ['lighting'])
+    const second = scoreOutputAgainstExpected(expected, actual, ['lighting'])
     const identityDimensionIds = [
       'dish_identity',
       'item_count',
