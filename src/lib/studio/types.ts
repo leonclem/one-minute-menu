@@ -26,6 +26,7 @@ export interface StudioBackgroundStyleDisplay {
 
 /** Full lighting style row including server-only prompt fields. */
 export interface StudioLightingStyleRecord extends StudioLightingStyleDisplay {
+  descriptor: Record<string, unknown> | null
   prompt_fragment: string
   negative_constraints: string | null
   is_active: boolean
@@ -35,6 +36,7 @@ export interface StudioLightingStyleRecord extends StudioLightingStyleDisplay {
 
 /** Full background style row including server-only prompt fields. */
 export interface StudioBackgroundStyleRecord extends StudioBackgroundStyleDisplay {
+  descriptor: Record<string, unknown> | null
   prompt_fragment: string
   negative_constraints: string | null
   is_active: boolean

@@ -31,6 +31,7 @@ import {
   runStudioOutputValidation,
   validationToMetadata,
 } from '@/lib/studio/output-validation'
+import type { OutputValidationStagedField } from '@/lib/photo-control/output-validator'
 import {
   assertCanAffordStudioCredits,
   debitForStudioGeneration,
@@ -267,6 +268,14 @@ export async function POST(request: NextRequest) {
       { schema: originalSchema, position: CENTER },
       { schema: targetSchema, position: CENTER },
     )
+    const stagedFields: OutputValidationStagedField[] = []
+    for (const change of delta.scalarChanges) {
+      if (change.path === 'scene_setup.lighting') stagedFields.push('lighting')
+      if (change.path === 'canvas.background_style') stagedFields.push('background_style')
+      if (change.path === 'canvas.surface_style') stagedFields.push('surface_style')
+      if (change.path === 'scene_setup.angle') stagedFields.push('angle')
+      if (change.path === 'scene_setup.spin') stagedFields.push('spin')
+    }
     const descriptor = buildSceneDescriptor({
       original: originalSchema,
       target: targetSchema,
@@ -329,6 +338,11 @@ export async function POST(request: NextRequest) {
       imageBase64,
       mimeType: 'image/png',
       expected: targetSchema,
+      stagedFields,
+      requestedStyleDescriptors: {
+        background_style: styleResolution.backgroundStyle?.descriptor,
+        surface_style: styleResolution.surfaceStyle?.descriptor,
+      },
     })
     const validationClient = clientValidationPayload(validationResult)
 

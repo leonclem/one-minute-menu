@@ -7,11 +7,28 @@
  * Chunk 5 / Phase 4: soft quality signal only; callers never hard-fail generation.
  */
 
-import { LIGHTING_VALUES, type MinimalSchema } from './minimal-schema'
+import type { MinimalSchema } from './minimal-schema'
 
 export type OutputValidationStatus = 'pass' | 'warn' | 'fail' | 'skipped'
 
 export type DimensionStatus = 'pass' | 'warn' | 'fail' | 'not_evaluated'
+
+export type OutputValidationStagedField =
+  | 'lighting'
+  | 'background_style'
+  | 'surface_style'
+  | 'angle'
+  | 'spin'
+
+export interface RequestedStyleDescriptor {
+  material?: string
+  colour?: string
+}
+
+export interface RequestedStyleDescriptors {
+  background_style?: RequestedStyleDescriptor | null
+  surface_style?: RequestedStyleDescriptor | null
+}
 
 export interface ValidationDimension {
   id: string
@@ -29,6 +46,17 @@ export interface OutputValidationResult {
 
 function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+function isRequested(
+  stagedFields: readonly OutputValidationStagedField[] | undefined,
+  field: OutputValidationStagedField,
+): boolean {
+  return stagedFields === undefined || stagedFields.includes(field)
+}
+
+function notEvaluated(id: string, note?: string): ValidationDimension {
+  return { id, status: 'not_evaluated', ...(note ? { note } : {}) }
 }
 
 /** True when either string contains the other (after normalize), or they match. */
@@ -62,15 +90,22 @@ function aggregateScore(dimensions: ValidationDimension[]): number {
   return Math.round(scores.reduce((sum, n) => sum + n, 0) / scores.length)
 }
 
-function buildSummary(status: OutputValidationStatus, dimensions: ValidationDimension[]): string {
+function buildSummary(
+  status: OutputValidationStatus,
+  dimensions: ValidationDimension[],
+  unassessedIds: readonly string[] = [],
+): string {
   if (status === 'skipped') {
     return 'Validation skipped — no comparable schema fields.'
   }
   const problems = dimensions.filter((d) => d.status === 'fail' || d.status === 'warn')
-  if (problems.length === 0) {
+  const bits = [
+    ...problems.map((d) => d.note ?? d.id),
+    ...unassessedIds.map((id) => `Unassessed dimension: ${id}`),
+  ]
+  if (bits.length === 0) {
     return 'Output looks consistent with the requested dish state.'
   }
-  const bits = problems.map((d) => d.note ?? d.id)
   const prefix = status === 'fail' ? 'Possible identity issues' : 'Minor consistency warnings'
   return `${prefix}: ${bits.join('; ')}`
 }
@@ -174,24 +209,24 @@ function compareUnexpectedAdditions(
   }
 }
 
-function compareLighting(expected: MinimalSchema, actual: MinimalSchema): ValidationDimension {
+function compareLighting(
+  expected: MinimalSchema,
+  actual: MinimalSchema,
+  stagedFields?: readonly OutputValidationStagedField[],
+): ValidationDimension {
+  if (!isRequested(stagedFields, 'lighting')) {
+    return notEvaluated('lighting', 'Lighting was not staged for this output')
+  }
+
   const expectedKey = normalize(expected.scene_setup.lighting)
   const actualKey = normalize(actual.scene_setup.lighting)
   if (!expectedKey) {
-    return { id: 'lighting', status: 'not_evaluated' }
+    return notEvaluated('lighting')
   }
-
-  const legacyKeys = new Set(LIGHTING_VALUES.map((v) => v as string))
-  // Custom DB style keys are not returned by extraction — skip.
-  if (!legacyKeys.has(expectedKey)) {
-    return {
-      id: 'lighting',
-      status: 'not_evaluated',
-      note: 'Custom lighting style key not comparable via extract',
-    }
-  }
+  // Lighting keys are resolved from the database and extraction now returns
+  // the same full seeded key set; do not restrict comparison to legacy enums.
   if (!actualKey) {
-    return { id: 'lighting', status: 'not_evaluated', note: 'No lighting in output extract' }
+    return notEvaluated('lighting', 'No lighting in output extract')
   }
   if (expectedKey === actualKey) {
     return { id: 'lighting', status: 'pass' }
@@ -200,6 +235,65 @@ function compareLighting(expected: MinimalSchema, actual: MinimalSchema): Valida
     id: 'lighting',
     status: 'warn',
     note: `Lighting mismatch (expected "${expected.scene_setup.lighting}", got "${actual.scene_setup.lighting}")`,
+  }
+}
+
+function compareExactRequested(
+  id: 'angle' | 'spin',
+  expectedValue: string,
+  actualValue: string,
+  stagedFields: readonly OutputValidationStagedField[] | undefined,
+): ValidationDimension {
+  if (!isRequested(stagedFields, id)) {
+    return notEvaluated(id, `${id} was not staged for this output`)
+  }
+  if (!normalize(expectedValue) || !normalize(actualValue)) {
+    return notEvaluated(id)
+  }
+  if (expectedValue === actualValue) {
+    return { id, status: 'pass' }
+  }
+  return {
+    id,
+    status: 'fail',
+    note: `${id} mismatch (expected "${expectedValue}", got "${actualValue}")`,
+  }
+}
+
+function styleAttributes(
+  descriptor: RequestedStyleDescriptor | null | undefined,
+): string[] {
+  if (!descriptor) return []
+  return [descriptor.material, descriptor.colour].filter(
+    (value): value is string => typeof value === 'string' && normalize(value).length > 0,
+  )
+}
+
+function compareStyle(
+  id: 'background_style' | 'surface_style',
+  expectedKey: string,
+  actualDescription: string,
+  descriptor: RequestedStyleDescriptor | null | undefined,
+  stagedFields: readonly OutputValidationStagedField[] | undefined,
+): ValidationDimension {
+  if (!isRequested(stagedFields, id)) {
+    return notEvaluated(id, `${id} was not staged for this output`)
+  }
+  if (!normalize(expectedKey)) return notEvaluated(id)
+  if (!normalize(actualDescription)) {
+    return notEvaluated(id, `No ${id} description in output extract`)
+  }
+
+  const attributes = styleAttributes(descriptor)
+  const matches = attributes.length > 0
+    ? attributes.some((attribute) => looselyMatches(attribute, actualDescription))
+    : looselyMatches(expectedKey, actualDescription)
+  if (matches) return { id, status: 'pass' }
+
+  return {
+    id,
+    status: 'warn',
+    note: `${id} description differs from requested style "${expectedKey}"`,
   }
 }
 
@@ -221,26 +315,63 @@ function compareFraming(expected: MinimalSchema, actual: MinimalSchema): Validat
 
 /**
  * Score an extracted output schema against the expected (usually target) schema.
+ *
+ * `stagedFields` is optional for compatibility with legacy callers. Studio
+ * callers provide it so an unassessed requested change cannot be mistaken for a
+ * successful validation of the unchanged identity dimensions.
  */
 export function scoreOutputAgainstExpected(
   expected: MinimalSchema,
   actual: MinimalSchema,
+  stagedFields?: readonly OutputValidationStagedField[],
+  requestedStyleDescriptors?: RequestedStyleDescriptors,
 ): OutputValidationResult {
   const dimensions: ValidationDimension[] = [
     compareDishIdentity(expected, actual),
     compareItemCounts(expected, actual),
     compareVessel(expected, actual),
     compareUnexpectedAdditions(expected, actual),
-    compareLighting(expected, actual),
+    compareLighting(expected, actual, stagedFields),
     compareFraming(expected, actual),
+    compareExactRequested('angle', expected.scene_setup.angle, actual.scene_setup.angle, stagedFields),
+    compareExactRequested('spin', expected.scene_setup.spin, actual.scene_setup.spin, stagedFields),
+    compareStyle(
+      'background_style',
+      expected.canvas.background_style,
+      actual.canvas.background,
+      requestedStyleDescriptors?.background_style,
+      stagedFields,
+    ),
+    compareStyle(
+      'surface_style',
+      expected.canvas.surface_style,
+      actual.canvas.surface_style,
+      requestedStyleDescriptors?.surface_style,
+      stagedFields,
+    ),
   ]
 
-  const status = aggregateStatus(dimensions)
+  const aggregate = aggregateStatus(dimensions)
+  const unassessedIds = stagedFields
+    ? stagedFields.filter((field, index, fields) => {
+        const dimension = dimensions.find((candidate) => candidate.id === field)
+        return dimension?.status === 'not_evaluated' && fields.indexOf(field) === index
+      })
+    : []
+  // Preserve `skipped` as the all-not-evaluated result. Otherwise, an
+  // unassessed staged dimension downgrades a result with evaluated identity
+  // dimensions, while an evaluated failure retains precedence.
+  const status: OutputValidationStatus =
+    aggregate === 'skipped' || aggregate === 'fail'
+      ? aggregate
+      : unassessedIds.length > 0
+        ? 'warn'
+        : aggregate
   const score = aggregateScore(dimensions)
   return {
     status,
     score,
-    summary: buildSummary(status, dimensions),
+    summary: buildSummary(status, dimensions, unassessedIds),
     dimensions,
   }
 }

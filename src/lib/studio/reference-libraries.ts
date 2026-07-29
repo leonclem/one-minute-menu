@@ -28,9 +28,9 @@ const LIGHTING_DISPLAY_COLUMNS =
 const BACKGROUND_DISPLAY_COLUMNS =
   'id, key, name, short_description, category, thumbnail_path, is_premium, sort_order'
 
-const LIGHTING_FULL_COLUMNS = `${LIGHTING_DISPLAY_COLUMNS}, prompt_fragment, negative_constraints, is_active, created_at, updated_at`
+const LIGHTING_FULL_COLUMNS = `${LIGHTING_DISPLAY_COLUMNS}, descriptor, prompt_fragment, negative_constraints, is_active, created_at, updated_at`
 
-const BACKGROUND_FULL_COLUMNS = `${BACKGROUND_DISPLAY_COLUMNS}, prompt_fragment, negative_constraints, is_active, created_at, updated_at`
+const BACKGROUND_FULL_COLUMNS = `${BACKGROUND_DISPLAY_COLUMNS}, descriptor, prompt_fragment, negative_constraints, is_active, created_at, updated_at`
 
 function normalizeKey(key: string): string | null {
   const trimmed = key.trim().toLowerCase().replace(/\s+/g, '-')

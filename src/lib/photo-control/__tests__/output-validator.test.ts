@@ -14,20 +14,24 @@ function schema(partial: {
   sides?: string[]
   main_vessel?: string
   lighting?: string
-  framing?: string
+  framing?: MinimalSchema['scene_setup']['framing']
+  angle?: MinimalSchema['scene_setup']['angle']
+  spin?: MinimalSchema['scene_setup']['spin']
   background?: string
-}): MinimalSchema {
+  backgroundStyle?: string
+  surfaceStyle?: string
+} = {}): MinimalSchema {
   return {
     scene_setup: {
-      angle: '45-degree',
+      angle: partial.angle ?? '45-degree',
       framing: partial.framing ?? 'close-up',
       lighting: partial.lighting ?? 'bright-and-airy',
-      spin: '0',
+      spin: partial.spin ?? '0',
     },
     canvas: {
       background: partial.background ?? 'white table',
-      background_style: '',
-      surface_style: '',
+      background_style: partial.backgroundStyle ?? '',
+      surface_style: partial.surfaceStyle ?? '',
       main_vessel: partial.main_vessel ?? 'white plate',
     },
     food_components: {
@@ -97,12 +101,128 @@ describe('output-validator', () => {
     expect(result.status).toBe('fail')
   })
 
-  it('marks custom lighting keys as not_evaluated', () => {
-    const result = scoreOutputAgainstExpected(
+  it('compares custom database lighting keys when the extract has a value', () => {
+    const matching = scoreOutputAgainstExpected(
       schema({ lighting: 'warm-restaurant-ambient' }),
-      schema({ lighting: 'bright-and-airy' }),
+      schema({ lighting: 'warm-restaurant-ambient' }),
+      ['lighting'],
     )
-    expect(result.dimensions.find((d) => d.id === 'lighting')?.status).toBe('not_evaluated')
+    expect(matching.dimensions.find((d) => d.id === 'lighting')?.status).toBe('pass')
+
+    const missing = scoreOutputAgainstExpected(
+      schema({ lighting: 'warm-restaurant-ambient' }),
+      schema({ lighting: '' }),
+      ['lighting'],
+    )
+    expect(missing.dimensions.find((d) => d.id === 'lighting')?.status).toBe('not_evaluated')
+  })
+
+  it('evaluates angle, spin, backdrop, and surface as requested dimensions', () => {
+    const expected = schema({
+      angle: 'eye-level',
+      spin: 'left-45',
+      lighting: 'db-style-studio',
+      backgroundStyle: 'studio-yellow',
+      surfaceStyle: 'dark-slate',
+    })
+    const actual = schema({
+      angle: 'eye-level',
+      spin: 'left-45',
+      lighting: 'db-style-studio',
+      background: 'vibrant solid yellow studio backdrop',
+      surfaceStyle: 'dark slate stone tabletop',
+    })
+    const result = scoreOutputAgainstExpected(
+      expected,
+      actual,
+      ['angle', 'spin', 'lighting', 'background_style', 'surface_style'],
+      {
+        background_style: { material: 'vibrant solid yellow studio backdrop', colour: '#F2C200' },
+        surface_style: { material: 'dark slate stone', colour: '#2E3338' },
+      },
+    )
+
+    for (const id of ['angle', 'spin', 'lighting', 'background_style', 'surface_style']) {
+      expect(result.dimensions.find((dimension) => dimension.id === id)?.status).toBe('pass')
+    }
+  })
+
+  it('warns rather than fails when requested style descriptions differ', () => {
+    const result = scoreOutputAgainstExpected(
+      schema({ backgroundStyle: 'studio-yellow', surfaceStyle: 'dark-slate' }),
+      schema({ background: 'blue painted wall', surfaceStyle: 'polished white marble' }),
+      ['background_style', 'surface_style'],
+      {
+        background_style: { material: 'vibrant solid yellow studio backdrop', colour: '#F2C200' },
+        surface_style: { material: 'dark slate stone', colour: '#2E3338' },
+      },
+    )
+
+    expect(result.dimensions.find((dimension) => dimension.id === 'background_style')?.status).toBe(
+      'warn',
+    )
+    expect(result.dimensions.find((dimension) => dimension.id === 'surface_style')?.status).toBe(
+      'warn',
+    )
+  })
+
+  it('fails exact angle and spin mismatches', () => {
+    const result = scoreOutputAgainstExpected(
+      schema({ angle: 'eye-level', spin: 'left-45' }),
+      schema({ angle: 'top-down', spin: 'right-45' }),
+      ['angle', 'spin'],
+    )
+
+    expect(result.dimensions.find((dimension) => dimension.id === 'angle')?.status).toBe('fail')
+    expect(result.dimensions.find((dimension) => dimension.id === 'spin')?.status).toBe('fail')
+    expect(result.status).toBe('fail')
+  })
+
+  it('marks requested dimensions without comparable output signals as not_evaluated', () => {
+    const expected = schema({
+      angle: 'eye-level',
+      spin: 'left-45',
+      lighting: 'db-style-studio',
+      backgroundStyle: 'studio-yellow',
+      surfaceStyle: 'dark-slate',
+    })
+    const actual = schema({ angle: 'eye-level', spin: 'left-45', lighting: '', background: '' })
+    ;(actual.scene_setup as unknown as { angle: string; spin: string }).angle = ''
+    ;(actual.scene_setup as unknown as { angle: string; spin: string }).spin = ''
+    const result = scoreOutputAgainstExpected(
+      expected,
+      actual,
+      ['angle', 'spin', 'lighting', 'background_style', 'surface_style'],
+    )
+
+    for (const id of ['angle', 'spin', 'lighting', 'background_style', 'surface_style']) {
+      expect(result.dimensions.find((dimension) => dimension.id === id)?.status).toBe(
+        'not_evaluated',
+      )
+    }
+  })
+
+  it('downgrades unassessed staged dimensions and names each one in the summary', () => {
+    const expected = schema({
+      lighting: 'db-style-studio',
+      backgroundStyle: 'studio-yellow',
+      surfaceStyle: 'dark-slate',
+    })
+    const actual = schema({ lighting: '' })
+    const stagedFields = ['lighting', 'background_style', 'surface_style'] as const
+    const result = scoreOutputAgainstExpected(expected, actual, stagedFields)
+
+    expect(result.status).toBe('warn')
+    for (const field of stagedFields) expect(result.summary).toContain(field)
+  })
+
+  it('keeps an evaluated failure above the staged not_evaluated downgrade', () => {
+    const expected = schema({ lighting: 'db-style-studio' })
+    const actual = schema({ main_item: 'sushi', lighting: '' })
+    const result = scoreOutputAgainstExpected(expected, actual, ['lighting'])
+
+    expect(result.status).toBe('fail')
+    expect(result.summary).toContain('lighting')
   })
 
   it('handles empty expected main item as not_evaluated for identity', () => {
@@ -113,5 +233,11 @@ describe('output-validator', () => {
     expect(result.dimensions.find((d) => d.id === 'dish_identity')?.status).toBe(
       'not_evaluated',
     )
+  })
+
+  it('does not downgrade an ordinary validation when no staged fields are supplied', () => {
+    const result = scoreOutputAgainstExpected(schema(), schema(), [])
+    expect(result.status).toBe('pass')
+    expect(result.summary).toBe('Output looks consistent with the requested dish state.')
   })
 })

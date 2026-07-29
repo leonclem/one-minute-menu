@@ -12,7 +12,9 @@ import {
   scoreOutputAgainstExpected,
   toClientValidationSummary,
   type OutputValidationResult,
+  type OutputValidationStagedField,
   type OutputValidationStatus,
+  type RequestedStyleDescriptors,
 } from '@/lib/photo-control/output-validator'
 import { MinimalSchemaValidator } from '@/lib/photo-control/schema-validator'
 import type { MinimalSchema } from '@/lib/photo-control/minimal-schema'
@@ -49,6 +51,8 @@ export async function runStudioOutputValidation(input: {
   imageBase64: string
   mimeType: ImageMimeType
   expected: MinimalSchema
+  stagedFields?: readonly OutputValidationStagedField[]
+  requestedStyleDescriptors?: RequestedStyleDescriptors
 }): Promise<OutputValidationResult> {
   if (!isStudioOutputValidationEnabled()) {
     return skippedResult('Output validation disabled.')
@@ -61,7 +65,12 @@ export async function runStudioOutputValidation(input: {
       mimeType: input.mimeType,
     })
     const { data } = new MinimalSchemaValidator().validate(raw)
-    return scoreOutputAgainstExpected(input.expected, data)
+    return scoreOutputAgainstExpected(
+      input.expected,
+      data,
+      input.stagedFields,
+      input.requestedStyleDescriptors,
+    )
   } catch (error) {
     logger.warn('⚠️ [Studio Validation] Re-extract failed; soft-skipping', { error })
     return skippedResult('Output validation skipped after extract error.')
