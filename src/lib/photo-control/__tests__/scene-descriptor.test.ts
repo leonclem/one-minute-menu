@@ -1,7 +1,13 @@
 import { buildSceneDescriptor, type SceneDescriptorStyles } from '../scene-descriptor'
 import type { MinimalSchema, StateDelta } from '../minimal-schema'
 
-function schema(overrides: Partial<MinimalSchema> = {}): MinimalSchema {
+type SchemaOverrides = {
+  scene_setup?: Partial<MinimalSchema['scene_setup']>
+  canvas?: Partial<MinimalSchema['canvas']>
+  food_components?: Partial<MinimalSchema['food_components']>
+}
+
+function schema(overrides: SchemaOverrides = {}): MinimalSchema {
   return {
     scene_setup: {
       angle: '45-degree',
@@ -214,5 +220,34 @@ describe('buildSceneDescriptor', () => {
     expect(customerResult.target.lighting).not.toHaveProperty('reference')
     expect(customerResult.target.backdrop).not.toHaveProperty('reference')
     expect(customerResult.target.surface).not.toHaveProperty('reference')
+  })
+
+  it('uses diagnostics omissions to keep defaulted control state out of Tier 2', () => {
+    const original = schema({
+      scene_setup: { angle: '45-degree' },
+      food_components: { main_item: 'defaulted dish' },
+    })
+    const target = schema({ scene_setup: { angle: 'eye-level' } })
+    const result = buildSceneDescriptor({
+      original,
+      target,
+      delta: delta([{ path: 'scene_setup.angle', from: '45-degree', to: 'eye-level' }]),
+      styles: {},
+      observations: {
+        observations: {
+          scene_setup: { angle: '45-degree' },
+          food_components: { main_item: 'defaulted dish' },
+        },
+        omittedFields: [
+          { path: 'scene_setup.angle', reason: 'coerced_for_control_state' },
+          { path: 'food_components.main_item', reason: 'coerced_for_control_state' },
+        ],
+      },
+      labels: ['Image A'],
+    })
+
+    expect(result.current.camera).toBeUndefined()
+    expect(result.subject).not.toHaveProperty('dish')
+    expect(result.target.camera).toEqual({ angle: 'eye-level' })
   })
 })

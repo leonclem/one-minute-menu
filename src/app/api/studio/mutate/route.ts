@@ -45,6 +45,7 @@ import {
   StudioDishBlockedError,
 } from '@/lib/studio/generation-failures'
 import { STUDIO_FLASH_MODEL, STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
+import { sanitizeExtractionDiagnostics } from '@/lib/studio/extraction-diagnostics'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
       dishId?: unknown
       changeSummary?: unknown
       model?: unknown
+      extractionDiagnostics?: unknown
     }
 
     const {
@@ -108,7 +110,9 @@ export async function POST(request: NextRequest) {
       dishId,
       changeSummary,
       model,
+      extractionDiagnostics,
     } = body
+    const safeExtractionDiagnostics = sanitizeExtractionDiagnostics(extractionDiagnostics)
 
     const changeSummaryChips = Array.isArray(changeSummary)
       ? changeSummary.filter((item): item is string => typeof item === 'string')
@@ -272,7 +276,13 @@ export async function POST(request: NextRequest) {
         backdrop: styleResolution.backgroundStyle,
         surface: styleResolution.surfaceStyle,
       },
-      observations: {},
+      // The extraction envelope carries both sanitized observations and the
+      // omission list. Passing the same object keeps Tier 1 defaults out of
+      // the model-facing descriptor.
+      observations:
+        safeExtractionDiagnostics
+          ? ({ ...(safeExtractionDiagnostics as unknown as Record<string, unknown>) })
+          : {},
       labels,
     })
     const directiveText = directive.trim()
@@ -322,6 +332,20 @@ export async function POST(request: NextRequest) {
     })
     const validationClient = clientValidationPayload(validationResult)
 
+    const generatedMetadata: Record<string, unknown> = {
+      directive: directiveText,
+      changeSummary: changeSummaryChips,
+      cost_credits: creditCost,
+      editorState: editorStateToMetadata({
+        schema: targetSchema,
+        position: { ...CENTER },
+      }),
+      validation: validationToMetadata(validationResult),
+    }
+    if (safeExtractionDiagnostics) {
+      generatedMetadata.extractionDiagnostics = safeExtractionDiagnostics
+    }
+
     const record = await persistStudioImage({
       userId: auth.user.id,
       dishId,
@@ -331,16 +355,7 @@ export async function POST(request: NextRequest) {
       sourceImageId,
       prompt: compositionResult.prompt,
       model: requestedModel,
-      metadata: {
-        directive: directiveText,
-        changeSummary: changeSummaryChips,
-        cost_credits: creditCost,
-        editorState: editorStateToMetadata({
-          schema: targetSchema,
-          position: { ...CENTER },
-        }),
-        validation: validationToMetadata(validationResult),
-      },
+      metadata: generatedMetadata,
     })
 
     const debit = await debitForStudioGeneration({

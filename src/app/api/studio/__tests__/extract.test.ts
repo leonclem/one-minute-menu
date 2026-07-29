@@ -8,6 +8,7 @@ const mockRequireStudioApi = jest.fn()
 const mockLoadStudioImageBytes = jest.fn()
 const mockExtract = jest.fn()
 const mockValidate = jest.fn()
+const mockUpdateStudioImageMetadata = jest.fn()
 
 jest.mock('@/lib/studio/studio-api-auth', () => ({
   requireStudioApi: () => mockRequireStudioApi(),
@@ -40,6 +41,10 @@ jest.mock('@/lib/photo-control/schema-validator', () => ({
   })),
 }))
 
+jest.mock('@/lib/studio/library', () => ({
+  updateStudioImageMetadata: (...args: unknown[]) => mockUpdateStudioImageMetadata(...args),
+}))
+
 jest.mock('@/lib/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }))
@@ -69,6 +74,7 @@ describe('POST /api/studio/extract', () => {
       data: { scene_setup: {}, canvas: {}, food_components: {} },
       warnings: [],
     })
+    mockUpdateStudioImageMetadata.mockResolvedValue({})
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -103,7 +109,26 @@ describe('POST /api/studio/extract', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.strictConformance).toBe(true)
+    expect(json.diagnostics.strictConformance).toBe(true)
+    expect(Array.isArray(json.diagnostics.omittedFields)).toBe(true)
     expect(mockLoadStudioImageBytes).toHaveBeenCalledWith('user-1', 'img-1')
+    expect(mockUpdateStudioImageMetadata).toHaveBeenCalledWith(
+      'user-1',
+      'img-1',
+      expect.objectContaining({ extractionDiagnostics: expect.any(Object) }),
+    )
     expect(mockExtract).toHaveBeenCalled()
+  })
+
+  it('does not fail extraction when diagnostics metadata persistence fails', async () => {
+    mockRequireStudioApi.mockResolvedValue({
+      ok: true,
+      user: { id: 'user-1' },
+      supabase: {},
+    })
+    mockUpdateStudioImageMetadata.mockRejectedValueOnce(new Error('metadata unavailable'))
+
+    const res = await POST(makeRequest({ imageId: 'img-1' }))
+    expect(res.status).toBe(200)
   })
 })

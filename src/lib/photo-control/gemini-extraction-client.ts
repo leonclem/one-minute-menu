@@ -5,10 +5,11 @@
  * structured as `{ scene_setup, canvas, food_components }`.
  *
  * Design notes:
- *  - Uses `responseModalities: ['TEXT']` and `responseMimeType: 'application/json'`
- *    so the model returns structured JSON rather than an image. (Requirement 2.1)
- *  - Sets `thinkingLevel: 'MINIMAL'` for a latency-optimized profile that does
- *    not require deep spatial reasoning. (Requirement 2.3)
+ *  - Uses `responseModalities: ['TEXT']`, `responseMimeType: 'application/json'`,
+ *    and an explicit `responseSchema` so the text-capable extraction model
+ *    returns a rich, structured observation object.
+ *  - Raises the thinking budget above zero for spatial reasoning about
+ *    visibility and material observations.
  *  - Reuses `fetchJsonWithRetry` and `NANO_BANANA_API_KEY` from the existing
  *    infrastructure, keeping the same model family and API key. (Requirement 2.1)
  *  - Throws an `UnparseableExtractionResponseError` when the model response body
@@ -20,41 +21,77 @@
  */
 
 import { fetchJsonWithRetry } from '../retry'
-import { STUDIO_FLASH_MODEL } from '@/lib/studio/model-config'
+import { STUDIO_EXTRACTION_MODEL } from '@/lib/studio/model-config'
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const GEMINI_BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${STUDIO_FLASH_MODEL}:generateContent`
+const GEMINI_BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${STUDIO_EXTRACTION_MODEL}:generateContent`
+
+/**
+ * Explicit Gemini structured-output schema. Extraction deliberately uses the
+ * text-capable model from shared Studio configuration, not an image-generation
+ * model whose structured-output capability is unavailable.
+ */
+export const EXTRACTION_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    description: { type: 'STRING' },
+    scene_setup: {
+      type: 'OBJECT',
+      properties: {
+        angle: { type: 'STRING', enum: ['top-down', '45-degree', 'eye-level', 'macro-close-up'] },
+        framing: { type: 'STRING', enum: ['close-up', 'medium', 'wide'] },
+        lighting: { type: 'STRING', enum: ['bright-and-airy', 'low-key', 'studio', 'golden-hour'] },
+        spin: { type: 'STRING', enum: ['0', 'left-45', 'right-45'] },
+      },
+      required: ['angle', 'framing', 'lighting', 'spin'],
+    },
+    canvas: {
+      type: 'OBJECT',
+      properties: {
+        background: { type: 'STRING' },
+        main_vessel: { type: 'STRING' },
+      },
+      required: ['background', 'main_vessel'],
+    },
+    backdrop: {
+      type: 'OBJECT',
+      properties: {
+        material: { type: 'STRING' },
+        colour: { type: 'STRING' },
+      },
+    },
+    surface: {
+      type: 'OBJECT',
+      properties: {
+        material: { type: 'STRING' },
+        colour: { type: 'STRING' },
+      },
+    },
+    backdrop_visible: { type: 'BOOLEAN' },
+    surface_visible: { type: 'BOOLEAN' },
+    food_components: {
+      type: 'OBJECT',
+      properties: {
+        main_item: { type: 'STRING' },
+        garnishes: { type: 'ARRAY', items: { type: 'STRING' } },
+        sides: { type: 'ARRAY', items: { type: 'STRING' } },
+      },
+      required: ['main_item', 'garnishes', 'sides'],
+    },
+  },
+  required: ['description', 'scene_setup', 'canvas', 'food_components'],
+} as const
 
 /**
  * System prompt instructing the model to extract the photo's visual structure
- * into the Minimal_Schema shape. Kept concise to stay within the latency-
- * optimized profile. (Requirement 2.1)
+ * into both the hydratable Tier 1 state and the richer Tier 2 observations.
  */
-export const EXTRACTION_SYSTEM_PROMPT = `You are a food photography analyst. Analyze the provided food photograph and extract its visual structure as JSON.
+export const EXTRACTION_SYSTEM_PROMPT = `You are a food photography analyst. Analyze the provided food photograph and return only the JSON object described by the response schema.
 
-Return ONLY a valid JSON object with exactly these three top-level keys:
-
-{
-  "scene_setup": {
-    "angle": "<one of: top-down, 45-degree, eye-level, macro-close-up>",
-    "framing": "<one of: close-up, medium, wide>",
-    "lighting": "<one of: low-key, bright-and-airy>"
-  },
-  "canvas": {
-    "background": "<brief description of the background surface/setting>",
-    "main_vessel": "<brief description of the primary plate, bowl, or container>"
-  },
-  "food_components": {
-    "main_item": "<name of the primary food item>",
-    "garnishes": ["<garnish 1>", "<garnish 2>"],
-    "sides": ["<side dish 1>", "<side dish 2>"]
-  }
-}
-
-Use only the allowed enum values listed above. Return empty arrays for garnishes and sides if none are present.`
+Use the complete lighting key set: bright-and-airy, low-key, studio, or golden-hour. Describe the observed backdrop and tabletop surface with material and six-digit hex colour when visible. Set backdrop_visible and surface_visible from the photograph; do not invent a value when the evidence is unavailable. Include a concise prose description of the complete composition. Return empty arrays for garnishes and sides when none are present. Values must describe what is observed, not a requested edit.`
 
 // ============================================================================
 // Types
@@ -249,7 +286,7 @@ export class GeminiExtractionClient {
               },
             },
             {
-              text: 'Extract the visual structure of this food photograph as JSON.',
+              text: 'Extract the complete observed visual structure of this food photograph as JSON.',
             },
           ],
         },
@@ -257,8 +294,9 @@ export class GeminiExtractionClient {
       generationConfig: {
         responseModalities: ['TEXT'],
         responseMimeType: 'application/json',
+        responseSchema: EXTRACTION_RESPONSE_SCHEMA,
         thinkingConfig: {
-          thinkingBudget: 0, // MINIMAL — latency-optimized, no deep spatial reasoning (Req 2.3)
+          thinkingBudget: 512,
         },
       },
     }

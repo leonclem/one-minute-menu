@@ -18,6 +18,7 @@ import {
   type EditorState,
 } from '@/lib/photo-control/minimal-schema'
 import { type MinimalValidationResult } from '@/lib/photo-control/schema-validator'
+import type { ExtractionDiagnostics } from '@/lib/studio/extraction-diagnostics'
 import { Component_Control } from '@/components/photo-controls'
 import { CollapsibleSection } from '@/components/ux'
 import { ConfirmDialog } from '@/components/ui'
@@ -50,7 +51,9 @@ import { StudioDishPickerModal } from './studio-dish-picker-modal'
 import { StudioTextModal } from './studio-text-modal'
 import { VisualOptionTiles } from './visual-option-tiles'
 
-type ExtractResponse = MinimalValidationResult
+type ExtractResponse = MinimalValidationResult & {
+  diagnostics?: ExtractionDiagnostics
+}
 type ControlSection = 'rotation' | 'lighting' | 'surface' | 'backdrop' | 'garnishes' | null
 
 interface MutateResponse {
@@ -163,6 +166,7 @@ export function StudioClient({
   const [persistedSourceId, setPersistedSourceId] = useState<string | null>(null)
   const [editorState, setEditorState] = useState<EditorState>(makeDefaultEditorState())
   const originalStateRef = useRef<EditorState>(makeDefaultEditorState())
+  const extractionDiagnosticsRef = useRef<ExtractionDiagnostics | null>(null)
 
   const [isHydrated, setIsHydrated] = useState(false)
   const [isExtracting, setIsExtracting] = useState(false)
@@ -285,6 +289,7 @@ export function StudioClient({
     setMutationError(null)
     setExtractionError(null)
     setStrictConformanceWarning(false)
+    extractionDiagnosticsRef.current = null
     setPendingLimitMessage(null)
   }, [])
 
@@ -352,6 +357,7 @@ export function StudioClient({
       }
 
       const data = (await response.json()) as ExtractResponse
+      extractionDiagnosticsRef.current = data.diagnostics ?? null
       const { editorState: hydratedState } = hydrate({
         strictConformance: data.strictConformance,
         data: data.data,
@@ -380,6 +386,8 @@ export function StudioClient({
       try {
         setSourceImage(sourceImageFromRecord(image.public_url, image.mime_type))
         setPersistedSourceId(image.id)
+        extractionDiagnosticsRef.current =
+          (image.metadata?.extractionDiagnostics as ExtractionDiagnostics | undefined) ?? null
 
         const stored = readEditorStateFromMetadata(image.metadata)
         if (stored) {
@@ -508,8 +516,12 @@ export function StudioClient({
 
         const extracted = await runExtraction(sourceData.imageId)
 
-        const metadata =
-          extracted != null ? { editorState: editorStateToMetadata(extracted) } : {}
+        const metadata = {
+          ...(extractionDiagnosticsRef.current
+            ? { extractionDiagnostics: extractionDiagnosticsRef.current }
+            : {}),
+          ...(extracted ? { editorState: editorStateToMetadata(extracted) } : {}),
+        }
         const row: StudioImageRecord = {
           id: sourceData.imageId,
           user_id: '',
@@ -673,6 +685,7 @@ export function StudioClient({
           directive,
           changeSummary,
           model: selectedModel,
+          extractionDiagnostics: extractionDiagnosticsRef.current,
         }),
       })
 

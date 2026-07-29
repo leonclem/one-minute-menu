@@ -201,7 +201,9 @@ function styleRow(
 }
 
 function observationRecord(observations: SceneObservations | Record<string, unknown>): Record<string, unknown> {
-  return isRecord(observations) ? observations : {}
+  if (!isRecord(observations)) return {}
+  const nested = isRecord(observations.observations) ? observations.observations : undefined
+  return nested ? { ...nested, ...observations } : observations
 }
 
 function omittedPaths(observations: SceneObservations | Record<string, unknown>): string[] {

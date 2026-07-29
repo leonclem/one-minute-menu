@@ -39,9 +39,10 @@ jest.mock('../../retry', () => {
 })
 
 import { fetchJsonWithRetry } from '../../retry'
-import { STUDIO_FLASH_MODEL } from '../../studio/model-config'
+import { STUDIO_EXTRACTION_MODEL } from '../../studio/model-config'
 import {
   GeminiExtractionClient,
+  EXTRACTION_RESPONSE_SCHEMA,
   EXTRACTION_SYSTEM_PROMPT,
   type ExtractionRequest,
 } from '../gemini-extraction-client'
@@ -190,19 +191,20 @@ describe('GeminiExtractionClient — integration (mocked Gemini)', () => {
 
   // ── Requirement 2.3: latency-optimized profile ────────────────────────────
 
-  describe('Requirement 2.3 — latency-optimized profile is set', () => {
-    it('sets thinkingConfig.thinkingBudget to 0 in generationConfig', async () => {
-      mockFetchJsonWithRetry.mockResolvedValueOnce(
-        makeGeminiResponse(SAMPLE_EXTRACTION),
-      )
+  describe('structured extraction request', () => {
+    it('uses a positive thinking budget, explicit schema, and widened field contract', async () => {
+      mockFetchJsonWithRetry.mockResolvedValueOnce(makeGeminiResponse(SAMPLE_EXTRACTION))
 
       await client.extract({ imageBase64: SAMPLE_IMAGE_BASE64, mimeType: 'image/jpeg' })
 
       const body = capturedRequestBody()
       const generationConfig = body.generationConfig as any
-      expect(generationConfig).toBeDefined()
-      expect(generationConfig.thinkingConfig).toBeDefined()
-      expect(generationConfig.thinkingConfig.thinkingBudget).toBe(0)
+      expect(generationConfig.thinkingConfig.thinkingBudget).toBeGreaterThan(0)
+      expect(generationConfig.responseSchema).toEqual(EXTRACTION_RESPONSE_SCHEMA)
+      expect(JSON.stringify(generationConfig.responseSchema)).toContain('golden-hour')
+      expect(JSON.stringify(generationConfig.responseSchema)).toContain('backdrop_visible')
+      expect(JSON.stringify(generationConfig.responseSchema)).toContain('surface_visible')
+      expect(JSON.stringify(generationConfig.responseSchema)).toContain('description')
     })
 
     it('sets responseModalities to ["TEXT"] in generationConfig', async () => {
@@ -324,7 +326,7 @@ describe('GeminiExtractionClient — integration (mocked Gemini)', () => {
       const [url] = calls[0] as [string, ...unknown[]]
       expect(typeof url).toBe('string')
       expect(url).toContain('key=test-api-key')
-      expect(url).toContain(`/models/${STUDIO_FLASH_MODEL}:generateContent`)
+      expect(url).toContain(`/models/${STUDIO_EXTRACTION_MODEL}:generateContent`)
       expect(url).toContain('generateContent')
     })
   })

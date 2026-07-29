@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminApi } from '@/lib/admin-api-auth'
 import { GeminiExtractionClient, UnparseableExtractionResponseError } from '@/lib/photo-control/gemini-extraction-client'
 import { MinimalSchemaValidator } from '@/lib/photo-control/schema-validator'
+import { buildExtractionDiagnostics } from '@/lib/studio/extraction-diagnostics'
 import { parseAndValidateImageDataUrl } from '@/lib/photo-control/request-validation'
 import { logger } from '@/lib/logger'
 
@@ -64,7 +65,23 @@ export async function POST(request: NextRequest) {
 
     // ── 7. Validate raw JSON through MinimalSchemaValidator (Requirement 2.5) ─
     const validator = new MinimalSchemaValidator()
-    const { strictConformance, data, warnings } = validator.validate(raw)
+    const validated = validator.validate(raw)
+    const { strictConformance, data, warnings } = validated
+    const diagnostics = buildExtractionDiagnostics({
+      raw,
+      validated,
+      warnings,
+      strictConformance,
+    })
+
+    if (diagnostics.omittedFields.length > 0 || diagnostics.warnings.length > 0) {
+      logger.warn('⚠️ [Photo Control Extract] Extraction diagnostics', {
+        userId: admin.user.id,
+        strictConformance,
+        omittedFields: diagnostics.omittedFields,
+        warningCount: diagnostics.warnings.length,
+      })
+    }
 
     logger.info('✅ [Photo Control Extract] Success', {
       userId: admin.user.id,
@@ -72,8 +89,8 @@ export async function POST(request: NextRequest) {
       warningCount: warnings.length,
     })
 
-    // ── 8. Return validated result ────────────────────────────────────────────
-    return NextResponse.json({ strictConformance, data, warnings })
+    // ── 8. Return validated result + bounded diagnostics ---------------------
+    return NextResponse.json({ strictConformance, data, warnings, diagnostics })
   } catch (error) {
     // ── 9. Handle unparseable extraction response → 502 ──────────────────────
     if (error instanceof UnparseableExtractionResponseError) {
