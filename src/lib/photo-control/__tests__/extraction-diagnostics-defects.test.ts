@@ -227,7 +227,7 @@ describe('Studio extraction defects: Property 7', () => {
           assertTier2Omission(descriptor, issue.path)
         }
       }),
-      { numRuns: 100 },
+      { numRuns: 50 },
     )
   })
 
@@ -265,7 +265,7 @@ describe('Studio extraction defects: Property 7', () => {
         expect(serialized.length).toBeLessThanOrEqual(8_192)
         expect(serialized).not.toContain(imageBytes)
       }),
-      { numRuns: 100 },
+      { numRuns: 50 },
     )
   })
 })

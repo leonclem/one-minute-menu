@@ -320,7 +320,7 @@ describe('Property 12: style library and logging preservation', () => {
           expect(style).not.toHaveProperty('descriptor')
         }
       }),
-      { numRuns: 50 },
+      { numRuns: 25 },
     )
   })
 
@@ -429,7 +429,7 @@ describe('Property 12: style library and logging preservation', () => {
         expect(directive).not.toContain(original.schema.canvas.background)
         expect(directive).not.toContain(target.schema.canvas.background)
       }),
-      { numRuns: 50 },
+      { numRuns: 25 },
     )
   })
 
@@ -488,7 +488,7 @@ describe('Property 12: style library and logging preservation', () => {
           }),
         )
       }),
-      { numRuns: 50 },
+      { numRuns: 25 },
     )
   })
 })

@@ -83,6 +83,13 @@ function sourceImageFromRecord(
   return { dataUrl: publicUrl, mimeType: normalizedMime, bytes }
 }
 
+function knownBackdropVisibility(
+  diagnostics: ExtractionDiagnostics | null,
+): boolean | undefined {
+  const value = diagnostics?.observations?.backdrop_visible
+  return typeof value === 'boolean' ? value : undefined
+}
+
 function makeDefaultEditorState(): EditorState {
   return {
     schema: {
@@ -161,6 +168,7 @@ export function StudioClient({
   const [editorState, setEditorState] = useState<EditorState>(makeDefaultEditorState())
   const originalStateRef = useRef<EditorState>(makeDefaultEditorState())
   const extractionDiagnosticsRef = useRef<ExtractionDiagnostics | null>(null)
+  const [backdropVisible, setBackdropVisible] = useState<boolean | undefined>(undefined)
 
   const [isHydrated, setIsHydrated] = useState(false)
   const [isExtracting, setIsExtracting] = useState(false)
@@ -212,6 +220,7 @@ export function StudioClient({
     const filtered = backgroundStyles.filter((style) => style.category === 'backdrop')
     return backgroundStylesToOptions(filtered)
   }, [backgroundStyles])
+  const backdropKnownFalse = backdropVisible === false
 
   const lightingLabelMap = useMemo(() => styleLabelMap(lightingStyles), [lightingStyles])
   const backgroundLabelMap = useMemo(
@@ -281,6 +290,7 @@ export function StudioClient({
     setExtractionError(null)
     setStrictConformanceWarning(false)
     extractionDiagnosticsRef.current = null
+    setBackdropVisible(undefined)
     setPendingLimitMessage(null)
   }, [])
 
@@ -349,6 +359,7 @@ export function StudioClient({
 
       const data = (await response.json()) as ExtractResponse
       extractionDiagnosticsRef.current = data.diagnostics ?? null
+      setBackdropVisible(knownBackdropVisibility(data.diagnostics ?? null))
       const { editorState: hydratedState } = hydrate({
         strictConformance: data.strictConformance,
         data: data.data,
@@ -379,6 +390,7 @@ export function StudioClient({
         setPersistedSourceId(image.id)
         extractionDiagnosticsRef.current =
           (image.metadata?.extractionDiagnostics as ExtractionDiagnostics | undefined) ?? null
+        setBackdropVisible(knownBackdropVisibility(extractionDiagnosticsRef.current))
 
         const stored = readEditorStateFromMetadata(image.metadata)
         if (stored) {
@@ -1117,27 +1129,30 @@ export function StudioClient({
                   )}
                 </CollapsibleSection>
 
-                {editorState.schema.scene_setup.angle !== 'top-down' && (
-                  <CollapsibleSection
-                    title="Studio Backdrop"
-                    isExpanded={expandedSection === 'backdrop'}
-                    onExpand={(open) => setExpandedSection(open ? 'backdrop' : null)}
-                  >
-                    {backdropOptions.length === 0 ? (
-                      <p className="text-xs text-gray-500">
-                        No studio backdrops available yet.
-                      </p>
-                    ) : (
-                      <VisualOptionTiles
-                        options={backdropOptions}
-                        value={editorState.schema.canvas.background_style ?? ''}
-                        disabled={controlsDisabled}
-                        ariaLabel="Studio Backdrop"
-                        onChange={stageBackground}
-                      />
-                    )}
-                  </CollapsibleSection>
-                )}
+                <CollapsibleSection
+                  title="Studio Backdrop"
+                  isExpanded={expandedSection === 'backdrop'}
+                  onExpand={(open) => setExpandedSection(open ? 'backdrop' : null)}
+                >
+                  {backdropKnownFalse && (
+                    <p role="status" className="mb-2 text-xs text-amber-800">
+                      No vertical backdrop was detected in this photo, so backdrop changes are unavailable.
+                    </p>
+                  )}
+                  {backdropOptions.length === 0 ? (
+                    <p className="text-xs text-gray-500">
+                      No studio backdrops available yet.
+                    </p>
+                  ) : (
+                    <VisualOptionTiles
+                      options={backdropOptions}
+                      value={editorState.schema.canvas.background_style ?? ''}
+                      disabled={controlsDisabled || backdropKnownFalse}
+                      ariaLabel="Studio Backdrop"
+                      onChange={stageBackground}
+                    />
+                  )}
+                </CollapsibleSection>
 
                 <CollapsibleSection
                   title="Garnishes"

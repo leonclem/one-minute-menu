@@ -110,6 +110,8 @@ export interface BuildSceneDescriptorInput {
   styles: SceneDescriptorStyles
   observations: SceneObservations | Record<string, unknown>
   labels: readonly string[]
+  /** FOH callers omit legacy prose fallbacks so prompt_fragment cannot leak into payloads. */
+  includePromptFragmentFallback?: boolean
 }
 
 const LOCKED_CONSTRAINTS = [
@@ -171,7 +173,11 @@ function copyStyleAttributes(
  * Resolve a style row without ever using its database key as descriptor data.
  * A null descriptor has a deliberately narrow compatibility fallback.
  */
-function describeStyle(kind: SceneStyleKind, row: SceneStyleRow | null | undefined): SceneStyleSection {
+function describeStyle(
+  kind: SceneStyleKind,
+  row: SceneStyleRow | null | undefined,
+  includePromptFragmentFallback = true,
+): SceneStyleSection {
   if (!row) return {}
 
   if (row.descriptor !== null && row.descriptor !== undefined) {
@@ -183,7 +189,7 @@ function describeStyle(kind: SceneStyleKind, row: SceneStyleRow | null | undefin
   if (nonEmptyString(row.short_description)) {
     fallback[fallbackKey] = row.short_description
   }
-  if (nonEmptyString(row.prompt_fragment)) {
+  if (includePromptFragmentFallback && nonEmptyString(row.prompt_fragment)) {
     fallback.note = row.prompt_fragment
   }
   return fallback
@@ -288,11 +294,9 @@ function describeObservation(
   return isOmitted(observations, `${kind}.material`) ? {} : { material: value }
 }
 
-function observedMode(observations: SceneObservations | Record<string, unknown>): 'replace' | 'establish' | undefined {
+function observedMode(observations: SceneObservations | Record<string, unknown>): 'replace' | 'establish' {
   const value = observationRecord(observations).backdrop_visible
-  if (value === true) return 'replace'
-  if (value === false) return 'establish'
-  return undefined
+  return value === false ? 'establish' : 'replace'
 }
 
 function attachReference(section: SceneStyleSection, label: unknown): SceneStyleSection {
@@ -331,6 +335,7 @@ function addStyleChange(
   row: SceneStyleRow | null | undefined,
   observations: SceneObservations | Record<string, unknown>,
   referenceLabel: unknown,
+  includePromptFragmentFallback: boolean,
 ): void {
   const currentSection = describeObservation(
     kind,
@@ -341,10 +346,9 @@ function addStyleChange(
     current[kind] = currentSection
   }
 
-  const targetSection = describeStyle(kind, row)
+  const targetSection = describeStyle(kind, row, includePromptFragmentFallback)
   if (kind === 'backdrop') {
-    const mode = observedMode(observations)
-    if (mode !== undefined) targetSection.mode = mode
+    targetSection.mode = observedMode(observations)
   }
   target[kind] = attachReference(targetSection, referenceLabel)
 }
@@ -426,6 +430,7 @@ export function buildSceneDescriptor({
   styles,
   observations,
   labels,
+  includePromptFragmentFallback = true,
 }: BuildSceneDescriptorInput): SceneDescriptor {
   const current: SceneDescriptorState = {}
   const target: SceneDescriptorState = {}
@@ -455,6 +460,7 @@ export function buildSceneDescriptor({
       styleRow(styles, kind),
       observations,
       labels[styleReferenceOffset],
+      includePromptFragmentFallback,
     )
     styleReferenceOffset += 1
   }

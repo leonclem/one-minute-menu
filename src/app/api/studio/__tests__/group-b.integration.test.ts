@@ -296,6 +296,7 @@ describe('Task 19.10 — customer FOH source → extract → staged mutate', () 
       material: 'vibrant solid yellow studio backdrop',
       colour: '#F2C200',
       falloff: 'soft, professional studio lighting',
+      mode: 'replace',
     })
     expect(descriptor.target.surface).toEqual({
       material: 'dark slate stone',
@@ -443,8 +444,8 @@ describe('Task 19.10 — migration compatibility and Tier 1 preservation', () =>
     const descriptor = extractDescriptor(capturedRequestBody().contents[0].parts[0].text)
     expect(descriptor.target.lighting).toEqual({
       quality: 'Soft directional window light',
-      note: 'Apply soft directional window light while preserving the dish.',
     })
+    expect(JSON.stringify(descriptor.target.lighting)).not.toContain('Apply soft directional window light')
     expect(JSON.stringify(descriptor.target.lighting)).not.toContain('Do not add props')
   })
 

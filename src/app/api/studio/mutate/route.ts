@@ -264,6 +264,7 @@ export async function POST(request: NextRequest) {
           ? ({ ...(safeExtractionDiagnostics as unknown as Record<string, unknown>) })
           : {},
       labels,
+      includePromptFragmentFallback: false,
     })
     const directiveText = directive.trim()
     const compositionResult = composePrompt({

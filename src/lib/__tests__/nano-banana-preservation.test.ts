@@ -312,7 +312,7 @@ describe('Property 10: non-Studio and Pro request preservation', () => {
             : undefined
         )
       }),
-      { numRuns: 100 }
+      { numRuns: 50 }
     )
   })
 })

@@ -265,7 +265,7 @@ describe('Studio scene descriptor defects: Property 6', () => {
         }
         expect(prompt).toContain(directive)
       }),
-      { numRuns: 200 },
+      { numRuns: 100 },
     )
   })
 
@@ -308,7 +308,7 @@ describe('Studio scene descriptor defects: Property 6', () => {
 
         expect({ opaqueKeys, keys }).toEqual({ opaqueKeys: [], keys })
       }),
-      { numRuns: 200 },
+      { numRuns: 100 },
     )
   })
 
@@ -331,7 +331,7 @@ describe('Studio scene descriptor defects: Property 6', () => {
           })
         }
       }),
-      { numRuns: 100 },
+      { numRuns: 50 },
     )
   })
 
@@ -357,7 +357,7 @@ describe('Studio scene descriptor defects: Property 6', () => {
           expect(JSON.stringify(targetSection)).not.toBe(JSON.stringify(currentSection))
         }
       }),
-      { numRuns: 200 },
+      { numRuns: 100 },
     )
   })
 

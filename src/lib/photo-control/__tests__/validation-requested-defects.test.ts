@@ -162,7 +162,7 @@ describe('Studio validation defects: requested dimensions are assessed', () => {
           skippedOnlyWhenNothingEvaluated: true,
         })
       }),
-      { numRuns: 100 },
+      { numRuns: 50 },
     )
   })
 

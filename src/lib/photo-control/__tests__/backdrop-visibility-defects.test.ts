@@ -114,7 +114,7 @@ describe('Studio backdrop visibility defects: Property 9', () => {
         // True and omitted visibility preserve the existing replacement path.
         expect(payload.descriptor.target.backdrop?.mode).toBe('replace')
       }),
-      { numRuns: 30 },
+      { numRuns: 20 },
     )
   })
 

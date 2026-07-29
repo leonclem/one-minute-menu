@@ -108,7 +108,12 @@ describe('buildSceneDescriptor', () => {
       shadows: 'soft',
       falloff: 'gradual',
     })
-    expect(result.target.backdrop).toEqual(styles.backdrop!.descriptor)
+    expect(result.target.backdrop).toEqual({
+      material: 'seamless studio backdrop',
+      colour: '#F2C200',
+      falloff: 'soft professional',
+      mode: 'replace',
+    })
     expect(result.target.surface).toEqual(styles.surface!.descriptor)
     expect(result.current.lighting).toEqual({ quality: 'observed household light' })
     expect(result.current.backdrop).toEqual({ material: 'visible restaurant wall' })
@@ -178,6 +183,30 @@ describe('buildSceneDescriptor', () => {
       note: 'Apply window light while preserving the dish.',
     })
     expect(result.target.lighting).not.toHaveProperty('negative_constraints')
+  })
+
+  it('omits legacy prompt fragments when building the FOH descriptor', () => {
+    const result = buildSceneDescriptor({
+      original: schema(),
+      target: schema({ canvas: { background_style: 'studio-yellow' } }),
+      delta: delta([{ path: 'canvas.background_style', from: '', to: 'studio-yellow' }]),
+      styles: {
+        backdrop: {
+          descriptor: null,
+          short_description: 'Vibrant yellow studio backdrop',
+          prompt_fragment: 'Change only the vertical backdrop/wall behind the tabletop to yellow.',
+        },
+      },
+      observations: { backdrop_visible: false },
+      labels: ['Image A'],
+      includePromptFragmentFallback: false,
+    })
+
+    expect(result.target.backdrop).toEqual({
+      material: 'Vibrant yellow studio backdrop',
+      mode: 'establish',
+    })
+    expect(JSON.stringify(result)).not.toContain('Change only the vertical backdrop')
   })
 
   it('binds only supplied attached labels one-to-one, source first', () => {

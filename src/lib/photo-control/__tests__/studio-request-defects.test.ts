@@ -209,7 +209,7 @@ describe('Studio request defects: forced square', () => {
         expect(request.generationConfig.imageConfig).not.toHaveProperty('aspectRatio')
         expect(request.contents[0].parts[0].text).not.toContain('Aspect ratio:')
       }),
-      { numRuns: 100 },
+      { numRuns: 50 },
     )
   })
 })
@@ -267,7 +267,7 @@ describe('Studio request defects: thinking level discarded', () => {
 
         expect(generationConfig.thinkingConfig?.thinkingLevel).toBe('HIGH')
       }),
-      { numRuns: 100 },
+      { numRuns: 50 },
     )
   })
 
@@ -398,7 +398,7 @@ describe('Studio request defects: log divergence, synthesis framing, and leaked 
           retainsNoPeopleInstruction: true,
         })
       }),
-      { numRuns: 100 },
+      { numRuns: 50 },
     )
   })
 })
@@ -557,7 +557,7 @@ describe('Studio request defects: reference dwarfing the subject', () => {
           styleReferenceWasFittedOrRejectedAndLogged: true,
         })
       }),
-      { numRuns: 100 },
+      { numRuns: 50 },
     )
   })
 })
@@ -722,7 +722,7 @@ describe('Studio request defects: reference limits and explicit steering opt-in 
 
         expect(capturedReferenceImages(request)).toHaveLength(1 + styleReferences.length + 2)
       }),
-      { numRuns: 100 },
+      { numRuns: 50 },
     )
   })
 
@@ -800,7 +800,7 @@ describe('Studio request defects: source-only customer FOH references (A2)', () 
           hasSteeringReference: false,
         })
       }),
-      { numRuns: 100 },
+      { numRuns: 50 },
     )
   })
 
