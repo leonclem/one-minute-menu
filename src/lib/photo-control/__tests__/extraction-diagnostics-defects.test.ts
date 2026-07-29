@@ -2,11 +2,10 @@
  * Bug-condition exploration for Property 7: Unknown Fields Omitted And
  * Recorded, Never Defaulted.
  *
- * This deliberately runs against the pre-Group-B extraction contract. The
- * current route exposes MinimalSchemaValidator.data as the hydrated state,
- * which is also the only state available to the legacy model-facing path.
- * The expected failures document default leakage and discarded diagnostics;
- * they are not production-code fixes.
+ * The test keeps the Tier 1 control-state seam separate from the Tier 2
+ * descriptor seam. Validator backfills are valid for Tier 1, but the same
+ * values must not be carried into the model-facing descriptor as observed
+ * facts.
  *
  * **Validates: Requirements 2.17, 2.17a, 2.17b**
  */
@@ -15,19 +14,17 @@ import fc from 'fast-check'
 import {
   ENUM_DEFAULTS,
   type MinimalSchema,
+  type StateDelta,
 } from '../minimal-schema'
 import { validateMinimalSchema } from '../schema-validator'
+import { buildSceneDescriptor } from '../scene-descriptor'
+import { buildExtractionDiagnostics } from '@/lib/studio/extraction-diagnostics'
 
 type FieldStatus = 'absent' | 'invalid' | 'valid'
 type Issue = { path: string; status: Exclude<FieldStatus, 'valid'> }
 type PartialExtractionCase = {
   raw: Record<string, unknown>
   issues: Issue[]
-}
-
-type CurrentExtractionResponse = ReturnType<typeof validateMinimalSchema> & {
-  extractionDiagnostics?: unknown
-  metadata?: { extractionDiagnostics?: unknown }
 }
 
 const statusArb = fc.constantFrom<FieldStatus>('absent', 'invalid', 'valid')
@@ -87,84 +84,181 @@ function readPath(root: unknown, path: string): unknown {
   return value
 }
 
-function currentExtractionResponse(raw: Record<string, unknown>): CurrentExtractionResponse {
-  // This is the actual unfixed extraction contract: the route returns the
-  // validator result and persists no descriptor/diagnostics envelope here.
-  return validateMinimalSchema(raw) as CurrentExtractionResponse
-}
-
-function diagnosticsFrom(response: CurrentExtractionResponse): unknown {
-  return response.extractionDiagnostics ?? response.metadata?.extractionDiagnostics
-}
-
 function isEnumPath(path: string): path is keyof typeof ENUM_DEFAULTS {
   return path in ENUM_DEFAULTS
 }
 
-function enumTier1Default(path: string, value: unknown): boolean {
-  return isEnumPath(path) && value === ENUM_DEFAULTS[path]
+function cloneSchema(schema: MinimalSchema): MinimalSchema {
+  return JSON.parse(JSON.stringify(schema)) as MinimalSchema
+}
+
+function descriptorDelta(): StateDelta {
+  return {
+    scalarChanges: [
+      { path: 'scene_setup.angle', from: '45-degree', to: 'eye-level' },
+      { path: 'scene_setup.framing', from: 'close-up', to: 'wide' },
+      { path: 'scene_setup.lighting', from: 'bright-and-airy', to: 'studio' },
+      { path: 'scene_setup.spin', from: '0', to: 'left-45' },
+      { path: 'canvas.background_style', from: '', to: 'studio-yellow' },
+      { path: 'canvas.surface_style', from: '', to: 'dark-slate' },
+    ],
+    arrays: {
+      garnishes: { added: ['cilantro'], removed: [] },
+      sides: { added: ['sauce'], removed: [] },
+    },
+    isEmpty: false,
+  }
+}
+
+function buildTier2Descriptor(
+  original: MinimalSchema,
+  observations: ReturnType<typeof buildExtractionDiagnostics>,
+) {
+  const target = cloneSchema(original)
+  target.scene_setup = {
+    ...target.scene_setup,
+    angle: 'eye-level',
+    framing: 'wide',
+    lighting: 'studio',
+    spin: 'left-45',
+  }
+  target.canvas = {
+    ...target.canvas,
+    background_style: 'studio-yellow',
+    surface_style: 'dark-slate',
+  }
+  target.food_components = {
+    ...target.food_components,
+    garnishes: [...target.food_components.garnishes, 'cilantro'],
+    sides: [...target.food_components.sides, 'sauce'],
+  }
+
+  return buildSceneDescriptor({
+    original,
+    target,
+    delta: descriptorDelta(),
+    styles: {
+      lighting: {
+        descriptor: {
+          quality: 'clean commercial studio light',
+          temperature: 'neutral',
+          shadows: 'soft',
+          falloff: 'gradual',
+        },
+      },
+      backdrop: {
+        descriptor: {
+          material: 'seamless studio backdrop',
+          colour: '#F2C200',
+          falloff: 'soft',
+        },
+      },
+      surface: {
+        descriptor: {
+          material: 'dark slate stone',
+          finish: 'honed matte',
+          colour: '#2E3338',
+        },
+      },
+    },
+    observations,
+    labels: ['Image A'],
+  })
+}
+
+function assertTier2Omission(
+  descriptor: ReturnType<typeof buildSceneDescriptor>,
+  path: string,
+): void {
+  switch (path) {
+    case 'scene_setup.angle':
+    case 'scene_setup.framing':
+    case 'scene_setup.spin':
+      expect(descriptor.current.camera ?? {}).not.toHaveProperty(path.split('.')[1])
+      break
+    case 'scene_setup.lighting':
+      expect(descriptor.current).not.toHaveProperty('lighting')
+      break
+    case 'canvas.background_style':
+      expect(descriptor.current).not.toHaveProperty('backdrop')
+      break
+    case 'canvas.surface_style':
+      expect(descriptor.current).not.toHaveProperty('surface')
+      break
+    case 'canvas.background':
+      expect(descriptor.current).not.toHaveProperty('background')
+      break
+    case 'canvas.main_vessel':
+      expect(descriptor.subject).not.toHaveProperty('vessel')
+      break
+    case 'food_components.main_item':
+      expect(descriptor.subject).not.toHaveProperty('dish')
+      break
+    case 'food_components.garnishes':
+    case 'food_components.sides':
+      expect(descriptor.subject.components ?? {}).not.toHaveProperty(path.split('.')[1])
+      break
+    default:
+      throw new Error(`Unhandled extraction path: ${path}`)
+  }
 }
 
 describe('Studio extraction defects: Property 7', () => {
-  it('omits absent or invalid fields from the model-facing descriptor while allowing Tier 1 enum backfill', () => {
+  it('keeps Tier 1 backfill separate from omitted Tier 2 observations', () => {
     fc.assert(
       fc.property(partialExtractionArb, ({ raw, issues }) => {
-        const response = currentExtractionResponse(raw)
+        const validated = validateMinimalSchema(raw)
+        const tier1 = validated.data
+        const diagnostics = buildExtractionDiagnostics({
+          raw,
+          validated,
+          warnings: validated.warnings,
+          strictConformance: validated.strictConformance,
+        })
+        const descriptor = buildTier2Descriptor(tier1, diagnostics)
 
         for (const issue of issues) {
-          const tier1Value = readPath(response.data, issue.path)
-          // Tier 1 may remain hydratable through ENUM_DEFAULTS. This is the
-          // permitted divergence; the assertion below is Tier 2's contract.
-          if (issue.status === 'invalid' || issue.status === 'absent') {
-            expect({ path: issue.path, tier1Value }).toEqual(
-              isEnumPath(issue.path)
-                ? { path: issue.path, tier1Value: expect.any(String) }
-                : { path: issue.path, tier1Value: expect.anything() },
-            )
-            if (isEnumPath(issue.path)) expect(enumTier1Default(issue.path, tier1Value)).toBe(true)
+          const tier1Value = readPath(tier1, issue.path)
+          expect(tier1Value).toBeDefined()
+          if (isEnumPath(issue.path)) {
+            expect(tier1Value).toBe(ENUM_DEFAULTS[issue.path])
           }
 
-          // Before the descriptor redesign, response.data is what the client
-          // can carry forward as observed fact. Unknown values must not appear
-          // there once the Property 7 fix is present.
-          expect({ path: issue.path, descriptorValue: tier1Value, raw }).toEqual({
-            path: issue.path,
-            descriptorValue: undefined,
-            raw,
-          })
+          assertTier2Omission(descriptor, issue.path)
         }
       }),
       { numRuns: 100 },
     )
   })
 
-  it('persists bounded, image-byte-free omission diagnostics with validator evidence', () => {
+  it('records bounded, image-byte-free omission diagnostics from validator evidence', () => {
     const imageBytes = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ'
 
     fc.assert(
       fc.property(partialExtractionArb, ({ raw, issues }) => {
-        const response = currentExtractionResponse(raw)
-        const diagnostics = diagnosticsFrom(response) as {
-          strictConformance?: unknown
-          warnings?: unknown
-          omittedFields?: Array<{ path?: unknown; reason?: unknown }>
-          omissions?: Array<{ path?: unknown; reason?: unknown }>
-        } | undefined
+        const rawWithImageBytes = { ...raw, description: imageBytes }
+        const validated = validateMinimalSchema(rawWithImageBytes)
+        const diagnostics = buildExtractionDiagnostics({
+          raw: rawWithImageBytes,
+          validated,
+          warnings: validated.warnings,
+          strictConformance: validated.strictConformance,
+        })
 
-        expect(diagnostics).toBeDefined()
-        if (!diagnostics) return
+        expect(diagnostics.strictConformance).toBe(validated.strictConformance)
+        expect(diagnostics.warnings).toEqual(expect.arrayContaining(validated.warnings))
 
-        expect(diagnostics.strictConformance).toBe(response.strictConformance)
-        expect(diagnostics.warnings).toEqual(expect.arrayContaining(response.warnings))
-
-        const omittedFields = diagnostics.omittedFields ?? diagnostics.omissions
+        const omittedFields = diagnostics.omittedFields
         expect(omittedFields).toEqual(expect.any(Array))
         for (const issue of issues) {
-          const entry = omittedFields?.find((candidate) => candidate.path === issue.path)
+          const entry = omittedFields.find((candidate) => candidate.path === issue.path)
           expect(entry).toEqual(expect.objectContaining({
             path: issue.path,
             reason: expect.stringMatching(/^(absent|invalid|coerced_for_control_state)$/),
           }))
+          if (isEnumPath(issue.path)) {
+            expect(entry?.reason).toBe('coerced_for_control_state')
+          }
         }
 
         const serialized = JSON.stringify(diagnostics)
@@ -176,6 +270,7 @@ describe('Studio extraction defects: Property 7', () => {
   })
 })
 
-// Expected unfixed counterexamples are recorded in the Task 16 evidence file:
-// validator.data contains defaults for omitted/invalid fields, while the
-// extraction response has no extractionDiagnostics or persisted metadata block.
+// The original Task 16 exploration read Tier 1 validator.data as if it were
+// Tier 2 and looked for diagnostics on the validator response. Task 19.8 uses
+// the approved seams instead: validateMinimalSchema(...).data, then
+// buildSceneDescriptor(...), and buildExtractionDiagnostics(...).

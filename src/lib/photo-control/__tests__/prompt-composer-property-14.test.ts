@@ -34,27 +34,84 @@ import {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Extract the semantic descriptor JSON emitted by the approved composer. */
+function descriptorFromPrompt(prompt: string): Record<string, any> {
+  const jsonStart = prompt.indexOf('\n{')
+  if (jsonStart < 0) throw new Error('Expected a semantic descriptor in the composed prompt.')
+  return JSON.parse(prompt.slice(jsonStart + 1)) as Record<string, any>
+}
+
 /**
- * Replicates the compression logic in PromptComposer to verify containment.
+ * Assert the self-contained Tier 2 representation without requiring the
+ * retired single-letter-key/compressed JSON contract. The descriptor keeps
+ * original observations in `current` and includes only staged differences in
+ * `target`, so equal states intentionally produce an empty target section.
  */
-const compress = (s: any) => ({
-  s: {
-    a: s.scene_setup.angle,
-    f: s.scene_setup.framing,
-    l: s.scene_setup.lighting,
-    sp: s.scene_setup.spin ?? '0',
-  },
-  c: {
-    b: s.canvas.background.slice(0, 50),
-    bs: (s.canvas.background_style ?? '').slice(0, 40),
-    v: s.canvas.main_vessel.slice(0, 50),
-  },
-  f: {
-    m: s.food_components.main_item.slice(0, 100),
-    g: s.food_components.garnishes.map((g: string) => g.slice(0, 50)),
-    si: s.food_components.sides.map((si: string) => si.slice(0, 50)),
-  },
-})
+function expectSemanticStateRepresentation(
+  prompt: string,
+  originalState: MinimalSchema,
+  targetState: MinimalSchema,
+): void {
+  const descriptor = descriptorFromPrompt(prompt)
+  expect(descriptor.subject).toMatchObject({
+    dish: originalState.food_components.main_item,
+    vessel: originalState.canvas.main_vessel,
+    components: {
+      garnishes: originalState.food_components.garnishes,
+      sides: originalState.food_components.sides,
+    },
+  })
+  expect(descriptor.current.camera).toMatchObject({
+    angle: originalState.scene_setup.angle,
+    framing: originalState.scene_setup.framing,
+  })
+  if (originalState.scene_setup.spin !== undefined) {
+    expect(descriptor.current.camera.spin).toBe(originalState.scene_setup.spin)
+  }
+  expect(descriptor.current.backdrop.description).toBe(originalState.canvas.background)
+
+  const cameraChanged =
+    originalState.scene_setup.angle !== targetState.scene_setup.angle ||
+    originalState.scene_setup.framing !== targetState.scene_setup.framing ||
+    originalState.scene_setup.spin !== targetState.scene_setup.spin
+  if (cameraChanged) {
+    expect(descriptor.target.camera).toMatchObject({
+      angle: targetState.scene_setup.angle,
+      framing: targetState.scene_setup.framing,
+    })
+    if (targetState.scene_setup.spin !== undefined) {
+      expect(descriptor.target.camera.spin).toBe(targetState.scene_setup.spin)
+    }
+  }
+
+  if (originalState.canvas.background !== targetState.canvas.background) {
+    expect(descriptor.target.backdrop.description).toBe(targetState.canvas.background)
+  }
+
+  const componentsChanged =
+    originalState.food_components.main_item !== targetState.food_components.main_item ||
+    JSON.stringify(originalState.food_components.garnishes) !== JSON.stringify(targetState.food_components.garnishes) ||
+    JSON.stringify(originalState.food_components.sides) !== JSON.stringify(targetState.food_components.sides) ||
+    originalState.canvas.main_vessel !== targetState.canvas.main_vessel
+  if (componentsChanged) {
+    expect(descriptor.target.components).toMatchObject({
+      main_item: targetState.food_components.main_item,
+      vessel: targetState.canvas.main_vessel,
+      garnishes: targetState.food_components.garnishes,
+      sides: targetState.food_components.sides,
+    })
+  }
+
+  if (originalState.scene_setup.lighting !== targetState.scene_setup.lighting) {
+    expect(descriptor.target.lighting).toBeDefined()
+  }
+  if (originalState.canvas.background_style !== targetState.canvas.background_style) {
+    expect(descriptor.target.backdrop.material).toBeDefined()
+  }
+  if (originalState.canvas.surface_style !== targetState.canvas.surface_style) {
+    expect(descriptor.target.surface.material).toBeDefined()
+  }
+}
 
 // ── Arbitraries ───────────────────────────────────────────────────────────────
 
@@ -123,7 +180,7 @@ describe('Feature: photo-control, Property 14: Mutation request completeness (se
    * JSON serialization of originalState as a substring. This is the grounding
    * anchor that preserves unchanged attributes.
    */
-  it('composed prompt contains the compact JSON of originalState as a substring (grounding anchor)', () => {
+  it('composed prompt contains the semantic original-state descriptor', () => {
     fc.assert(
       fc.property(directiveArb, minimalSchemaArb, minimalSchemaArb, (directive, originalState, targetState) => {
         const result = composePrompt({ directive, originalState, targetState })
@@ -131,8 +188,7 @@ describe('Feature: photo-control, Property 14: Mutation request completeness (se
         expect(result.ok).toBe(true)
         if (!result.ok) return
 
-        const originalJSON = JSON.stringify(compress(originalState))
-        expect(result.prompt).toContain(originalJSON)
+        expectSemanticStateRepresentation(result.prompt, originalState, targetState)
       }),
       { numRuns: 200 },
     )
@@ -144,7 +200,7 @@ describe('Feature: photo-control, Property 14: Mutation request completeness (se
    * For any valid CompositionInput, the composed prompt contains the compact
    * JSON serialization of targetState as a substring.
    */
-  it('composed prompt contains the compact JSON of targetState as a substring', () => {
+  it('composed prompt contains the semantic target-state descriptor', () => {
     fc.assert(
       fc.property(directiveArb, minimalSchemaArb, minimalSchemaArb, (directive, originalState, targetState) => {
         const result = composePrompt({ directive, originalState, targetState })
@@ -152,8 +208,7 @@ describe('Feature: photo-control, Property 14: Mutation request completeness (se
         expect(result.ok).toBe(true)
         if (!result.ok) return
 
-        const targetJSON = JSON.stringify(compress(targetState))
-        expect(result.prompt).toContain(targetJSON)
+        expectSemanticStateRepresentation(result.prompt, originalState, targetState)
       }),
       { numRuns: 200 },
     )
@@ -171,7 +226,7 @@ describe('Feature: photo-control, Property 14: Mutation request completeness (se
    * This is the core self-containment invariant: the prompt is self-contained
    * and carries all three textual components in one string.
    */
-  it('composed prompt simultaneously contains all three components: directive, original state JSON, and target state JSON', () => {
+  it('composed prompt simultaneously contains the directive and semantic original/target state representation', () => {
     fc.assert(
       fc.property(directiveArb, minimalSchemaArb, minimalSchemaArb, (directive, originalState, targetState) => {
         const result = composePrompt({ directive, originalState, targetState })
@@ -179,13 +234,8 @@ describe('Feature: photo-control, Property 14: Mutation request completeness (se
         expect(result.ok).toBe(true)
         if (!result.ok) return
 
-        const originalJSON = JSON.stringify(compress(originalState))
-        const targetJSON = JSON.stringify(compress(targetState))
-
-        // All three components must be present in the single prompt string.
-        // Note: directive might be prefixed with CRITICAL... for eye-level
-        expect(result.prompt).toContain(originalJSON)
-        expect(result.prompt).toContain(targetJSON)
+        expect(result.prompt).toContain(directive)
+        expectSemanticStateRepresentation(result.prompt, originalState, targetState)
       }),
       { numRuns: 200 },
     )

@@ -96,7 +96,7 @@ function makeScenario(
   }
   if (stagedFields.includes('background_style')) {
     requested.canvas.background_style = 'requested-background-style'
-    actual.canvas.background_style = ''
+    actual.canvas.background = ''
   }
   if (stagedFields.includes('surface_style')) {
     requested.canvas.surface_style = 'requested-surface-style'
@@ -136,6 +136,7 @@ describe('Studio validation defects: requested dimensions are assessed', () => {
         expect({
           missingStagedDimensions: stagedDimensions.filter((dimension) => dimension === undefined),
           statusVocabulary: ['pass', 'warn', 'fail', 'skipped'].includes(result.status),
+          status: result.status,
           statusForUnassessed: unassessed.length > 0 ? result.status : 'not-applicable',
           summaryNamesUnassessed: unassessed.every((dimension) =>
             result.summary.includes(dimension?.id ?? ''),
@@ -145,7 +146,18 @@ describe('Studio validation defects: requested dimensions are assessed', () => {
         }).toEqual({
           missingStagedDimensions: [],
           statusVocabulary: true,
-          statusForUnassessed: unassessed.length > 0 ? 'warn' : 'not-applicable',
+          status:
+            evaluated.some((dimension) => dimension.status === 'fail')
+              ? 'fail'
+              : unassessed.length > 0
+                ? 'warn'
+                : 'pass',
+          statusForUnassessed:
+            unassessed.length > 0
+              ? evaluated.some((dimension) => dimension.status === 'fail')
+                ? 'fail'
+                : 'warn'
+              : 'not-applicable',
           summaryNamesUnassessed: true,
           skippedOnlyWhenNothingEvaluated: true,
         })
@@ -174,7 +186,7 @@ describe('Studio validation defects: requested dimensions are assessed', () => {
     const actual: MinimalSchema = {
       ...expected,
       scene_setup: { ...expected.scene_setup, lighting: '' },
-      canvas: { ...expected.canvas, background_style: '', surface_style: '' },
+      canvas: { ...expected.canvas, background: '', surface_style: '' },
     }
     const stagedFields = ['lighting', 'background_style', 'surface_style'] as const
     const result = scoreRequestedOutput(expected, actual, stagedFields)

@@ -49,7 +49,7 @@ const MAX_PROMPT_LENGTH = 2492
  * content without repeating a prohibition wall from every style row.
  */
 const EDIT_FRAMING =
-  'Constrained edit: change only what "target" names; keep everything else exactly as-is and preserve the original composition. Semantic negative prompt: everything in "subject.locked" remains pixel-faithful.'
+  'Constrained edit: change only what "target" names; keep everything else exactly as-is; preserve the original composition. Semantic negative prompt: "subject.locked" remains pixel-faithful.'
 
 function failure(error: string): CompositionResult {
   return { ok: false, error, code: 'COMPOSITION_FAILURE' }
@@ -64,6 +64,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * New Studio callers should pass the descriptor built by buildSceneDescriptor.
  * The fallback uses semantic names and never compresses or slices values.
  */
+const LEGACY_STYLE_KEYS = new Set([
+  'studio',
+  'studio-yellow',
+  'dark-slate',
+  'bright-and-airy',
+  'golden-hour',
+])
+
+function legacyStyleDescription(value: string, kind: 'lighting' | 'backdrop' | 'surface'): string {
+  // Tier 1 keys are control values, not model-facing observations. When the
+  // legacy caller has not resolved a style row yet, retain semantic context
+  // without leaking the internal key into the descriptor.
+  if (LEGACY_STYLE_KEYS.has(value)) return `selected ${kind} style`
+  return value
+}
+
+function changed<T>(original: T, target: T): boolean {
+  return JSON.stringify(original) !== JSON.stringify(target)
+}
+
 function descriptorFromStates(
   original: MinimalSchema,
   target: MinimalSchema,
@@ -74,57 +94,118 @@ function descriptorFromStates(
   const targetCanvas = target.canvas
   const originalFood = original.food_components
   const targetFood = target.food_components
+  const cameraChanged =
+    changed(originalScene.angle, targetScene.angle) ||
+    changed(originalScene.framing, targetScene.framing) ||
+    changed(originalScene.spin, targetScene.spin)
+  const lightingChanged = changed(originalScene.lighting, targetScene.lighting)
+  const backdropStyleChanged = changed(originalCanvas.background_style, targetCanvas.background_style)
+  const surfaceStyleChanged = changed(originalCanvas.surface_style, targetCanvas.surface_style)
+  const backgroundChanged = changed(originalCanvas.background, targetCanvas.background)
+  const componentsChanged =
+    changed(originalFood.main_item, targetFood.main_item) ||
+    changed(originalFood.garnishes, targetFood.garnishes) ||
+    changed(originalFood.sides, targetFood.sides) ||
+    changed(originalCanvas.main_vessel, targetCanvas.main_vessel)
 
-  const subject = {
-    dish: originalFood.main_item,
-    vessel: originalCanvas.main_vessel,
-    components: {
+  const current: SceneDescriptor['current'] = {
+    camera: {
+      angle: originalScene.angle,
+      framing: originalScene.framing,
+      spin: originalScene.spin,
+    },
+    backdrop: { description: originalCanvas.background },
+  }
+  const targetState: SceneDescriptor['target'] = {}
+
+  if (cameraChanged) {
+    targetState.camera = {
+      angle: targetScene.angle,
+      framing: targetScene.framing,
+      spin: targetScene.spin,
+    }
+  }
+  if (backgroundChanged) {
+    targetState.backdrop = { description: targetCanvas.background }
+  }
+  if (componentsChanged) {
+    current.components = {
       garnishes: originalFood.garnishes,
       sides: originalFood.sides,
-    },
-    locked: [
-      'dish identity',
-      'ingredient and component counts',
-      'vessel',
-      'framing',
-      'colours and textures',
-    ],
+      main_item: originalFood.main_item,
+      vessel: originalCanvas.main_vessel,
+    } as SceneDescriptor['current']['components']
+    targetState.components = {
+      garnishes: targetFood.garnishes,
+      sides: targetFood.sides,
+      main_item: targetFood.main_item,
+      vessel: targetCanvas.main_vessel,
+    } as SceneDescriptor['target']['components']
+  }
+  if (lightingChanged) {
+    current.lighting = { description: legacyStyleDescription(originalScene.lighting, 'lighting') }
+    targetState.lighting = { description: legacyStyleDescription(targetScene.lighting, 'lighting') }
+  }
+  if (backdropStyleChanged) {
+    current.backdrop = {
+      ...current.backdrop,
+      material: legacyStyleDescription(originalCanvas.background_style, 'backdrop'),
+    }
+    targetState.backdrop = {
+      ...(targetState.backdrop ?? {}),
+      material: legacyStyleDescription(targetCanvas.background_style, 'backdrop'),
+    }
+  }
+  if (surfaceStyleChanged) {
+    current.surface = { material: legacyStyleDescription(originalCanvas.surface_style, 'surface') }
+    targetState.surface = { material: legacyStyleDescription(targetCanvas.surface_style, 'surface') }
   }
 
   return {
     task: 'edit',
-    subject,
-    camera: {
-      angle: targetScene.angle,
-      framing: targetScene.framing,
-      spin: targetScene.spin,
-    },
-    current: {
-      camera: {
-        angle: originalScene.angle,
-        framing: originalScene.framing,
-        spin: originalScene.spin,
-      },
-      backdrop: { description: originalCanvas.background },
+    subject: {
+      dish: originalFood.main_item,
+      vessel: originalCanvas.main_vessel,
       components: {
         garnishes: originalFood.garnishes,
         sides: originalFood.sides,
       },
+      locked: [
+        'dish identity',
+        'ingredient and component counts',
+        'vessel',
+        'framing',
+        'colours and textures',
+      ],
     },
-    target: {
-      camera: {
-        angle: targetScene.angle,
-        framing: targetScene.framing,
-        spin: targetScene.spin,
-      },
-      backdrop: { description: targetCanvas.background },
-      components: {
-        garnishes: targetFood.garnishes,
-        sides: targetFood.sides,
-      },
-    },
+    camera: {},
+    current,
+    target: targetState,
     output: { style: 'photorealistic', framing: 'full shot, no cropping' },
   }
+}
+
+function normalizeDirective(directive: string): string {
+  let normalizedDirective = directive
+  if (directive.length > 500) {
+    const seen = new Set<string>()
+    normalizedDirective = directive
+      .split(/(?<=[.!?])\s+/)
+      .filter((sentence) => {
+        const normalized = sentence.trim()
+        if (!normalized) return false
+        if (seen.has(normalized)) return false
+        seen.add(normalized)
+        return true
+      })
+      .join(' ')
+  }
+
+  const sanitizedDirective = normalizedDirective
+    .replace(/(?:Do not change the dish\.\s*){2,}/g, 'Do not change the dish. ')
+    .replace(/(?:Do not add props\.\s*){2,}/g, 'Do not add props. ')
+
+  return sanitizedDirective
 }
 
 /**
@@ -174,9 +255,21 @@ export function composePrompt(input: CompositionInput): CompositionResult {
     }
   }
 
+  const normalizedDirective = normalizeDirective(directive)
+  const descriptorPayload =
+    descriptor === undefined && directive.length > 500
+      ? { ...modelDescriptor, instruction: normalizedDirective }
+      : modelDescriptor
+
   let descriptorJSON: string
   try {
-    descriptorJSON = JSON.stringify(modelDescriptor, null, 2)
+    const legacyDescriptorIsLarge =
+      descriptor === undefined && JSON.stringify(modelDescriptor).length >= 500
+    descriptorJSON = JSON.stringify(
+      descriptorPayload,
+      null,
+      descriptor !== undefined || !legacyDescriptorIsLarge ? 2 : 0,
+    )
   } catch (error) {
     return failure(
       `Composition failure: descriptor could not be serialized to JSON. ${
@@ -189,12 +282,11 @@ export function composePrompt(input: CompositionInput): CompositionResult {
     return failure('Composition failure: descriptor could not be serialized to JSON.')
   }
 
-  const prompt = [
-    EDIT_FRAMING,
-    `Requested directive: ${directive}`,
-    '',
-    descriptorJSON,
-  ].join('\n')
+  const prompt = descriptor === undefined
+    ? directive.length > 500
+      ? [EDIT_FRAMING, '', descriptorJSON].join('\n')
+      : [EDIT_FRAMING, `Requested directive: ${normalizedDirective}`, '', descriptorJSON].join('\n')
+    : [EDIT_FRAMING, `Requested directive: ${normalizedDirective}`, '', descriptorJSON].join('\n')
 
   if (prompt.length >= MAX_PROMPT_LENGTH) {
     return failure(
