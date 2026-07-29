@@ -328,6 +328,47 @@ describe('POST /api/studio/mutate', () => {
     expect(JSON.stringify(compositionInput.descriptor)).not.toContain('Do not add props.')
   })
 
+  it('passes only the source reference on the customer path while retaining descriptor style intent', async () => {
+    mockRequireStudioApi.mockResolvedValue({
+      ok: true,
+      user: { id: 'user-1' },
+      supabase: {},
+    })
+    mockResolveStyles.mockResolvedValue({
+      lightingStyle: {
+        descriptor: {
+          quality: 'clean studio light',
+          temperature: 'neutral',
+          shadows: 'soft',
+          falloff: 'gradual',
+        },
+        short_description: 'Studio lighting',
+        prompt_fragment: 'Use clean studio light.',
+        negative_constraints: 'Do not add props.',
+        thumbnail_path: 'controls/lighting-studio',
+        name: 'Studio',
+      },
+    })
+
+    const res = await POST(makeRequest(validBody))
+
+    expect(res.status).toBe(200)
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request_scope: 'studio_foh_mutation',
+        styleReferences: [],
+      }),
+    )
+    const compositionInput = mockComposePrompt.mock.calls[0][0] as {
+      descriptor: {
+        subject?: { reference?: string }
+        target?: { lighting?: { reference?: string } }
+      }
+    }
+    expect(compositionInput.descriptor.subject?.reference).toBe('Image A')
+    expect(compositionInput.descriptor.target?.lighting).not.toHaveProperty('reference')
+  })
+
   it('uses the canonical configured Pro model when explicitly requested', async () => {
     mockRequireStudioApi.mockResolvedValue({
       ok: true,

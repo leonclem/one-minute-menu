@@ -189,53 +189,60 @@ export class MutationEngine {
       // Each style-reference drop below is logged with its individual name.
     }
 
-    const styleReferences = input.styleReferences || []
-    for (let index = 0; index < styleReferences.length; index += 1) {
-      const ref = styleReferences[index]
-      const referenceName = ref.comment || `${ref.role} style reference ${index + 1}`
-      if (!subjectLimits) {
-        logger.warn('[MutationEngine] Dropped reference image because source dimensions could not be read.', {
-          referenceName,
-          role: ref.role,
-          reason: 'subject_metrics_unavailable',
+    const isCustomerFohMutation = input.request_scope === 'studio_foh_mutation'
+
+    // Customer FOH carries style intent in the scene descriptor, not in image
+    // references. Keep the source as the sole candidate on that path so staged
+    // styles and steering images cannot attach regardless of their count.
+    if (!isCustomerFohMutation) {
+      const styleReferences = input.styleReferences || []
+      for (let index = 0; index < styleReferences.length; index += 1) {
+        const ref = styleReferences[index]
+        const referenceName = ref.comment || `${ref.role} style reference ${index + 1}`
+        if (!subjectLimits) {
+          logger.warn('[MutationEngine] Dropped reference image because source dimensions could not be read.', {
+            referenceName,
+            role: ref.role,
+            reason: 'subject_metrics_unavailable',
+          })
+          continue
+        }
+
+        const fitted = await fitReferenceToSubject({
+          ref,
+          subjectPixels: subjectLimits.pixels,
+          subjectBytes: subjectLimits.bytes,
         })
-        continue
-      }
+        if (!fitted) {
+          logger.warn('[MutationEngine] Dropped reference image after it could not fit the source subject.', {
+            referenceName,
+            role: ref.role,
+            reason: 'reference_fit_failed',
+          })
+          continue
+        }
 
-      const fitted = await fitReferenceToSubject({
-        ref,
-        subjectPixels: subjectLimits.pixels,
-        subjectBytes: subjectLimits.bytes,
-      })
-      if (!fitted) {
-        logger.warn('[MutationEngine] Dropped reference image after it could not fit the source subject.', {
-          referenceName,
-          role: ref.role,
-          reason: 'reference_fit_failed',
-        })
-        continue
-      }
-
-      candidates.push({
-        image: {
-          mimeType: fitted.mimeType,
-          data: fitted.data,
-          role: fitted.role,
-          comment: fitted.comment,
-        },
-        name: referenceName,
-      })
-    }
-
-    // The caller's explicit opt-in, rather than spare cap capacity, decides
-    // whether static angle references participate in this request.
-    if (input.includeSteeringImages) {
-      for (let index = 0; index < this.steeringImages.length; index += 1) {
-        const steeringImage = this.steeringImages[index]
         candidates.push({
-          image: steeringImage,
-          name: steeringImage.label || steeringImage.comment || `steering reference ${index + 1}`,
+          image: {
+            mimeType: fitted.mimeType,
+            data: fitted.data,
+            role: fitted.role,
+            comment: fitted.comment,
+          },
+          name: referenceName,
         })
+      }
+
+      // The caller's explicit opt-in, rather than spare cap capacity, decides
+      // whether static angle references participate in this request.
+      if (input.includeSteeringImages) {
+        for (let index = 0; index < this.steeringImages.length; index += 1) {
+          const steeringImage = this.steeringImages[index]
+          candidates.push({
+            image: steeringImage,
+            name: steeringImage.label || steeringImage.comment || `steering reference ${index + 1}`,
+          })
+        }
       }
     }
 

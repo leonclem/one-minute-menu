@@ -62,12 +62,19 @@ function studioMutationInput(input: MutationInput): MutationInput {
   return { ...input, request_scope: 'studio_foh_mutation' }
 }
 
-async function captureStudioRequest(input: MutationInput): Promise<CapturedRequestBody> {
+async function captureStudioRequest(
+  input: MutationInput,
+  customerFoh = true,
+): Promise<CapturedRequestBody> {
   mockFetchJsonWithRetry.mockClear()
   mockFetchJsonWithRetry.mockResolvedValue(GENERATION_RESPONSE)
 
-  await new MutationEngine().mutate(studioMutationInput(input))
+  await new MutationEngine().mutate(customerFoh ? studioMutationInput(input) : input)
   return capturedRequestBody()
+}
+
+async function captureSandboxRequest(input: MutationInput): Promise<CapturedRequestBody> {
+  return captureStudioRequest(input, false)
 }
 
 const sourceDimensionsArbitrary = fc.oneof(
@@ -458,7 +465,7 @@ const oversizedReferencePairArbitrary = fc
   }))
 
 async function captureReferenceFitRequest(source: Buffer, reference: Buffer): Promise<CapturedRequestBody> {
-  return captureStudioRequest({
+  return captureSandboxRequest({
     sourceImageBase64: source.toString('base64'),
     mimeType: 'image/jpeg',
     prompt: 'Preserve the subject while applying the staged studio reference.',
@@ -628,7 +635,7 @@ describe('Studio request defects: reference limits and explicit steering opt-in 
   })
 
   it('leaves steering references off by default regardless of remaining cap capacity', async () => {
-    const requests = await Promise.all([0, 1, 2, 3].map((styleCount) => captureStudioRequest({
+    const requests = await Promise.all([0, 1, 2, 3].map((styleCount) => captureSandboxRequest({
       sourceImageBase64: TINY_PNG_BASE64,
       mimeType: 'image/png',
       prompt: 'Sandbox request without an explicit steering opt-in.',
@@ -639,7 +646,7 @@ describe('Studio request defects: reference limits and explicit steering opt-in 
   })
 
   it('uses the same documented 10-reference limit for the Flash-preview engine path and a direct non-Studio caller', async () => {
-    const engineRequest = await captureStudioRequest({
+    const engineRequest = await captureSandboxRequest({
       sourceImageBase64: TINY_PNG_BASE64,
       mimeType: 'image/png',
       prompt: 'Admin sandbox request with nine selected style references.',
@@ -674,7 +681,7 @@ describe('Studio request defects: reference limits and explicit steering opt-in 
 
   it('warns with the name of every reference dropped from an over-cap admin sandbox request', async () => {
     const styleReferences = numberedStyleReferences('sandbox-dropped-reference', 14)
-    const request = await captureStudioRequest({
+    const request = await captureSandboxRequest({
       sourceImageBase64: TINY_PNG_BASE64,
       mimeType: 'image/png',
       prompt: 'Over-cap admin sandbox request must make each drop observable.',
@@ -704,7 +711,7 @@ describe('Studio request defects: reference limits and explicit steering opt-in 
   it('counts source, all attached style references, and explicitly opted-in steering images across sandbox and Pro routes', async () => {
     await fc.assert(
       fc.asyncProperty(optedInA2bReferenceSetArbitrary, async ({ model, styleReferences }) => {
-        const request = await captureStudioRequest({
+        const request = await captureSandboxRequest({
           sourceImageBase64: TINY_PNG_BASE64,
           mimeType: 'image/png',
           prompt: 'Explicitly opted-in sandbox or Pro steering request.',
@@ -720,7 +727,7 @@ describe('Studio request defects: reference limits and explicit steering opt-in 
   })
 
   it('does not attach steering-angle references for a Pro request without an explicit opt-in', async () => {
-    const request = await captureStudioRequest({
+    const request = await captureSandboxRequest({
       sourceImageBase64: TINY_PNG_BASE64,
       mimeType: 'image/png',
       prompt: 'Pro routing without a steering opt-in.',
@@ -735,79 +742,10 @@ describe('Studio request defects: reference limits and explicit steering opt-in 
  * Feature: studio-json-metadata-defects, Property 2: Source-Only On The Customer Path (A2)
  * **Validates: Requirements 2.3b, 3.2**
  *
- * This exploration deliberately runs against the current customer FOH mutation
- * path before Group B. It must fail until the path drops style references and
- * composePrompt emits the Tier 2 scene descriptor.
+ * This property exercises the engine-level customer FOH reference invariant.
+ * Descriptor attribute coverage is asserted by the scene-descriptor and route tests.
  */
 type CustomerPathGenerationParams = Parameters<NanoBananaClient['generateImage']>[0]
-
-type ScenePayload = {
-  target?: Record<string, Record<string, unknown>>
-}
-
-const customerStyleAttributes: Record<string, string[]> = {
-  lighting: ['quality', 'temperature', 'shadows', 'falloff'],
-  backdrop: ['material', 'colour', 'falloff'],
-  surface: ['material', 'finish', 'colour'],
-}
-
-/** Extract the model-facing descriptor from either the future JSON payload or today's Target line. */
-function extractScenePayload(prompt: string): ScenePayload | null {
-  const targetLine = prompt.match(/^Target:\s*(\{.*\})$/m)
-  if (targetLine) {
-    try {
-      return { target: JSON.parse(targetLine[1]) as Record<string, Record<string, unknown>> }
-    } catch {
-      return null
-    }
-  }
-
-  // The fixed composer emits a pretty-printed JSON descriptor surrounded by
-  // framing prose. Find balanced JSON objects without depending on prose text.
-  for (let start = 0; start < prompt.length; start += 1) {
-    if (prompt[start] !== '{') continue
-    let depth = 0
-    let inString = false
-    let escaped = false
-    for (let end = start; end < prompt.length; end += 1) {
-      const character = prompt[end]
-      if (inString) {
-        if (escaped) escaped = false
-        else if (character === '\\') escaped = true
-        else if (character === '"') inString = false
-        continue
-      }
-      if (character === '"') {
-        inString = true
-      } else if (character === '{') {
-        depth += 1
-      } else if (character === '}') {
-        depth -= 1
-        if (depth === 0) {
-          try {
-            const parsed = JSON.parse(prompt.slice(start, end + 1)) as ScenePayload
-            if (parsed && typeof parsed === 'object' && parsed.target && typeof parsed.target === 'object') {
-              return parsed
-            }
-          } catch {
-            // Continue scanning for the next balanced object.
-          }
-          break
-        }
-      }
-    }
-  }
-
-  return null
-}
-
-function hasRequiredStyleAttributes(
-  section: Record<string, unknown> | undefined,
-  style: string,
-): boolean {
-  if (!section) return false
-  return customerStyleAttributes[style].every((attribute) => attribute in section) && !('reference' in section)
-}
 
 async function captureCustomerPathRequest(
   stagedStyles: string[],
@@ -842,13 +780,11 @@ describe('Studio request defects: source-only customer FOH references (A2)', () 
     mockFetchJsonWithRetry.mockResolvedValue(GENERATION_RESPONSE)
   })
 
-  it('keeps only the source reference and carries every staged style in descriptor JSON', async () => {
+  it('keeps only the source reference regardless of staged style count', async () => {
     await fc.assert(
       fc.asyncProperty(customerStagedStylesArbitrary, async (stagedStyles) => {
-        const { request, params } = await captureCustomerPathRequest(stagedStyles)
+        const { params } = await captureCustomerPathRequest(stagedStyles)
         const references = (params.reference_images || []) as Array<{ data: string; role?: string; label?: string }>
-        const payload = extractScenePayload(request.contents[0].parts[0].text as string)
-        const target = payload?.target
 
         expect({
           referenceCount: references.length,
@@ -857,58 +793,29 @@ describe('Studio request defects: source-only customer FOH references (A2)', () 
           hasSteeringReference: references.some((reference) =>
             typeof reference.label === 'string' && reference.label.startsWith('steering-angle-'),
           ),
-          stagedStyleSectionsHaveAttributes: stagedStyles.every((style) =>
-            hasRequiredStyleAttributes(target?.[style], style),
-          ),
         }).toEqual({
           referenceCount: 1,
           sourceIsFirstAndUnchanged: true,
           allReferencesAreDish: true,
           hasSteeringReference: false,
-          stagedStyleSectionsHaveAttributes: true,
         })
       }),
       { numRuns: 100 },
     )
   })
 
-  it('reproduces the concrete lighting + backdrop + surface customer request', async () => {
-    const { request, params } = await captureCustomerPathRequest(['lighting', 'backdrop', 'surface'])
+  it('preserves the source bytes for a concrete lighting + backdrop + surface request', async () => {
+    const { params } = await captureCustomerPathRequest(['lighting', 'backdrop', 'surface'])
     const references = (params.reference_images || []) as Array<{ data: string; role?: string; label?: string }>
-    const payload = extractScenePayload(request.contents[0].parts[0].text as string)
-    const target = payload?.target
 
     expect({
       referenceCount: references.length,
       referenceRoles: references.map((reference) => reference.role),
       sourceBytesPreserved: references[0]?.data === TINY_PNG_BASE64,
-      lightingTarget: target?.lighting,
-      backdropTarget: target?.backdrop,
-      surfaceTarget: target?.surface,
     }).toEqual({
       referenceCount: 1,
       referenceRoles: ['dish'],
       sourceBytesPreserved: true,
-      lightingTarget: expect.objectContaining({
-        quality: expect.any(String),
-        temperature: expect.any(String),
-        shadows: expect.any(String),
-        falloff: expect.any(String),
-      }),
-      backdropTarget: expect.objectContaining({
-        material: expect.any(String),
-        colour: expect.any(String),
-        falloff: expect.any(String),
-      }),
-      surfaceTarget: expect.objectContaining({
-        material: expect.any(String),
-        finish: expect.any(String),
-        colour: expect.any(String),
-      }),
     })
-
-    expect(target?.lighting).not.toHaveProperty('reference')
-    expect(target?.backdrop).not.toHaveProperty('reference')
-    expect(target?.surface).not.toHaveProperty('reference')
   })
 })

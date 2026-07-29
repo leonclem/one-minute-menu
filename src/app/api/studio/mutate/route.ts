@@ -230,39 +230,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: styleResolution.error }, { status: 400 })
     }
 
+    // Customer FOH sends the source photograph as the sole identity reference.
+    // Style intent is carried by the Tier 2 descriptor below; do not load or
+    // attach style swatches on this path.
     const styleReferences: StyleReferenceImage[] = []
-
-    if (styleResolution.lightingStyle) {
-      const img = loadStyleReferenceImage(
-        styleResolution.lightingStyle.thumbnail_path,
-        'style',
-        styleResolution.lightingStyle.name,
-      )
-      if (img) styleReferences.push(img)
-    }
-
-    if (styleResolution.backgroundStyle) {
-      const img = loadStyleReferenceImage(
-        styleResolution.backgroundStyle.thumbnail_path,
-        'scene',
-        styleResolution.backgroundStyle.name,
-      )
-      if (img) styleReferences.push(img)
-    }
-
-    if (styleResolution.surfaceStyle) {
-      const img = loadStyleReferenceImage(
-        styleResolution.surfaceStyle.thumbnail_path,
-        'scene',
-        styleResolution.surfaceStyle.name,
-      )
-      if (img) styleReferences.push(img)
-    }
-
-    const labels = [
-      'Image A',
-      ...styleReferences.map((_, index) => `Image ${String.fromCharCode(66 + index)}`),
-    ]
+    const labels = ['Image A']
     const delta = computeDelta(
       { schema: originalSchema, position: CENTER },
       { schema: targetSchema, position: CENTER },
