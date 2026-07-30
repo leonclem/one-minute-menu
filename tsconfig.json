@@ -30,8 +30,6 @@
     "Development Scripts/**",
     "**/*.test.ts",
     "**/*.test.tsx",
-    "**/__tests__/**/*",
-    "debug-*.test.ts",
-    "debug-*.js"
+    "**/__tests__/**/*"
   ]
 }

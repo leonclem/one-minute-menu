@@ -24,7 +24,7 @@ Created a post-compilation script (`fix-paths.js`) that automatically resolves a
 
 ### New Files
 1. **fix-paths.js** - Post-compilation path resolver
-2. **test-docker-worker.ps1** - Local testing script
+2. **Temporary local worker smoke test** - Used during verification and removed after completion
 3. **_workers/DOCKER_BUILD_SUCCESS.md** - Detailed verification results
 4. **_workers/DOCKER_QUICK_REFERENCE.md** - Command reference
 5. **DOCKER_BUILD_COMPLETE.md** - This file

@@ -66,7 +66,7 @@ docker run --rm railway-worker-test grep "notification-service" dist/lib/worker/
 
 1. **Dockerfile** - Added TypeScript compilation and path fixing steps
 2. **fix-paths.js** - New script to resolve path aliases post-compilation
-3. **test-docker-worker.ps1** - Test script for local verification
+3. **Local worker smoke testing** - Completed during verification; the temporary test helper was removed after use
 
 ## Next Steps
 
