@@ -102,6 +102,22 @@ function sourceImageFromRecord(
   return { dataUrl: publicUrl, mimeType: normalizedMime, bytes }
 }
 
+const STUDIO_SOURCE_REQUEST_TIMEOUT_MS = 60_000
+
+async function fetchStudioSourceRequest(
+  input: RequestInfo | URL,
+  init: RequestInit,
+): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), STUDIO_SOURCE_REQUEST_TIMEOUT_MS)
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
+
 function fileSizeBucket(bytes: number): string {
   const megabyte = 1024 * 1024
   if (!Number.isFinite(bytes) || bytes < megabyte) return 'under_1mb'
@@ -613,7 +629,7 @@ export function StudioClient({
         uploadedStoragePath = upload.storagePath
         setSourceImage(sourceImageFromRecord(upload.publicUrl, upload.mimeType, upload.bytes))
 
-        const sourceRes = await fetch('/api/studio/source', {
+        const sourceRes = await fetchStudioSourceRequest('/api/studio/source', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -625,7 +641,7 @@ export function StudioClient({
 
         if (!sourceRes.ok) {
           const err = await sourceRes.json().catch(() => null)
-          await removeStudioStorageObject(upload.storagePath)
+          void removeStudioStorageObject(upload.storagePath)
           setExtractionError(
             (err as { error?: string } | null)?.error ?? 'Failed to save uploaded image.',
           )
@@ -639,7 +655,7 @@ export function StudioClient({
         }
 
         if (!sourceData.imageId || !sourceData.imageUrl) {
-          await removeStudioStorageObject(upload.storagePath)
+          void removeStudioStorageObject(upload.storagePath)
           setExtractionError('Failed to save uploaded image.')
           emitUploadRejected()
           return
@@ -649,6 +665,10 @@ export function StudioClient({
         setSourceImage(
           sourceImageFromRecord(sourceData.imageUrl, upload.mimeType, upload.bytes),
         )
+        uploadedStoragePath = null
+        // The source is now registered and visible. Extraction and metadata saves
+        // are separate phases and must not keep the upload banner on screen.
+        setIsUploading(false)
         trackStudioEvent(ANALYTICS_EVENTS.STUDIO_UPLOAD_COMPLETED, {
           ...uploadProperties,
           outcome: 'success',
@@ -686,11 +706,13 @@ export function StudioClient({
           await persistEditorState(sourceData.imageId, extracted)
         }
         await persistDishCurrent(activeDishId, sourceData.imageId)
-      } catch {
+      } catch (error) {
         if (uploadedStoragePath) {
-          await removeStudioStorageObject(uploadedStoragePath)
+          void removeStudioStorageObject(uploadedStoragePath)
         }
-        setExtractionError('Upload failed unexpectedly.')
+        setExtractionError(
+          error instanceof Error ? error.message : 'Upload failed unexpectedly.',
+        )
         emitUploadRejected()
       } finally {
         setIsUploading(false)
