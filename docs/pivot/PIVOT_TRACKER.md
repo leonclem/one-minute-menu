@@ -73,6 +73,11 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-19 | Reference-image approach / steering references | Superseded by clause 2.3a: static steering references are off by default on the customer FOH path and attach only on explicit opt-in, such as the admin sandbox. |
 | 2026-07-28 | References for style | Superseded by clause 2.3b: references carry identity and JSON carries style. `gemini-3.1-flash-image` has no style-reference slot, so lighting, backdrop, and surface style belong in descriptor attributes rather than style swatches. |
 | 2026-07-28 | Interactions API iteration | Follow-up, out of scope for this patch: evaluate the Interactions API instead of `generateContent`, using `previous_interaction_id` for iterative image edits. No transport migration is included here. |
+| 2026-07-29 | Chunk 7 market-test scope | Phase 6 starts as controlled-beta readiness: preserve nav-only Studio prominence, keep the homepage/marketing CTA unchanged, and use manually managed beta access plus admin-granted credits. Public positioning and landing-page work remain deferred pending the branding/ICP decision. |
+| 2026-07-29 | Studio beta entitlement storage | Use a dedicated `studio_beta_access` table keyed by user, with admin-only writes and retained grant/revoke audit fields. Access is an entitlement independent of the Studio credit balance, so invited users can reach the no-credit state. |
+| 2026-07-29 | Studio access-mode switch | Add `NEXT_PUBLIC_STUDIO_ACCESS_MODE` with `admin-only`, `beta`, and `open` values. It is fallback-preserving: unset, empty, or invalid values retain the existing `NEXT_PUBLIC_STUDIO_ADMIN_ONLY` semantics, including the admin-only default. |
+| 2026-07-29 | Studio generation feedback storage | Use a dedicated `studio_image_feedback` table with one editable, user-owned row per Studio image. Feedback is product data; analytics receives only non-sensitive submission metadata. |
+| 2026-07-29 | Deployment reconciliation | The production backlog remains the source of truth: Group A/B/D style-descriptor work and migration `075` are still Pending. The earlier statement that nothing on `main` awaited production was stale and is superseded by the backlog. |
 
 ---
 
@@ -110,6 +115,11 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 8.1 | Credit deduction around generation jobs | 5 | Built | Chunk 6: debit on successful Studio mutate only. |
 | 8.1 | Admin credit grants (private beta) | 5 | Built | Chunk 6: admin API + User Management “Studio credits” panel. |
 | 8.1 | Stripe credit packs / plan packaging | 5+ | Deferred | Delay until user behaviour clearer. Out of Chunk 6 scope. |
+| 8.1 | Controlled beta gate | 6 | Built | Chunk 7 adds admin-only, beta, and open access modes with the existing admin-only fallback; beta access is a separate user entitlement. |
+| 8.1 | Admin beta controls and credit visibility | 6 | Built | Chunk 7 adds grant/revoke controls, audit state, and the existing Studio credit balance in the admin panel; the Chunk 6 credit path remains unchanged. |
+| 8.1 | First-run Studio onboarding | 6 | Built | Chunk 7 adds the upload-to-generation workflow, private-beta credit explanation, support path, and access to upload without legacy menu onboarding. |
+| 8.1 | Generation feedback loop | 6 | Built | Chunk 7 adds optional rating/tags/comment feedback, user-owned persistence, ownership validation, and the admin read path without blocking download or reuse. |
+| 8.1 | Funnel instrumentation | 6 | Built | Chunk 7 registers the Studio funnel events and emits consent-aware, non-PII payloads through the existing analytics wrappers. |
 
 ### Architecture (§9)
 
@@ -125,7 +135,27 @@ Subject to change; record changes as new dated rows rather than editing old ones
 
 | Ref | Requirement | Phase | Status | Notes |
 |---|---|---|---|---|
-| 16.1 | Review supplementary pages (Settings, Support, Pricing, Privacy, Terms, Contact Us) for new positioning | 1–6 | Not started | Added 2026-07-17. Legal pages must cover AI generation, photo uploads, watermarking. Complete before public/beta launch. |
+| 16.1 | Review supplementary pages (Settings, Support, Pricing, Privacy, Terms, Contact Us) for new positioning | 1–6 | Built | Chunk 7 completed the audit and the minimum Pricing/Privacy corrections; unresolved findings are recorded as deferred follow-ups below. |
+
+### §16.1 deferred follow-ups from the Chunk 7 supplementary-page audit
+
+| Ref | Page / finding | Status | Follow-up |
+|---|---|---|---|
+| 16.1 | Support — “What is GridMenu?” / “It focuses purely on menu creation.” | Deferred | Revisit public product positioning after the branding, ICP, and landing-page decisions; leave unchanged for the controlled beta. |
+| 16.1 | Support — AI-generated images FAQ does not distinguish legacy menu images from the invited Photo Studio workflow. | Deferred | Clarify scope in a future support/content pass rather than broadening public copy in Chunk 7. |
+| 16.1 | Support — Cutout “Beta” and plan-allowance wording could be confused with the controlled Studio beta. | Deferred | Clarify the distinction between legacy cutout beta and Studio cohort access in a future support/content pass. |
+| 16.1 | Support — first-menu workflow describes the legacy menu builder, not Studio dish-photo onboarding. | Deferred | Revisit only if public navigation or shared support onboarding changes; no edit for the invited beta. |
+| 16.1 | Support — rate-limit FAQ describes legacy plan limits, not Studio credit balances. | Deferred | Reconcile legacy limits and Studio credit terminology after pricing/packaging decisions. |
+| 16.1 | Support — exported-files FAQ states 30/90/180-day menu-export retention. | Deferred | Keep scoped to menu exports, but review wording when Studio retention and legal copy are revisited. |
+| 16.1 | Pricing — plan cards list legacy menu-generation allowances that could be confused with Studio credits. | Deferred | Preserve public menu pricing; add clearer separation only as part of a future pricing/packaging pass. |
+| 16.1 | Pricing — Creator Pack/export-storage FAQ describes legacy packaging and retention. | Deferred | Leave unchanged until public pricing and Studio packaging are deliberately revisited. |
+| 16.1 | Pricing — upgrade FAQ refers generically to preserved “credits.” | Deferred | Clarify legacy versus Studio credits in a future pricing/legal copy review. |
+| 16.1 | Pricing — premium/public CTA copy (“Unlimited everything”, “photo-perfect menus”, and related positioning). | Deferred | Do not rewrite public positioning in the controlled-beta chunk; revisit with the landing-page decision. |
+| 16.1 | Privacy — aggregated/derivative-data ownership wording does not distinguish uploaded originals, generated Studio outputs, and analytics-derived data. | Deferred | Obtain legal/product review before changing ownership language. |
+| 16.1 | Privacy — information-sharing wording does not name AI image-generation processing as a provider activity. | Deferred | Confirm processor/vendor wording with legal review before expanding the provider list. |
+| 16.1 | Terms — subscription, Creator Pack, image-regeneration, and fair-use clauses remain scoped to legacy menu plans. | Deferred | Add Studio-beta terms only after the access, pricing, and legal position is approved. |
+| 16.1 | Terms — no dedicated statement covers Photo Studio access, dish-photo uploads, Studio retention, credits, or the controlled beta. | Deferred | Decide whether dedicated Studio-beta terms are required before any broader launch. |
+| 10 | Requirement 10 coverage carried manually | Manual / deferred | Studio component surfaces (10.8), the admin feedback read path, `/api/studio/access`, and hands-on Chunk 6 regression checks remain covered by task 19 and the documented private-beta smoke path; parsing/decision and beta-route coverage remain partial as recorded in the task notes. |
 
 ### Development phases (§10)
 
@@ -136,9 +166,19 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2 | Image library per dish | Built | Chunk 3 — `studio_dishes` + dish library on `/studio` |
 | 3 | Background & lighting reference libraries | Built | Chunk 4 — `studio_*_styles` + admin CRUD + FOH tiles |
 | 4 | Controlled prompt/state layer | Built | Chunk 5 — extract/delta/compose + §5.2 identity locks + post-gen re-extract soft validation on `metadata.validation`. |
-| 5 | Credits & usage control | Built | Chunk 6 — local; not yet deployed — `docs/pivot/BUILD_PLAN_CHUNK_06.md` |
-| 6 | MVP market test | Not started | |
+| 5 | Credits & usage control | Built | Chunk 6 — deployed to production in `e9c856c` (confirmed 2026-07-28); see `BUILD_PLAN_CHUNK_06.md` and deploy backlog. |
+| 6 | MVP market test | Built | Chunk 7 — controlled beta gate, admin controls, first-run onboarding, feedback loop, consent-aware funnel instrumentation, and supplementary-page audit delivered; see `BUILD_PLAN_CHUNK_07.md`. |
 | 7 | Plating/vessel experimentation | Deferred | |
+
+### Phase 6 delivered scope — Chunk 7
+
+| Phase | Delivered scope | Status | Evidence |
+|---|---|---|---|
+| 6 | Controlled beta gate and admin cohort controls | Built | `studio_beta_access`, three-mode access resolution, grant/revoke route and admin panel. |
+| 6 | First-run onboarding and non-sensitive Studio states | Built | Workflow panel, access/no-credit/blocked-dish states, and accessible loading/error/empty handling. |
+| 6 | Feedback loop and admin review path | Built | `studio_image_feedback`, owner validation, optional feedback UI, and recent-feedback admin read path. |
+| 6 | Consent-aware funnel instrumentation | Built | Registered Studio events, allow-listed non-PII payloads, and existing analytics wrappers. |
+| 6 | Supplementary-page readiness audit | Built | Pricing/Privacy corrections landed; unresolved findings and manual Requirement 10 coverage are recorded above. |
 
 ---
 
@@ -152,6 +192,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 4 | Phase 3: background & lighting reference libraries (DB-backed, admin-managed) | `studio/chunk-04-reference-libraries` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_04.md` |
 | 5 | Phase 4: controlled prompt/state layer (identity locks + post-gen validation) | `studio/chunk-05-prompt-state-layer` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_05.md` |
 | 6 | Phase 5: credits & usage control (Studio ledger, mutate gate, admin grants, FOH balance, dish failure breaker) | `main` | Deployed prod (`e9c856c`; confirmed by LC 2026-07-28) — see `docs/pivot/BUILD_PLAN_CHUNK_06.md` |
+| 7 | Phase 6: controlled beta market-test readiness (beta access, onboarding, feedback, funnel instrumentation, supplementary-page review) | `main` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_07.md` |
 
 ---
 

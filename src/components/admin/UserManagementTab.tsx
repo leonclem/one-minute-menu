@@ -252,7 +252,7 @@ export function UserManagementTab() {
                         size="sm"
                         onClick={() => setCreditsPanelUser(user)}
                       >
-                        Studio credits
+                        Studio access & credits
                       </UXButton>
                       <UXButton
                         variant="primary"
@@ -341,7 +341,7 @@ export function UserManagementTab() {
                         size="sm"
                         onClick={() => setCreditsPanelUser(user)}
                       >
-                        Studio credits
+                        Studio access & credits
                       </UXButton>
                       {user.role !== 'admin' && (
                         <UXButton

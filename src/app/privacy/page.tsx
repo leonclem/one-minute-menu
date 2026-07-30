@@ -40,6 +40,23 @@ export default function PrivacyPage() {
             </section>
 
             <section className="mb-12">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Photo Studio Images and Processing</h2>
+              <p>
+                If you use Photo Studio, you may upload a real dish photo as a source image. Photo Studio processes
+                that source image to extract structured dish information and create generated image variants from the
+                controls you select. We store the source and generated Studio images together with associated metadata,
+                such as image role, source relationship, file details, and processing or generation details.
+              </p>
+              <p>
+                Studio images are stored in your user-owned Studio image library and corresponding Supabase Storage
+                objects. They do not have a plan-based or time-based automatic retention period. You can archive an
+                image, which removes it from the active library while retaining its record and stored object, or delete
+                it. Deleting removes the Studio record and its associated storage object; a source image with active
+                generated variants must have those variants archived or deleted before the source can be deleted.
+              </p>
+            </section>
+
+            <section className="mb-12">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">How We Use Your Information</h2>
               <p>We use the information we collect to:</p>
               <ul className="list-disc pl-6 space-y-2 mt-4">

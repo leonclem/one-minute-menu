@@ -23,6 +23,23 @@ export const ANALYTICS_EVENTS = {
   ADMIN_ANALYTICS_DISABLED: 'admin_analytics_disabled',
   ADMIN_ANALYTICS_ENABLED: 'admin_analytics_enabled',
   FIRST_TEMPLATE_VISIT: 'first_template_visit',
+  STUDIO_VIEWED: 'studio_viewed',
+  STUDIO_ACCESS_DENIED: 'studio_access_denied',
+  STUDIO_ONBOARDING_VIEWED: 'studio_onboarding_viewed',
+  STUDIO_UPLOAD_STARTED: 'studio_upload_started',
+  STUDIO_UPLOAD_COMPLETED: 'studio_upload_completed',
+  STUDIO_UPLOAD_REJECTED: 'studio_upload_rejected',
+  STUDIO_EXTRACTION_COMPLETED: 'studio_extraction_completed',
+  STUDIO_EXTRACTION_FAILED: 'studio_extraction_failed',
+  STUDIO_GENERATION_STARTED: 'studio_generation_started',
+  STUDIO_GENERATION_COMPLETED: 'studio_generation_completed',
+  STUDIO_GENERATION_FAILED: 'studio_generation_failed',
+  STUDIO_GENERATION_BLOCKED_CREDITS: 'studio_generation_blocked_credits',
+  STUDIO_GENERATION_BLOCKED_DISH: 'studio_generation_blocked_dish',
+  STUDIO_IMAGE_DOWNLOADED: 'studio_image_downloaded',
+  STUDIO_IMAGE_REUSED: 'studio_image_reused',
+  STUDIO_FEEDBACK_SUBMITTED: 'studio_feedback_submitted',
+  STUDIO_FEEDBACK_DISMISSED: 'studio_feedback_dismissed',
 } as const
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS]

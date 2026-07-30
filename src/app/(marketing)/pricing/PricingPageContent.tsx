@@ -143,6 +143,11 @@ export default function UXPricingPageContent({
         <p className="text-lg text-white/90 text-hero-shadow-strong max-w-2xl mx-auto mb-6">
           Choose the plan that fits your venue. Start free with your first Creator Pack.
         </p>
+        <p className="text-sm text-white/85 max-w-3xl mx-auto text-hero-shadow-strong">
+          Photo Studio is a separate private beta. Studio credits are admin-granted for invited testers and are not
+          currently available for self-serve purchase. The plans and menu-generation allowances below are existing
+          public menu pricing and do not grant Photo Studio access or Studio credits.
+        </p>
       </div>
 
       <div className="container-ux">

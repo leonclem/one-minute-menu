@@ -6,6 +6,24 @@
  * vars are unset — see docs/pivot/BUILD_PLAN_CHUNK_01.md.
  */
 
+import {
+  decideStudioAccess,
+  type StudioAccessDecision,
+  type StudioAccessReason,
+} from '@/lib/studio/access/studio-access-decision'
+import {
+  parseStudioAccessMode,
+  resolveStudioAccessMode,
+  type AccessMode,
+} from '@/lib/studio/access/studio-access-mode'
+
+export {
+  decideStudioAccess,
+  parseStudioAccessMode,
+  resolveStudioAccessMode,
+}
+export type { AccessMode, StudioAccessDecision, StudioAccessReason }
+
 export type ProductMode = 'menu-builder' | 'photo-studio'
 
 /**
@@ -43,27 +61,39 @@ export function shouldShowLegacyMenuNav(): boolean {
 
 /**
  * Whether customer-facing `/studio` is restricted to admins.
- * Defaults to true when unset (private-beta safety). Set to `false` to open
- * Studio to all authenticated users once `NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true`.
+ *
+ * @deprecated Prefer `resolveStudioAccessMode() === 'admin-only'`.
+ * This helper is retained for existing callers and now reports the resolved
+ * access mode rather than interpreting the legacy flag directly.
  */
 export function isStudioAdminOnly(): boolean {
-  return process.env.NEXT_PUBLIC_STUDIO_ADMIN_ONLY !== 'false'
+  return resolveStudioAccessMode() === 'admin-only'
 }
 
 /**
  * Whether the signed-in user may open the FOH Photo Studio surface.
+ *
+ * `hasBetaAccess` defaults to false so callers that do not know the
+ * entitlement fail closed for non-admins in beta mode.
  */
-export function canAccessPhotoStudio(isAdmin: boolean): boolean {
-  if (!isPhotoStudioEnabled()) return false
-  if (isStudioAdminOnly()) return isAdmin
-  return true
+export function canAccessPhotoStudio(
+  isAdmin: boolean,
+  hasBetaAccess = false,
+): boolean {
+  return decideStudioAccess({
+    mode: resolveStudioAccessMode(),
+    studioEnabled: isPhotoStudioEnabled(),
+    isAdmin,
+    hasBetaAccess,
+  }).granted
 }
 
 /**
  * Whether primary nav should show the Studio link.
- * Requires the Photo Studio feature flag; when admin-only mode is on, also
- * requires `isAdmin`.
  */
-export function shouldShowStudioNav(isAdmin = false): boolean {
-  return canAccessPhotoStudio(isAdmin)
+export function shouldShowStudioNav(
+  isAdmin = false,
+  hasBetaAccess = false,
+): boolean {
+  return canAccessPhotoStudio(isAdmin, hasBetaAccess)
 }

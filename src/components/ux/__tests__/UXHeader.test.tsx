@@ -33,18 +33,26 @@ jest.mock('@/lib/dashboard-refresh', () => ({
 }))
 
 const mockShouldShowLegacyMenuNav = jest.fn()
-const mockShouldShowStudioNav = jest.fn()
+const mockCanAccessPhotoStudio = jest.fn()
+const mockUseStudioBetaAccess = jest.fn()
 
 jest.mock('@/lib/product-mode', () => ({
   shouldShowLegacyMenuNav: () => mockShouldShowLegacyMenuNav(),
-  shouldShowStudioNav: (isAdmin?: boolean) => mockShouldShowStudioNav(isAdmin),
+  canAccessPhotoStudio: (...args: [boolean?, boolean?]) =>
+    mockCanAccessPhotoStudio(...args),
+}))
+
+jest.mock('@/lib/studio/access/use-studio-beta-access', () => ({
+  useStudioBetaAccess: (isAdmin?: boolean, enabled?: boolean) =>
+    mockUseStudioBetaAccess(isAdmin, enabled),
 }))
 
 describe('UXHeader', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockShouldShowLegacyMenuNav.mockReturnValue(true)
-    mockShouldShowStudioNav.mockReturnValue(false)
+    mockCanAccessPhotoStudio.mockReturnValue(false)
+    mockUseStudioBetaAccess.mockReturnValue({ known: true, hasAccess: false })
   })
 
   it('shows Dashboard for signed-in users when legacy menu nav is enabled', () => {
@@ -68,25 +76,35 @@ describe('UXHeader', () => {
   })
 
   it('shows Studio when studio nav is enabled', () => {
-    mockShouldShowStudioNav.mockReturnValue(true)
+    mockCanAccessPhotoStudio.mockReturnValue(true)
 
     render(<UXHeader userEmail="admin@example.com" isAdmin />)
 
     expect(screen.getAllByRole('link', { name: 'Studio' }).length).toBeGreaterThan(0)
-    expect(mockShouldShowStudioNav).toHaveBeenCalledWith(true)
+    expect(mockCanAccessPhotoStudio).toHaveBeenCalledWith(true, false)
   })
 
-  it('passes isAdmin=false into shouldShowStudioNav for non-admins', () => {
-    mockShouldShowStudioNav.mockReturnValue(false)
+  it('uses the synchronous access result while beta entitlement is unknown', () => {
+    mockUseStudioBetaAccess.mockReturnValue({ known: false, hasAccess: false })
 
     render(<UXHeader userEmail="user@example.com" />)
 
-    expect(mockShouldShowStudioNav).toHaveBeenCalledWith(false)
+    expect(mockCanAccessPhotoStudio).toHaveBeenCalledWith(false)
     expect(screen.queryByRole('link', { name: 'Studio' })).not.toBeInTheDocument()
   })
 
+  it('passes the known beta entitlement to the access helper', () => {
+    mockUseStudioBetaAccess.mockReturnValue({ known: true, hasAccess: true })
+    mockCanAccessPhotoStudio.mockReturnValue(true)
+
+    render(<UXHeader userEmail="user@example.com" />)
+
+    expect(mockCanAccessPhotoStudio).toHaveBeenCalledWith(false, true)
+    expect(screen.getAllByRole('link', { name: 'Studio' }).length).toBeGreaterThan(0)
+  })
+
   it('hides Studio when studio nav is disabled', () => {
-    mockShouldShowStudioNav.mockReturnValue(false)
+    mockCanAccessPhotoStudio.mockReturnValue(false)
 
     render(<UXHeader userEmail="user@example.com" />)
 

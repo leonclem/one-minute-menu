@@ -8,6 +8,7 @@ describe('product-mode', () => {
     'NEXT_PUBLIC_ENABLE_PHOTO_STUDIO',
     'NEXT_PUBLIC_ENABLE_LEGACY_MENUS',
     'NEXT_PUBLIC_STUDIO_ADMIN_ONLY',
+    'NEXT_PUBLIC_STUDIO_ACCESS_MODE',
   ] as const
 
   const originalEnv: Record<string, string | undefined> = {}
@@ -130,6 +131,22 @@ describe('product-mode', () => {
       const { isStudioAdminOnly } = await loadModule()
       expect(isStudioAdminOnly()).toBe(false)
     })
+
+    it('preserves the legacy fallback for every value other than exact "false"', async () => {
+      const { isStudioAdminOnly } = await loadModule()
+
+      for (const legacyValue of [undefined, '', 'true', '1', 'FALSE']) {
+        if (legacyValue === undefined) {
+          delete process.env.NEXT_PUBLIC_STUDIO_ADMIN_ONLY
+        } else {
+          process.env.NEXT_PUBLIC_STUDIO_ADMIN_ONLY = legacyValue
+        }
+        expect(isStudioAdminOnly()).toBe(true)
+      }
+
+      process.env.NEXT_PUBLIC_STUDIO_ADMIN_ONLY = 'false'
+      expect(isStudioAdminOnly()).toBe(false)
+    })
   })
 
   describe('canAccessPhotoStudio', () => {
@@ -144,6 +161,24 @@ describe('product-mode', () => {
       const { canAccessPhotoStudio } = await loadModule()
       expect(canAccessPhotoStudio(true)).toBe(true)
       expect(canAccessPhotoStudio(false)).toBe(false)
+    })
+
+    it('denies non-admins when beta access is omitted in beta mode', async () => {
+      process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
+      process.env.NEXT_PUBLIC_STUDIO_ACCESS_MODE = 'beta'
+      const { canAccessPhotoStudio } = await loadModule()
+      expect(canAccessPhotoStudio(false)).toBe(false)
+      expect(canAccessPhotoStudio(false, true)).toBe(true)
+    })
+
+    it('grants admins in admin-only, beta, and open modes', async () => {
+      process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
+      const { canAccessPhotoStudio } = await loadModule()
+
+      for (const mode of ['admin-only', 'beta', 'open'] as const) {
+        process.env.NEXT_PUBLIC_STUDIO_ACCESS_MODE = mode
+        expect(canAccessPhotoStudio(true)).toBe(true)
+      }
     })
 
     it('allows any user when admin-only is disabled', async () => {
@@ -165,6 +200,26 @@ describe('product-mode', () => {
       process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
       const { shouldShowStudioNav } = await loadModule()
       expect(shouldShowStudioNav(false)).toBe(false)
+      expect(shouldShowStudioNav(true)).toBe(true)
+    })
+
+    it('denies non-admins when beta access is omitted in beta mode', async () => {
+      process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
+      process.env.NEXT_PUBLIC_STUDIO_ACCESS_MODE = 'beta'
+      const { shouldShowStudioNav } = await loadModule()
+      expect(shouldShowStudioNav(false)).toBe(false)
+      expect(shouldShowStudioNav(false, true)).toBe(true)
+    })
+
+    it('preserves results for existing one-argument callers', async () => {
+      process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
+      const { shouldShowStudioNav } = await loadModule()
+
+      expect(shouldShowStudioNav(false)).toBe(false)
+      expect(shouldShowStudioNav(true)).toBe(true)
+
+      process.env.NEXT_PUBLIC_STUDIO_ADMIN_ONLY = 'false'
+      expect(shouldShowStudioNav(false)).toBe(true)
       expect(shouldShowStudioNav(true)).toBe(true)
     })
 

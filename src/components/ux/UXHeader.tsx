@@ -4,7 +4,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useState } from 'react'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
-import { shouldShowLegacyMenuNav, shouldShowStudioNav } from '@/lib/product-mode'
+import { useStudioBetaAccess } from '@/lib/studio/access/use-studio-beta-access'
+import { canAccessPhotoStudio, shouldShowLegacyMenuNav } from '@/lib/product-mode'
 
 interface UXHeaderProps {
   userEmail?: string
@@ -14,12 +15,20 @@ interface UXHeaderProps {
 export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const showLegacyMenuNav = shouldShowLegacyMenuNav()
-  const showStudioNav = shouldShowStudioNav(isAdmin)
+  const { known: betaAccessKnown, hasAccess: hasBetaAccess } = useStudioBetaAccess(
+    isAdmin,
+    Boolean(userEmail),
+  )
+  // Keep the synchronous, entitlement-omitted result for the first paint so
+  // an invited user never sees a Studio link before access is confirmed.
+  const showStudioNav = betaAccessKnown
+    ? canAccessPhotoStudio(isAdmin, hasBetaAccess)
+    : canAccessPhotoStudio(isAdmin)
 
   // Navigation items. Dashboard is the primary menu-builder entry and is
   // hidden when product mode is photo-studio with legacy menus disabled.
-  // Studio appears when NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true (and admin-only
-  // gate passes when NEXT_PUBLIC_STUDIO_ADMIN_ONLY is on).
+  // Studio appears when NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true and the resolved
+  // access decision permits it.
   const navigationItems = userEmail
     ? [
         ...(showStudioNav ? [{ href: '/studio', label: 'Studio' }] : []),

@@ -13,6 +13,13 @@ interface LedgerRow {
   metadata?: { note?: string }
 }
 
+interface BetaAccessState {
+  enabled: boolean
+  grantedAt: string | null
+  revokedAt: string | null
+  note: string | null
+}
+
 interface StudioCreditsPanelProps {
   userId: string
   userEmail: string
@@ -23,23 +30,38 @@ export function StudioCreditsPanel({ userId, userEmail, onClose }: StudioCredits
   const { showToast } = useToast()
   const [balance, setBalance] = useState<number | null>(null)
   const [ledger, setLedger] = useState<LedgerRow[]>([])
+  const [betaAccess, setBetaAccess] = useState<BetaAccessState | null>(null)
   const [loading, setLoading] = useState(true)
   const [delta, setDelta] = useState('25')
   const [note, setNote] = useState('Private beta grant')
+  const [betaNote, setBetaNote] = useState('')
   const [saving, setSaving] = useState(false)
+  const [accessAction, setAccessAction] = useState<'grant' | 'revoke' | null>(null)
   const [dishIdToClear, setDishIdToClear] = useState('')
   const [clearing, setClearing] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/studio/credits?userId=${encodeURIComponent(userId)}`)
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to load credits')
+      const [creditsRes, accessRes] = await Promise.all([
+        fetch(`/api/admin/studio/credits?userId=${encodeURIComponent(userId)}`),
+        fetch(`/api/admin/studio/beta-access?userId=${encodeURIComponent(userId)}`),
+      ])
+      const [creditsData, accessData] = await Promise.all([
+        creditsRes.json(),
+        accessRes.json(),
+      ])
+
+      if (!creditsRes.ok || !creditsData.success) {
+        throw new Error(creditsData.error || 'Failed to load credits')
       }
-      setBalance(data.balance)
-      setLedger(Array.isArray(data.ledger) ? data.ledger : [])
+      if (!accessRes.ok || !accessData.success) {
+        throw new Error(accessData.error || 'Failed to load beta access')
+      }
+
+      setBalance(accessData.creditBalance)
+      setLedger(Array.isArray(creditsData.ledger) ? creditsData.ledger : [])
+      setBetaAccess(accessData.access ?? null)
     } catch (err) {
       showToast({
         type: 'error',
@@ -54,6 +76,36 @@ export function StudioCreditsPanel({ userId, userEmail, onClose }: StudioCredits
   useEffect(() => {
     void load()
   }, [load])
+
+  const handleBetaAccess = async (action: 'grant' | 'revoke') => {
+    setAccessAction(action)
+    try {
+      const res = await fetch('/api/admin/studio/beta-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action, note: betaNote }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `Beta access ${action} failed`)
+      }
+
+      showToast({
+        type: 'success',
+        title: action === 'grant' ? 'Beta access granted' : 'Beta access revoked',
+        description: 'Studio access and credits refreshed.',
+      })
+      await load()
+    } catch (err) {
+      showToast({
+        type: 'error',
+        title: action === 'grant' ? 'Grant failed' : 'Revoke failed',
+        description: err instanceof Error ? err.message : 'Unknown error',
+      })
+    } finally {
+      setAccessAction(null)
+    }
+  }
 
   const handleGrant = async () => {
     const parsed = Number.parseInt(delta, 10)
@@ -164,6 +216,60 @@ export function StudioCreditsPanel({ userId, userEmail, onClose }: StudioCredits
             credits
           </p>
         )}
+
+        <div className="mb-6 space-y-3 rounded-md border border-indigo-200 bg-indigo-50/40 p-3">
+          <div>
+            <h3 className="text-sm font-semibold text-indigo-950">Studio beta access</h3>
+            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-gray-700">
+              <dt className="font-medium">Status</dt>
+              <dd>{betaAccess?.enabled ? 'Enabled' : 'Disabled'}</dd>
+              <dt className="font-medium">Granted</dt>
+              <dd>
+                {betaAccess?.grantedAt
+                  ? new Date(betaAccess.grantedAt).toLocaleString()
+                  : '—'}
+              </dd>
+              <dt className="font-medium">Revoked</dt>
+              <dd>
+                {betaAccess?.revokedAt
+                  ? new Date(betaAccess.revokedAt).toLocaleString()
+                  : '—'}
+              </dd>
+              <dt className="font-medium">Note</dt>
+              <dd className="break-words">{betaAccess?.note || '—'}</dd>
+            </dl>
+          </div>
+          <label className="block text-xs font-medium text-gray-600">
+            Beta access note (optional)
+            <input
+              type="text"
+              maxLength={280}
+              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+              value={betaNote}
+              onChange={(e) => setBetaNote(e.target.value)}
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <UXButton
+              variant="primary"
+              size="sm"
+              loading={accessAction === 'grant'}
+              disabled={accessAction !== null && accessAction !== 'grant'}
+              onClick={() => void handleBetaAccess('grant')}
+            >
+              Grant beta access
+            </UXButton>
+            <UXButton
+              variant="warning"
+              size="sm"
+              loading={accessAction === 'revoke'}
+              disabled={accessAction !== null && accessAction !== 'revoke'}
+              onClick={() => void handleBetaAccess('revoke')}
+            >
+              Revoke beta access
+            </UXButton>
+          </div>
+        </div>
 
         <div className="mb-6 space-y-3 rounded-md border border-gray-200 p-3">
           <label className="block text-xs font-medium text-gray-600">

@@ -52,6 +52,7 @@ non-local env you care about). Defaults in code are safe if unset unless noted.
 | `STUDIO_THINKING_LEVEL` | Group A patch | `high` | `high` unless approved latency/cost evidence changes it | Pending | Flash-only; accepts `minimal` or `high`. Thinking tokens are billed even when their output is not inspected. |
 | `STUDIO_IMAGE_SIZE` | Group A patch | `2K` | `2K` | Pending | Studio sends uppercase documented size tokens (`1K`, `2K`, `4K`). |
 | `STUDIO_MAX_REFS` | Group A patch | Documented per-model limit (Flash: 10 object refs; Pro: 14 total) | Leave unset for the documented limit, or set a positive tuning value | Pending | The requested value is clamped to the applicable documented model limit and warns when clamped. |
+| `NEXT_PUBLIC_STUDIO_ACCESS_MODE` | Chunk 7 | Unset (falls back to legacy flag) | `admin-only` until the beta cohort opens; accepted values are `admin-only`, `beta`, and `open` | Pending | Set in Vercel for production. Keep `admin-only` until the operator deliberately opens the invited cohort; `NEXT_PUBLIC_STUDIO_ADMIN_ONLY` remains the fallback when this variable is unset or invalid. |
 
 ---
 
@@ -68,7 +69,8 @@ Prefer `npx supabase db push` against the linked production project (never
 | `supabase/migrations/072_studio_dish_current_image.sql` | Chunk 3 | Applied | Prod 2026-07-24 (`42f35d5`). Apply after 071. |
 | `supabase/migrations/073_studio_reference_libraries.sql` | Chunk 4 | Applied | Prod 2026-07-24 (`42f35d5`; seed refresh also in Chunk 5 commit). Apply after 072. |
 | `supabase/migrations/074_studio_credits.sql` | Chunk 6 | Applied | Balances + ledger + `studio_apply_credit_delta` + dish failure/block columns. Live with Chunk 6 (`e9c856c`). |
-| `supabase/migrations/075_studio_style_descriptors.sql` | Group B patch | Pending | Apply to production **before deploying Group B app code**; adds the style-library descriptor columns required by the scene-descriptor payload. |
+| `supabase/migrations/075_studio_style_descriptors.sql` | Group B patch | Pending | Remains undeployed; apply to production **before deploying Group B app code**; adds the style-library descriptor columns required by the scene-descriptor payload. |
+| `supabase/migrations/076_studio_beta_access_and_feedback.sql` | Chunk 7 | Pending | Apply to production. Applies to a database at migration `073` and needs neither `074_studio_credits.sql` nor `075_studio_style_descriptors.sql`. |
 
 ---
 
@@ -85,7 +87,8 @@ Non-env, non-migration steps that must not be forgotten.
 | Smoke-test Studio credits | Chunk 6 | Applied | Admin grant → `/studio` shows balance → generate decrements; 0 balance → 402; blocked dish after N billable failures cannot generate until admin clears. |
 | Smoke-test direct-upload (5–9 MiB) | Direct-upload patch | Applied | Large PNG upload no 413; extract + mutate OK. |
 | Smoke-test Group A Studio model-call configuration | Group A patch | Pending | After the manual deploy and required per-call approval, verify input-matched aspect ratio, configured Flash thinking level, uppercase image-size handling, and reference-cap override/clamping behaviour. |
-| Smoke-test Group B/D scene-descriptor rollout | Group B + D patch | Pending | After migration `075` is applied and the manual app deploy is complete, verify the customer path sends source-only identity reference data, carries lighting/backdrop/surface style in the JSON descriptor, and serves the rewritten documentation. |
+| Smoke-test Group B/D scene-descriptor rollout | Group B + D patch | Pending | After migration `075` is applied and the manual app deploy is complete, verify the customer path sends source-only identity reference data, carries lighting/backdrop/surface style in the JSON descriptor, and serves the rewritten documentation. The Group A/B/D descriptor patch remains undeployed. |
+| Production smoke-test beta gate, feedback route, and funnel events | Chunk 7 | Pending | After the manual deploy and migration `076`, keep access mode `admin-only`; verify admin access, beta denial/grant behavior, and the disabled state, then verify upload → extract → generate → credit debit → download → feedback submission/update plus ownership/validation errors. Confirm consent-aware funnel events are registered, emitted without prompt/image/comment/storage-path data, and do not interrupt the user flow when analytics fails. |
 
 ---
 

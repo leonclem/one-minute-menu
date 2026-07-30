@@ -19,6 +19,12 @@ import {
 } from '@/lib/photo-control/minimal-schema'
 import { type MinimalValidationResult } from '@/lib/photo-control/schema-validator'
 import type { ExtractionDiagnostics } from '@/lib/studio/extraction-diagnostics'
+import { ANALYTICS_EVENTS } from '@/lib/posthog/events'
+import {
+  toModelClass,
+  trackStudioEvent,
+  trackStudioGenerationCompleted,
+} from '@/lib/studio/analytics/studio-analytics'
 import { Component_Control } from '@/components/photo-controls'
 import { CollapsibleSection } from '@/components/ux'
 import { ConfirmDialog } from '@/components/ui'
@@ -46,6 +52,12 @@ import type {
   StudioImageRecord,
   StudioLightingStyleDisplay,
 } from '@/lib/studio/types'
+import type { StudioAccessReason } from '@/lib/studio/access/studio-access-decision'
+import { resolveStudioAccessMode, type AccessMode } from '@/lib/studio/access/studio-access-mode'
+import { getStudioViewSelection } from './studio-view-state'
+import { StudioStateNotice } from './studio-state-notice'
+import { StudioFirstRunPanel } from './studio-first-run-panel'
+import { StudioFeedbackPanel } from './studio-feedback-panel'
 import { StudioDishPickerModal } from './studio-dish-picker-modal'
 import { StudioTextModal } from './studio-text-modal'
 import { VisualOptionTiles } from './visual-option-tiles'
@@ -59,6 +71,7 @@ interface MutateResponse {
   imageUrl: string
   imageId: string
   model: string
+  validationStatus?: 'pass' | 'warn' | 'fail' | 'skipped'
   dishId?: string
   credits?: {
     cost: number
@@ -67,9 +80,15 @@ interface MutateResponse {
 }
 
 interface StudioClientProps {
-  initialDishes: StudioDishRecord[]
+  reason?: StudioAccessReason
+  accessMode?: AccessMode
+  creditBalance?: number | null
+  dishes?: StudioDishRecord[]
+  gallery?: StudioImageRecord[]
+  /** Legacy aliases retained for existing direct callers. */
+  initialDishes?: StudioDishRecord[]
+  initialGallery?: StudioImageRecord[]
   initialActiveDishId: string
-  initialGallery: StudioImageRecord[]
   isAdmin?: boolean
 }
 
@@ -81,6 +100,50 @@ function sourceImageFromRecord(
   const normalizedMime: AllowedMimeType =
     mimeType === 'image/jpeg' || mimeType === 'image/webp' ? mimeType : 'image/png'
   return { dataUrl: publicUrl, mimeType: normalizedMime, bytes }
+}
+
+function fileSizeBucket(bytes: number): string {
+  const megabyte = 1024 * 1024
+  if (!Number.isFinite(bytes) || bytes < megabyte) return 'under_1mb'
+  if (bytes < 5 * megabyte) return '1_to_5mb'
+  if (bytes <= 9 * megabyte) return '5_to_9mb'
+  return 'over_9mb'
+}
+
+function mimeClass(mimeType: string): string {
+  switch (mimeType) {
+    case 'image/jpeg':
+      return 'jpeg'
+    case 'image/png':
+      return 'png'
+    case 'image/webp':
+      return 'webp'
+    default:
+      return 'other'
+  }
+}
+
+function extractionFailureClass(status?: number, error?: unknown): string {
+  if (status === 401 || status === 403) return 'access_denied'
+  if (typeof status === 'number' && status >= 500) return 'server'
+  if (typeof status === 'number' && status >= 400) return 'request_rejected'
+  if (error instanceof Error && error.name === 'AbortError') return 'cancelled'
+  return typeof status === 'number' ? 'request_failed' : 'network'
+}
+
+function generationFailureClass(status?: number, code?: string): string {
+  if (code === 'STUDIO_DAILY_LIMIT') return 'quota'
+  if (typeof status === 'number' && status >= 500) return 'network'
+  if (code) return 'provider'
+  return 'unknown'
+}
+
+function generationValidationStatus(
+  status: MutateResponse['validationStatus'],
+): 'passed' | 'failed' | 'skipped' {
+  if (status === 'pass' || status === 'warn') return 'passed'
+  if (status === 'fail') return 'failed'
+  return 'skipped'
 }
 
 function knownBackdropVisibility(
@@ -135,11 +198,25 @@ function resolveCurrentImage(
 }
 
 export function StudioClient({
-  initialDishes,
+  reason = 'granted_admin',
+  accessMode: providedAccessMode,
+  creditBalance: initialCreditBalance = null,
+  dishes: providedDishes,
+  gallery: providedGallery,
+  initialDishes: legacyDishes,
+  initialGallery: legacyGallery,
   initialActiveDishId,
-  initialGallery,
-  isAdmin,
+  isAdmin = false,
 }: StudioClientProps) {
+  const initialDishes = useMemo(
+    () => providedDishes ?? legacyDishes ?? [],
+    [legacyDishes, providedDishes],
+  )
+  const initialGallery = useMemo(
+    () => providedGallery ?? legacyGallery ?? [],
+    [legacyGallery, providedGallery],
+  )
+  const accessMode = providedAccessMode ?? resolveStudioAccessMode()
   const [dishes, setDishes] = useState<StudioDishRecord[]>(initialDishes)
   const [activeDishId, setActiveDishId] = useState(initialActiveDishId)
   const [gallery, setGallery] = useState<StudioImageRecord[]>(initialGallery)
@@ -148,6 +225,7 @@ export function StudioClient({
     return resolveCurrentImage(dish, initialGallery)?.id ?? null
   })
   const didActivateInitialRef = useRef(false)
+  const didTrackViewedRef = useRef(false)
   const [expandedSection, setExpandedSection] = useState<ControlSection>('lighting')
   const [libraryBusy, setLibraryBusy] = useState(false)
   const [libraryError, setLibraryError] = useState<string | null>(null)
@@ -181,7 +259,7 @@ export function StudioClient({
   const [mutationError, setMutationError] = useState<string | null>(null)
   const [pendingLimitMessage, setPendingLimitMessage] = useState<string | null>(null)
   const [baselineVersion, setBaselineVersion] = useState(0)
-  const [creditBalance, setCreditBalance] = useState<number | null>(null)
+  const [creditBalance, setCreditBalance] = useState<number | null>(initialCreditBalance)
   const [creditCostNb2, setCreditCostNb2] = useState(1)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -193,6 +271,8 @@ export function StudioClient({
   const currentPreviewUrl =
     mutatedImageUrl ?? sourceImage?.dataUrl ?? selectedImage?.public_url ?? null
   const changeChips = selectedImage ? readChangeSummary(selectedImage.metadata) : []
+  const studioView = getStudioViewSelection(gallery)
+  const feedbackImage = selectedImage?.role === 'generated' ? selectedImage : null
 
   const pendingDelta = useMemo(() => {
     void baselineVersion
@@ -205,6 +285,18 @@ export function StudioClient({
   const insufficientCredits =
     creditBalance !== null && creditBalance < creditCostNb2
   const busy = libraryBusy || isUploading || isExtracting || isGenerating
+
+  useEffect(() => {
+    if (didTrackViewedRef.current) return
+    didTrackViewedRef.current = true
+    trackStudioEvent(ANALYTICS_EVENTS.STUDIO_VIEWED, {
+      surface: 'studio',
+      access_mode: accessMode,
+      access_reason: reason,
+      is_admin: isAdmin === true,
+      gallery_size: initialGallery.length,
+    })
+  }, [accessMode, initialGallery.length, isAdmin, reason])
 
   const lightingOptions = useMemo(() => {
     if (lightingStyles.length > 0) return lightingStylesToOptions(lightingStyles)
@@ -331,10 +423,21 @@ export function StudioClient({
   }, [])
 
   const runExtraction = useCallback(async (imageId: string): Promise<EditorState | null> => {
+    const startedAt = Date.now()
+    const duration = () => Math.max(0, Date.now() - startedAt)
+    const emitExtractionFailure = (status?: number, error?: unknown) => {
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_EXTRACTION_FAILED, {
+        duration_ms: duration(),
+        failure_class: extractionFailureClass(status, error),
+        outcome: 'failed',
+      })
+    }
+
     if (typeof imageId !== 'string' || !imageId) {
       setExtractionError(
         'Could not start extraction for this image. Refresh the page and try uploading again.',
       )
+      emitExtractionFailure(undefined, new Error('invalid image reference'))
       return null
     }
 
@@ -354,6 +457,7 @@ export function StudioClient({
           (err as { error?: string } | null)?.error ??
             `Extraction failed (HTTP ${response.status})`,
         )
+        emitExtractionFailure(response.status)
         return null
       }
 
@@ -367,9 +471,14 @@ export function StudioClient({
       })
 
       applyHydratedState(hydratedState, !data.strictConformance)
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_EXTRACTION_COMPLETED, {
+        duration_ms: duration(),
+        outcome: 'success',
+      })
       return hydratedState
     } catch (err) {
       setExtractionError(err instanceof Error ? err.message : 'Extraction failed unexpectedly.')
+      emitExtractionFailure(undefined, err)
       return null
     } finally {
       setIsExtracting(false)
@@ -406,8 +515,10 @@ export function StudioClient({
         if (options?.persistCurrent !== false && image.dish_id) {
           await persistDishCurrent(image.dish_id, image.id)
         }
+        return true
       } catch (err) {
         setLibraryError(err instanceof Error ? err.message : 'Failed to load image')
+        return false
       } finally {
         setLibraryBusy(false)
       }
@@ -455,8 +566,24 @@ export function StudioClient({
       if (!file) return
       e.target.value = ''
 
+      const uploadProperties = {
+        file_size_bucket: fileSizeBucket(file.size),
+        mime_class: mimeClass(file.type),
+      }
+      const emitUploadRejected = () => {
+        trackStudioEvent(ANALYTICS_EVENTS.STUDIO_UPLOAD_REJECTED, {
+          ...uploadProperties,
+          outcome: 'rejected',
+        })
+      }
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_UPLOAD_STARTED, {
+        ...uploadProperties,
+        outcome: 'started',
+      })
+
       if (!activeDishId) {
         setExtractionError('Create a dish before uploading.')
+        emitUploadRejected()
         return
       }
 
@@ -466,22 +593,26 @@ export function StudioClient({
       setSourceImage(null)
       setPersistedSourceId(null)
 
-      const upload = await uploadStudioSourceFile(file)
-      if (!upload.ok) {
-        setIsUploading(false)
-        setExtractionError(upload.error)
-        return
-      }
-
-      if (!upload.imageId) {
-        setIsUploading(false)
-        setExtractionError('Upload succeeded but the image reference was missing. Refresh and try again.')
-        return
-      }
-
-      setSourceImage(sourceImageFromRecord(upload.publicUrl, upload.mimeType, upload.bytes))
-
+      let uploadedStoragePath: string | null = null
       try {
+        const upload = await uploadStudioSourceFile(file)
+        if (!upload.ok) {
+          setExtractionError(upload.error)
+          emitUploadRejected()
+          return
+        }
+
+        if (!upload.imageId) {
+          setExtractionError(
+            'Upload succeeded but the image reference was missing. Refresh and try again.',
+          )
+          emitUploadRejected()
+          return
+        }
+
+        uploadedStoragePath = upload.storagePath
+        setSourceImage(sourceImageFromRecord(upload.publicUrl, upload.mimeType, upload.bytes))
+
         const sourceRes = await fetch('/api/studio/source', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -498,6 +629,7 @@ export function StudioClient({
           setExtractionError(
             (err as { error?: string } | null)?.error ?? 'Failed to save uploaded image.',
           )
+          emitUploadRejected()
           return
         }
 
@@ -509,6 +641,7 @@ export function StudioClient({
         if (!sourceData.imageId || !sourceData.imageUrl) {
           await removeStudioStorageObject(upload.storagePath)
           setExtractionError('Failed to save uploaded image.')
+          emitUploadRejected()
           return
         }
 
@@ -516,6 +649,10 @@ export function StudioClient({
         setSourceImage(
           sourceImageFromRecord(sourceData.imageUrl, upload.mimeType, upload.bytes),
         )
+        trackStudioEvent(ANALYTICS_EVENTS.STUDIO_UPLOAD_COMPLETED, {
+          ...uploadProperties,
+          outcome: 'success',
+        })
 
         const extracted = await runExtraction(sourceData.imageId)
 
@@ -550,8 +687,11 @@ export function StudioClient({
         }
         await persistDishCurrent(activeDishId, sourceData.imageId)
       } catch {
-        await removeStudioStorageObject(upload.storagePath)
+        if (uploadedStoragePath) {
+          await removeStudioStorageObject(uploadedStoragePath)
+        }
         setExtractionError('Upload failed unexpectedly.')
+        emitUploadRejected()
       } finally {
         setIsUploading(false)
       }
@@ -671,6 +811,14 @@ export function StudioClient({
       lightingLabels: lightingLabelMap,
       backgroundLabels: backgroundLabelMap,
     })
+    const generationStartedAt = Date.now()
+
+    trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_STARTED, {
+      model_class: toModelClass(selectedModel),
+      stage: 'generation',
+      has_source_image: Boolean(sourceImage),
+      variant_count: variants.length,
+    })
 
     setIsGenerating(true)
     setMutationError(null)
@@ -699,20 +847,46 @@ export function StudioClient({
           code?: string
           dishBlocked?: boolean
         } | null
+        const blockedByCredits = payload?.code === 'STUDIO_INSUFFICIENT_CREDITS'
+        const blockedByDish =
+          payload?.code === 'STUDIO_DISH_GENERATION_BLOCKED' || payload?.dishBlocked
+        const failureProperties = {
+          model_class: toModelClass(selectedModel),
+          stage: 'generation',
+          duration_ms: Math.max(0, Date.now() - generationStartedAt),
+        }
+
+        if (blockedByCredits) {
+          trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_BLOCKED_CREDITS, {
+            ...failureProperties,
+            outcome: 'blocked',
+            blocked_by: 'credits',
+          })
+        } else if (blockedByDish) {
+          trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_BLOCKED_DISH, {
+            ...failureProperties,
+            outcome: 'blocked',
+            blocked_by: 'dish_breaker',
+          })
+        } else {
+          trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED, {
+            ...failureProperties,
+            outcome: 'failure',
+            failure_class: generationFailureClass(response.status, payload?.code),
+          })
+        }
+
         setMutationError(
           payload?.error ?? `Generation failed (HTTP ${response.status})`,
         )
-        if (
-          payload?.code === 'STUDIO_DISH_GENERATION_BLOCKED' ||
-          payload?.dishBlocked
-        ) {
+        if (blockedByDish) {
           setDishes((prev) =>
             prev.map((d) =>
               d.id === activeDishId
                 ? {
                     ...d,
                     generation_blocked_at: new Date().toISOString(),
-                    generation_blocked_reason: payload.error ?? 'Blocked',
+                    generation_blocked_reason: payload?.error ?? 'Blocked',
                   }
                 : d,
             ),
@@ -722,6 +896,17 @@ export function StudioClient({
       }
 
       const data = (await response.json()) as MutateResponse
+      trackStudioGenerationCompleted({
+        model: data.model,
+        validationStatus: generationValidationStatus(data.validationStatus),
+        startedAt: generationStartedAt,
+        endedAt: Date.now(),
+        balanceAfter:
+          typeof data.credits?.balanceAfter === 'number'
+            ? data.credits.balanceAfter
+            : creditBalance ?? 0,
+        cost: data.credits?.cost,
+      })
       setMutatedImageUrl(data.imageUrl)
       if (data.credits && typeof data.credits.balanceAfter === 'number') {
         setCreditBalance(data.credits.balanceAfter)
@@ -767,6 +952,13 @@ export function StudioClient({
       )
       setSourceImage(sourceImageFromRecord(data.imageUrl, 'image/png'))
     } catch (err) {
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED, {
+        model_class: toModelClass(selectedModel),
+        stage: 'generation',
+        duration_ms: Math.max(0, Date.now() - generationStartedAt),
+        outcome: 'failure',
+        failure_class: 'network',
+      })
       setMutationError(err instanceof Error ? err.message : 'Generation failed unexpectedly.')
     } finally {
       setIsGenerating(false)
@@ -779,6 +971,8 @@ export function StudioClient({
     lightingLabelMap,
     backgroundLabelMap,
     selectedModel,
+    variants.length,
+    creditBalance,
   ])
 
   const handleCreateDish = useCallback(
@@ -954,8 +1148,51 @@ export function StudioClient({
     [activeDishId, dishPickerItems, dishes, loadGalleryForDish],
   )
 
+  const handleDownload = useCallback(async () => {
+    if (!currentPreviewUrl) return
+
+    try {
+      await downloadImage(
+        currentPreviewUrl,
+        `studio-${selectedImageId ?? Date.now()}.png`,
+      )
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_IMAGE_DOWNLOADED, {
+        surface: 'gallery',
+        outcome: 'success',
+      })
+    } catch {
+      setLibraryError('Download failed.')
+    }
+  }, [currentPreviewUrl, selectedImageId])
+
+  const handleReuseImage = useCallback(
+    async (image: StudioImageRecord) => {
+      const activated = await activateImage(image)
+      if (!activated) return
+
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_IMAGE_REUSED, {
+        surface: 'gallery',
+        outcome: 'success',
+      })
+    },
+    [activateImage],
+  )
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-studio-access-reason={reason}>
+      {studioView.showFirstRun && (
+        <StudioFirstRunPanel
+          onOpenFilePicker={() => fileInputRef.current?.click()}
+          accessMode={accessMode}
+          accessReason={reason}
+          isAdmin={isAdmin === true}
+        />
+      )}
+      {creditBalance !== null && creditBalance <= 0 && (
+        <StudioStateNotice kind="no_credit" />
+      )}
+      {dishBlocked && <StudioStateNotice kind="blocked_dish" />}
+      {feedbackImage && <StudioFeedbackPanel studioImageId={feedbackImage.id} />}
       {/* Header: dish title aligned with action buttons */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2">
@@ -1300,13 +1537,7 @@ export function StudioClient({
                 type="button"
                 disabled={!currentPreviewUrl || busy}
                 className="flex flex-1 items-center justify-center gap-2 rounded-md bg-ux-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => {
-                  if (!currentPreviewUrl) return
-                  void downloadImage(
-                    currentPreviewUrl,
-                    `studio-${selectedImageId ?? Date.now()}.png`,
-                  ).catch(() => setLibraryError('Download failed.'))
-                }}
+                onClick={() => void handleDownload()}
               >
                 Download
               </button>
@@ -1361,7 +1592,7 @@ export function StudioClient({
                           ]
                             .filter(Boolean)
                             .join(' ')}
-                          onClick={() => void activateImage(item)}
+                          onClick={() => void handleReuseImage(item)}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img

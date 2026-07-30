@@ -1,17 +1,19 @@
 export const dynamic = 'force-dynamic'
 
+import type { ReactNode } from 'react'
 import { notFound, redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getCurrentUser } from '@/lib/auth-utils'
-import { userOperations } from '@/lib/database'
-import { getFeatureFlag } from '@/lib/feature-flags'
-import { canAccessPhotoStudio, isPhotoStudioEnabled } from '@/lib/product-mode'
 import { UXHeader, UXFooter } from '@/components/ux'
-import { PendingApproval } from '@/components/dashboard/PendingApproval'
 import { StudioClient } from './_components/studio-client'
 import { ensureDefaultStudioDish, listStudioDishes } from '@/lib/studio/dishes'
 import { listStudioImagesForDish } from '@/lib/studio/library'
-import type { StudioDishRecord, StudioImageRecord } from '@/lib/studio/types'
+import { getStudioCreditBalance } from '@/lib/studio/credits'
+import { resolveStudioAccess } from '@/lib/studio/access/studio-access'
+import { resolveStudioAccessMode } from '@/lib/studio/access/studio-access-mode'
+import { StudioStateNotice } from './_components/studio-state-notice'
+import { StudioAccessDeniedTracker } from './_components/studio-access-denied-tracker'
+import type { StudioDishRecord } from '@/lib/studio/types'
 
 /** Light studio backdrop — cream + soft gold + brand teal, no photo. */
 const studioBackdropStyle = {
@@ -26,11 +28,28 @@ const studioBrandBarStyle = {
   backgroundColor: 'rgb(var(--ux-primary))',
 } as const
 
-export default async function StudioPage() {
-  if (!isPhotoStudioEnabled()) {
-    notFound()
-  }
+function StudioShell({
+  children,
+  userEmail,
+  isAdmin,
+}: {
+  children: ReactNode
+  userEmail?: string
+  isAdmin: boolean
+}) {
+  return (
+    <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
+      <div aria-hidden className="absolute inset-0 -z-10" style={studioBackdropStyle} />
+      <div className="shrink-0" style={studioBrandBarStyle}>
+        <UXHeader userEmail={userEmail} isAdmin={isAdmin} />
+      </div>
+      <main className="container-ux py-10 md:py-12 flex-1">{children}</main>
+      <UXFooter />
+    </div>
+  )
+}
 
+export default async function StudioPage() {
   const supabase = createServerSupabaseClient()
   const {
     data: { user },
@@ -41,31 +60,41 @@ export default async function StudioPage() {
     redirect('/auth/signin')
   }
 
-  const [profile, currentUser] = await Promise.all([
-    userOperations.getProfile(user.id),
-    getCurrentUser(),
-  ])
-
+  const currentUser = await getCurrentUser()
   const isAdmin = currentUser?.role === 'admin'
-  const requireAdminApproval = await getFeatureFlag('require_admin_approval')
+  const accessMode = resolveStudioAccessMode()
+  const access = await resolveStudioAccess({ userId: user.id, isAdmin })
 
-  if (!canAccessPhotoStudio(!!isAdmin)) {
-    notFound()
+  if (access.reason === 'denied_studio_disabled') {
+    return (
+      <StudioShell userEmail={user.email ?? undefined} isAdmin={false}>
+        <StudioAccessDeniedTracker
+          accessMode={accessMode}
+          accessReason={access.reason}
+          isAdmin={isAdmin}
+          gallerySize={0}
+        />
+        <StudioStateNotice kind="disabled" />
+      </StudioShell>
+    )
   }
 
-  if (requireAdminApproval && !isAdmin && profile && !profile.isApproved) {
+  if (access.reason === 'denied_beta_access_required') {
     return (
-      <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
-        <div aria-hidden className="absolute inset-0 -z-10" style={studioBackdropStyle} />
-        <div className="shrink-0" style={studioBrandBarStyle}>
-          <UXHeader userEmail={user.email ?? undefined} isAdmin={false} />
-        </div>
-        <main className="container-ux py-10 md:py-12 flex-1">
-          <PendingApproval email={user.email} />
-        </main>
-        <UXFooter />
-      </div>
+      <StudioShell userEmail={user.email ?? undefined} isAdmin={false}>
+        <StudioAccessDeniedTracker
+          accessMode={accessMode}
+          accessReason={access.reason}
+          isAdmin={isAdmin}
+          gallerySize={0}
+        />
+        <StudioStateNotice kind="pending_access" />
+      </StudioShell>
     )
+  }
+
+  if (access.reason === 'denied_admin_only') {
+    notFound()
   }
 
   let dishes: StudioDishRecord[] = await listStudioDishes(user.id)
@@ -74,26 +103,22 @@ export default async function StudioPage() {
   }
 
   const activeDishId = dishes[0].id
-  const initialGallery: StudioImageRecord[] = await listStudioImagesForDish(
-    user.id,
-    activeDishId,
-  )
+  const [initialGallery, creditBalance] = await Promise.all([
+    listStudioImagesForDish(user.id, activeDishId),
+    getStudioCreditBalance(user.id),
+  ])
 
   return (
-    <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
-      <div aria-hidden className="absolute inset-0 -z-10" style={studioBackdropStyle} />
-      <div className="shrink-0" style={studioBrandBarStyle}>
-        <UXHeader userEmail={user.email ?? undefined} isAdmin={isAdmin} />
-      </div>
-      <main className="container-ux py-10 md:py-12 flex-1">
-        <StudioClient
-          initialDishes={dishes}
-          initialActiveDishId={activeDishId}
-          initialGallery={initialGallery}
-          isAdmin={isAdmin}
-        />
-      </main>
-      <UXFooter />
-    </div>
+    <StudioShell userEmail={user.email ?? undefined} isAdmin={isAdmin}>
+      <StudioClient
+        reason={access.reason}
+        accessMode={accessMode}
+        creditBalance={creditBalance}
+        dishes={dishes}
+        gallery={initialGallery}
+        initialActiveDishId={activeDishId}
+        isAdmin={isAdmin}
+      />
+    </StudioShell>
   )
 }

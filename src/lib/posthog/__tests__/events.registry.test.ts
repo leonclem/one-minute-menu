@@ -4,8 +4,8 @@ describe('ANALYTICS_EVENTS registry', () => {
   const entries = Object.entries(ANALYTICS_EVENTS)
   const values = Object.values(ANALYTICS_EVENTS)
 
-  it('has exactly 24 entries', () => {
-    expect(entries).toHaveLength(24)
+  it('has exactly 41 entries', () => {
+    expect(entries).toHaveLength(41)
   })
 
   it('contains every required key from Req 3.1', () => {
@@ -33,6 +33,23 @@ describe('ANALYTICS_EVENTS registry', () => {
       'SUBSCRIPTION_STARTED',
       'ADMIN_ANALYTICS_DISABLED',
       'ADMIN_ANALYTICS_ENABLED',
+      'STUDIO_VIEWED',
+      'STUDIO_ACCESS_DENIED',
+      'STUDIO_ONBOARDING_VIEWED',
+      'STUDIO_UPLOAD_STARTED',
+      'STUDIO_UPLOAD_COMPLETED',
+      'STUDIO_UPLOAD_REJECTED',
+      'STUDIO_EXTRACTION_COMPLETED',
+      'STUDIO_EXTRACTION_FAILED',
+      'STUDIO_GENERATION_STARTED',
+      'STUDIO_GENERATION_COMPLETED',
+      'STUDIO_GENERATION_FAILED',
+      'STUDIO_GENERATION_BLOCKED_CREDITS',
+      'STUDIO_GENERATION_BLOCKED_DISH',
+      'STUDIO_IMAGE_DOWNLOADED',
+      'STUDIO_IMAGE_REUSED',
+      'STUDIO_FEEDBACK_SUBMITTED',
+      'STUDIO_FEEDBACK_DISMISSED',
     ] as const
 
     for (const key of requiredKeys) {
@@ -72,13 +89,30 @@ describe('ANALYTICS_EVENTS registry', () => {
     expect(ANALYTICS_EVENTS.ADMIN_ANALYTICS_DISABLED).toBe('admin_analytics_disabled')
     expect(ANALYTICS_EVENTS.ADMIN_ANALYTICS_ENABLED).toBe('admin_analytics_enabled')
     expect(ANALYTICS_EVENTS.FIRST_TEMPLATE_VISIT).toBe('first_template_visit')
+    expect(ANALYTICS_EVENTS.STUDIO_VIEWED).toBe('studio_viewed')
+    expect(ANALYTICS_EVENTS.STUDIO_ACCESS_DENIED).toBe('studio_access_denied')
+    expect(ANALYTICS_EVENTS.STUDIO_ONBOARDING_VIEWED).toBe('studio_onboarding_viewed')
+    expect(ANALYTICS_EVENTS.STUDIO_UPLOAD_STARTED).toBe('studio_upload_started')
+    expect(ANALYTICS_EVENTS.STUDIO_UPLOAD_COMPLETED).toBe('studio_upload_completed')
+    expect(ANALYTICS_EVENTS.STUDIO_UPLOAD_REJECTED).toBe('studio_upload_rejected')
+    expect(ANALYTICS_EVENTS.STUDIO_EXTRACTION_COMPLETED).toBe('studio_extraction_completed')
+    expect(ANALYTICS_EVENTS.STUDIO_EXTRACTION_FAILED).toBe('studio_extraction_failed')
+    expect(ANALYTICS_EVENTS.STUDIO_GENERATION_STARTED).toBe('studio_generation_started')
+    expect(ANALYTICS_EVENTS.STUDIO_GENERATION_COMPLETED).toBe('studio_generation_completed')
+    expect(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED).toBe('studio_generation_failed')
+    expect(ANALYTICS_EVENTS.STUDIO_GENERATION_BLOCKED_CREDITS).toBe('studio_generation_blocked_credits')
+    expect(ANALYTICS_EVENTS.STUDIO_GENERATION_BLOCKED_DISH).toBe('studio_generation_blocked_dish')
+    expect(ANALYTICS_EVENTS.STUDIO_IMAGE_DOWNLOADED).toBe('studio_image_downloaded')
+    expect(ANALYTICS_EVENTS.STUDIO_IMAGE_REUSED).toBe('studio_image_reused')
+    expect(ANALYTICS_EVENTS.STUDIO_FEEDBACK_SUBMITTED).toBe('studio_feedback_submitted')
+    expect(ANALYTICS_EVENTS.STUDIO_FEEDBACK_DISMISSED).toBe('studio_feedback_dismissed')
   })
 
   it('AnalyticsEventName type covers all values (compile-time check)', () => {
     // This is a compile-time check: assigning each value to AnalyticsEventName must compile.
     // If the type is wrong, TypeScript will error here.
     const allValues: AnalyticsEventName[] = Object.values(ANALYTICS_EVENTS)
-    expect(allValues).toHaveLength(24)
+    expect(allValues).toHaveLength(41)
   })
 
   it('all values are unique (no duplicates)', () => {

@@ -371,6 +371,7 @@ export async function POST(request: NextRequest) {
       imageId: record.id,
       dishId: record.dish_id,
       model: requestedModel,
+      validationStatus: validationResult.status,
       credits: { cost: debit.cost, balanceAfter: debit.balanceAfter },
     })
   } catch (error) {
