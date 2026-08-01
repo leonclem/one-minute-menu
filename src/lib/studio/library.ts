@@ -3,6 +3,7 @@
  */
 
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
+import { deleteExportVariantsForSource } from '@/lib/studio/export-variants'
 import type { StudioImageRecord } from '@/lib/studio/types'
 
 const BUCKET_NAME = 'ai-generated-images'
@@ -187,6 +188,10 @@ export async function deleteStudioImage(userId: string, imageId: string): Promis
       )
     }
   }
+
+  // Export variants cascade in the database, so remove their storage objects
+  // and rows first to avoid orphaning files in the bucket.
+  await deleteExportVariantsForSource(userId, imageId)
 
   // Clear source_image_id on all children so FK does not block delete
   await supabase

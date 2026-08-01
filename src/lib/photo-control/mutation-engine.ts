@@ -67,6 +67,11 @@ export interface MutationInput {
   prompt: string
   /** Optional canonical model override (for example, the configured Pro model). */
   model?: string
+  /**
+   * Optional target aspect ratio for the generated image. Used by export
+   * outpainting; omit to let the model keep the source framing.
+   */
+  aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
   /** Optional style reference images (e.g. lighting, background, plating). */
   styleReferences?: StyleReferenceImage[]
   /** Attach static camera-angle steering references when an admin/sandbox caller opts in. */
@@ -264,6 +269,7 @@ export class MutationEngine {
       person_generation: 'dont_allow',
       number_of_images: 1,
       image_size: configuredStudioImageSize(),
+      aspect_ratio: input.aspectRatio,
       request_scope: input.request_scope,
       // Gemini 3 Pro does not support thinkingLevel in generationConfig; only Flash supports it.
       thinking_level: modelSupportsThinkingLevel(targetModel) ? configuredThinkingLevel() : undefined,

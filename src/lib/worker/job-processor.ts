@@ -22,6 +22,7 @@ import {
   ExportJob,
   ExtractionJob,
   ImageGenerationJob,
+  StudioExportVariantJob,
   updateJobToCompleted,
   updateJobToFailed,
   updateJobStatus,
@@ -31,6 +32,8 @@ import {
   updateImageGenerationJobToCompleted,
   updateImageGenerationJobToFailed,
   resetImageGenerationJobToQueuedWithBackoff,
+  updateStudioExportVariantToFailed,
+  resetStudioExportVariantToQueuedWithBackoff,
   getRetentionDaysForPlan,
 } from './database-client'
 import { analyticsOperations } from '@/lib/analytics-server'
@@ -957,10 +960,104 @@ export class JobProcessor {
   /**
    * Shutdown the processor and cleanup resources
    */
+  /**
+   * Process one claimed Studio export variant.
+   *
+   * The executor owns the success path (render, upload, mark ready, debit);
+   * this method owns the failure path so retry/backoff stays consistent with
+   * the other queues.
+   */
+  async processStudioExport(job: StudioExportVariantJob): Promise<void> {
+    logInfo('Processing studio export variant', {
+      job_id: job.id,
+      variant_type: job.variant_type,
+      generation_method: job.generation_method,
+      retry_count: job.retry_count,
+    })
+
+    try {
+      const { executeStudioExportVariant } = await import('@/lib/studio/export-executor')
+      const result = await executeStudioExportVariant(job)
+
+      recordJobCompleted('studio_export', result.processingTimeMs / 1000)
+
+      logInfo('Studio export variant completed', {
+        job_id: job.id,
+        variant_type: job.variant_type,
+        credits_charged: result.creditsCharged,
+        duration_ms: result.processingTimeMs,
+        aspect_ratio_honoured: result.aspectRatioHonoured,
+      })
+    } catch (error) {
+      logError('Studio export variant failed', error as Error, { job_id: job.id })
+      await this.handleStudioExportError(job, error)
+    }
+  }
+
   async shutdown(): Promise<void> {
     logInfo('JobProcessor shutting down')
     await this.renderer.shutdown()
     logInfo('JobProcessor shutdown complete')
+  }
+
+  private async handleStudioExportError(
+    job: StudioExportVariantJob,
+    error: unknown
+  ): Promise<void> {
+    // Background-removal providers reject with a plain object, not an Error.
+    const normalized =
+      error instanceof Error
+        ? error
+        : new Error(
+            error && typeof error === 'object' && 'message' in error
+              ? String((error as { message: unknown }).message)
+              : String(error)
+          )
+
+    // Carry the provider's category across so classifyError can see it.
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      !(normalized as any).code
+    ) {
+      ;(normalized as any).code = String((error as { code: unknown }).code)
+    }
+
+    const isTerminalDomainError =
+      typeof (error as any)?.status === 'number' &&
+      (error as any).status >= 400 &&
+      (error as any).status < 500
+
+    const retryDecision = handleJobFailure(normalized, job.retry_count)
+    const errorCode = (normalized as any)?.code as string | undefined
+
+    // A missing source image or an unaffordable balance will never succeed on
+    // retry, so fail those immediately rather than burning the backoff budget.
+    if (retryDecision.should_retry && !isTerminalDomainError) {
+      await resetStudioExportVariantToQueuedWithBackoff(
+        job.id,
+        retryDecision.retry_delay_seconds,
+        normalized.message
+      )
+
+      recordJobRetried('studio_export', job.retry_count + 1)
+      logInfo('Studio export variant scheduled for retry', {
+        job_id: job.id,
+        retry_count: job.retry_count + 1,
+        retry_delay_seconds: retryDecision.retry_delay_seconds,
+        error_category: retryDecision.error_classification.category,
+      })
+      return
+    }
+
+    await updateStudioExportVariantToFailed(job.id, normalized.message, errorCode)
+    recordJobFailed('studio_export', retryDecision.error_classification.category)
+    logError('Studio export variant marked failed', normalized, {
+      job_id: job.id,
+      terminal_domain_error: isTerminalDomainError,
+      error_category: retryDecision.error_classification.category,
+    })
   }
 
   private async handleImageGenerationError(job: ImageGenerationJob, error: Error): Promise<void> {

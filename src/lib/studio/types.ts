@@ -1,3 +1,10 @@
+import type {
+  StudioExportFileType,
+  StudioExportGenerationMethod,
+  StudioExportStatus,
+  StudioExportVariantType,
+} from '@/lib/studio/export-presets'
+
 export type StudioImageRole = 'source' | 'generated'
 
 export type StudioBackgroundCategory = 'surface' | 'environment' | 'backdrop'
@@ -81,4 +88,52 @@ export interface StudioImageRecord {
   is_favourite: boolean
   archived_at: string | null
   created_at: string
+}
+
+/** Row shape of `studio_export_variants` (migration 077). */
+export interface StudioExportVariantRecord {
+  id: string
+  user_id: string
+  dish_id: string
+  source_image_id: string
+  parent_image_id: string | null
+  variant_type: StudioExportVariantType
+  width: number
+  height: number
+  aspect_ratio: string
+  file_type: StudioExportFileType
+  status: StudioExportStatus
+  storage_path: string | null
+  preview_url: string | null
+  generation_method: StudioExportGenerationMethod
+  estimated_credits: number
+  credits_charged: number | null
+  error_message: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * One export tile as returned to the Studio client: the preset merged with any
+ * persisted variant row, plus the credit quote for generating it now.
+ */
+export interface StudioExportTile {
+  variantType: StudioExportVariantType
+  label: string
+  hint: string
+  width: number
+  height: number
+  aspectRatio: string
+  fileType: StudioExportFileType
+  status: StudioExportStatus
+  generationMethod: StudioExportGenerationMethod
+  estimatedCredits: number
+  creditsCharged: number | null
+  previewUrl: string | null
+  errorMessage: string | null
+  /** False when the underlying pipeline is unavailable (e.g. cut-out disabled). */
+  available: boolean
+  unavailableReason: string | null
+  updatedAt: string | null
 }

@@ -50,6 +50,7 @@ const config: Config = {
           'primary-dark': 'rgb(var(--ux-primary-dark) / <alpha-value>)',
           'primary-light': 'rgb(var(--ux-primary-light) / <alpha-value>)',
           secondary: 'rgb(var(--ux-secondary) / <alpha-value>)',
+          accent: 'rgb(var(--ux-accent) / <alpha-value>)',
           text: 'rgb(var(--ux-text) / <alpha-value>)',
           'text-secondary': 'rgb(var(--ux-text-secondary) / <alpha-value>)',
           background: 'rgb(var(--ux-background) / <alpha-value>)',

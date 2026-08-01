@@ -445,6 +445,164 @@ export async function claimImageGenerationJob(workerId: string): Promise<ImageGe
 }
 
 /**
+ * Studio export variant queued for worker processing.
+ *
+ * The `studio_export_variants` row is itself the queue entry (migration 078),
+ * following the cut-out pipeline rather than a separate jobs table.
+ */
+export interface StudioExportVariantJob {
+  id: string
+  user_id: string
+  dish_id: string
+  source_image_id: string
+  parent_image_id: string | null
+  variant_type: string
+  width: number
+  height: number
+  aspect_ratio: string
+  file_type: string
+  status: string
+  storage_path: string | null
+  preview_url: string | null
+  generation_method: string
+  estimated_credits: number
+  credits_charged: number | null
+  error_message: string | null
+  error_code: string | null
+  metadata: Record<string, any>
+  retry_count: number
+  priority: number
+  worker_id: string | null
+  available_at: string
+  created_at: string
+  updated_at: string
+  started_at: string | null
+  completed_at: string | null
+}
+
+/**
+ * Atomically claim one queued Studio export variant.
+ *
+ * @param workerId - Unique identifier for the worker claiming the variant
+ * @returns Claimed variant or null if none available
+ */
+export async function claimStudioExportVariant(
+  workerId: string
+): Promise<StudioExportVariantJob | null> {
+  return databaseClient.withRetry(async () => {
+    const client = databaseClient.getClient()
+
+    const { data, error } = await client.rpc('claim_studio_export_variant', {
+      p_worker_id: workerId
+    }) as { data: StudioExportVariantJob[] | null; error: any }
+
+    if (error) {
+      throw new Error(`Failed to claim studio export variant: ${error.message}`)
+    }
+
+    return data && data.length > 0 ? data[0] : null
+  }, 'claimStudioExportVariant')
+}
+
+/**
+ * Mark a Studio export variant as permanently failed.
+ */
+export async function updateStudioExportVariantToFailed(
+  variantId: string,
+  errorMessage: string,
+  errorCode?: string
+): Promise<void> {
+  return databaseClient.withRetry(async () => {
+    const client = databaseClient.getClient()
+    const now = new Date().toISOString()
+
+    const { error } = await client
+      .from('studio_export_variants')
+      .update({
+        status: 'failed',
+        error_message: errorMessage.slice(0, 500),
+        error_code: errorCode ?? null,
+        worker_id: null,
+        started_at: null,
+        completed_at: now,
+        updated_at: now,
+      })
+      .eq('id', variantId)
+
+    if (error) {
+      throw new Error(`Failed to mark studio export variant failed: ${error.message}`)
+    }
+  }, 'updateStudioExportVariantToFailed')
+}
+
+/**
+ * Return a Studio export variant to the queue with exponential backoff.
+ */
+export async function resetStudioExportVariantToQueuedWithBackoff(
+  variantId: string,
+  retryDelaySeconds: number,
+  errorMessage: string
+): Promise<void> {
+  return databaseClient.withRetry(async () => {
+    const client = databaseClient.getClient()
+
+    const { data: current, error: fetchError } = await client
+      .from('studio_export_variants')
+      .select('retry_count')
+      .eq('id', variantId)
+      .single()
+
+    if (fetchError) {
+      throw new Error(`Failed to read studio export retry count: ${fetchError.message}`)
+    }
+
+    const availableAt = new Date(Date.now() + retryDelaySeconds * 1000).toISOString()
+
+    const { error } = await client
+      .from('studio_export_variants')
+      .update({
+        status: 'queued',
+        retry_count: ((current?.retry_count as number) ?? 0) + 1,
+        error_message: errorMessage.slice(0, 500),
+        worker_id: null,
+        started_at: null,
+        available_at: availableAt,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', variantId)
+
+    if (error) {
+      throw new Error(`Failed to requeue studio export variant: ${error.message}`)
+    }
+  }, 'resetStudioExportVariantToQueuedWithBackoff')
+}
+
+/**
+ * Recover Studio export variants abandoned mid-generation.
+ *
+ * @returns Number of variants requeued or failed
+ */
+export async function resetStaleStudioExportVariants(
+  staleAfterSeconds = 300,
+  maxRetries = 3
+): Promise<number> {
+  return databaseClient.withRetry(async () => {
+    const client = databaseClient.getClient()
+
+    const { data, error } = await client.rpc('reset_stale_studio_export_variants', {
+      p_stale_after_seconds: staleAfterSeconds,
+      p_max_retries: maxRetries,
+    }) as { data: number | null; error: any }
+
+    if (error) {
+      throw new Error(`Failed to reset stale studio export variants: ${error.message}`)
+    }
+
+    return data ?? 0
+  }, 'resetStaleStudioExportVariants')
+}
+
+/**
  * Extraction job type from database
  */
 export interface ExtractionJob {
@@ -986,7 +1144,7 @@ export async function getQueueDepth(): Promise<number> {
     const client = databaseClient.getClient()
     
     const now = new Date().toISOString()
-    const [exportDepth, imageDepth] = await Promise.all([
+    const [exportDepth, imageDepth, studioExportDepth] = await Promise.all([
       client
         .from('export_jobs')
         .select('*', { count: 'exact', head: true })
@@ -994,6 +1152,11 @@ export async function getQueueDepth(): Promise<number> {
         .lte('available_at', now),
       client
         .from('image_generation_jobs')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'queued')
+        .lte('available_at', now),
+      client
+        .from('studio_export_variants')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'queued')
         .lte('available_at', now),
@@ -1005,8 +1168,11 @@ export async function getQueueDepth(): Promise<number> {
     if (imageDepth.error) {
       throw new Error(`Failed to get image generation queue depth: ${imageDepth.error.message}`)
     }
+    if (studioExportDepth.error) {
+      throw new Error(`Failed to get studio export queue depth: ${studioExportDepth.error.message}`)
+    }
 
-    return (exportDepth.count || 0) + (imageDepth.count || 0)
+    return (exportDepth.count || 0) + (imageDepth.count || 0) + (studioExportDepth.count || 0)
   }, 'getQueueDepth')
 }
 

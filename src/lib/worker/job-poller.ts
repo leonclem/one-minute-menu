@@ -11,9 +11,20 @@
  * Requirements: 2.1, 2.3, 12.7, 12.8
  */
 
-import { claimJob, claimExtractionJob, claimImageGenerationJob, getQueueDepth } from './database-client'
+import {
+  claimJob,
+  claimExtractionJob,
+  claimImageGenerationJob,
+  claimStudioExportVariant,
+  getQueueDepth,
+} from './database-client'
 import { JobProcessor } from './job-processor'
-import type { ExportJob, ExtractionJob, ImageGenerationJob } from './database-client'
+import type {
+  ExportJob,
+  ExtractionJob,
+  ImageGenerationJob,
+  StudioExportVariantJob,
+} from './database-client'
 import { logJobEvent, logInfo, logWarning, logError } from './logger'
 import {
   updateQueueDepth,
@@ -176,7 +187,38 @@ export class JobPoller {
         }
       }
 
-      // 3. Attempt to claim an export job
+      // 3. Attempt to claim a Studio export variant (user is waiting on it)
+      const studioExportVariant = await this.claimStudioExportVariant()
+      if (studioExportVariant) {
+        logInfo('Claimed studio export variant', {
+          job_id: studioExportVariant.id,
+          variant_type: studioExportVariant.variant_type,
+          generation_method: studioExportVariant.generation_method,
+          retry_count: studioExportVariant.retry_count,
+        })
+
+        incrementProcessingJobs(this.workerId)
+        const jobPromise = this.processor.processStudioExport(studioExportVariant)
+
+        if (this.onJobStart) {
+          this.onJobStart(jobPromise)
+        }
+
+        await jobPromise
+        decrementProcessingJobs(this.workerId)
+
+        if (this.onJobComplete) {
+          this.onJobComplete()
+        }
+
+        // After processing a job, immediately check for more work
+        if (this.isRunning) {
+          this.poll()
+          return
+        }
+      }
+
+      // 4. Attempt to claim an export job
       const exportJob = await this.claimExportJob()
 
       if (exportJob) {
@@ -276,6 +318,20 @@ export class JobPoller {
       return await claimImageGenerationJob(this.workerId)
     } catch (error) {
       logError('Error claiming image generation job', error as Error, {
+        worker_id: this.workerId,
+      })
+      return null
+    }
+  }
+
+  /**
+   * Atomically claim one queued Studio export variant
+   */
+  private async claimStudioExportVariant(): Promise<StudioExportVariantJob | null> {
+    try {
+      return await claimStudioExportVariant(this.workerId)
+    } catch (error) {
+      logError('Error claiming studio export variant', error as Error, {
         worker_id: this.workerId,
       })
       return null

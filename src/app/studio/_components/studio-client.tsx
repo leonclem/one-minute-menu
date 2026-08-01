@@ -28,6 +28,7 @@ import {
 import { Component_Control } from '@/components/photo-controls'
 import { CollapsibleSection } from '@/components/ux'
 import { ConfirmDialog } from '@/components/ui'
+import { downloadImage } from '@/lib/studio/client-download'
 import { buildChangeSummary, readChangeSummary } from '@/lib/studio/change-summary'
 import {
   STUDIO_LIGHTING_OPTIONS,
@@ -59,6 +60,7 @@ import { StudioStateNotice } from './studio-state-notice'
 import { StudioFirstRunPanel } from './studio-first-run-panel'
 import { StudioFeedbackPanel } from './studio-feedback-panel'
 import { StudioDishPickerModal } from './studio-dish-picker-modal'
+import { StudioExportPanel } from './studio-export-panel'
 import { StudioTextModal } from './studio-text-modal'
 import { VisualOptionTiles } from './visual-option-tiles'
 
@@ -178,20 +180,6 @@ function makeDefaultEditorState(): EditorState {
     },
     position: { ...CENTER },
   }
-}
-
-async function downloadImage(url: string, filename: string) {
-  const response = await fetch(url)
-  if (!response.ok) throw new Error('Download failed')
-  const blob = await response.blob()
-  const objectUrl = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = objectUrl
-  anchor.download = filename
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  URL.revokeObjectURL(objectUrl)
 }
 
 function sortVariants(images: StudioImageRecord[]): StudioImageRecord[] {
@@ -1339,7 +1327,12 @@ export function StudioClient({
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(280px,360px)_1fr]">
+      {/*
+        Desktop: controls left, image centre, exports right. Below `xl` the
+        export grid drops to a full-width row; below `lg` everything stacks with
+        the image first so the photo stays the focus on tablets.
+      */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(260px,340px)_1fr] xl:grid-cols-[minmax(260px,320px)_1fr_minmax(300px,380px)]">
         {/* Control panel */}
         <section className="flex max-h-[70vh] flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md">
           <div className="border-b bg-neutral-100 px-4 py-3">
@@ -1512,7 +1505,7 @@ export function StudioClient({
         </section>
 
         {/* Preview + variants */}
-        <section className="flex flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md">
+        <section className="order-first flex flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md lg:order-none">
           <div className="border-b bg-neutral-100 px-4 py-3">
             <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
               Preview
@@ -1634,6 +1627,18 @@ export function StudioClient({
             </div>
           </div>
         </section>
+
+        {/* Export variants — channel-ready assets from the approved hero image */}
+        <div className="lg:col-span-2 xl:col-span-1">
+          <StudioExportPanel
+            sourceImageId={selectedImage?.id ?? null}
+            dishName={activeDish?.name ?? null}
+            editorBusy={busy}
+            dishBlocked={dishBlocked}
+            creditBalance={creditBalance}
+            onCreditBalanceChange={setCreditBalance}
+          />
+        </div>
       </div>
 
       <StudioDishPickerModal

@@ -10,7 +10,11 @@
  * Requirements: 6.3, 6.4, 6.6
  */
 
-import { findStaleJobs, resetStaleJobs } from './database-client'
+import {
+  findStaleJobs,
+  resetStaleJobs,
+  resetStaleStudioExportVariants,
+} from './database-client'
 
 /**
  * Configuration for stale job cleanup
@@ -135,6 +139,25 @@ export class StaleJobCleanup {
    * - 6.4: Reset them to pending status
    * - 6.6: Clear worker_id to allow re-processing
    */
+  /**
+   * Requeue Studio export variants abandoned mid-generation, or fail them once
+   * their retry budget is spent. Never throws.
+   */
+  private async recoverStaleStudioExports(): Promise<void> {
+    try {
+      const recovered = await resetStaleStudioExportVariants()
+      if (recovered > 0) {
+        this.config.logger.warn('Recovered stale studio export variants', {
+          count: recovered,
+        })
+      }
+    } catch (error) {
+      this.config.logger.error('Studio export stale recovery failed', {
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
   private async runCleanup(): Promise<void> {
     const startTime = Date.now()
 
@@ -146,33 +169,37 @@ export class StaleJobCleanup {
 
       if (staleJobIds.length === 0) {
         this.config.logger.info('No stale jobs found')
-        return
-      }
-
-      this.config.logger.warn('Found stale jobs, initiating recovery', {
-        count: staleJobIds.length,
-        jobIds: staleJobIds,
-      })
-
-      // Reset stale jobs to pending
-      const resetCount = await resetStaleJobs()
-
-      const duration = Date.now() - startTime
-
-      this.config.logger.info('Stale job cleanup completed', {
-        staleJobsFound: staleJobIds.length,
-        jobsReset: resetCount,
-        durationMs: duration,
-      })
-
-      // Log individual job recoveries for audit trail
-      for (const jobId of staleJobIds) {
-        this.config.logger.info('Stale job recovered', {
-          jobId,
-          action: 'reset_to_pending',
-          reason: 'processing_timeout_exceeded',
+      } else {
+        this.config.logger.warn('Found stale jobs, initiating recovery', {
+          count: staleJobIds.length,
+          jobIds: staleJobIds,
         })
+
+        // Reset stale jobs to pending
+        const resetCount = await resetStaleJobs()
+
+        const duration = Date.now() - startTime
+
+        this.config.logger.info('Stale job cleanup completed', {
+          staleJobsFound: staleJobIds.length,
+          jobsReset: resetCount,
+          durationMs: duration,
+        })
+
+        // Log individual job recoveries for audit trail
+        for (const jobId of staleJobIds) {
+          this.config.logger.info('Stale job recovered', {
+            jobId,
+            action: 'reset_to_pending',
+            reason: 'processing_timeout_exceeded',
+          })
+        }
       }
+
+      // Studio export variants queue on their own row, so a dedicated RPC
+      // recovers them. Runs last and swallows its own errors so it can never
+      // affect export-job recovery.
+      await this.recoverStaleStudioExports()
     } catch (error) {
       const duration = Date.now() - startTime
 

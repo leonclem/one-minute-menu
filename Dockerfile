@@ -66,6 +66,9 @@ RUN echo '{\n\
     "src/lib/extraction/**/*",\n\
     "src/lib/image-generation/**/*",\n\
     "src/lib/background-removal/**/*",\n\
+    "src/lib/studio/**/*",\n\
+    "src/lib/photo-control/**/*",\n\
+    "src/lib/posthog/**/*",\n\
     "src/lib/database.ts",\n\
     "src/lib/nano-banana.ts",\n\
     "src/lib/image-processing.ts",\n\
@@ -82,7 +85,7 @@ RUN echo '{\n\
     "src/lib/templates/v2/**/*",\n\
     "src/lib/templates/export/texture-utils.ts",\n\
     "src/lib/templates/export/puppeteer-shared.ts",\n\
-    "src/types/**/*"\n  ],\n  "exclude": ["**/*.test.ts", "**/__tests__/**/*", "src/lib/templates/*.ts"]\n}' > tsconfig.worker.json
+    "src/types/**/*"\n  ],\n  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**/*", "src/lib/templates/*.ts", "src/lib/studio/access/**/*", "src/lib/studio/analytics/**/*", "src/lib/studio/client-upload.ts", "src/lib/studio/client-download.ts"]\n}' > tsconfig.worker.json
 
 # Compile TypeScript with path resolution
 RUN npx tsc -p tsconfig.worker.json

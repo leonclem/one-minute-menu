@@ -32,7 +32,52 @@ export function normalizeStoragePublicUrl(publicUrl: string): string {
   try {
     const url = new URL(publicUrl)
     url.pathname = url.pathname.replace(/\/{2,}/g, '/')
-    return url.toString()
+    return toBrowserPublicUrl(url.toString())
+  } catch {
+    return publicUrl
+  }
+}
+
+/**
+ * Rewrite an internal storage host to the browser-facing Supabase origin.
+ *
+ * The Railway/Docker worker reaches Supabase over `host.docker.internal` (or an
+ * explicit internal URL), so public URLs it builds are not loadable from a
+ * browser. Mirrors the cut-out pipeline's handling of the same problem.
+ */
+export function toBrowserPublicUrl(publicUrl: string): string {
+  const browserBase = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!browserBase) return publicUrl
+
+  try {
+    const browser = new URL(browserBase)
+    const target = new URL(publicUrl)
+
+    const internalOrigins = [
+      process.env.SUPABASE_INTERNAL_URL,
+      process.env.WORKER_SUPABASE_URL,
+    ]
+      .map((value) => {
+        try {
+          return value ? new URL(value).origin : null
+        } catch {
+          return null
+        }
+      })
+      .filter((origin): origin is string => origin !== null)
+
+    const isInternal =
+      target.hostname === 'host.docker.internal' ||
+      target.hostname === 'localhost' ||
+      target.hostname === '127.0.0.1' ||
+      internalOrigins.includes(target.origin)
+
+    if (isInternal) {
+      target.protocol = browser.protocol
+      target.host = browser.host
+    }
+
+    return target.toString()
   } catch {
     return publicUrl
   }

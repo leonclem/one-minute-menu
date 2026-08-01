@@ -40,6 +40,11 @@ export const ANALYTICS_EVENTS = {
   STUDIO_IMAGE_REUSED: 'studio_image_reused',
   STUDIO_FEEDBACK_SUBMITTED: 'studio_feedback_submitted',
   STUDIO_FEEDBACK_DISMISSED: 'studio_feedback_dismissed',
+  STUDIO_EXPORT_GENERATION_STARTED: 'studio_export_generation_started',
+  STUDIO_EXPORT_GENERATION_COMPLETED: 'studio_export_generation_completed',
+  STUDIO_EXPORT_GENERATION_FAILED: 'studio_export_generation_failed',
+  STUDIO_EXPORT_DOWNLOADED: 'studio_export_downloaded',
+  STUDIO_EXPORT_EXPANDED: 'studio_export_expanded',
 } as const
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS]

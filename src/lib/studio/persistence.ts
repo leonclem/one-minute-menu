@@ -3,6 +3,7 @@
  */
 
 import { randomUUID } from 'crypto'
+import sharp from 'sharp'
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
 import { touchStudioDish } from '@/lib/studio/dishes'
 import { downloadStudioStorageObject, StudioImageLoadError } from '@/lib/studio/image-bytes'
@@ -38,6 +39,21 @@ export interface RegisterStudioSourceImageInput {
 /**
  * Register a source image the client uploaded directly to Supabase Storage.
  */
+/**
+ * Measure an image without letting a decode failure block persistence.
+ * Dimensions drive export-variant credit quotes, so they are recorded up front.
+ */
+async function readImageDimensions(
+  buffer: Buffer,
+): Promise<{ width: number | null; height: number | null }> {
+  try {
+    const meta = await sharp(buffer).metadata()
+    return { width: meta.width ?? null, height: meta.height ?? null }
+  } catch {
+    return { width: null, height: null }
+  }
+}
+
 export async function registerStudioSourceImage(
   input: RegisterStudioSourceImageInput,
 ): Promise<StudioImageRecord> {
@@ -46,7 +62,8 @@ export async function registerStudioSourceImage(
   }
 
   const storagePath = buildStudioStoragePath(input.userId, input.imageId, input.mimeType)
-  await downloadStudioStorageObject(storagePath, input.userId)
+  const { buffer } = await downloadStudioStorageObject(storagePath, input.userId)
+  const dimensions = await readImageDimensions(buffer)
 
   const supabase = createAdminSupabaseClient()
   const { data: urlData } = supabase.storage.from(STUDIO_STORAGE_BUCKET).getPublicUrl(storagePath)
@@ -61,8 +78,8 @@ export async function registerStudioSourceImage(
     storage_path: storagePath,
     public_url: publicUrl,
     mime_type: input.mimeType,
-    width: null as number | null,
-    height: null as number | null,
+    width: dimensions.width,
+    height: dimensions.height,
     prompt: null,
     model: null,
     metadata: {},
@@ -101,6 +118,7 @@ export async function persistStudioImage(
   const imageId = randomUUID()
   const storagePath = buildStudioStoragePath(input.userId, imageId, input.mimeType)
   const buffer = Buffer.from(input.imageBase64, 'base64')
+  const dimensions = await readImageDimensions(buffer)
 
   const { error: uploadError } = await supabase.storage
     .from(STUDIO_STORAGE_BUCKET)
@@ -126,8 +144,8 @@ export async function persistStudioImage(
     storage_path: storagePath,
     public_url: publicUrl,
     mime_type: input.mimeType,
-    width: null as number | null,
-    height: null as number | null,
+    width: dimensions.width,
+    height: dimensions.height,
     prompt: input.prompt ?? null,
     model: input.model ?? null,
     metadata: input.metadata ?? {},

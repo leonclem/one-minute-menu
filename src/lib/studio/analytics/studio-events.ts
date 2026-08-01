@@ -28,4 +28,7 @@ export const STUDIO_ALLOWED_PROPERTY_KEYS = [
   'blocked_by',
   'file_size_bucket',
   'mime_class',
+  'variant_type',
+  'generation_method',
+  'export_ready_count',
 ] as const

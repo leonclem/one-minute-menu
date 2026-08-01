@@ -8,10 +8,19 @@ import { createAdminSupabaseClient } from '@/lib/supabase-server'
 
 export const DEFAULT_STUDIO_CREDIT_COST_NB2 = 1
 export const DEFAULT_STUDIO_CREDIT_COST_NB_PRO = 3
+export const DEFAULT_STUDIO_CREDIT_COST_EXPORT_AI = 1
+export const DEFAULT_STUDIO_CREDIT_COST_EXPORT_CUTOUT = 1
 
 export type StudioCreditCosts = {
   nb2: number
   nbPro: number
+}
+
+export type StudioExportCreditCosts = {
+  /** AI background expansion / generative recomposition of an export format. */
+  aiExpand: number
+  /** Transparent cut-out via the background-removal pipeline. */
+  cutout: number
 }
 
 export class StudioCreditsError extends Error {
@@ -50,6 +59,40 @@ export function getStudioCreditCosts(): StudioCreditCosts {
   }
 }
 
+/**
+ * Credit costs for export variants.
+ *
+ * Deterministic crop/resize exports and downloads are free by design, so only
+ * the operations that create or transform pixels appear here.
+ */
+export function getStudioExportCreditCosts(): StudioExportCreditCosts {
+  return {
+    aiExpand: parsePositiveInt(
+      process.env.STUDIO_CREDIT_COST_EXPORT_AI,
+      DEFAULT_STUDIO_CREDIT_COST_EXPORT_AI,
+    ),
+    cutout: parsePositiveInt(
+      process.env.STUDIO_CREDIT_COST_EXPORT_CUTOUT,
+      DEFAULT_STUDIO_CREDIT_COST_EXPORT_CUTOUT,
+    ),
+  }
+}
+
+/** Map an export generation method → credit cost. */
+export function getCreditCostForExportMethod(method: string): number {
+  const costs = getStudioExportCreditCosts()
+  switch (method) {
+    case 'ai_expand':
+    case 'ai_recompose':
+      return costs.aiExpand
+    case 'cutout':
+      return costs.cutout
+    default:
+      // crop_resize and plain downloads never consume credits.
+      return 0
+  }
+}
+
 /** Map Gemini / Studio model id → credit cost. */
 export function getCreditCostForModel(model: string | null | undefined): number {
   const costs = getStudioCreditCosts()
@@ -58,9 +101,24 @@ export function getCreditCostForModel(model: string | null | undefined): number 
   return costs.nb2
 }
 
-export async function getStudioCreditBalance(userId: string): Promise<number> {
-  const supabase = createAdminSupabaseClient()
-  const { data, error } = await supabase
+/**
+ * Any service-role Supabase client. The Railway worker passes its own so
+ * Docker/internal URL resolution applies.
+ */
+export type StudioCreditsDbClient = Pick<
+  ReturnType<typeof createAdminSupabaseClient>,
+  'from' | 'rpc'
+>
+
+function creditsDb(client?: StudioCreditsDbClient): StudioCreditsDbClient {
+  return client ?? createAdminSupabaseClient()
+}
+
+export async function getStudioCreditBalance(
+  userId: string,
+  client?: StudioCreditsDbClient,
+): Promise<number> {
+  const { data, error } = await creditsDb(client)
     .from('studio_credit_balances')
     .select('balance')
     .eq('user_id', userId)
@@ -76,9 +134,10 @@ export async function getStudioCreditBalance(userId: string): Promise<number> {
 export async function assertCanAffordStudioCredits(
   userId: string,
   cost: number,
+  client?: StudioCreditsDbClient,
 ): Promise<number> {
-  if (cost <= 0) return getStudioCreditBalance(userId)
-  const balance = await getStudioCreditBalance(userId)
+  if (cost <= 0) return getStudioCreditBalance(userId, client)
+  const balance = await getStudioCreditBalance(userId, client)
   if (balance < cost) {
     throw new StudioCreditsError(
       `Insufficient Studio credits (need ${cost}, have ${balance}).`,
@@ -99,12 +158,13 @@ async function applyCreditDelta(input: {
   refId?: string | null
   createdBy?: string | null
   metadata?: Record<string, unknown>
+  client?: StudioCreditsDbClient
 }): Promise<{ balanceAfter: number; ledgerId: string }> {
   if (!Number.isInteger(input.delta) || input.delta === 0) {
     throw new StudioCreditsError('Credit delta must be a non-zero integer', 'INVALID_GRANT')
   }
 
-  const supabase = createAdminSupabaseClient()
+  const supabase = creditsDb(input.client)
   const { data, error } = await supabase.rpc('studio_apply_credit_delta', {
     p_user_id: input.userId,
     p_delta: input.delta,
@@ -160,6 +220,43 @@ export async function debitForStudioGeneration(input: {
     refType: 'studio_image',
     refId: input.studioImageId,
     metadata: { model: input.model, cost: input.cost },
+  })
+
+  return { ...result, cost: input.cost }
+}
+
+/**
+ * Debit credits for an export variant that required real image work.
+ *
+ * Deterministic crop/resize variants pass `cost: 0` and must not call this.
+ */
+export async function debitForStudioExportVariant(input: {
+  userId: string
+  cost: number
+  variantId: string
+  variantType: string
+  generationMethod: string
+  client?: StudioCreditsDbClient
+}): Promise<{ balanceAfter: number; ledgerId: string; cost: number }> {
+  if (!Number.isInteger(input.cost) || input.cost <= 0) {
+    throw new StudioCreditsError(
+      'Export variant cost must be a positive integer',
+      'INVALID_GRANT',
+    )
+  }
+
+  const result = await applyCreditDelta({
+    userId: input.userId,
+    delta: -input.cost,
+    reason: 'export_variant_debit',
+    refType: 'studio_export_variant',
+    refId: input.variantId,
+    metadata: {
+      variant_type: input.variantType,
+      generation_method: input.generationMethod,
+      cost: input.cost,
+    },
+    client: input.client,
   })
 
   return { ...result, cost: input.cost }
