@@ -18,6 +18,9 @@ export type StudioClientUploadResult =
     }
   | { ok: false; error: string }
 
+// Supabase serializes session access. If a browser auth lock is left pending, an
+// unbounded getSession() call can prevent the upload request from ever starting.
+const SESSION_TIMEOUT_MS = 15_000
 const UPLOAD_TIMEOUT_MS = 90_000
 const CLEANUP_TIMEOUT_MS = 10_000
 
@@ -45,7 +48,11 @@ export async function uploadStudioSourceFile(file: File): Promise<StudioClientUp
     const {
       data: { session },
       error: sessionError,
-    } = await supabase.auth.getSession()
+    } = await withTimeout(
+      supabase.auth.getSession(),
+      SESSION_TIMEOUT_MS,
+      'Timed out while checking your sign-in. Refresh the page and try again.',
+    )
 
     if (sessionError || !session?.user) {
       return { ok: false, error: 'You must be signed in to upload images.' }
