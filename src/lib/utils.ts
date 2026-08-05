@@ -40,6 +40,7 @@ export function formatDate(date: Date | string): string {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    timeZone: 'Asia/Singapore',
   }).format(d)
 }
 

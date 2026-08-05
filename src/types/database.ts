@@ -32,6 +32,7 @@ export interface Database {
           establishment_type: string | null
           primary_cuisine: string | null
           default_venue_info: any
+          studio_first_run_dismissed: boolean
         }
         Insert: {
           id: string
@@ -51,6 +52,7 @@ export interface Database {
           establishment_type?: string | null
           primary_cuisine?: string | null
           default_venue_info?: any
+          studio_first_run_dismissed?: boolean
         }
         Update: {
           id?: string
@@ -70,6 +72,7 @@ export interface Database {
           establishment_type?: string | null
           primary_cuisine?: string | null
           default_venue_info?: any
+          studio_first_run_dismissed?: boolean
         }
       }
       menus: {

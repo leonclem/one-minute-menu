@@ -3,6 +3,7 @@
  */
 
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
+import { STUDIO_STORAGE_BUCKET } from '@/lib/studio/storage-paths'
 import type { StudioDishListItem, StudioDishRecord } from '@/lib/studio/types'
 
 export type { StudioDishListItem, StudioDishRecord } from '@/lib/studio/types'
@@ -176,54 +177,96 @@ export async function setStudioDishCurrentImage(
   return data as StudioDishRecord
 }
 
+export interface StudioDishDeletionSummary {
+  imageCount: number
+  exportVariantCount: number
+}
+
+interface StudioDishAssets {
+  imageCount: number
+  imagePaths: string[]
+  exportVariantCount: number
+  exportPaths: string[]
+}
+
+async function getStudioDishAssets(userId: string, dishId: string): Promise<StudioDishAssets> {
+  const supabase = createAdminSupabaseClient()
+  const [imagesResult, exportsResult] = await Promise.all([
+    supabase
+      .from('studio_images')
+      .select('id, storage_path')
+      .eq('user_id', userId)
+      .eq('dish_id', dishId),
+    supabase
+      .from('studio_export_variants')
+      .select('id, storage_path')
+      .eq('user_id', userId)
+      .eq('dish_id', dishId),
+  ])
+
+  if (imagesResult.error) {
+    throw new Error(`Failed to list dish images: ${imagesResult.error.message}`)
+  }
+  if (exportsResult.error) {
+    throw new Error(`Failed to list dish export variants: ${exportsResult.error.message}`)
+  }
+
+  return {
+    imageCount: (imagesResult.data ?? []).length,
+    imagePaths: (imagesResult.data ?? [])
+      .map((row) => row.storage_path as string | null)
+      .filter((path): path is string => Boolean(path)),
+    exportVariantCount: (exportsResult.data ?? []).length,
+    exportPaths: (exportsResult.data ?? [])
+      .map((row) => row.storage_path as string | null)
+      .filter((path): path is string => Boolean(path)),
+  }
+}
+
+/** Return the assets that will be permanently removed with a dish. */
+export async function getStudioDishDeletionSummary(
+  userId: string,
+  dishId: string,
+): Promise<StudioDishDeletionSummary> {
+  const assets = await getStudioDishAssets(userId, dishId)
+  return {
+    imageCount: assets.imageCount,
+    exportVariantCount: assets.exportVariantCount,
+  }
+}
+
 /**
- * Delete a dish only when it has no active (non-archived) images.
- * Archived images for the dish are hard-deleted (DB + storage) first.
+ * Permanently remove a dish and every image and export variant it owns.
+ * Export rows must be removed before images so their storage paths can be
+ * cleaned up before their foreign-key cascade deletes the database rows.
  */
 export async function deleteStudioDish(userId: string, dishId: string): Promise<void> {
   const supabase = createAdminSupabaseClient()
+  const { imagePaths, exportPaths } = await getStudioDishAssets(userId, dishId)
 
-  const { count: activeCount, error: activeError } = await supabase
-    .from('studio_images')
-    .select('id', { count: 'exact', head: true })
+  const storagePaths = Array.from(new Set([...imagePaths, ...exportPaths]))
+  if (storagePaths.length > 0) {
+    await supabase.storage.from(STUDIO_STORAGE_BUCKET).remove(storagePaths).catch(() => undefined)
+  }
+
+  const { error: exportsError } = await supabase
+    .from('studio_export_variants')
+    .delete()
     .eq('user_id', userId)
     .eq('dish_id', dishId)
-    .is('archived_at', null)
 
-  if (activeError) {
-    throw new Error(`Failed to check dish images: ${activeError.message}`)
+  if (exportsError) {
+    throw new Error(`Failed to remove dish export variants: ${exportsError.message}`)
   }
 
-  if ((activeCount ?? 0) > 0) {
-    throw new Error('Archive or delete all images in this dish before deleting it.')
-  }
-
-  const { data: archived, error: listError } = await supabase
+  const { error: imagesError } = await supabase
     .from('studio_images')
-    .select('id, storage_path')
+    .delete()
     .eq('user_id', userId)
     .eq('dish_id', dishId)
-    .not('archived_at', 'is', null)
 
-  if (listError) {
-    throw new Error(`Failed to list archived dish images: ${listError.message}`)
-  }
-
-  const paths = (archived ?? []).map((row) => row.storage_path as string).filter(Boolean)
-  if (paths.length > 0) {
-    await supabase.storage.from('ai-generated-images').remove(paths).catch(() => undefined)
-  }
-
-  if ((archived ?? []).length > 0) {
-    const { error: wipeError } = await supabase
-      .from('studio_images')
-      .delete()
-      .eq('user_id', userId)
-      .eq('dish_id', dishId)
-
-    if (wipeError) {
-      throw new Error(`Failed to remove archived images: ${wipeError.message}`)
-    }
+  if (imagesError) {
+    throw new Error(`Failed to remove dish images: ${imagesError.message}`)
   }
 
   const { error: deleteError } = await supabase

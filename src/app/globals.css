@@ -404,6 +404,36 @@
     animation: customisePulse 4s ease-in-out infinite;
   }
 
+  /* Strong selected-image handoff for the Studio export rail/panel. */
+  @keyframes studioExportContextFlash {
+    0% { opacity: 0; }
+    12% { opacity: 0.95; }
+    48% { opacity: 0.82; }
+    100% { opacity: 0; }
+  }
+
+  .studio-export-context-flash {
+    isolation: isolate;
+    position: relative;
+  }
+
+  .studio-export-context-flash::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    background: rgb(var(--ux-primary));
+    animation: studioExportContextFlash 1.8s ease-out both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .studio-export-context-flash::after {
+      animation: none;
+      opacity: 0.25;
+    }
+  }
+
   /* Template background textures */
   .template-bg-elegant-dark {
     position: relative;

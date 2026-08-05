@@ -4,8 +4,8 @@ describe('ANALYTICS_EVENTS registry', () => {
   const entries = Object.entries(ANALYTICS_EVENTS)
   const values = Object.values(ANALYTICS_EVENTS)
 
-  it('has exactly 41 entries', () => {
-    expect(entries).toHaveLength(41)
+  it('has exactly 46 entries, including Studio export events', () => {
+    expect(entries).toHaveLength(46)
   })
 
   it('contains every required key from Req 3.1', () => {
@@ -50,6 +50,11 @@ describe('ANALYTICS_EVENTS registry', () => {
       'STUDIO_IMAGE_REUSED',
       'STUDIO_FEEDBACK_SUBMITTED',
       'STUDIO_FEEDBACK_DISMISSED',
+      'STUDIO_EXPORT_GENERATION_STARTED',
+      'STUDIO_EXPORT_GENERATION_COMPLETED',
+      'STUDIO_EXPORT_GENERATION_FAILED',
+      'STUDIO_EXPORT_DOWNLOADED',
+      'STUDIO_EXPORT_EXPANDED',
     ] as const
 
     for (const key of requiredKeys) {
@@ -106,13 +111,18 @@ describe('ANALYTICS_EVENTS registry', () => {
     expect(ANALYTICS_EVENTS.STUDIO_IMAGE_REUSED).toBe('studio_image_reused')
     expect(ANALYTICS_EVENTS.STUDIO_FEEDBACK_SUBMITTED).toBe('studio_feedback_submitted')
     expect(ANALYTICS_EVENTS.STUDIO_FEEDBACK_DISMISSED).toBe('studio_feedback_dismissed')
+    expect(ANALYTICS_EVENTS.STUDIO_EXPORT_GENERATION_STARTED).toBe('studio_export_generation_started')
+    expect(ANALYTICS_EVENTS.STUDIO_EXPORT_GENERATION_COMPLETED).toBe('studio_export_generation_completed')
+    expect(ANALYTICS_EVENTS.STUDIO_EXPORT_GENERATION_FAILED).toBe('studio_export_generation_failed')
+    expect(ANALYTICS_EVENTS.STUDIO_EXPORT_DOWNLOADED).toBe('studio_export_downloaded')
+    expect(ANALYTICS_EVENTS.STUDIO_EXPORT_EXPANDED).toBe('studio_export_expanded')
   })
 
   it('AnalyticsEventName type covers all values (compile-time check)', () => {
     // This is a compile-time check: assigning each value to AnalyticsEventName must compile.
     // If the type is wrong, TypeScript will error here.
     const allValues: AnalyticsEventName[] = Object.values(ANALYTICS_EVENTS)
-    expect(allValues).toHaveLength(41)
+    expect(allValues).toHaveLength(46)
   })
 
   it('all values are unique (no duplicates)', () => {

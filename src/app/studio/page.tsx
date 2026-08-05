@@ -97,6 +97,12 @@ export default async function StudioPage() {
     notFound()
   }
 
+  const { data: studioPreference } = await supabase
+    .from('profiles')
+    .select('studio_first_run_dismissed')
+    .eq('id', user.id)
+    .maybeSingle()
+
   let dishes: StudioDishRecord[] = await listStudioDishes(user.id)
   if (dishes.length === 0) {
     dishes = [await ensureDefaultStudioDish(user.id)]
@@ -117,6 +123,7 @@ export default async function StudioPage() {
         dishes={dishes}
         gallery={initialGallery}
         initialActiveDishId={activeDishId}
+        studioFirstRunDismissed={studioPreference?.studio_first_run_dismissed === true}
         isAdmin={isAdmin}
       />
     </StudioShell>

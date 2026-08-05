@@ -23,6 +23,8 @@ export function StudioDishPickerModal({
 }: StudioDishPickerModalProps) {
   if (!open) return null
 
+  const visibleDishes = dishes.filter((dish) => dish.name !== 'My dishes')
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div
@@ -47,11 +49,11 @@ export function StudioDishPickerModal({
         <div className="flex-1 overflow-y-auto p-2">
           {loading ? (
             <p className="px-2 py-6 text-center text-sm text-gray-500">Loading dishes…</p>
-          ) : dishes.length === 0 ? (
+          ) : visibleDishes.length === 0 ? (
             <p className="px-2 py-6 text-center text-sm text-gray-500">No dishes yet.</p>
           ) : (
             <ul className="space-y-1" data-testid="studio-dish-picker-list">
-              {dishes.map((dish) => {
+              {visibleDishes.map((dish) => {
                 const selected = dish.id === activeDishId
                 return (
                   <li key={dish.id}>

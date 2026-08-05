@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/toast'
 import type { Menu } from '@/types'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 import { useImageGenerationStatus } from '@/lib/image-generation/use-image-generation-status'
+import { formatDate } from '@/lib/utils'
 
 const PENDING_JOB_EXPIRY_MS = 10 * 60 * 1000 // 10 minutes
 const CHECK_COOLDOWN_MS = 15 * 1000 // 15 seconds
@@ -432,7 +433,7 @@ export function MenuCard({
             <div className="flex items-center justify-between text-sm">
               <span className="text-ux-text">Last updated:</span>
               <span className="text-ux-text">
-                {menu.updatedAt ? menu.updatedAt.toLocaleDateString() : '—'}
+                {menu.updatedAt ? formatDate(menu.updatedAt) : '—'}
               </span>
             </div>
             <div className="pt-4 space-y-3">

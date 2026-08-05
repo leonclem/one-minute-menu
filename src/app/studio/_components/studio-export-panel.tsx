@@ -47,6 +47,10 @@ const POLL_INTERVAL_MS = 6000
 interface StudioExportPanelProps {
   /** The approved hero image exports are derived from. */
   sourceImageId: string | null
+  /** Human-readable label for the selected source image, supplied by the Workbench. */
+  sourceImageLabel?: string
+  /** Briefly highlights the automatically updated export context after variant selection. */
+  contextFlash?: boolean
   dishName?: string | null
   /** True while the editor is mid-upload/extract/generate. */
   editorBusy?: boolean
@@ -92,6 +96,8 @@ function methodLabel(tile: StudioExportTile): string {
 
 export function StudioExportPanel({
   sourceImageId,
+  sourceImageLabel = 'selected image',
+  contextFlash = false,
   dishName,
   editorBusy = false,
   dishBlocked = false,
@@ -108,7 +114,46 @@ export function StudioExportPanel({
   >({})
   const [expanded, setExpanded] = useState<StudioExportTile | null>(null)
   const [downloadingAll, setDownloadingAll] = useState(false)
+  const [contextEntryCue, setContextEntryCue] = useState(false)
   const requestIdRef = useRef(0)
+  const sectionRef = useRef<HTMLElement>(null)
+  const previousSourceImageIdRef = useRef<string | null | undefined>(undefined)
+
+  useEffect(() => {
+    const previousSourceImageId = previousSourceImageIdRef.current
+    previousSourceImageIdRef.current = sourceImageId
+    setContextEntryCue(false)
+
+    // The first image establishes the panel. Later selections should draw
+    // attention when this panel is actually visible, including after a user
+    // scrolls to it on a narrower screen.
+    if (
+      previousSourceImageId === undefined ||
+      previousSourceImageId === sourceImageId ||
+      !sourceImageId ||
+      !sectionRef.current ||
+      typeof IntersectionObserver === 'undefined'
+    ) {
+      return
+    }
+
+    let timeout: number | undefined
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return
+        observer.disconnect()
+        setContextEntryCue(true)
+        timeout = window.setTimeout(() => setContextEntryCue(false), 1800)
+      },
+      { threshold: 0.2 },
+    )
+    observer.observe(sectionRef.current)
+
+    return () => {
+      observer.disconnect()
+      if (timeout !== undefined) window.clearTimeout(timeout)
+    }
+  }, [sourceImageId])
 
   const readyTiles = useMemo(
     () => tiles.filter((tile) => tile.status === 'ready' && tile.previewUrl),
@@ -323,13 +368,25 @@ export function StudioExportPanel({
 
   return (
     <section
-      className="flex flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md"
+      ref={sectionRef}
+      id="studio-export-panel"
+      className={[
+        'flex h-full flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md transition-[background-color,box-shadow] duration-300 motion-reduce:transition-none',
+        (contextFlash || contextEntryCue) && 'studio-export-context-flash',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       data-testid="studio-export-panel"
     >
       <div className="flex items-center justify-between gap-2 border-b bg-neutral-100 px-4 py-3">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
-          Export variants
-        </h2>
+        <div className="min-w-0">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
+            Export variants
+          </h2>
+          <p className="mt-0.5 truncate text-[11px] font-medium text-ux-primary" aria-live="polite">
+            For {sourceImageLabel}
+          </p>
+        </div>
         {readyTiles.length > 1 && (
           <button
             type="button"

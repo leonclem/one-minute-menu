@@ -32,6 +32,12 @@ export interface ComponentControlProps {
   allowAdd?: boolean
 }
 
+function capitalizeFirstWord(value: string): string {
+  return value.replace(/^(\s*)(\S)/, (_, leadingWhitespace: string, firstCharacter: string) =>
+    `${leadingWhitespace}${firstCharacter.toUpperCase()}`,
+  )
+}
+
 interface ComponentListProps {
   label: string
   items: string[]
@@ -78,28 +84,46 @@ function ComponentList({
         <p className="text-xs text-gray-400 italic mb-2">None detected</p>
       ) : (
         <ul className="mb-2 space-y-1" aria-label={`${label} list`}>
-          {items.map((item) => (
-            <li
-              key={item}
-              className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5"
-            >
-              <span className="text-sm text-gray-800">{item}</span>
-              <button
-                type="button"
-                aria-label={`Remove ${item}`}
-                disabled={disabled}
-                onClick={() => onRemove(item)}
-                className={[
-                  'ml-2 text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline',
-                  disabled && 'cursor-not-allowed opacity-50',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
+          {items.map((item) => {
+            const displayItem = capitalizeFirstWord(item)
+            return (
+              <li
+                key={item}
+                className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5"
               >
-                Remove
-              </button>
-            </li>
-          ))}
+                <span className="text-sm text-gray-800">{displayItem}</span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${displayItem}`}
+                  title={`Remove ${displayItem}`}
+                  disabled={disabled}
+                  onClick={() => onRemove(item)}
+                  className={[
+                    'ml-2 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-rose-400 text-lg font-bold leading-none text-white shadow-sm transition-colors hover:bg-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-400/50',
+                    disabled && 'cursor-not-allowed opacity-50',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4h8v2" />
+                    <path d="M19 6l-1 14H6L5 6" />
+                    <path d="M10 11v5M14 11v5" />
+                  </svg>
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
 

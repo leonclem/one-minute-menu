@@ -38,15 +38,15 @@ export const STUDIO_SPIN_OPTIONS: StudioVisualOption<string>[] = [
 
 /** Fallback lighting tiles when the styles API is unavailable. */
 export const STUDIO_LIGHTING_OPTIONS: StudioVisualOption<string>[] = [
+  { id: 'light-studio', label: 'Studio', assetBasename: 'lighting/lighting-studio', value: 'studio' },
   {
     id: 'light-natural',
-    label: 'Window light',
+    label: 'Window Light',
     assetBasename: 'lighting/lighting-natural',
     value: 'bright-and-airy',
   },
-  { id: 'light-moody', label: 'Low-Key / Dramatic', assetBasename: 'lighting/lighting-moody', value: 'low-key' },
-  { id: 'light-studio', label: 'Premium Editorial / Studio', assetBasename: 'lighting/lighting-studio', value: 'studio' },
   { id: 'light-golden-hour', label: 'Golden Hour', assetBasename: 'lighting/lighting-golden-hour', value: 'golden-hour' },
+  { id: 'light-moody', label: 'Low-Key / Dramatic', assetBasename: 'lighting/lighting-moody', value: 'low-key' },
 ]
 
 const ANGLE_FOH_LABELS: Partial<Record<AngleValue, string>> = {
@@ -56,9 +56,9 @@ const ANGLE_FOH_LABELS: Partial<Record<AngleValue, string>> = {
 }
 
 const LIGHTING_FOH_LABELS: Record<string, string> = {
-  'bright-and-airy': 'Window light',
+  'bright-and-airy': 'Window Light',
   'low-key': 'Low-Key / Dramatic',
-  studio: 'Premium Editorial / Studio',
+  studio: 'Studio',
   'golden-hour': 'Golden Hour',
 }
 
@@ -66,8 +66,9 @@ export function fohAngleLabel(value: string): string {
   return ANGLE_FOH_LABELS[value as AngleValue] ?? value
 }
 
-export function fohLightingLabel(value: string): string {
-  return LIGHTING_FOH_LABELS[value] ?? value
+/** Return the requested Studio label, falling back to a custom DB name. */
+export function fohLightingLabel(value: string, fallback?: string): string {
+  return LIGHTING_FOH_LABELS[value] ?? fallback ?? value
 }
 
 export function controlAssetSrc(basename: string): string {
@@ -87,15 +88,26 @@ export const FOH_STYLE_EXCLUDE_PATHS = [
   'canvas.surface_style',
 ] as const
 
+const LIGHTING_OPTION_ORDER = ['studio', 'bright-and-airy', 'golden-hour', 'low-key']
+
 export function lightingStylesToOptions(
   styles: StudioLightingStyleDisplay[],
 ): StudioVisualOption<string>[] {
-  return styles.map((style) => ({
-    id: `light-${style.key}`,
-    label: style.name,
-    assetBasename: style.thumbnail_path || `light-${style.key}`,
-    value: style.key,
-  }))
+  return [...styles]
+    .sort((a, b) => {
+      const aIndex = LIGHTING_OPTION_ORDER.indexOf(a.key)
+      const bIndex = LIGHTING_OPTION_ORDER.indexOf(b.key)
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
+      if (aIndex !== -1) return -1
+      if (bIndex !== -1) return 1
+      return a.sort_order - b.sort_order
+    })
+    .map((style) => ({
+      id: `light-${style.key}`,
+      label: fohLightingLabel(style.key, style.name),
+      assetBasename: style.thumbnail_path || `light-${style.key}`,
+      value: style.key,
+    }))
 }
 
 export function backgroundStylesToOptions(

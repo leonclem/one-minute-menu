@@ -8,6 +8,7 @@ const mockUpdateSingle = jest.fn()
 const mockDeleteEq = jest.fn()
 const mockCountActive = jest.fn()
 const mockListArchived = jest.fn()
+const mockListExports = jest.fn()
 const mockRemove = jest.fn()
 const mockMaybeSingle = jest.fn()
 
@@ -36,9 +37,14 @@ jest.mock('@/lib/supabase-server', () => ({
           if (table === 'studio_images') {
             return {
               eq: () => ({
-                eq: () => ({
-                  not: () => mockListArchived(),
-                }),
+                eq: () => mockListArchived(),
+              }),
+            }
+          }
+          if (table === 'studio_export_variants') {
+            return {
+              eq: () => ({
+                eq: () => mockListExports(),
               }),
             }
           }
@@ -113,6 +119,7 @@ describe('studio dishes', () => {
     })
     mockCountActive.mockResolvedValue({ count: 0, error: null })
     mockListArchived.mockResolvedValue({ data: [], error: null })
+    mockListExports.mockResolvedValue({ data: [], error: null })
     mockDeleteEq.mockResolvedValue({ error: null })
     mockRemove.mockResolvedValue({ error: null })
   })
@@ -138,9 +145,22 @@ describe('studio dishes', () => {
     expect(dish.name).toBe('Cheeseburger')
   })
 
-  it('blocks delete when active images remain', async () => {
-    mockCountActive.mockResolvedValue({ count: 2, error: null })
-    await expect(deleteStudioDish('u1', 'd1')).rejects.toThrow('Archive or delete')
+  it('deletes a dish even when it still has image variants', async () => {
+    mockListArchived.mockResolvedValue({
+      data: [{ id: 'image-1', storage_path: 'u1/studio/image-1.png' }],
+      error: null,
+    })
+    mockListExports.mockResolvedValue({
+      data: [{ id: 'export-1', storage_path: 'u1/studio/exports/export-1.jpg' }],
+      error: null,
+    })
+
+    await expect(deleteStudioDish('u1', 'd1')).resolves.toBeUndefined()
+    expect(mockRemove).toHaveBeenCalledWith([
+      'u1/studio/image-1.png',
+      'u1/studio/exports/export-1.jpg',
+    ])
+    expect(mockDeleteEq).toHaveBeenCalledTimes(3)
   })
 
   it('deletes an empty dish', async () => {

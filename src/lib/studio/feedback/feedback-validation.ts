@@ -4,6 +4,7 @@ export const FEEDBACK_REASON_TAGS = [
   'identity_changed',
   'style_missed',
   'unwanted_prop',
+  'obviously_fake',
   'useful_result',
 ] as const
 
@@ -38,7 +39,7 @@ export type FeedbackValidationResult =
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-function isUuid(value: unknown): value is string {
+export function isFeedbackImageId(value: unknown): value is string {
   return typeof value === 'string' && UUID_PATTERN.test(value)
 }
 
@@ -46,7 +47,7 @@ function isUuid(value: unknown): value is string {
 export function validateFeedbackSubmission(input: unknown): FeedbackValidationResult {
   const body = (input ?? {}) as Partial<FeedbackSubmission>
 
-  if (!isUuid(body.studioImageId)) {
+  if (!isFeedbackImageId(body.studioImageId)) {
     return { ok: false, code: 'FEEDBACK_IMAGE_ID_REQUIRED' }
   }
 

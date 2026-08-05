@@ -1,5 +1,4 @@
-import { useEffect, useRef } from 'react'
-import Link from 'next/link'
+import { useEffect, useRef, useState } from 'react'
 
 import { ANALYTICS_EVENTS } from '@/lib/posthog/events'
 import { trackStudioEvent } from '@/lib/studio/analytics/studio-analytics'
@@ -9,6 +8,8 @@ import type { AccessMode } from '@/lib/studio/access/studio-access-mode'
 export interface StudioFirstRunPanelProps {
   /** Opens the hidden file input owned by the Studio editor. */
   onOpenFilePicker: () => void
+  /** Persists the user's choice to hide this panel in the future. */
+  onDismiss?: () => Promise<void> | void
   accessMode?: AccessMode
   accessReason?: StudioAccessReason
   isAdmin?: boolean
@@ -39,11 +40,15 @@ const WORKFLOW_STEPS = [
  */
 export function StudioFirstRunPanel({
   onOpenFilePicker,
+  onDismiss,
   accessMode = 'admin-only',
   accessReason = 'granted_admin',
   isAdmin = false,
 }: StudioFirstRunPanelProps) {
   const didTrackRef = useRef(false)
+  const [dismissed, setDismissed] = useState(false)
+  const [isDismissing, setIsDismissing] = useState(false)
+  const [dismissalError, setDismissalError] = useState<string | null>(null)
 
   useEffect(() => {
     if (didTrackRef.current) return
@@ -56,6 +61,23 @@ export function StudioFirstRunPanel({
       gallery_size: 0,
     })
   }, [accessMode, accessReason, isAdmin])
+
+  const handleDismissChange = async (checked: boolean) => {
+    if (!checked || isDismissing) return
+
+    setDismissalError(null)
+    setIsDismissing(true)
+    try {
+      await onDismiss?.()
+      setDismissed(true)
+    } catch {
+      setDismissalError('We could not save this preference. Please try again.')
+    } finally {
+      setIsDismissing(false)
+    }
+  }
+
+  if (dismissed) return null
 
   return (
     <section
@@ -77,14 +99,17 @@ export function StudioFirstRunPanel({
 
       <ol
         aria-label="Photo Studio workflow"
-        className="mt-6 grid list-decimal gap-4 pl-5 sm:grid-cols-2 lg:grid-cols-4"
+        className="mt-6 grid list-none gap-4 pl-0 sm:grid-cols-2 lg:grid-cols-4"
       >
-        {WORKFLOW_STEPS.map((step) => (
+        {WORKFLOW_STEPS.map((step, index) => (
           <li
             key={step.title}
             className="rounded-lg border border-gray-200 bg-gray-50 p-4"
           >
-            <h3 className="text-sm font-semibold leading-5 text-gray-900">{step.title}</h3>
+            <h3 className="text-sm font-semibold leading-5 text-gray-900">
+              <span aria-hidden="true">{index + 1}. </span>
+              {step.title}
+            </h3>
             <p className="mt-2 text-sm leading-5 text-gray-600">{step.description}</p>
           </li>
         ))}
@@ -103,7 +128,7 @@ export function StudioFirstRunPanel({
         </p>
       </div>
 
-      <div className="mt-6 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-5">
+      <div className="mt-6 flex flex-col items-start gap-3">
         <button
           type="button"
           onClick={onOpenFilePicker}
@@ -111,16 +136,21 @@ export function StudioFirstRunPanel({
         >
           Upload a dish photo
         </button>
-        <p className="text-sm text-gray-600">
-          Need help getting started?{' '}
-          <Link
-            href="/support"
-            className="font-semibold text-ux-primary underline underline-offset-2 hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ux-primary/40 focus:ring-offset-2"
-          >
-            Contact support
-          </Link>
-          .
-        </p>
+        <label className="flex items-center gap-2 text-sm text-gray-600">
+          <input
+            type="checkbox"
+            checked={dismissed}
+            disabled={isDismissing}
+            onChange={(event) => void handleDismissChange(event.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-ux-primary focus:ring-ux-primary"
+          />
+          Don&apos;t show this again
+        </label>
+        {dismissalError && (
+          <p role="alert" className="text-sm text-red-600">
+            {dismissalError}
+          </p>
+        )}
       </div>
     </section>
   )

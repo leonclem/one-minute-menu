@@ -1,7 +1,7 @@
 import { Metadata, Viewport } from 'next'
 import { menuOperations } from '@/lib/database'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { cn } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import { formatCurrency } from '@/lib/currency-formatter'
 import { getMenuCurrency } from '@/lib/menu-currency-service'
 import PublicMenuImage from '@/components/PublicMenuImage'
@@ -221,7 +221,7 @@ export default async function PublicMenuPage({ params, searchParams }: PageProps
       
 
       <footer className="mt-12 pb-8 text-center text-xs" style={{ color: colors.secondary }}>
-        <p>Updated {menu.updatedAt.toLocaleDateString()}</p>
+        <p>Updated {formatDate(menu.updatedAt)}</p>
         <p className="mt-2">
           <a 
             href={`/report/${menu.id}`}

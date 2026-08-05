@@ -152,9 +152,9 @@ describe('Component_Control — add/remove garnishes and sides (Req 8.1–8.3)',
         onSidesChange={jest.fn()}
       />,
     )
-    expect(screen.getByText('lemon wedge')).toBeInTheDocument()
-    expect(screen.getByText('dill')).toBeInTheDocument()
-    expect(screen.getByText('fries')).toBeInTheDocument()
+    expect(screen.getByText('Lemon wedge')).toBeInTheDocument()
+    expect(screen.getByText('Dill')).toBeInTheDocument()
+    expect(screen.getByText('Fries')).toBeInTheDocument()
   })
 
   it('calls onGarnishesChange without the removed item when Remove is clicked', () => {

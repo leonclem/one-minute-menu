@@ -18,7 +18,6 @@ export type StudioClientUploadResult =
     }
   | { ok: false; error: string }
 
-const AUTH_TIMEOUT_MS = 15_000
 const UPLOAD_TIMEOUT_MS = 90_000
 const CLEANUP_TIMEOUT_MS = 10_000
 
@@ -40,21 +39,20 @@ export async function uploadStudioSourceFile(file: File): Promise<StudioClientUp
   }
 
   try {
+    // getSession reads the locally persisted session and does not wait for remote
+    // validation or token refresh. Storage RLS and the source-registration API
+    // both enforce authentication server-side before accepting this upload.
     const {
-      data: { user },
-      error: authError,
-    } = await withTimeout(
-      supabase.auth.getUser(),
-      AUTH_TIMEOUT_MS,
-      'Timed out while checking your sign-in. Refresh the page and try again.',
-    )
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
 
-    if (authError || !user) {
+    if (sessionError || !session?.user) {
       return { ok: false, error: 'You must be signed in to upload images.' }
     }
 
     const imageId = crypto.randomUUID()
-    const storagePath = buildStudioStoragePath(user.id, imageId, validation.mimeType)
+    const storagePath = buildStudioStoragePath(session.user.id, imageId, validation.mimeType)
 
     const { error: uploadError } = await withTimeout(
       supabase.storage.from(STUDIO_STORAGE_BUCKET).upload(storagePath, file, {

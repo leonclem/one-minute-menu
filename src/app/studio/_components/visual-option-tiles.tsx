@@ -15,7 +15,7 @@ function TileImage({ basename, label }: { basename: string; label: string }) {
   const [failed, setFailed] = useState(false)
   if (failed) {
     return (
-      <div className="flex h-16 w-full items-center justify-center rounded-md bg-gradient-to-br from-gray-100 to-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+      <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-gray-100 to-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
         {label}
       </div>
     )
@@ -25,7 +25,7 @@ function TileImage({ basename, label }: { basename: string; label: string }) {
     <img
       src={controlAssetSrc(basename)}
       alt=""
-      className="h-16 w-full rounded-md object-cover"
+      className="h-12 w-16 shrink-0 rounded-md object-cover"
       onError={() => setFailed(true)}
     />
   )
@@ -42,7 +42,7 @@ export function VisualOptionTiles<T extends string>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto pr-0.5"
+      className="grid grid-cols-1 gap-2"
     >
       {options.map((option) => {
         const selected = option.value === value
@@ -56,7 +56,7 @@ export function VisualOptionTiles<T extends string>({
             disabled={disabled}
             onClick={() => onChange(option.value)}
             className={[
-              'rounded-md border p-1.5 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-ux-primary/40',
+              'flex w-full items-center gap-3 rounded-md border p-1.5 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-ux-primary/40',
               selected
                 ? 'border-ux-primary bg-ux-primary/5 ring-1 ring-ux-primary'
                 : 'border-gray-200 bg-white hover:border-gray-300',
@@ -66,7 +66,7 @@ export function VisualOptionTiles<T extends string>({
               .join(' ')}
           >
             <TileImage basename={option.assetBasename} label={option.label} />
-            <span className="mt-1.5 block text-center text-xs font-medium text-gray-800">
+            <span className="text-sm font-medium text-gray-800">
               {option.label}
             </span>
           </button>

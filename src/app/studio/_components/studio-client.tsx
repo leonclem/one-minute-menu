@@ -12,11 +12,7 @@ import { hydrate } from '@/lib/photo-control/hydrator'
 import { computeDelta, countEditableChanges } from '@/lib/photo-control/state-delta'
 import { generateDirective } from '@/lib/photo-control/directive-generator'
 import { MAX_PENDING_CHANGES } from '@/lib/photo-control/edit-limits'
-import {
-  CENTER,
-  type AngleValue,
-  type EditorState,
-} from '@/lib/photo-control/minimal-schema'
+import { CENTER, type AngleValue, type EditorState } from '@/lib/photo-control/minimal-schema'
 import { type MinimalValidationResult } from '@/lib/photo-control/schema-validator'
 import type { ExtractionDiagnostics } from '@/lib/studio/extraction-diagnostics'
 import { ANALYTICS_EVENTS } from '@/lib/posthog/events'
@@ -28,11 +24,11 @@ import {
 import { Component_Control } from '@/components/photo-controls'
 import { CollapsibleSection } from '@/components/ux'
 import { ConfirmDialog } from '@/components/ui'
-import { downloadImage } from '@/lib/studio/client-download'
 import { buildChangeSummary, readChangeSummary } from '@/lib/studio/change-summary'
 import {
   STUDIO_LIGHTING_OPTIONS,
   backgroundStylesToOptions,
+  fohLightingLabel,
   lightingStylesToOptions,
   styleLabelMap,
   FOH_STYLE_EXCLUDE_PATHS,
@@ -58,11 +54,16 @@ import { resolveStudioAccessMode, type AccessMode } from '@/lib/studio/access/st
 import { getStudioViewSelection } from './studio-view-state'
 import { StudioStateNotice } from './studio-state-notice'
 import { StudioFirstRunPanel } from './studio-first-run-panel'
-import { StudioFeedbackPanel } from './studio-feedback-panel'
+import { StudioFeedbackPrompt } from './studio-feedback-prompt'
 import { StudioDishPickerModal } from './studio-dish-picker-modal'
 import { StudioExportPanel } from './studio-export-panel'
+import { StudioImageLightbox } from './studio-image-lightbox'
 import { StudioTextModal } from './studio-text-modal'
+import { StudioPendingChangesDialog } from './studio-pending-changes-dialog'
+import { StudioCreditsDialog } from './studio-credits-dialog'
+import { StudioModelSwitchDialog } from './studio-model-switch-dialog'
 import { VisualOptionTiles } from './visual-option-tiles'
+import { STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
 
 type ExtractResponse = MinimalValidationResult & {
   diagnostics?: ExtractionDiagnostics
@@ -91,24 +92,62 @@ interface StudioClientProps {
   initialDishes?: StudioDishRecord[]
   initialGallery?: StudioImageRecord[]
   initialActiveDishId: string
+  studioFirstRunDismissed?: boolean
   isAdmin?: boolean
 }
 
-function sourceImageFromRecord(
-  publicUrl: string,
-  mimeType: string,
-  bytes = 0,
-): SourceImage {
+interface StudioPendingChangeCandidate {
+  state: EditorState
+  baseline: EditorState
+  changeCount: number
+}
+
+interface DishDeletionSummary {
+  imageCount: number
+  exportVariantCount: number
+}
+
+function PendingEditBadge({ section }: { section: string }) {
+  return (
+    <span
+      title={`${section} has pending changes`}
+      aria-label={`${section} has pending changes`}
+      className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-teal-800"
+    >
+      Edited
+    </span>
+  )
+}
+
+function sourceImageFromRecord(publicUrl: string, mimeType: string, bytes = 0): SourceImage {
   const normalizedMime: AllowedMimeType =
     mimeType === 'image/jpeg' || mimeType === 'image/webp' ? mimeType : 'image/png'
   return { dataUrl: publicUrl, mimeType: normalizedMime, bytes }
 }
 
 const STUDIO_SOURCE_REQUEST_TIMEOUT_MS = 60_000
+const STUDIO_NB2_MODEL = 'gemini-3.1-flash-image-preview'
+const STUDIO_PRO_WARNING_SESSION_KEY = 'gridmenu:studio:pro-model-warning-dismissed'
+
+function hasDismissedStudioProWarning(): boolean {
+  try {
+    return window.sessionStorage.getItem(STUDIO_PRO_WARNING_SESSION_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function rememberStudioProWarningDismissal(): void {
+  try {
+    window.sessionStorage.setItem(STUDIO_PRO_WARNING_SESSION_KEY, 'true')
+  } catch {
+    // Component state still suppresses the warning for the current mount.
+  }
+}
 
 async function fetchStudioSourceRequest(
   input: RequestInfo | URL,
-  init: RequestInit,
+  init: RequestInit
 ): Promise<Response> {
   const controller = new AbortController()
   const timeout = window.setTimeout(() => controller.abort(), STUDIO_SOURCE_REQUEST_TIMEOUT_MS)
@@ -157,16 +196,14 @@ function generationFailureClass(status?: number, code?: string): string {
 }
 
 function generationValidationStatus(
-  status: MutateResponse['validationStatus'],
+  status: MutateResponse['validationStatus']
 ): 'passed' | 'failed' | 'skipped' {
   if (status === 'pass' || status === 'warn') return 'passed'
   if (status === 'fail') return 'failed'
   return 'skipped'
 }
 
-function knownBackdropVisibility(
-  diagnostics: ExtractionDiagnostics | null,
-): boolean | undefined {
+function knownBackdropVisibility(diagnostics: ExtractionDiagnostics | null): boolean | undefined {
   const value = diagnostics?.observations?.backdrop_visible
   return typeof value === 'boolean' ? value : undefined
 }
@@ -174,7 +211,12 @@ function knownBackdropVisibility(
 function makeDefaultEditorState(): EditorState {
   return {
     schema: {
-      scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy', spin: '0' },
+      scene_setup: {
+        angle: '45-degree',
+        framing: 'close-up',
+        lighting: 'bright-and-airy',
+        spin: '0',
+      },
       canvas: { background: '', background_style: '', surface_style: '', main_vessel: '' },
       food_components: { main_item: '', garnishes: [], sides: [] },
     },
@@ -184,13 +226,13 @@ function makeDefaultEditorState(): EditorState {
 
 function sortVariants(images: StudioImageRecord[]): StudioImageRecord[] {
   return [...images].sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   )
 }
 
 function resolveCurrentImage(
   dish: StudioDishRecord | undefined,
-  images: StudioImageRecord[],
+  images: StudioImageRecord[]
 ): StudioImageRecord | null {
   const sorted = sortVariants(images)
   if (sorted.length === 0) return null
@@ -210,37 +252,47 @@ export function StudioClient({
   initialDishes: legacyDishes,
   initialGallery: legacyGallery,
   initialActiveDishId,
+  studioFirstRunDismissed = false,
   isAdmin = false,
 }: StudioClientProps) {
   const initialDishes = useMemo(
     () => providedDishes ?? legacyDishes ?? [],
-    [legacyDishes, providedDishes],
+    [legacyDishes, providedDishes]
   )
   const initialGallery = useMemo(
     () => providedGallery ?? legacyGallery ?? [],
-    [legacyGallery, providedGallery],
+    [legacyGallery, providedGallery]
   )
   const accessMode = providedAccessMode ?? resolveStudioAccessMode()
   const [dishes, setDishes] = useState<StudioDishRecord[]>(initialDishes)
   const [activeDishId, setActiveDishId] = useState(initialActiveDishId)
   const [gallery, setGallery] = useState<StudioImageRecord[]>(initialGallery)
+  const [firstRunDismissed, setFirstRunDismissed] = useState(studioFirstRunDismissed)
   const [selectedImageId, setSelectedImageId] = useState<string | null>(() => {
     const dish = initialDishes.find((d) => d.id === initialActiveDishId)
     return resolveCurrentImage(dish, initialGallery)?.id ?? null
   })
   const didActivateInitialRef = useRef(false)
   const didTrackViewedRef = useRef(false)
+  const didAnnounceExportContextRef = useRef(false)
+  const [expandedStudioPanel, setExpandedStudioPanel] = useState<'controls' | 'exports'>('controls')
+  const [exportContextFlash, setExportContextFlash] = useState(false)
   const [expandedSection, setExpandedSection] = useState<ControlSection>('lighting')
   const [libraryBusy, setLibraryBusy] = useState(false)
   const [libraryError, setLibraryError] = useState<string | null>(null)
   const [lightingStyles, setLightingStyles] = useState<StudioLightingStyleDisplay[]>([])
   const [backgroundStyles, setBackgroundStyles] = useState<StudioBackgroundStyleDisplay[]>([])
-  const [selectedModel, setSelectedModel] = useState<string>('gemini-3.1-flash-image-preview')
+  const [selectedModel, setSelectedModel] = useState<string>(STUDIO_NB2_MODEL)
+  const [modelWarningOpen, setModelWarningOpen] = useState(false)
+  const [dontShowModelWarning, setDontShowModelWarning] = useState(false)
+  const [proWarningDismissed, setProWarningDismissed] = useState(false)
 
   const [createOpen, setCreateOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteDishOpen, setDeleteDishOpen] = useState(false)
-  const [deleteImageOpen, setDeleteImageOpen] = useState(false)
+  const [deleteDishSummary, setDeleteDishSummary] = useState<DishDeletionSummary | null>(null)
+  const [imageToDelete, setImageToDelete] = useState<StudioImageRecord | null>(null)
+  const [workbenchImageExpanded, setWorkbenchImageExpanded] = useState(false)
   const [dishPickerOpen, setDishPickerOpen] = useState(false)
   const [dishPickerItems, setDishPickerItems] = useState<StudioDishListItem[]>([])
   const [dishPickerLoading, setDishPickerLoading] = useState(false)
@@ -261,10 +313,15 @@ export function StudioClient({
   const [isGenerating, setIsGenerating] = useState(false)
   const [mutatedImageUrl, setMutatedImageUrl] = useState<string | undefined>(undefined)
   const [mutationError, setMutationError] = useState<string | null>(null)
-  const [pendingLimitMessage, setPendingLimitMessage] = useState<string | null>(null)
+  const [pendingChangeCandidate, setPendingChangeCandidate] =
+    useState<StudioPendingChangeCandidate | null>(null)
+  const [dontShowPendingChangeWarning, setDontShowPendingChangeWarning] = useState(false)
+  const skipPendingChangeWarningRef = useRef(false)
   const [baselineVersion, setBaselineVersion] = useState(0)
   const [creditBalance, setCreditBalance] = useState<number | null>(initialCreditBalance)
   const [creditCostNb2, setCreditCostNb2] = useState(1)
+  const [creditCostNbPro, setCreditCostNbPro] = useState(3)
+  const [creditsDialogOpen, setCreditsDialogOpen] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -272,10 +329,42 @@ export function StudioClient({
   const dishBlocked = Boolean(activeDish?.generation_blocked_at)
   const variants = useMemo(() => sortVariants(gallery), [gallery])
   const selectedImage = variants.find((v) => v.id === selectedImageId) ?? null
+  const selectedVariantLabel = useMemo(() => {
+    if (!selectedImage) return 'No image selected'
+    if (selectedImage.role === 'source') return 'Original image'
+    const generatedIndex = variants
+      .filter((image) => image.role === 'generated')
+      .findIndex((image) => image.id === selectedImage.id)
+    return `Variant ${generatedIndex + 1}`
+  }, [selectedImage, variants])
+
+  useEffect(() => {
+    if (!didAnnounceExportContextRef.current) {
+      didAnnounceExportContextRef.current = true
+      return
+    }
+
+    setExportContextFlash(true)
+    const timeout = window.setTimeout(() => setExportContextFlash(false), 1800)
+    return () => window.clearTimeout(timeout)
+  }, [selectedImageId])
+
   const currentPreviewUrl =
     mutatedImageUrl ?? sourceImage?.dataUrl ?? selectedImage?.public_url ?? null
   const changeChips = selectedImage ? readChangeSummary(selectedImage.metadata) : []
   const studioView = getStudioViewSelection(gallery)
+  const handleFirstRunDismiss = useCallback(async () => {
+    const res = await fetch('/api/studio/onboarding', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dismissed: true }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => null)
+      throw new Error((err as { error?: string } | null)?.error ?? 'Failed to save preference')
+    }
+    setFirstRunDismissed(true)
+  }, [])
   const feedbackImage = selectedImage?.role === 'generated' ? selectedImage : null
 
   const pendingDelta = useMemo(() => {
@@ -285,10 +374,53 @@ export function StudioClient({
 
   const pendingChangeCount = pendingDelta.isEmpty ? 0 : countEditableChanges(pendingDelta)
   const hasPendingChanges = pendingChangeCount > 0
+  const sectionHasPendingChanges = {
+    lighting: pendingDelta.scalarChanges.some((change) => change.path === 'scene_setup.lighting'),
+    surface: pendingDelta.scalarChanges.some((change) => change.path === 'canvas.surface_style'),
+    backdrop: pendingDelta.scalarChanges.some(
+      (change) => change.path === 'canvas.background_style'
+    ),
+    garnishes:
+      pendingDelta.arrays.garnishes.added.length > 0 ||
+      pendingDelta.arrays.garnishes.removed.length > 0 ||
+      pendingDelta.arrays.sides.added.length > 0 ||
+      pendingDelta.arrays.sides.removed.length > 0,
+  }
   const controlsDisabled = !isHydrated || isGenerating || dishBlocked
-  const insufficientCredits =
-    creditBalance !== null && creditBalance < creditCostNb2
+  const insufficientCredits = creditBalance !== null && creditBalance < creditCostNb2
   const busy = libraryBusy || isUploading || isExtracting || isGenerating
+
+  useEffect(() => {
+    setProWarningDismissed(hasDismissedStudioProWarning())
+  }, [])
+
+  const handleModelChange = useCallback(
+    (nextModel: string) => {
+      if (nextModel === selectedModel) return
+      if (nextModel === STUDIO_PRO_MODEL && !proWarningDismissed) {
+        setDontShowModelWarning(false)
+        setModelWarningOpen(true)
+        return
+      }
+      setSelectedModel(nextModel)
+    },
+    [proWarningDismissed, selectedModel]
+  )
+
+  const handleConfirmProModel = useCallback(() => {
+    if (dontShowModelWarning) {
+      setProWarningDismissed(true)
+      rememberStudioProWarningDismissal()
+    }
+    setSelectedModel(STUDIO_PRO_MODEL)
+    setDontShowModelWarning(false)
+    setModelWarningOpen(false)
+  }, [dontShowModelWarning])
+
+  const handleCancelProModel = useCallback(() => {
+    setDontShowModelWarning(false)
+    setModelWarningOpen(false)
+  }, [])
 
   useEffect(() => {
     if (didTrackViewedRef.current) return
@@ -318,19 +450,22 @@ export function StudioClient({
   }, [backgroundStyles])
   const backdropKnownFalse = backdropVisible === false
 
-  const lightingLabelMap = useMemo(() => styleLabelMap(lightingStyles), [lightingStyles])
-  const backgroundLabelMap = useMemo(
-    () => styleLabelMap(backgroundStyles),
-    [backgroundStyles],
+  const lightingLabelMap = useMemo(
+    () =>
+      Object.fromEntries(
+        lightingStyles.map((style) => [style.key, fohLightingLabel(style.key, style.name)])
+      ),
+    [lightingStyles]
   )
+  const backgroundLabelMap = useMemo(() => styleLabelMap(backgroundStyles), [backgroundStyles])
 
   const lightingKeys = useMemo(
     () => lightingOptions.map((option) => option.value),
-    [lightingOptions],
+    [lightingOptions]
   )
   const backgroundKeys = useMemo(
     () => backgroundStyles.map((style) => style.key),
-    [backgroundStyles],
+    [backgroundStyles]
   )
 
   useEffect(() => {
@@ -368,6 +503,7 @@ export function StudioClient({
         if (cancelled) return
         if (typeof data.balance === 'number') setCreditBalance(data.balance)
         if (typeof data.costs?.nb2 === 'number') setCreditCostNb2(data.costs.nb2)
+        if (typeof data.costs?.nbPro === 'number') setCreditCostNbPro(data.costs.nbPro)
       } catch {
         // Credits UI stays blank until available.
       }
@@ -387,22 +523,20 @@ export function StudioClient({
     setStrictConformanceWarning(false)
     extractionDiagnosticsRef.current = null
     setBackdropVisible(undefined)
-    setPendingLimitMessage(null)
+    setPendingChangeCandidate(null)
+    setDontShowPendingChangeWarning(false)
   }, [])
 
-  const persistDishCurrent = useCallback(
-    async (dishId: string, imageId: string | null) => {
-      const res = await fetch(`/api/studio/dishes/${dishId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentImageId: imageId }),
-      })
-      if (!res.ok) return
-      const data = (await res.json()) as { dish: StudioDishRecord }
-      setDishes((prev) => prev.map((d) => (d.id === dishId ? data.dish : d)))
-    },
-    [],
-  )
+  const persistDishCurrent = useCallback(async (dishId: string, imageId: string | null) => {
+    const res = await fetch(`/api/studio/dishes/${dishId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentImageId: imageId }),
+    })
+    if (!res.ok) return
+    const data = (await res.json()) as { dish: StudioDishRecord }
+    setDishes((prev) => prev.map((d) => (d.id === dishId ? data.dish : d)))
+  }, [])
 
   const persistEditorState = useCallback(async (imageId: string, state: EditorState) => {
     const res = await fetch(`/api/studio/images/${imageId}`, {
@@ -421,79 +555,80 @@ export function StudioClient({
     setBaselineVersion((v) => v + 1)
     setIsHydrated(true)
     setStrictConformanceWarning(strictWarning)
-    setPendingLimitMessage(null)
+    setPendingChangeCandidate(null)
+    setDontShowPendingChangeWarning(false)
     setMutationError(null)
     setExtractionError(null)
   }, [])
 
-  const runExtraction = useCallback(async (imageId: string): Promise<EditorState | null> => {
-    const startedAt = Date.now()
-    const duration = () => Math.max(0, Date.now() - startedAt)
-    const emitExtractionFailure = (status?: number, error?: unknown) => {
-      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_EXTRACTION_FAILED, {
-        duration_ms: duration(),
-        failure_class: extractionFailureClass(status, error),
-        outcome: 'failed',
-      })
-    }
+  const runExtraction = useCallback(
+    async (imageId: string): Promise<EditorState | null> => {
+      const startedAt = Date.now()
+      const duration = () => Math.max(0, Date.now() - startedAt)
+      const emitExtractionFailure = (status?: number, error?: unknown) => {
+        trackStudioEvent(ANALYTICS_EVENTS.STUDIO_EXTRACTION_FAILED, {
+          duration_ms: duration(),
+          failure_class: extractionFailureClass(status, error),
+          outcome: 'failed',
+        })
+      }
 
-    if (typeof imageId !== 'string' || !imageId) {
-      setExtractionError(
-        'Could not start extraction for this image. Refresh the page and try uploading again.',
-      )
-      emitExtractionFailure(undefined, new Error('invalid image reference'))
-      return null
-    }
-
-    setIsExtracting(true)
-    setExtractionError(null)
-
-    try {
-      const response = await fetch('/api/studio/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageId }),
-      })
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => null)
+      if (typeof imageId !== 'string' || !imageId) {
         setExtractionError(
-          (err as { error?: string } | null)?.error ??
-            `Extraction failed (HTTP ${response.status})`,
+          'Could not start extraction for this image. Refresh the page and try uploading again.'
         )
-        emitExtractionFailure(response.status)
+        emitExtractionFailure(undefined, new Error('invalid image reference'))
         return null
       }
 
-      const data = (await response.json()) as ExtractResponse
-      extractionDiagnosticsRef.current = data.diagnostics ?? null
-      setBackdropVisible(knownBackdropVisibility(data.diagnostics ?? null))
-      const { editorState: hydratedState } = hydrate({
-        strictConformance: data.strictConformance,
-        data: data.data,
-        warnings: data.warnings,
-      })
+      setIsExtracting(true)
+      setExtractionError(null)
 
-      applyHydratedState(hydratedState, !data.strictConformance)
-      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_EXTRACTION_COMPLETED, {
-        duration_ms: duration(),
-        outcome: 'success',
-      })
-      return hydratedState
-    } catch (err) {
-      setExtractionError(err instanceof Error ? err.message : 'Extraction failed unexpectedly.')
-      emitExtractionFailure(undefined, err)
-      return null
-    } finally {
-      setIsExtracting(false)
-    }
-  }, [applyHydratedState])
+      try {
+        const response = await fetch('/api/studio/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageId }),
+        })
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => null)
+          setExtractionError(
+            (err as { error?: string } | null)?.error ??
+              `Extraction failed (HTTP ${response.status})`
+          )
+          emitExtractionFailure(response.status)
+          return null
+        }
+
+        const data = (await response.json()) as ExtractResponse
+        extractionDiagnosticsRef.current = data.diagnostics ?? null
+        setBackdropVisible(knownBackdropVisibility(data.diagnostics ?? null))
+        const { editorState: hydratedState } = hydrate({
+          strictConformance: data.strictConformance,
+          data: data.data,
+          warnings: data.warnings,
+        })
+
+        applyHydratedState(hydratedState, !data.strictConformance)
+        trackStudioEvent(ANALYTICS_EVENTS.STUDIO_EXTRACTION_COMPLETED, {
+          duration_ms: duration(),
+          outcome: 'success',
+        })
+        return hydratedState
+      } catch (err) {
+        setExtractionError(err instanceof Error ? err.message : 'Extraction failed unexpectedly.')
+        emitExtractionFailure(undefined, err)
+        return null
+      } finally {
+        setIsExtracting(false)
+      }
+    },
+    [applyHydratedState]
+  )
 
   const activateImage = useCallback(
-    async (
-      image: StudioImageRecord,
-      options?: { persistCurrent?: boolean },
-    ) => {
+    async (image: StudioImageRecord, options?: { persistCurrent?: boolean }) => {
       setSelectedImageId(image.id)
       setLibraryBusy(true)
       setLibraryError(null)
@@ -527,7 +662,7 @@ export function StudioClient({
         setLibraryBusy(false)
       }
     },
-    [applyHydratedState, persistDishCurrent, persistEditorState, runExtraction],
+    [applyHydratedState, persistDishCurrent, persistEditorState, runExtraction]
   )
 
   const loadGalleryForDish = useCallback(
@@ -551,7 +686,7 @@ export function StudioClient({
         setPersistedSourceId(null)
       }
     },
-    [activateImage, dishes, resetEditorForNewSource],
+    [activateImage, dishes, resetEditorForNewSource]
   )
 
   useEffect(() => {
@@ -608,7 +743,7 @@ export function StudioClient({
 
         if (!upload.imageId) {
           setExtractionError(
-            'Upload succeeded but the image reference was missing. Refresh and try again.',
+            'Upload succeeded but the image reference was missing. Refresh and try again.'
           )
           emitUploadRejected()
           return
@@ -631,7 +766,7 @@ export function StudioClient({
           const err = await sourceRes.json().catch(() => null)
           void removeStudioStorageObject(upload.storagePath)
           setExtractionError(
-            (err as { error?: string } | null)?.error ?? 'Failed to save uploaded image.',
+            (err as { error?: string } | null)?.error ?? 'Failed to save uploaded image.'
           )
           emitUploadRejected()
           return
@@ -649,28 +784,7 @@ export function StudioClient({
           return
         }
 
-        setPersistedSourceId(sourceData.imageId)
-        setSourceImage(
-          sourceImageFromRecord(sourceData.imageUrl, upload.mimeType, upload.bytes),
-        )
-        uploadedStoragePath = null
-        // The source is now registered and visible. Extraction and metadata saves
-        // are separate phases and must not keep the upload banner on screen.
-        setIsUploading(false)
-        trackStudioEvent(ANALYTICS_EVENTS.STUDIO_UPLOAD_COMPLETED, {
-          ...uploadProperties,
-          outcome: 'success',
-        })
-
-        const extracted = await runExtraction(sourceData.imageId)
-
-        const metadata = {
-          ...(extractionDiagnosticsRef.current
-            ? { extractionDiagnostics: extractionDiagnosticsRef.current }
-            : {}),
-          ...(extracted ? { editorState: editorStateToMetadata(extracted) } : {}),
-        }
-        const row: StudioImageRecord = {
+        const sourceRow: StudioImageRecord = {
           id: sourceData.imageId,
           user_id: '',
           dish_id: activeDishId,
@@ -683,128 +797,169 @@ export function StudioClient({
           height: null,
           prompt: null,
           model: null,
-          metadata,
+          metadata: {},
           is_favourite: false,
           archived_at: null,
           created_at: new Date().toISOString(),
         }
-        setGallery((prev) => [...prev, row])
+
+        setPersistedSourceId(sourceData.imageId)
+        setSourceImage(sourceImageFromRecord(sourceData.imageUrl, upload.mimeType, upload.bytes))
+        setGallery((prev) => [...prev, sourceRow])
         setSelectedImageId(sourceData.imageId)
+        uploadedStoragePath = null
+        // The source is registered and immediately visible. Persisting the selected
+        // image and extracting metadata are separate phases from the upload itself.
+        setIsUploading(false)
+        trackStudioEvent(ANALYTICS_EVENTS.STUDIO_UPLOAD_COMPLETED, {
+          ...uploadProperties,
+          outcome: 'success',
+        })
+
+        await persistDishCurrent(activeDishId, sourceData.imageId)
+        const extracted = await runExtraction(sourceData.imageId)
+
         if (extracted) {
           await persistEditorState(sourceData.imageId, extracted)
         }
-        await persistDishCurrent(activeDishId, sourceData.imageId)
       } catch (error) {
         if (uploadedStoragePath) {
           void removeStudioStorageObject(uploadedStoragePath)
         }
-        setExtractionError(
-          error instanceof Error ? error.message : 'Upload failed unexpectedly.',
-        )
+        setExtractionError(error instanceof Error ? error.message : 'Upload failed unexpectedly.')
         emitUploadRejected()
       } finally {
         setIsUploading(false)
       }
     },
-    [
-      activeDishId,
-      persistDishCurrent,
-      persistEditorState,
-      resetEditorForNewSource,
-      runExtraction,
-    ],
+    [activeDishId, persistDishCurrent, persistEditorState, resetEditorForNewSource, runExtraction]
   )
 
-  const applyStagedChange = useCallback((nextState: EditorState) => {
-    const delta = computeDelta(originalStateRef.current, nextState)
-    if (delta.isEmpty) {
-      setEditorState(nextState)
-      setPendingLimitMessage(null)
-      return
-    }
-
-    const nextCount = countEditableChanges(delta)
-    if (nextCount > MAX_PENDING_CHANGES) {
-      setPendingLimitMessage(
-        `You can stage up to ${MAX_PENDING_CHANGES} changes before generating. Discard some changes, then try again.`,
-      )
-      return
-    }
-
+  const commitStagedChange = useCallback((nextState: EditorState, nextBaseline: EditorState) => {
+    originalStateRef.current = nextBaseline
+    setBaselineVersion((v) => v + 1)
     setEditorState(nextState)
-    setPendingLimitMessage(null)
   }, [])
+
+  const applyStagedChange = useCallback(
+    (nextState: EditorState, nextBaseline = originalStateRef.current) => {
+      const delta = computeDelta(nextBaseline, nextState)
+      if (delta.isEmpty) {
+        commitStagedChange(nextState, nextBaseline)
+        return
+      }
+
+      const nextCount = countEditableChanges(delta)
+      if (nextCount > MAX_PENDING_CHANGES && !skipPendingChangeWarningRef.current) {
+        setPendingChangeCandidate({
+          state: nextState,
+          baseline: nextBaseline,
+          changeCount: nextCount,
+        })
+        setDontShowPendingChangeWarning(false)
+        return
+      }
+
+      commitStagedChange(nextState, nextBaseline)
+    },
+    [commitStagedChange]
+  )
 
   const stageLighting = useCallback(
     (lighting: string) => {
-      originalStateRef.current = ensureLightingRestageBaseline(
+      const nextBaseline = ensureLightingRestageBaseline(
         originalStateRef.current,
         editorState,
         lighting,
-        lightingKeys,
+        lightingKeys
       )
-      setBaselineVersion((v) => v + 1)
-      applyStagedChange({
-        ...editorState,
-        schema: {
-          ...editorState.schema,
-          scene_setup: { ...editorState.schema.scene_setup, lighting },
+      applyStagedChange(
+        {
+          ...editorState,
+          schema: {
+            ...editorState.schema,
+            scene_setup: { ...editorState.schema.scene_setup, lighting },
+          },
         },
-      })
+        nextBaseline
+      )
     },
-    [applyStagedChange, editorState, lightingKeys],
+    [applyStagedChange, editorState, lightingKeys]
   )
 
   const stageBackground = useCallback(
     (backgroundStyle: string) => {
-      originalStateRef.current = ensureBackgroundRestageBaseline(
+      const nextBaseline = ensureBackgroundRestageBaseline(
         originalStateRef.current,
         editorState,
         backgroundStyle,
-        backgroundKeys,
+        backgroundKeys
       )
-      setBaselineVersion((v) => v + 1)
-      applyStagedChange({
-        ...editorState,
-        schema: {
-          ...editorState.schema,
-          canvas: {
-            ...editorState.schema.canvas,
-            background_style: backgroundStyle,
+      applyStagedChange(
+        {
+          ...editorState,
+          schema: {
+            ...editorState.schema,
+            canvas: {
+              ...editorState.schema.canvas,
+              background_style: backgroundStyle,
+            },
           },
         },
-      })
+        nextBaseline
+      )
     },
-    [applyStagedChange, backgroundKeys, editorState],
+    [applyStagedChange, backgroundKeys, editorState]
   )
 
   const stageSurface = useCallback(
     (surfaceStyle: string) => {
-      originalStateRef.current = ensureSurfaceRestageBaseline(
+      const nextBaseline = ensureSurfaceRestageBaseline(
         originalStateRef.current,
         editorState,
         surfaceStyle,
-        backgroundKeys,
+        backgroundKeys
       )
-      setBaselineVersion((v) => v + 1)
-      applyStagedChange({
-        ...editorState,
-        schema: {
-          ...editorState.schema,
-          canvas: {
-            ...editorState.schema.canvas,
-            surface_style: surfaceStyle,
+      applyStagedChange(
+        {
+          ...editorState,
+          schema: {
+            ...editorState.schema,
+            canvas: {
+              ...editorState.schema.canvas,
+              surface_style: surfaceStyle,
+            },
           },
         },
-      })
+        nextBaseline
+      )
     },
-    [applyStagedChange, backgroundKeys, editorState],
+    [applyStagedChange, backgroundKeys, editorState]
   )
 
   const handleDiscardPending = useCallback(() => {
     setEditorState(originalStateRef.current)
-    setPendingLimitMessage(null)
+    setPendingChangeCandidate(null)
+    setDontShowPendingChangeWarning(false)
   }, [])
+
+  const handleApplyPendingChangeAnyway = useCallback(() => {
+    if (!pendingChangeCandidate) return
+    if (dontShowPendingChangeWarning) {
+      skipPendingChangeWarningRef.current = true
+    }
+    commitStagedChange(pendingChangeCandidate.state, pendingChangeCandidate.baseline)
+    setPendingChangeCandidate(null)
+    setDontShowPendingChangeWarning(false)
+  }, [commitStagedChange, dontShowPendingChangeWarning, pendingChangeCandidate])
+
+  const handleReviewPendingChange = useCallback(() => {
+    if (dontShowPendingChangeWarning) {
+      skipPendingChangeWarningRef.current = true
+    }
+    setPendingChangeCandidate(null)
+    setDontShowPendingChangeWarning(false)
+  }, [dontShowPendingChangeWarning])
 
   const submitPendingChanges = useCallback(async () => {
     const original = originalStateRef.current
@@ -832,7 +987,6 @@ export function StudioClient({
 
     setIsGenerating(true)
     setMutationError(null)
-    setPendingLimitMessage(null)
 
     try {
       const response = await fetch('/api/studio/mutate', {
@@ -867,6 +1021,7 @@ export function StudioClient({
         }
 
         if (blockedByCredits) {
+          setCreditsDialogOpen(true)
           trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_BLOCKED_CREDITS, {
             ...failureProperties,
             outcome: 'blocked',
@@ -886,9 +1041,7 @@ export function StudioClient({
           })
         }
 
-        setMutationError(
-          payload?.error ?? `Generation failed (HTTP ${response.status})`,
-        )
+        setMutationError(payload?.error ?? `Generation failed (HTTP ${response.status})`)
         if (blockedByDish) {
           setDishes((prev) =>
             prev.map((d) =>
@@ -898,8 +1051,8 @@ export function StudioClient({
                     generation_blocked_at: new Date().toISOString(),
                     generation_blocked_reason: payload?.error ?? 'Blocked',
                   }
-                : d,
-            ),
+                : d
+            )
           )
         }
         return
@@ -914,7 +1067,7 @@ export function StudioClient({
         balanceAfter:
           typeof data.credits?.balanceAfter === 'number'
             ? data.credits.balanceAfter
-            : creditBalance ?? 0,
+            : (creditBalance ?? 0),
         cost: data.credits?.cost,
       })
       setMutatedImageUrl(data.imageUrl)
@@ -957,8 +1110,8 @@ export function StudioClient({
                 generation_blocked_at: null,
                 generation_blocked_reason: null,
               }
-            : d,
-        ),
+            : d
+        )
       )
       setSourceImage(sourceImageFromRecord(data.imageUrl, 'image/png'))
     } catch (err) {
@@ -1014,7 +1167,7 @@ export function StudioClient({
         setLibraryBusy(false)
       }
     },
-    [resetEditorForNewSource],
+    [resetEditorForNewSource]
   )
 
   const handleRenameDish = useCallback(
@@ -1041,8 +1194,28 @@ export function StudioClient({
         setLibraryBusy(false)
       }
     },
-    [activeDish],
+    [activeDish]
   )
+
+  const openDeleteDishDialog = useCallback(async () => {
+    if (!activeDish) return
+    setLibraryBusy(true)
+    setLibraryError(null)
+    try {
+      const res = await fetch(`/api/studio/dishes/${activeDish.id}`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error((err as { error?: string } | null)?.error ?? 'Failed to prepare deletion')
+      }
+      const data = (await res.json()) as { deletionSummary: DishDeletionSummary }
+      setDeleteDishSummary(data.deletionSummary)
+      setDeleteDishOpen(true)
+    } catch (err) {
+      setLibraryError(err instanceof Error ? err.message : 'Failed to prepare deletion')
+    } finally {
+      setLibraryBusy(false)
+    }
+  }, [activeDish])
 
   const handleDeleteDish = useCallback(async () => {
     if (!activeDish) return
@@ -1077,29 +1250,33 @@ export function StudioClient({
   }, [activeDish, dishes, loadGalleryForDish, resetEditorForNewSource])
 
   const handleDeleteImage = useCallback(async () => {
-    if (!selectedImage) return
-    setDeleteImageOpen(false)
+    if (!imageToDelete) return
+    const image = imageToDelete
+    setImageToDelete(null)
     setLibraryBusy(true)
     setLibraryError(null)
     try {
-      const res = await fetch(`/api/studio/images/${selectedImage.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/studio/images/${image.id}`, { method: 'DELETE' })
       if (!res.ok) {
         const err = await res.json().catch(() => null)
         throw new Error((err as { error?: string } | null)?.error ?? 'Failed to delete')
       }
-      const next = gallery.filter((item) => item.id !== selectedImage.id)
+      const next = gallery.filter((item) => item.id !== image.id)
       setGallery(next)
-      const fallback = sortVariants(next).at(-1) ?? null
-      setSelectedImageId(fallback?.id ?? null)
-      setMutatedImageUrl(undefined)
-      if (fallback) {
-        await activateImage(fallback)
-      } else {
-        setSourceImage(null)
-        setPersistedSourceId(null)
-        resetEditorForNewSource()
-        if (activeDishId) {
-          await persistDishCurrent(activeDishId, null)
+
+      if (image.id === selectedImage?.id) {
+        const fallback = sortVariants(next).at(-1) ?? null
+        setSelectedImageId(fallback?.id ?? null)
+        setMutatedImageUrl(undefined)
+        if (fallback) {
+          await activateImage(fallback)
+        } else {
+          setSourceImage(null)
+          setPersistedSourceId(null)
+          resetEditorForNewSource()
+          if (activeDishId) {
+            await persistDishCurrent(activeDishId, null)
+          }
         }
       }
     } catch (err) {
@@ -1108,8 +1285,9 @@ export function StudioClient({
       setLibraryBusy(false)
     }
   }, [
-    selectedImage,
+    imageToDelete,
     gallery,
+    selectedImage,
     activateImage,
     resetEditorForNewSource,
     activeDishId,
@@ -1146,8 +1324,7 @@ export function StudioClient({
       try {
         await loadGalleryForDish(
           dishId,
-          dishes.find((d) => d.id === dishId) ??
-            dishPickerItems.find((d) => d.id === dishId),
+          dishes.find((d) => d.id === dishId) ?? dishPickerItems.find((d) => d.id === dishId)
         )
       } catch (err) {
         setLibraryError(err instanceof Error ? err.message : 'Failed to switch dish')
@@ -1155,25 +1332,8 @@ export function StudioClient({
         setLibraryBusy(false)
       }
     },
-    [activeDishId, dishPickerItems, dishes, loadGalleryForDish],
+    [activeDishId, dishPickerItems, dishes, loadGalleryForDish]
   )
-
-  const handleDownload = useCallback(async () => {
-    if (!currentPreviewUrl) return
-
-    try {
-      await downloadImage(
-        currentPreviewUrl,
-        `studio-${selectedImageId ?? Date.now()}.png`,
-      )
-      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_IMAGE_DOWNLOADED, {
-        surface: 'gallery',
-        outcome: 'success',
-      })
-    } catch {
-      setLibraryError('Download failed.')
-    }
-  }, [currentPreviewUrl, selectedImageId])
 
   const handleReuseImage = useCallback(
     async (image: StudioImageRecord) => {
@@ -1185,24 +1345,22 @@ export function StudioClient({
         outcome: 'success',
       })
     },
-    [activateImage],
+    [activateImage]
   )
 
   return (
     <div className="space-y-6" data-studio-access-reason={reason}>
-      {studioView.showFirstRun && (
+      {studioView.showFirstRun && !firstRunDismissed && (
         <StudioFirstRunPanel
           onOpenFilePicker={() => fileInputRef.current?.click()}
+          onDismiss={handleFirstRunDismiss}
           accessMode={accessMode}
           accessReason={reason}
           isAdmin={isAdmin === true}
         />
       )}
-      {creditBalance !== null && creditBalance <= 0 && (
-        <StudioStateNotice kind="no_credit" />
-      )}
+      {creditBalance !== null && creditBalance <= 0 && <StudioStateNotice kind="no_credit" />}
       {dishBlocked && <StudioStateNotice kind="blocked_dish" />}
-      {feedbackImage && <StudioFeedbackPanel studioImageId={feedbackImage.id} />}
       {/* Header: dish title aligned with action buttons */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2">
@@ -1224,42 +1382,87 @@ export function StudioClient({
           )}
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            disabled={busy}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50"
-            onClick={() => void openDishPicker()}
-            data-testid="studio-dishes-button"
-          >
-            Dishes
-          </button>
-          <button
-            type="button"
-            disabled={busy || !activeDishId}
-            className="rounded-md bg-ux-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Upload Photo
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            className="rounded-md bg-amber-400 px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-amber-300 disabled:opacity-50"
-            onClick={() => setCreateOpen(true)}
-          >
-            New
-          </button>
-          {activeDish && dishes.length > 1 && (
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
+          {(isAdmin && isHydrated) || creditBalance !== null ? (
+            <>
+              <div className="flex items-center gap-2">
+                {isAdmin && isHydrated && (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={selectedModel === STUDIO_PRO_MODEL}
+                    aria-label={`Use ${selectedModel === STUDIO_PRO_MODEL ? 'Nano Banana 2' : 'Nano Banana Pro'}`}
+                    title="Choose the Studio image engine"
+                    disabled={busy || dishBlocked}
+                    onClick={() =>
+                      handleModelChange(
+                        selectedModel === STUDIO_PRO_MODEL ? STUDIO_NB2_MODEL : STUDIO_PRO_MODEL
+                      )
+                    }
+                    className={`relative h-8 w-20 rounded-full border-[3px] bg-white text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                      selectedModel === STUDIO_PRO_MODEL
+                        ? 'border-ux-primary'
+                        : 'border-gray-300'
+                    }`}
+                  >
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-gray-700">
+                      {selectedModel === STUDIO_PRO_MODEL ? 'Pro' : 'NB2'}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className={`absolute right-1 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full transition-colors ${
+                        selectedModel === STUDIO_PRO_MODEL ? 'bg-ux-primary' : 'bg-gray-400'
+                      }`}
+                    />
+                  </button>
+                )}
+                {creditBalance !== null && (
+                  <span
+                    role="status"
+                    aria-label={`${creditBalance} Studio credits remaining`}
+                    data-testid="studio-credits-balance"
+                    className={`pointer-events-none inline-flex h-9 items-center whitespace-nowrap rounded-full border px-3 text-sm font-semibold tracking-wide ${
+                      creditBalance <= 5
+                        ? 'animate-pulse border-red-200 bg-red-50 text-red-700 motion-reduce:animate-none'
+                        : 'border-gray-200 bg-gray-50 text-gray-600'
+                    }`}
+                  >
+                    Credits: {creditBalance}
+                  </span>
+                )}
+              </div>
+              <span aria-hidden="true" className="hidden h-9 w-px bg-gray-200 md:block" />
+            </>
+          ) : null}
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
               disabled={busy}
-              className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-              onClick={() => setDeleteDishOpen(true)}
+              className="rounded-md bg-ux-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-50"
+              onClick={() => setCreateOpen(true)}
             >
-              Delete dish
+              New
             </button>
-          )}
+            <button
+              type="button"
+              disabled={busy}
+              className="rounded-md bg-amber-400 px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-amber-300 disabled:opacity-50"
+              onClick={() => void openDishPicker()}
+              data-testid="studio-dishes-button"
+            >
+              Dishes
+            </button>
+            {activeDish && dishes.length > 1 && (
+              <button
+                type="button"
+                disabled={busy}
+                className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                onClick={() => void openDeleteDishDialog()}
+              >
+                Delete dish
+              </button>
+            )}
+          </div>
           <input
             ref={fileInputRef}
             type="file"
@@ -1271,7 +1474,6 @@ export function StudioClient({
           />
         </div>
       </div>
-      <p className="-mt-4 text-xs text-gray-500">PNG, JPEG, or WebP · up to 9 MB</p>
 
       {libraryError && (
         <p role="alert" className="text-sm text-red-800">
@@ -1299,237 +1501,262 @@ export function StudioClient({
         </p>
       )}
 
-      {isAdmin && isHydrated && (
-        <div className="mb-4 flex items-center justify-between rounded-lg border border-teal-100 bg-teal-50/50 p-3 text-xs text-teal-800">
-          <div className="font-semibold">Admin Engine Mode:</div>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setSelectedModel('gemini-3.1-flash-image-preview')}
-              className={`rounded px-2 py-1 font-medium transition ${
-                selectedModel === 'gemini-3.1-flash-image-preview'
-                  ? 'bg-teal-600 text-white'
-                  : 'bg-white text-teal-800 border border-teal-200 hover:bg-teal-100/50'
-              }`}
-            >
-              NB2 (Flash)
-            </button>
-            <button
-              onClick={() => setSelectedModel('gemini-3-pro-image')}
-              className={`rounded px-2 py-1 font-medium transition ${
-                selectedModel === 'gemini-3-pro-image'
-                  ? 'bg-teal-600 text-white'
-                  : 'bg-white text-teal-800 border border-teal-200 hover:bg-teal-100/50'
-              }`}
-            >
-              NB Pro (Gemini 3 Pro)
-            </button>
-          </div>
-        </div>
-      )}
-
       {/*
-        Desktop: controls left, image centre, exports right. Below `xl` the
-        export grid drops to a full-width row; below `lg` everything stacks with
-        the image first so the photo stays the focus on tablets.
+        The Workbench stays visible in every workflow. At desktop width, only
+        one companion panel expands at a time; the other remains a live rail so
+        its selected-image context is always discoverable without inviting
+        accidental export generation.
       */}
-      <div className="grid gap-6 lg:grid-cols-[minmax(260px,340px)_1fr] xl:grid-cols-[minmax(260px,320px)_1fr_minmax(300px,380px)]">
+      <div
+        className={[
+          'grid items-stretch gap-6 transition-[grid-template-columns] duration-300 ease-in-out motion-reduce:transition-none lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]',
+          expandedStudioPanel === 'controls'
+            ? 'xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_4rem]'
+            : 'xl:grid-cols-[4rem_minmax(0,1fr)_minmax(300px,380px)]',
+        ].join(' ')}
+      >
         {/* Control panel */}
-        <section className="flex max-h-[70vh] flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md">
-          <div className="border-b bg-neutral-100 px-4 py-3">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
+        <div className="min-w-0">
+          <button
+            type="button"
+            aria-controls="studio-control-panel"
+            aria-expanded={expandedStudioPanel === 'controls'}
+            title="Expand control panel"
+            data-testid="studio-controls-rail"
+            className={[
+              'hidden h-full min-h-[360px] w-16 flex-col items-center justify-center gap-3 rounded-lg border border-black/[0.08] bg-white/95 px-2 text-ux-text-secondary shadow-md transition-colors hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary focus-visible:ring-offset-2',
+              expandedStudioPanel === 'controls' ? 'xl:hidden' : 'xl:flex',
+            ].join(' ')}
+            onClick={() => setExpandedStudioPanel('controls')}
+          >
+            <span className="text-[11px] font-bold uppercase tracking-wider [writing-mode:vertical-rl]">
               Control panel
-            </h2>
-          </div>
-          <div className="flex-1 space-y-1 overflow-y-auto p-3">
-            {!isHydrated && !isExtracting ? (
-              <p className="px-1 py-4 text-sm text-gray-500">
-                Upload a photo (or select a variant) to enable controls.
-              </p>
-            ) : (
-              <>
-                <CollapsibleSection
-                  title="Lighting"
-                  isExpanded={expandedSection === 'lighting'}
-                  onExpand={(open) => setExpandedSection(open ? 'lighting' : null)}
-                >
-                  <VisualOptionTiles
-                    options={lightingOptions}
-                    value={editorState.schema.scene_setup.lighting}
-                    disabled={controlsDisabled}
-                    ariaLabel="Lighting"
-                    onChange={stageLighting}
-                  />
-                </CollapsibleSection>
-
-                <CollapsibleSection
-                  title="Tabletop Surface"
-                  isExpanded={expandedSection === 'surface'}
-                  onExpand={(open) => setExpandedSection(open ? 'surface' : null)}
-                >
-                  {surfaceOptions.length === 0 ? (
-                    <p className="text-xs text-gray-500">
-                      No tabletop surfaces available yet.
-                    </p>
-                  ) : (
-                    <VisualOptionTiles
-                      options={surfaceOptions}
-                      value={editorState.schema.canvas.surface_style ?? ''}
-                      disabled={controlsDisabled}
-                      ariaLabel="Tabletop Surface"
-                      onChange={stageSurface}
-                    />
-                  )}
-                </CollapsibleSection>
-
-                <CollapsibleSection
-                  title="Studio Backdrop"
-                  isExpanded={expandedSection === 'backdrop'}
-                  onExpand={(open) => setExpandedSection(open ? 'backdrop' : null)}
-                >
-                  {backdropKnownFalse && (
-                    <p role="status" className="mb-2 text-xs text-amber-800">
-                      No vertical backdrop was detected in this photo, so backdrop changes are unavailable.
-                    </p>
-                  )}
-                  {backdropOptions.length === 0 ? (
-                    <p className="text-xs text-gray-500">
-                      No studio backdrops available yet.
-                    </p>
-                  ) : (
-                    <VisualOptionTiles
-                      options={backdropOptions}
-                      value={editorState.schema.canvas.background_style ?? ''}
-                      disabled={controlsDisabled || backdropKnownFalse}
-                      ariaLabel="Studio Backdrop"
-                      onChange={stageBackground}
-                    />
-                  )}
-                </CollapsibleSection>
-
-                <CollapsibleSection
-                  title="Garnishes"
-                  isExpanded={expandedSection === 'garnishes'}
-                  onExpand={(open) => setExpandedSection(open ? 'garnishes' : null)}
-                >
-                  <Component_Control
-                    garnishes={editorState.schema.food_components.garnishes}
-                    sides={editorState.schema.food_components.sides}
-                    allowAdd={false}
-                    disabled={controlsDisabled}
-                    onGarnishesChange={(garnishes) =>
-                      applyStagedChange({
-                        ...editorState,
-                        schema: {
-                          ...editorState.schema,
-                          food_components: {
-                            ...editorState.schema.food_components,
-                            garnishes,
-                          },
-                        },
-                      })
-                    }
-                    onSidesChange={(sides) =>
-                      applyStagedChange({
-                        ...editorState,
-                        schema: {
-                          ...editorState.schema,
-                          food_components: {
-                            ...editorState.schema.food_components,
-                            sides,
-                          },
-                        },
-                      })
-                    }
-                  />
-                </CollapsibleSection>
-              </>
-            )}
-          </div>
-
-          <div className="space-y-2 border-t bg-white p-3">
-            {creditBalance !== null && (
-              <p className="text-xs text-gray-600" data-testid="studio-credits-remaining">
-                Credits remaining: {creditBalance}
-                {creditCostNb2 > 0 ? ` · ${creditCostNb2} per generate` : ''}
-              </p>
-            )}
-            {dishBlocked && (
-              <p role="alert" className="text-xs text-amber-900">
-                Generations for this dish are paused after repeated provider failures.
-                Contact support to unblock.
-              </p>
-            )}
-            {insufficientCredits && !dishBlocked && (
-              <p role="alert" className="text-xs text-amber-900">
-                Not enough credits to generate. Ask an admin for a grant.
-              </p>
-            )}
-            {isHydrated && (
-              <div className="flex items-center justify-between gap-2 text-xs text-gray-600">
-                <span>
-                  Pending: {pendingChangeCount} / {MAX_PENDING_CHANGES}
-                </span>
+            </span>
+          </button>
+          <section
+            id="studio-control-panel"
+            className={[
+              'flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md',
+              expandedStudioPanel === 'controls' ? 'xl:flex' : 'xl:hidden',
+            ].join(' ')}
+          >
+            <div className="flex items-center justify-between gap-3 border-b bg-neutral-100 px-4 py-3">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
+                Control panel
+              </h2>
+              <div className="flex shrink-0 items-center gap-2">
                 {hasPendingChanges && !isGenerating && (
                   <button
                     type="button"
-                    className="font-medium text-ux-primary hover:underline"
+                    className="rounded-md px-2 py-1.5 text-xs font-medium text-ux-primary hover:bg-white/70 hover:underline"
                     onClick={handleDiscardPending}
                   >
                     Discard
                   </button>
                 )}
+                <button
+                  type="button"
+                  data-testid="generate-image-button"
+                  disabled={
+                    !hasPendingChanges ||
+                    isGenerating ||
+                    controlsDisabled ||
+                    !activeDishId ||
+                    dishBlocked
+                  }
+                  className="flex items-center justify-center gap-2 rounded-md bg-ux-primary px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+                  onClick={() => {
+                    if (insufficientCredits) {
+                      setCreditsDialogOpen(true)
+                      return
+                    }
+                    void submitPendingChanges()
+                  }}
+                >
+                  {isGenerating ? 'Generating…' : 'Generate'}
+                </button>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
+              {!isHydrated && !isExtracting ? (
+                <p className="px-1 py-4 text-sm text-gray-500">
+                  Upload a photo (or select a variant) to enable controls.
+                </p>
+              ) : (
+                <>
+                  <CollapsibleSection
+                    title="Lighting"
+                    isExpanded={expandedSection === 'lighting'}
+                    onExpand={(open) => setExpandedSection(open ? 'lighting' : null)}
+                    badge={
+                      sectionHasPendingChanges.lighting ? (
+                        <PendingEditBadge section="Lighting" />
+                      ) : null
+                    }
+                  >
+                    <VisualOptionTiles
+                      options={lightingOptions}
+                      value={editorState.schema.scene_setup.lighting}
+                      disabled={controlsDisabled}
+                      ariaLabel="Lighting"
+                      onChange={stageLighting}
+                    />
+                  </CollapsibleSection>
+
+                  <CollapsibleSection
+                    title="Tabletop Surface"
+                    isExpanded={expandedSection === 'surface'}
+                    onExpand={(open) => setExpandedSection(open ? 'surface' : null)}
+                    badge={
+                      sectionHasPendingChanges.surface ? (
+                        <PendingEditBadge section="Tabletop Surface" />
+                      ) : null
+                    }
+                  >
+                    {surfaceOptions.length === 0 ? (
+                      <p className="text-xs text-gray-500">No tabletop surfaces available yet.</p>
+                    ) : (
+                      <VisualOptionTiles
+                        options={surfaceOptions}
+                        value={editorState.schema.canvas.surface_style ?? ''}
+                        disabled={controlsDisabled}
+                        ariaLabel="Tabletop Surface"
+                        onChange={stageSurface}
+                      />
+                    )}
+                  </CollapsibleSection>
+
+                  <CollapsibleSection
+                    title="Studio Backdrop"
+                    isExpanded={expandedSection === 'backdrop'}
+                    onExpand={(open) => setExpandedSection(open ? 'backdrop' : null)}
+                    badge={
+                      sectionHasPendingChanges.backdrop ? (
+                        <PendingEditBadge section="Studio Backdrop" />
+                      ) : null
+                    }
+                  >
+                    {backdropKnownFalse && (
+                      <p role="status" className="mb-2 text-xs text-amber-800">
+                        No vertical backdrop was detected in this photo, so backdrop changes are
+                        unavailable.
+                      </p>
+                    )}
+                    {backdropOptions.length === 0 ? (
+                      <p className="text-xs text-gray-500">No studio backdrops available yet.</p>
+                    ) : (
+                      <VisualOptionTiles
+                        options={backdropOptions}
+                        value={editorState.schema.canvas.background_style ?? ''}
+                        disabled={controlsDisabled || backdropKnownFalse}
+                        ariaLabel="Studio Backdrop"
+                        onChange={stageBackground}
+                      />
+                    )}
+                  </CollapsibleSection>
+
+                  <CollapsibleSection
+                    title="Other Elements"
+                    isExpanded={expandedSection === 'garnishes'}
+                    onExpand={(open) => setExpandedSection(open ? 'garnishes' : null)}
+                    badge={
+                      sectionHasPendingChanges.garnishes ? (
+                        <PendingEditBadge section="Other Elements" />
+                      ) : null
+                    }
+                  >
+                    <Component_Control
+                      garnishes={editorState.schema.food_components.garnishes}
+                      sides={editorState.schema.food_components.sides}
+                      allowAdd={false}
+                      disabled={controlsDisabled}
+                      onGarnishesChange={(garnishes) =>
+                        applyStagedChange({
+                          ...editorState,
+                          schema: {
+                            ...editorState.schema,
+                            food_components: {
+                              ...editorState.schema.food_components,
+                              garnishes,
+                            },
+                          },
+                        })
+                      }
+                      onSidesChange={(sides) =>
+                        applyStagedChange({
+                          ...editorState,
+                          schema: {
+                            ...editorState.schema,
+                            food_components: {
+                              ...editorState.schema.food_components,
+                              sides,
+                            },
+                          },
+                        })
+                      }
+                    />
+                  </CollapsibleSection>
+                </>
+              )}
+            </div>
+
+            {dishBlocked && (
+              <div className="space-y-2 border-t bg-white p-3">
+                <p role="alert" className="text-xs text-amber-900">
+                  Generations for this dish are paused after repeated provider failures. Contact
+                  support to unblock.
+                </p>
               </div>
             )}
-            {pendingLimitMessage && (
-              <p role="alert" className="text-xs text-amber-800">
-                {pendingLimitMessage}
-              </p>
-            )}
-            <button
-              type="button"
-              data-testid="generate-image-button"
-              disabled={
-                !hasPendingChanges ||
-                isGenerating ||
-                controlsDisabled ||
-                !activeDishId ||
-                insufficientCredits ||
-                dishBlocked
-              }
-              className="flex w-full items-center justify-center gap-2 rounded-md bg-ux-primary px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
-              onClick={() => void submitPendingChanges()}
-            >
-              {isGenerating ? 'Generating…' : 'Generate'}
-            </button>
-          </div>
-        </section>
+          </section>
+        </div>
 
         {/* Preview + variants */}
-        <section className="order-first flex flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md lg:order-none">
+        <section className="order-first flex h-full flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md lg:order-none">
           <div className="border-b bg-neutral-100 px-4 py-3">
             <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
-              Preview
+              Workbench
             </h2>
           </div>
           <div className="space-y-4 p-4">
-            <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-                Current
-              </p>
+            <div className="relative">
               {isGenerating ? (
                 <div className="flex aspect-[4/3] items-center justify-center rounded-md border border-ux-primary/30 bg-ux-primary/5 text-sm text-ux-primary">
                   Generating…
                 </div>
               ) : currentPreviewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={currentPreviewUrl}
-                  alt="Current studio image"
-                  className="max-h-[420px] w-full rounded-md border border-gray-200 object-contain"
-                />
+                <button
+                  type="button"
+                  aria-label={`Expand ${selectedVariantLabel} preview`}
+                  className="group relative block w-full rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary"
+                  onClick={() => setWorkbenchImageExpanded(true)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={currentPreviewUrl}
+                    alt="Current studio image"
+                    className="max-h-[420px] w-full rounded-md border border-gray-200 object-contain"
+                  />
+                  <span className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-md bg-black/40 text-[11px] font-bold uppercase tracking-wide text-white group-hover:flex">
+                    Expand
+                  </span>
+                </button>
               ) : (
-                <div className="flex aspect-[4/3] items-center justify-center rounded-md border border-dashed border-gray-300 text-sm text-gray-400">
-                  Upload a photo to begin
+                <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-md border border-dashed border-gray-300 text-sm text-gray-400">
+                  <button
+                    type="button"
+                    disabled={busy || !activeDishId}
+                    className="rounded-md bg-ux-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Upload Photo
+                  </button>
+                  <p className="text-xs text-gray-500">PNG, JPEG, or WebP · up to 9 MB</p>
+                </div>
+              )}
+              {!isGenerating && feedbackImage && currentPreviewUrl && (
+                <div className="absolute bottom-3 right-3 z-10">
+                  <StudioFeedbackPrompt studioImageId={feedbackImage.id} />
                 </div>
               )}
             </div>
@@ -1547,25 +1774,6 @@ export function StudioClient({
               </ul>
             )}
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={!currentPreviewUrl || busy}
-                className="flex flex-1 items-center justify-center gap-2 rounded-md bg-ux-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => void handleDownload()}
-              >
-                Download
-              </button>
-              <button
-                type="button"
-                disabled={!selectedImage || busy}
-                className="flex flex-1 items-center justify-center gap-2 rounded-md bg-rose-400 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => setDeleteImageOpen(true)}
-              >
-                Delete
-              </button>
-            </div>
-
             {mutationError && (
               <p role="alert" className="text-sm text-red-800">
                 {mutationError}
@@ -1581,10 +1789,7 @@ export function StudioClient({
                   Variants appear here after you upload and generate.
                 </p>
               ) : (
-                <ul
-                  className="flex gap-2 overflow-x-auto pb-1"
-                  data-testid="studio-gallery"
-                >
+                <ul className="flex gap-2 overflow-x-auto pb-1" data-testid="studio-gallery">
                   {variants.map((item) => {
                     const isOg = item.role === 'source'
                     const selected = item.id === selectedImageId
@@ -1592,7 +1797,7 @@ export function StudioClient({
                       .filter((v) => v.role === 'generated')
                       .findIndex((v) => v.id === item.id)
                     return (
-                      <li key={item.id} className="shrink-0">
+                      <li key={item.id} className="group relative shrink-0">
                         <button
                           type="button"
                           disabled={busy}
@@ -1619,6 +1824,29 @@ export function StudioClient({
                             {isOg ? 'OG' : `V${genIndex + 1}`}
                           </span>
                         </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          aria-label={`Delete ${isOg ? 'original image' : `variant ${genIndex + 1}`}`}
+                          title={`Delete ${isOg ? 'original image' : `variant ${genIndex + 1}`}`}
+                          className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-md bg-rose-100/75 p-0 text-rose-700 shadow-sm transition hover:bg-rose-200/90 disabled:cursor-not-allowed disabled:opacity-50 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+                          style={{
+                            boxSizing: 'border-box',
+                            width: '1.5rem',
+                            height: '1.5rem',
+                            minWidth: '1.5rem',
+                            minHeight: '1.5rem',
+                          }}
+                          onClick={() => setImageToDelete(item)}
+                        >
+                          <svg
+                            aria-hidden="true"
+                            viewBox="0 0 24 24"
+                            className="h-3.5 w-3.5 fill-none stroke-current stroke-[2.25]"
+                          >
+                            <path d="M4 7h16M10 11v6m4-6v6M9 7l1-2h4l1 2m-9 0 1 13h10l1-13" />
+                          </svg>
+                        </button>
                       </li>
                     )
                   })}
@@ -1628,18 +1856,73 @@ export function StudioClient({
           </div>
         </section>
 
-        {/* Export variants — channel-ready assets from the approved hero image */}
-        <div className="lg:col-span-2 xl:col-span-1">
-          <StudioExportPanel
-            sourceImageId={selectedImage?.id ?? null}
-            dishName={activeDish?.name ?? null}
-            editorBusy={busy}
-            dishBlocked={dishBlocked}
-            creditBalance={creditBalance}
-            onCreditBalanceChange={setCreditBalance}
-          />
+        {/* Export variants — live, selected-image-specific assets. */}
+        <div className="min-w-0 lg:col-span-2 xl:col-span-1">
+          <button
+            type="button"
+            aria-controls="studio-export-panel"
+            aria-expanded={expandedStudioPanel === 'exports'}
+            title={`Expand exports for ${selectedVariantLabel}`}
+            data-testid="studio-exports-rail"
+            className={[
+              'hidden h-full min-h-[360px] w-16 flex-col items-center justify-center gap-3 rounded-lg border border-black/[0.08] bg-white/95 px-2 text-ux-text-secondary shadow-md transition-[background-color,box-shadow] hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary focus-visible:ring-offset-2',
+              expandedStudioPanel === 'exports' ? 'xl:hidden' : 'xl:flex',
+              exportContextFlash && 'studio-export-context-flash',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => setExpandedStudioPanel('exports')}
+          >
+            <span
+              className={[
+                'text-[11px] font-bold uppercase tracking-wider [writing-mode:vertical-rl] transition-colors duration-200',
+                exportContextFlash && 'relative z-30 text-white',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
+              Export variants
+            </span>
+            <span className="sr-only" aria-live="polite">
+              Exports now show {selectedVariantLabel}.
+            </span>
+          </button>
+          <div className={expandedStudioPanel === 'exports' ? 'xl:block' : 'xl:hidden'}>
+            <StudioExportPanel
+              sourceImageId={selectedImage?.id ?? null}
+              sourceImageLabel={selectedVariantLabel}
+              contextFlash={exportContextFlash}
+              dishName={activeDish?.name ?? null}
+              editorBusy={busy}
+              dishBlocked={dishBlocked}
+              creditBalance={creditBalance}
+              onCreditBalanceChange={setCreditBalance}
+            />
+          </div>
         </div>
       </div>
+
+      <StudioPendingChangesDialog
+        open={pendingChangeCandidate !== null}
+        maxChanges={MAX_PENDING_CHANGES}
+        changeCount={pendingChangeCandidate?.changeCount ?? MAX_PENDING_CHANGES}
+        dontShowAgain={dontShowPendingChangeWarning}
+        onDontShowAgainChange={setDontShowPendingChangeWarning}
+        onApplyAnyway={handleApplyPendingChangeAnyway}
+        onReview={handleReviewPendingChange}
+      />
+
+      <StudioModelSwitchDialog
+        open={modelWarningOpen}
+        dontShowAgain={dontShowModelWarning}
+        nb2Cost={creditCostNb2}
+        proCost={creditCostNbPro}
+        onDontShowAgainChange={setDontShowModelWarning}
+        onConfirm={handleConfirmProModel}
+        onCancel={handleCancelProModel}
+      />
+
+      <StudioCreditsDialog open={creditsDialogOpen} onClose={() => setCreditsDialogOpen(false)} />
 
       <StudioDishPickerModal
         open={dishPickerOpen}
@@ -1668,22 +1951,34 @@ export function StudioClient({
         onCancel={() => setRenameOpen(false)}
         onConfirm={(name) => void handleRenameDish(name)}
       />
+      <StudioImageLightbox
+        open={workbenchImageExpanded}
+        imageUrl={currentPreviewUrl ?? null}
+        title={selectedVariantLabel}
+        subtitle={activeDish?.name ?? undefined}
+        transparent={selectedImage?.mime_type === 'image/png'}
+        onClose={() => setWorkbenchImageExpanded(false)}
+      />
+
       <ConfirmDialog
         open={deleteDishOpen}
-        title="Delete dish?"
-        description="Archive or delete all images in this dish first if any remain. This cannot be undone."
+        title="Permanently delete this dish?"
+        description={`This will permanently delete ${deleteDishSummary?.imageCount ?? 0} image variant${(deleteDishSummary?.imageCount ?? 0) === 1 ? '' : 's'} and ${deleteDishSummary?.exportVariantCount ?? 0} export variant${(deleteDishSummary?.exportVariantCount ?? 0) === 1 ? '' : 's'}. This cannot be undone.`}
         confirmText="Delete dish"
         variant="danger"
-        onCancel={() => setDeleteDishOpen(false)}
+        onCancel={() => {
+          setDeleteDishOpen(false)
+          setDeleteDishSummary(null)
+        }}
         onConfirm={() => void handleDeleteDish()}
       />
       <ConfirmDialog
-        open={deleteImageOpen}
+        open={imageToDelete !== null}
         title="Delete this image?"
-        description="Permanently delete the current image from your library and storage."
-        confirmText="Delete"
+        description="Permanently delete this image and any export variants made from it. This cannot be undone."
+        confirmText="Delete image"
         variant="danger"
-        onCancel={() => setDeleteImageOpen(false)}
+        onCancel={() => setImageToDelete(null)}
         onConfirm={() => void handleDeleteImage()}
       />
     </div>

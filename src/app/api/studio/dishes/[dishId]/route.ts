@@ -1,6 +1,7 @@
 /**
  * Photo Studio dish — rename / set current image / delete
  *
+ * GET    /api/studio/dishes/[dishId] — permanent-deletion inventory
  * PATCH  /api/studio/dishes/[dishId]  { name? } | { currentImageId? }
  * DELETE /api/studio/dishes/[dishId]
  */
@@ -10,6 +11,7 @@ import { requireStudioApi } from '@/lib/studio/studio-api-auth'
 import {
   deleteStudioDish,
   getStudioDish,
+  getStudioDishDeletionSummary,
   renameStudioDish,
   setStudioDishCurrentImage,
 } from '@/lib/studio/dishes'
@@ -17,6 +19,28 @@ import { getStudioImage } from '@/lib/studio/library'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: { dishId: string } },
+) {
+  try {
+    const auth = await requireStudioApi()
+    if (!auth.ok) return auth.response
+
+    const { dishId } = params
+    const existing = await getStudioDish(auth.user.id, dishId)
+    if (!existing) {
+      return NextResponse.json({ error: 'Dish not found' }, { status: 404 })
+    }
+
+    const deletionSummary = await getStudioDishDeletionSummary(auth.user.id, dishId)
+    return NextResponse.json({ deletionSummary })
+  } catch (error) {
+    logger.error('❌ [Studio Dishes] GET deletion summary failed', { error })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
 
 export async function PATCH(
   request: NextRequest,

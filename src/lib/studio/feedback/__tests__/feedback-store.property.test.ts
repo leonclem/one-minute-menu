@@ -9,6 +9,8 @@ const allowedFeedbackColumns = [
   'user_id',
   'studio_image_id',
   'dish_id',
+  'source_image_id',
+  'requested_modifications',
   'rating',
   'reason_tags',
   'comment',
@@ -19,13 +21,14 @@ const feedbackReasonTagArbitrary = fc.constantFrom(
   'identity_changed',
   'style_missed',
   'unwanted_prop',
-  'useful_result',
+  'obviously_fake',
+  'useful_result'
 )
 
 const extraInputArbitrary = fc.dictionary(
   fc.string({ minLength: 1, maxLength: 24 }),
   fc.jsonValue(),
-  { maxKeys: 8 },
+  { maxKeys: 8 }
 )
 
 const extractedJsonArbitrary = fc.record({
@@ -40,8 +43,10 @@ describe('Feature: studio-controlled-beta-readiness, Property 10', () => {
         fc.uuid(),
         fc.option(fc.uuid(), { nil: null }),
         fc.uuid(),
+        fc.option(fc.uuid(), { nil: null }),
+        fc.record({ change_summary: fc.array(fc.string(), { maxLength: 8 }) }),
         fc.option(fc.integer({ min: 1, max: 5 }), { nil: null }),
-        fc.array(feedbackReasonTagArbitrary, { maxLength: 4 }),
+        fc.array(feedbackReasonTagArbitrary, { maxLength: 5 }),
         fc.option(fc.string(), { nil: null }),
         fc.string(),
         fc.string().map((value) => `prompt-text:${value}`),
@@ -53,6 +58,8 @@ describe('Feature: studio-controlled-beta-readiness, Property 10', () => {
           userId,
           dishId,
           studioImageId,
+          sourceImageId,
+          requestedModifications,
           rating,
           reasonTags,
           comment,
@@ -61,7 +68,7 @@ describe('Feature: studio-controlled-beta-readiness, Property 10', () => {
           imageBytes,
           storagePath,
           extractedJson,
-          extraInput,
+          extraInput
         ) => {
           const value = {
             ...extraInput,
@@ -79,6 +86,8 @@ describe('Feature: studio-controlled-beta-readiness, Property 10', () => {
             ...extraInput,
             userId,
             dishId,
+            sourceImageId,
+            requestedModifications,
             value,
             now,
             prompt_text: promptText,
@@ -92,6 +101,8 @@ describe('Feature: studio-controlled-beta-readiness, Property 10', () => {
             user_id: userId,
             studio_image_id: studioImageId,
             dish_id: dishId,
+            source_image_id: sourceImageId,
+            requested_modifications: requestedModifications,
             rating,
             reason_tags: reasonTags,
             comment,
@@ -103,9 +114,9 @@ describe('Feature: studio-controlled-beta-readiness, Property 10', () => {
           expect(serialisedRow).not.toContain(storagePath)
           expect(serialisedRow).not.toContain(extractedJson.marker)
           expect(Object.values(row)).not.toContain(imageBytes)
-        },
+        }
       ),
-      { numRuns: 100 },
+      { numRuns: 100 }
     )
   })
 })
