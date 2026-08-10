@@ -43,7 +43,7 @@ function StudioShell({
       <div className="shrink-0" style={studioBrandBarStyle}>
         <UXHeader userEmail={userEmail} isAdmin={isAdmin} />
       </div>
-      <main className="container-ux py-10 md:py-12 flex-1">{children}</main>
+      <main className="container-ux w-full py-10 md:py-12 flex-1">{children}</main>
       <UXFooter />
     </div>
   )

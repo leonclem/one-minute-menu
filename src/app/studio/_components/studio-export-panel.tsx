@@ -399,7 +399,7 @@ export function StudioExportPanel({
         )}
       </div>
 
-      <div className="flex-1 space-y-3 p-3">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
         {!sourceImageId ? (
           <p className="px-1 py-4 text-sm text-gray-500" data-testid="studio-exports-empty">
             Upload or select a dish photo to prepare channel-ready exports.

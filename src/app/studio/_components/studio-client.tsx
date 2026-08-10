@@ -1509,14 +1509,14 @@ export function StudioClient({
       */}
       <div
         className={[
-          'grid items-stretch gap-6 transition-[grid-template-columns] duration-300 ease-in-out motion-reduce:transition-none lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]',
+          'grid items-stretch gap-6 transition-[grid-template-columns] duration-300 ease-in-out motion-reduce:transition-none lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] xl:h-[clamp(38rem,calc(100dvh-13rem),42rem)] xl:min-h-0',
           expandedStudioPanel === 'controls'
             ? 'xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_4rem]'
             : 'xl:grid-cols-[4rem_minmax(0,1fr)_minmax(300px,380px)]',
         ].join(' ')}
       >
         {/* Control panel */}
-        <div className="min-w-0">
+        <div className="min-w-0 xl:h-full xl:min-h-0">
           <button
             type="button"
             aria-controls="studio-control-panel"
@@ -1712,37 +1712,36 @@ export function StudioClient({
         </div>
 
         {/* Preview + variants */}
-        <section className="order-first flex h-full flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md lg:order-none">
+        <section className="flex min-h-[30rem] flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md lg:min-h-[34rem] xl:h-full xl:min-h-0">
           <div className="border-b bg-neutral-100 px-4 py-3">
             <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
               Workbench
             </h2>
           </div>
-          <div className="space-y-4 p-4">
-            <div className="relative">
-              {isGenerating ? (
-                <div className="flex aspect-[4/3] items-center justify-center rounded-md border border-ux-primary/30 bg-ux-primary/5 text-sm text-ux-primary">
-                  Generating…
-                </div>
-              ) : currentPreviewUrl ? (
+          <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
+            <div
+              className="relative min-h-[16rem] flex-1 overflow-hidden rounded-md border border-[#d8e1dc] bg-[#edf1ef]"
+              aria-busy={isUploading || isExtracting || isGenerating}
+            >
+              {currentPreviewUrl ? (
                 <button
                   type="button"
                   aria-label={`Expand ${selectedVariantLabel} preview`}
-                  className="group relative block w-full rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary"
+                  className="group absolute inset-0 block w-full rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary"
                   onClick={() => setWorkbenchImageExpanded(true)}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={currentPreviewUrl}
                     alt="Current studio image"
-                    className="max-h-[420px] w-full rounded-md border border-gray-200 object-contain"
+                    className="h-full w-full object-contain"
                   />
                   <span className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-md bg-black/40 text-[11px] font-bold uppercase tracking-wide text-white group-hover:flex">
                     Expand
                   </span>
                 </button>
               ) : (
-                <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-md border border-dashed border-gray-300 text-sm text-gray-400">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-gray-300 text-sm text-gray-400">
                   <button
                     type="button"
                     disabled={busy || !activeDishId}
@@ -1754,33 +1753,50 @@ export function StudioClient({
                   <p className="text-xs text-gray-500">PNG, JPEG, or WebP · up to 9 MB</p>
                 </div>
               )}
-              {!isGenerating && feedbackImage && currentPreviewUrl && (
+
+              {(isUploading || isExtracting || isGenerating) && (
+                <div
+                  className="absolute inset-0 z-10 flex items-center justify-center rounded-md border border-ux-primary/30 bg-white/85 text-sm text-ux-primary backdrop-blur-sm"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {isUploading
+                    ? 'Uploading photo…'
+                    : isExtracting
+                      ? 'Analysing photo…'
+                      : 'Generating…'}
+                </div>
+              )}
+
+              {!busy && feedbackImage && currentPreviewUrl && (
                 <div className="absolute bottom-3 right-3 z-10">
                   <StudioFeedbackPrompt studioImageId={feedbackImage.id} />
                 </div>
               )}
             </div>
 
-            {changeChips.length > 0 && (
-              <ul className="flex flex-wrap gap-1.5" aria-label="Changes vs previous image">
-                {changeChips.map((chip) => (
-                  <li
-                    key={chip}
-                    className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-700"
-                  >
-                    {chip}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="h-10 overflow-y-auto">
+              {mutationError ? (
+                <p role="alert" className="text-sm text-red-800">
+                  {mutationError}
+                </p>
+              ) : (
+                changeChips.length > 0 && (
+                  <ul className="flex flex-wrap gap-1.5" aria-label="Changes vs previous image">
+                    {changeChips.map((chip) => (
+                      <li
+                        key={chip}
+                        className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-700"
+                      >
+                        {chip}
+                      </li>
+                    ))}
+                  </ul>
+                )
+              )}
+            </div>
 
-            {mutationError && (
-              <p role="alert" className="text-sm text-red-800">
-                {mutationError}
-              </p>
-            )}
-
-            <div>
+            <div className="h-32 min-h-0">
               <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ux-text-secondary">
                 Variants
               </p>
@@ -1789,7 +1805,10 @@ export function StudioClient({
                   Variants appear here after you upload and generate.
                 </p>
               ) : (
-                <ul className="flex gap-2 overflow-x-auto pb-1" data-testid="studio-gallery">
+                <ul
+                  className="flex max-h-[6.75rem] gap-2 overflow-x-auto pb-1"
+                  data-testid="studio-gallery"
+                >
                   {variants.map((item) => {
                     const isOg = item.role === 'source'
                     const selected = item.id === selectedImageId
@@ -1857,7 +1876,7 @@ export function StudioClient({
         </section>
 
         {/* Export variants — live, selected-image-specific assets. */}
-        <div className="min-w-0 lg:col-span-2 xl:col-span-1">
+        <div className="min-w-0 lg:col-span-2 xl:col-span-1 xl:h-full xl:min-h-0">
           <button
             type="button"
             aria-controls="studio-export-panel"
@@ -1887,7 +1906,12 @@ export function StudioClient({
               Exports now show {selectedVariantLabel}.
             </span>
           </button>
-          <div className={expandedStudioPanel === 'exports' ? 'xl:block' : 'xl:hidden'}>
+          <div
+            className={[
+              'xl:h-full xl:min-h-0',
+              expandedStudioPanel === 'exports' ? 'xl:block' : 'xl:hidden',
+            ].join(' ')}
+          >
             <StudioExportPanel
               sourceImageId={selectedImage?.id ?? null}
               sourceImageLabel={selectedVariantLabel}
