@@ -8,11 +8,15 @@ import BillingCurrencySelector from '@/components/BillingCurrencySelector'
 import { PRICING_TIERS, formatPrice } from '@/lib/pricing-config'
 import type { BillingCurrency } from '@/lib/currency-config'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
+import { isStudioPublicSurface } from '@/lib/product-mode'
+import StudioPricingWaitlist from './StudioPricingWaitlist'
 
 export default function UXPricingPageContent({ 
-  initialUser 
+  initialUser,
+  initialCreditBalance = null,
 }: { 
-  initialUser?: any 
+  initialUser?: any
+  initialCreditBalance?: number | null
 }) {
   const [loading, setLoading] = useState<string | null>(null)
   const [user, setUser] = useState<any>(initialUser || null)
@@ -32,6 +36,15 @@ export default function UXPricingPageContent({
   useEffect(() => {
     captureEvent(ANALYTICS_EVENTS.PRICING_VIEWED)
   }, [])
+
+  if (isStudioPublicSurface()) {
+    return (
+      <StudioPricingWaitlist
+        initialUser={user}
+        initialCreditBalance={initialCreditBalance}
+      />
+    )
+  }
 
   const handleCurrencyChange = (currency: BillingCurrency) => {
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('geo_debug') === '1') {

@@ -3,12 +3,15 @@
 import Link from 'next/link'
 import { UXCard } from '@/components/ux'
 import { AuthOTPForm } from '@/components/auth/AuthOTPForm'
+import { isStudioPublicSurface } from '@/lib/product-mode'
 
 interface UXRegisterClientProps {
   requireAdminApproval: boolean
 }
 
 export default function UXRegisterClient({ requireAdminApproval }: UXRegisterClientProps) {
+  const studioPublic = isStudioPublicSurface()
+
   return (
     <div className="w-full max-w-md mx-auto">
       {/* Waitlist Info Banner - only show if admin approval is required */}
@@ -25,7 +28,9 @@ export default function UXRegisterClient({ requireAdminApproval }: UXRegisterCli
             <div className="flex-1">
               <h3 className="font-bold text-gray-900 mb-1">Sign up for GridMenu! 🎉</h3>
               <p className="text-sm text-gray-600 leading-relaxed">
-                Sign up now to join our exclusive waitlist. We're carefully onboarding restaurants to ensure the best experience. 
+                {studioPublic
+                  ? 'Sign up to join the waitlist. We invite testers in small groups so Photo Studio stays a controlled beta. '
+                  : "Sign up now to join our exclusive waitlist. We're carefully onboarding restaurants to ensure the best experience. "}
                 <strong className="text-gray-900"> Most applications are approved within 24 hours!</strong>
               </p>
             </div>

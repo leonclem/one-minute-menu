@@ -4,10 +4,13 @@ import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardHeader, CardTitle, CardContent, Button } from '@/components/ui'
+import { getAuthenticatedHomePath } from '@/lib/product-mode'
 
 function CheckoutCancelContent() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session_id')
+  const homePath = getAuthenticatedHomePath()
+  const homeLabel = homePath === '/studio' ? 'Go to Studio' : 'Go to Dashboard'
 
   return (
     <Card className="max-w-2xl w-full">
@@ -58,9 +61,9 @@ function CheckoutCancelContent() {
               </Button>
             </Link>
             <div>
-              <Link href="/dashboard">
+              <Link href={homePath}>
                 <Button variant="outline" className="w-full sm:w-auto">
-                  Go to Dashboard
+                  {homeLabel}
                 </Button>
               </Link>
             </div>

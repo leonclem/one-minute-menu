@@ -9,6 +9,7 @@ import { isOnboardingComplete, getOnboardingBlockReason } from '@/lib/onboarding
 import { analyticsOperations } from '@/lib/analytics-server'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { shouldRequireRestaurantOnboarding } from '@/lib/product-mode'
 
 export const metadata: Metadata = {
   title: 'Menu Processing | GridMenu',
@@ -38,7 +39,12 @@ export default async function MenuUxLayout({
     const isAdmin = profile?.role === 'admin'
     const isApproved = profile?.isApproved || isAdmin
 
-    if (isApproved && !isAdmin && !isOnboardingComplete(profile)) {
+    if (
+      isApproved &&
+      !isAdmin &&
+      shouldRequireRestaurantOnboarding() &&
+      !isOnboardingComplete(profile)
+    ) {
       const headerList = headers()
       const pathname = headerList.get('x-pathname') || `/menus/${params.menuId}`
       const reason = getOnboardingBlockReason(profile)

@@ -107,6 +107,29 @@ describe('Auth Callback Route', () => {
     expect(createAdminSupabaseClient).toHaveBeenCalled()
   })
 
+  it('defaults next to onboarding when studio is off', async () => {
+    const req = makeRequest('http://localhost:3000/auth/callback?code=test-code')
+    const res = await GET(req) as any
+
+    expect(res.url).toBe('http://localhost:3000/onboarding')
+  })
+
+  it('defaults next to /studio when photo studio is enabled', async () => {
+    const previous = process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO
+    process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
+    try {
+      const req = makeRequest('http://localhost:3000/auth/callback?code=test-code')
+      const res = await GET(req) as any
+      expect(res.url).toBe('http://localhost:3000/studio')
+    } finally {
+      if (previous === undefined) {
+        delete process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO
+      } else {
+        process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = previous
+      }
+    }
+  })
+
   it('should trigger admin alert for new unapproved users', async () => {
     const req = makeRequest('http://localhost:3000/auth/callback?code=test-code')
     

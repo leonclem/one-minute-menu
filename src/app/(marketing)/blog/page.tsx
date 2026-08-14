@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import BlogPageContent from './BlogPageContent'
+import { withParkedRobots } from '@/lib/studio/public-seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withParkedRobots({
   title: 'Blog | GridMenu',
   description:
     'Tips, insights, and guides for food & beverage businesses looking to create better digital menus and grow their online presence.',
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     images: ['/logos/social-1200x630.png'],
   },
-}
+})
 
 export default function BlogPage() {
   return <BlogPageContent />

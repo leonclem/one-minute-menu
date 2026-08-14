@@ -8,6 +8,8 @@ import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { supabase } from '@/lib/supabase'
 import ZoomableImageModal from '@/components/ZoomableImageModal'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
+import { isStudioPublicSurface } from '@/lib/product-mode'
+import HomePageStudioContent from './HomePageStudioContent'
 
 /**
  * SlidePanel — bleeds off the anchored edge, stops ~25% short of the far edge.
@@ -160,7 +162,7 @@ const homepageFaqs: Array<{ question: string; answer: string }> = [
   },
 ]
 
-export default function HomePageContent({ initialUser }: { initialUser: any }) {
+function HomePageMenuContent({ initialUser }: { initialUser: any }) {
   const [user, setUser] = useState<any>(initialUser ?? null)
   const [expandedImage, setExpandedImage] = useState<{ url: string; alt: string } | null>(null)
 
@@ -709,4 +711,11 @@ function CtaSection({
       </div>
     </section>
   )
+}
+
+export default function HomePageContent({ initialUser }: { initialUser: any }) {
+  if (isStudioPublicSurface()) {
+    return <HomePageStudioContent initialUser={initialUser} />
+  }
+  return <HomePageMenuContent initialUser={initialUser} />
 }

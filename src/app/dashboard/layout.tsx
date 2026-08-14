@@ -4,6 +4,7 @@ import { userOperations } from '@/lib/database'
 import { isOnboardingComplete, getOnboardingBlockReason } from '@/lib/onboarding-gate'
 import { analyticsOperations } from '@/lib/analytics-server'
 import { headers } from 'next/headers'
+import { shouldRequireRestaurantOnboarding } from '@/lib/product-mode'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,7 +27,7 @@ export default async function DashboardLayout({
   const isAdmin = profile?.role === 'admin'
   const isApproved = profile?.isApproved || isAdmin
 
-  if (isApproved && !isAdmin && !isOnboardingComplete(profile)) {
+  if (isApproved && !isAdmin && shouldRequireRestaurantOnboarding() && !isOnboardingComplete(profile)) {
     const headerList = headers()
     const pathname = headerList.get('x-pathname') || '/dashboard'
     const reason = getOnboardingBlockReason(profile)

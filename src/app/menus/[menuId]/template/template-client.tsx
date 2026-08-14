@@ -16,6 +16,7 @@ import type { LayoutDocumentV2, ImageModeV2 } from '@/lib/templates/v2/engine-ty
 
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
+import { getAuthenticatedHomePath } from '@/lib/product-mode'
 import { V2_TEMPLATE_OPTIONS } from '@/lib/templates/v2/template-options'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 import {
@@ -1411,7 +1412,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
         }
         markDashboardForRefresh()
         sessionStorage.removeItem(TEMPLATE_DRAFT_KEY(menuId))
-        router.push('/dashboard')
+        router.push(getAuthenticatedHomePath())
       }
     } catch (error) {
       console.error('Error applying template:', error)
@@ -2611,7 +2612,7 @@ export default function UXMenuTemplateClient({ menuId }: UXMenuTemplateClientPro
                   setExportSuccessModalOpen(false)
                   setIsExporting(false)
                   await flushImageTransformSaves()
-                  router.push('/dashboard')
+                  router.push(getAuthenticatedHomePath())
                 }}
               >
                 Okay

@@ -105,7 +105,10 @@ export function RegistrationGatingSettings() {
             Registration Gating
           </h3>
           <p className="text-sm text-gray-600 mb-4">
-            Controls whether new registrants require admin approval to access GridMenu.
+            Controls the waitlist for <strong>new signups</strong>. When approval is required, new
+            accounts stay on the waitlist until you approve them in User Management. Admins and
+            already-approved accounts are unchanged. This does not control who can open the Photo
+            Studio editor (that is the Studio access mode: admin-only, beta, or open).
           </p>
           <div className="space-y-2">
             <div className="flex items-center gap-2">

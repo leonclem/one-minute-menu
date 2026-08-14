@@ -6,6 +6,7 @@ import { PendingApproval } from '@/components/dashboard/PendingApproval'
 import { UXHeader, UXFooter } from '@/components/ux'
 import { isOnboardingComplete } from '@/lib/onboarding-gate'
 import { getFeatureFlag } from '@/lib/feature-flags'
+import { getAuthenticatedHomePath, shouldRequireRestaurantOnboarding } from '@/lib/product-mode'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,8 +50,12 @@ export default async function OnboardingPage({
     )
   }
 
+  if (!shouldRequireRestaurantOnboarding()) {
+    redirect(getAuthenticatedHomePath())
+  }
+
   if (isOnboardingComplete(profile)) {
-    redirect(searchParams.next || '/dashboard')
+    redirect(searchParams.next || getAuthenticatedHomePath())
   }
 
   return (

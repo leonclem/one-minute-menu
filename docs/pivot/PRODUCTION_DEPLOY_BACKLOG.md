@@ -8,17 +8,15 @@ This is the source of truth for “what’s waiting to go live.” Do **not** re
 `git log` alone — multiple chunks/patches may land on `main` before a deliberate
 production deploy; commit history is a poor deploy checklist.
 
-**Last production deploy:** Chunk 6 Studio credits + direct-to-Supabase upload
-patch (`e9c856c` on `main`). Confirmed live by LC on 2026-07-28; the exact deploy
-date was not recorded at the time.
+**Last production deploy:** LC confirmed 2026-08-13 that production matches
+`main` (including work after `e9c856c`) and that migrations `075`–`081` were
+applied manually in prod Supabase.
 
-**Next pending:** Group A Studio model-call configuration rollout plus the Group B/D
-scene-descriptor and documentation rollout: set or confirm
-`STUDIO_THINKING_LEVEL`, `STUDIO_IMAGE_SIZE`, and (if tuning is needed)
-`STUDIO_MAX_REFS`; apply migration `075` before deploying Group B app code; then
-complete the Group A and Group B/D production smoke tests after the manual app
-deploy. Everything committed to `main` up to and including `e9c856c` is live in
-production.
+**Next pending (Chunk 8 public cutover):** set production env to studio-public
+values before or at the next manual Vercel deploy — `NEXT_PUBLIC_PRODUCT_MODE=photo-studio`,
+`NEXT_PUBLIC_ENABLE_LEGACY_MENUS=false`, keep `NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true`,
+keep `NEXT_PUBLIC_STUDIO_ACCESS_MODE=admin-only` until the cohort opens. See
+Chunk 8 rows below. This file is not a reason to re-apply migrations `075`–`081`.
 
 **How to use**
 
@@ -40,19 +38,19 @@ non-local env you care about). Defaults in code are safe if unset unless noted.
 
 | Var | Added in | Default if unset | Intended production value | Status | Notes |
 |---|---|---|---|---|---|
-| `NEXT_PUBLIC_PRODUCT_MODE` | Chunk 1 | `menu-builder` | `photo-studio` when ready to pivot FOH | Applied | Prod 2026-07-24 (`42f35d5`). Likely left at default until full switchover — confirm in Vercel if needed. |
-| `NEXT_PUBLIC_ENABLE_PHOTO_STUDIO` | Chunk 1 | `false` (off) | `true` to expose `/studio` + Studio nav | Applied | Prod 2026-07-24 (`42f35d5`). Required for `/studio`; confirm set `true` in Vercel. |
-| `NEXT_PUBLIC_ENABLE_LEGACY_MENUS` | Chunk 1 | `true` | `false` with photo-studio mode to hide Dashboard nav | Applied | Prod 2026-07-24 (`42f35d5`). Optional soft-transition control. |
+| `NEXT_PUBLIC_PRODUCT_MODE` | Chunk 1 | `menu-builder` | `photo-studio` (Chunk 8 public cutover) | Applied (code live); **re-set for cutover** | Prod had this as optional until switchover. Chunk 8 requires `photo-studio` on the next manual deploy. |
+| `NEXT_PUBLIC_ENABLE_PHOTO_STUDIO` | Chunk 1 | `false` (off) | `true` | Applied | Required for `/studio`. Keep `true`. |
+| `NEXT_PUBLIC_ENABLE_LEGACY_MENUS` | Chunk 1 | `true` | `false` (Chunk 8 public cutover) | Applied (code live); **re-set for cutover** | Set `false` with photo-studio mode to hide Dashboard nav and enable `isStudioPublicSurface()`. |
 | `STUDIO_DAILY_GENERATION_LIMIT` | Chunk 2 | `25` | Set explicitly if you want a different cap | Applied | Prod 2026-07-24 (`42f35d5`). Default 25 unless overridden in Vercel. |
 | `STUDIO_OUTPUT_VALIDATION_ENABLED` | Chunk 5 | `true` (on when unset) | `true` for private beta quality signals; `false` to skip re-extract cost | Applied | Prod 2026-07-24 (`42f35d5`). Default on when unset. |
 | `NEXT_PUBLIC_STUDIO_ADMIN_ONLY` | Chunk 5 | `true` (on when unset) | `true` until ready for non-admin users; `false` to open FOH Studio | Applied | Prod 2026-07-24 (`42f35d5`). Default on when unset. |
 | `STUDIO_CREDIT_COST_NB2` | Chunk 6 | `1` | `1` unless pricing changes | Applied | Credit cost for Flash / NB2 Studio mutates. Live with Chunk 6 (`e9c856c`); default 1 unless overridden in Vercel. |
 | `STUDIO_CREDIT_COST_NB_PRO` | Chunk 6 | `3` | `3` unless pricing changes | Applied | Credit cost for Pro Studio mutates. Live with Chunk 6 (`e9c856c`); default 3 unless overridden in Vercel. |
 | `STUDIO_DISH_FAILURE_LIMIT` | Chunk 6 | `5` | `5` unless ops wants a different breaker | Applied | Consecutive billable provider failures before dish block. Live with Chunk 6 (`e9c856c`); default 5 unless overridden in Vercel. |
-| `STUDIO_THINKING_LEVEL` | Group A patch | `high` | `high` unless approved latency/cost evidence changes it | Pending | Flash-only; accepts `minimal` or `high`. Thinking tokens are billed even when their output is not inspected. |
-| `STUDIO_IMAGE_SIZE` | Group A patch | `2K` | `2K` | Pending | Studio sends uppercase documented size tokens (`1K`, `2K`, `4K`). |
-| `STUDIO_MAX_REFS` | Group A patch | Documented per-model limit (Flash: 10 object refs; Pro: 14 total) | Leave unset for the documented limit, or set a positive tuning value | Pending | The requested value is clamped to the applicable documented model limit and warns when clamped. |
-| `NEXT_PUBLIC_STUDIO_ACCESS_MODE` | Chunk 7 | Unset (falls back to legacy flag) | `admin-only` until the beta cohort opens; accepted values are `admin-only`, `beta`, and `open` | Pending | Set in Vercel for production. Keep `admin-only` until the operator deliberately opens the invited cohort; `NEXT_PUBLIC_STUDIO_ADMIN_ONLY` remains the fallback when this variable is unset or invalid. |
+| `STUDIO_THINKING_LEVEL` | Group A patch | `high` | `high` unless approved latency/cost evidence changes it | Applied | LC 2026-08-13: `main` is production. Confirm value in Vercel if tuning. |
+| `STUDIO_IMAGE_SIZE` | Group A patch | `2K` | `2K` | Applied | LC 2026-08-13: `main` is production. |
+| `STUDIO_MAX_REFS` | Group A patch | Documented per-model limit (Flash: 10 object refs; Pro: 14 total) | Leave unset for the documented limit, or set a positive tuning value | Applied | LC 2026-08-13: `main` is production. |
+| `NEXT_PUBLIC_STUDIO_ACCESS_MODE` | Chunk 7 | Unset (falls back to legacy flag) | `admin-only` until the beta cohort opens; accepted values are `admin-only`, `beta`, and `open` | Applied (code live); keep `admin-only` for Chunk 8 | Public site promises waitlist/invite. Do not set `open` as part of Chunk 8. |
 
 ---
 
@@ -69,8 +67,13 @@ Prefer `npx supabase db push` against the linked production project (never
 | `supabase/migrations/072_studio_dish_current_image.sql` | Chunk 3 | Applied | Prod 2026-07-24 (`42f35d5`). Apply after 071. |
 | `supabase/migrations/073_studio_reference_libraries.sql` | Chunk 4 | Applied | Prod 2026-07-24 (`42f35d5`; seed refresh also in Chunk 5 commit). Apply after 072. |
 | `supabase/migrations/074_studio_credits.sql` | Chunk 6 | Applied | Balances + ledger + `studio_apply_credit_delta` + dish failure/block columns. Live with Chunk 6 (`e9c856c`). |
-| `supabase/migrations/075_studio_style_descriptors.sql` | Group B patch | Pending | Remains undeployed; apply to production **before deploying Group B app code**; adds the style-library descriptor columns required by the scene-descriptor payload. |
-| `supabase/migrations/076_studio_beta_access_and_feedback.sql` | Chunk 7 | Pending | Apply to production. Applies to a database at migration `073` and needs neither `074_studio_credits.sql` nor `075_studio_style_descriptors.sql`. |
+| `supabase/migrations/075_studio_style_descriptors.sql` | Group B patch | Applied | LC 2026-08-13: applied manually in prod. |
+| `supabase/migrations/076_studio_beta_access_and_feedback.sql` | Chunk 7 | Applied | LC 2026-08-13: applied manually in prod. |
+| `supabase/migrations/077_studio_export_variants.sql` | Export variants (post-Chunk 7) | Applied | LC 2026-08-13: applied manually in prod. |
+| `supabase/migrations/078_studio_export_variant_queue.sql` | Export variants (post-Chunk 7) | Applied | LC 2026-08-13: applied manually in prod. |
+| `supabase/migrations/079_studio_feedback_prompt_state_and_traceability.sql` | Post-Chunk 7 | Applied | LC 2026-08-13: applied manually in prod. |
+| `supabase/migrations/080_studio_control_panel_labels.sql` | Post-Chunk 7 | Applied | LC 2026-08-13: applied manually in prod. |
+| `supabase/migrations/081_studio_first_run_preference.sql` | Post-Chunk 7 | Applied | LC 2026-08-13: applied manually in prod. |
 
 ---
 
@@ -86,9 +89,11 @@ Non-env, non-migration steps that must not be forgotten.
 | Smoke-test output validation | Chunk 5 | Applied | Prod 2026-07-24 (`42f35d5` deploy). |
 | Smoke-test Studio credits | Chunk 6 | Applied | Admin grant → `/studio` shows balance → generate decrements; 0 balance → 402; blocked dish after N billable failures cannot generate until admin clears. |
 | Smoke-test direct-upload (5–9 MiB) | Direct-upload patch | Applied | Large PNG upload no 413; extract + mutate OK. |
-| Smoke-test Group A Studio model-call configuration | Group A patch | Pending | After the manual deploy and required per-call approval, verify input-matched aspect ratio, configured Flash thinking level, uppercase image-size handling, and reference-cap override/clamping behaviour. |
-| Smoke-test Group B/D scene-descriptor rollout | Group B + D patch | Pending | After migration `075` is applied and the manual app deploy is complete, verify the customer path sends source-only identity reference data, carries lighting/backdrop/surface style in the JSON descriptor, and serves the rewritten documentation. The Group A/B/D descriptor patch remains undeployed. |
-| Production smoke-test beta gate, feedback route, and funnel events | Chunk 7 | Pending | After the manual deploy and migration `076`, keep access mode `admin-only`; verify admin access, beta denial/grant behavior, and the disabled state, then verify upload → extract → generate → credit debit → download → feedback submission/update plus ownership/validation errors. Confirm consent-aware funnel events are registered, emitted without prompt/image/comment/storage-path data, and do not interrupt the user flow when analytics fails. |
+| Smoke-test Group A Studio model-call configuration | Group A patch | Applied | LC 2026-08-13: `main` is production. |
+| Smoke-test Group B/D scene-descriptor rollout | Group B + D patch | Applied | LC 2026-08-13: `main` is production. |
+| Production smoke-test beta gate, feedback route, and funnel events | Chunk 7 | Applied | LC 2026-08-13: `main` is production. |
+| Confirm Vercel env for studio-public cutover | Chunk 8 | Pending | Before/at next manual deploy: `NEXT_PUBLIC_PRODUCT_MODE=photo-studio`, `NEXT_PUBLIC_ENABLE_LEGACY_MENUS=false`, `NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true`, `NEXT_PUBLIC_STUDIO_ACCESS_MODE=admin-only`. |
+| Smoke-test studio-first public site | Chunk 8 | Pending | Logged-out home/pricing/support/register show waitlist Studio, not menu plans or demo menu. Sitemap omits `/demo/sample` and `/blog`. Logged-in default is `/studio`. Unapproved user sees waitlist. Non-admin in admin-only sees pending invite, not 404. |
 
 ---
 

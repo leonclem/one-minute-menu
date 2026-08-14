@@ -4,6 +4,11 @@
 **Working product direction:** GridMenu Photo Studio / Photo Control  
 **Purpose:** General requirements and development sequencing document for continuing the sandbox build in a new chat and/or IDE workflow.
 
+**Status (14 August 2026):** Closed as the pivot requirements set. Built vs deferred
+traceability is in [`PIVOT_TRACKER.md`](./PIVOT_TRACKER.md). Leftover product and
+ops items are a post-MVP to-do list in [`PIVOT_REMAINING_WORK.md`](./PIVOT_REMAINING_WORK.md),
+not open requirements that block this document.
+
 ---
 
 ## 1. Executive Summary

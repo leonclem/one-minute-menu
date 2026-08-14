@@ -90,7 +90,7 @@ export function StudioFirstRunPanel({
           Photo Studio
         </p>
         <h2 id="studio-first-run-heading" className="mt-2 text-2xl font-bold text-gray-900">
-          Bring one dish photo to life
+          🧙‍♂️ Bring one dish photo to life
         </h2>
         <p className="mt-2 text-sm leading-6 text-gray-600">
           Make focused changes to a real dish photo without writing prompts.

@@ -78,6 +78,19 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-29 | Studio access-mode switch | Add `NEXT_PUBLIC_STUDIO_ACCESS_MODE` with `admin-only`, `beta`, and `open` values. It is fallback-preserving: unset, empty, or invalid values retain the existing `NEXT_PUBLIC_STUDIO_ADMIN_ONLY` semantics, including the admin-only default. |
 | 2026-07-29 | Studio generation feedback storage | Use a dedicated `studio_image_feedback` table with one editable, user-owned row per Studio image. Feedback is product data; analytics receives only non-sensitive submission metadata. |
 | 2026-07-29 | Deployment reconciliation | The production backlog remains the source of truth: Group A/B/D style-descriptor work and migration `075` are still Pending. The earlier statement that nothing on `main` awaited production was stale and is superseded by the backlog. |
+| 2026-08-13 | Production = `main` | LC confirmed production has all commits on `main` and that migrations `075`–`081` were applied manually in prod Supabase. Stale `Pending` backlog rows through those migrations are not unfinished deploys. |
+| 2026-08-13 | Branding (Q1) | Keep **GridMenu**. Do not rename the public brand to “GridMenu Photo Studio.” SEO copy may say “AI food photo studio.” |
+| 2026-08-13 | Landing page (Q2) | Replace the public menu-maker homepage. New visitors should not learn the menu system exists. Studio-first marketing; waitlist/invite, not “sign up and generate.” Supersedes 2026-07-29 nav-only / unchanged-CTA row. |
+| 2026-08-13 | Post-login destination | Default authenticated landing is `/studio`. Restaurant/menu onboarding is not required for Studio. `/dashboard` remains for possible later reuse. |
+| 2026-08-13 | Public pricing | Hide menu plan cards. Public `/pricing` is private beta + contact (`support@gridmenu.ai`). Stripe menu SKUs stay in code, parked. |
+| 2026-08-13 | Studio Generate worker queue | Parked. Plan remains in `docs/STUDIO_GENERATION_WORKER_QUEUE_PLAN.md`; not Chunk 8. |
+| 2026-08-14 | Chunk 8 public cutover | Code complete. Visitor-facing studio-first surface is gated by `isStudioPublicSurface()`. Production still needs the env cutover in `PRODUCTION_DEPLOY_BACKLOG.md`. Legal ownership / Gemini-as-processor / Studio-beta Terms remain in `STUDIO_PUBLIC_COPY_AND_LEGAL_REVIEW.md`. |
+| 2026-08-14 | Privacy and Terms | Applied owner answers from `STUDIO_PUBLIC_COPY_AND_LEGAL_REVIEW.md`: user owns Studio outputs; name Google Gemini plus other subprocessors; remove Grid+/Creator Pack terms; private-beta Studio terms; 12-month credit packs when offered; contact `support@gridmenu.ai` only. |
+| 2026-08-14 | Restaurant onboarding in studio-first | Do not require `/onboarding` (restaurant name/type/cuisine) or auto-create a menu when legacy menu nav is off. Settings and `/dashboard` must not dump new Studio users into `/menus/...`. |
+| 2026-08-14 | First target buyer (Q3) | Any of the original ICP options, primarily menu designers and food photographers. |
+| 2026-08-14 | First output format (Q6) | Keep the current Studio behaviour: generate at the source image’s framing; the user then picks export variants (delivery, social, cut-out, etc.) as needed. Do not add a staged “make cut-out then generate” control for this close-out. |
+| 2026-08-14 | Failed generation credits (Q7) | Keep debit-on-successful-persist. Failures must be loggable so support can investigate; recode via the existing admin credit grant if warranted. No automatic refund UX required. |
+| 2026-08-14 | Close original pivot requirements | `GridMenu_Photo_Studio_Pivot_Requirements_2026-07-16.md` is closed as the requirements set. Unshipped include-list items (clutter, garnish add, plating, worker queue, Stripe credit packs, etc.) move to `PIVOT_REMAINING_WORK.md` as a post-MVP to-do list, not open requirements. |
 
 ---
 
@@ -90,7 +103,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 5.1 | User controls, not prompt boxes | Built | `/studio` uses lighting + garnish/sides controls; no prompt box. |
 | 5.2 | Preserve the dish (identity lock defaults) | Built | Identity clause expanded in Chunk 5; post-gen soft validation flags mismatches. |
 | 5.3 | Stage changes before generation (max 3, summary, reset) | Built | Pending-changes panel + max 3 in `/studio` (same engine as sandbox). |
-| 5.4 | MVP prioritises reliable transformations | In progress | Lighting + background libraries + post-gen soft validation; plating/risky camera still deferred. |
+| 5.4 | MVP prioritises reliable transformations | Built | Lighting + background/surface shipped. Remaining include-list items (clutter, garnish add, plating, staged cut-out) moved to post-MVP to-do on 2026-08-14. |
 
 ### MVP features (§7)
 
@@ -102,9 +115,9 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 7.4 | Lighting manipulation (6 styles + reference library) | 1/3 | Built | DB `studio_lighting_styles` (6 seeded); FOH tiles from API; fragments resolved in mutate. |
 | 7.5 | Background/surface swapping + library | 3 | Built | DB `studio_background_styles` (8 seeded); FOH Background section; `canvas.background_style` editable. |
 | 7.6 | Plating/vessel style library | 7 | Deferred | Admin-only/experimental per doc. |
-| 7.7 | Dish element manipulation (garnish/sides/clutter) | 1 | In progress | FOH remove-only for garnish/sides; add deferred. Clutter removal still pending. |
+| 7.7 | Dish element manipulation (garnish/sides/clutter) | 1 | Built | FOH remove-only for garnish/sides. Garnish **add** and clutter removal moved to post-MVP to-do on 2026-08-14. |
 | 7.8 | Rotation & composition controls (replace camera pitch) | 1 | Deferred | Parked. Removed perspective and horizontal rotation controls entirely from FOH for now due to AI model perspective inconsistency. |
-| 7.9 | Output packs | Post-MVP | Deferred | One output at a time first. |
+| 7.9 | Output packs | Post-MVP | Deviation | One generate at a time. Q6 2026-08-14: user picks export variants after generate (delivery/Instagram/PDF/cutout). Batch packs remain deferred. |
 | 7.10 | Model selection (admin-visible only) | 1 | Built | FOH fixed to NB2/Flash; admin sandbox retains model selector. |
 
 ### Pricing & credits (§8)
@@ -135,26 +148,26 @@ Subject to change; record changes as new dated rows rather than editing old ones
 
 | Ref | Requirement | Phase | Status | Notes |
 |---|---|---|---|---|
-| 16.1 | Review supplementary pages (Settings, Support, Pricing, Privacy, Terms, Contact Us) for new positioning | 1–6 | Built | Chunk 7 completed the audit and the minimum Pricing/Privacy corrections; unresolved findings are recorded as deferred follow-ups below. |
+| 16.1 | Review supplementary pages (Settings, Support, Pricing, Privacy, Terms, Contact Us) for new positioning | 1–6 | Built | Chunk 8 studio-first public copy. Privacy/Terms updated 2026-08-14 from `STUDIO_PUBLIC_COPY_AND_LEGAL_REVIEW.md`. |
 
 ### §16.1 deferred follow-ups from the Chunk 7 supplementary-page audit
 
 | Ref | Page / finding | Status | Follow-up |
 |---|---|---|---|
-| 16.1 | Support — “What is GridMenu?” / “It focuses purely on menu creation.” | Deferred | Revisit public product positioning after the branding, ICP, and landing-page decisions; leave unchanged for the controlled beta. |
-| 16.1 | Support — AI-generated images FAQ does not distinguish legacy menu images from the invited Photo Studio workflow. | Deferred | Clarify scope in a future support/content pass rather than broadening public copy in Chunk 7. |
-| 16.1 | Support — Cutout “Beta” and plan-allowance wording could be confused with the controlled Studio beta. | Deferred | Clarify the distinction between legacy cutout beta and Studio cohort access in a future support/content pass. |
-| 16.1 | Support — first-menu workflow describes the legacy menu builder, not Studio dish-photo onboarding. | Deferred | Revisit only if public navigation or shared support onboarding changes; no edit for the invited beta. |
-| 16.1 | Support — rate-limit FAQ describes legacy plan limits, not Studio credit balances. | Deferred | Reconcile legacy limits and Studio credit terminology after pricing/packaging decisions. |
-| 16.1 | Support — exported-files FAQ states 30/90/180-day menu-export retention. | Deferred | Keep scoped to menu exports, but review wording when Studio retention and legal copy are revisited. |
-| 16.1 | Pricing — plan cards list legacy menu-generation allowances that could be confused with Studio credits. | Deferred | Preserve public menu pricing; add clearer separation only as part of a future pricing/packaging pass. |
-| 16.1 | Pricing — Creator Pack/export-storage FAQ describes legacy packaging and retention. | Deferred | Leave unchanged until public pricing and Studio packaging are deliberately revisited. |
-| 16.1 | Pricing — upgrade FAQ refers generically to preserved “credits.” | Deferred | Clarify legacy versus Studio credits in a future pricing/legal copy review. |
-| 16.1 | Pricing — premium/public CTA copy (“Unlimited everything”, “photo-perfect menus”, and related positioning). | Deferred | Do not rewrite public positioning in the controlled-beta chunk; revisit with the landing-page decision. |
-| 16.1 | Privacy — aggregated/derivative-data ownership wording does not distinguish uploaded originals, generated Studio outputs, and analytics-derived data. | Deferred | Obtain legal/product review before changing ownership language. |
-| 16.1 | Privacy — information-sharing wording does not name AI image-generation processing as a provider activity. | Deferred | Confirm processor/vendor wording with legal review before expanding the provider list. |
-| 16.1 | Terms — subscription, Creator Pack, image-regeneration, and fair-use clauses remain scoped to legacy menu plans. | Deferred | Add Studio-beta terms only after the access, pricing, and legal position is approved. |
-| 16.1 | Terms — no dedicated statement covers Photo Studio access, dish-photo uploads, Studio retention, credits, or the controlled beta. | Deferred | Decide whether dedicated Studio-beta terms are required before any broader launch. |
+| 16.1 | Support — “What is GridMenu?” / “It focuses purely on menu creation.” | Built | Chunk 8: studio-public Support uses Studio waitlist FAQs. Menu FAQs remain when flags are off. |
+| 16.1 | Support — AI-generated images FAQ does not distinguish legacy menu images from the invited Photo Studio workflow. | Built | Chunk 8: studio-public FAQs describe the Studio workflow; menu FAQs stay behind flags. |
+| 16.1 | Support — Cutout “Beta” and plan-allowance wording could be confused with the controlled Studio beta. | Built | Chunk 8: cutout/plan FAQs are not shown on the studio-public Support page. |
+| 16.1 | Support — first-menu workflow describes the legacy menu builder, not Studio dish-photo onboarding. | Built | Chunk 8: studio-public Support CTA is waitlist, not “create your menu.” |
+| 16.1 | Support — rate-limit FAQ describes legacy plan limits, not Studio credit balances. | Built | Chunk 8: studio-public Support omits menu rate-limit FAQs; credits are admin-granted. |
+| 16.1 | Support — exported-files FAQ states 30/90/180-day menu-export retention. | Built | Chunk 8: export-retention FAQ is parked with the menu Support set. |
+| 16.1 | Pricing — plan cards list legacy menu-generation allowances that could be confused with Studio credits. | Built | Chunk 8: studio-public `/pricing` hides plan cards; waitlist + `support@gridmenu.ai` only. |
+| 16.1 | Pricing — Creator Pack/export-storage FAQ describes legacy packaging and retention. | Built | Chunk 8: menu pricing FAQs are not shown on the studio-public pricing page. |
+| 16.1 | Pricing — upgrade FAQ refers generically to preserved “credits.” | Built | Chunk 8: studio-public pricing has no upgrade/credits FAQ; credits are admin-granted. |
+| 16.1 | Pricing — premium/public CTA copy (“Unlimited everything”, “photo-perfect menus”, and related positioning). | Built | Chunk 8: studio-public pricing is private-beta / waitlist copy. |
+| 16.1 | Privacy — aggregated/derivative-data ownership wording does not distinguish uploaded originals, generated Studio outputs, and analytics-derived data. | Built | Chunk 8 follow-up: user owns source photos and generated variants; Gorrrf may ask to use outputs; aggregated data remains Gorrrf-owned. |
+| 16.1 | Privacy — information-sharing wording does not name AI image-generation processing as a provider activity. | Built | Names Google Gemini and allows other subprocessors for the same functions. |
+| 16.1 | Terms — subscription, Creator Pack, image-regeneration, and fair-use clauses remain scoped to legacy menu plans. | Built | Grid+ / Creator Pack commercial terms removed. Forward-looking 12-month credit packs noted without a live SKU. |
+| 16.1 | Terms — no dedicated statement covers Photo Studio access, dish-photo uploads, Studio retention, credits, or the controlled beta. | Built | Private-beta Terms: invite-only, admin-granted credits, no generation SLA, provider watermarks. |
 | 10 | Requirement 10 coverage carried manually | Manual / deferred | Studio component surfaces (10.8), the admin feedback read path, `/api/studio/access`, and hands-on Chunk 6 regression checks remain covered by task 19 and the documented private-beta smoke path; parsing/decision and beta-route coverage remain partial as recorded in the task notes. |
 
 ### Development phases (§10)
@@ -167,7 +180,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 3 | Background & lighting reference libraries | Built | Chunk 4 — `studio_*_styles` + admin CRUD + FOH tiles |
 | 4 | Controlled prompt/state layer | Built | Chunk 5 — extract/delta/compose + §5.2 identity locks + post-gen re-extract soft validation on `metadata.validation`. |
 | 5 | Credits & usage control | Built | Chunk 6 — deployed to production in `e9c856c` (confirmed 2026-07-28); see `BUILD_PLAN_CHUNK_06.md` and deploy backlog. |
-| 6 | MVP market test | Built | Chunk 7 — controlled beta gate, admin controls, first-run onboarding, feedback loop, consent-aware funnel instrumentation, and supplementary-page audit delivered; see `BUILD_PLAN_CHUNK_07.md`. |
+| 6 | MVP market test | Built | Chunks 7–8. Original requirements closed 2026-08-14. Production env cutover and remaining product items are in `PIVOT_REMAINING_WORK.md`. |
 | 7 | Plating/vessel experimentation | Deferred | |
 
 ### Phase 6 delivered scope — Chunk 7
@@ -179,6 +192,15 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 6 | Feedback loop and admin review path | Built | `studio_image_feedback`, owner validation, optional feedback UI, and recent-feedback admin read path. |
 | 6 | Consent-aware funnel instrumentation | Built | Registered Studio events, allow-listed non-PII payloads, and existing analytics wrappers. |
 | 6 | Supplementary-page readiness audit | Built | Pricing/Privacy corrections landed; unresolved findings and manual Requirement 10 coverage are recorded above. |
+
+### Phase 6 delivered scope — Chunk 8
+
+| Phase | Delivered scope | Status | Evidence |
+|---|---|---|---|
+| 6 | Studio-first public homepage, SEO, sitemap | Built | `isStudioPublicSurface()`; `STUDIO_SEO`; parked menu URLs `noindex` and omitted from sitemap. |
+| 6 | Waitlist/invite public promise | Built | Homepage/register/pricing/support CTAs; `/studio` waitlist + pending-invite (not 404). |
+| 6 | Post-login `/studio` | Built | Auth callback and magic-link default `next`; onboarding skipped for this path. |
+| 6 | Supplementary pages for studio-first | Built | Pricing waitlist page; Support Studio FAQs; Settings waitlist-gated; restaurant/menu-currency hidden when legacy nav is off. |
 
 ---
 
@@ -193,6 +215,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 5 | Phase 4: controlled prompt/state layer (identity locks + post-gen validation) | `studio/chunk-05-prompt-state-layer` | Deployed prod 2026-07-24 — see `docs/pivot/BUILD_PLAN_CHUNK_05.md` |
 | 6 | Phase 5: credits & usage control (Studio ledger, mutate gate, admin grants, FOH balance, dish failure breaker) | `main` | Deployed prod (`e9c856c`; confirmed by LC 2026-07-28) — see `docs/pivot/BUILD_PLAN_CHUNK_06.md` |
 | 7 | Phase 6: controlled beta market-test readiness (beta access, onboarding, feedback, funnel instrumentation, supplementary-page review) | `main` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_07.md` |
+| 8 | Studio-first public cutover (park menus; waitlist homepage/pricing/support; post-login `/studio`) | `main` | Built — see `docs/pivot/BUILD_PLAN_CHUNK_08.md`. Production env cutover still pending. |
 
 ---
 

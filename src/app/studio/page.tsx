@@ -1,19 +1,26 @@
 export const dynamic = 'force-dynamic'
 
 import type { ReactNode } from 'react'
-import { notFound, redirect } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getCurrentUser } from '@/lib/auth-utils'
+import { userOperations } from '@/lib/database'
+import { getFeatureFlag } from '@/lib/feature-flags'
+import { isAccountPendingApproval } from '@/lib/account-approval'
 import { UXHeader, UXFooter } from '@/components/ux'
+import { PendingApproval } from '@/components/dashboard/PendingApproval'
+import { SignupConversionBeacon } from '@/components/analytics/SignupConversionBeacon'
 import { StudioClient } from './_components/studio-client'
 import { ensureDefaultStudioDish, listStudioDishes } from '@/lib/studio/dishes'
 import { listStudioImagesForDish } from '@/lib/studio/library'
 import { getStudioCreditBalance } from '@/lib/studio/credits'
 import { resolveStudioAccess } from '@/lib/studio/access/studio-access'
 import { resolveStudioAccessMode } from '@/lib/studio/access/studio-access-mode'
+import { decideStudioPageGate } from '@/lib/studio/studio-page-gate'
 import { StudioStateNotice } from './_components/studio-state-notice'
 import { StudioAccessDeniedTracker } from './_components/studio-access-denied-tracker'
 import type { StudioDishRecord } from '@/lib/studio/types'
+import type { StudioAccessReason } from '@/lib/studio/access/studio-access-decision'
 
 /** Light studio backdrop — cream + soft gold + brand teal, no photo. */
 const studioBackdropStyle = {
@@ -32,13 +39,16 @@ function StudioShell({
   children,
   userEmail,
   isAdmin,
+  isNewSignup = false,
 }: {
   children: ReactNode
   userEmail?: string
   isAdmin: boolean
+  isNewSignup?: boolean
 }) {
   return (
     <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
+      <SignupConversionBeacon enabled={isNewSignup} />
       <div aria-hidden className="absolute inset-0 -z-10" style={studioBackdropStyle} />
       <div className="shrink-0" style={studioBrandBarStyle}>
         <UXHeader userEmail={userEmail} isAdmin={isAdmin} />
@@ -49,7 +59,33 @@ function StudioShell({
   )
 }
 
-export default async function StudioPage() {
+function PendingInviteNotice({
+  accessMode,
+  accessReason,
+  isAdmin,
+}: {
+  accessMode: ReturnType<typeof resolveStudioAccessMode>
+  accessReason: Extract<StudioAccessReason, 'denied_admin_only' | 'denied_beta_access_required'>
+  isAdmin: boolean
+}) {
+  return (
+    <>
+      <StudioAccessDeniedTracker
+        accessMode={accessMode}
+        accessReason={accessReason}
+        isAdmin={isAdmin}
+        gallerySize={0}
+      />
+      <StudioStateNotice kind="pending_access" />
+    </>
+  )
+}
+
+export default async function StudioPage({
+  searchParams,
+}: {
+  searchParams: { new_signup?: string }
+}) {
   const supabase = createServerSupabaseClient()
   const {
     data: { user },
@@ -60,17 +96,39 @@ export default async function StudioPage() {
     redirect('/auth/signin')
   }
 
+  const isNewSignup = searchParams.new_signup === 'true'
   const currentUser = await getCurrentUser()
   const isAdmin = currentUser?.role === 'admin'
+  const [profile, requireAdminApproval] = await Promise.all([
+    userOperations.getProfile(user.id),
+    getFeatureFlag('require_admin_approval'),
+  ])
   const accessMode = resolveStudioAccessMode()
   const access = await resolveStudioAccess({ userId: user.id, isAdmin })
+  const gate = decideStudioPageGate({
+    accessGranted: access.granted,
+    accessReason: access.reason,
+    pendingAccountApproval: isAccountPendingApproval({
+      requireAdminApproval,
+      isAdmin,
+      isApproved: profile?.isApproved,
+    }),
+  })
 
-  if (access.reason === 'denied_studio_disabled') {
+  if (gate === 'waitlist') {
     return (
-      <StudioShell userEmail={user.email ?? undefined} isAdmin={false}>
+      <StudioShell userEmail={user.email ?? undefined} isAdmin={false} isNewSignup={isNewSignup}>
+        <PendingApproval email={user.email} />
+      </StudioShell>
+    )
+  }
+
+  if (gate === 'disabled') {
+    return (
+      <StudioShell userEmail={user.email ?? undefined} isAdmin={false} isNewSignup={isNewSignup}>
         <StudioAccessDeniedTracker
           accessMode={accessMode}
-          accessReason={access.reason}
+          accessReason="denied_studio_disabled"
           isAdmin={isAdmin}
           gallerySize={0}
         />
@@ -79,22 +137,20 @@ export default async function StudioPage() {
     )
   }
 
-  if (access.reason === 'denied_beta_access_required') {
+  if (gate === 'pending_invite') {
+    const inviteReason =
+      access.reason === 'denied_beta_access_required'
+        ? 'denied_beta_access_required'
+        : 'denied_admin_only'
     return (
-      <StudioShell userEmail={user.email ?? undefined} isAdmin={false}>
-        <StudioAccessDeniedTracker
+      <StudioShell userEmail={user.email ?? undefined} isAdmin={false} isNewSignup={isNewSignup}>
+        <PendingInviteNotice
           accessMode={accessMode}
-          accessReason={access.reason}
+          accessReason={inviteReason}
           isAdmin={isAdmin}
-          gallerySize={0}
         />
-        <StudioStateNotice kind="pending_access" />
       </StudioShell>
     )
-  }
-
-  if (access.reason === 'denied_admin_only') {
-    notFound()
   }
 
   const { data: studioPreference } = await supabase
@@ -115,7 +171,7 @@ export default async function StudioPage() {
   ])
 
   return (
-    <StudioShell userEmail={user.email ?? undefined} isAdmin={isAdmin}>
+    <StudioShell userEmail={user.email ?? undefined} isAdmin={isAdmin} isNewSignup={isNewSignup}>
       <StudioClient
         reason={access.reason}
         accessMode={accessMode}

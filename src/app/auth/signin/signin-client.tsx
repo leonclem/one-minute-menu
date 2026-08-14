@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { UXHeader, UXFooter, UXCard } from '@/components/ux'
 import { AuthOTPForm } from '@/components/auth/AuthOTPForm'
+import { isStudioPublicSurface } from '@/lib/product-mode'
 
 export default function SignInClient() {
   const isLocalDev = typeof window !== 'undefined' && 
@@ -34,7 +35,9 @@ export default function SignInClient() {
               Welcome Back
             </h1>
             <p className="mt-2 text-white/90 text-hero-shadow-strong">
-              Sign in to manage your digital menus
+              {isStudioPublicSurface()
+                ? 'Sign in to open Photo Studio'
+                : 'Sign in to manage your digital menus'}
             </p>
           </div>
 

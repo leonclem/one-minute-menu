@@ -60,6 +60,37 @@ export function shouldShowLegacyMenuNav(): boolean {
 }
 
 /**
+ * Restaurant/menu onboarding is only required when the menu-builder product is
+ * still the customer nav. Studio-first cutover must not send new users into
+ * /onboarding → /menus/... .
+ */
+export function shouldRequireRestaurantOnboarding(): boolean {
+  return shouldShowLegacyMenuNav()
+}
+
+/**
+ * Visitor-facing studio cutover: homepage, pricing, sitemap, and parked-menu
+ * noindex. Requires all three flags so local/unset defaults stay menu-builder.
+ */
+export function isStudioPublicSurface(): boolean {
+  return (
+    getProductMode() === 'photo-studio' &&
+    !isLegacyMenusEnabled() &&
+    isPhotoStudioEnabled()
+  )
+}
+
+/** Magic-link / auth-callback default when `next` is omitted. */
+export function getPostLoginPath(): string {
+  return isPhotoStudioEnabled() ? '/studio' : '/onboarding'
+}
+
+/** Where an already-onboarded session should go. */
+export function getAuthenticatedHomePath(): string {
+  return isPhotoStudioEnabled() ? '/studio' : '/dashboard'
+}
+
+/**
  * Whether customer-facing `/studio` is restricted to admins.
  *
  * @deprecated Prefer `resolveStudioAccessMode() === 'admin-only'`.

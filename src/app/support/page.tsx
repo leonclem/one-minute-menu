@@ -1,8 +1,22 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { UXHeader, UXFooter, UXCard, UXButton } from '@/components/ux'
+import { isStudioPublicSurface } from '@/lib/product-mode'
+import { STUDIO_PUBLIC_FAQS } from '@/lib/studio/public-faqs'
 
-const faqs: Array<{ q: string; a: ReactNode; aPlainText: string }> = [
+export const metadata: Metadata = isStudioPublicSurface()
+  ? {
+      title: 'Support | GridMenu',
+      description:
+        'Help with the Photo Studio waitlist, invites, and credits. Email support@gridmenu.ai.',
+    }
+  : {
+      title: 'Support | GridMenu',
+      description: 'Frequently asked questions and contact details for GridMenu.',
+    }
+
+const menuFaqs: Array<{ q: string; a: ReactNode; aPlainText: string }> = [
   {
     q: 'What is GridMenu?',
     aPlainText:
@@ -278,6 +292,16 @@ const faqs: Array<{ q: string; a: ReactNode; aPlainText: string }> = [
   },
 ]
 
+const studioFaqs: Array<{ q: string; a: ReactNode; aPlainText: string }> = STUDIO_PUBLIC_FAQS.map(
+  (faq) => ({
+    q: faq.question,
+    a: <p>{faq.answer}</p>,
+    aPlainText: faq.answer,
+  }),
+)
+
+const faqs = isStudioPublicSurface() ? studioFaqs : menuFaqs
+
 /** FAQPage schema for SEO (schema.org). Generated from the same FAQ data as the visible list. */
 const faqPageJsonLd = {
   '@context': 'https://schema.org',
@@ -375,13 +399,17 @@ export default function SupportPage() {
 
         {/* Getting Started CTA */}
         <div className="mt-6 md:mt-8 w-full max-w-5xl mx-auto text-center bg-gradient-to-br from-ux-primary/30 to-ux-primary/40 rounded-md p-8 border border-ux-primary/40 shadow-xl text-white">
-          <h3 className="text-xl font-bold text-white text-hero-shadow mb-2">Ready to Get Started?</h3>
+          <h3 className="text-xl font-bold text-white text-hero-shadow mb-2">
+            {isStudioPublicSurface() ? 'Ready to join the waitlist?' : 'Ready to Get Started?'}
+          </h3>
           <p className="text-white/90 text-hero-shadow-strong mb-6 max-w-lg mx-auto">
-            Create your digital menu in under 5 minutes with our simple setup process.
+            {isStudioPublicSurface()
+              ? 'Photo Studio is a private beta. Sign up for the waitlist, or email support@gridmenu.ai if you already have an invite.'
+              : 'Create your digital menu in under 5 minutes with our simple setup process.'}
           </p>
           <Link href="/register">
             <UXButton variant="primary" size="lg" className="px-8 shadow-lg">
-              Create Your Menu
+              {isStudioPublicSurface() ? 'Join the waitlist' : 'Create Your Menu'}
             </UXButton>
           </Link>
         </div>

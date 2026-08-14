@@ -23,6 +23,7 @@ import GeneratePhotoModal from '@/components/GeneratePhotoModal'
 import BatchPhotoModal from '@/components/BatchPhotoModal'
 import BulkDeleteModal from '@/components/BulkDeleteModal'
 import { markDashboardForRefresh } from '@/lib/dashboard-refresh'
+import { getAuthenticatedHomePath } from '@/lib/product-mode'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 import {
   getImageGenerationJobLabel,
@@ -2444,11 +2445,11 @@ export default function UXMenuExtractedClient({ menuId }: UXMenuExtractedClientP
             className="bg-white/20 border-white/40 text-white hover:bg-white/30"
             onClick={isDemo ? handleBackToExtraction : () => {
               markDashboardForRefresh()
-              router.push('/dashboard')
+              router.push(getAuthenticatedHomePath())
             }}
             disabled={loading}
           >
-            {isDemo ? '← Back to Sample Selection' : '← Back to Dashboard'}
+            {isDemo ? '← Back to Sample Selection' : getAuthenticatedHomePath() === '/studio' ? '← Back to Studio' : '← Back to Dashboard'}
           </UXButton>
           
           <UXButton

@@ -1,7 +1,15 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
+import { isStudioPublicSurface } from '@/lib/product-mode'
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy | GridMenu',
+  description: 'Privacy Policy for GridMenu, the public brand of Gorrrf Private Limited.',
+}
 
 export default function PrivacyPage() {
-  const lastUpdated = '11/01/2026'
+  const lastUpdated = '14/08/2026'
+  const studioPublic = isStudioPublicSurface()
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -16,7 +24,7 @@ export default function PrivacyPage() {
               href="/register" 
               className="bg-ux-primary text-white px-6 py-2 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
             >
-              Get Started
+              {studioPublic ? 'Join the waitlist' : 'Get Started'}
             </Link>
           </div>
         </div>
@@ -30,12 +38,24 @@ export default function PrivacyPage() {
           
           <div className="prose prose-blue prose-lg max-w-none text-gray-600">
             <section className="mb-12">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Who we are</h2>
+              <p>
+                GridMenu is the public-facing brand of Gorrrf Private Limited (UEN: 202550882W), registered in
+                Singapore. In this policy, “we”, “us”, and “GridMenu” mean Gorrrf Private Limited.
+              </p>
+            </section>
+
+            <section className="mb-12">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Information We Collect</h2>
               <p>
-                We collect information you provide directly to us, including when you create an account, upload menu content, communicate with us, or otherwise use our services.
+                We collect information you provide directly to us, including when you create an account, upload{' '}
+                {studioPublic ? 'dish photos or menu content' : 'menu content'}, communicate with us, or otherwise use
+                our services.
               </p>
               <p>
-                This may include account details, contact information, menu content, images, and other information you choose to provide.
+                This may include account details, contact information,{' '}
+                {studioPublic ? 'dish photos, menu content, images' : 'menu content, images'}, and other information you
+                choose to provide.
               </p>
             </section>
 
@@ -66,6 +86,10 @@ export default function PrivacyPage() {
                 <li>Improve, develop, and optimise our products and user experience</li>
                 <li>Ensure security, prevent abuse, and comply with legal obligations</li>
               </ul>
+              <p className="mt-4">
+                Uploaded photos are passed to our subprocessor(s) in order to extract dish information and
+                facilitate image variant controls.
+              </p>
             </section>
 
             <section className="mb-12">
@@ -93,7 +117,10 @@ export default function PrivacyPage() {
                 Such aggregated or anonymised data may also be used by GridMenu for research, benchmarking, analytics, reporting, and commercial purposes, including the development of data-driven products or insights.
               </p>
               <p>
-                Customers retain ownership of their original content. GridMenu retains ownership of aggregated, anonymised, or derivative data generated through the operation of the platform.
+                You own your uploaded source photos and the image variants generated for you in Photo Studio.
+                We may contact you to ask permission if we would like to use those outputs in a GridMenu
+                feature or publication. We retain ownership of aggregated, anonymised, or statistical data
+                generated through the operation of the platform.
               </p>
             </section>
 
@@ -101,7 +128,12 @@ export default function PrivacyPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Information Sharing</h2>
               <p>We do not sell or disclose your personal information to third parties except:</p>
               <ul className="list-disc pl-6 space-y-2 mt-4">
-                <li>To service providers who process data on our behalf (such as hosting, authentication, or analytics providers), under appropriate safeguards</li>
+                <li>
+                  To service providers who process data on our behalf (such as hosting, authentication,
+                  analytics, and image-generation providers, including Google Gemini), under appropriate
+                  safeguards. We may use other subprocessors from time to time to provide the same kinds of
+                  functions.
+                </li>
                 <li>Where required by law or legal process</li>
                 <li>With your explicit consent</li>
               </ul>
@@ -140,8 +172,8 @@ export default function PrivacyPage() {
                 If you have any questions about this Privacy Policy or wish to exercise your rights, please contact us at:
               </p>
               <p className="mt-4">
-                <a href="mailto:privacy@gridmenu.ai" className="text-ux-primary hover:underline font-bold">
-                  privacy@gridmenu.ai
+                <a href="mailto:support@gridmenu.ai" className="text-ux-primary hover:underline font-bold">
+                  support@gridmenu.ai
                 </a>
               </p>
             </section>

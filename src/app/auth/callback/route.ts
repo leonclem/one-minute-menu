@@ -4,6 +4,7 @@ import { userOperations } from '@/lib/database'
 import { sendAdminNewUserAlert } from '@/lib/notifications'
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
 import { getFeatureFlag } from '@/lib/feature-flags'
+import { getPostLoginPath } from '@/lib/product-mode'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -11,7 +12,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const code = url.searchParams.get('code')
-  const next = url.searchParams.get('next') || '/onboarding'
+  const next = url.searchParams.get('next') || getPostLoginPath()
 
   // If we have a preferred site URL configured and we're currently on the Vercel domain
   // (or any other domain that isn't the primary one), redirect to the primary domain

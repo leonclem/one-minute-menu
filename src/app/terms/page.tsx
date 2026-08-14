@@ -1,7 +1,15 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
+import { isStudioPublicSurface } from '@/lib/product-mode'
+
+export const metadata: Metadata = {
+  title: 'Terms of Service | GridMenu',
+  description: 'Terms of Service for GridMenu.',
+}
 
 export default function TermsPage() {
-  const lastUpdated = new Date('2026-01-11').toLocaleDateString()
+  const lastUpdated = '14/08/2026'
+  const studioPublic = isStudioPublicSurface()
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -16,7 +24,7 @@ export default function TermsPage() {
               href="/register" 
               className="bg-ux-primary text-white px-6 py-2 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
             >
-              Get Started
+              {studioPublic ? 'Join the waitlist' : 'Get Started'}
             </Link>
           </div>
         </div>
@@ -32,51 +40,55 @@ export default function TermsPage() {
             <section className="mb-12">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Acceptance of Terms</h2>
               <p>
-                By accessing and using GridMenu ("the Service"), provided by Gorrrf Private Ltd (UEN: 202550882W), you accept and agree to be bound by the 
-                terms and provision of this agreement. These terms apply to all visitors, users, and others who access or use the Service.
+                By accessing and using GridMenu (&quot;the Service&quot;), the public-facing brand of Gorrrf Private
+                Limited (UEN: 202550882W), you accept and agree to be bound by the terms and provision of this
+                agreement. These terms apply to all visitors, users, and others who access or use the Service.
               </p>
             </section>
 
             <section className="mb-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">2. Subscription and Fees</h2>
-              <h3 className="text-xl font-semibold text-gray-900 mt-6 mb-2">2.1 Monthly Subscriptions</h3>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">2. Photo Studio</h2>
               <p>
-                Grid+ and Grid+Premium plans are billed on a recurring monthly basis. You may cancel your subscription at any time through your account settings. Cancellation will be effective at the end of the current billing cycle. No partial refunds are provided for mid-month cancellations.
+                Photo Studio is currently a private beta. Access is invite-only and is not a paid Studio plan.
+                During the beta, Studio credits are granted by an administrator. There is no generation service
+                level agreement. Generated images may include a watermark applied by the image-generation
+                provider.
               </p>
-              
-              <h3 className="text-xl font-semibold text-gray-900 mt-6 mb-2">2.2 Creator Packs</h3>
-              <p>
-                Creator Packs are one-time purchases. Each Creator Pack grants the right to maintain one active menu for up to 24 months from the date of purchase.
-              </p>
-              
-              <h3 className="text-xl font-semibold text-gray-900 mt-6 mb-2">2.3 Refund Policy</h3>
-              <p>
-                Refunds are only available for your <strong>first purchase</strong> (either a subscription or a Creator Pack) within 30 days. We reserve the right to deny refund requests if the Service has been used extensively (e.g., more than 3 PDF exports or 50 image regenerations).
+              <p className="mt-4">
+                You own your uploaded source photos and the Studio image variants generated for your account.
+                We may contact you to ask permission if we would like to use those outputs in a GridMenu
+                feature or publication.
               </p>
             </section>
 
             <section className="mb-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">3. Fair Use Policy</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">3. Fees</h2>
               <p>
-                Our "unlimited" features (such as edits and regenerations) are subject to a fair use policy. To ensure service quality for all users, we monitor for abusive patterns. We reserve the right to:
+                There is no self-serve Studio purchase on the site today. Paid credit packs may be offered
+                later. When purchased, a credit pack will be valid for 12 months from the date of purchase.
+                Pack names, prices, and any subscription options will be shown at checkout when they are
+                available.
+              </p>
+            </section>
+
+            <section className="mb-12">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">4. Fair Use</h2>
+              <p>
+                To keep the Service reliable for everyone, we monitor for abusive patterns. We reserve the
+                right to:
               </p>
               <ul className="list-disc pl-6 space-y-2 mt-4">
-                <li>Automatedly throttle accounts exceeding typical usage patterns.</li>
+                <li>Throttle accounts that exceed typical usage patterns.</li>
                 <li>Restrict or suspend access for accounts identified as bots or scripts.</li>
                 <li>Limit concurrent generation requests during peak load periods.</li>
               </ul>
             </section>
 
             <section className="mb-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">4. Expiry and Termination</h2>
-              <h3 className="text-xl font-semibold text-gray-900 mt-6 mb-2">4.1 Pack Expiry</h3>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">5. Account Termination</h2>
               <p>
-                Creator Packs expire 24 months after purchase. Upon expiry, the associated menu will revert to "expired" status. To continue editing or displaying the menu, a new Pack or active subscription is required.
-              </p>
-              
-              <h3 className="text-xl font-semibold text-gray-900 mt-6 mb-2">4.2 Account Termination</h3>
-              <p>
-                We reserve the right to terminate or suspend access to our Service immediately, without prior notice or liability, for any reason, including without limitation:
+                We reserve the right to terminate or suspend access to our Service immediately, without prior
+                notice or liability, for any reason, including without limitation:
               </p>
               <ul className="list-disc pl-6 space-y-2 mt-4">
                 <li>Breach of these Terms.</li>
@@ -87,23 +99,24 @@ export default function TermsPage() {
             </section>
 
             <section className="mb-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">5. Use License</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">6. Use License</h2>
               <p>
-                Permission is granted to use GridMenu for your restaurant's business purposes. This is a license, not a transfer of title. You may not:
+                Permission is granted to use GridMenu for your business purposes. This is a license, not a
+                transfer of title. You may not:
               </p>
               <ul className="list-disc pl-6 space-y-2 mt-4">
-                <li>Modify or copy the platform's underlying source code.</li>
+                <li>Modify or copy the platform&apos;s underlying source code.</li>
                 <li>Use the service for any illegal purpose.</li>
                 <li>Attempt to decompile or reverse engineer any software contained in GridMenu.</li>
               </ul>
             </section>
 
             <section className="mb-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">6. Contact Information</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">7. Contact Information</h2>
               <p>
                 If you have any questions about these Terms of Service, please contact us at{' '}
-                <a href="mailto:legal@gridmenu.ai" className="text-ux-primary hover:underline font-bold">
-                  legal@gridmenu.ai
+                <a href="mailto:support@gridmenu.ai" className="text-ux-primary hover:underline font-bold">
+                  support@gridmenu.ai
                 </a>
               </p>
             </section>

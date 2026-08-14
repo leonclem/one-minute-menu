@@ -5,6 +5,8 @@ import { ToastProvider } from '@/components/ui'
 import { ConsentBanner } from '@/components/privacy/ConsentBanner'
 import { VercelAnalytics } from '@/components/VercelAnalytics'
 import { PostHogBootstrap } from '@/components/posthog/PostHogBootstrap'
+import { isStudioPublicSurface } from '@/lib/product-mode'
+import { STUDIO_SEO } from '@/lib/studio/public-seo'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -24,11 +26,14 @@ export const viewport: Viewport = {
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL || 'https://gridmenu.ai'
+const studioPublic = isStudioPublicSurface()
 
 export const metadata: Metadata = {
-  title: 'GridMenu',
-  description: 'Create digital menus with QR codes for restaurants',
-  manifest: '/manifest.json',
+  title: studioPublic ? STUDIO_SEO.title : 'GridMenu',
+  description: studioPublic
+    ? STUDIO_SEO.description
+    : 'Create digital menus with QR codes for restaurants',
+  manifest: '/manifest.webmanifest',
   metadataBase: new URL(siteUrl),
   icons: [
     {
@@ -59,8 +64,10 @@ export const metadata: Metadata = {
     { rel: 'apple-touch-icon', url: '/logos/apple-touch-icon.png' },
   ],
   openGraph: {
-    title: 'GridMenu – Digital QR Code Menus for Restaurants',
-    description: 'Turn your existing paper menu into a mobile-friendly QR code menu in minutes. No tech skills required.',
+    title: studioPublic ? STUDIO_SEO.title : 'GridMenu – Digital QR Code Menus for Restaurants',
+    description: studioPublic
+      ? STUDIO_SEO.description
+      : 'Turn your existing paper menu into a mobile-friendly QR code menu in minutes. No tech skills required.',
     url: siteUrl,
     type: 'website',
     siteName: 'GridMenu',
@@ -69,7 +76,9 @@ export const metadata: Metadata = {
         url: '/logos/social-1200x630.png',
         width: 1200,
         height: 630,
-        alt: 'GridMenu hero preview',
+        alt: studioPublic
+          ? 'GridMenu — AI food photo studio'
+          : 'GridMenu hero preview',
       },
       {
         url: '/logos/logo-1600.png',
@@ -93,8 +102,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'GridMenu – Digital QR Code Menus for Restaurants',
-    description: 'Turn your existing paper menu into a mobile-friendly QR code menu in minutes.',
+    title: studioPublic ? STUDIO_SEO.title : 'GridMenu – Digital QR Code Menus for Restaurants',
+    description: studioPublic
+      ? STUDIO_SEO.description
+      : 'Turn your existing paper menu into a mobile-friendly QR code menu in minutes.',
     images: ['/logos/social-1200x630.png'],
   },
   robots: {

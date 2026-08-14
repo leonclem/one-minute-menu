@@ -9,7 +9,7 @@ import type { AccessMode } from '@/lib/studio/access/studio-access-mode'
 
 type DeniedStudioAccessReason = Extract<
   StudioAccessReason,
-  'denied_studio_disabled' | 'denied_beta_access_required'
+  'denied_studio_disabled' | 'denied_beta_access_required' | 'denied_admin_only'
 >
 
 interface StudioAccessDeniedTrackerProps {

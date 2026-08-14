@@ -6,6 +6,7 @@ import { UXButton, UXInput } from '@/components/ux'
 import { isValidEmail } from '@/lib/utils'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
+import { getPostLoginPath } from '@/lib/product-mode'
 
 interface AuthOTPFormProps {
   type: 'signin' | 'signup'
@@ -82,8 +83,8 @@ export function AuthOTPForm({
         })
       }
 
-      // Default to /onboarding which handles redirection to dashboard if menus exist
-      const finalRedirectTo = redirectTo || `${window.location.origin}/auth/callback?next=/onboarding`
+      const finalRedirectTo =
+        redirectTo || `${window.location.origin}/auth/callback?next=${getPostLoginPath()}`
       
       const { error } = await supabase.auth.signInWithOtp({
         email,

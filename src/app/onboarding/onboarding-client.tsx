@@ -7,6 +7,7 @@ import { fetchJsonWithRetry } from '@/lib/retry'
 import { ESTABLISHMENT_TYPES, CUISINES } from '@/types'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 import { getPlaceholderItems } from '@/data/placeholder-menus'
+import { getAuthenticatedHomePath, shouldRequireRestaurantOnboarding } from '@/lib/product-mode'
 
 export default function OnboardingClient({ 
   userEmail, 
@@ -104,6 +105,14 @@ export default function OnboardingClient({
         return
       }
 
+      if (!shouldRequireRestaurantOnboarding()) {
+        router.refresh()
+        setTimeout(() => {
+          router.push(getAuthenticatedHomePath())
+        }, 100)
+        return
+      }
+
       // 2. Auto-create first menu with cuisine-matched placeholder items
       const { items, categories } = getPlaceholderItems(
         formData.primaryCuisine,
@@ -137,7 +146,7 @@ export default function OnboardingClient({
         // Menu creation failed -- still go to dashboard
         router.refresh()
         setTimeout(() => {
-          router.push(next || '/dashboard')
+          router.push(next || getAuthenticatedHomePath())
         }, 100)
       }
     } catch (err) {

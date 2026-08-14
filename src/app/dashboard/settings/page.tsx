@@ -9,6 +9,10 @@ import { RestaurantSettings } from './_components/RestaurantSettings'
 import { getBillingCurrency, canChangeBillingCurrency } from '@/lib/billing-currency-service'
 import { getMenuCurrency } from '@/lib/menu-currency-service'
 import { userOperations } from '@/lib/database'
+import { getFeatureFlag } from '@/lib/feature-flags'
+import { isAccountPendingApproval } from '@/lib/account-approval'
+import { shouldShowLegacyMenuNav } from '@/lib/product-mode'
+import { PendingApproval } from '@/components/dashboard/PendingApproval'
 
 export default async function SettingsPage() {
   const supabase = createServerSupabaseClient()
@@ -21,14 +25,44 @@ export default async function SettingsPage() {
 
   const currentUser = await getCurrentUser()
   const isAdmin = currentUser?.role === 'admin'
+  const showLegacySettings = shouldShowLegacyMenuNav()
 
   // Fetch all settings server-side to avoid client loading flash
-  const [profile, menuCurrency, billingCurrency, billingCanChange] = await Promise.all([
+  const [profile, menuCurrency, billingCurrency, billingCanChange, requireAdminApproval] = await Promise.all([
     userOperations.getProfile(user.id),
     getMenuCurrency(user.id),
     getBillingCurrency(user.id),
     canChangeBillingCurrency(user.id),
+    getFeatureFlag('require_admin_approval'),
   ])
+
+  if (
+    isAccountPendingApproval({
+      requireAdminApproval,
+      isAdmin,
+      isApproved: profile?.isApproved,
+    })
+  ) {
+    return (
+      <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10"
+          style={{
+            backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.45)), url(/backgrounds/kung-pao-chicken.png)`,
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center 30%',
+          }}
+        />
+        <UXHeader userEmail={user.email ?? undefined} isAdmin={false} />
+        <main className="container-ux py-10 md:py-12 flex-1">
+          <PendingApproval email={user.email} />
+        </main>
+        <UXFooter />
+      </div>
+    )
+  }
 
   return (
     <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
@@ -56,25 +90,31 @@ export default async function SettingsPage() {
               Account Settings
             </h1>
             <p className="mt-2 text-white/90 text-hero-shadow-strong">
-              Manage your currency preferences and account settings
+              {showLegacySettings
+                ? 'Manage your currency preferences and account settings'
+                : 'Manage your account and billing'}
             </p>
           </div>
 
           {/* Restaurant Details */}
-          <RestaurantSettings
-            userId={user.id}
-            initialRestaurantName={profile?.restaurantName}
-            initialEstablishmentType={profile?.establishmentType}
-            initialPrimaryCuisine={profile?.primaryCuisine}
-            initialUsername={profile?.username}
-            initialDefaultVenueInfo={profile?.defaultVenueInfo}
-          />
+          {showLegacySettings && (
+            <RestaurantSettings
+              userId={user.id}
+              initialRestaurantName={profile?.restaurantName}
+              initialEstablishmentType={profile?.establishmentType}
+              initialPrimaryCuisine={profile?.primaryCuisine}
+              initialUsername={profile?.username}
+              initialDefaultVenueInfo={profile?.defaultVenueInfo}
+            />
+          )}
 
           {/* Currency Settings */}
-          <CurrencySettings
-            userId={user.id}
-            initialMenuCurrency={menuCurrency}
-          />
+          {showLegacySettings && (
+            <CurrencySettings
+              userId={user.id}
+              initialMenuCurrency={menuCurrency}
+            />
+          )}
 
           {/* Billing Settings */}
           <BillingSettings

@@ -1,0 +1,463 @@
+# Roadmap
+
+## SEO optimisation
+- [ ] "How to design a restaurant menu" Starter Story Build May 26 "How to Get 1,000 Downloads On Your App in 30 Days (From Scratch)"
+
+## /extracted
+- [x] If user uploads a menu photo and sample items exist - add a checked checkbox (clearly labelled) "Delete sample items" (and only delete the sample items once new items are extracted and created from the upload.
+- [x] Advanced options: change plate colour (white, beige, black, none)
+- [ ] Advanced options: additional free text description
+- [ ] Advanced options: detect item name and/or category to offer serving type and vessel, e.g. "slice"/"whole" and "wooden board"/"plate"
+- [ ] Help icons for advanced options
+- [ ] Prompt review: Why are we not using JSON key/value structure?
+- [ ] Prompt review: "Presented as a whole or sliced pizza" in prompt
+- [ ] Prompt review: Investigate double mention of "match the perspective" in prompt (when users supply a background image)
+- [ ] Prompt review: The theme of the restaurant doesn't appear to be included currently.
+- [ ] Prompt review: Investigate why plate is not always plain in some examples.  Perhaps need to be more specific about no markings.
+- [ ] Add section notes (check Vienna original for ref.)
+- [ ] Add menu items notes (e.g. "ask to add level 49 spicy")
+
+## Bugs
+- [ ] Why is cutout worker still appearing in Vercel logs?
+
+## Structural / Architectural
+- [ ] Quantity or sized pricing, e.g. S/M/L, 1/2/5/Box, 12"/18" pizza, etc.
+- [ ] More definitive specification for every grid option (Show examples and get the IDE AI to describe every layout for creation in another LLM)
+
+## Social Media and Advertising
+- [ ] New video (all SM platforms) - build a menu in under 5 minutes
+- [ ] Openclaw initial setup
+
+## misc
+- [ ] Explore MCP, e.g. Stripe MCP, Figma, Zapier, etc.
+- [ ] Scrape branding from user website
+- [ ] Allow paid users to host on GridMenu (or safe area that has permanent availability if this is risky)
+- [ ] Instant translations
+
+## /template
+- [ ] Display Option to omit currency symbol
+- [ ] Menu title is at risk of entering bleed area
+- [ ] Advice for print, e.g. "Full bleed guidelines", when to use glossy vs matte
+- [ ] Add whatsapp option to contact details
+
+## Deployment
+- [x] Upgrade Vercel package
+- [ ] Upgrade to Supabase Pro (and enable PITR)
+- [ ] Determine UAT requirements
+- [ ] Site under maintenance page / impending maintenance notice
+
+## Allergens / Spice level / etc
+- [ ] Extend indicator taxonomy for additional dietary restrictions
+- [ ] Add custom allergen management via /extracted page
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+>>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+## Bugs
+- [ ] Pricing keeps defaulting to USD
+- [ ] When Image Style is set to "None", descriptions only have one line in most cases
+- [ ] Description still too short generally across layouts
+- [ ] Image style "Background".  If no image for menu item, text is unreadable
+- [ ] Image style "Background".  Text is too small and sits too close to "House Special" for flagship items
+- [ ] Image style "None", we lost the star icon to replace "Popular" sticker on featured items
+- [ ] Browser dark mode overriding menu preview?  See PostHog Columbia user 20/05/26
+
+## "What's New?" page
+- [ ] "What's New?" page
+- [ ] Coming soon...
+- [ ] Add popup banner to /dashboard
+
+## Security
+- [x] Check Vercel breach advice and remediation steps
+- [x] Enable Vercel 2FA
+- [ ] Address Next.js DoS vulnerabilities (see `SECURITY_NEXTJS_VULNERABILITIES.md`)
+- [ ] Ensure MFA is set on email accounts
+- [ ] Emsure choosing own username during onboarding 
+
+## Tech debt
+- [ ] Review code
+- [ ] Review SQL
+- [ ] Review MD docs
+- [ ] QA
+
+## Production Monitoring
+- [x] Install Vercel analytics
+- [x] Install PostHog analytics
+
+### Blogs
+- [x] Create blogs section of site
+- [x] Digital vs paper menu
+- [x] Rising costs of restaurants
+- [ ] Grow sales with better images
+- [ ] Admin tool to add blogs
+- [ ] Use better descriptions to boost sales
+- [ ] Menu design tips and tricks
+- [ ] Menu engineering
+- [ ] Z-read pattern
+- [ ] Comparison page (https://www.upmenu.com/blog/menu-making-apps/)
+
+## /dashboard
+- [ ] Show preview picture of menu (if design template chosen) embedded in Dashboard menus
+- [ ] Button to go directly to layout management (/template) screen
+
+## /dashboard/settings
+- [x] Capability to update restaurant name, details, etc. (that are collected at onboarding)
+- [ ] Display/update email address
+
+## /extract
+- [ ] Use existing PDF menu as input (upload)
+- [ ] Offer copy & paste text option (and consider linking from the "Add 2+ menu items" modal on the /template page for new onboarders)
+- [ ] Crop for large menus text extraction
+
+## /extracted
+- [ ] Copy items between menus in same account
+- [ ] Single price for all items in a category (+ new category price tile) (can also allow for sets?)
+- [ ] Sometimes not enough space for menu item description.  We need to warn user about or limit the characters for menu item creation.
+- [ ] "Enhance this image" feature#
+- [ ] Menu Control Panel > Download Menu Images (PNG zip)
+- [ ] Move item up or down
+- [ ] Allow cutouts for uploaded images
+- [ ] Rename this page to menu curator
+- [ ] Existing menu extract: Message "This may take a few minutes. Leave this page open while the key is being added." and checkbox with "Email me when ready".
+- [ ] Cartoon/stylised food images
+- [ ] Description creator or "stylist"
+- [ ] Rate my description
+- [ ] Boost my description
+- [ ] Add a footnote
+- [ ] Allow cropping of image
+
+## /template
+- [ ] Hand tool to navigate preview pane
+- [ ] Advise that locked menus (free plan) can't be exported
+- [ ] Upload branding colours
+- [ ] For "6. Display Options": new options to only show images for feature items
+- [ ] Develop presets
+- [ ] "Polaroid" / angled effect.  Perhaps with "marker pen" headings?
+- [ ] Should still leave a space between categories even if category titles toggled off
+- [ ] Drag and drop tiles
+- [ ] Image edit applies to banner logo and flagship image
+- [ ] Alternating colour tiles (i.e. menu items, not spacers).
+- [ ] Design flourishes, e.g. paint splashes, food ingredients, etc. (overlay)
+
+## /pricing
+- [x] Image resolutions - 1k for Creator Pack, 4k for GridMenu+ and G+P
+- [ ] Review pricing approach as per ChatGPT suggestion (chat "GridMenu Pricing Analysis")
+- [ ] Mauricio feedback - billing period (quarterly, bi-annually, annually)
+
+## Payment QR
+- [ ] Add capability to add a payment QR code via the /extracted page (and reflect on pricing page)
+
+## Railway
+- [ ] Monitoring of workers in the Admin dashboard (particularly keen to understand turnaround times for extraction and export tasks)
+
+## Home Page
+- [x] Update text to be less American
+- [ ] Gallery section for food photography on home page
+- [ ] Home page anchor links gridmenu.ai/#how-it-works, /#templates, /#before-after (for Google Ads)
+- [ ] Show menu and image outputs examples
+
+## Demo Flow
+- [ ] Remove "Extract items" step - not necessary for demo flow (extra click)
+
+## Stripe
+- [ ] Verify that webhooks are in place to detect recurring payments, failures, etc. (as per Gemini chat)
+
+## Admin
+- [x] Create feature flag for new registrants approval in Admin > Users 
+- [ ] Track payment failures and cancellations
+- [ ] Change primary email logins to admin@gridmenu.ai (e.g. Postmark, NameCheap, Railway, Supabase, etc.)
+- [ ] Remove LOG_LEVEL="debug" from Railway variables
+- [ ] Consolidate documentation so as to be intuitive and useful (for both me and AI dev)
+- [ ] Cyber attack protection plan
+- [ ] Power user, i.e. "login as user X" (support)
+- [ ] Determine and document how to issue refunds
+- [ ] Talk to JBL about SUTE Tax Exemption
+
+## FAQ
+- [ ] Add "I didn't receive my menu?", check junk/spam folders, etc.
+
+## Structural / Architectural
+- [ ] Quantity or sized pricing, e.g. S/M/L, 1/2/5/Box, 12"/18" pizza, etc.
+- [ ] Explore batch requests to Gemini image creation (saves costs)
+- [ ] Explore use of ChatGPT Images 2.0 (and other options?) as backup to remove single-dependency image generation
+- [ ] Playwright (Patrick Ellis YT video)
+- [ ] App
+
+## Social Media and Advertising
+- [ ] New video (all SM platforms) - how to generate or upload an image in GridMenu
+- [ ] LinkedIn page (and can I link it to my profile discreetly?)
+- [ ] Understand what is required and potential upside to conduct a cold email campaign
+
+## Outbound Email
+- [ ] Edit-window urgency email - see doc "EDIT-WINDOW-URGENCY-EMAILS.md" 
+
+## misc
+- [ ] Create CP, Grid+, and G+P logo for upload to Stripe products config
+- [ ] Monochrome GridMenu logo on every menu
+
+## Unclassified
+- [ ] Lloyd feedback: Give an option to email the PDF menu or send to printers (order x amount)
+- [ ] Grid+Premium option to suggest descriptions, etc.
+- [ ] Priority Railway queues for subscribers
+- [ ] Accessibility (read Reddit pain points analysis)
+- [ ] Review logging scope
+- [ ] Reminder email for credits expiry
+- [ ] Multi-user access to accounts (Premium tier)
+- [ ] Add option to include opening hours in menu header/footer/tile
+- [ ] Consider a sense of Draft -> Published to allow edits in the case of live menus
+- [ ] Mauricio feedback - menu item suggestion - including ingredients and recipes
+- [ ] Mauricio feedback - inventory management
+- [ ] If someone subscribes to G+P and they have Creator Packs, refund the CPs
+- [ ] Language support
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+>>>>>>>>>>>>> DONE >>>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+## /upload
+- [x] Add multiple pages with recommendation for number of items per photo
+- [x] Capability to "append" new items
+- [x] Fail gracefully
+- [x] Handle multiple images at once
+
+## /extracted
+- [x] Remove "Bulk tools will use your current selection." from menu items
+- [x] Edit category title
+- [x] Add category
+- [x] Delete category
+- [x] Add establishment details to "profile", e.g. establishment name, type, address, etc.
+- [x] Pencil icon rather than click image
+- [x] Delete menu item
+- [x] Mark item as out of stock
+- [x] Generate another image
+- [x] Send Menu item to other category
+- [x] Can't view existing photo full size for menu item
+- [x] Can't edit title, description, price, etc. for menu item
+- [x] Advanced menu options: Edit order of categories
+- [x] If the first time a user lands on /extracted, and they have used an image to create items - display a modal that asks them to review all the details.
+- [x] Menu Control Panel > Download Menu pages (PDF)
+- [x] Renaming a category pushes it to the bottom
+- [x] Disable but don't delete images for item or category
+- [x] "Select all" in category but not all in menu
+- [x] Remove "Add QR / manage items" button from control panel
+- [x] Users can no longer upload their own images
+- [x] Remove slate if user for provides background (and warning for users using background images)
+- [x] Menu Control Panel > Download Menu pages as PNG
+- [x] Collapse photo options sections once image generation starts and advise not to exit the page or refresh
+
+## Image Generation Test Harness
+- [x] Reference image
+- [x] Test with OMG Donuts
+- [x] Reference photo(s) for inclusion in image generation for general users
+
+## /extracted - Image Generation
+- [x] Understand what's required and pricing to switch to NB2
+- [x] Determine best practices for prompting
+- [x] Investigate how prompting is currently constructed (Admin area should reveal details)
+- [x] Overhaul prompting modal interface to simplify for non-technical
+- [x] ISSUE: "Request...failed with status 429 Too Many Requests..."
+- [x] Need indicator of cutout status per menu item image
+- [x] Capability to switch to alternative Replicate providers
+
+## Menu templates
+
+## /template
+- [x] Preserve last configuration per menu (save button and "save before exit"?)
+- [x] "3. Background texture" too faint in exports
+- [x] Centre category headings for "1 column (tall)" setting under "1. Grid Layout"
+- [x] Not enough room for many menu item descriptions in some templates
+- [x] Redirect user back to Dashboard after export from /template to reduce repeat clicks/requests
+- [x] Images too dark, perhaps only darken lower half (assuming top half has text)
+- [x] Show/hide category title
+- [x] If no/disabled images for category, render as text-only layout
+- [x] Drag and zoom individual menu item images in-place
+- [x] Introduce A3 variants to create more space for menu items and menu item components
+- [x] Banner Image (flagship concept)
+- [x] Featured tiles to stand out
+- [x] Flagship as 2x1 large tiles
+- [x] Logo / category headers as special filler tiles
+- [x] Decouple non-structural template changes from API call
+- [x] Item name label for flagship item in banner
+- [x] Reset button on demo doesn't work for Banner and Font Style controls
+- [x] Make flagship photo gen. mandatory
+
+### GridMenu V2 Layout Engine
+- [x] Complete V2 architecture implementation
+- [x] PDF-first rendering with points-based coordinate system
+- [x] Region-based page partitioning (header/title/body/footer)
+- [x] Streaming pagination algorithm
+- [x] YAML-based template DSL with schema validation
+- [x] Classic Cards V2 template implementation
+- [x] Item indicators support (dietary, allergens, spice levels)
+- [x] Filler tiles with safe zones
+- [x] Property-based testing with invariant validation
+- [x] Layout Lab developer test harness
+- [x] Feature flag integration (V1/V2 switching)
+- [x] Comprehensive documentation and API reference
+- [x] Image placeholder fix for visual parity (items without images now use ITEM_CARD with placeholder)
+- [x] Palette selection
+- [x] Background textures
+- [x] Logo size
+- [x] Make menu title optional
+- [x] Remove unnecessary background colour fills from grid elements
+- [x] Capability to modify category styling
+- [x] Prices should be right-justified to avoid clashing with menu item titles
+- [x] V2 tech as default for general use
+
+### GridMenu V2 Layout Engine Enhancements
+- [x] Additional template families (two-, three-, four-column)
+- [x] A4 landscape and A3 page size support
+- [x] Amit feedback: "Column-style" pages (e.g. "half-A4, tall")
+- [x] Amit feedback: Only selected "specials" have photos
+- [x] Flourishes / section dividers (e.g. design-inspiration-7.png)
+- [x] Multi-cell filler tiles / Mosaic layouts (currently 1x1 only), e.g. design-inspiration-5.jpg
+- [x] Themed menus, e.g. Superbowl, Valentine's, CNY, etc.
+- [x] Swap colour palettes
+- [x] Additional background colours and textures
+- [x] "Full-tile image" variants
+
+## Export
+- [x] Resolution (V2 uses points-based system for consistent PDF output)
+- [x] Fixed sizes, e.g. A4 (V2 supports A4 portrait/landscape with configurable margins)
+
+### Logo placement
+- [x] Needs to be at the top and smaller
+- [x] Remove dotted line
+- [x] Option for if no logo was provided
+- [x] Consistent across template and exports
+- [x] Investigate examples of low-res images in PDFs with consideration to file size
+- [x] Page number displaying on export and overlaying footer info
+
+## Outbound Email
+- [x] Set up SendGrid account (add domain gridmenu.ai)
+- [x] Get the SMTP credentials provided
+- [x] Toggle "Enable Custom SMTP" to ON in Supabase prod and paste SMTP credentials in
+- [x] Set up Admin auth emails via SendGrid and Vercel Env vars
+- [x] Upgrade SendGrid plan to Pro to prevent IP address sharing (with potential spammers)
+- [x] Create Google Workspace account to enable outgoing @gridmenu.ai email addresses
+- [x] Switch provider from SendGrid to Postmark
+- [x] Determine and document all emails sent
+- [x] Update style and content
+- [x] Upgrade to Postmark 10,000 plan ($15)
+- [x] Supabase login/register emails still look terrible
+
+## Review Pricing
+- [x] Determine pricing tiers
+- [x] Clarify "unlock elements" on /export page
+- [x] Implement changes in pricing page
+
+## Back office
+- [x] Complete bank account application
+- [x] Privacy Policy - consider data use (particularly at scale, benchmarking, etc.)
+- [x] Terms of Service
+- [x] Contact Us
+
+## Site stability
+- [x] Waitlist (for MVP, email goes to me for confirmation)
+- [x] Throttles (review what hourly and daily limits have been set per account level)
+- [x] Understand what new sign-ups have access to (i.e. Generation limits, Admin dashboard, etc.)
+
+## Sign up
+- [x] Capture name and optional profile information
+- [x] Register email still looks horribly basic
+
+## Demo Flow
+- [x] More clarity on demo input menu as it stands before implementing changes
+- [x] Lloyd feedback: input menu is confusing, looks like output
+- [x] Include sample logo, address, etc.
+- [x] Replace "breakfast blackboard" photo with MS Word photo version
+- [x] Demo flow - don't allow users to proceed beyond /extracted until all images generated
+- [x] Remove waypoints (or at least restyle so its clear they're not buttons)
+
+## Resolve paths
+- [x] Create sitemap.xml (if not generated by Vercel)
+- [x] Submit sitemap.xml full URL to Google Search Tools and Bing Webmaster Tools
+- [x] /ux
+
+## Deployment
+- [x] Purchase domain
+- [x] Set up gridmenu.ai emails
+
+## Railway
+- [x] Implement Railway architecture to offload PDF export from Vercel
+- [x] Plan for utilising Railway for image export
+- [x] Utilise workers for Demo exports now that complexity is rising in template options
+
+## Aspire Completion
+- [x] Add company name Gorrrf Private Ltd, UEN number, and office address as per ACRA
+- [x] Finalise Aspire bank account setup
+- [x] Add funds
+- [x] Obtain payment mechanism
+
+## Implement Stripe payment system
+- [x] Register account
+- [x] Set up test transactions
+- [x] Integrate with payment page
+- [x] Test all scenarios as per STRIPE_CLI_LOCAL_TESTING.md
+- [x] Ensure Creator Packs can't be purchased while on Grid+Premium
+- [x] Remove /upgrade page (and all paths to it)
+- [x] Test in Production
+- [x] Currency Support (for appearing on menus)
+- [x] Currency Support (for package pricing / Stripe)
+- [x] Enable subscription cancellation process
+
+## Structural / Architectural
+- [x] Image creation to background job
+- [x] Migrate out of OneDrive on laptop development
+- [x] Placeholder Items / re-work onboarding flow to fight prospective user engagement drop-out
+
+## Allergens / Spice level / etc
+- [x] Determine list (V2 supports dietary indicators: vegetarian, vegan, halal, kosher, gluten-free)
+- [x] Consider design impact (V2 renders indicators within item tiles using INLINE mode)
+- [x] Implement (V2 has full ItemIndicatorsV2 support with configurable rendering modes)
+
+## misc.
+- [x] Updates FAQ with battle card Qs
+- [x] Footer should use real social media handles (with icons)
+- [x] Advanced menu options: Currency selection
+- [x] Remove the word "Pilot" from emails
+- [x] Periodic pulsing/bulging customise button.  Also - switch to yellow (it gets lost in the footer when users scroll down)
+
+## SEO optimisation
+- [x] Update content keywords "QR menu,digital menu,restaurant menu,mobile menu,QR code menu"
+- [x] Review Home page title
+- [x] Review page headings and subheadings
+- [x] Review slugs (for internal links)
+- [x] Ensure image file names are relevant to search
+- [x] Ensure image file alt text are relevant to search (be descriptive, and avoid keyword stuffing)
+- [x] Use Open Graph (OG) meta tags for social media sharing
+- [x] Identify and post backlinks sites for SEO (Product Hunt, betalist, Crunchbase, AlternativeTo)
+- [x] "Best menu design for restaurant" Starter Story April 26 "I Make $17k/Month With One Strategy"
+
+## Market awareness
+- [x] Create Facebook page (https://www.facebook.com/gridmenu/)
+- [x] Create X account (https://x.com/gridmenu)
+- [x] Create Instagram account (https://www.instagram.com/gridmenu/)
+- [x] Add links to footer
+- [x] Create Instagram account and add link icon to footer
+- [x] Reddit community posting
+- [x] Google "Transform your restaurant menu into a mobile-friendly QR code menu in minutes. Upload your existing menu or try our demo - no credit card required."
+
+## Social Media and Advertising
+- [x] Set up first Google ad campaign
+- [x] Add Google tag to <head>
+- [x] Share buttons on blog posts
+- [x] Business cards
+- [x] Update home page to show video with costs savings vs photographers, designers, etc.
+- [x] Process to email those that have signed up and/or subscribed
+- [x] May the 4th menu
+- [x] Mother's Day menu
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+>>>>>>>>> NOTES / REF. >>>>>>>>>>>>>
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+> Are these changes reflected in the files @src/lib/templates/v2/README.md, @src/lib/templates/v2/STYLING_GUIDE.md, @src/lib/templates/v2/TEMPLATE_AUTHORING_GUIDE.md, @src/lib/templates/v2/LIMITATIONS.md (if appropriate to do so)?
+
+> Re-add QR code generation from:
+> http://localhost:3000/dashboard/menus/[menu-id]
+
+> http://localhost:3000/ux/menus/[menu-id]/export
+> http://localhost:3000/ux/menus/[menu-id]/extracted
+> http://localhost:3000/ux/menus/[menu-id]/template

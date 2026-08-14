@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth-utils'
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
+import { clearFeatureFlagCache } from '@/lib/feature-flags'
 
 export async function GET() {
   try {
@@ -49,6 +50,8 @@ export async function PATCH(request: NextRequest) {
       console.error('Error updating feature flag:', error)
       return NextResponse.json({ error: 'Failed to update feature flag' }, { status: 500 })
     }
+
+    clearFeatureFlagCache()
     
     return NextResponse.json({ success: true, data })
   } catch (err: any) {

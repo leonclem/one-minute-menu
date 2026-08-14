@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import ArticleInflation from './ArticleInflation'
+import { withParkedRobots } from '@/lib/studio/public-seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withParkedRobots({
   title: 'Restaurants Cannot Control Inflation. They Can Control This | GridMenu',
   description:
     'Restaurants cannot control inflation or supplier volatility, but they can control how quickly they respond. Here is why menu agility matters more than ever.',
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     images: ['/backgrounds/ship-on-rough-sea-foreshadow.png'],
   },
-}
+})
 
 export default function RestaurantsInflationPage() {
   return <ArticleInflation />

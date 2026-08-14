@@ -120,6 +120,68 @@ describe('product-mode', () => {
     })
   })
 
+  describe('shouldRequireRestaurantOnboarding', () => {
+    it('matches legacy menu nav: required by default', async () => {
+      const { shouldRequireRestaurantOnboarding } = await loadModule()
+      expect(shouldRequireRestaurantOnboarding()).toBe(true)
+    })
+
+    it('is skipped when the studio-first public surface is on', async () => {
+      process.env.NEXT_PUBLIC_PRODUCT_MODE = 'photo-studio'
+      process.env.NEXT_PUBLIC_ENABLE_LEGACY_MENUS = 'false'
+      const { shouldRequireRestaurantOnboarding } = await loadModule()
+      expect(shouldRequireRestaurantOnboarding()).toBe(false)
+    })
+  })
+
+  describe('isStudioPublicSurface', () => {
+    it('defaults to false when flags are unset', async () => {
+      const { isStudioPublicSurface } = await loadModule()
+      expect(isStudioPublicSurface()).toBe(false)
+    })
+
+    it('is true only when studio mode, legacy menus off, and photo studio enabled', async () => {
+      process.env.NEXT_PUBLIC_PRODUCT_MODE = 'photo-studio'
+      process.env.NEXT_PUBLIC_ENABLE_LEGACY_MENUS = 'false'
+      process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
+      const { isStudioPublicSurface } = await loadModule()
+      expect(isStudioPublicSurface()).toBe(true)
+    })
+
+    it('stays false if photo studio is still disabled', async () => {
+      process.env.NEXT_PUBLIC_PRODUCT_MODE = 'photo-studio'
+      process.env.NEXT_PUBLIC_ENABLE_LEGACY_MENUS = 'false'
+      const { isStudioPublicSurface } = await loadModule()
+      expect(isStudioPublicSurface()).toBe(false)
+    })
+  })
+
+  describe('getPostLoginPath', () => {
+    it('defaults to onboarding when studio is off', async () => {
+      const { getPostLoginPath } = await loadModule()
+      expect(getPostLoginPath()).toBe('/onboarding')
+    })
+
+    it('returns /studio when photo studio is enabled', async () => {
+      process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
+      const { getPostLoginPath } = await loadModule()
+      expect(getPostLoginPath()).toBe('/studio')
+    })
+  })
+
+  describe('getAuthenticatedHomePath', () => {
+    it('defaults to dashboard when studio is off', async () => {
+      const { getAuthenticatedHomePath } = await loadModule()
+      expect(getAuthenticatedHomePath()).toBe('/dashboard')
+    })
+
+    it('returns /studio when photo studio is enabled', async () => {
+      process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
+      const { getAuthenticatedHomePath } = await loadModule()
+      expect(getAuthenticatedHomePath()).toBe('/studio')
+    })
+  })
+
   describe('isStudioAdminOnly', () => {
     it('defaults to true when unset', async () => {
       const { isStudioAdminOnly } = await loadModule()

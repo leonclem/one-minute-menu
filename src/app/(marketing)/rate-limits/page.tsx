@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { UXCard } from '@/components/ux'
+import { withParkedRobots } from '@/lib/studio/public-seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withParkedRobots({
   title: 'Rate Limits & Fair Use Policy | GridMenu',
   description:
     'Detailed breakdown of rate limits, quotas, and fair use policies for all GridMenu plans.',
-}
+})
 
 const LIMITS = [
   {

@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardHeader, CardTitle, CardContent, Button } from '@/components/ui'
 import { User, UserPlan } from '@/types'
+import { getAuthenticatedHomePath } from '@/lib/product-mode'
 
 type PollingStatus = 'polling' | 'success' | 'timeout' | 'error'
 type PurchaseType = 'subscription' | 'creator_pack'
@@ -21,6 +22,8 @@ function CheckoutSuccessContent() {
   const [error, setError] = useState<string | null>(null)
   const [purchaseType, setPurchaseType] = useState<PurchaseType | null>(null)
   const [redirectSeconds, setRedirectSeconds] = useState<number | null>(null)
+  const homePath = getAuthenticatedHomePath()
+  const homeLabel = homePath === '/studio' ? 'Go to Studio' : 'Go to Dashboard'
 
   const MAX_POLLING_ATTEMPTS = 15 // 15 attempts over 30 seconds
   const POLLING_INTERVALS = [2000, 2000, 2000, 2000, 2000, 3000, 3000, 3000, 4000, 4000, 5000, 5000, 5000, 5000, 5000] // Progressive backoff
@@ -139,7 +142,7 @@ function CheckoutSuccessContent() {
         if (prev === null) return prev
         if (prev <= 1) {
           clearInterval(intervalId)
-          router.push('/dashboard')
+          router.push(getAuthenticatedHomePath())
           return 0
         }
         return prev - 1
@@ -274,9 +277,9 @@ function CheckoutSuccessContent() {
               </div>
             )}
             <div className="pt-4">
-              <Link href="/dashboard">
+              <Link href={homePath}>
                 <Button variant="primary" className="w-full sm:w-auto">
-                  Go to Dashboard
+                  {homeLabel}
                 </Button>
               </Link>
             </div>
@@ -315,9 +318,9 @@ function CheckoutSuccessContent() {
               </p>
             </div>
             <div className="pt-4 space-y-3">
-              <Link href="/dashboard">
+              <Link href={homePath}>
                 <Button variant="primary" className="w-full sm:w-auto">
-                  Go to Dashboard
+                  {homeLabel}
                 </Button>
               </Link>
               <div>
@@ -373,9 +376,9 @@ function CheckoutSuccessContent() {
                 Try Again
               </Button>
               <div>
-                <Link href="/dashboard">
+                <Link href={homePath}>
                   <Button variant="outline" className="w-full sm:w-auto">
-                    Go to Dashboard
+                    {homeLabel}
                   </Button>
                 </Link>
               </div>
