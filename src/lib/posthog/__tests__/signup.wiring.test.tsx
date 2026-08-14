@@ -5,7 +5,7 @@
  */
 
 import React from 'react'
-import { render } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 
 const mockCaptureEvent = jest.fn()
 const mockIdentifyUser = jest.fn()
@@ -130,14 +130,17 @@ describe('login_completed wiring', () => {
 
     render(<TestComponent />)
 
-    // Trigger SIGNED_IN event
+    // Trigger SIGNED_IN event. The listener must return immediately (auth lock);
+    // identification continues in a fire-and-forget task.
     if (authCallback) {
-      await (authCallback as any)('SIGNED_IN', {
+      ;(authCallback as (event: string, session: unknown) => void)('SIGNED_IN', {
         user: { id: 'test-user-id-123' },
       })
     }
 
-    expect(mockCaptureEvent).toHaveBeenCalledWith('login_completed')
+    await waitFor(() => {
+      expect(mockCaptureEvent).toHaveBeenCalledWith('login_completed')
+    })
   })
 
   it('does not fire login_completed on SIGNED_OUT', async () => {
@@ -157,7 +160,7 @@ describe('login_completed wiring', () => {
     render(<TestComponent />)
 
     if (authCallback) {
-      await (authCallback as any)('SIGNED_OUT', null)
+      ;(authCallback as (event: string, session: unknown) => void)('SIGNED_OUT', null)
     }
 
     expect(mockCaptureEvent).not.toHaveBeenCalledWith('login_completed')

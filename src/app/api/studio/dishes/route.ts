@@ -7,11 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireStudioApi } from '@/lib/studio/studio-api-auth'
-import {
-  createStudioDish,
-  ensureDefaultStudioDish,
-  listStudioDishesWithThumbnails,
-} from '@/lib/studio/dishes'
+import { createStudioDish, listStudioDishesWithThumbnails } from '@/lib/studio/dishes'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -21,12 +17,7 @@ export async function GET() {
     const auth = await requireStudioApi()
     if (!auth.ok) return auth.response
 
-    let dishes = await listStudioDishesWithThumbnails(auth.user.id)
-    if (dishes.length === 0) {
-      await ensureDefaultStudioDish(auth.user.id)
-      dishes = await listStudioDishesWithThumbnails(auth.user.id)
-    }
-
+    const dishes = await listStudioDishesWithThumbnails(auth.user.id)
     return NextResponse.json({ dishes })
   } catch (error) {
     logger.error('❌ [Studio Dishes] GET failed', { error })

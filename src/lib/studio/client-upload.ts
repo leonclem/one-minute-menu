@@ -1,11 +1,13 @@
 /**
  * Client-side direct upload of studio source images to Supabase Storage.
  * Bypasses Vercel's 4.5 MB request-body limit.
+ *
+ * Auth is established by a same-origin API that issues a signed upload URL.
+ * The browser then PUTs the file to Storage without calling supabase.auth.getSession(),
+ * which can deadlock on the GoTrue auth lock during first-load SIGNED_IN handlers.
  */
 
-import { supabase } from '@/lib/supabase'
 import { validateImageFileForUpload, type AllowedMimeType } from '@/lib/photo-control/image-uploader'
-import { buildStudioStoragePath, normalizeStoragePublicUrl, STUDIO_STORAGE_BUCKET } from '@/lib/studio/storage-paths'
 
 export type StudioClientUploadResult =
   | {
@@ -18,21 +20,72 @@ export type StudioClientUploadResult =
     }
   | { ok: false; error: string }
 
-// Supabase serializes session access. If a browser auth lock is left pending, an
-// unbounded getSession() call can prevent the upload request from ever starting.
-const SESSION_TIMEOUT_MS = 15_000
+const PREPARE_TIMEOUT_MS = 15_000
 const UPLOAD_TIMEOUT_MS = 90_000
 const CLEANUP_TIMEOUT_MS = 10_000
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timeout = window.setTimeout(() => reject(new Error(message)), timeoutMs)
-    promise.then(resolve, reject).finally(() => window.clearTimeout(timeout))
-  })
+type PreparedUpload = {
+  imageId: string
+  storagePath: string
+  signedUrl: string
+  publicUrl: string
 }
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === 'AbortError') ||
+    (error instanceof Error && error.name === 'AbortError')
+  )
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  timeoutMs: number,
+  timeoutMessage: string,
+): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new Error(timeoutMessage)
+    }
+    throw error
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
+
+async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+  const payload = (await response.json().catch(() => null)) as { error?: string } | null
+  return payload?.error || fallback
+}
+
+async function putFileToSignedUrl(signedUrl: string, file: File): Promise<void> {
+  const body = new FormData()
+  body.append('cacheControl', '31536000')
+  body.append('', file)
+
+  const response = await fetchWithTimeout(
+    signedUrl,
+    {
+      method: 'PUT',
+      body,
+      headers: { 'x-upsert': 'false' },
+    },
+    UPLOAD_TIMEOUT_MS,
+    'The image upload timed out. Check your connection and try again.',
+  )
+
+  if (!response.ok) {
+    throw new Error('Failed to upload image to storage.')
+  }
 }
 
 export async function uploadStudioSourceFile(file: File): Promise<StudioClientUploadResult> {
@@ -41,57 +94,49 @@ export async function uploadStudioSourceFile(file: File): Promise<StudioClientUp
     return { ok: false, error: validation.error }
   }
 
+  let uploadedStoragePath: string | null = null
+
   try {
-    // getSession reads the locally persisted session and does not wait for remote
-    // validation or token refresh. Storage RLS and the source-registration API
-    // both enforce authentication server-side before accepting this upload.
-    const {
-      data: { session },
-      error: sessionError,
-    } = await withTimeout(
-      supabase.auth.getSession(),
-      SESSION_TIMEOUT_MS,
-      'Timed out while checking your sign-in. Refresh the page and try again.',
+    const prepareResponse = await fetchWithTimeout(
+      '/api/studio/source/upload-url',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mimeType: validation.mimeType }),
+      },
+      PREPARE_TIMEOUT_MS,
+      'Timed out while preparing your upload. Refresh the page and try again.',
     )
 
-    if (sessionError || !session?.user) {
-      return { ok: false, error: 'You must be signed in to upload images.' }
+    if (!prepareResponse.ok) {
+      const fallback =
+        prepareResponse.status === 401
+          ? 'You must be signed in to upload images.'
+          : 'Failed to prepare image upload.'
+      return { ok: false, error: await readErrorMessage(prepareResponse, fallback) }
     }
 
-    const imageId = crypto.randomUUID()
-    const storagePath = buildStudioStoragePath(session.user.id, imageId, validation.mimeType)
-
-    const { error: uploadError } = await withTimeout(
-      supabase.storage.from(STUDIO_STORAGE_BUCKET).upload(storagePath, file, {
-        contentType: validation.mimeType,
-        cacheControl: '31536000',
-        upsert: false,
-      }),
-      UPLOAD_TIMEOUT_MS,
-      'The image upload timed out. Check your connection and try again.',
-    )
-
-    if (uploadError) {
-      return {
-        ok: false,
-        error: uploadError.message || 'Failed to upload image to storage.',
-      }
+    const prepared = (await prepareResponse.json()) as Partial<PreparedUpload>
+    if (!prepared.imageId || !prepared.storagePath || !prepared.signedUrl || !prepared.publicUrl) {
+      return { ok: false, error: 'Failed to prepare image upload.' }
     }
 
-    const { data: urlData } = supabase.storage
-      .from(STUDIO_STORAGE_BUCKET)
-      .getPublicUrl(storagePath)
-    const publicUrl = normalizeStoragePublicUrl(urlData.publicUrl)
+    uploadedStoragePath = prepared.storagePath
+    await putFileToSignedUrl(prepared.signedUrl, file)
+    uploadedStoragePath = null
 
     return {
       ok: true,
-      imageId,
+      imageId: prepared.imageId,
       mimeType: validation.mimeType,
       bytes: validation.bytes,
-      publicUrl,
-      storagePath,
+      publicUrl: prepared.publicUrl,
+      storagePath: prepared.storagePath,
     }
   } catch (error) {
+    if (uploadedStoragePath) {
+      void removeStudioStorageObject(uploadedStoragePath)
+    }
     return {
       ok: false,
       error: errorMessage(error, 'Failed to upload image. Refresh and try again.'),
@@ -101,8 +146,13 @@ export async function uploadStudioSourceFile(file: File): Promise<StudioClientUp
 
 export async function removeStudioStorageObject(storagePath: string): Promise<void> {
   try {
-    await withTimeout(
-      supabase.storage.from(STUDIO_STORAGE_BUCKET).remove([storagePath]),
+    await fetchWithTimeout(
+      '/api/studio/source/upload-url',
+      {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storagePath }),
+      },
       CLEANUP_TIMEOUT_MS,
       'Storage cleanup timed out',
     )

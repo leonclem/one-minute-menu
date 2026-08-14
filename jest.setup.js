@@ -35,6 +35,7 @@ if (typeof global.Response === 'undefined') {
       this.body = body
       this.status = init?.status || 200
       this.statusText = init?.statusText || 'OK'
+      this.ok = this.status >= 200 && this.status < 300
       this.headers = new Map(Object.entries(init?.headers || {}))
     }
     

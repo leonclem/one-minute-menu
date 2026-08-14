@@ -324,6 +324,8 @@ export function StudioClient({
   const [creditsDialogOpen, setCreditsDialogOpen] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pendingUploadAfterCreateRef = useRef(false)
+  const [openFilePickerWhenReady, setOpenFilePickerWhenReady] = useState(false)
 
   const activeDish = dishes.find((d) => d.id === activeDishId) ?? dishes[0]
   const dishBlocked = Boolean(activeDish?.generation_blocked_at)
@@ -698,6 +700,21 @@ export function StudioClient({
       void activateImage(current, { persistCurrent: false })
     }
   }, [activateImage, initialActiveDishId, initialDishes, initialGallery])
+
+  const requestUpload = useCallback(() => {
+    if (!activeDishId) {
+      pendingUploadAfterCreateRef.current = true
+      setCreateOpen(true)
+      return
+    }
+    fileInputRef.current?.click()
+  }, [activeDishId])
+
+  useEffect(() => {
+    if (!openFilePickerWhenReady || !activeDishId || busy) return
+    setOpenFilePickerWhenReady(false)
+    fileInputRef.current?.click()
+  }, [openFilePickerWhenReady, activeDishId, busy])
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1140,6 +1157,8 @@ export function StudioClient({
 
   const handleCreateDish = useCallback(
     async (name: string) => {
+      const shouldOpenPicker = pendingUploadAfterCreateRef.current
+      pendingUploadAfterCreateRef.current = false
       setCreateOpen(false)
       setLibraryBusy(true)
       setLibraryError(null)
@@ -1161,6 +1180,9 @@ export function StudioClient({
         resetEditorForNewSource()
         setSourceImage(null)
         setPersistedSourceId(null)
+        if (shouldOpenPicker) {
+          setOpenFilePickerWhenReady(true)
+        }
       } catch (err) {
         setLibraryError(err instanceof Error ? err.message : 'Failed to create dish')
       } finally {
@@ -1352,11 +1374,12 @@ export function StudioClient({
     <div className="space-y-6" data-studio-access-reason={reason}>
       {studioView.showFirstRun && !firstRunDismissed && (
         <StudioFirstRunPanel
-          onOpenFilePicker={() => fileInputRef.current?.click()}
+          onOpenFilePicker={requestUpload}
           onDismiss={handleFirstRunDismiss}
           accessMode={accessMode}
           accessReason={reason}
           isAdmin={isAdmin === true}
+          needsDishName={!activeDishId}
         />
       )}
       {creditBalance !== null && creditBalance <= 0 && <StudioStateNotice kind="no_credit" />}
@@ -1744,11 +1767,11 @@ export function StudioClient({
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-gray-300 text-sm text-gray-400">
                   <button
                     type="button"
-                    disabled={busy || !activeDishId}
+                    disabled={busy}
                     className="rounded-md bg-ux-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={requestUpload}
                   >
-                    Upload Photo
+                    {activeDishId ? 'Upload Photo' : 'Name your dish'}
                   </button>
                   <p className="text-xs text-gray-500">PNG, JPEG, or WebP · up to 9 MB</p>
                 </div>
@@ -1960,10 +1983,13 @@ export function StudioClient({
 
       <StudioTextModal
         open={createOpen}
-        title="New dish"
+        title={activeDishId ? 'New dish' : 'Name your dish'}
         label="Dish name"
         confirmText="Create"
-        onCancel={() => setCreateOpen(false)}
+        onCancel={() => {
+          pendingUploadAfterCreateRef.current = false
+          setCreateOpen(false)
+        }}
         onConfirm={(name) => void handleCreateDish(name)}
       />
       <StudioTextModal

@@ -12,14 +12,14 @@
  * Implements: 6.1, 6.5
  */
 
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
 const mockUnsubscribe = jest.fn()
-let capturedAuthCallback: ((event: string, session: unknown) => Promise<void>) | null = null
+let capturedAuthCallback: ((event: string, session: unknown) => void) | null = null
 
 // Mock profile row returned by the direct Supabase browser-client query.
 // The hook now queries supabase.from('profiles').select(...).eq(...).single()
@@ -40,7 +40,7 @@ jest.mock('@/lib/supabase', () => ({
   __esModule: true,
   supabase: {
     auth: {
-      onAuthStateChange: jest.fn((cb: (event: string, session: unknown) => Promise<void>) => {
+      onAuthStateChange: jest.fn((cb: (event: string, session: unknown) => void) => {
         capturedAuthCallback = cb
         return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
       }),
@@ -110,10 +110,10 @@ describe('useAnalyticsIdentify — identify wiring', () => {
     renderHook(() => useAnalyticsIdentify())
 
     expect(capturedAuthCallback).not.toBeNull()
-    await capturedAuthCallback!('SIGNED_IN', MOCK_SESSION)
+    expect(capturedAuthCallback!('SIGNED_IN', MOCK_SESSION)).toBeUndefined()
 
+    await waitFor(() => expect(mockIdentifyUser).toHaveBeenCalledTimes(1))
     expect(mockFrom).toHaveBeenCalledWith('profiles')
-    expect(mockIdentifyUser).toHaveBeenCalledTimes(1)
 
     const [calledId, calledProps] = mockIdentifyUser.mock.calls[0]
     expect(calledId).toBe(MOCK_USER_ID)
@@ -147,7 +147,8 @@ describe('useAnalyticsIdentify — identify wiring', () => {
     const { useAnalyticsIdentify } = await import('../useAnalyticsIdentify')
     renderHook(() => useAnalyticsIdentify())
 
-    await capturedAuthCallback!('SIGNED_IN', MOCK_SESSION)
+    capturedAuthCallback!('SIGNED_IN', MOCK_SESSION)
+    await waitFor(() => expect(mockIdentifyUser).toHaveBeenCalledTimes(1))
 
     const [, calledProps] = mockIdentifyUser.mock.calls[0]
     expect(calledProps.is_admin).toBe(true)
@@ -160,7 +161,8 @@ describe('useAnalyticsIdentify — identify wiring', () => {
     const { useAnalyticsIdentify } = await import('../useAnalyticsIdentify')
     renderHook(() => useAnalyticsIdentify())
 
-    await capturedAuthCallback!('SIGNED_IN', MOCK_SESSION)
+    capturedAuthCallback!('SIGNED_IN', MOCK_SESSION)
+    await waitFor(() => expect(mockFrom).toHaveBeenCalledWith('profiles'))
 
     expect(mockIdentifyUser).not.toHaveBeenCalled()
   })
@@ -171,8 +173,8 @@ describe('useAnalyticsIdentify — identify wiring', () => {
     const { useAnalyticsIdentify } = await import('../useAnalyticsIdentify')
     renderHook(() => useAnalyticsIdentify())
 
-    // Must not throw
-    await expect(capturedAuthCallback!('SIGNED_IN', MOCK_SESSION)).resolves.toBeUndefined()
+    expect(() => capturedAuthCallback!('SIGNED_IN', MOCK_SESSION)).not.toThrow()
+    await waitFor(() => expect(mockFrom).toHaveBeenCalledWith('profiles'))
     expect(mockIdentifyUser).not.toHaveBeenCalled()
   })
 
@@ -180,7 +182,7 @@ describe('useAnalyticsIdentify — identify wiring', () => {
     const { useAnalyticsIdentify } = await import('../useAnalyticsIdentify')
     renderHook(() => useAnalyticsIdentify())
 
-    await capturedAuthCallback!('SIGNED_OUT', null)
+    capturedAuthCallback!('SIGNED_OUT', null)
 
     expect(mockResetAnalytics).toHaveBeenCalledTimes(1)
     expect(mockIdentifyUser).not.toHaveBeenCalled()
@@ -190,11 +192,24 @@ describe('useAnalyticsIdentify — identify wiring', () => {
     const { useAnalyticsIdentify } = await import('../useAnalyticsIdentify')
     renderHook(() => useAnalyticsIdentify())
 
-    await capturedAuthCallback!('TOKEN_REFRESHED', MOCK_SESSION)
-    await capturedAuthCallback!('USER_UPDATED', MOCK_SESSION)
+    capturedAuthCallback!('TOKEN_REFRESHED', MOCK_SESSION)
+    capturedAuthCallback!('USER_UPDATED', MOCK_SESSION)
 
     expect(mockIdentifyUser).not.toHaveBeenCalled()
     expect(mockResetAnalytics).not.toHaveBeenCalled()
+  })
+
+  it('returns from the auth callback without waiting for the profile query', async () => {
+    mockSingle.mockImplementation(() => new Promise(() => {}))
+
+    const { useAnalyticsIdentify } = await import('../useAnalyticsIdentify')
+    renderHook(() => useAnalyticsIdentify())
+
+    const startedAt = Date.now()
+    const result = capturedAuthCallback!('SIGNED_IN', MOCK_SESSION)
+    expect(result).toBeUndefined()
+    expect(Date.now() - startedAt).toBeLessThan(50)
+    expect(mockIdentifyUser).not.toHaveBeenCalled()
   })
 
   it('unsubscribes from auth state changes on unmount', async () => {

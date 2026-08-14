@@ -91,6 +91,8 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-08-14 | First output format (Q6) | Keep the current Studio behaviour: generate at the source image’s framing; the user then picks export variants (delivery, social, cut-out, etc.) as needed. Do not add a staged “make cut-out then generate” control for this close-out. |
 | 2026-08-14 | Failed generation credits (Q7) | Keep debit-on-successful-persist. Failures must be loggable so support can investigate; recode via the existing admin credit grant if warranted. No automatic refund UX required. |
 | 2026-08-14 | Close original pivot requirements | `GridMenu_Photo_Studio_Pivot_Requirements_2026-07-16.md` is closed as the requirements set. Unshipped include-list items (clutter, garnish add, plating, worker queue, Stripe credit packs, etc.) move to `PIVOT_REMAINING_WORK.md` as a post-MVP to-do list, not open requirements. |
+| 2026-08-14 | Studio first-upload auth lock | First source upload on `/studio` was failing with a 15s `getSession()` timeout. Cause: GoTrue auth lock deadlock from an async `onAuthStateChange` profile fetch, plus the upload client waiting on that same lock. Fix: fire-and-forget analytics identify; signed Storage upload URL issued by `/api/studio/source/upload-url`. See patches log. |
+| 2026-08-14 | Name dish before first upload | Do not auto-create a placeholder dish named "My dishes". Empty Studio asks for a dish name before the file picker. See patches log. |
 
 ---
 
@@ -228,3 +230,5 @@ Record in `docs/pivot/PATCH_<slug>_<date>.md` rather than as a new chunk.
 |---|---|---|---|
 | 2026-07-27 | Direct-to-Supabase upload (413 fix, 9 MiB cap) | `main` | Deployed prod (`e9c856c`; confirmed by LC 2026-07-28) — see `docs/pivot/PATCH_DIRECT_SUPABASE_UPLOAD_2026-07-27.md` |
 | 2026-07-28 | Studio JSON metadata defects — Group A model-call configuration, Group B scene-descriptor payload redesign, and Group D documentation rewrite | `main` | Independent patch (no chunk number); built — not deployed. Manual production deploy is pending, and migration `075` must be applied before Group B app code. |
+| 2026-08-14 | Studio first-upload sign-in timeout (GoTrue auth lock + signed upload URL) | `main` | Built — see `docs/pivot/PATCH_STUDIO_UPLOAD_AUTH_LOCK_2026-08-14.md`. No migration or env var. |
+| 2026-08-14 | Name dish before first Studio upload (stop auto-creating "My dishes") | `main` | Built — see `docs/pivot/PATCH_STUDIO_NAME_DISH_BEFORE_UPLOAD_2026-08-14.md`. No migration or env var. |

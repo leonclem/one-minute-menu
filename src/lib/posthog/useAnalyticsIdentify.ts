@@ -5,6 +5,10 @@ import { supabase } from '@/lib/supabase'
 import { identifyUser, resetAnalytics, captureEvent } from './helper'
 import { ANALYTICS_EVENTS } from './events'
 
+type AuthSession = {
+  user?: { id: string }
+} | null
+
 /**
  * Supabase auth-state listener that wires PostHog user identification.
  *
@@ -20,57 +24,63 @@ import { ANALYTICS_EVENTS } from './events'
  *
  * Mounted once by PostHogBootstrap. Unsubscribes on cleanup.
  *
+ * The onAuthStateChange callback must return immediately. Supabase holds an
+ * auth lock while it awaits the callback; awaiting another supabase-js call
+ * from inside it deadlocks getSession() and storage uploads.
+ *
  * Implements: 6.1, 6.3, 6.5, 4.3 (login_completed)
  */
 export function useAnalyticsIdentify(): void {
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          try {
-            // Fetch profile directly via the browser Supabase client.
-            // We intentionally do NOT import userOperations from database.ts
-            // because that module imports supabase-server.ts (next/headers),
-            // which is incompatible with client components.
-            const { data: profileRow } = await supabase
-              .from('profiles')
-              .select(
-                'role, plan, subscription_status, is_approved, created_at',
-              )
-              .eq('id', session.user.id)
-              .single()
-
-            if (profileRow) {
-              identifyUser(session.user.id, {
-                role: profileRow.role ?? undefined,
-                plan: profileRow.plan ?? undefined,
-                subscription_status:
-                  profileRow.subscription_status ?? undefined,
-                is_admin: profileRow.role === 'admin',
-                is_approved: profileRow.is_approved ?? false,
-                created_at: profileRow.created_at ?? undefined,
-              })
-            }
-
-            // Fire login_completed for returning users.
-            // New-user signup_completed is fired from the onboarding client
-            // (where ?new_signup=true is present in the URL), so we emit
-            // login_completed here for all SIGNED_IN events. The onboarding
-            // client guards against double-counting by only firing
-            // signup_completed when isNewSignup is true.
-            captureEvent(ANALYTICS_EVENTS.LOGIN_COMPLETED)
-          } catch {
-            // Swallow profile-fetch errors — analytics identification is
-            // best-effort and must never break the auth flow.
-          }
-        } else if (event === 'SIGNED_OUT') {
-          resetAnalytics()
-        }
-      },
-    )
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        void identifySignedInUser(session)
+      } else if (event === 'SIGNED_OUT') {
+        resetAnalytics()
+      }
+    })
 
     return () => {
       sub.subscription.unsubscribe()
     }
   }, [])
+}
+
+async function identifySignedInUser(session: AuthSession): Promise<void> {
+  const userId = session?.user?.id
+  if (!userId) return
+
+  try {
+    // Fetch profile directly via the browser Supabase client.
+    // We intentionally do NOT import userOperations from database.ts
+    // because that module imports supabase-server.ts (next/headers),
+    // which is incompatible with client components.
+    const { data: profileRow } = await supabase
+      .from('profiles')
+      .select('role, plan, subscription_status, is_approved, created_at')
+      .eq('id', userId)
+      .single()
+
+    if (profileRow) {
+      identifyUser(userId, {
+        role: profileRow.role ?? undefined,
+        plan: profileRow.plan ?? undefined,
+        subscription_status: profileRow.subscription_status ?? undefined,
+        is_admin: profileRow.role === 'admin',
+        is_approved: profileRow.is_approved ?? false,
+        created_at: profileRow.created_at ?? undefined,
+      })
+    }
+
+    // Fire login_completed for returning users.
+    // New-user signup_completed is fired from the onboarding client
+    // (where ?new_signup=true is present in the URL), so we emit
+    // login_completed here for all SIGNED_IN events. The onboarding
+    // client guards against double-counting by only firing
+    // signup_completed when isNewSignup is true.
+    captureEvent(ANALYTICS_EVENTS.LOGIN_COMPLETED)
+  } catch {
+    // Swallow profile-fetch errors — analytics identification is
+    // best-effort and must never break the auth flow.
+  }
 }

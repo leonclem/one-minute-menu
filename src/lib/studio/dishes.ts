@@ -8,8 +8,6 @@ import type { StudioDishListItem, StudioDishRecord } from '@/lib/studio/types'
 
 export type { StudioDishListItem, StudioDishRecord } from '@/lib/studio/types'
 
-const DEFAULT_DISH_NAME = 'My dishes'
-
 function normalizeDishName(name: string): string | null {
   const trimmed = name.trim()
   if (!trimmed) return null
@@ -68,16 +66,6 @@ export async function listStudioDishesWithThumbnails(
       ? (urlById.get(dish.current_image_id) ?? null)
       : null,
   }))
-}
-
-/**
- * Ensure the user has at least one dish. Creates "My dishes" if none exist.
- */
-export async function ensureDefaultStudioDish(userId: string): Promise<StudioDishRecord> {
-  const existing = await listStudioDishes(userId)
-  if (existing.length > 0) return existing[0]
-
-  return createStudioDish(userId, DEFAULT_DISH_NAME)
 }
 
 export async function createStudioDish(

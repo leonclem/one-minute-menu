@@ -6,19 +6,21 @@ import type { StudioAccessReason } from '@/lib/studio/access/studio-access-decis
 import type { AccessMode } from '@/lib/studio/access/studio-access-mode'
 
 export interface StudioFirstRunPanelProps {
-  /** Opens the hidden file input owned by the Studio editor. */
+  /** Opens the hidden file input owned by the Studio editor, or asks for a dish name first. */
   onOpenFilePicker: () => void
   /** Persists the user's choice to hide this panel in the future. */
   onDismiss?: () => Promise<void> | void
   accessMode?: AccessMode
   accessReason?: StudioAccessReason
   isAdmin?: boolean
+  /** When true, the primary CTA asks for a dish name before upload. */
+  needsDishName?: boolean
 }
 
 const WORKFLOW_STEPS = [
   {
-    title: 'Upload a real dish photo',
-    description: 'Start with a clear photo of the dish you want to improve.',
+    title: 'Name the dish, then upload a photo',
+    description: 'Give the dish a name, then start with a clear photo of the dish you want to improve.',
   },
   {
     title: 'Choose controlled changes',
@@ -44,6 +46,7 @@ export function StudioFirstRunPanel({
   accessMode = 'admin-only',
   accessReason = 'granted_admin',
   isAdmin = false,
+  needsDishName = false,
 }: StudioFirstRunPanelProps) {
   const didTrackRef = useRef(false)
   const [dismissed, setDismissed] = useState(false)
@@ -134,7 +137,7 @@ export function StudioFirstRunPanel({
           onClick={onOpenFilePicker}
           className="rounded-md bg-ux-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ux-primary/40 focus:ring-offset-2"
         >
-          Upload a dish photo
+          {needsDishName ? 'Name your dish' : 'Upload a dish photo'}
         </button>
         <label className="flex items-center gap-2 text-sm text-gray-600">
           <input

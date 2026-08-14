@@ -52,6 +52,8 @@
 - [ ] Brand kit
 - [ ] Consider angle manipulation (best with cut-out perhaps, but still potential risks)
 
+## Bugs
+
 ## Issues
 - [ ] Why is cutout worker still appearing in Vercel logs?
 
@@ -59,8 +61,6 @@
 - [x] Upgrade Vercel package
 - [ ] Upgrade to Supabase Pro (and enable PITR)
 - [ ] Site under maintenance page / impending maintenance notice
-
-## Bugs
 
 ## "What's New?" page
 - [ ] "What's New?" page

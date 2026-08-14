@@ -11,7 +11,7 @@ import { UXHeader, UXFooter } from '@/components/ux'
 import { PendingApproval } from '@/components/dashboard/PendingApproval'
 import { SignupConversionBeacon } from '@/components/analytics/SignupConversionBeacon'
 import { StudioClient } from './_components/studio-client'
-import { ensureDefaultStudioDish, listStudioDishes } from '@/lib/studio/dishes'
+import { listStudioDishes } from '@/lib/studio/dishes'
 import { listStudioImagesForDish } from '@/lib/studio/library'
 import { getStudioCreditBalance } from '@/lib/studio/credits'
 import { resolveStudioAccess } from '@/lib/studio/access/studio-access'
@@ -159,14 +159,10 @@ export default async function StudioPage({
     .eq('id', user.id)
     .maybeSingle()
 
-  let dishes: StudioDishRecord[] = await listStudioDishes(user.id)
-  if (dishes.length === 0) {
-    dishes = [await ensureDefaultStudioDish(user.id)]
-  }
-
-  const activeDishId = dishes[0].id
+  const dishes: StudioDishRecord[] = await listStudioDishes(user.id)
+  const activeDishId = dishes[0]?.id ?? ''
   const [initialGallery, creditBalance] = await Promise.all([
-    listStudioImagesForDish(user.id, activeDishId),
+    activeDishId ? listStudioImagesForDish(user.id, activeDishId) : Promise.resolve([]),
     getStudioCreditBalance(user.id),
   ])
 
