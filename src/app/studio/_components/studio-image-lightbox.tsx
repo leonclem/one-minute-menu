@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * Expanded view for a Studio export variant. Click a tile preview to open it
- * at full size without leaving the editor.
+ * Full-size image preview for Workbench and export tiles.
+ * Opened by StudioExpandablePreview; one dialog style for both surfaces.
  */
 
 import { useCallback, useEffect, useRef } from 'react'
@@ -81,7 +81,7 @@ export function StudioImageLightbox({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageUrl}
-            alt={`${title} export preview`}
+            alt={`${title} preview`}
             className="max-h-[70vh] w-auto max-w-full object-contain"
           />
         </div>

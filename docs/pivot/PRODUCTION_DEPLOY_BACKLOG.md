@@ -12,10 +12,12 @@ production deploy; commit history is a poor deploy checklist.
 `main` (including work after `e9c856c`) and that migrations `075`–`081` were
 applied manually in prod Supabase.
 
-**Next pending (Chunk 8 public cutover):** set production env to studio-public
-values before or at the next manual Vercel deploy — `NEXT_PUBLIC_PRODUCT_MODE=photo-studio`,
-`NEXT_PUBLIC_ENABLE_LEGACY_MENUS=false`, keep `NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true`,
-keep `NEXT_PUBLIC_STUDIO_ACCESS_MODE=admin-only` until the cohort opens. See
+**Next pending (Chunk 8 public cutover + Pro credit default):** set production
+env to studio-public values before or at the next manual Vercel deploy —
+`NEXT_PUBLIC_PRODUCT_MODE=photo-studio`, `NEXT_PUBLIC_ENABLE_LEGACY_MENUS=false`,
+keep `NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true`, keep
+`NEXT_PUBLIC_STUDIO_ACCESS_MODE=admin-only` until the cohort opens. Also set
+`STUDIO_CREDIT_COST_NB_PRO=2` (or unset it) if production still has `3`. See
 Chunk 8 rows below. This file is not a reason to re-apply migrations `075`–`081`.
 
 **How to use**
@@ -45,7 +47,7 @@ non-local env you care about). Defaults in code are safe if unset unless noted.
 | `STUDIO_OUTPUT_VALIDATION_ENABLED` | Chunk 5 | `true` (on when unset) | `true` for private beta quality signals; `false` to skip re-extract cost | Applied | Prod 2026-07-24 (`42f35d5`). Default on when unset. |
 | `NEXT_PUBLIC_STUDIO_ADMIN_ONLY` | Chunk 5 | `true` (on when unset) | `true` until ready for non-admin users; `false` to open FOH Studio | Applied | Prod 2026-07-24 (`42f35d5`). Default on when unset. |
 | `STUDIO_CREDIT_COST_NB2` | Chunk 6 | `1` | `1` unless pricing changes | Applied | Credit cost for Flash / NB2 Studio mutates. Live with Chunk 6 (`e9c856c`); default 1 unless overridden in Vercel. |
-| `STUDIO_CREDIT_COST_NB_PRO` | Chunk 6 | `3` | `3` unless pricing changes | Applied | Credit cost for Pro Studio mutates. Live with Chunk 6 (`e9c856c`); default 3 unless overridden in Vercel. |
+| `STUDIO_CREDIT_COST_NB_PRO` | Chunk 6; 2026-08-15 patch | `2` | `2` | Applied (old `3`); **re-set to `2`** | Code default is now 2. If Vercel still has `3` set, that override wins until updated or removed. |
 | `STUDIO_DISH_FAILURE_LIMIT` | Chunk 6 | `5` | `5` unless ops wants a different breaker | Applied | Consecutive billable provider failures before dish block. Live with Chunk 6 (`e9c856c`); default 5 unless overridden in Vercel. |
 | `STUDIO_THINKING_LEVEL` | Group A patch | `high` | `high` unless approved latency/cost evidence changes it | Applied | LC 2026-08-13: `main` is production. Confirm value in Vercel if tuning. |
 | `STUDIO_IMAGE_SIZE` | Group A patch | `2K` | `2K` | Applied | LC 2026-08-13: `main` is production. |

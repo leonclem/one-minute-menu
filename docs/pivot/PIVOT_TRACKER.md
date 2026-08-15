@@ -93,6 +93,9 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-08-14 | Close original pivot requirements | `GridMenu_Photo_Studio_Pivot_Requirements_2026-07-16.md` is closed as the requirements set. Unshipped include-list items (clutter, garnish add, plating, worker queue, Stripe credit packs, etc.) move to `PIVOT_REMAINING_WORK.md` as a post-MVP to-do list, not open requirements. |
 | 2026-08-14 | Studio first-upload auth lock | First source upload on `/studio` was failing with a 15s `getSession()` timeout. Cause: GoTrue auth lock deadlock from an async `onAuthStateChange` profile fetch, plus the upload client waiting on that same lock. Fix: fire-and-forget analytics identify; signed Storage upload URL issued by `/api/studio/source/upload-url`. See patches log. |
 | 2026-08-14 | Name dish before first upload | Do not auto-create a placeholder dish named "My dishes". Empty Studio asks for a dish name before the file picker. See patches log. |
+| 2026-08-15 | Pro model credit cost (Q8) | Lower NB Pro mutate cost from 3 credits to **2** (`STUDIO_CREDIT_COST_NB_PRO` default). Gemini 2K list prices: NB2 $0.101 vs Pro $0.134 (~33% more). 2 credits still prices Pro above cost-parity while reducing the 1-vs-3 deterrent. Exports unchanged: AI expand/cut-out stay 1 credit and still use Flash. If Vercel has `STUDIO_CREDIT_COST_NB_PRO=3` set, update or unset it or the new default will not apply. |
+| 2026-08-15 | Export tile actions | Export Generate/Retry show credit cost on the button when the format is paid. Ready tiles: yellow download icon + teal Redo with credit on the button; tap preview uses the Workbench EXPAND overlay and `StudioImageLightbox`. Header info control explains AI vs included resize. |
+| 2026-08-15 | Workbench parent variant | Change pills under the Workbench preview include `From OG` / `From Vn` for the image the generation was based on. Visual tree deferred. |
 
 ---
 
@@ -232,3 +235,6 @@ Record in `docs/pivot/PATCH_<slug>_<date>.md` rather than as a new chunk.
 | 2026-07-28 | Studio JSON metadata defects — Group A model-call configuration, Group B scene-descriptor payload redesign, and Group D documentation rewrite | `main` | Independent patch (no chunk number); built — not deployed. Manual production deploy is pending, and migration `075` must be applied before Group B app code. |
 | 2026-08-14 | Studio first-upload sign-in timeout (GoTrue auth lock + signed upload URL) | `main` | Built — see `docs/pivot/PATCH_STUDIO_UPLOAD_AUTH_LOCK_2026-08-14.md`. No migration or env var. |
 | 2026-08-14 | Name dish before first Studio upload (stop auto-creating "My dishes") | `main` | Built — see `docs/pivot/PATCH_STUDIO_NAME_DISH_BEFORE_UPLOAD_2026-08-14.md`. No migration or env var. |
+| 2026-08-15 | Studio NB Pro credit cost 3 → 2 | `main` | Built — see `docs/pivot/PATCH_STUDIO_NB_PRO_CREDIT_COST_2026-08-15.md`. Confirm/set `STUDIO_CREDIT_COST_NB_PRO=2` in Vercel if the old `3` is still set. |
+| 2026-08-15 | Studio export tile actions (credits on Generate; tap preview; regenerate icon) | `main` | Built — see `docs/pivot/PATCH_STUDIO_EXPORT_TILE_ACTIONS_2026-08-15.md`. No migration or env var. |
+| 2026-08-15 | Workbench parent-variant chip (`From OG` / `From Vn`) | `main` | Built — see `docs/pivot/PATCH_STUDIO_PARENT_VARIANT_CHIP_2026-08-15.md`. No migration or env var. |

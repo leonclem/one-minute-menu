@@ -14,6 +14,7 @@
 
 ## Social Media and Advertising
 - [ ] Social Media "GridMenu is changing"
+- [ ] Investigate what's required for name change
 
 ## SEO optimisation
 - [ ] Product Hunt, Betalist, Crunchbase, AlternativeTo, etc.
@@ -33,6 +34,7 @@
 - [ ] Investigate vessel swapping (pro advised to use reference)
 - [ ] Investigate rotation
 - [ ] "Reconstitute" using extracted JSON (especially if image is terrible, e.g. Hainanese chicken)
+- [ ] Flash-Lite option (a 3rd tier) (1K outputs only)
 
 ## /onboarding
 - [ ] New users get 10 credits by default

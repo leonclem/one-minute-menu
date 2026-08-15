@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Download, Info } from 'lucide-react'
 
 import { ANALYTICS_EVENTS } from '@/lib/posthog/events'
 import { downloadImage } from '@/lib/studio/client-download'
@@ -22,6 +23,7 @@ import {
 } from '@/lib/studio/export-presets'
 import type { StudioExportTile } from '@/lib/studio/types'
 
+import { StudioExpandablePreview } from './studio-expandable-preview'
 import { StudioImageLightbox } from './studio-image-lightbox'
 
 interface ExportsResponse {
@@ -76,9 +78,6 @@ const STATUS_DOT: Record<StudioExportStatus, string> = {
   failed: 'bg-rose-500',
 }
 
-const CHECKERBOARD =
-  'repeating-conic-gradient(#e5e7eb 0% 25%, #ffffff 0% 50%) 50% / 12px 12px'
-
 function methodLabel(tile: StudioExportTile): string {
   switch (tile.generationMethod) {
     case 'crop_resize':
@@ -91,6 +90,40 @@ function methodLabel(tile: StudioExportTile): string {
       return 'Cut-out'
     default:
       return 'Export'
+  }
+}
+
+const PRIMARY_ACTION_CLASS =
+  'flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md bg-ux-primary px-2 py-1.5 text-[11px] font-bold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500'
+
+const DOWNLOAD_ICON_CLASS =
+  'flex w-9 shrink-0 items-center justify-center rounded-md bg-amber-400 text-gray-900 shadow-sm hover:bg-amber-300'
+
+function ActionLabel({
+  label,
+  creditLabel,
+}: {
+  label: string
+  creditLabel: string | null
+}) {
+  if (!creditLabel) return label
+  return (
+    <>
+      {label}
+      <span className="font-semibold opacity-90">· {creditLabel}</span>
+    </>
+  )
+}
+
+function generateActionCopy(
+  status: StudioExportStatus,
+  creditCost: number,
+): { label: string; creditLabel: string | null } {
+  if (status === 'queued') return { label: 'Queued…', creditLabel: null }
+  if (status === 'generating') return { label: 'Generating…', creditLabel: null }
+  return {
+    label: status === 'failed' ? 'Retry' : 'Generate',
+    creditLabel: creditCost > 0 ? formatExportCreditLabel(creditCost) : null,
   }
 }
 
@@ -114,6 +147,7 @@ export function StudioExportPanel({
   >({})
   const [expanded, setExpanded] = useState<StudioExportTile | null>(null)
   const [downloadingAll, setDownloadingAll] = useState(false)
+  const [creditsHelpOpen, setCreditsHelpOpen] = useState(false)
   const [contextEntryCue, setContextEntryCue] = useState(false)
   const requestIdRef = useRef(0)
   const sectionRef = useRef<HTMLElement>(null)
@@ -378,24 +412,49 @@ export function StudioExportPanel({
         .join(' ')}
       data-testid="studio-export-panel"
     >
-      <div className="flex items-center justify-between gap-2 border-b bg-neutral-100 px-4 py-3">
-        <div className="min-w-0">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
-            Export variants
-          </h2>
-          <p className="mt-0.5 truncate text-[11px] font-medium text-ux-primary" aria-live="polite">
-            For {sourceImageLabel}
-          </p>
+      <div className="shrink-0 border-b bg-neutral-100 px-4 py-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
+                Export variants
+              </h2>
+              <button
+                type="button"
+                aria-expanded={creditsHelpOpen}
+                aria-controls="studio-export-credits-help"
+                aria-label="Why some export formats use credits"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ux-text-secondary hover:bg-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary"
+                onClick={() => setCreditsHelpOpen((open) => !open)}
+              >
+                <Info className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </div>
+            <p className="mt-0.5 truncate text-[11px] font-medium text-ux-primary" aria-live="polite">
+              For {sourceImageLabel}
+            </p>
+          </div>
+          {readyTiles.length > 1 && (
+            <button
+              type="button"
+              disabled={downloadingAll}
+              className="shrink-0 text-xs font-bold uppercase tracking-wide text-ux-primary hover:underline disabled:cursor-not-allowed disabled:text-gray-400"
+              onClick={() => void handleDownloadAll()}
+            >
+              {downloadingAll ? 'Downloading…' : `Download all (${readyTiles.length})`}
+            </button>
+          )}
         </div>
-        {readyTiles.length > 1 && (
-          <button
-            type="button"
-            disabled={downloadingAll}
-            className="text-xs font-bold uppercase tracking-wide text-ux-primary hover:underline disabled:cursor-not-allowed disabled:text-gray-400"
-            onClick={() => void handleDownloadAll()}
+        {creditsHelpOpen && (
+          <p
+            id="studio-export-credits-help"
+            role="note"
+            className="mt-2 text-xs leading-5 text-gray-700"
           >
-            {downloadingAll ? 'Downloading…' : `Download all (${readyTiles.length})`}
-          </button>
+            Credits are charged when a format needs AI — expanding the canvas to a
+            new aspect ratio, or cutting the dish out of its background. A straight
+            resize or crop doesn&apos;t need AI and therefore no credits are required.
+          </p>
         )}
       </div>
 
@@ -421,10 +480,6 @@ export function StudioExportPanel({
           </div>
         ) : (
           <>
-            <p className="px-1 text-xs text-gray-600">
-              Resized formats are included. Credits apply only when a format needs AI
-              work.
-            </p>
             <ul className="grid gap-3 sm:grid-cols-2" data-testid="studio-export-grid">
               {tiles.map((tile) => {
                 const inFlightLocally = submitting.has(tile.variantType)
@@ -447,6 +502,14 @@ export function StudioExportPanel({
                       : null
                 const canGenerate =
                   !inFlight && !editorBusy && !anyInFlight && blockedReason === null
+                const generateCopy = generateActionCopy(status, tile.estimatedCredits)
+                const generateAriaLabel = generateCopy.creditLabel
+                  ? `${generateCopy.label}, ${generateCopy.creditLabel}`
+                  : generateCopy.label
+                const redoAriaLabel =
+                  tile.estimatedCredits > 0
+                    ? `Regenerate ${tile.label}, ${formatExportCreditLabel(tile.estimatedCredits)}`
+                    : `Regenerate ${tile.label}`
 
                 return (
                   <li
@@ -467,23 +530,13 @@ export function StudioExportPanel({
                     </div>
 
                     {isReady && tile.previewUrl ? (
-                      <button
-                        type="button"
-                        className="group relative block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary"
-                        style={transparent ? { background: CHECKERBOARD } : undefined}
-                        aria-label={`Expand ${tile.label} preview`}
-                        onClick={() => handleExpand(tile)}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={tile.previewUrl}
-                          alt={`${tile.label} export preview`}
-                          className="h-24 w-full object-contain p-1.5"
-                        />
-                        <span className="pointer-events-none absolute inset-0 hidden items-center justify-center bg-black/40 text-[11px] font-bold uppercase tracking-wide text-white group-hover:flex">
-                          Expand
-                        </span>
-                      </button>
+                      <StudioExpandablePreview
+                        src={tile.previewUrl}
+                        expandLabel={`Expand ${tile.label} preview`}
+                        transparent={transparent}
+                        imageClassName="h-24 w-full object-contain p-1.5"
+                        onExpand={() => handleExpand(tile)}
+                      />
                     ) : (
                       <div
                         className="flex h-24 items-center justify-center border-b border-black/[0.06] bg-neutral-50 px-2 text-center text-[11px] text-gray-400"
@@ -500,11 +553,6 @@ export function StudioExportPanel({
                     )}
 
                     <div className="flex flex-1 flex-col gap-2 p-2.5">
-                      {/*
-                        Status and cost sit on separate lines. Combining them
-                        overflows the tile width and truncates the credit label,
-                        which is the one thing that must never be ambiguous.
-                      */}
                       <div className="space-y-0.5 text-[11px] leading-tight">
                         <p className="flex items-center gap-1.5 text-gray-700">
                           <span
@@ -513,16 +561,8 @@ export function StudioExportPanel({
                           />
                           <span>{STATUS_LABEL[status]}</span>
                         </p>
-                        {!inFlight && (
-                          <p className="pl-3 text-gray-500">
-                            {isReady
-                              ? tile.creditsCharged && tile.creditsCharged > 0
-                                ? formatExportCreditLabel(tile.creditsCharged)
-                                : 'included'
-                              : `${methodLabel(tile)} · ${formatExportCreditLabel(
-                                  tile.estimatedCredits,
-                                )}`}
-                          </p>
+                        {!inFlight && !isReady && (
+                          <p className="pl-3 text-gray-500">{methodLabel(tile)}</p>
                         )}
                       </div>
 
@@ -535,49 +575,47 @@ export function StudioExportPanel({
                         <p className="text-[11px] text-amber-800">{blockedReason}</p>
                       )}
 
-                      <div className="mt-auto space-y-1.5">
+                      <div className="mt-auto">
                         {isReady ? (
-                          <>
+                          <div className="flex items-stretch gap-1.5">
                             <button
                               type="button"
-                              className="w-full bg-ux-primary px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white hover:opacity-90"
+                              aria-label={`Download ${tile.label}`}
+                              className={DOWNLOAD_ICON_CLASS}
                               onClick={() => void handleDownload(tile)}
                             >
-                              Download
+                              <Download className="h-3.5 w-3.5" aria-hidden />
                             </button>
-                            <div className="flex gap-1.5">
-                              <a
-                                href={tile.previewUrl ?? '#'}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-1 border border-ux-primary px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-ux-primary hover:bg-ux-primary/5"
-                              >
-                                Open
-                              </a>
-                              <button
-                                type="button"
-                                disabled={!canGenerate}
-                                className="flex-1 border border-gray-300 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                onClick={() => void handleGenerate(tile)}
-                              >
-                                Redo
-                              </button>
-                            </div>
-                          </>
+                            <button
+                              type="button"
+                              disabled={!canGenerate}
+                              aria-label={redoAriaLabel}
+                              data-testid={`studio-export-redo-${tile.variantType}`}
+                              className={PRIMARY_ACTION_CLASS}
+                              onClick={() => void handleGenerate(tile)}
+                            >
+                              <ActionLabel
+                                label="Redo"
+                                creditLabel={
+                                  tile.estimatedCredits > 0
+                                    ? formatExportCreditLabel(tile.estimatedCredits)
+                                    : null
+                                }
+                              />
+                            </button>
+                          </div>
                         ) : (
                           <button
                             type="button"
                             disabled={!canGenerate}
-                            className="w-full bg-ux-primary px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+                            aria-label={generateAriaLabel}
+                            className={PRIMARY_ACTION_CLASS}
                             onClick={() => void handleGenerate(tile)}
                           >
-                            {status === 'queued'
-                              ? 'Queued…'
-                              : status === 'generating'
-                                ? 'Generating…'
-                                : status === 'failed'
-                                  ? 'Retry'
-                                  : 'Generate'}
+                            <ActionLabel
+                              label={generateCopy.label}
+                              creditLabel={generateCopy.creditLabel}
+                            />
                           </button>
                         )}
                       </div>

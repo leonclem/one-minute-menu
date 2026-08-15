@@ -16,7 +16,7 @@ export type StudioValidationStatus = 'passed' | 'failed' | 'skipped'
 
 function getAnalyticsCreditCost(model: string | null | undefined): number {
   const normalized = (model ?? '').toLowerCase()
-  const fallback = normalized.includes('pro') ? 3 : 1
+  const fallback = normalized.includes('pro') ? 2 : 1
   const raw = normalized.includes('pro')
     ? process.env.STUDIO_CREDIT_COST_NB_PRO
     : process.env.STUDIO_CREDIT_COST_NB2

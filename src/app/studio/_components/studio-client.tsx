@@ -57,12 +57,15 @@ import { StudioFirstRunPanel } from './studio-first-run-panel'
 import { StudioFeedbackPrompt } from './studio-feedback-prompt'
 import { StudioDishPickerModal } from './studio-dish-picker-modal'
 import { StudioExportPanel } from './studio-export-panel'
+import { StudioExpandablePreview } from './studio-expandable-preview'
 import { StudioImageLightbox } from './studio-image-lightbox'
 import { StudioTextModal } from './studio-text-modal'
 import { StudioPendingChangesDialog } from './studio-pending-changes-dialog'
 import { StudioCreditsDialog } from './studio-credits-dialog'
 import { StudioModelSwitchDialog } from './studio-model-switch-dialog'
 import { VisualOptionTiles } from './visual-option-tiles'
+import { parentVariantShortLabel, studioVariantShortLabel, studioVariantSpokenLabel } from '@/lib/studio/variant-labels'
+import { formatExportCreditLabel } from '@/lib/studio/export-presets'
 import { STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
 
 type ExtractResponse = MinimalValidationResult & {
@@ -320,7 +323,7 @@ export function StudioClient({
   const [baselineVersion, setBaselineVersion] = useState(0)
   const [creditBalance, setCreditBalance] = useState<number | null>(initialCreditBalance)
   const [creditCostNb2, setCreditCostNb2] = useState(1)
-  const [creditCostNbPro, setCreditCostNbPro] = useState(3)
+  const [creditCostNbPro, setCreditCostNbPro] = useState(2)
   const [creditsDialogOpen, setCreditsDialogOpen] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -334,10 +337,7 @@ export function StudioClient({
   const selectedVariantLabel = useMemo(() => {
     if (!selectedImage) return 'No image selected'
     if (selectedImage.role === 'source') return 'Original image'
-    const generatedIndex = variants
-      .filter((image) => image.role === 'generated')
-      .findIndex((image) => image.id === selectedImage.id)
-    return `Variant ${generatedIndex + 1}`
+    return studioVariantSpokenLabel(selectedImage, variants)
   }, [selectedImage, variants])
 
   useEffect(() => {
@@ -354,6 +354,9 @@ export function StudioClient({
   const currentPreviewUrl =
     mutatedImageUrl ?? sourceImage?.dataUrl ?? selectedImage?.public_url ?? null
   const changeChips = selectedImage ? readChangeSummary(selectedImage.metadata) : []
+  const parentVariantLabel = selectedImage
+    ? parentVariantShortLabel(selectedImage, variants)
+    : null
   const studioView = getStudioViewSelection(gallery)
   const handleFirstRunDismiss = useCallback(async () => {
     const res = await fetch('/api/studio/onboarding', {
@@ -389,7 +392,11 @@ export function StudioClient({
       pendingDelta.arrays.sides.removed.length > 0,
   }
   const controlsDisabled = !isHydrated || isGenerating || dishBlocked
-  const insufficientCredits = creditBalance !== null && creditBalance < creditCostNb2
+  const generateCreditCost =
+    selectedModel === STUDIO_PRO_MODEL ? creditCostNbPro : creditCostNb2
+  const generateCreditLabel = formatExportCreditLabel(generateCreditCost)
+  const insufficientCredits =
+    creditBalance !== null && creditBalance < generateCreditCost
   const busy = libraryBusy || isUploading || isExtracting || isGenerating
 
   useEffect(() => {
@@ -1580,6 +1587,9 @@ export function StudioClient({
                 <button
                   type="button"
                   data-testid="generate-image-button"
+                  aria-label={
+                    isGenerating ? 'Generating' : `Generate, ${generateCreditLabel}`
+                  }
                   disabled={
                     !hasPendingChanges ||
                     isGenerating ||
@@ -1587,7 +1597,7 @@ export function StudioClient({
                     !activeDishId ||
                     dishBlocked
                   }
-                  className="flex items-center justify-center gap-2 rounded-md bg-ux-primary px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+                  className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-ux-primary px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
                   onClick={() => {
                     if (insufficientCredits) {
                       setCreditsDialogOpen(true)
@@ -1596,7 +1606,14 @@ export function StudioClient({
                     void submitPendingChanges()
                   }}
                 >
-                  {isGenerating ? 'Generating…' : 'Generate'}
+                  {isGenerating ? (
+                    'Generating…'
+                  ) : (
+                    <>
+                      Generate
+                      <span className="font-semibold opacity-90">· {generateCreditLabel}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -1747,22 +1764,14 @@ export function StudioClient({
               aria-busy={isUploading || isExtracting || isGenerating}
             >
               {currentPreviewUrl ? (
-                <button
-                  type="button"
-                  aria-label={`Expand ${selectedVariantLabel} preview`}
-                  className="group absolute inset-0 block w-full rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary"
-                  onClick={() => setWorkbenchImageExpanded(true)}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={currentPreviewUrl}
-                    alt="Current studio image"
-                    className="h-full w-full object-contain"
-                  />
-                  <span className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-md bg-black/40 text-[11px] font-bold uppercase tracking-wide text-white group-hover:flex">
-                    Expand
-                  </span>
-                </button>
+                <StudioExpandablePreview
+                  src={currentPreviewUrl}
+                  alt="Current studio image"
+                  expandLabel={`Expand ${selectedVariantLabel} preview`}
+                  className="absolute inset-0 rounded-md"
+                  overlayClassName="rounded-md"
+                  onExpand={() => setWorkbenchImageExpanded(true)}
+                />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-gray-300 text-sm text-gray-400">
                   <button
@@ -1804,8 +1813,13 @@ export function StudioClient({
                   {mutationError}
                 </p>
               ) : (
-                changeChips.length > 0 && (
-                  <ul className="flex flex-wrap gap-1.5" aria-label="Changes vs previous image">
+                (parentVariantLabel || changeChips.length > 0) && (
+                  <ul className="flex flex-wrap gap-1.5" aria-label="Source variant and changes">
+                    {parentVariantLabel && (
+                      <li className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+                        From {parentVariantLabel}
+                      </li>
+                    )}
                     {changeChips.map((chip) => (
                       <li
                         key={chip}
@@ -1835,16 +1849,14 @@ export function StudioClient({
                   {variants.map((item) => {
                     const isOg = item.role === 'source'
                     const selected = item.id === selectedImageId
-                    const genIndex = variants
-                      .filter((v) => v.role === 'generated')
-                      .findIndex((v) => v.id === item.id)
+                    const shortLabel = studioVariantShortLabel(item, variants)
                     return (
                       <li key={item.id} className="group relative shrink-0">
                         <button
                           type="button"
                           disabled={busy}
                           aria-pressed={selected}
-                          aria-label={isOg ? 'Original' : `Variant ${genIndex + 1}`}
+                          aria-label={studioVariantSpokenLabel(item, variants)}
                           className={[
                             'block w-20 overflow-hidden rounded-md border-2 transition-colors',
                             selected
@@ -1863,14 +1875,14 @@ export function StudioClient({
                             className="aspect-square w-full object-cover"
                           />
                           <span className="block truncate bg-gray-50 px-1 py-0.5 text-center text-[10px] font-medium text-gray-600">
-                            {isOg ? 'OG' : `V${genIndex + 1}`}
+                            {shortLabel}
                           </span>
                         </button>
                         <button
                           type="button"
                           disabled={busy}
-                          aria-label={`Delete ${isOg ? 'original image' : `variant ${genIndex + 1}`}`}
-                          title={`Delete ${isOg ? 'original image' : `variant ${genIndex + 1}`}`}
+                          aria-label={`Delete ${isOg ? 'original image' : studioVariantSpokenLabel(item, variants).toLowerCase()}`}
+                          title={`Delete ${isOg ? 'original image' : studioVariantSpokenLabel(item, variants).toLowerCase()}`}
                           className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-md bg-rose-100/75 p-0 text-rose-700 shadow-sm transition hover:bg-rose-200/90 disabled:cursor-not-allowed disabled:opacity-50 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
                           style={{
                             boxSizing: 'border-box',

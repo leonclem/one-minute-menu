@@ -7,7 +7,7 @@
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
 
 export const DEFAULT_STUDIO_CREDIT_COST_NB2 = 1
-export const DEFAULT_STUDIO_CREDIT_COST_NB_PRO = 3
+export const DEFAULT_STUDIO_CREDIT_COST_NB_PRO = 2
 export const DEFAULT_STUDIO_CREDIT_COST_EXPORT_AI = 1
 export const DEFAULT_STUDIO_CREDIT_COST_EXPORT_CUTOUT = 1
 

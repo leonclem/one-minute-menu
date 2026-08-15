@@ -59,10 +59,10 @@ describe('studio credits', () => {
     process.env = originalEnv
   })
 
-  it('uses default costs 1 / 3 and maps models', () => {
-    expect(getStudioCreditCosts()).toEqual({ nb2: 1, nbPro: 3 })
+  it('uses default costs 1 / 2 and maps models', () => {
+    expect(getStudioCreditCosts()).toEqual({ nb2: 1, nbPro: 2 })
     expect(getCreditCostForModel('gemini-3.1-flash-image-preview')).toBe(1)
-    expect(getCreditCostForModel('gemini-3-pro-image')).toBe(3)
+    expect(getCreditCostForModel('gemini-3-pro-image')).toBe(2)
   })
 
   it('reads cost overrides from env', () => {
