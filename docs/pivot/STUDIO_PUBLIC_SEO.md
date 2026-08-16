@@ -24,7 +24,7 @@ Do **not** claim “sign up and generate.” Waitlist / invite only.
 |---|---|
 | Title | `AI Food Photo Studio \| GridMenu` |
 | Description | `Turn a real dish photo into polished commercial food images — no prompts. Control lighting, background, and surface. Private beta, invite only.` |
-| H1 | `Turn real dish photos into menu-ready images` |
+| H1 | `Turn your photos into studio-quality images without prompts.` |
 | OG image | Existing `/logos/social-1200x630.png` (alt text updated; no new photography in this chunk) |
 
 Starter keywords (not stuffed into a `keywords` meta tag):

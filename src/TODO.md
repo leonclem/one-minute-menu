@@ -5,8 +5,12 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /pricing
-- [ ] Review pricing approach
-- [ ] Stripe packages update
+- [x] Review pricing approach
+- [ ] Auto-grant new sign-ups 10 credits
+- [ ] Allow (paid and beta) users to access NB Pro
+- [ ] Stripe packages update and notify Grok
+- [ ] Create 100% off Promo Code coupon
+- [ ] Test
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
@@ -17,7 +21,7 @@
 - [ ] Investigate what's required for name change
 
 ## SEO optimisation
-- [ ] Product Hunt, Betalist, Crunchbase, AlternativeTo, etc.
+- [ ] Product Hunt, Indie Hackers, Betalist, Crunchbase, AlternativeTo, etc.
 
 ## UI Review
 - Create design system with Pinterest / Claude

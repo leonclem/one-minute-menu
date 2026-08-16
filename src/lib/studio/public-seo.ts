@@ -5,7 +5,7 @@ export const STUDIO_SEO = {
   title: 'AI Food Photo Studio | GridMenu',
   description:
     'Turn a real dish photo into polished commercial food images — no prompts. Control lighting, background, and surface. Private beta, invite only.',
-  h1: 'Turn real dish photos into menu-ready images',
+  h1: 'Turn your photos into studio-quality images without prompts.',
 } as const
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://gridmenu.ai'

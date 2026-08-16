@@ -5,7 +5,6 @@ import HomepageAnalytics from './HomepageAnalytics'
 import { getHomePageMetadata } from './home-metadata'
 
 export const metadata: Metadata = getHomePageMetadata()
-export { getHomePageMetadata }
 
 export default async function HomePage() {
   const supabase = createServerSupabaseClient()

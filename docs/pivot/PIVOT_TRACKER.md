@@ -96,6 +96,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-08-15 | Pro model credit cost (Q8) | Lower NB Pro mutate cost from 3 credits to **2** (`STUDIO_CREDIT_COST_NB_PRO` default). Gemini 2K list prices: NB2 $0.101 vs Pro $0.134 (~33% more). 2 credits still prices Pro above cost-parity while reducing the 1-vs-3 deterrent. Exports unchanged: AI expand/cut-out stay 1 credit and still use Flash. If Vercel has `STUDIO_CREDIT_COST_NB_PRO=3` set, update or unset it or the new default will not apply. |
 | 2026-08-15 | Export tile actions | Export Generate/Retry show credit cost on the button when the format is paid. Ready tiles: yellow download icon + teal Redo with credit on the button; tap preview uses the Workbench EXPAND overlay and `StudioImageLightbox`. Header info control explains AI vs included resize. |
 | 2026-08-15 | Workbench parent variant | Change pills under the Workbench preview include `From OG` / `From Vn` for the image the generation was based on. Visual tree deferred. |
+| 2026-08-16 | Studio homepage H1 | Public H1 is `Turn your photos into studio-quality images without prompts.` (was Chunk 8 `Turn real dish photos into menu-ready images`). Source of truth: `STUDIO_SEO.h1`. |
 
 ---
 

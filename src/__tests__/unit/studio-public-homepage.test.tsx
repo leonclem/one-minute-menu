@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import HomePageStudioContent from '@/app/(marketing)/HomePageStudioContent'
 import { UXFooter } from '@/components/ux/UXFooter'
+import { STUDIO_SEO } from '@/lib/studio/public-seo'
 
 jest.mock('next/link', () => ({
   __esModule: true,
@@ -47,9 +48,7 @@ describe('studio-public homepage and footer', () => {
   it('sells waitlist Photo Studio, not the menu builder', () => {
     render(<HomePageStudioContent initialUser={null} />)
 
-    expect(
-      screen.getByRole('heading', { name: /turn real dish photos into menu-ready images/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: STUDIO_SEO.h1 })).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: /join the waitlist/i }).length).toBeGreaterThan(0)
     expect(screen.queryByRole('link', { name: /start with my menu/i })).not.toBeInTheDocument()
     expect(document.querySelector('a[href="/demo/sample"]')).toBeNull()
