@@ -73,7 +73,7 @@ function SketchFlowArrow({
 export default function HomePageStudioContent({ initialUser }: { initialUser?: unknown }) {
   const user = initialUser
   const primaryHref = user ? getAuthenticatedHomePath() : '/register'
-  const primaryLabel = user ? 'Get Started' : 'Join the waitlist'
+  const primaryLabel = user ? 'Open Studio' : 'Get started'
 
   useEffect(() => {
     trackConversionEvent({
@@ -265,7 +265,7 @@ export default function HomePageStudioContent({ initialUser }: { initialUser?: u
             Ready to try Photo Studio?
           </h2>
           <p className="text-gray-800 mb-10" style={{ fontSize: '1.05rem' }}>
-            Join the waitlist. Invited testers get admin-granted credits, not a self-serve plan.
+            Sign up and start with 10 free credits. Buy more anytime on the pricing page.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link href={primaryHref} className="w-full sm:w-auto" onClick={handlePrimaryClick}>
@@ -279,7 +279,7 @@ export default function HomePageStudioContent({ initialUser }: { initialUser?: u
                 size="lg"
                 className="w-full sm:w-auto min-w-[220px] border-gray-800 text-gray-900 hover:bg-black/10"
               >
-                How access works
+                See pricing
               </UXButton>
             </Link>
           </div>

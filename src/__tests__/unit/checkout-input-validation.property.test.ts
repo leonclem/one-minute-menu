@@ -14,10 +14,14 @@ jest.mock('@/lib/supabase-server', () => ({
   createServerSupabaseClient: jest.fn(),
   createAdminSupabaseClient: jest.fn()
 }))
-jest.mock('@/lib/stripe-config', () => ({
-  getStripe: jest.fn(),
-  getPriceId: jest.fn(),
-}))
+jest.mock('@/lib/stripe-config', () => {
+  const actual = jest.requireActual('@/lib/stripe-config') as typeof import('@/lib/stripe-config')
+  return {
+    ...actual,
+    getStripe: jest.fn(),
+    getPriceId: jest.fn(),
+  }
+})
 jest.mock('@/lib/purchase-logger', () => ({
   purchaseLogger: {
     logPurchase: jest.fn(),
@@ -144,7 +148,7 @@ describe('Feature: stripe-payment-integration - Checkout Input Validation', () =
         fc.asyncProperty(
           // Generate invalid product types
           fc.oneof(
-            fc.string().filter(s => !['grid_plus', 'grid_plus_premium', 'creator_pack'].includes(s)),
+            fc.string().filter(s => !['grid_plus', 'grid_plus_premium', 'creator_pack', 'starter_pack', 'menu_pack', 'studio_pack'].includes(s)),
             fc.constant(null),
             fc.constant(undefined),
             fc.constant(''),
@@ -307,7 +311,7 @@ describe('Feature: stripe-payment-integration - Checkout Input Validation', () =
     it('should validate product type before checking price ID', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.string().filter(s => !['grid_plus', 'grid_plus_premium', 'creator_pack'].includes(s)),
+          fc.string().filter(s => !['grid_plus', 'grid_plus_premium', 'creator_pack', 'starter_pack', 'menu_pack', 'studio_pack'].includes(s)),
           async (invalidProductType) => {
             // Arrange
             const request = new NextRequest('http://localhost:3000/api/checkout', {
@@ -332,6 +336,24 @@ describe('Feature: stripe-payment-integration - Checkout Input Validation', () =
         ),
         { numRuns: 100 }
       )
+    })
+
+    it('requires login for Studio credit packs', async () => {
+      const request = new NextRequest('http://localhost:3000/api/checkout', {
+        method: 'POST',
+        body: JSON.stringify({
+          productType: 'starter_pack',
+          successUrl: 'http://localhost:3000/success',
+          cancelUrl: 'http://localhost:3000/cancel',
+        }),
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(401)
+      expect(data.code).toBe('ACCOUNT_REQUIRED')
+      expect(mockStripe.checkout.sessions.create).not.toHaveBeenCalled()
     })
   })
 })

@@ -8,7 +8,9 @@ import { User, UserPlan } from '@/types'
 import { getAuthenticatedHomePath } from '@/lib/product-mode'
 
 type PollingStatus = 'polling' | 'success' | 'timeout' | 'error'
-type PurchaseType = 'subscription' | 'creator_pack'
+type PurchaseType = 'subscription' | 'creator_pack' | 'studio_pack'
+
+const STUDIO_PACK_TYPES = new Set(['starter_pack', 'menu_pack', 'studio_pack'])
 
 function CheckoutSuccessContent() {
   const searchParams = useSearchParams()
@@ -58,6 +60,11 @@ function CheckoutSuccessContent() {
             setStatus('success')
             return true
           }
+          if (vData?.processed && STUDIO_PACK_TYPES.has(vData?.product_type)) {
+            setPurchaseType('studio_pack')
+            setStatus('success')
+            return true
+          }
         } catch (vErr) {
           console.error('[success] Manual verification call failed:', vErr)
         }
@@ -89,8 +96,8 @@ function CheckoutSuccessContent() {
         setInitialPlan(plan)
         setCurrentPlan(plan)
         
-        // If already on a paid plan, show success immediately
-        if (plan !== 'free') {
+        // An existing menu subscription must not short-circuit a Studio pack session.
+        if (plan !== 'free' && !sessionId) {
           setStatus('success')
           setPurchaseType('subscription')
         }
@@ -166,6 +173,7 @@ function CheckoutSuccessContent() {
   }
 
   const isCreatorPackSuccess = purchaseType === 'creator_pack'
+  const isStudioPackSuccess = purchaseType === 'studio_pack'
 
   const handleManualVerify = async () => {
     setStatus('polling')
@@ -181,7 +189,13 @@ function CheckoutSuccessContent() {
       <CardHeader>
         <CardTitle className="text-center text-2xl">
           {status === 'polling' && 'Processing your purchase...'}
-          {status === 'success' && (isCreatorPackSuccess ? '🎉 Creator Pack activated!' : '🎉 Purchase successful!')}
+          {status === 'success' && (
+            isStudioPackSuccess
+              ? 'Credits added!'
+              : isCreatorPackSuccess
+                ? 'Creator Pack activated!'
+                : 'Purchase successful!'
+          )}
           {status === 'timeout' && 'Purchase is being processed'}
           {status === 'error' && 'Something went wrong'}
         </CardTitle>
@@ -224,6 +238,12 @@ function CheckoutSuccessContent() {
                 Creator Pack added to your account
               </div>
             )}
+            {purchaseType === 'studio_pack' && (
+              <div className="mx-auto inline-flex items-center gap-2 rounded-full bg-ux-primary/15 px-4 py-2 text-sm font-semibold text-ux-primary shadow-sm">
+                <span className="inline-flex h-2 w-2 rounded-full bg-ux-primary" />
+                Studio credits added to your account
+              </div>
+            )}
             <div className="flex justify-center">
               <div className="rounded-full bg-green-100 p-4">
                 <svg
@@ -241,7 +261,21 @@ function CheckoutSuccessContent() {
                 </svg>
               </div>
             </div>
-            {isCreatorPackSuccess ? (
+            {isStudioPackSuccess ? (
+              <div className="space-y-2">
+                <p className="text-lg font-semibold text-secondary-900">
+                  Your photo credits are ready to use.
+                </p>
+                <p className="text-secondary-700">
+                  Paid credits are valid for 12 months from purchase.
+                </p>
+                {redirectSeconds !== null && (
+                  <p className="text-sm text-secondary-500">
+                    You'll be returned to Studio in {redirectSeconds} seconds...
+                  </p>
+                )}
+              </div>
+            ) : isCreatorPackSuccess ? (
               <div className="space-y-2">
                 <p className="text-lg font-semibold text-secondary-900">
                   Your Creator Pack is ready to use.
@@ -254,7 +288,7 @@ function CheckoutSuccessContent() {
                 </p>
                 {redirectSeconds !== null && (
                   <p className="text-sm text-secondary-500">
-                    You'll be returned to the dashboard in {redirectSeconds} seconds...
+                    You'll be returned in {redirectSeconds} seconds...
                   </p>
                 )}
               </div>
@@ -271,7 +305,7 @@ function CheckoutSuccessContent() {
                 </p>
                 {redirectSeconds !== null && (
                   <p className="text-sm text-secondary-500">
-                    You'll be returned to the dashboard in {redirectSeconds} seconds...
+                    You'll be returned in {redirectSeconds} seconds...
                   </p>
                 )}
               </div>

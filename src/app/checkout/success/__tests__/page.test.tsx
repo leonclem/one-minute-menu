@@ -393,7 +393,8 @@ describe('CheckoutSuccessPage', () => {
       })
     })
 
-    it('should show success immediately if already on paid plan', async () => {
+    it('should show success immediately if already on paid plan without a session', async () => {
+      mockSearchParams.get.mockReturnValue(null)
       ;(global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: async () => ({
@@ -410,7 +411,58 @@ describe('CheckoutSuccessPage', () => {
       })
     })
 
+    it('keeps polling a paid plan when a checkout session is present', async () => {
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          data: {
+            plan: 'grid_plus',
+          },
+        }),
+      })
+
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText('Processing your purchase...')).toBeInTheDocument()
+      })
+    })
+
+    it('should show Studio credits success when verification returns a pack', async () => {
+      ;(global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: {
+              plan: 'free',
+            },
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            processed: true,
+            product_type: 'menu_pack',
+          }),
+        })
+
+      renderPage()
+
+      await act(async () => {
+        jest.advanceTimersByTime(2000)
+      })
+      await act(async () => {
+        await flushPromises()
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('Credits added!')).toBeInTheDocument()
+        expect(screen.getByText(/Your photo credits are ready to use/)).toBeInTheDocument()
+      })
+    })
+
     it('should display dashboard link on success', async () => {
+      mockSearchParams.get.mockReturnValue(null)
       ;(global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: async () => ({
@@ -430,6 +482,7 @@ describe('CheckoutSuccessPage', () => {
     })
 
     it('should show confirmation email message on success', async () => {
+      mockSearchParams.get.mockReturnValue(null)
       ;(global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: async () => ({

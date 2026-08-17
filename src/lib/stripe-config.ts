@@ -26,7 +26,30 @@ export interface StripeConfig {
 /**
  * Product types supported by the system
  */
-export type ProductType = 'grid_plus' | 'grid_plus_premium' | 'creator_pack'
+export type ProductType =
+  | 'grid_plus'
+  | 'grid_plus_premium'
+  | 'creator_pack'
+  | 'starter_pack'
+  | 'menu_pack'
+  | 'studio_pack'
+
+export const STUDIO_PACK_PRODUCT_TYPES = ['starter_pack', 'menu_pack', 'studio_pack'] as const
+export type StudioPackProductType = (typeof STUDIO_PACK_PRODUCT_TYPES)[number]
+
+export function isStudioCreditPack(productType: string): productType is StudioPackProductType {
+  return (STUDIO_PACK_PRODUCT_TYPES as readonly string[]).includes(productType)
+}
+
+export function isOneTimePaymentProduct(productType: ProductType): boolean {
+  return productType === 'creator_pack' || isStudioCreditPack(productType)
+}
+
+export const STUDIO_PACK_LABELS: Record<StudioPackProductType, string> = {
+  starter_pack: 'Starter Pack',
+  menu_pack: 'Menu Pack',
+  studio_pack: 'Studio Pack',
+}
 
 /**
  * Multi-currency price configuration
@@ -193,6 +216,12 @@ export function getPriceId(productType: ProductType): string {
       return config.priceIds.gridPlusPremium
     case 'creator_pack':
       return config.priceIds.creatorPack
+    case 'starter_pack':
+    case 'menu_pack':
+    case 'studio_pack':
+      throw new Error(
+        `Use getPriceIdForCurrency for ${productType}; there is no legacy single-currency Price ID.`,
+      )
     default:
       throw new Error(`Invalid product type: ${productType}`)
   }

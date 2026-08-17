@@ -82,15 +82,20 @@ export async function GET(req: NextRequest) {
           // Record that the user actually completed the magic-link callback.
           // This is our app-owned "verified inbox" signal for Admin Hub gating.
           // We use the service-role client to avoid any RLS edge cases.
+          // Record that the user actually completed the magic-link callback.
+          // This is our app-owned "verified inbox" signal for Admin Hub gating.
+          // We use the service-role client to avoid any RLS edge cases.
           try {
             const adminSupabase = createAdminSupabaseClient()
             await adminSupabase
               .from('profiles')
               .update({ last_login_at: new Date().toISOString() })
               .eq('id', user.id)
+            const { ensureStarterStudioCredits } = await import('@/lib/studio/credits')
+            await ensureStarterStudioCredits(user.id, adminSupabase)
           } catch (e) {
-            // Don't block auth redirect if logging fails.
-            console.warn('[auth-callback] Failed to stamp last_login_at:', e)
+            // Don't block auth redirect if logging or starter credits fail.
+            console.warn('[auth-callback] Failed to stamp last_login_at or grant starter credits:', e)
           }
 
           const requireAdminApproval = await getFeatureFlag('require_admin_approval')

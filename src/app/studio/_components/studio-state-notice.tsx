@@ -23,15 +23,15 @@ const STUDIO_STATE_MESSAGES: Record<StudioStateNoticeKind, StudioStateMessage> =
     live: 'polite',
   },
   pending_access: {
-    title: 'Photo Studio is in private beta.',
-    description: 'Your account is not enabled yet. Contact support if you were invited to the beta.',
+    title: 'Your account is being reviewed.',
+    description: 'You can use Studio after an admin approves your account. This is usually within 24 hours.',
     role: 'status',
     live: 'polite',
   },
   no_credit: {
     title: 'You have no Studio credits available.',
     description:
-      'Photo Studio is in private beta. Upload and extraction are free, while a successful generation uses credits. You can continue uploading and extracting while you request more credits.',
+      'Upload and extraction are free. A successful generation uses credits. Buy more on the pricing page, or keep uploading while you wait.',
     role: 'status',
     live: 'polite',
   },
@@ -67,10 +67,10 @@ export function StudioStateNotice({ kind }: StudioStateNoticeProps) {
         {message.description}
       </p>
       <Link
-        href="/support"
+        href={kind === 'no_credit' ? '/pricing' : '/support'}
         className="mt-3 inline-block text-sm font-semibold text-ux-primary underline underline-offset-2 hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ux-primary/40"
       >
-        Contact support
+        {kind === 'no_credit' ? 'See pricing' : 'Contact support'}
       </Link>
     </section>
   )

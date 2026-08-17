@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient, createAdminSupabaseClient } from '@/lib/supabase-server'
-import { getStripe, getPriceId, type ProductType } from '@/lib/stripe-config'
+import { getStripe, isOneTimePaymentProduct, isStudioCreditPack, STUDIO_PACK_LABELS, type ProductType } from '@/lib/stripe-config'
 import { purchaseLogger } from '@/lib/purchase-logger'
 import type { CheckoutRequest, CheckoutResponse, CheckoutError } from '@/types'
 import { checkoutRateLimiter } from '@/lib/stripe-rate-limiter'
@@ -8,6 +8,9 @@ import { getRateLimitHeaders } from '@/lib/templates/rate-limiter'
 import { logUnauthorizedAccess, logRateLimitViolation, logInvalidInput } from '@/lib/security'
 import { getBillingCurrency, getStripePriceId } from '@/lib/billing-currency-service'
 import type { BillingCurrency } from '@/lib/currency-config'
+import { SUPPORTED_BILLING_CURRENCIES } from '@/lib/currency-config'
+import { getFeatureFlag } from '@/lib/feature-flags'
+import { isAccountPendingApproval } from '@/lib/account-approval'
 
 /**
  * POST /api/checkout
@@ -77,7 +80,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse, { status: 400 })
     }
 
-    const { productType, successUrl, cancelUrl } = body
+    const { productType, successUrl, cancelUrl, billingCurrency: requestedCurrency } = body
+
+    if (productType && isStudioCreditPack(productType) && !user) {
+      const errorResponse: CheckoutError = {
+        error: 'Sign in to buy Studio credits.',
+        code: 'ACCOUNT_REQUIRED',
+        timestamp: new Date().toISOString(),
+      }
+      return NextResponse.json(errorResponse, { status: 401 })
+    }
 
     // 3.1 Check for existing active subscription (Requirement 5.1)
     let existingCustomerId: string | null = null
@@ -86,15 +98,36 @@ export async function POST(request: NextRequest) {
       // Check for active plan
       const { data: profile } = await adminSupabase
         .from('profiles')
-        .select('plan, subscription_status, stripe_customer_id')
+        .select('plan, subscription_status, stripe_customer_id, is_approved, role')
         .eq('id', user.id)
         .single()
+
+      if (profile && isStudioCreditPack(productType || '')) {
+        const requireAdminApproval = await getFeatureFlag('require_admin_approval')
+        if (
+          isAccountPendingApproval({
+            requireAdminApproval,
+            isAdmin: profile.role === 'admin',
+            isApproved: profile.is_approved,
+          })
+        ) {
+          const errorResponse: CheckoutError = {
+            error: 'Your account is still being reviewed. You can buy credits after approval.',
+            code: 'ACCOUNT_PENDING',
+            timestamp: new Date().toISOString(),
+          }
+          return NextResponse.json(errorResponse, { status: 403 })
+        }
+      }
 
       if (profile) {
         existingCustomerId = profile.stripe_customer_id
 
-        // Block redundant purchases for high-tier plans (Requirement 5.2)
-        if (profile.plan === 'grid_plus_premium' || profile.plan === 'enterprise') {
+        // Block redundant purchases for high-tier menu plans — not Studio credit packs
+        if (
+          !isStudioCreditPack(productType || '') &&
+          (profile.plan === 'grid_plus_premium' || profile.plan === 'enterprise')
+        ) {
           const { getPlanFriendlyName } = await import('@/lib/utils')
           const errorResponse: CheckoutError = {
             error: `You already have unlimited access with your ${getPlanFriendlyName(profile.plan)} plan. No further purchases are required.`,
@@ -204,7 +237,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate product type (Requirement 10.4)
-    const validProductTypes: ProductType[] = ['grid_plus', 'grid_plus_premium', 'creator_pack']
+    const validProductTypes: ProductType[] = [
+      'grid_plus',
+      'grid_plus_premium',
+      'creator_pack',
+      'starter_pack',
+      'menu_pack',
+      'studio_pack',
+    ]
     if (!productType || !validProductTypes.includes(productType)) {
       await logInvalidInput(
         request,
@@ -215,7 +255,7 @@ export async function POST(request: NextRequest) {
       )
       
       const errorResponse: CheckoutError = {
-        error: 'Invalid product type. Must be one of: grid_plus, grid_plus_premium, creator_pack',
+        error: 'Invalid product type. Must be one of: grid_plus, grid_plus_premium, creator_pack, starter_pack, menu_pack, studio_pack',
         code: 'INVALID_PRODUCT_TYPE',
         details: { validTypes: validProductTypes },
         timestamp: new Date().toISOString(),
@@ -258,11 +298,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse, { status: 400 })
     }
 
+    const requested = typeof requestedCurrency === 'string' ? requestedCurrency.toUpperCase() : null
+    const billingCurrency: BillingCurrency =
+      requested && (SUPPORTED_BILLING_CURRENCIES as readonly string[]).includes(requested)
+        ? (requested as BillingCurrency)
+        : await getBillingCurrency(user?.id)
+
     // Validate price ID exists for product type and currency (Requirement 10.4)
     try {
-      // Get user's billing currency to validate price ID
-      const billingCurrency = await getBillingCurrency(user?.id)
-      getStripePriceId(productType, billingCurrency) // This will throw if price ID is not configured
+      getStripePriceId(productType, billingCurrency)
     } catch (priceError: any) {
       const errorResponse: CheckoutError = {
         error: 'Product configuration error',
@@ -273,15 +317,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse, { status: 400 })
     }
 
-    // 4. Get user's selected billing currency (Requirements 2.3, 3.1, 3.2, 3.3)
-    const billingCurrency: BillingCurrency = await getBillingCurrency(user?.id)
-
     // 5. Create Stripe Checkout Session (Requirements 2.1, 2.2, 2.3, 2.4, 2.5)
     const stripe = getStripe()
     const priceId = getStripePriceId(productType, billingCurrency)
 
     // Determine session mode based on product type
-    const mode = productType === 'creator_pack' ? 'payment' : 'subscription'
+    const mode = isOneTimePaymentProduct(productType) ? 'payment' : 'subscription'
 
     // Build session parameters
     const metadata: any = {
@@ -291,6 +332,10 @@ export async function POST(request: NextRequest) {
     if (user) {
       metadata.user_id = user.id
     }
+
+    const paymentDescription = isStudioCreditPack(productType)
+      ? `GridMenu ${STUDIO_PACK_LABELS[productType]}`
+      : 'GridMenu Creator Pack'
 
     const sessionParams: any = {
       mode,
@@ -303,11 +348,12 @@ export async function POST(request: NextRequest) {
       success_url: successUrl || `${request.nextUrl.origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: cancelUrl || `${request.nextUrl.origin}/checkout/cancel`,
       metadata,
+      allow_promotion_codes: true,
     }
 
     if (mode === 'payment') {
       sessionParams.payment_intent_data = {
-        description: 'GridMenu Creator Pack',
+        description: paymentDescription,
         metadata: {
           product_type: productType,
           billing_currency: billingCurrency,

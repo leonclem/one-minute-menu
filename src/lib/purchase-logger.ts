@@ -445,5 +445,77 @@ export const purchaseLogger = {
       })
       throw error
     }
-  }
+  },
+
+  /**
+   * Fulfill a Studio credit pack purchase.
+   * Grants ledger credits (12-month expiry) and logs purchase_audit.
+   * amountCents may be 0 for 100% off promotion codes.
+   */
+  async fulfillStudioCreditPack(
+    userId: string,
+    packId: 'starter_pack' | 'menu_pack' | 'studio_pack',
+    transactionId: string,
+    amountCents: number,
+    currency: string,
+    isTestMode: boolean = false,
+  ): Promise<void> {
+    try {
+      const alreadyProcessed = await this.checkIdempotency(transactionId)
+      if (alreadyProcessed) {
+        console.log('[purchase-logger] Studio pack already processed:', transactionId)
+        return
+      }
+
+      const { creditStripePackGrant } = await import('@/lib/studio/credits')
+      const grant = await creditStripePackGrant({
+        userId,
+        packId,
+        transactionId,
+        metadata: {
+          amount_cents: amountCents,
+          currency,
+          is_test_mode: isTestMode,
+        },
+      })
+
+      await this.logPurchase({
+        userId,
+        transactionId,
+        productId: packId,
+        amountCents,
+        currency: currency.toLowerCase(),
+        status: 'success',
+        metadata: {
+          pack_type: packId,
+          credits: grant.credits,
+          action: 'studio_credit_pack_granted',
+          is_test_mode: isTestMode,
+        },
+      })
+
+      await notificationService.sendStudioPackConfirmation(userId, packId, grant.credits)
+
+      console.log('[purchase-logger] Studio credit pack fulfilled:', {
+        userId,
+        transactionId,
+        packId,
+        credits: grant.credits,
+        amountCents,
+        isTestMode,
+        timestamp: new Date().toISOString(),
+      })
+    } catch (error: any) {
+      console.error('[purchase-logger] Failed to fulfill Studio credit pack:', {
+        userId,
+        transactionId,
+        packId,
+        isTestMode,
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString(),
+      })
+      throw error
+    }
+  },
 }

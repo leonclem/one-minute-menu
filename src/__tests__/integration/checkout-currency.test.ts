@@ -18,10 +18,14 @@ jest.mock('@/lib/supabase-server', () => ({
   createServerSupabaseClient: jest.fn(),
   createAdminSupabaseClient: jest.fn()
 }))
-jest.mock('@/lib/stripe-config', () => ({
-  getStripe: jest.fn(),
-  getStripePriceId: jest.fn()
-}))
+jest.mock('@/lib/stripe-config', () => {
+  const actual = jest.requireActual('@/lib/stripe-config') as typeof import('@/lib/stripe-config')
+  return {
+    ...actual,
+    getStripe: jest.fn(),
+    getStripePriceId: jest.fn(),
+  }
+})
 jest.mock('@/lib/billing-currency-service', () => ({
   getBillingCurrency: jest.fn(),
   setBillingCurrency: jest.fn(),

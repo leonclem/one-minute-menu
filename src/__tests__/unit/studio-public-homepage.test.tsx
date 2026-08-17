@@ -45,11 +45,11 @@ describe('studio-public homepage and footer', () => {
     mockGetAuthenticatedHomePath.mockReturnValue('/studio')
   })
 
-  it('sells waitlist Photo Studio, not the menu builder', () => {
+  it('sells Photo Studio with a get-started CTA, not the menu builder', () => {
     render(<HomePageStudioContent initialUser={null} />)
 
     expect(screen.getByRole('heading', { name: STUDIO_SEO.h1 })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /join the waitlist/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: /get started/i }).length).toBeGreaterThan(0)
     expect(screen.queryByRole('link', { name: /start with my menu/i })).not.toBeInTheDocument()
     expect(document.querySelector('a[href="/demo/sample"]')).toBeNull()
   })

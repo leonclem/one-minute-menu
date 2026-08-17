@@ -57,7 +57,7 @@ import { StudioFirstRunPanel } from './studio-first-run-panel'
 import { StudioFeedbackPrompt } from './studio-feedback-prompt'
 import { StudioDishPickerModal } from './studio-dish-picker-modal'
 import { StudioExportPanel } from './studio-export-panel'
-import { StudioExpandablePreview } from './studio-expandable-preview'
+import { StudioWorkbenchCanvas } from './studio-workbench-canvas'
 import { StudioImageLightbox } from './studio-image-lightbox'
 import { StudioTextModal } from './studio-text-modal'
 import { StudioPendingChangesDialog } from './studio-pending-changes-dialog'
@@ -1413,10 +1413,10 @@ export function StudioClient({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
-          {(isAdmin && isHydrated) || creditBalance !== null ? (
+          {(isHydrated || creditBalance !== null) ? (
             <>
               <div className="flex items-center gap-2">
-                {isAdmin && isHydrated && (
+                {isHydrated && (
                   <button
                     type="button"
                     role="switch"
@@ -1539,7 +1539,7 @@ export function StudioClient({
       */}
       <div
         className={[
-          'grid items-stretch gap-6 transition-[grid-template-columns] duration-300 ease-in-out motion-reduce:transition-none lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] xl:h-[clamp(38rem,calc(100dvh-13rem),42rem)] xl:min-h-0',
+          'grid items-stretch gap-6 transition-[grid-template-columns] duration-300 ease-in-out motion-reduce:transition-none lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] xl:h-[max(38rem,calc(100dvh-13rem))] xl:min-h-0',
           expandedStudioPanel === 'controls'
             ? 'xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_4rem]'
             : 'xl:grid-cols-[4rem_minmax(0,1fr)_minmax(300px,380px)]',
@@ -1764,12 +1764,11 @@ export function StudioClient({
               aria-busy={isUploading || isExtracting || isGenerating}
             >
               {currentPreviewUrl ? (
-                <StudioExpandablePreview
+                <StudioWorkbenchCanvas
                   src={currentPreviewUrl}
                   alt="Current studio image"
                   expandLabel={`Expand ${selectedVariantLabel} preview`}
-                  className="absolute inset-0 rounded-md"
-                  overlayClassName="rounded-md"
+                  transparent={selectedImage?.mime_type === 'image/png'}
                   onExpand={() => setWorkbenchImageExpanded(true)}
                 />
               ) : (
@@ -1872,7 +1871,7 @@ export function StudioClient({
                           <img
                             src={item.public_url}
                             alt=""
-                            className="aspect-square w-full object-cover"
+                            className="aspect-square w-full bg-[#edf1ef] object-contain"
                           />
                           <span className="block truncate bg-gray-50 px-1 py-0.5 text-center text-[10px] font-medium text-gray-600">
                             {shortLabel}

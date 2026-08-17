@@ -189,6 +189,49 @@ export const notificationService = {
     }
   },
 
+  async sendStudioPackConfirmation(
+    userId: string,
+    packId: 'starter_pack' | 'menu_pack' | 'studio_pack',
+    credits: number,
+  ): Promise<void> {
+    try {
+      const supabase = getServiceClient()
+      const { data: profile, error } = await supabase
+        .from('profiles').select('email').eq('id', userId).single()
+      if (error || !profile) { console.error('[notification-service] Failed to fetch profile:', error); return }
+
+      const labels = {
+        starter_pack: 'Starter Pack',
+        menu_pack: 'Menu Pack',
+        studio_pack: 'Studio Pack',
+      } as const
+      const packName = labels[packId]
+
+      await sendEmail({
+        to: profile.email,
+        from: FROM_EMAIL,
+        fromName: FROM_NAME,
+        subject: withCompanyPrefix(`${packName} confirmed`),
+        text: `Thank you for purchasing the ${packName}.\n\n${credits} Studio credits have been added to your account. Paid credits are valid for 12 months from purchase.\n\nOpen Studio: ${APP_URL}/studio\n\nThank you for choosing ${COMPANY_NAME}!${renderComplianceFooterText()}`,
+        html: emailShell(`
+          <h2 style="color: #1a202c; margin-top: 0;">${packName} confirmed</h2>
+          <p style="color: #4a5568; font-size: 16px;">${credits} Studio credits have been added to your account.</p>
+          ${accentBox(`
+            <p style="margin: 0; color: #4a5568;"><strong>Pack:</strong> ${packName}</p>
+            <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Credits:</strong> ${credits}</p>
+            <p style="margin: 6px 0 0 0; color: #4a5568;"><strong>Valid for:</strong> 12 months from purchase</p>
+          `)}
+          ${primaryButton(`${APP_URL}/studio`, 'Open Studio')}
+          ${signOff()}
+          ${renderComplianceFooterHtml()}
+        `),
+      })
+      console.log(`[notification-service] Studio pack confirmation sent to ${profile.email}`)
+    } catch (error) {
+      console.error('[notification-service] Failed to send Studio pack confirmation:', error)
+    }
+  },
+
   async sendPaymentFailedNotification(userId: string, reason: string): Promise<void> {
     try {
       const supabase = getServiceClient()

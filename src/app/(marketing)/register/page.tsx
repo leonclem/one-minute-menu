@@ -9,9 +9,9 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = isStudioPublicSurface()
   ? {
-      title: 'Join the Waitlist | GridMenu',
+      title: 'Create Your Account | GridMenu',
       description:
-        'Join the waitlist for GridMenu’s AI food photo studio. Private beta, invite only — no prompt engineering.',
+        'Sign up for GridMenu’s AI food photo studio. Start with 10 free credits. No prompt engineering.',
     }
   : {
       title: 'Create Your Account | GridMenu',
@@ -29,11 +29,11 @@ export default async function UXRegisterPage() {
         {/* Hero heading with white text and subtle shadow */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
-            {studioPublic ? 'Join the Waitlist' : 'Create Your Account'}
+            {studioPublic ? 'Create your account' : 'Create Your Account'}
           </h1>
           <p className="mt-2 text-white/90 text-hero-shadow-strong">
             {studioPublic
-              ? 'Private beta access — invite only'
+              ? 'Start with 10 free photo credits'
               : 'Get started with your digital menu in just a few steps'}
           </p>
         </div>

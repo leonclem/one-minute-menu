@@ -60,7 +60,7 @@ describe('studio-public sitemap and SEO helpers', () => {
     const { getHomePageMetadata } = await import('@/app/(marketing)/home-metadata')
     const metadata = getHomePageMetadata()
     expect(metadata.title).toBe('AI Food Photo Studio | GridMenu')
-    expect(String(metadata.description)).toMatch(/invite only/i)
+    expect(String(metadata.description)).toMatch(/10 free credits/i)
   })
 
   it('noindexes parked pages only when studio-public flags are on', async () => {

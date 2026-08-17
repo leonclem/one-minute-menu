@@ -97,6 +97,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-08-15 | Export tile actions | Export Generate/Retry show credit cost on the button when the format is paid. Ready tiles: yellow download icon + teal Redo with credit on the button; tap preview uses the Workbench EXPAND overlay and `StudioImageLightbox`. Header info control explains AI vs included resize. |
 | 2026-08-15 | Workbench parent variant | Change pills under the Workbench preview include `From OG` / `From Vn` for the image the generation was based on. Visual tree deferred. |
 | 2026-08-16 | Studio homepage H1 | Public H1 is `Turn your photos into studio-quality images without prompts.` (was Chunk 8 `Turn real dish photos into menu-ready images`). Source of truth: `STUDIO_SEO.h1`. |
+| 2026-08-17 | Workbench full-frame viewport | Workbench shows the entire image (fit, letterboxed) with zoom/pan/reset. Do not crop the editor preview to a landscape hero. Source uploads may be any common photo ratio; reject only when the longer side exceeds 3× the shorter (panoramas). Generation still uses source framing (Q6 2026-08-14). See patches log. |
 
 ---
 
@@ -239,3 +240,4 @@ Record in `docs/pivot/PATCH_<slug>_<date>.md` rather than as a new chunk.
 | 2026-08-15 | Studio NB Pro credit cost 3 → 2 | `main` | Built — see `docs/pivot/PATCH_STUDIO_NB_PRO_CREDIT_COST_2026-08-15.md`. Confirm/set `STUDIO_CREDIT_COST_NB_PRO=2` in Vercel if the old `3` is still set. |
 | 2026-08-15 | Studio export tile actions (credits on Generate; tap preview; regenerate icon) | `main` | Built — see `docs/pivot/PATCH_STUDIO_EXPORT_TILE_ACTIONS_2026-08-15.md`. No migration or env var. |
 | 2026-08-15 | Workbench parent-variant chip (`From OG` / `From Vn`) | `main` | Built — see `docs/pivot/PATCH_STUDIO_PARENT_VARIANT_CHIP_2026-08-15.md`. No migration or env var. |
+| 2026-08-17 | Workbench full-frame viewport (fit/zoom/pan; 3:1 upload rail) | `main` | Built — see `docs/pivot/PATCH_STUDIO_WORKBENCH_VIEWPORT_2026-08-17.md`. No migration or env var. |

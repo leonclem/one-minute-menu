@@ -6,9 +6,9 @@ import UXPricingPageContent from './PricingPageContent'
 
 export const metadata: Metadata = isStudioPublicSurface()
   ? {
-      title: 'Access | GridMenu',
+      title: 'Pricing | GridMenu',
       description:
-        'Photo Studio is a private beta. Join the waitlist or email support@gridmenu.ai. Credits are admin-granted, not sold as a self-serve plan.',
+        'Buy Studio photo credits. New accounts start with 10 free credits. One-time Starter, Menu, and Studio packs. 1 credit is 1 standard AI photo.',
     }
   : {
       title: 'Pricing - Choose Your Plan | GridMenu',

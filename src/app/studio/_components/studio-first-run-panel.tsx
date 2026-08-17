@@ -123,11 +123,11 @@ export function StudioFirstRunPanel({
         className="mt-6 rounded-lg border border-teal-100 bg-teal-50/70 p-4"
       >
         <h3 id="studio-first-run-credits-heading" className="text-sm font-semibold text-teal-950">
-          Private-beta credits
+          How credits work
         </h3>
         <p className="mt-1 text-sm leading-5 text-teal-900">
-          Uploading a photo and extracting its dish details are free. A successful generation
-          debits credits from your private-beta balance.
+          Uploading a photo and extracting dish details are free. A successful generation uses
+          credits. New accounts start with 10. Buy more on the pricing page.
         </p>
       </div>
 

@@ -12,13 +12,13 @@ production deploy; commit history is a poor deploy checklist.
 `main` (including work after `e9c856c`) and that migrations `075`–`081` were
 applied manually in prod Supabase.
 
-**Next pending (Chunk 8 public cutover + Pro credit default):** set production
-env to studio-public values before or at the next manual Vercel deploy —
+**Next pending (Studio self-serve launch):** apply migration `082`, set the
+15 Studio pack Price IDs, and on the next manual Vercel deploy set
 `NEXT_PUBLIC_PRODUCT_MODE=photo-studio`, `NEXT_PUBLIC_ENABLE_LEGACY_MENUS=false`,
-keep `NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true`, keep
-`NEXT_PUBLIC_STUDIO_ACCESS_MODE=admin-only` until the cohort opens. Also set
-`STUDIO_CREDIT_COST_NB_PRO=2` (or unset it) if production still has `3`. See
-Chunk 8 rows below. This file is not a reason to re-apply migrations `075`–`081`.
+`NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true`, **`NEXT_PUBLIC_STUDIO_ACCESS_MODE=open`**.
+Also set `STUDIO_CREDIT_COST_NB_PRO=2` (or unset it) if production still has `3`.
+Leave Registration Gating = Approval Required in admin until you want full
+self-serve. Do not re-apply migrations `075`–`081`.
 
 **How to use**
 
@@ -52,7 +52,10 @@ non-local env you care about). Defaults in code are safe if unset unless noted.
 | `STUDIO_THINKING_LEVEL` | Group A patch | `high` | `high` unless approved latency/cost evidence changes it | Applied | LC 2026-08-13: `main` is production. Confirm value in Vercel if tuning. |
 | `STUDIO_IMAGE_SIZE` | Group A patch | `2K` | `2K` | Applied | LC 2026-08-13: `main` is production. |
 | `STUDIO_MAX_REFS` | Group A patch | Documented per-model limit (Flash: 10 object refs; Pro: 14 total) | Leave unset for the documented limit, or set a positive tuning value | Applied | LC 2026-08-13: `main` is production. |
-| `NEXT_PUBLIC_STUDIO_ACCESS_MODE` | Chunk 7 | Unset (falls back to legacy flag) | `admin-only` until the beta cohort opens; accepted values are `admin-only`, `beta`, and `open` | Applied (code live); keep `admin-only` for Chunk 8 | Public site promises waitlist/invite. Do not set `open` as part of Chunk 8. |
+| `NEXT_PUBLIC_STUDIO_ACCESS_MODE` | Chunk 7; self-serve launch | Unset (falls back to legacy flag) | **`open`** | Applied (code live); **re-set to `open`** | Approval Required admin toggle is the only customer gate. `open` turns off the Studio invite waitlist. |
+| `STRIPE_PRICE_ID_STARTER_PACK_{SGD,USD,GBP,AUD,EUR}` | Self-serve launch | none (required for checkout) | Live Stripe Price IDs (30 credits) | Pending | Paste from Stripe. See `.env.production.example`. |
+| `STRIPE_PRICE_ID_MENU_PACK_{SGD,USD,GBP,AUD,EUR}` | Self-serve launch | none (required for checkout) | Live Stripe Price IDs (100 credits) | Pending | Paste from Stripe. |
+| `STRIPE_PRICE_ID_STUDIO_PACK_{SGD,USD,GBP,AUD,EUR}` | Self-serve launch | none (required for checkout) | Live Stripe Price IDs (300 credits) | Pending | Paste from Stripe. |
 
 ---
 
@@ -76,6 +79,7 @@ Prefer `npx supabase db push` against the linked production project (never
 | `supabase/migrations/079_studio_feedback_prompt_state_and_traceability.sql` | Post-Chunk 7 | Applied | LC 2026-08-13: applied manually in prod. |
 | `supabase/migrations/080_studio_control_panel_labels.sql` | Post-Chunk 7 | Applied | LC 2026-08-13: applied manually in prod. |
 | `supabase/migrations/081_studio_first_run_preference.sql` | Post-Chunk 7 | Applied | LC 2026-08-13: applied manually in prod. |
+| `supabase/migrations/082_studio_credit_expiry_and_signup_grant.sql` | Self-serve launch | Pending | Ledger `expires_at` + `remaining`, FIFO debit, 10-credit starter grant. Apply before app code that depends on the new RPC signature. |
 
 ---
 
@@ -94,8 +98,9 @@ Non-env, non-migration steps that must not be forgotten.
 | Smoke-test Group A Studio model-call configuration | Group A patch | Applied | LC 2026-08-13: `main` is production. |
 | Smoke-test Group B/D scene-descriptor rollout | Group B + D patch | Applied | LC 2026-08-13: `main` is production. |
 | Production smoke-test beta gate, feedback route, and funnel events | Chunk 7 | Applied | LC 2026-08-13: `main` is production. |
-| Confirm Vercel env for studio-public cutover | Chunk 8 | Pending | Before/at next manual deploy: `NEXT_PUBLIC_PRODUCT_MODE=photo-studio`, `NEXT_PUBLIC_ENABLE_LEGACY_MENUS=false`, `NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true`, `NEXT_PUBLIC_STUDIO_ACCESS_MODE=admin-only`. |
-| Smoke-test studio-first public site | Chunk 8 | Pending | Logged-out home/pricing/support/register show waitlist Studio, not menu plans or demo menu. Sitemap omits `/demo/sample` and `/blog`. Logged-in default is `/studio`. Unapproved user sees waitlist. Non-admin in admin-only sees pending invite, not 404. |
+| Confirm Vercel env for studio-public cutover | Chunk 8 | Pending | Before/at next manual deploy: `NEXT_PUBLIC_PRODUCT_MODE=photo-studio`, `NEXT_PUBLIC_ENABLE_LEGACY_MENUS=false`, `NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true`, `NEXT_PUBLIC_STUDIO_ACCESS_MODE=open`. |
+| Paste 15 Studio pack Stripe Price IDs | Self-serve launch | Pending | `STRIPE_PRICE_ID_{STARTER,MENU,STUDIO}_PACK_{SGD,USD,GBP,AUD,EUR}` in Vercel and `.env.local`. |
+| Smoke-test studio-first public site | Self-serve launch | Pending | Logged-out home/pricing/support/register show Studio packs, not menu plans. Sitemap omits `/demo/sample` and `/blog`. Logged-in default is `/studio`. Unapproved user sees pending approval. Approved non-admin can open Studio. Checkout grants credits. |
 
 ---
 

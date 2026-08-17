@@ -24,6 +24,17 @@ Using Scoop package manager:
 ```bash
 scoop install stripe
 ```
+
+If you get an error, e.g. "scoop : The term 'scoop' is not recognized..." then you may need to run:
+```bash
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+And:
+```bash
+Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+```
+Then try and install stripe again.
+
 Or download the latest windows_x86_64.zip installer from [Stripe CLI Releases](https://github.com/stripe/stripe-cli/releases)
 Then run e.g. PS C:\Users\Leon Clements\Downloads\stripe_1.34.0_windows_x86_64> .\stripe.exe login
 

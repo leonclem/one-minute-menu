@@ -5,22 +5,22 @@ export const STUDIO_PUBLIC_FAQS: Array<{ question: string; answer: string }> = [
       'No. You upload a real dish photo and pick controlled changes such as lighting, background, and surface. GridMenu builds the generation internally.',
   },
   {
-    question: 'Is Photo Studio open to everyone?',
+    question: 'How do credits work?',
     answer:
-      'Not yet. Photo Studio is a private beta. Join the waitlist and we will invite testers in small groups. Credits are granted by an admin, not purchased on the pricing page.',
+      'New accounts start with 10 free credits. 1 credit is 1 standard AI photo generation. Pro generations use 2 credits. You can buy more on the pricing page. Paid credits are valid for 12 months from purchase.',
   },
   {
     question: 'What happens to my original photo?',
     answer:
-      'Your source photo stays in your Studio library. Generated versions are saved as variants you can download, reuse, or delete. There is no plan-based automatic expiry today.',
+      'Your source photo stays in your Studio library. Generated versions are saved as variants you can download, reuse, or delete.',
   },
   {
     question: 'Does a menu subscription include Studio?',
     answer:
-      'No. Photo Studio access and Studio credits are separate from any legacy menu plans. The public site is invite-only for Studio.',
+      'No. Photo Studio access and Studio credits are separate from any legacy menu plans.',
   },
   {
     question: 'How do I get help?',
-    answer: 'Email support@gridmenu.ai. That is the path for waitlist, credits, and beta questions.',
+    answer: 'Email support@gridmenu.ai.',
   },
 ]

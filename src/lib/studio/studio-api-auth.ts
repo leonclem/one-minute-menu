@@ -9,6 +9,8 @@
 import { NextResponse } from 'next/server'
 import { requireUserApi, type RequireUserApiResult } from '@/lib/user-api-auth'
 import { resolveStudioAccess } from '@/lib/studio/access/studio-access'
+import { getFeatureFlag } from '@/lib/feature-flags'
+import { isAccountPendingApproval } from '@/lib/account-approval'
 
 type StudioSupabaseClient = Extract<RequireUserApiResult, { ok: true }>['supabase']
 
@@ -32,7 +34,13 @@ export async function requireStudioApi(): Promise<RequireStudioApiResult> {
   const auth = await requireUserApi()
   if (!auth.ok) return auth
 
-  const isAdmin = await isAdminUser(auth.supabase, auth.user.id)
+  const { data: profile } = await auth.supabase
+    .from('profiles')
+    .select('role, is_approved')
+    .eq('id', auth.user.id)
+    .single()
+
+  const isAdmin = profile?.role === 'admin'
   const decision = await resolveStudioAccess({
     userId: auth.user.id,
     isAdmin,
@@ -43,6 +51,26 @@ export async function requireStudioApi(): Promise<RequireStudioApiResult> {
       ok: false,
       response: NextResponse.json(
         { error: 'Forbidden - Studio access required', reason: decision.reason },
+        { status: 403 },
+      ),
+    }
+  }
+
+  const requireAdminApproval = await getFeatureFlag('require_admin_approval')
+  if (
+    isAccountPendingApproval({
+      requireAdminApproval,
+      isAdmin,
+      isApproved: profile?.is_approved,
+    })
+  ) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          error: 'Forbidden - account pending approval',
+          reason: 'denied_account_pending_approval',
+        },
         { status: 403 },
       ),
     }

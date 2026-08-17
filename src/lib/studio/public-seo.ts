@@ -4,7 +4,7 @@ import { isStudioPublicSurface } from '@/lib/product-mode'
 export const STUDIO_SEO = {
   title: 'AI Food Photo Studio | GridMenu',
   description:
-    'Turn a real dish photo into polished commercial food images — no prompts. Control lighting, background, and surface. Private beta, invite only.',
+    'Turn a real dish photo into polished commercial food images without prompts. Control lighting, background, and surface. Start with 10 free credits.',
   h1: 'Turn your photos into studio-quality images without prompts.',
 } as const
 

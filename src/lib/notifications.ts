@@ -79,12 +79,12 @@ export async function sendUserApprovalNotification(profile: User): Promise<void>
     from: FROM_EMAIL,
     fromName: FROM_NAME,
     subject: 'Welcome to GridMenu — your account is ready!',
-    text: `Great news! Your GridMenu account has been approved. You can now create your brand new menus!\n\nGet started here: ${APP_URL}/dashboard`,
+    text: `Great news! Your GridMenu account has been approved. You can now open Photo Studio.\n\nGet started here: ${APP_URL}/studio`,
     html: emailShell(`
       <h2 style="color: #1a202c; margin-top: 0;">You're In!</h2>
       <p style="color: #4a5568; font-size: 16px;">Your GridMenu account has been approved.</p>
-      <p style="color: #4a5568; font-size: 16px;">Head to your dashboard to start creating your first photo-perfect menu.</p>
-      ${primaryButton(`${APP_URL}/dashboard`, 'Go to Dashboard')}
+      <p style="color: #4a5568; font-size: 16px;">Head to Photo Studio to upload a dish photo. New accounts start with 10 credits.</p>
+      ${primaryButton(`${APP_URL}/studio`, 'Open Studio')}
       <p style="color: #718096; font-size: 14px; margin-top: 32px; border-top: 1px solid #edf2f7; padding-top: 20px;">
         Welcome aboard,<br>The GridMenu Team
       </p>

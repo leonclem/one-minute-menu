@@ -137,6 +137,73 @@ export function getPrice(tierId: string, currency: BillingCurrency): number {
   return tier.prices[currency]
 }
 
+export const STUDIO_PRICING_TIERS: PricingTier[] = [
+  {
+    id: 'starter_pack',
+    name: 'Starter Pack',
+    tagline: 'For testing a few dishes',
+    prices: {
+      SGD: 12,
+      USD: 9,
+      GBP: 7,
+      AUD: 14,
+      EUR: 8,
+    },
+    period: 'One-time purchase',
+    description: '30 photo credits to try GridMenu on a handful of dishes.',
+    features: [
+      '30 photo credits',
+      'NB2 and Pro generation models',
+      'Downloads and crop/resize exports included',
+    ],
+    cta: 'Buy Starter Pack',
+    subtext: 'Credits are valid for 12 months from purchase.',
+  },
+  {
+    id: 'menu_pack',
+    name: 'Menu Pack',
+    tagline: 'Best for preparing a small menu',
+    recommended: true,
+    prices: {
+      SGD: 32,
+      USD: 24,
+      GBP: 19,
+      AUD: 37,
+      EUR: 22,
+    },
+    period: 'One-time purchase',
+    description: '100 photo credits for a small menu or a short campaign.',
+    features: [
+      '100 photo credits',
+      'NB2 and Pro generation models',
+      'Downloads and crop/resize exports included',
+    ],
+    cta: 'Buy Menu Pack',
+    subtext: 'Credits are valid for 12 months from purchase.',
+  },
+  {
+    id: 'studio_pack',
+    name: 'Studio Pack',
+    tagline: 'For marketers, designers and regular use',
+    prices: {
+      SGD: 79,
+      USD: 59,
+      GBP: 45,
+      AUD: 89,
+      EUR: 55,
+    },
+    period: 'One-time purchase',
+    description: '300 photo credits for regular production work.',
+    features: [
+      '300 photo credits',
+      'NB2 and Pro generation models',
+      'Downloads and crop/resize exports included',
+    ],
+    cta: 'Buy Studio Pack',
+    subtext: 'Credits are valid for 12 months from purchase.',
+  },
+]
+
 /**
  * Format price with currency symbol
  */

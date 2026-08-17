@@ -21,8 +21,14 @@ jest.mock('@/lib/supabase', () => ({
   },
 }))
 
-jest.mock('@/lib/product-mode', () => ({
-  getAuthenticatedHomePath: () => '/studio',
+jest.mock('@/components/BillingCurrencySelector', () => ({
+  __esModule: true,
+  default: () => <div data-testid="billing-currency-selector" />,
+}))
+
+jest.mock('@/lib/posthog', () => ({
+  captureEvent: jest.fn(),
+  ANALYTICS_EVENTS: { CHECKOUT_STARTED: 'checkout_started' },
 }))
 
 describe('StudioPricingWaitlist', () => {
@@ -30,54 +36,41 @@ describe('StudioPricingWaitlist', () => {
     jest.clearAllMocks()
   })
 
-  it('shows waitlist signup copy and CTA for logged-out visitors', () => {
+  it('shows credit packs and explainer for logged-out visitors', () => {
     render(<StudioPricingWaitlist initialUser={null} />)
 
-    expect(
-      screen.getByText(/join the waitlist and we will invite testers in small groups/i),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(/sign up to join the waitlist\. most applications are reviewed within 24 hours\./i),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /join the waitlist/i })).toHaveAttribute(
-      'href',
-      '/register',
-    )
+    expect(screen.getByRole('heading', { name: /studio pricing/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /simple credit packs/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /starter pack/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /menu pack/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /studio pack/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /how credits work/i })).toBeInTheDocument()
+    expect(screen.getByText(/new accounts start with 10 free credits/i)).toBeInTheDocument()
+    expect(screen.queryByText(/buy more when you are ready to produce a menu/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/1 credit = 1 standard AI photo generation/i)).toBeInTheDocument()
+    expect(screen.getAllByText('Sign up to buy')).toHaveLength(3)
     expect(screen.queryByRole('link', { name: /open studio/i })).not.toBeInTheDocument()
   })
 
-  it('shows credit balance and support guidance for logged-in users', () => {
+  it('shows credit balance for logged-in users', () => {
     render(
       <StudioPricingWaitlist initialUser={{ id: 'user-1' }} initialCreditBalance={12} />,
     )
 
-    expect(
-      screen.getByText(/photo studio is invite-only\. credits are admin-granted/i),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByText(/join the waitlist and we will invite testers in small groups/i),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByText(/sign up to join the waitlist/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/open studio to see whether your account is approved/i)).not.toBeInTheDocument()
-    expect(
-      screen.queryByText(/approved accounts still need a studio invite/i),
-    ).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /your studio credits/i })).toBeInTheDocument()
-    expect(screen.getByText('12 Studio credits')).toBeInTheDocument()
-    expect(screen.getByText(/need more credits\? contact/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /open studio/i })).toHaveAttribute('href', '/studio')
-    expect(screen.queryByRole('link', { name: /join the waitlist/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Your Studio credits: 12')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /open studio/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /buy menu pack for menu pack/i })).toBeInTheDocument()
   })
 
-  it('uses singular credit label when balance is 1', () => {
+  it('shows a numeric credit balance', () => {
     render(
       <StudioPricingWaitlist initialUser={{ id: 'user-1' }} initialCreditBalance={1} />,
     )
 
-    expect(screen.getByText('1 Studio credit')).toBeInTheDocument()
+    expect(screen.getByText('Your Studio credits: 1')).toBeInTheDocument()
   })
 
-  it('does not use em dashes in the access copy', () => {
+  it('does not use em dashes in the pricing copy', () => {
     render(<StudioPricingWaitlist initialUser={null} />)
 
     expect(document.body.textContent).not.toMatch(/—/)

@@ -23,6 +23,17 @@ export type StudioExportCreditCosts = {
   cutout: number
 }
 
+export const STUDIO_STARTER_CREDITS = 10
+export const STUDIO_CREDIT_PACK_MONTHS = 12
+
+export const STUDIO_CREDIT_PACKS = {
+  starter_pack: 30,
+  menu_pack: 100,
+  studio_pack: 300,
+} as const
+
+export type StudioCreditPackId = keyof typeof STUDIO_CREDIT_PACKS
+
 export class StudioCreditsError extends Error {
   code: 'INSUFFICIENT_CREDITS' | 'INVALID_GRANT' | 'CREDITS_RPC_FAILED'
   status: number
@@ -118,17 +129,15 @@ export async function getStudioCreditBalance(
   userId: string,
   client?: StudioCreditsDbClient,
 ): Promise<number> {
-  const { data, error } = await creditsDb(client)
-    .from('studio_credit_balances')
-    .select('balance')
-    .eq('user_id', userId)
-    .maybeSingle()
+  const { data, error } = await creditsDb(client).rpc('studio_get_spendable_credits', {
+    p_user_id: userId,
+  })
 
   if (error) {
     throw new Error(`Failed to load studio credit balance: ${error.message}`)
   }
 
-  return typeof data?.balance === 'number' ? data.balance : 0
+  return typeof data === 'number' ? data : 0
 }
 
 export async function assertCanAffordStudioCredits(
@@ -150,6 +159,12 @@ export async function assertCanAffordStudioCredits(
 
 type ApplyDeltaRow = { new_balance: number; ledger_id: string }
 
+function packExpiryDate(): string {
+  const d = new Date()
+  d.setMonth(d.getMonth() + STUDIO_CREDIT_PACK_MONTHS)
+  return d.toISOString()
+}
+
 async function applyCreditDelta(input: {
   userId: string
   delta: number
@@ -158,6 +173,7 @@ async function applyCreditDelta(input: {
   refId?: string | null
   createdBy?: string | null
   metadata?: Record<string, unknown>
+  expiresAt?: string | null
   client?: StudioCreditsDbClient
 }): Promise<{ balanceAfter: number; ledgerId: string }> {
   if (!Number.isInteger(input.delta) || input.delta === 0) {
@@ -173,6 +189,7 @@ async function applyCreditDelta(input: {
     p_ref_id: input.refId ?? null,
     p_created_by: input.createdBy ?? null,
     p_metadata: input.metadata ?? {},
+    p_expires_at: input.expiresAt ?? null,
   })
 
   if (error) {
@@ -287,7 +304,67 @@ export async function creditAdminGrant(input: {
     refId: input.adminUserId,
     createdBy: input.adminUserId,
     metadata: { note },
+    expiresAt: null,
   })
+}
+
+export async function creditStripePackGrant(input: {
+  userId: string
+  packId: StudioCreditPackId
+  transactionId: string
+  metadata?: Record<string, unknown>
+  client?: StudioCreditsDbClient
+}): Promise<{ balanceAfter: number; ledgerId: string; credits: number }> {
+  const credits = STUDIO_CREDIT_PACKS[input.packId]
+  const result = await applyCreditDelta({
+    userId: input.userId,
+    delta: credits,
+    reason: 'stripe_pack',
+    refType: 'checkout_session',
+    refId: input.transactionId,
+    metadata: { pack_id: input.packId, credits, ...input.metadata },
+    expiresAt: packExpiryDate(),
+    client: input.client,
+  })
+  return { ...result, credits }
+}
+
+type EnsureStarterRow = {
+  new_balance: number
+  ledger_id: string | null
+  granted: boolean
+}
+
+export async function ensureStarterStudioCredits(
+  userId: string,
+  client?: StudioCreditsDbClient,
+): Promise<{ balanceAfter: number; granted: boolean; ledgerId: string | null }> {
+  const { data, error } = await creditsDb(client).rpc('studio_ensure_starter_credits', {
+    p_user_id: userId,
+  })
+
+  if (error) {
+    throw new StudioCreditsError(
+      `Starter credit grant failed: ${error.message}`,
+      'CREDITS_RPC_FAILED',
+      500,
+    )
+  }
+
+  const row = (Array.isArray(data) ? data[0] : data) as EnsureStarterRow | null
+  if (!row || typeof row.new_balance !== 'number') {
+    throw new StudioCreditsError(
+      'Starter credit grant returned an unexpected result',
+      'CREDITS_RPC_FAILED',
+      500,
+    )
+  }
+
+  return {
+    balanceAfter: row.new_balance,
+    granted: Boolean(row.granted),
+    ledgerId: row.ledger_id,
+  }
 }
 
 export type StudioCreditLedgerEntry = {
@@ -301,6 +378,8 @@ export type StudioCreditLedgerEntry = {
   created_by: string | null
   metadata: Record<string, unknown>
   created_at: string
+  expires_at: string | null
+  remaining: number | null
 }
 
 export async function listStudioCreditLedger(

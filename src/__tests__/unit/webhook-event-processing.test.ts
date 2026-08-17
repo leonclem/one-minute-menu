@@ -64,6 +64,7 @@ const mockPurchaseLogger = {
   grantCreatorPack: jest.fn(),
   fulfillSubscription: jest.fn(),
   fulfillCreatorPack: jest.fn(),
+  fulfillStudioCreditPack: jest.fn(),
   cancelSubscription: jest.fn(),
   checkIdempotency: jest.fn(),
 }
@@ -91,6 +92,7 @@ describe('Feature: stripe-payment-integration - Webhook Event Processing', () =>
     ;(purchaseLogger.grantCreatorPack as jest.Mock) = mockPurchaseLogger.grantCreatorPack
     ;(purchaseLogger.fulfillSubscription as jest.Mock) = mockPurchaseLogger.fulfillSubscription
     ;(purchaseLogger.fulfillCreatorPack as jest.Mock) = mockPurchaseLogger.fulfillCreatorPack
+    ;(purchaseLogger.fulfillStudioCreditPack as jest.Mock) = mockPurchaseLogger.fulfillStudioCreditPack
     ;(purchaseLogger.cancelSubscription as jest.Mock) = mockPurchaseLogger.cancelSubscription
     ;(purchaseLogger.checkIdempotency as jest.Mock) = mockPurchaseLogger.checkIdempotency
     
@@ -98,6 +100,7 @@ describe('Feature: stripe-payment-integration - Webhook Event Processing', () =>
     mockPurchaseLogger.grantCreatorPack.mockResolvedValue(undefined)
     mockPurchaseLogger.fulfillSubscription.mockResolvedValue(undefined)
     mockPurchaseLogger.fulfillCreatorPack.mockResolvedValue(undefined)
+    mockPurchaseLogger.fulfillStudioCreditPack.mockResolvedValue(undefined)
     mockPurchaseLogger.cancelSubscription.mockResolvedValue(undefined)
     mockPurchaseLogger.checkIdempotency.mockResolvedValue(false)
   })
@@ -306,6 +309,49 @@ describe('Feature: stripe-payment-integration - Webhook Event Processing', () =>
         false, // isFree
         true  // isTestMode
       )
+    })
+
+    it('should process Studio credit pack purchase including 100% off', async () => {
+      const userId = 'user-studio'
+      const sessionId = 'cs_test_studio'
+      const profileChain = {
+        update: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        is: jest.fn().mockResolvedValue({ data: null, error: null }),
+      }
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'profiles') return profileChain
+        return {}
+      })
+
+      const session = {
+        id: sessionId,
+        object: 'checkout.session',
+        amount_total: 0,
+        customer: 'cus_test_studio',
+        subscription: null,
+        metadata: {
+          user_id: userId,
+          product_type: 'starter_pack',
+        },
+        currency: 'usd',
+        livemode: false,
+        mode: 'payment',
+        payment_status: 'paid',
+        status: 'complete',
+      } as Stripe.Checkout.Session
+
+      await processCheckoutCompleted(session, 'req-studio')
+
+      expect(mockPurchaseLogger.fulfillStudioCreditPack).toHaveBeenCalledWith(
+        userId,
+        'starter_pack',
+        sessionId,
+        0,
+        'usd',
+        true,
+      )
+      expect(mockPurchaseLogger.fulfillCreatorPack).not.toHaveBeenCalled()
     })
 
     it('should delegate idempotency to the fulfillment layer', async () => {

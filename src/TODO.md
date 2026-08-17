@@ -6,22 +6,26 @@
 
 ## /pricing
 - [x] Review pricing approach
-- [ ] Auto-grant new sign-ups 10 credits
-- [ ] Allow (paid and beta) users to access NB Pro
-- [ ] Stripe packages update and notify Grok
+- [x] Stripe packages update and notify Grok
 - [ ] Create 100% off Promo Code coupon
-- [ ] Test
+- [x] Auto-grant new sign-ups 10 credits
+- [x] Allow (paid and beta) users to access NB Pro
+- [ ] Test locally
+- [ ] Test production
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Social Media and Advertising
-- [ ] Social Media "GridMenu is changing"
+- [x] Post to identified subreddits for feedback
+- [x] Social Media "GridMenu is changing"
 - [ ] Investigate what's required for name change
 
 ## SEO optimisation
-- [ ] Product Hunt, Indie Hackers, Betalist, Crunchbase, AlternativeTo, etc.
+- [ ] Update Product Hunt, Betalist, Crunchbase.
+- [ ] Do I need to inform Google and Bing?
+- [ ] Keywords still reflect menus
 
 ## UI Review
 - Create design system with Pinterest / Claude
@@ -39,6 +43,7 @@
 - [ ] Investigate rotation
 - [ ] "Reconstitute" using extracted JSON (especially if image is terrible, e.g. Hainanese chicken)
 - [ ] Flash-Lite option (a 3rd tier) (1K outputs only)
+- [ ] Zoom in and out on workbench main image
 
 ## /onboarding
 - [ ] New users get 10 credits by default

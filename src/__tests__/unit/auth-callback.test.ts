@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr'
 import { userOperations } from '@/lib/database'
 import { sendAdminNewUserAlert } from '@/lib/notifications'
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
+import { ensureStarterStudioCredits } from '@/lib/studio/credits'
 
 import { getFeatureFlag, clearFeatureFlagCache } from '@/lib/feature-flags'
 
@@ -51,6 +52,14 @@ jest.mock('@/lib/notifications', () => ({
 // Mock supabase-server
 jest.mock('@/lib/supabase-server', () => ({
   createAdminSupabaseClient: jest.fn(),
+}))
+
+jest.mock('@/lib/studio/credits', () => ({
+  ensureStarterStudioCredits: jest.fn().mockResolvedValue({
+    balanceAfter: 10,
+    granted: true,
+    ledgerId: 'led-1',
+  }),
 }))
 
 describe('Auth Callback Route', () => {
@@ -105,6 +114,7 @@ describe('Auth Callback Route', () => {
     expect(res.url).toBe('http://localhost:3000/dashboard')
     expect(mockSupabase.auth.exchangeCodeForSession).toHaveBeenCalledWith('test-code')
     expect(createAdminSupabaseClient).toHaveBeenCalled()
+    expect(ensureStarterStudioCredits).toHaveBeenCalledWith('user-123', mockAdminSupabase)
   })
 
   it('defaults next to onboarding when studio is off', async () => {

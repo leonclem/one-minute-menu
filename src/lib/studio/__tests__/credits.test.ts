@@ -38,7 +38,9 @@ jest.mock('@/lib/supabase-server', () => ({
 import {
   assertCanAffordStudioCredits,
   creditAdminGrant,
+  creditStripePackGrant,
   debitForStudioGeneration,
+  ensureStarterStudioCredits,
   getCreditCostForModel,
   getStudioCreditBalance,
   getStudioCreditCosts,
@@ -71,13 +73,14 @@ describe('studio credits', () => {
     expect(getStudioCreditCosts()).toEqual({ nb2: 2, nbPro: 5 })
   })
 
-  it('getStudioCreditBalance returns 0 when no row', async () => {
-    mockMaybeSingle.mockResolvedValue({ data: null, error: null })
+  it('getStudioCreditBalance returns 0 when spendable RPC returns null', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: null })
     await expect(getStudioCreditBalance('user-1')).resolves.toBe(0)
+    expect(mockRpc).toHaveBeenCalledWith('studio_get_spendable_credits', { p_user_id: 'user-1' })
   })
 
   it('assertCanAfford throws 402 when broke', async () => {
-    mockMaybeSingle.mockResolvedValue({ data: { balance: 0 }, error: null })
+    mockRpc.mockResolvedValue({ data: 0, error: null })
     await expect(assertCanAffordStudioCredits('user-1', 1)).rejects.toMatchObject({
       code: 'INSUFFICIENT_CREDITS',
       status: 402,
@@ -105,6 +108,7 @@ describe('studio credits', () => {
         p_delta: -1,
         p_reason: 'generation_debit',
         p_ref_id: 'img-1',
+        p_expires_at: null,
       }),
     )
   })
@@ -148,5 +152,43 @@ describe('studio credits', () => {
         adminUserId: 'admin-1',
       }),
     ).resolves.toEqual({ balanceAfter: 10, ledgerId: 'led-2' })
+  })
+
+  it('ensureStarterStudioCredits is idempotent when history exists', async () => {
+    mockRpc.mockResolvedValue({
+      data: [{ new_balance: 7, ledger_id: null, granted: false }],
+      error: null,
+    })
+    await expect(ensureStarterStudioCredits('user-1')).resolves.toEqual({
+      balanceAfter: 7,
+      granted: false,
+      ledgerId: null,
+    })
+    expect(mockRpc).toHaveBeenCalledWith('studio_ensure_starter_credits', { p_user_id: 'user-1' })
+  })
+
+  it('creditStripePackGrant applies pack credits with expiry', async () => {
+    mockRpc.mockResolvedValue({
+      data: [{ new_balance: 30, ledger_id: 'led-pack' }],
+      error: null,
+    })
+    await expect(
+      creditStripePackGrant({
+        userId: 'user-1',
+        packId: 'starter_pack',
+        transactionId: 'cs_test_1',
+      }),
+    ).resolves.toEqual({ balanceAfter: 30, ledgerId: 'led-pack', credits: 30 })
+    expect(mockRpc).toHaveBeenCalledWith(
+      'studio_apply_credit_delta',
+      expect.objectContaining({
+        p_user_id: 'user-1',
+        p_delta: 30,
+        p_reason: 'stripe_pack',
+        p_ref_id: 'cs_test_1',
+      }),
+    )
+    const expiresAt = mockRpc.mock.calls[0][1].p_expires_at as string
+    expect(new Date(expiresAt).getTime()).toBeGreaterThan(Date.now())
   })
 })

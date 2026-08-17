@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 interface StudioCreditsDialogProps {
   open: boolean
   onClose: () => void
@@ -24,18 +26,24 @@ export function StudioCreditsDialog({ open, onClose }: StudioCreditsDialogProps)
         </div>
         <div className="px-4 py-4">
           <p id="studio-credits-dialog-description" className="text-sm leading-6 text-gray-700">
-            Not enough credits to generate. Ask an admin for a grant.
+            Not enough credits to generate. Buy a credit pack on the pricing page.
           </p>
         </div>
-        <div className="flex justify-end border-t bg-gray-50/50 px-4 py-3">
+        <div className="flex justify-end gap-2 border-t bg-gray-50/50 px-4 py-3">
           <button
             type="button"
-            autoFocus
-            className="rounded-md bg-ux-primary px-3 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90"
+            className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
             onClick={onClose}
           >
             Close
           </button>
+          <Link
+            href="/pricing"
+            className="rounded-md bg-ux-primary px-3 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90"
+            onClick={onClose}
+          >
+            See pricing
+          </Link>
         </div>
       </div>
     </div>

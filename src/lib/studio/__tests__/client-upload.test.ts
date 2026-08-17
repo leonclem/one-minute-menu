@@ -8,6 +8,12 @@ function pngFile(): File {
   return new File(['png-bytes'], 'dish.png', { type: 'image/png' })
 }
 
+const landscapePixels = async () => ({ width: 1600, height: 900 })
+
+function uploadPng() {
+  return uploadStudioSourceFile(pngFile(), { readPixelSize: landscapePixels })
+}
+
 function jsonResponse(status: number, body: unknown) {
   return {
     ok: status >= 200 && status < 300,
@@ -38,6 +44,20 @@ describe('uploadStudioSourceFile', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('rejects panoramic images before preparing an upload', async () => {
+    const fetchMock = jest.fn()
+    global.fetch = fetchMock
+
+    const result = await uploadStudioSourceFile(pngFile(), {
+      readPixelSize: async () => ({ width: 4000, height: 800 }),
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toMatch(/too wide or too tall/i)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('prepares a signed URL then PUTs the file to storage', async () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
@@ -56,7 +76,7 @@ describe('uploadStudioSourceFile', () => {
     })
     global.fetch = fetchMock
 
-    const result = await uploadStudioSourceFile(pngFile())
+    const result = await uploadPng()
 
     expect(result).toEqual({
       ok: true,
@@ -76,7 +96,7 @@ describe('uploadStudioSourceFile', () => {
   it('returns a sign-in error when the prepare request is unauthorized', async () => {
     global.fetch = jest.fn(async () => jsonResponse(401, {}))
 
-    const result = await uploadStudioSourceFile(pngFile())
+    const result = await uploadPng()
 
     expect(result).toEqual({
       ok: false,
@@ -104,7 +124,7 @@ describe('uploadStudioSourceFile', () => {
     })
     global.fetch = fetchMock
 
-    const result = await uploadStudioSourceFile(pngFile())
+    const result = await uploadPng()
 
     expect(result.ok).toBe(false)
     const deleteCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'DELETE')

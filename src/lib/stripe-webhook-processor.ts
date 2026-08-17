@@ -3,6 +3,7 @@ import { createAdminSupabaseClient } from './supabase-server'
 import { purchaseLogger } from './purchase-logger'
 import { notificationService } from './notification-service'
 import { PLAN_CONFIGS } from '@/types'
+import { isStudioCreditPack } from './stripe-config'
 
 /**
  * Webhook Event Processor
@@ -98,6 +99,15 @@ export async function processCheckoutCompleted(
   // Note: All fulfillment functions are idempotent and perform their own checks
   if (productType === 'creator_pack') {
     await purchaseLogger.fulfillCreatorPack(userId, transactionId, amountCents, false, isTestMode)
+  } else if (isStudioCreditPack(productType)) {
+    await purchaseLogger.fulfillStudioCreditPack(
+      userId,
+      productType,
+      transactionId,
+      amountCents,
+      session.currency || 'usd',
+      isTestMode,
+    )
   } else if (productType === 'grid_plus' || productType === 'grid_plus_premium') {
     const subscriptionId = session.subscription as string
     await purchaseLogger.fulfillSubscription(

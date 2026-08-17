@@ -11,10 +11,14 @@
 
 // Mock dependencies BEFORE any imports
 jest.mock('@/lib/supabase-server')
-jest.mock('@/lib/stripe-config', () => ({
-  getStripe: jest.fn(),
-  getPriceId: jest.fn(),
-}))
+jest.mock('@/lib/stripe-config', () => {
+  const actual = jest.requireActual('@/lib/stripe-config') as typeof import('@/lib/stripe-config')
+  return {
+    ...actual,
+    getStripe: jest.fn(),
+    getPriceId: jest.fn(),
+  }
+})
 jest.mock('@/lib/purchase-logger', () => ({
   purchaseLogger: {
     logPurchase: jest.fn(),

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 }
 
 export default function TermsPage() {
-  const lastUpdated = '14/08/2026'
+  const lastUpdated = '17/08/2026'
   const studioPublic = isStudioPublicSurface()
 
   return (
@@ -24,7 +24,7 @@ export default function TermsPage() {
               href="/register" 
               className="bg-ux-primary text-white px-6 py-2 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
             >
-              {studioPublic ? 'Join the waitlist' : 'Get Started'}
+              {studioPublic ? 'Get started' : 'Get Started'}
             </Link>
           </div>
         </div>
@@ -49,10 +49,10 @@ export default function TermsPage() {
             <section className="mb-12">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">2. Photo Studio</h2>
               <p>
-                Photo Studio is currently a private beta. Access is invite-only and is not a paid Studio plan.
-                During the beta, Studio credits are granted by an administrator. There is no generation service
-                level agreement. Generated images may include a watermark applied by the image-generation
-                provider.
+                Photo Studio lets you upload a real dish photo and generate controlled variants.
+                New accounts start with 10 free credits. You can buy additional credit packs on the
+                pricing page. There is no generation service level agreement. Generated images may
+                include a watermark applied by the image-generation provider.
               </p>
               <p className="mt-4">
                 You own your uploaded source photos and the Studio image variants generated for your account.
@@ -64,10 +64,9 @@ export default function TermsPage() {
             <section className="mb-12">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">3. Fees</h2>
               <p>
-                There is no self-serve Studio purchase on the site today. Paid credit packs may be offered
-                later. When purchased, a credit pack will be valid for 12 months from the date of purchase.
-                Pack names, prices, and any subscription options will be shown at checkout when they are
-                available.
+                Credit packs are sold as one-time purchases. Pack names, prices, and currencies are shown
+                on the pricing page and at checkout. When purchased, a credit pack is valid for 12 months
+                from the date of purchase. Unused credits in an expired pack are no longer spendable.
               </p>
             </section>
 

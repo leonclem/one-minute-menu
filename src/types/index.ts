@@ -798,9 +798,10 @@ export type OptionalFields<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, 
  * Request body for creating a Stripe Checkout Session
  */
 export interface CheckoutRequest {
-  productType: 'grid_plus' | 'grid_plus_premium' | 'creator_pack'
+  productType: 'grid_plus' | 'grid_plus_premium' | 'creator_pack' | 'starter_pack' | 'menu_pack' | 'studio_pack'
   successUrl?: string
   cancelUrl?: string
+  billingCurrency?: 'SGD' | 'USD' | 'GBP' | 'AUD' | 'EUR'
 }
 
 /**

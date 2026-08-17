@@ -271,6 +271,9 @@ export function getPlanFriendlyName(plan: string | undefined): string {
   const planNames: Record<string, string> = {
     'free': 'Free',
     'creator_pack': 'Creator Pack',
+    'starter_pack': 'Starter Pack',
+    'menu_pack': 'Menu Pack',
+    'studio_pack': 'Studio Pack',
     'grid_plus': 'Grid+',
     'grid_plus_premium': 'Grid+ Premium',
     'premium': 'Premium',

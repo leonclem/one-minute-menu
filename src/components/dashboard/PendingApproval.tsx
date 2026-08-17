@@ -24,7 +24,7 @@ export function PendingApproval({ email }: { email?: string }) {
             </svg>
           </div>
           
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">You're on the Waitlist! 🎉</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Your account is being reviewed</h1>
           <p className="text-lg font-semibold mb-6" style={{ color: '#008B9A' }}>
             Your registration request has been sent to GridMenu
           </p>

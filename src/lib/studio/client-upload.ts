@@ -8,6 +8,7 @@
  */
 
 import { validateImageFileForUpload, type AllowedMimeType } from '@/lib/photo-control/image-uploader'
+import { readImagePixelSize, sourceAspectRejection } from '@/lib/studio/source-image-aspect'
 
 export type StudioClientUploadResult =
   | {
@@ -88,10 +89,30 @@ async function putFileToSignedUrl(signedUrl: string, file: File): Promise<void> 
   }
 }
 
-export async function uploadStudioSourceFile(file: File): Promise<StudioClientUploadResult> {
+type UploadStudioSourceOptions = {
+  readPixelSize?: (file: File) => Promise<{ width: number; height: number }>
+}
+
+export async function uploadStudioSourceFile(
+  file: File,
+  options: UploadStudioSourceOptions = {},
+): Promise<StudioClientUploadResult> {
   const validation = validateImageFileForUpload(file)
   if (!validation.ok) {
     return { ok: false, error: validation.error }
+  }
+
+  try {
+    const size = await (options.readPixelSize ?? readImagePixelSize)(file)
+    const aspectError = sourceAspectRejection(size.width, size.height)
+    if (aspectError) {
+      return { ok: false, error: aspectError }
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      error: errorMessage(error, 'Could not read this image. Try a different photo.'),
+    }
   }
 
   let uploadedStoragePath: string | null = null

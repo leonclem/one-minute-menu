@@ -24,5 +24,6 @@ describe('StudioFirstRunPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Upload a dish photo' }))
     expect(onOpenFilePicker).toHaveBeenCalledTimes(1)
+    expect(screen.getByText(/new accounts start with 10/i)).toBeInTheDocument()
   })
 })

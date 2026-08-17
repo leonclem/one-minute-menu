@@ -24,7 +24,7 @@ export default function PrivacyPage() {
               href="/register" 
               className="bg-ux-primary text-white px-6 py-2 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
             >
-              {studioPublic ? 'Join the waitlist' : 'Get Started'}
+              {studioPublic ? 'Get started' : 'Get Started'}
             </Link>
           </div>
         </div>

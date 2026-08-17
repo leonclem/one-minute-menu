@@ -215,6 +215,21 @@ describe('Notification Service', () => {
     })
   })
 
+  describe('sendStudioPackConfirmation', () => {
+    it('should send Studio pack confirmation with credits and Studio link', async () => {
+      await notificationService.sendStudioPackConfirmation('user-123', 'starter_pack', 30)
+
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'user@example.com',
+          subject: expect.stringContaining('Starter Pack confirmed'),
+          text: expect.stringContaining('30 Studio credits'),
+          html: expect.stringContaining('https://gridmenu.ai/studio'),
+        })
+      )
+    })
+  })
+
   describe('sendPaymentFailedNotification', () => {
     it('should send payment failed notification email', async () => {
       await notificationService.sendPaymentFailedNotification('user-123', 'Card declined')

@@ -9,7 +9,7 @@ export const metadata: Metadata = isStudioPublicSurface()
   ? {
       title: 'Support | GridMenu',
       description:
-        'Help with the Photo Studio waitlist, invites, and credits. Email support@gridmenu.ai.',
+        'Help with Photo Studio, credits, and account questions. Email support@gridmenu.ai.',
     }
   : {
       title: 'Support | GridMenu',
@@ -400,16 +400,16 @@ export default function SupportPage() {
         {/* Getting Started CTA */}
         <div className="mt-6 md:mt-8 w-full max-w-5xl mx-auto text-center bg-gradient-to-br from-ux-primary/30 to-ux-primary/40 rounded-md p-8 border border-ux-primary/40 shadow-xl text-white">
           <h3 className="text-xl font-bold text-white text-hero-shadow mb-2">
-            {isStudioPublicSurface() ? 'Ready to join the waitlist?' : 'Ready to Get Started?'}
+            {isStudioPublicSurface() ? 'Ready to try Photo Studio?' : 'Ready to Get Started?'}
           </h3>
           <p className="text-white/90 text-hero-shadow-strong mb-6 max-w-lg mx-auto">
             {isStudioPublicSurface()
-              ? 'Photo Studio is a private beta. Sign up for the waitlist, or email support@gridmenu.ai if you already have an invite.'
+              ? 'Sign up to start with 10 free credits, or email support@gridmenu.ai if you need help.'
               : 'Create your digital menu in under 5 minutes with our simple setup process.'}
           </p>
           <Link href="/register">
             <UXButton variant="primary" size="lg" className="px-8 shadow-lg">
-              {isStudioPublicSurface() ? 'Join the waitlist' : 'Create Your Menu'}
+              {isStudioPublicSurface() ? 'Create your account' : 'Create Your Menu'}
             </UXButton>
           </Link>
         </div>

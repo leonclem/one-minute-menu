@@ -13,15 +13,20 @@ jest.mock('@/lib/studio/access/beta-access-store', () => ({
   hasStudioBetaAccess: (...args: unknown[]) => mockHasStudioBetaAccess(...args),
 }))
 
+const mockGetFeatureFlag = jest.fn()
+jest.mock('@/lib/feature-flags', () => ({
+  getFeatureFlag: (...args: unknown[]) => mockGetFeatureFlag(...args),
+}))
+
 type ProfileRole = 'admin' | 'customer'
 
 type TestSupabase = {
   from: jest.Mock
 }
 
-function createProfileSupabase(role: ProfileRole): TestSupabase {
+function createProfileSupabase(role: ProfileRole, isApproved = true): TestSupabase {
   const single = jest.fn().mockResolvedValue({
-    data: { role },
+    data: { role, is_approved: isApproved },
     error: null,
   })
   const eq = jest.fn().mockReturnValue({ single })
@@ -65,6 +70,11 @@ describe('requireStudioApi', () => {
     }
     jest.clearAllMocks()
     jest.resetModules()
+    mockGetFeatureFlag.mockResolvedValue(false)
+  })
+
+  beforeEach(() => {
+    mockGetFeatureFlag.mockResolvedValue(false)
   })
 
   it('returns the unchanged 401 response shape for an unauthenticated caller', async () => {
@@ -126,6 +136,25 @@ describe('requireStudioApi', () => {
     const result = await requireStudioApi()
 
     expect(result).toEqual({ ok: true, supabase, user })
+  })
+
+  it('returns 403 when approval is required and the account is pending', async () => {
+    configureEnvironment('open')
+    mockGetFeatureFlag.mockResolvedValue(true)
+    const supabase = createProfileSupabase('customer', false)
+    const user = { id: 'customer-1' }
+    mockRequireUserApi.mockResolvedValue({ ok: true, user, supabase })
+
+    const { requireStudioApi } = await loadGate()
+    const result = await requireStudioApi()
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.response.status).toBe(403)
+    expect(await result.response.json()).toEqual({
+      error: 'Forbidden - account pending approval',
+      reason: 'denied_account_pending_approval',
+    })
   })
 
   it.each(['admin-only', 'beta', 'open'] as const)(
