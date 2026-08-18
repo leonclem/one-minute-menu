@@ -34,13 +34,88 @@ To enable PostHog locally:
 
 To disable PostHog locally (default): leave `NEXT_PUBLIC_ENABLE_ANALYTICS` unset or set to anything other than `"true"`.
 
-### Admin Opt-Out
+### Per-Browser Opt-Out (No SQL)
 
-Admins can exclude their own browser from PostHog analytics to prevent internal testing from polluting product metrics.
+Analytics exclusion is **per browser**, not per user account. There is **no Supabase column or SQL** to opt a user out server-side — all flags live in `localStorage` on that browser only.
 
-- **Toggle location**: Admin Hub → Developer tab → "Exclude my activity from analytics"
-- **Storage**: `localStorage` key `gridmenu_analytics_disabled` = `"true"` (browser-local only, no server round-trip)
-- **Behavior**: When enabled, PostHog is opted out immediately. When disabled, PostHog re-initializes if all other gates pass.
+GridMenu runs three independent analytics surfaces (see Overview). Each has its own opt-out key:
+
+| System | `localStorage` key | Value to disable |
+|--------|-------------------|------------------|
+| PostHog (product analytics, session replay) | `gridmenu_analytics_disabled` | `true` |
+| Vercel Analytics (traffic / Web Vitals) | `va-disable` | `1` |
+| Consent gate (blocks PostHog init + first-party tracking) | `gridmenu_consent_v1` | `{"analytics":false,"updatedAt":"<ISO timestamp>"}` |
+
+After setting keys manually, **reload the page** so PostHog does not initialize on an already-loaded session.
+
+#### Admin Opt-Out (UI toggles)
+
+Admins can exclude their browser from analytics via Admin Hub → **Developer** tab:
+
+| Toggle | Sets |
+|--------|------|
+| Vercel Analytics switch | `va-disable` = `1` |
+| "Exclude my activity from analytics" | `gridmenu_analytics_disabled` = `true` |
+
+Standard users do not have access to `/admin`; use the manual methods below on any account.
+
+#### Manual opt-out — browser console
+
+1. Open DevTools: **Ctrl+Shift+J** (Windows) or **Cmd+Option+J** (Mac).
+2. Click the **Console** tab and focus the `>` prompt at the bottom.
+3. Chrome blocks pasting until you type `allow pasting` and press Enter (self-XSS safeguard).
+4. Paste and run:
+
+```javascript
+// PostHog + all captureEvent() calls
+localStorage.setItem('gridmenu_analytics_disabled', 'true');
+
+// Vercel Analytics
+localStorage.setItem('va-disable', '1');
+
+// Consent gate (PostHog won't init without analytics: true)
+localStorage.setItem('gridmenu_consent_v1', JSON.stringify({
+  analytics: false,
+  updatedAt: new Date().toISOString()
+}));
+
+location.reload();
+```
+
+**PostHog only** (matches the admin "Exclude my activity" toggle):
+
+```javascript
+localStorage.setItem('gridmenu_analytics_disabled', 'true');
+location.reload();
+```
+
+#### Manual opt-out — Application tab (no console)
+
+Use this when the console input is unusable (see troubleshooting below).
+
+1. Open DevTools → **Application** tab (under **»** if hidden).
+2. **Storage** → **Local storage** → select the site origin (e.g. `https://gridmenu.ai`).
+3. Add or edit the rows in the table (see keys above).
+4. Reload the page.
+
+#### Re-enable analytics on this browser
+
+```javascript
+localStorage.removeItem('gridmenu_analytics_disabled');
+localStorage.removeItem('va-disable');
+localStorage.setItem('gridmenu_consent_v1', JSON.stringify({
+  analytics: true,
+  updatedAt: new Date().toISOString()
+}));
+location.reload();
+```
+
+#### Troubleshooting DevTools
+
+- **Cannot type or paste in Console**: Click the `>` line at the very bottom; drag the console panel taller if the input is hidden; press **Esc** to toggle the drawer. If still broken, use the Application tab method above.
+- **Chrome blocked a Vercel script**: If DevTools becomes unresponsive after blocking `/_vercel/` or analytics scripts, allow/ignore those scripts in the **Network** tab and reopen DevTools — blocking them can prevent the page (and console) from behaving normally.
+- **Paste blocked**: Type `allow pasting` in the console first, then paste.
+- **Events already sent**: Opt-out stops future events only. Clean up existing PostHog persons by distinct ID (Supabase `user.id`) in the PostHog UI, not via GridMenu SQL.
 
 ### Event Naming Conventions
 
