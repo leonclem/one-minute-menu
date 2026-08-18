@@ -6,15 +6,6 @@ export const metadata: Metadata = withParkedRobots({
   title: 'Paper Menus for Guests, Digital Control for Operators | GridMenu',
   description:
     'Are paper menus still better for restaurants? This guide explores paper vs digital menus, what diners prefer, and why many operators now need both.',
-  keywords: [
-    'digital vs paper menu',
-    'paper vs digital menus',
-    'restaurant digital menu',
-    'printed menu vs QR menu',
-    'menu design for restaurants',
-    'restaurant menu strategy',
-    'Singapore restaurant digital ordering',
-  ],
   openGraph: {
     title: 'Paper Menus for Guests, Digital Control for Operators | GridMenu',
     description:

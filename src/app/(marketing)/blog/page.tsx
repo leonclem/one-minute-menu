@@ -5,18 +5,11 @@ import { withParkedRobots } from '@/lib/studio/public-seo'
 export const metadata: Metadata = withParkedRobots({
   title: 'Blog | GridMenu',
   description:
-    'Tips, insights, and guides for food & beverage businesses looking to create better digital menus and grow their online presence.',
-  keywords: [
-    'restaurant blog',
-    'digital menu tips',
-    'food business advice',
-    'restaurant marketing',
-    'GridMenu blog',
-  ],
+    'Archived notes for food and beverage operators. These articles are not current GridMenu product guides.',
   openGraph: {
     title: 'Blog | GridMenu',
     description:
-      'Tips, insights, and guides for food & beverage businesses looking to create better digital menus and grow their online presence.',
+      'Archived notes for food and beverage operators. These articles are not current GridMenu product guides.',
     type: 'website',
     url: '/blog',
     images: [

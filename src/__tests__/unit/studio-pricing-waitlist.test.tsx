@@ -39,7 +39,7 @@ describe('StudioPricingWaitlist', () => {
   it('shows credit packs and explainer for logged-out visitors', () => {
     render(<StudioPricingWaitlist initialUser={null} />)
 
-    expect(screen.getByRole('heading', { name: /studio pricing/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /photo studio credits/i })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /simple credit packs/i })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /starter pack/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /menu pack/i })).toBeInTheDocument()

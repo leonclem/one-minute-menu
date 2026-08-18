@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { isStudioPublicSurface } from '@/lib/product-mode'
 
 export const metadata: Metadata = {
   title: 'Terms of Service | GridMenu',
@@ -9,7 +8,6 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   const lastUpdated = '17/08/2026'
-  const studioPublic = isStudioPublicSurface()
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -24,7 +22,7 @@ export default function TermsPage() {
               href="/register" 
               className="bg-ux-primary text-white px-6 py-2 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
             >
-              {studioPublic ? 'Get started' : 'Get Started'}
+              Get started
             </Link>
           </div>
         </div>

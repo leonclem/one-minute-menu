@@ -51,6 +51,10 @@ describe('studio-public homepage and footer', () => {
     expect(screen.getByRole('heading', { name: STUDIO_SEO.h1 })).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: /get started/i }).length).toBeGreaterThan(0)
     expect(screen.queryByRole('link', { name: /start with my menu/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /how access works/i })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: /see pricing/i }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('heading', { name: /how ai food photos work/i })).toBeInTheDocument()
+    expect(screen.queryByText(/menu subscription/i)).not.toBeInTheDocument()
     expect(document.querySelector('a[href="/demo/sample"]')).toBeNull()
   })
 

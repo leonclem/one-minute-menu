@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Play } from 'lucide-react'
 import { UXWrapper, UXCard, UXButton } from '@/components/ux'
@@ -8,6 +7,7 @@ import { ConfirmDialog } from '@/components/ui'
 import BillingCurrencySelector from '@/components/BillingCurrencySelector'
 import { supabase } from '@/lib/supabase'
 import { STUDIO_PRICING_TIERS, formatPrice } from '@/lib/pricing-config'
+import { STUDIO_PRICING_SEO } from '@/lib/studio/public-seo'
 import type { BillingCurrency } from '@/lib/currency-config'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
 
@@ -93,7 +93,7 @@ export default function StudioPricingWaitlist({
 
   return (
     <UXWrapper>
-      <h1 className="sr-only">Studio pricing</h1>
+      <h1 className="sr-only">{STUDIO_PRICING_SEO.h1}</h1>
 
       <div className="container-ux">
         {isLoggedIn && (

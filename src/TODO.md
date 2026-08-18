@@ -4,64 +4,55 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## /pricing
-- [x] Review pricing approach
-- [x] Stripe packages update and notify Grok
-- [ ] Create 100% off Promo Code coupon
-- [x] Auto-grant new sign-ups 10 credits
-- [x] Allow (paid and beta) users to access NB Pro
-- [ ] Test locally
-- [ ] Test production
+## Social Media and Advertising
+- [ ] Start posting
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## Social Media and Advertising
-- [x] Post to identified subreddits for feedback
-- [x] Social Media "GridMenu is changing"
-- [ ] Investigate what's required for name change
-
 ## SEO optimisation
-- [ ] Update Product Hunt, Betalist, Crunchbase.
-- [ ] Do I need to inform Google and Bing?
+- [ ] Update Product Hunt, Betalist, Crunchbase, LinkedIn
+- [ ] Update Google Search Console
+- [ ] Update Bing Webmaster Tools
 - [ ] Keywords still reflect menus
 
-## UI Review
-- Create design system with Pinterest / Claude
-
 ## /studio
-- [ ] During upload of image - maintain user interest (can be very slow)
-- [ ] Allow the user to choose two images for comparison
-- [ ] Branching [grid tiles?] structure rather than timeline
-- [ ] While generation is in progress, the "variants" ...
+- [ ] Expand options for each category
+- [ ] "Reconstitute" using extracted JSON (especially if image is terrible, e.g. Hainanese chicken)
 - [ ] Click to draw a circle/oval/eraser to remove element
 - [ ] Click to draw a circle/oval/eraser to move an element
-- [ ] Crop
-- [ ] Magic expand
 - [ ] Investigate vessel swapping (pro advised to use reference)
-- [ ] Investigate rotation
-- [ ] "Reconstitute" using extracted JSON (especially if image is terrible, e.g. Hainanese chicken)
-- [ ] Flash-Lite option (a 3rd tier) (1K outputs only)
-- [ ] Zoom in and out on workbench main image
+- [ ] During upload of image - maintain user interest (can be very slow)
+- [ ] Allow the user to choose two variants for comparison (slider?)
 
-## /onboarding
-- [ ] New users get 10 credits by default
+## UI Review
+- [ ] Create design system with Pinterest / Claude
+- [ ] Add grid-/tile-inspired images to the home page
+
+## /pricing
+- [ ] Test production (use 100% off coupon perhaps)
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> LATER >>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Social Media and Advertising
+- [ ] Investigate what's required for name change
 - [ ] "How to design a restaurant menu" Starter Story Build May 26 "How to Get 1,000 Downloads On Your App in 30 Days (From Scratch)"
 
 ## /studio
-- [ ] Click to draw a circle/oval/eraser to change an element
 - [ ] Add steam, shimmer, etc. (pro advised to use reference)
+- [ ] Branching [grid tiles?] structure rather than timeline
+- [ ] While generation is in progress, the "variants" ...
+- [ ] Crop
+- [ ] Magic expand
+- [ ] Investigate rotation/angle manipulation (best with cut-out perhaps, but still potential risks)
+- [ ] Flash-Lite option (a 3rd tier) (1K outputs only)
+- [ ] Click to draw a circle/oval/eraser to change an element
 - [ ] Image downsizing functionality (in-browser)
 - [ ] If a user likes a certain mutation combo (e.g. studio lighting + yellow backdrop + white tablecloth) -> allow style save (for application to other dishes, e.g. "apply to all").
 - [ ] Brand kit
-- [ ] Consider angle manipulation (best with cut-out perhaps, but still potential risks)
 
 ## Bugs
 
@@ -165,4 +156,19 @@
 >>>>>>>>>>>>> DONE >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
->> Below this line
+## /pricing
+- [x] Review pricing approach
+- [x] Stripe packages update and notify Grok
+- [x] Auto-grant new sign-ups 10 credits
+- [x] Allow (paid and beta) users to access NB Pro
+- [x] Test locally
+
+## Social Media and Advertising
+- [x] Post to identified subreddits for feedback
+- [x] Social Media "GridMenu is changing"
+
+## /studio
+- [x] Zoom in and out on workbench main image
+
+## /onboarding
+- [x] New users get 10 credits by default

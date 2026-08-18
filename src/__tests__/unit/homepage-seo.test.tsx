@@ -80,23 +80,23 @@ function getJsonLdScripts(): Record<string, unknown>[] {
 // ---------------------------------------------------------------------------
 
 describe('7.1 Homepage metadata export', () => {
-  it('title contains "Restaurant Menu Maker" and "GridMenu"', () => {
+  it('title is the studio product title', () => {
     const title = typeof metadata.title === 'string' ? metadata.title : ''
-    expect(title).toMatch(/Restaurant Menu Maker/i)
-    expect(title).toMatch(/GridMenu/i)
+    expect(title).toBe('AI Food Photo Studio | GridMenu')
   })
 
-  it('description mentions creating a restaurant menu online', () => {
+  it('description sells dish-photo studio, not a menu maker', () => {
     const desc = typeof metadata.description === 'string' ? metadata.description : ''
-    expect(desc).toMatch(/restaurant menu/i)
-    expect(desc).toMatch(/online|minutes/i)
+    expect(desc).toMatch(/dish photo/i)
+    expect(desc).toMatch(/10 free credits/i)
+    expect(desc).not.toMatch(/restaurant menu/i)
   })
 
-  it('description mentions dishes/prices, style, and digital/PDF output', () => {
+  it('description mentions lighting, background, and surface controls', () => {
     const desc = typeof metadata.description === 'string' ? metadata.description : ''
-    expect(desc).toMatch(/dishes|prices/i)
-    expect(desc).toMatch(/style/i)
-    expect(desc).toMatch(/digital|pdf/i)
+    expect(desc).toMatch(/lighting/i)
+    expect(desc).toMatch(/background/i)
+    expect(desc).toMatch(/surface/i)
   })
 
   it('OG title matches page title', () => {

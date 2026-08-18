@@ -2,305 +2,21 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { UXHeader, UXFooter, UXCard, UXButton } from '@/components/ux'
-import { isStudioPublicSurface } from '@/lib/product-mode'
 import { STUDIO_PUBLIC_FAQS } from '@/lib/studio/public-faqs'
 
-export const metadata: Metadata = isStudioPublicSurface()
-  ? {
-      title: 'Support | GridMenu',
-      description:
-        'Help with Photo Studio, credits, and account questions. Email support@gridmenu.ai.',
-    }
-  : {
-      title: 'Support | GridMenu',
-      description: 'Frequently asked questions and contact details for GridMenu.',
-    }
+export const metadata: Metadata = {
+  title: 'Support | GridMenu',
+  description:
+    'Help with Photo Studio, credits, and account questions. Email support@gridmenu.ai.',
+}
 
-const menuFaqs: Array<{ q: string; a: ReactNode; aPlainText: string }> = [
-  {
-    q: 'What is GridMenu?',
-    aPlainText:
-      'GridMenu is a simple tool for creating professional restaurant menus quickly. It helps restaurants turn menu content—whether uploaded as a photo or entered manually—into clean, well-designed menus ready for print, QR codes, or digital sharing. It focuses purely on menu creation, without POS integrations or operational complexity.',
-    a: (
-      <div className="space-y-3">
-        <p>
-          GridMenu is a simple tool for creating professional restaurant menus quickly. It helps restaurants turn menu
-          content—whether uploaded as a photo or entered manually—into clean, well-designed menus ready for print, QR
-          codes, or digital sharing.
-        </p>
-        <p>It focuses purely on menu creation, without POS integrations or operational complexity.</p>
-      </div>
-    ),
-  },
-  {
-    q: 'Who is GridMenu designed for?',
-    aPlainText:
-      'GridMenu is ideal for independent restaurants and cafés, bars and casual dining venues, pop-ups and new restaurant openings, and operators who want fast, affordable menu updates. It is not intended to replace full restaurant management platforms.',
-    a: (
-      <div className="space-y-3">
-        <p>GridMenu is ideal for:</p>
-        <ul className="list-disc pl-5 space-y-1">
-          <li>Independent restaurants and cafés</li>
-          <li>Bars and casual dining venues</li>
-          <li>Pop-ups and new restaurant openings</li>
-          <li>Operators who want fast, affordable menu updates</li>
-        </ul>
-        <p>It is not intended to replace full restaurant management platforms.</p>
-      </div>
-    ),
-  },
-  {
-    q: 'Are the images on GridMenu AI-generated?',
-    aPlainText:
-      'Yes—AI-generated images are supported, but they’re optional. You can also upload and use your own photos, or provide reference images to guide the style and presentation. If you require fully bespoke food photography for branding purposes, GridMenu supports that workflow as well.',
-    a: (
-      <div className="space-y-3">
-        <p>
-          Yes—AI-generated images are supported, but they’re optional. You can also upload and use your own photos, or
-          provide reference images to guide the style and presentation.
-        </p>
-        <p>
-          If you require fully bespoke food photography for branding purposes, GridMenu supports that workflow as well.
-        </p>
-      </div>
-    ),
-  },
-  {
-    q: 'What is the Cutout image option, and why does it say Beta?',
-    aPlainText:
-      'Cutout mode removes the background from your AI-generated food photos so dishes appear to float naturally on the menu design. Because both the original photos and the background removal are AI-generated processes, results vary by dish — some look great, others less so. We label it Beta to be upfront that it will not be perfect every time. If a cutout does not look right for a particular dish, simply switch back to a standard image style on the template page. If you regenerate the original image for a dish, a new cutout will be generated automatically from the updated photo. Keep in mind that image generation counts towards your plan allowance, so regenerating multiple images at once is worth doing thoughtfully.',
-    a: (
-      <div className="space-y-3">
-        <p>
-          Cutout mode removes the background from your AI-generated food photos so dishes appear to float naturally on
-          the menu design.
-        </p>
-        <p>
-          Because both the original photos and the background removal are AI-generated processes, results vary by
-          dish — some look great, others less so. We label it <strong>Beta</strong> to be upfront that it will not be
-          perfect every time.
-        </p>
-        <p>
-          If a cutout does not look right for a particular dish, simply switch back to a standard image style on the
-          template page — no content is lost when switching styles.
-        </p>
-        <p>
-          If you regenerate the original image for a dish, a new cutout will be generated automatically from the
-          updated photo. Keep in mind that image generation counts towards your plan allowance, so it is worth being
-          selective if you are regenerating several dishes at once.
-        </p>
-      </div>
-    ),
-  },
-  {
-    q: 'Will my menu look generic?',
-    aPlainText:
-      'No. GridMenu uses professionally designed menu templates to ensure clarity and visual balance, while allowing your content, imagery, and layout choices to define the final look. Templates exist to prevent poor design outcomes, not to limit creativity.',
-    a: (
-      <div className="space-y-3">
-        <p>
-          No. GridMenu uses professionally designed menu templates to ensure clarity and visual balance, while allowing
-          your content, imagery, and layout choices to define the final look.
-        </p>
-        <p>Templates exist to prevent poor design outcomes, not to limit creativity.</p>
-      </div>
-    ),
-  },
-  {
-    q: 'Can I just use AI tools like Gemini or ChatGPT to create a menu?',
-    aPlainText:
-      'You can, but GridMenu is built specifically for menu creation, not general AI output. General AI tools require prompt writing, repeated refinement, and manual design work. GridMenu removes this complexity by combining AI with structured layouts, design constraints, and automatic formatting to produce menus that are ready to use.',
-    a: (
-      <div className="space-y-3">
-        <p>
-          You can, but GridMenu is built specifically for menu creation, not general AI output. General AI tools require
-          prompt writing, repeated refinement, and manual design work.
-        </p>
-        <p>
-          GridMenu removes this complexity by combining AI with structured layouts, design constraints, and automatic
-          formatting to produce menus that are ready to use.
-        </p>
-      </div>
-    ),
-  },
-  {
-    q: 'How do I create my first menu?',
-    aPlainText:
-      'After signing up, click “Create your first menu” and either upload a photo of your existing menu or start from scratch. GridMenu will guide you through structuring your content, choosing a layout, and generating a finished menu you can export immediately.',
-    a: (
-      <p>
-        After signing up, click “Create your first menu” and either upload a photo of your existing menu or start from
-        scratch. GridMenu will guide you through structuring your content, choosing a layout, and generating a finished
-        menu you can export immediately.
-      </p>
-    ),
-  },
-  {
-    q: 'Is GridMenu replacing designers or food photographers?',
-    aPlainText:
-      'No. GridMenu is designed for speed, flexibility, and everyday menu updates—such as seasonal changes, promotions, or new dishes. Many restaurants still work with designers or photographers for major brand projects. GridMenu simply removes the need to involve external suppliers for every update.',
-    a: (
-      <div className="space-y-3">
-        <p>
-          No. GridMenu is designed for speed, flexibility, and everyday menu updates—such as seasonal changes,
-          promotions, or new dishes.
-        </p>
-        <p>
-          Many restaurants still work with designers or photographers for major brand projects. GridMenu simply removes
-          the need to involve external suppliers for every update.
-        </p>
-      </div>
-    ),
-  },
-  {
-    q: 'How fast can I create a menu with GridMenu?',
-    aPlainText:
-      'Most menus can be created in minutes. There is no need to schedule photography, brief designers, or wait for print proofs. Menus can be updated, regenerated, and exported instantly whenever your content changes.',
-    a: (
-      <div className="space-y-3">
-        <p>Most menus can be created in minutes.</p>
-        <p>
-          There is no need to schedule photography, brief designers, or wait for print proofs. Menus can be updated,
-          regenerated, and exported instantly whenever your content changes.
-        </p>
-      </div>
-    ),
-  },
-  {
-    q: 'What menu formats does GridMenu support?',
-    aPlainText:
-      'GridMenu supports print-ready PDF menus and high-resolution PNG menus. You can export your menu in multiple formats and regenerate it whenever updates are needed.',
-    a: (
-      <div className="space-y-3">
-        <p>GridMenu supports:</p>
-        <ul className="list-disc pl-5 space-y-1">
-          <li>Print-ready PDF menus</li>
-          <li>High-resolution PNG menus</li>
-        </ul>
-        <p>You can export your menu in multiple formats and regenerate it whenever updates are needed.</p>
-      </div>
-    ),
-  },
-  {
-    q: 'Does GridMenu integrate with POS or ordering systems?',
-    aPlainText:
-      'No. GridMenu is intentionally focused on menu creation only. It does not require POS integrations, staff training, or changes to how your restaurant operates. This keeps setup simple and avoids unnecessary complexity.',
-    a: (
-      <div className="space-y-3">
-        <p>No.</p>
-        <p>
-          GridMenu is intentionally focused on menu creation only. It does not require POS integrations, staff training,
-          or changes to how your restaurant operates.
-        </p>
-        <p>This keeps setup simple and avoids unnecessary complexity.</p>
-      </div>
-    ),
-  },
-  {
-    q: 'Do I need design or technical skills to use GridMenu?',
-    aPlainText:
-      'No. GridMenu is designed to be intuitive and easy to use. If you can upload content and select a layout, you can create a professional menu. No design or technical experience is required.',
-    a: (
-      <div className="space-y-3">
-        <p>No.</p>
-        <p>
-          GridMenu is designed to be intuitive and easy to use. If you can upload content and select a layout, you can
-          create a professional menu.
-        </p>
-      </div>
-    ),
-  },
-  {
-    q: 'Is there a free plan?',
-    aPlainText:
-      'Yes. GridMenu offers a free plan—your first Creator Pack is free for every sign up, including one menu with all core features. You can try it properly before upgrading to additional packs or a subscription.',
-    a: (
-      <p>
-        Yes. GridMenu offers a free plan—your first Creator Pack is free for every sign up, including one menu with all
-        core features. You can try it properly before upgrading to additional packs or a subscription.
-      </p>
-    ),
-  },
-  {
-    q: 'What are the rate limits?',
-    aPlainText:
-      'GridMenu applies fair-use rate limits to maintain service quality. Limits vary by plan and cover image generation, exports, and batch operations. See our Rate Limits & Fair Use Policy page for a full breakdown by plan.',
-    a: (
-      <div className="space-y-3">
-        <p>
-          GridMenu applies fair-use rate limits to maintain service quality. Limits vary by plan
-          and cover image generation, exports, and batch operations.
-        </p>
-        <p>
-          See our{' '}
-          <a href="/rate-limits" className="text-ux-primary hover:opacity-90 font-medium">
-            Rate Limits &amp; Fair Use Policy
-          </a>{' '}
-          for a full breakdown by plan.
-        </p>
-      </div>
-    ),
-  },
-  {
-    q: 'Can I change my billing currency after subscribing?',
-    aPlainText:
-      'Once you have an active subscription, the billing currency is locked for that subscription period to maintain consistent billing and accounting. If you need to change your billing currency, you would need to cancel your current subscription and create a new one with your preferred currency. Your subscription will remain active until the end of your current billing period. If you need assistance with this process, please contact us at support@gridmenu.ai and we can help guide you through the transition.',
-    a: (
-      <div className="space-y-3">
-        <p>
-          Once you have an active subscription, the billing currency is locked for that subscription period to maintain
-          consistent billing and accounting.
-        </p>
-        <p>
-          If you need to change your billing currency, you would need to cancel your current subscription and create a
-          new one with your preferred currency. Your subscription will remain active until the end of your current
-          billing period.
-        </p>
-        <p>
-          If you need assistance with this process, please contact us at{' '}
-          <a href="mailto:support@gridmenu.ai" className="text-ux-primary hover:opacity-90 font-medium">
-            support@gridmenu.ai
-          </a>{' '}
-          and we can help guide you through the transition.
-        </p>
-      </div>
-    ),
-  },
-  {
-    q: 'How long are my exported files kept, and can I re-download them?',
-    aPlainText:
-      'Yes — exported files are stored securely and available to re-download directly from your dashboard, without needing to go back to your inbox. The storage period depends on your plan: Creator Pack users have 30 days, Grid+ users have 90 days, and Grid+Premium users have 180 days. After this period the file is automatically removed, but you can always re-export your menu at any time to generate a fresh copy. The download link sent by email is valid for 7 days, but the file itself remains available on your dashboard for the full retention period.',
-    a: (
-      <div className="space-y-3">
-        <p>
-          Yes — exported files are stored securely and available to re-download directly from your dashboard, without
-          needing to go back to your inbox.
-        </p>
-        <p>The storage period depends on your plan:</p>
-        <ul className="list-disc pl-5 space-y-1">
-          <li>Creator Pack: 30 days</li>
-          <li>Grid+: 90 days</li>
-          <li>Grid+Premium: 180 days</li>
-        </ul>
-        <p>
-          After this period the file is automatically removed, but you can always re-export your menu at any time to
-          generate a fresh copy. The download link sent by email is valid for 7 days, but the file itself remains
-          available on your dashboard for the full retention period.
-        </p>
-      </div>
-    ),
-  },
-]
-
-const studioFaqs: Array<{ q: string; a: ReactNode; aPlainText: string }> = STUDIO_PUBLIC_FAQS.map(
+const faqs: Array<{ q: string; a: ReactNode; aPlainText: string }> = STUDIO_PUBLIC_FAQS.map(
   (faq) => ({
     q: faq.question,
     a: <p>{faq.answer}</p>,
     aPlainText: faq.answer,
   }),
 )
-
-const faqs = isStudioPublicSurface() ? studioFaqs : menuFaqs
 
 /** FAQPage schema for SEO (schema.org). Generated from the same FAQ data as the visible list. */
 const faqPageJsonLd = {
@@ -400,16 +116,14 @@ export default function SupportPage() {
         {/* Getting Started CTA */}
         <div className="mt-6 md:mt-8 w-full max-w-5xl mx-auto text-center bg-gradient-to-br from-ux-primary/30 to-ux-primary/40 rounded-md p-8 border border-ux-primary/40 shadow-xl text-white">
           <h3 className="text-xl font-bold text-white text-hero-shadow mb-2">
-            {isStudioPublicSurface() ? 'Ready to try Photo Studio?' : 'Ready to Get Started?'}
+            Ready to try Photo Studio?
           </h3>
           <p className="text-white/90 text-hero-shadow-strong mb-6 max-w-lg mx-auto">
-            {isStudioPublicSurface()
-              ? 'Sign up to start with 10 free credits, or email support@gridmenu.ai if you need help.'
-              : 'Create your digital menu in under 5 minutes with our simple setup process.'}
+            Sign up to start with 10 free credits, or email support@gridmenu.ai if you need help.
           </p>
           <Link href="/register">
             <UXButton variant="primary" size="lg" className="px-8 shadow-lg">
-              {isStudioPublicSurface() ? 'Create your account' : 'Create Your Menu'}
+              Create your account
             </UXButton>
           </Link>
         </div>

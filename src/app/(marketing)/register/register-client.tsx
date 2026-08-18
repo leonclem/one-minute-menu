@@ -3,18 +3,15 @@
 import Link from 'next/link'
 import { UXCard } from '@/components/ux'
 import { AuthOTPForm } from '@/components/auth/AuthOTPForm'
-import { isStudioPublicSurface } from '@/lib/product-mode'
 
 interface UXRegisterClientProps {
   requireAdminApproval: boolean
 }
 
 export default function UXRegisterClient({ requireAdminApproval }: UXRegisterClientProps) {
-  const studioPublic = isStudioPublicSurface()
-
   return (
     <div className="w-full max-w-md mx-auto">
-      {/* Waitlist Info Banner - only show if admin approval is required */}
+      {/* Account-approval banner — only when admin approval is required */}
       {requireAdminApproval && (
         <div className="mb-6 p-6 bg-white/95 backdrop-blur-sm rounded-xl border-2 shadow-lg" style={{ borderColor: '#01B3BF' }}>
           <div className="flex items-start gap-3">
@@ -28,10 +25,8 @@ export default function UXRegisterClient({ requireAdminApproval }: UXRegisterCli
             <div className="flex-1">
               <h3 className="font-bold text-gray-900 mb-1">Sign up for GridMenu! 🎉</h3>
               <p className="text-sm text-gray-600 leading-relaxed">
-                {studioPublic
-                  ? 'Your account may need a short review before Studio opens. Most applications are approved within 24 hours. '
-                  : "Sign up now to join our exclusive waitlist. We're carefully onboarding restaurants to ensure the best experience. "}
-                <strong className="text-gray-900"> Most applications are approved within 24 hours!</strong>
+                Your account may need a short review before Studio opens.{' '}
+                <strong className="text-gray-900">Most applications are approved within 24 hours.</strong>
               </p>
             </div>
           </div>

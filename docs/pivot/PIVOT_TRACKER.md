@@ -98,6 +98,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-08-15 | Workbench parent variant | Change pills under the Workbench preview include `From OG` / `From Vn` for the image the generation was based on. Visual tree deferred. |
 | 2026-08-16 | Studio homepage H1 | Public H1 is `Turn your photos into studio-quality images without prompts.` (was Chunk 8 `Turn real dish photos into menu-ready images`). Source of truth: `STUDIO_SEO.h1`. |
 | 2026-08-17 | Workbench full-frame viewport | Workbench shows the entire image (fit, letterboxed) with zoom/pan/reset. Do not crop the editor preview to a landscape hero. Source uploads may be any common photo ratio; reject only when the longer side exceeds 3× the shorter (panoramas). Generation still uses source framing (Q6 2026-08-14). See patches log. |
+| 2026-08-18 | Public Studio CTAs (Q2) | Homepage sells self-serve signup and credits, not waitlist/invite. Hero secondary CTA is `See pricing`. Workflow H2 is `How AI food photos work`. Drop public FAQ about menu subscriptions. Public metadata (layout, home, pricing title `Photo credits \| GridMenu`, register, sign-in, Support, manifest) is studio-only. Privacy collection copy is dish photos, not menu content. Menu Pack stays the 100-credit offering. Supersedes 2026-08-13 waitlist/invite landing-page promise for visitor-facing copy. |
 
 ---
 
@@ -205,7 +206,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | Phase | Delivered scope | Status | Evidence |
 |---|---|---|---|
 | 6 | Studio-first public homepage, SEO, sitemap | Built | `isStudioPublicSurface()`; `STUDIO_SEO`; parked menu URLs `noindex` and omitted from sitemap. |
-| 6 | Waitlist/invite public promise | Built | Homepage/register/pricing/support CTAs; `/studio` waitlist + pending-invite (not 404). |
+| 6 | Waitlist/invite public promise | Deviation | Chunk 8 shipped waitlist CTAs. 2026-08-18: public homepage/support copy is self-serve credits; `/studio` can still show account-approval waitlist when the admin toggle is on. |
 | 6 | Post-login `/studio` | Built | Auth callback and magic-link default `next`; onboarding skipped for this path. |
 | 6 | Supplementary pages for studio-first | Built | Pricing waitlist page; Support Studio FAQs; Settings waitlist-gated; restaurant/menu-currency hidden when legacy nav is off. |
 
@@ -241,3 +242,4 @@ Record in `docs/pivot/PATCH_<slug>_<date>.md` rather than as a new chunk.
 | 2026-08-15 | Studio export tile actions (credits on Generate; tap preview; regenerate icon) | `main` | Built — see `docs/pivot/PATCH_STUDIO_EXPORT_TILE_ACTIONS_2026-08-15.md`. No migration or env var. |
 | 2026-08-15 | Workbench parent-variant chip (`From OG` / `From Vn`) | `main` | Built — see `docs/pivot/PATCH_STUDIO_PARENT_VARIANT_CHIP_2026-08-15.md`. No migration or env var. |
 | 2026-08-17 | Workbench full-frame viewport (fit/zoom/pan; 3:1 upload rail) | `main` | Built — see `docs/pivot/PATCH_STUDIO_WORKBENCH_VIEWPORT_2026-08-17.md`. No migration or env var. |
+| 2026-08-18 | Studio public homepage copy (self-serve CTAs; drop menu-subscription FAQ) | `main` | Built — see `docs/pivot/PATCH_STUDIO_PUBLIC_HOMEPAGE_COPY_2026-08-18.md`. No migration or env var. |

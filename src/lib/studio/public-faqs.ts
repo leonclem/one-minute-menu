@@ -15,11 +15,6 @@ export const STUDIO_PUBLIC_FAQS: Array<{ question: string; answer: string }> = [
       'Your source photo stays in your Studio library. Generated versions are saved as variants you can download, reuse, or delete.',
   },
   {
-    question: 'Does a menu subscription include Studio?',
-    answer:
-      'No. Photo Studio access and Studio credits are separate from any legacy menu plans.',
-  },
-  {
     question: 'How do I get help?',
     answer: 'Email support@gridmenu.ai.',
   },

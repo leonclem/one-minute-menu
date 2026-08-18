@@ -8,6 +8,13 @@ export const STUDIO_SEO = {
   h1: 'Turn your photos into studio-quality images without prompts.',
 } as const
 
+export const STUDIO_PRICING_SEO = {
+  title: 'Photo credits | GridMenu',
+  description:
+    'Buy Studio photo credits. New accounts start with 10 free credits. One-time Starter, Menu, and Studio packs. 1 credit is 1 standard AI photo.',
+  h1: 'Photo Studio credits',
+} as const
+
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://gridmenu.ai'
 
 export function studioOpenGraph(title = STUDIO_SEO.title, description = STUDIO_SEO.description) {

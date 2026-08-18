@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { isStudioPublicSurface } from '@/lib/product-mode'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | GridMenu',
@@ -9,7 +8,6 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   const lastUpdated = '14/08/2026'
-  const studioPublic = isStudioPublicSurface()
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -24,7 +22,7 @@ export default function PrivacyPage() {
               href="/register" 
               className="bg-ux-primary text-white px-6 py-2 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
             >
-              {studioPublic ? 'Get started' : 'Get Started'}
+              Get started
             </Link>
           </div>
         </div>
@@ -48,13 +46,11 @@ export default function PrivacyPage() {
             <section className="mb-12">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Information We Collect</h2>
               <p>
-                We collect information you provide directly to us, including when you create an account, upload{' '}
-                {studioPublic ? 'dish photos or menu content' : 'menu content'}, communicate with us, or otherwise use
-                our services.
+                We collect information you provide directly to us, including when you create an account, upload
+                dish photos, communicate with us, or otherwise use our services.
               </p>
               <p>
-                This may include account details, contact information,{' '}
-                {studioPublic ? 'dish photos, menu content, images' : 'menu content, images'}, and other information you
+                This may include account details, contact information, dish photos, images, and other information you
                 choose to provide.
               </p>
             </section>

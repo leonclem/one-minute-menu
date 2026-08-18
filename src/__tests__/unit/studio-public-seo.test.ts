@@ -55,6 +55,14 @@ describe('studio-public sitemap and SEO helpers', () => {
     expect(urls.some((url) => url.includes('/studio'))).toBe(false)
   })
 
+  it('returns studio homepage metadata even when studio-public flags are off', async () => {
+    const { getHomePageMetadata } = await import('@/app/(marketing)/home-metadata')
+    const metadata = getHomePageMetadata()
+    expect(metadata.title).toBe('AI Food Photo Studio | GridMenu')
+    expect(String(metadata.description)).toMatch(/10 free credits/i)
+    expect(String(metadata.description)).not.toMatch(/restaurant menu/i)
+  })
+
   it('returns studio homepage metadata when studio-public flags are on', async () => {
     enableStudioPublic()
     const { getHomePageMetadata } = await import('@/app/(marketing)/home-metadata')
@@ -76,5 +84,21 @@ describe('studio-public sitemap and SEO helpers', () => {
       index: false,
       follow: false,
     })
+  })
+
+  it('omits legacy menu-subscription copy from public Studio FAQs', async () => {
+    const { STUDIO_PUBLIC_FAQS } = await import('@/lib/studio/public-faqs')
+    expect(STUDIO_PUBLIC_FAQS.some((faq) => /menu subscription/i.test(faq.question))).toBe(
+      false,
+    )
+    expect(STUDIO_PUBLIC_FAQS.some((faq) => /legacy menu/i.test(faq.answer))).toBe(false)
+  })
+
+  it('uses studio credit-pack pricing metadata', async () => {
+    const { STUDIO_PRICING_SEO } = await import('@/lib/studio/public-seo')
+    expect(STUDIO_PRICING_SEO.title).toBe('Photo credits | GridMenu')
+    expect(STUDIO_PRICING_SEO.h1).toBe('Photo Studio credits')
+    expect(STUDIO_PRICING_SEO.description).toMatch(/10 free credits/i)
+    expect(STUDIO_PRICING_SEO.description).not.toMatch(/subscription/i)
   })
 })

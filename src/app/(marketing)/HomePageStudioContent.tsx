@@ -155,7 +155,7 @@ export default function HomePageStudioContent({ initialUser }: { initialUser?: u
               </Link>
               <Link href="/pricing" className="w-full sm:w-auto">
                 <UXButton variant="warning" size="lg" className="w-full sm:w-auto min-w-[200px]">
-                  How access works
+                  See pricing
                 </UXButton>
               </Link>
             </div>
@@ -166,7 +166,7 @@ export default function HomePageStudioContent({ initialUser }: { initialUser?: u
       <section className="w-full py-16">
         <div className="container-ux mx-auto max-w-6xl px-6">
           <h2 className="text-3xl md:text-4xl font-bold text-white text-center text-hero-shadow mb-10">
-            How GridMenu works
+            How AI food photos work
           </h2>
           <div className="flex flex-col md:flex-row md:items-stretch gap-2 md:gap-0">
             {(

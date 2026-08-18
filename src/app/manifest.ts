@@ -1,14 +1,11 @@
 import type { MetadataRoute } from 'next'
-import { isStudioPublicSurface } from '@/lib/product-mode'
 import { STUDIO_SEO } from '@/lib/studio/public-seo'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'GridMenu',
     short_name: 'GridMenu',
-    description: isStudioPublicSurface()
-      ? STUDIO_SEO.description
-      : 'Create digital menus with QR codes for restaurants',
+    description: STUDIO_SEO.description,
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',

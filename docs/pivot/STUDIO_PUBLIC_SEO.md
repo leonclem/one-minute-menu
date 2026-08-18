@@ -41,7 +41,7 @@ Starter keywords (not stuffed into a `keywords` meta tag):
 **Indexed (in `src/app/sitemap.ts` when studio-public):**
 
 - `/`
-- `/pricing` (waitlist/contact page, not menu plans)
+- `/pricing` (Studio credit packs; title `Photo credits | GridMenu`)
 - `/register`
 - `/support`
 - `/privacy`
@@ -74,7 +74,7 @@ menu-builder set (including `/demo/sample`).
 Shipped on the homepage (studio variant):
 
 - `WebSite` — name GridMenu, studio description, site URL
-- `FAQPage` — studio waitlist FAQs (not menu-creation FAQs)
+- `FAQPage` — studio FAQs (prompts, credits, original photo, help; not menu-creation FAQs)
 
 Support page keeps `FAQPage` aligned with the rewritten FAQs.
 
@@ -108,5 +108,5 @@ schema, or breadcrumb lists.
 - Adding `/studio` to the sitemap if it ever becomes a public landing page.
 - Google Ads landing-page path cleanup beyond moving the signup conversion off restaurant onboarding.
 
-When enhancing: keep the waitlist/invite promise until access mode is deliberately
-opened; do not imply self-serve generation in titles or descriptions.
+When enhancing: public CTAs are self-serve (sign up, 10 free credits, buy packs).
+Do not revive waitlist/invite homepage copy unless access is gated again.

@@ -6,15 +6,6 @@ export const metadata: Metadata = withParkedRobots({
   title: 'Restaurants Cannot Control Inflation. They Can Control This | GridMenu',
   description:
     'Restaurants cannot control inflation or supplier volatility, but they can control how quickly they respond. Here is why menu agility matters more than ever.',
-  keywords: [
-    'restaurant inflation',
-    'menu pricing strategy',
-    'restaurant cost management',
-    'menu workflow',
-    'food price increases',
-    'restaurant operations',
-    'menu agility',
-  ],
   openGraph: {
     title: 'Restaurants Cannot Control Inflation. They Can Control This | GridMenu',
     description:

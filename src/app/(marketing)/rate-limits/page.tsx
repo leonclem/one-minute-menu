@@ -6,7 +6,7 @@ import { withParkedRobots } from '@/lib/studio/public-seo'
 export const metadata: Metadata = withParkedRobots({
   title: 'Rate Limits & Fair Use Policy | GridMenu',
   description:
-    'Detailed breakdown of rate limits, quotas, and fair use policies for all GridMenu plans.',
+    'Fair use notes for GridMenu. This page is archived and does not describe current Photo Studio credit packs.',
 })
 
 const LIMITS = [
