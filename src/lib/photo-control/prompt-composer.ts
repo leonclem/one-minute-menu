@@ -41,18 +41,75 @@ export class CompositionFailureError extends Error {
   }
 }
 
-const MAX_PROMPT_LENGTH = 2492
+/**
+ * Guards against runaway descriptor construction; these are not model limits.
+ * Flash Image accepts 131k input tokens and Pro Image 64k, so the real ceiling
+ * is 260k-520k characters. `edit` is a bug-catcher only. `reshoot` stays lower
+ * because its descriptor carries the observed description, which is trimmed to
+ * fit rather than rejected.
+ */
+const MAX_PROMPT_LENGTH_BY_TASK = {
+  edit: 20000,
+  reshoot: 6000,
+} as const
+
+/** Floor for a trimmed description; below this the text stops being useful. */
+const MIN_DESCRIPTION_LENGTH = 50
 
 /**
  * This is deliberately a real edit wrapper rather than a one-line preamble.
  * `locked` is the semantic negative prompt: it identifies the pixel-faithful
  * content without repeating a prohibition wall from every style row.
  */
-const EDIT_FRAMING =
-  'Constrained edit: change only what "target" names; keep everything else exactly as-is; preserve the original composition. Semantic negative prompt: "subject.locked" remains pixel-faithful.'
+const TASK_FRAMING = {
+  edit:
+    'Constrained edit: change only what "target" names; keep everything else exactly as-is; preserve the original composition. Semantic negative prompt: "subject.locked" remains pixel-faithful.',
+  reshoot:
+    'Re-shoot: re-photograph the dish shown in the reference image. Rebuild composition, camera geometry, lighting and backdrop per "target". Preserve everything listed in "subject.locked" exactly as shown in the reference. Semantic negative prompt: "subject.locked" remains faithful to the reference dish.',
+} as const
 
 function failure(error: string): CompositionResult {
   return { ok: false, error, code: 'COMPOSITION_FAILURE' }
+}
+
+function withDescription(descriptor: SceneDescriptor, description: string): SceneDescriptor {
+  return { ...descriptor, subject: { ...descriptor.subject, description } }
+}
+
+/**
+ * Shorten `subject.description` until the composed prompt fits the task ceiling.
+ * The description is the only expendable part of the descriptor: every other
+ * field is either an identity lock or a staged instruction. Degrading here keeps
+ * a detailed observation from turning into a composition failure.
+ */
+function trimDescriptionToFit(
+  descriptor: SceneDescriptor,
+  directive: string,
+): SceneDescriptor {
+  const { description } = descriptor.subject
+  if (!description) return descriptor
+
+  const maxLength = MAX_PROMPT_LENGTH_BY_TASK[resolveTask(descriptor)]
+  if (estimatePromptSize(descriptor, directive) < maxLength) return descriptor
+
+  let limit = description.length
+  while (limit > MIN_DESCRIPTION_LENGTH) {
+    limit = Math.floor(limit / 2)
+    const candidate = withDescription(descriptor, description.slice(0, limit))
+    if (estimatePromptSize(candidate, directive) < maxLength) return candidate
+  }
+  return withDescription(descriptor, description.slice(0, MIN_DESCRIPTION_LENGTH))
+}
+
+function estimatePromptSize(descriptor: SceneDescriptor, directive: string): number {
+  const task = descriptor.task === 'reshoot' ? 'reshoot' : 'edit'
+  const framing = TASK_FRAMING[task]
+  const descriptorJSON = JSON.stringify(descriptor, null, 2)
+  return [framing, `Requested directive: ${directive}`, '', descriptorJSON].join('\n').length
+}
+
+function resolveTask(descriptor: SceneDescriptor): 'edit' | 'reshoot' {
+  return descriptor.task === 'reshoot' ? 'reshoot' : 'edit'
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -256,10 +313,13 @@ export function composePrompt(input: CompositionInput): CompositionResult {
   }
 
   const normalizedDirective = normalizeDirective(directive)
+  const task = resolveTask(modelDescriptor)
+  const modelDescriptorForPrompt = trimDescriptionToFit(modelDescriptor, normalizedDirective)
+
   const descriptorPayload =
     descriptor === undefined && directive.length > 500
-      ? { ...modelDescriptor, instruction: normalizedDirective }
-      : modelDescriptor
+      ? { ...modelDescriptorForPrompt, instruction: normalizedDirective }
+      : modelDescriptorForPrompt
 
   let descriptorJSON: string
   try {
@@ -282,17 +342,21 @@ export function composePrompt(input: CompositionInput): CompositionResult {
     return failure('Composition failure: descriptor could not be serialized to JSON.')
   }
 
+  const framing = TASK_FRAMING[task]
   const prompt = descriptor === undefined
     ? directive.length > 500
-      ? [EDIT_FRAMING, '', descriptorJSON].join('\n')
-      : [EDIT_FRAMING, `Requested directive: ${normalizedDirective}`, '', descriptorJSON].join('\n')
-    : [EDIT_FRAMING, `Requested directive: ${normalizedDirective}`, '', descriptorJSON].join('\n')
+      ? [framing, '', descriptorJSON].join('\n')
+      : [framing, `Requested directive: ${normalizedDirective}`, '', descriptorJSON].join('\n')
+    : [framing, `Requested directive: ${normalizedDirective}`, '', descriptorJSON].join('\n')
 
-  if (prompt.length >= MAX_PROMPT_LENGTH) {
+  const maxLength = MAX_PROMPT_LENGTH_BY_TASK[task]
+  if (prompt.length >= maxLength) {
     return failure(
-      `Composition failure: prompt exceeds the ${MAX_PROMPT_LENGTH}-character limit.`,
+      `Composition failure: prompt exceeds the ${maxLength}-character limit.`,
     )
   }
 
   return { ok: true, prompt }
 }
+
+export { MAX_PROMPT_LENGTH_BY_TASK, MIN_DESCRIPTION_LENGTH, TASK_FRAMING }

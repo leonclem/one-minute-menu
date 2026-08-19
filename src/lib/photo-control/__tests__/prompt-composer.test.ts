@@ -1,4 +1,9 @@
-import { composePrompt, type CompositionResult } from '../prompt-composer'
+import {
+  composePrompt,
+  MAX_PROMPT_LENGTH_BY_TASK,
+  MIN_DESCRIPTION_LENGTH,
+  type CompositionResult,
+} from '../prompt-composer'
 import type { SceneDescriptor } from '../scene-descriptor'
 
 const descriptor: SceneDescriptor = {
@@ -55,7 +60,7 @@ describe('composePrompt', () => {
     expect(prompt).not.toContain('CRITICAL: CHANGE PERSPECTIVE TO SIDE-VIEW')
     expect(prompt).not.toContain('Camera specification:')
     expect(prompt).not.toContain('negative_constraints')
-    expect(prompt.length).toBeLessThan(2492)
+    expect(prompt.length).toBeLessThan(MAX_PROMPT_LENGTH_BY_TASK.edit)
   })
 
   it('accepts the legacy state-pair call shape while emitting semantic JSON', () => {
@@ -101,11 +106,42 @@ describe('composePrompt', () => {
       code: 'COMPOSITION_FAILURE',
     })
 
+    // The descriptor here carries no `subject.description`, so there is nothing
+    // to trim and the over-budget contract still applies.
     const oversized = composePrompt({
-      directive: 'x'.repeat(2300),
+      directive: 'x'.repeat(MAX_PROMPT_LENGTH_BY_TASK.edit),
       descriptor,
     })
     expect(oversized.ok).toBe(false)
     if (!oversized.ok) expect(oversized.code).toBe('COMPOSITION_FAILURE')
+  })
+
+  it('composes an edit prompt carrying a full-length observed description', () => {
+    const description = 'A close-up 45-degree view of the plated dish. '.repeat(18).slice(0, 800)
+    expect(description).toHaveLength(800)
+
+    const prompt = successful(
+      composePrompt({
+        directive: 'Apply the staged lighting change only.',
+        descriptor: { ...descriptor, subject: { ...descriptor.subject, description } },
+      }),
+    )
+
+    expect(prompt).toContain(description)
+  })
+
+  it('trims an over-budget description instead of failing composition', () => {
+    const description = 'y'.repeat(MAX_PROMPT_LENGTH_BY_TASK.edit + 5000)
+
+    const prompt = successful(
+      composePrompt({
+        directive: 'Apply the staged lighting change only.',
+        descriptor: { ...descriptor, subject: { ...descriptor.subject, description } },
+      }),
+    )
+
+    expect(prompt).not.toContain(description)
+    expect(prompt).toContain('y'.repeat(MIN_DESCRIPTION_LENGTH))
+    expect(prompt.length).toBeLessThan(MAX_PROMPT_LENGTH_BY_TASK.edit)
   })
 })

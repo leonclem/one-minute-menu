@@ -3,7 +3,7 @@
  */
 
 import type { StudioImageRecord } from '@/lib/studio/types'
-import { parentVariantShortLabel, studioVariantShortLabel, studioVariantSpokenLabel } from '../variant-labels'
+import { parentVariantShortLabel, parentVariantLineageText, studioVariantShortLabel, studioVariantSpokenLabel } from '../variant-labels'
 
 function image(
   overrides: Partial<StudioImageRecord> & Pick<StudioImageRecord, 'id' | 'role'>,
@@ -61,5 +61,23 @@ describe('parentVariantShortLabel', () => {
     expect(
       parentVariantShortLabel(image({ id: 'orphan', role: 'generated', source_image_id: 'gone' }), variants),
     ).toBeNull()
+  })
+})
+
+describe('parentVariantLineageText', () => {
+  it('uses From for standard generations and Re-shot from for reshoots', () => {
+    expect(parentVariantLineageText(v1, variants)).toBe('From OG')
+    expect(
+      parentVariantLineageText(
+        image({ id: 'rs', role: 'generated', source_image_id: 'og', metadata: { mode: 'reshoot' } }),
+        variants,
+      ),
+    ).toBe('Re-shot from OG')
+    expect(
+      parentVariantLineageText(
+        image({ id: 'rs2', role: 'generated', source_image_id: 'v1', metadata: { mode: 'reshoot' } }),
+        variants,
+      ),
+    ).toBe('Re-shot from V1')
   })
 })

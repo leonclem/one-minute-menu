@@ -14,7 +14,11 @@ import { generateDirective } from '@/lib/photo-control/directive-generator'
 import { MAX_PENDING_CHANGES } from '@/lib/photo-control/edit-limits'
 import { CENTER, type AngleValue, type EditorState } from '@/lib/photo-control/minimal-schema'
 import { type MinimalValidationResult } from '@/lib/photo-control/schema-validator'
-import type { ExtractionDiagnostics } from '@/lib/studio/extraction-diagnostics'
+import {
+  extractionDiagnosticsNeedsRefresh,
+  type ExtractionDiagnostics,
+} from '@/lib/studio/extraction-diagnostics'
+import { isStudioReshootEnabled } from '@/lib/product-mode'
 import { ANALYTICS_EVENTS } from '@/lib/posthog/events'
 import {
   toModelClass,
@@ -63,8 +67,9 @@ import { StudioTextModal } from './studio-text-modal'
 import { StudioPendingChangesDialog } from './studio-pending-changes-dialog'
 import { StudioCreditsDialog } from './studio-credits-dialog'
 import { StudioModelSwitchDialog } from './studio-model-switch-dialog'
+import { StudioReshootDialog } from './studio-reshoot-dialog'
 import { VisualOptionTiles } from './visual-option-tiles'
-import { parentVariantShortLabel, studioVariantShortLabel, studioVariantSpokenLabel } from '@/lib/studio/variant-labels'
+import { parentVariantLineageText, studioVariantShortLabel, studioVariantSpokenLabel } from '@/lib/studio/variant-labels'
 import { formatExportCreditLabel } from '@/lib/studio/export-presets'
 import { STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
 
@@ -325,6 +330,8 @@ export function StudioClient({
   const [creditCostNb2, setCreditCostNb2] = useState(1)
   const [creditCostNbPro, setCreditCostNbPro] = useState(2)
   const [creditsDialogOpen, setCreditsDialogOpen] = useState(false)
+  const [reshootDialogOpen, setReshootDialogOpen] = useState(false)
+  const reshootEnabled = isStudioReshootEnabled()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingUploadAfterCreateRef = useRef(false)
@@ -355,7 +362,7 @@ export function StudioClient({
     mutatedImageUrl ?? sourceImage?.dataUrl ?? selectedImage?.public_url ?? null
   const changeChips = selectedImage ? readChangeSummary(selectedImage.metadata) : []
   const parentVariantLabel = selectedImage
-    ? parentVariantShortLabel(selectedImage, variants)
+    ? parentVariantLineageText(selectedImage, variants)
     : null
   const studioView = getStudioViewSelection(gallery)
   const handleFirstRunDismiss = useCallback(async () => {
@@ -650,8 +657,17 @@ export function StudioClient({
         setBackdropVisible(knownBackdropVisibility(extractionDiagnosticsRef.current))
 
         const stored = readEditorStateFromMetadata(image.metadata)
-        if (stored) {
+        const staleSourceDiagnostics =
+          image.role === 'source' &&
+          extractionDiagnosticsNeedsRefresh(extractionDiagnosticsRef.current)
+        if (stored && !staleSourceDiagnostics) {
           applyHydratedState(stored)
+        } else if (stored && staleSourceDiagnostics) {
+          setIsHydrated(false)
+          const extracted = await runExtraction(image.id)
+          if (extracted) {
+            await persistEditorState(image.id, extracted)
+          }
         } else {
           setIsHydrated(false)
           const extracted = await runExtraction(image.id)
@@ -1116,6 +1132,9 @@ export function StudioClient({
         metadata: {
           changeSummary,
           editorState: editorStateToMetadata(nextState),
+          ...(extractionDiagnosticsRef.current
+            ? { extractionDiagnostics: extractionDiagnosticsRef.current }
+            : {}),
         },
         is_favourite: false,
         archived_at: null,
@@ -1161,6 +1180,202 @@ export function StudioClient({
     variants.length,
     creditBalance,
   ])
+
+  const handleReshoot = useCallback(
+    async (input: {
+      improvePlating: boolean
+      styles: { lighting: string; backdrop: string; surface: string }
+    }) => {
+      if (!sourceImage || !activeDishId || !persistedSourceId) return
+
+      if (insufficientCredits) {
+        setReshootDialogOpen(false)
+        setCreditsDialogOpen(true)
+        return
+      }
+
+      const generationStartedAt = Date.now()
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_STARTED, {
+        model_class: toModelClass(selectedModel),
+        stage: 'reshoot',
+        has_source_image: Boolean(sourceImage),
+        variant_count: variants.length,
+      })
+
+      setIsGenerating(true)
+      setMutationError(null)
+      setReshootDialogOpen(false)
+
+      try {
+        const response = await fetch('/api/studio/reshoot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dishId: activeDishId,
+            sourceImageId: persistedSourceId,
+            baseState: editorState.schema,
+            styles: input.styles,
+            improvePlating: input.improvePlating,
+            model: selectedModel,
+            extractionDiagnostics: extractionDiagnosticsRef.current,
+          }),
+        })
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => null)
+          const payload = err as {
+            error?: string
+            code?: string
+            dishBlocked?: boolean
+          } | null
+          const blockedByCredits = payload?.code === 'STUDIO_INSUFFICIENT_CREDITS'
+          const blockedByDish =
+            payload?.code === 'STUDIO_DISH_GENERATION_BLOCKED' || payload?.dishBlocked
+          const failureProperties = {
+            model_class: toModelClass(selectedModel),
+            stage: 'reshoot',
+            duration_ms: Math.max(0, Date.now() - generationStartedAt),
+          }
+
+          if (blockedByCredits) {
+            setCreditsDialogOpen(true)
+            trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_BLOCKED_CREDITS, {
+              ...failureProperties,
+              outcome: 'blocked',
+              blocked_by: 'credits',
+            })
+          } else if (blockedByDish) {
+            trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_BLOCKED_DISH, {
+              ...failureProperties,
+              outcome: 'blocked',
+              blocked_by: 'dish_breaker',
+            })
+          } else {
+            trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED, {
+              ...failureProperties,
+              outcome: 'failure',
+              failure_class: generationFailureClass(response.status, payload?.code),
+            })
+          }
+
+          setMutationError(payload?.error ?? `Re-shoot failed (HTTP ${response.status})`)
+          if (blockedByDish) {
+            setDishes((prev) =>
+              prev.map((d) =>
+                d.id === activeDishId
+                  ? {
+                      ...d,
+                      generation_blocked_at: new Date().toISOString(),
+                      generation_blocked_reason: payload?.error ?? 'Blocked',
+                    }
+                  : d
+              )
+            )
+          }
+          return
+        }
+
+        const data = (await response.json()) as MutateResponse
+        trackStudioGenerationCompleted({
+          model: data.model,
+          validationStatus: generationValidationStatus(data.validationStatus),
+          startedAt: generationStartedAt,
+          endedAt: Date.now(),
+          balanceAfter:
+            typeof data.credits?.balanceAfter === 'number'
+              ? data.credits.balanceAfter
+              : (creditBalance ?? 0),
+          cost: data.credits?.cost,
+        })
+        setMutatedImageUrl(data.imageUrl)
+        if (data.credits && typeof data.credits.balanceAfter === 'number') {
+          setCreditBalance(data.credits.balanceAfter)
+        }
+
+        const targetSchema = {
+          ...editorState.schema,
+          scene_setup: {
+            ...editorState.schema.scene_setup,
+            lighting: input.styles.lighting,
+          },
+          canvas: {
+            ...editorState.schema.canvas,
+            background_style: input.styles.backdrop,
+            surface_style: input.styles.surface,
+          },
+        }
+        const nextState: EditorState = { ...editorState, schema: targetSchema }
+        originalStateRef.current = nextState
+        setEditorState(nextState)
+        setBaselineVersion((v) => v + 1)
+
+        const row: StudioImageRecord = {
+          id: data.imageId,
+          user_id: '',
+          dish_id: activeDishId,
+          role: 'generated',
+          source_image_id: persistedSourceId,
+          storage_path: '',
+          public_url: data.imageUrl,
+          mime_type: 'image/png',
+          width: null,
+          height: null,
+          prompt: null,
+          model: data.model,
+          metadata: {
+            mode: 'reshoot',
+            improvePlating: input.improvePlating,
+            reshotFrom: persistedSourceId,
+            editorState: editorStateToMetadata(nextState),
+            ...(extractionDiagnosticsRef.current
+              ? { extractionDiagnostics: extractionDiagnosticsRef.current }
+              : {}),
+          },
+          is_favourite: false,
+          archived_at: null,
+          created_at: new Date().toISOString(),
+        }
+        setGallery((prev) => [...prev, row])
+        setSelectedImageId(data.imageId)
+        setPersistedSourceId(data.imageId)
+        setDishes((prev) =>
+          prev.map((d) =>
+            d.id === activeDishId
+              ? {
+                  ...d,
+                  current_image_id: data.imageId,
+                  generation_failure_count: 0,
+                  generation_blocked_at: null,
+                  generation_blocked_reason: null,
+                }
+              : d
+          )
+        )
+        setSourceImage(sourceImageFromRecord(data.imageUrl, 'image/png'))
+      } catch (err) {
+        trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED, {
+          model_class: toModelClass(selectedModel),
+          stage: 'reshoot',
+          duration_ms: Math.max(0, Date.now() - generationStartedAt),
+          outcome: 'failure',
+          failure_class: 'network',
+        })
+        setMutationError(err instanceof Error ? err.message : 'Re-shoot failed unexpectedly.')
+      } finally {
+        setIsGenerating(false)
+      }
+    },
+    [
+      sourceImage,
+      activeDishId,
+      persistedSourceId,
+      editorState.schema,
+      selectedModel,
+      variants.length,
+      creditBalance,
+      insufficientCredits,
+    ]
+  )
 
   const handleCreateDish = useCallback(
     async (name: string) => {
@@ -1570,11 +1785,35 @@ export function StudioClient({
               expandedStudioPanel === 'controls' ? 'xl:flex' : 'xl:hidden',
             ].join(' ')}
           >
-            <div className="flex items-center justify-between gap-3 border-b bg-neutral-100 px-4 py-3">
+            <div className="border-b bg-neutral-100 px-4 py-3">
               <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
                 Control panel
               </h2>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+                {reshootEnabled && persistedSourceId && (
+                  <button
+                    type="button"
+                    data-testid="reshoot-image-button"
+                    aria-label={`Re-shoot this dish, ${generateCreditLabel}`}
+                    disabled={
+                      isGenerating ||
+                      controlsDisabled ||
+                      !activeDishId ||
+                      dishBlocked ||
+                      !sourceImage
+                    }
+                    className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                    onClick={() => {
+                      if (insufficientCredits) {
+                        setCreditsDialogOpen(true)
+                        return
+                      }
+                      setReshootDialogOpen(true)
+                    }}
+                  >
+                    Re-shoot
+                  </button>
+                )}
                 {hasPendingChanges && !isGenerating && (
                   <button
                     type="button"
@@ -1816,7 +2055,7 @@ export function StudioClient({
                   <ul className="flex flex-wrap gap-1.5" aria-label="Source variant and changes">
                     {parentVariantLabel && (
                       <li className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
-                        From {parentVariantLabel}
+                        {parentVariantLabel}
                       </li>
                     )}
                     {changeChips.map((chip) => (
@@ -1981,6 +2220,22 @@ export function StudioClient({
       />
 
       <StudioCreditsDialog open={creditsDialogOpen} onClose={() => setCreditsDialogOpen(false)} />
+
+      {reshootEnabled && (
+        <StudioReshootDialog
+          open={reshootDialogOpen}
+          onClose={() => setReshootDialogOpen(false)}
+          onConfirm={(input) => void handleReshoot(input)}
+          baseSchema={editorState.schema}
+          extractionDiagnostics={extractionDiagnosticsRef.current}
+          lightingOptions={lightingOptions}
+          backdropOptions={backdropOptions}
+          surfaceOptions={surfaceOptions}
+          creditLabel={generateCreditLabel}
+          busy={isGenerating}
+          backdropUnavailable={backdropKnownFalse}
+        />
+      )}
 
       <StudioDishPickerModal
         open={dishPickerOpen}

@@ -1,22 +1,21 @@
 /**
- * Photo Studio — Phase B Mutation Route (customer-facing)
+ * Photo Studio — Re-shoot Route (customer-facing)
  *
- * POST /api/studio/mutate
+ * POST /api/studio/reshoot
  *
- * Generates via MutationEngine (fixed standard model), persists the output to
- * studio_images + storage, and returns the public URL.
+ * Re-photographs the dish from the source image, releasing composition, camera,
+ * lighting and backdrop constraints while preserving dish identity.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireStudioApi } from '@/lib/studio/studio-api-auth'
 import { getMutationEngine } from '@/lib/photo-control/mutation-engine'
 import { composePrompt } from '@/lib/photo-control/prompt-composer'
-import { buildSceneDescriptor } from '@/lib/photo-control/scene-descriptor'
-import { computeDelta } from '@/lib/photo-control/state-delta'
+import { buildReshootDescriptor } from '@/lib/photo-control/scene-descriptor'
 import { loadStudioImageBytes } from '@/lib/studio/image-bytes'
 import { CENTER, type MinimalSchema } from '@/lib/photo-control/minimal-schema'
 import { editorStateToMetadata } from '@/lib/studio/editor-state-storage'
-import { resolveStyleDirectiveClauses } from '@/lib/studio/resolve-style-directives'
+import { resolveStylesByKeys } from '@/lib/studio/reference-libraries'
 import {
   runStudioOutputValidation,
   validationToMetadata,
@@ -28,22 +27,74 @@ import {
   mapStudioGenerationError,
 } from '@/lib/studio/generation-request'
 import { sanitizeExtractionDiagnostics } from '@/lib/studio/extraction-diagnostics'
+import { resolveReshootStyleDefaults } from '@/lib/studio/style-defaults'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
-function normalizeSchemaFields(schema: MinimalSchema): MinimalSchema {
-  if (typeof schema.scene_setup?.spin !== 'string') {
-    schema.scene_setup = { ...schema.scene_setup, spin: '0' }
+const RESHOOT_DIRECTIVE = 'Re-shoot this dish with the target scene settings.'
+
+function normalizeSchema(schema: MinimalSchema): MinimalSchema {
+  const normalized = { ...schema }
+  if (typeof normalized.scene_setup?.spin !== 'string') {
+    normalized.scene_setup = { ...normalized.scene_setup, spin: '0' }
   }
-  if (typeof schema.canvas?.background_style !== 'string') {
-    schema.canvas = { ...schema.canvas, background_style: '' }
+  if (typeof normalized.canvas?.background_style !== 'string') {
+    normalized.canvas = { ...normalized.canvas, background_style: '' }
   }
-  if (typeof schema.canvas?.surface_style !== 'string') {
-    schema.canvas = { ...schema.canvas, surface_style: '' }
+  if (typeof normalized.canvas?.surface_style !== 'string') {
+    normalized.canvas = { ...normalized.canvas, surface_style: '' }
   }
-  return schema
+  return normalized
+}
+
+function buildTargetSchema(
+  base: MinimalSchema,
+  styles: { lighting?: string; backdrop?: string; surface?: string },
+): MinimalSchema {
+  return {
+    ...base,
+    scene_setup: {
+      ...base.scene_setup,
+      ...(styles.lighting ? { lighting: styles.lighting } : {}),
+    },
+    canvas: {
+      ...base.canvas,
+      ...(styles.backdrop ? { background_style: styles.backdrop } : {}),
+      ...(styles.surface ? { surface_style: styles.surface } : {}),
+    },
+  }
+}
+
+function validationMetadataForReshoot(
+  validationResult: Awaited<ReturnType<typeof runStudioOutputValidation>>,
+  improvePlating: boolean,
+): Record<string, unknown> {
+  const metadata = validationToMetadata(validationResult)
+  if (!improvePlating) return metadata
+
+  const itemCount = validationResult.dimensions.find((d) => d.id === 'item_count')
+  if (!itemCount) return metadata
+
+  const dimensions = validationResult.dimensions.filter((d) => d.id !== 'item_count')
+  const adjustedStatus =
+    dimensions.some((d) => d.status === 'fail')
+      ? 'fail'
+      : dimensions.some((d) => d.status === 'warn')
+        ? 'warn'
+        : validationResult.status
+
+  return {
+    status: adjustedStatus,
+    score: validationResult.score,
+    summary: validationResult.summary,
+    dimensions,
+    componentCountDrift: {
+      expected: itemCount.note,
+      status: itemCount.status,
+    },
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -61,31 +112,24 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as {
-      sourceImageId?: unknown
-      originalState?: unknown
-      targetState?: unknown
-      directive?: unknown
       dishId?: unknown
-      changeSummary?: unknown
-      model?: unknown
+      sourceImageId?: unknown
+      baseState?: unknown
+      styles?: { lighting?: string; backdrop?: string; surface?: string }
+      improvePlating?: unknown
       extractionDiagnostics?: unknown
+      model?: unknown
     }
 
     const {
-      sourceImageId,
-      originalState,
-      targetState,
-      directive,
       dishId,
-      changeSummary,
-      model,
+      sourceImageId,
+      baseState,
+      styles: styleOverrides,
+      improvePlating,
       extractionDiagnostics,
+      model,
     } = body
-    const safeExtractionDiagnostics = sanitizeExtractionDiagnostics(extractionDiagnostics)
-
-    const changeSummaryChips = Array.isArray(changeSummary)
-      ? changeSummary.filter((item): item is string => typeof item === 'string')
-      : []
 
     if (typeof dishId !== 'string' || !dishId) {
       return NextResponse.json({ error: 'dishId is required' }, { status: 400 })
@@ -105,73 +149,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!originalState || typeof originalState !== 'object') {
+    if (!baseState || typeof baseState !== 'object') {
       return NextResponse.json(
-        { error: 'originalState is required and must be an object' },
+        { error: 'baseState is required and must be an object' },
         { status: 400 },
       )
     }
 
-    if (!targetState || typeof targetState !== 'object') {
-      return NextResponse.json(
-        { error: 'targetState is required and must be an object' },
-        { status: 400 },
-      )
+    const safeExtractionDiagnostics = sanitizeExtractionDiagnostics(extractionDiagnostics)
+    const baseSchema = normalizeSchema(baseState as MinimalSchema)
+    const resolvedDefaults = resolveReshootStyleDefaults(baseSchema, safeExtractionDiagnostics)
+    const styleKeys = {
+      lighting: styleOverrides?.lighting ?? resolvedDefaults.lighting,
+      backdrop: styleOverrides?.backdrop ?? resolvedDefaults.backdrop,
+      surface: styleOverrides?.surface ?? resolvedDefaults.surface,
     }
 
-    if (typeof directive !== 'string' || !directive.trim()) {
-      return NextResponse.json(
-        { error: 'directive is required and must be a non-empty string' },
-        { status: 400 },
-      )
-    }
-
-    const { mimeType, base64: sourceImageBase64, byteLength: imageBytes } =
-      await loadStudioImageBytes(auth.user.id, sourceImageId)
-
-    const originalSchema = normalizeSchemaFields(originalState as MinimalSchema)
-    const targetSchema = normalizeSchemaFields(targetState as MinimalSchema)
-
-    const styleResolution = await resolveStyleDirectiveClauses(originalSchema, targetSchema)
+    const styleResolution = await resolveStylesByKeys(styleKeys)
     if (styleResolution.error) {
       return NextResponse.json({ error: styleResolution.error }, { status: 400 })
     }
 
-    const labels = ['Image A']
-    const delta = computeDelta(
-      { schema: originalSchema, position: CENTER },
-      { schema: targetSchema, position: CENTER },
-    )
-    const stagedFields: OutputValidationStagedField[] = []
-    for (const change of delta.scalarChanges) {
-      if (change.path === 'scene_setup.lighting') stagedFields.push('lighting')
-      if (change.path === 'canvas.background_style') stagedFields.push('background_style')
-      if (change.path === 'canvas.surface_style') stagedFields.push('surface_style')
-      if (change.path === 'scene_setup.angle') stagedFields.push('angle')
-      if (change.path === 'scene_setup.spin') stagedFields.push('spin')
-    }
-    const descriptor = buildSceneDescriptor({
-      original: originalSchema,
-      target: targetSchema,
-      delta,
+    const targetSchema = buildTargetSchema(baseSchema, styleKeys)
+    const improvePlatingEnabled = improvePlating === true
+
+    const { mimeType, base64: sourceImageBase64, byteLength: imageBytes } =
+      await loadStudioImageBytes(auth.user.id, sourceImageId)
+
+    const labels = ['Image A', 'Image B', 'Image C', 'Image D']
+    const descriptor = buildReshootDescriptor({
+      base: targetSchema,
       styles: {
         lighting: styleResolution.lightingStyle,
         backdrop: styleResolution.backgroundStyle,
         surface: styleResolution.surfaceStyle,
       },
-      observations:
-        safeExtractionDiagnostics
-          ? ({ ...(safeExtractionDiagnostics as unknown as Record<string, unknown>) })
-          : {},
+      observations: safeExtractionDiagnostics
+        ? ({ ...(safeExtractionDiagnostics as unknown as Record<string, unknown>) })
+        : {},
       labels,
+      improvePlating: improvePlatingEnabled,
       includePromptFragmentFallback: false,
     })
-    const directiveText = directive.trim()
+
     const compositionResult = composePrompt({
-      directive: directiveText,
+      directive: RESHOOT_DIRECTIVE,
       descriptor,
-      originalState: originalSchema,
-      targetState: targetSchema,
     })
 
     if (!compositionResult.ok) {
@@ -181,7 +204,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    logger.info('🎨 [Studio Mutate] Request', {
+    const stagedFields: OutputValidationStagedField[] = [
+      'lighting',
+      'background_style',
+      'surface_style',
+      'angle',
+      'framing',
+    ]
+
+    logger.info('🎨 [Studio Reshoot] Request', {
       userId: auth.user.id,
       mimeType,
       imageBytes,
@@ -189,6 +220,7 @@ export async function POST(request: NextRequest) {
       usedToday,
       dailyLimit,
       creditCost,
+      improvePlating: improvePlatingEnabled,
     })
 
     const engine = getMutationEngine()
@@ -213,14 +245,16 @@ export async function POST(request: NextRequest) {
     })
 
     const generatedMetadata: Record<string, unknown> = {
-      directive: directiveText,
-      changeSummary: changeSummaryChips,
+      mode: 'reshoot',
+      improvePlating: improvePlatingEnabled,
+      reshotFrom: sourceImageId,
+      directive: RESHOOT_DIRECTIVE,
       cost_credits: creditCost,
       editorState: editorStateToMetadata({
         schema: targetSchema,
         position: { ...CENTER },
       }),
-      validation: validationToMetadata(validationResult),
+      validation: validationMetadataForReshoot(validationResult, improvePlatingEnabled),
     }
     if (safeExtractionDiagnostics) {
       generatedMetadata.extractionDiagnostics = safeExtractionDiagnostics
@@ -244,7 +278,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    logger.info('✅ [Studio Mutate] Success', {
+    logger.info('✅ [Studio Reshoot] Success', {
       userId: auth.user.id,
       imageId: record.id,
       dishId,
@@ -264,6 +298,6 @@ export async function POST(request: NextRequest) {
       credits: { cost: debit.cost, balanceAfter: debit.balanceAfter },
     })
   } catch (error) {
-    return await mapStudioGenerationError(error, failureContext, 'Studio Mutate')
+    return await mapStudioGenerationError(error, failureContext, 'Studio Reshoot')
   }
 }

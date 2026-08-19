@@ -1,5 +1,8 @@
 # Production deploy backlog
 
+> **Closed / historical as of 2026-08-18.** Production is current with `main`. Pending rows
+> below are stale — do not treat them as live deploy work.
+
 **Purpose:** running total of everything that must happen in production (or any
 non-local environment) before/at the next deliberate deploy. Updated in the
 **same commit** as each chunk that adds migrations or env vars.

@@ -33,3 +33,13 @@ export function parentVariantShortLabel(
   if (!parent) return null
   return studioVariantShortLabel(parent, variants)
 }
+
+/** Workbench chip text naming the parent variant, with re-shoot wording when applicable. */
+export function parentVariantLineageText(
+  image: StudioImageRecord,
+  variants: StudioImageRecord[],
+): string | null {
+  const parent = parentVariantShortLabel(image, variants)
+  if (!parent) return null
+  return image.metadata?.mode === 'reshoot' ? `Re-shot from ${parent}` : `From ${parent}`
+}

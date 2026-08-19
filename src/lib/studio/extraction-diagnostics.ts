@@ -9,6 +9,7 @@ import type {
 } from '@/lib/photo-control/schema-validator'
 
 export const EXTRACTION_DIAGNOSTICS_MAX_BYTES = 8192
+export const EXTRACTION_DIAGNOSTICS_VERSION = 2 as const
 
 export type ExtractionOmissionReason =
   | 'absent'
@@ -21,7 +22,7 @@ export interface ExtractionOmission {
 }
 
 export interface ExtractionDiagnostics {
-  version: 1
+  version: typeof EXTRACTION_DIAGNOSTICS_VERSION | 1
   strictConformance: boolean
   warnings: Array<Pick<MinimalValidationWarning, 'path' | 'message' | 'severity'>>
   omittedFields: ExtractionOmission[]
@@ -57,6 +58,19 @@ const EXPECTED_PATHS = [
   'surface_visible',
   'description',
 ] as const
+
+/** Per-path string limits applied at both extract and sanitize call sites. */
+export const OBSERVED_PATH_LIMITS: Record<string, number> = {
+  description: 800,
+  'backdrop.material': 120,
+  'backdrop.colour': 120,
+  'surface.material': 120,
+  'surface.colour': 120,
+}
+
+const DEFAULT_STRING_LIMIT = 120
+const ARRAY_ITEM_LIMIT = 80
+const MAX_ARRAY_ITEMS = 12
 
 const CONTROL_STATE_PATHS = new Set<string>([
   'scene_setup.angle',
@@ -128,6 +142,10 @@ function safeText(value: string, limit = 160): string {
     .slice(0, limit)
 }
 
+function pathStringLimit(path: string): number {
+  return OBSERVED_PATH_LIMITS[path] ?? DEFAULT_STRING_LIMIT
+}
+
 function safeWarning(warning: unknown): Pick<MinimalValidationWarning, 'path' | 'message' | 'severity'> | null {
   if (!isRecord(warning) || typeof warning.path !== 'string' || typeof warning.message !== 'string') {
     return null
@@ -140,9 +158,14 @@ function safeWarning(warning: unknown): Pick<MinimalValidationWarning, 'path' | 
   }
 }
 
-function safeObservedValue(value: unknown): unknown {
-  if (typeof value === 'string') return safeText(value, 120)
-  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string').slice(0, 12).map((item) => safeText(item, 80))
+function safeObservedValue(value: unknown, path: string): unknown {
+  if (typeof value === 'string') return safeText(value, pathStringLimit(path))
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === 'string')
+      .slice(0, MAX_ARRAY_ITEMS)
+      .map((item) => safeText(item, ARRAY_ITEM_LIMIT))
+  }
   return value
 }
 
@@ -151,7 +174,7 @@ function buildObservedFields(raw: unknown): Record<string, unknown> {
   for (const path of EXPECTED_PATHS) {
     const value = getPath(raw, path)
     if (value !== undefined && validRawValue(path, value)) {
-      setPath(observations, path, safeObservedValue(value))
+      setPath(observations, path, safeObservedValue(value, path))
     }
   }
   return observations
@@ -175,6 +198,90 @@ function classifyOmission(
   return 'invalid'
 }
 
+function diagnosticsSize(value: ExtractionDiagnostics): number {
+  return JSON.stringify(value).length
+}
+
+function trimDescription(observations: Record<string, unknown>, limit: number): void {
+  const current = getPath(observations, 'description')
+  if (typeof current !== 'string' || current.length <= limit) return
+  setPath(observations, 'description', current.slice(0, limit))
+}
+
+function capArrayObservations(observations: Record<string, unknown>, maxItems: number): void {
+  for (const path of ['food_components.garnishes', 'food_components.sides'] as const) {
+    const value = getPath(observations, path)
+    if (!Array.isArray(value)) continue
+    if (value.length > maxItems) {
+      setPath(observations, path, value.slice(0, maxItems))
+    }
+  }
+}
+
+/** Drop observation sections in a defined order until the block fits. */
+function dropObservationSections(observations: Record<string, unknown>): void {
+  const dropOrder = [
+    'food_components.garnishes',
+    'food_components.sides',
+    'backdrop.colour',
+    'surface.colour',
+    'backdrop.material',
+    'surface.material',
+    'canvas.background',
+    'scene_setup.spin',
+    'scene_setup.angle',
+    'scene_setup.framing',
+    'scene_setup.lighting',
+  ] as const
+
+  for (const path of dropOrder) {
+    if (diagnosticsSize({ version: EXTRACTION_DIAGNOSTICS_VERSION, strictConformance: false, warnings: [], omittedFields: [], observations }) <= EXTRACTION_DIAGNOSTICS_MAX_BYTES) {
+      return
+    }
+    const segments = path.split('.')
+    let current: Record<string, unknown> = observations
+    for (let i = 0; i < segments.length - 1; i += 1) {
+      const next = current[segments[i]]
+      if (!isRecord(next)) return
+      current = next
+    }
+    delete current[segments[segments.length - 1]]
+  }
+}
+
+function boundDiagnostics(value: ExtractionDiagnostics): ExtractionDiagnostics {
+  if (diagnosticsSize(value) <= EXTRACTION_DIAGNOSTICS_MAX_BYTES) return value
+
+  let result: ExtractionDiagnostics = {
+    ...value,
+    warnings: value.warnings.slice(0, 8),
+  }
+
+  if (diagnosticsSize(result) <= EXTRACTION_DIAGNOSTICS_MAX_BYTES) return result
+
+  const observations = { ...result.observations }
+  for (const half of [400, 200, 100, 50]) {
+    trimDescription(observations, half)
+    result = { ...result, observations: { ...observations } }
+    if (diagnosticsSize(result) <= EXTRACTION_DIAGNOSTICS_MAX_BYTES) return result
+  }
+
+  for (const maxItems of [8, 4, 2, 0]) {
+    capArrayObservations(observations, maxItems)
+    result = { ...result, observations: { ...observations } }
+    if (diagnosticsSize(result) <= EXTRACTION_DIAGNOSTICS_MAX_BYTES) return result
+  }
+
+  dropObservationSections(observations)
+  result = { ...result, observations: { ...observations } }
+  if (diagnosticsSize(result) <= EXTRACTION_DIAGNOSTICS_MAX_BYTES) return result
+
+  return {
+    ...result,
+    observations: {},
+  }
+}
+
 export function sanitizeExtractionDiagnostics(value: unknown): ExtractionDiagnostics | null {
   if (!isRecord(value)) return null
   const omittedFields = Array.isArray(value.omittedFields)
@@ -187,23 +294,18 @@ export function sanitizeExtractionDiagnostics(value: unknown): ExtractionDiagnos
   const warnings = Array.isArray(value.warnings)
     ? value.warnings.map(safeWarning).filter((warning): warning is NonNullable<ReturnType<typeof safeWarning>> => warning !== null).slice(0, 16)
     : []
+  const version =
+    value.version === EXTRACTION_DIAGNOSTICS_VERSION || value.version === 1
+      ? value.version
+      : EXTRACTION_DIAGNOSTICS_VERSION
   const sanitized: ExtractionDiagnostics = {
-    version: 1,
+    version,
     strictConformance: value.strictConformance === true,
     warnings,
     omittedFields,
     observations: buildObservedFields(value.observations),
   }
   return boundDiagnostics(sanitized)
-}
-
-function boundDiagnostics(value: ExtractionDiagnostics): ExtractionDiagnostics {
-  if (JSON.stringify(value).length <= EXTRACTION_DIAGNOSTICS_MAX_BYTES) return value
-  return {
-    ...value,
-    warnings: value.warnings.slice(0, 8),
-    observations: {},
-  }
 }
 
 export function buildExtractionDiagnostics({
@@ -225,7 +327,7 @@ export function buildExtractionDiagnostics({
     .slice(0, 16)
 
   return boundDiagnostics({
-    version: 1,
+    version: EXTRACTION_DIAGNOSTICS_VERSION,
     strictConformance: Boolean(strictConformance),
     warnings: safeWarnings,
     omittedFields,
@@ -234,5 +336,12 @@ export function buildExtractionDiagnostics({
 }
 
 export function extractionDiagnosticsWithinBound(value: ExtractionDiagnostics): boolean {
-  return JSON.stringify(value).length <= EXTRACTION_DIAGNOSTICS_MAX_BYTES
+  return diagnosticsSize(value) <= EXTRACTION_DIAGNOSTICS_MAX_BYTES
+}
+
+export function extractionDiagnosticsNeedsRefresh(
+  diagnostics: ExtractionDiagnostics | null | undefined,
+): boolean {
+  if (!diagnostics) return true
+  return diagnostics.version < EXTRACTION_DIAGNOSTICS_VERSION
 }

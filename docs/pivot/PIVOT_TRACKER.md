@@ -1,5 +1,8 @@
 # Photo Studio Pivot — Requirements Tracker
 
+> **Closed / historical as of 2026-08-18.** Production is current with `main` and the self-serve
+> launch is live. Do not treat pending rows below as live work.
+
 Tracks what from `GridMenu_Photo_Studio_Pivot_Requirements_2026-07-16.md` is built, pending,
 deferred, or deviates from the original document. Update this file in the same PR/commit as the
 work it describes.

@@ -128,3 +128,11 @@ export function shouldShowStudioNav(
 ): boolean {
   return canAccessPhotoStudio(isAdmin, hasBetaAccess)
 }
+
+/**
+ * Whether the Re-shoot action is enabled in the Studio UI.
+ * Defaults to false (not yet shipped).
+ */
+export function isStudioReshootEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_STUDIO_ENABLE_RESHOOT === 'true'
+}

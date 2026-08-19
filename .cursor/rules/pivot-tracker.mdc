@@ -1,30 +1,11 @@
 ---
-description: Keep the Photo Studio pivot tracker up to date and guide the user through git operations
+description: Git workflow guidance for the Photo Studio pivot
 alwaysApply: true
 ---
 
-# Photo Studio Pivot — Tracking & Git Discipline
+# Photo Studio Pivot — Git Discipline
 
-GridMenu is pivoting to an AI food photo studio. Requirements, status tracking, and workflow
-docs live in `docs/pivot/`.
-
-## Tracker upkeep (mandatory)
-
-When work builds, changes, or deviates from anything in
-`docs/pivot/GridMenu_Photo_Studio_Pivot_Requirements_2026-07-16.md`:
-
-1. Update the matching status row(s) in `docs/pivot/PIVOT_TRACKER.md` (traceability tables,
-   chunk log, and patches log as applicable) **in the same commit** as the work.
-2. Record any deviation from the requirements document, or any new product decision, as a new
-   dated row in the tracker's Decisions log. Never rewrite old decision rows.
-3. If a new chunk of work starts, add it to the chunk log and create
-   `docs/pivot/BUILD_PLAN_CHUNK_NN.md` before implementing.
-4. If work is an independent patch (bug fix, infra change) outside the requirements phases,
-   add it to the patches log in `PIVOT_TRACKER.md` and create
-   `docs/pivot/PATCH_<slug>_<date>.md` — not a new chunk number.
-5. If the chunk or patch adds a DB migration, new env var, or other production action, append a row to
-   `docs/pivot/PRODUCTION_DEPLOY_BACKLOG.md` (status `Pending`) in the same commit. Do not
-   rely on git history alone for the deploy backlog.
+GridMenu is pivoting to an AI food photo studio. Workflow docs live in `docs/pivot/`.
 
 ## Git workflow (user needs guidance)
 

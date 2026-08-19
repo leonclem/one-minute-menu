@@ -85,6 +85,7 @@ export interface SceneSubject {
   reference?: string
   dish?: string
   vessel?: string
+  description?: string
   components?: SceneComponents
   locked: string[]
 }
@@ -95,7 +96,7 @@ export interface SceneOutput {
 }
 
 export interface SceneDescriptor {
-  task: 'edit'
+  task: 'edit' | 'reshoot'
   subject: SceneSubject
   camera: SceneCamera
   current: SceneDescriptorState
@@ -114,13 +115,32 @@ export interface BuildSceneDescriptorInput {
   includePromptFragmentFallback?: boolean
 }
 
-const LOCKED_CONSTRAINTS = [
-  'dish identity',
-  'ingredient and component counts',
-  'vessel',
-  'framing',
-  'colours and textures',
-]
+export interface BuildReshootDescriptorInput {
+  base: MinimalSchema
+  styles: SceneDescriptorStyles
+  observations: SceneObservations | Record<string, unknown>
+  labels: readonly string[]
+  improvePlating?: boolean
+  includePromptFragmentFallback?: boolean
+}
+
+const LOCKED_CONSTRAINTS_BY_TASK = {
+  edit: [
+    'dish identity',
+    'ingredient and component counts',
+    'vessel',
+    'framing',
+    'colours and textures',
+  ],
+  reshoot: [
+    'dish identity',
+    'ingredient and component counts',
+    'vessel type',
+    'core food colours',
+  ],
+} as const
+
+const PLATING_LOCK = 'plating arrangement'
 
 const STYLE_ATTRIBUTES: Record<SceneStyleKind, readonly string[]> = {
   lighting: ['quality', 'temperature', 'shadows', 'falloff'],
@@ -382,13 +402,49 @@ function addPositionChange(
   target.position = { x: delta.position.to.x, y: delta.position.to.y }
 }
 
+function observedDescription(
+  observations: SceneObservations | Record<string, unknown>,
+): string | undefined {
+  const root = observationRecord(observations)
+  const nested = getPath(root, 'description')
+  if (nonEmptyString(nested) && !isOmitted(observations, 'description')) {
+    return nested
+  }
+  const direct = root.description
+  if (nonEmptyString(direct) && !isOmitted(observations, 'description')) {
+    return direct
+  }
+  return undefined
+}
+
+function getPath(root: unknown, path: string): unknown {
+  if (!isRecord(root)) return undefined
+  let value: unknown = root
+  for (const segment of path.split('.')) {
+    if (!isRecord(value) || !(segment in value)) return undefined
+    value = value[segment]
+  }
+  return value
+}
+
 function subjectFrom(
   original: MinimalSchema,
   labels: readonly string[],
   observations: SceneObservations | Record<string, unknown>,
+  task: SceneDescriptor['task'],
+  improvePlating = false,
 ): SceneSubject {
-  const subject: SceneSubject = { locked: [...LOCKED_CONSTRAINTS] }
+  const locked: string[] = [...LOCKED_CONSTRAINTS_BY_TASK[task]]
+  if (task === 'reshoot' && !improvePlating) {
+    locked.push(PLATING_LOCK)
+  }
+
+  const subject: SceneSubject = { locked }
   if (nonEmptyString(labels[0])) subject.reference = labels[0]
+
+  const description = observedDescription(observations)
+  if (description) subject.description = description
+
   if (
     nonEmptyString(original.food_components.main_item) &&
     !isOmitted(observations, 'food_components.main_item')
@@ -475,7 +531,50 @@ export function buildSceneDescriptor({
 
   return {
     task: 'edit',
-    subject: subjectFrom(original, labels, observations),
+    subject: subjectFrom(original, labels, observations, 'edit'),
+    camera: {},
+    current,
+    target,
+    output: { style: 'photorealistic', framing: 'full shot, no cropping' },
+  }
+}
+
+/**
+ * Build a re-shoot descriptor: all scene axes are targets (no delta), with the
+ * source photograph attached as the sole identity reference.
+ */
+export function buildReshootDescriptor({
+  base,
+  styles,
+  observations,
+  labels,
+  improvePlating = false,
+  includePromptFragmentFallback = true,
+}: BuildReshootDescriptorInput): SceneDescriptor {
+  const current: SceneDescriptorState = {}
+  const target: SceneDescriptorState = {}
+  let styleReferenceOffset = 1
+
+  addCameraChange(current, target, base, base, 'angle', observations)
+  addCameraChange(current, target, base, base, 'framing', observations)
+  addCameraChange(current, target, base, base, 'spin', observations)
+
+  for (const kind of ['lighting', 'backdrop', 'surface'] as const) {
+    addStyleChange(
+      current,
+      target,
+      kind,
+      styleRow(styles, kind),
+      observations,
+      labels[styleReferenceOffset],
+      includePromptFragmentFallback,
+    )
+    styleReferenceOffset += 1
+  }
+
+  return {
+    task: 'reshoot',
+    subject: subjectFrom(base, labels, observations, 'reshoot', improvePlating),
     camera: {},
     current,
     target,

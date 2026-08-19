@@ -19,6 +19,7 @@ export type OutputValidationStagedField =
   | 'surface_style'
   | 'angle'
   | 'spin'
+  | 'framing'
 
 export interface RequestedStyleDescriptor {
   material?: string

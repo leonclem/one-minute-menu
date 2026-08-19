@@ -11,15 +11,9 @@
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## SEO optimisation
-- [ ] Update Product Hunt, Betalist, Crunchbase, LinkedIn
-- [ ] Update Google Search Console
-- [ ] Update Bing Webmaster Tools
-- [ ] Keywords still reflect menus
-
 ## /studio
 - [ ] Expand options for each category
-- [ ] "Reconstitute" using extracted JSON (especially if image is terrible, e.g. Hainanese chicken)
+- [x] "Re-shoot" action for photos that cannot be saved by constrained edits (`NEXT_PUBLIC_STUDIO_ENABLE_RESHOOT`, default off)
 - [ ] Click to draw a circle/oval/eraser to remove element
 - [ ] Click to draw a circle/oval/eraser to move an element
 - [ ] Investigate vessel swapping (pro advised to use reference)
@@ -37,6 +31,9 @@
 >>>>>>>>>>>>> LATER >>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+## SEO optimisation
+- [x] Check if Betalist updated (submitted changes 16/08/26)
+
 ## Social Media and Advertising
 - [ ] Investigate what's required for name change
 - [ ] "How to design a restaurant menu" Starter Story Build May 26 "How to Get 1,000 Downloads On Your App in 30 Days (From Scratch)"
@@ -53,6 +50,8 @@
 - [ ] Image downsizing functionality (in-browser)
 - [ ] If a user likes a certain mutation combo (e.g. studio lighting + yellow backdrop + white tablecloth) -> allow style save (for application to other dishes, e.g. "apply to all").
 - [ ] Brand kit
+- [ ] Image options like "denoise", "sharpen", "de-yellow", "re-render at 2K/4K".
+- [ ] Add guidance info to CP, e.g. if users upload an image with no backdrop, attempting to change the backdrop may lead to unexpected results.
 
 ## Bugs
 
@@ -172,3 +171,9 @@
 
 ## /onboarding
 - [x] New users get 10 credits by default
+
+## SEO optimisation
+- [x] Update Product Hunt, Betalist, Crunchbase, LinkedIn
+- [x] Update Google Search Console
+- [x] Update Bing Webmaster Tools
+- [x] Keywords still reflect menus

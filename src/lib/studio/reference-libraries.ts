@@ -117,6 +117,51 @@ export async function resolveBackgroundStyle(
   return (data as StudioBackgroundStyleRecord | null) ?? null
 }
 
+export interface ResolvedStyleKeys {
+  lighting?: string
+  backdrop?: string
+  surface?: string
+}
+
+export async function resolveStylesByKeys(
+  keys: ResolvedStyleKeys,
+): Promise<{
+  error?: string
+  lightingStyle?: StudioLightingStyleRecord | null
+  backgroundStyle?: StudioBackgroundStyleRecord | null
+  surfaceStyle?: StudioBackgroundStyleRecord | null
+}> {
+  let lightingStyle: StudioLightingStyleRecord | null = null
+  let backgroundStyle: StudioBackgroundStyleRecord | null = null
+  let surfaceStyle: StudioBackgroundStyleRecord | null = null
+
+  if (keys.lighting) {
+    const style = await resolveLightingStyle(keys.lighting)
+    if (!style) {
+      return { error: `Unknown or inactive lighting style: ${keys.lighting}` }
+    }
+    lightingStyle = style
+  }
+
+  if (keys.backdrop) {
+    const style = await resolveBackgroundStyle(keys.backdrop)
+    if (!style) {
+      return { error: `Unknown or inactive background style: ${keys.backdrop}` }
+    }
+    backgroundStyle = style
+  }
+
+  if (keys.surface) {
+    const style = await resolveBackgroundStyle(keys.surface)
+    if (!style) {
+      return { error: `Unknown or inactive surface style: ${keys.surface}` }
+    }
+    surfaceStyle = style
+  }
+
+  return { lightingStyle, backgroundStyle, surfaceStyle }
+}
+
 export async function listAllLightingStyles(): Promise<StudioLightingStyleRecord[]> {
   const supabase = createAdminSupabaseClient()
   const { data, error } = await supabase
