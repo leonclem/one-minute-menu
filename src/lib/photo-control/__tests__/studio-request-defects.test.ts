@@ -168,7 +168,7 @@ describe('Studio request defects: forced square', () => {
         role: 'user',
         parts: [
           {
-            text: 'Edit the provided reference images (Image A) while preserving their visual identity.\n\nPreserve the plated dish while adjusting the background.\nNo people in the image.',
+            text: 'Edit the provided source image while preserving its visual identity.\n\nPreserve the plated dish while adjusting the background.\nNo people in the image.',
           },
           { inlineData: { mimeType: 'image/png', data: 'c3ViamVjdA==' } },
         ],
@@ -381,20 +381,25 @@ describe('Studio request defects: log divergence, synthesis framing, and leaked 
           loggerInfoSpy,
         )
         const sentText = request.contents[0].parts[0].text as string
+        const opener = sentText.split('\n\n')[0] ?? ''
 
         expect({
           loggedPromptMatchesSentText: loggedPrompt === sentText,
           excludesGenerateImagePrefix: !sentText.includes('Generate an image of:'),
           excludesComposeNewImageFraming: !sentText.includes('Compose a new image'),
           excludesContentSafetyToken: !sentText.includes('Content safety:'),
-          retainsImageLabel: sentText.includes('Image A'),
+          usesSingularSourceOpener: sentText.startsWith(
+            'Edit the provided source image while preserving its visual identity.',
+          ),
+          omitsImageLetterAlias: !/\bImage [A-Z]\b/.test(opener),
           retainsNoPeopleInstruction: sentText.includes('No people in the image.'),
         }).toEqual({
           loggedPromptMatchesSentText: true,
           excludesGenerateImagePrefix: true,
           excludesComposeNewImageFraming: true,
           excludesContentSafetyToken: true,
-          retainsImageLabel: true,
+          usesSingularSourceOpener: true,
+          omitsImageLetterAlias: true,
           retainsNoPeopleInstruction: true,
         })
       }),

@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: styleResolution.error }, { status: 400 })
     }
 
-    const labels = ['Image A']
+    const labels: string[] = []
     const delta = computeDelta(
       { schema: originalSchema, position: CENTER },
       { schema: targetSchema, position: CENTER },

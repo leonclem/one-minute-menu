@@ -57,5 +57,31 @@ describe('§5.2 identity preservation clause', () => {
     expect(directive).toContain('vessel/plate/bowl')
     expect(directive).toContain('cutlery')
     expect(directive).toContain('napkins')
+    expect(directive).not.toContain('unless this directive')
+    expect(directive).not.toContain('unless explicitly requested')
+  })
+
+  it('keeps the do-not-add lock unconditional when nothing is added', () => {
+    const directive = generateDirective(lightingDelta, context)
+    expect(directive).toContain(
+      'Do not add new food, props, hands, text, labels, logos, napkins, or cutlery.',
+    )
+    expect(directive).not.toContain('except for')
+  })
+
+  it('names requested additions as the only exception to the do-not-add lock', () => {
+    const addDelta: StateDelta = {
+      isEmpty: false,
+      scalarChanges: [],
+      arrays: {
+        garnishes: { added: ['parsley'], removed: [] },
+        sides: { added: ['slaw'], removed: [] },
+      },
+    }
+    const directive = generateDirective(addDelta, context)
+    expect(directive).toContain(
+      'Do not add new food, props, hands, text, labels, logos, napkins, or cutlery except for "parsley" and "slaw".',
+    )
+    expect(directive).not.toContain('unless explicitly requested')
   })
 })

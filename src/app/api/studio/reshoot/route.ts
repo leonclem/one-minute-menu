@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     const { mimeType, base64: sourceImageBase64, byteLength: imageBytes } =
       await loadStudioImageBytes(auth.user.id, sourceImageId)
 
-    const labels = ['Image A', 'Image B', 'Image C', 'Image D']
+    const labels: string[] = []
     const descriptor = buildReshootDescriptor({
       base: targetSchema,
       styles: {

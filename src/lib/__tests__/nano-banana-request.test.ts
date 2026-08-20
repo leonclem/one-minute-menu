@@ -39,7 +39,7 @@ describe('buildGeminiRequest', () => {
     }
 
     const prompt =
-      'Edit the provided reference images (Image source, Image B, Image C) while preserving their visual identity.\n\n' +
+      'Edit the provided reference images (Image A, Image B, Image C) while preserving their visual identity.\n\n' +
       'Keep the plated dish unchanged while updating the scene.\n' +
       'Exclude: people, text\nNo people in the image.'
 
@@ -59,6 +59,40 @@ describe('buildGeminiRequest', () => {
           candidateCount: 2,
           responseModalities: ['IMAGE'],
           imageConfig: { aspectRatio: '1:1' },
+        },
+      },
+      'https://api.test.nanobanana.com/v1/generateContent?key=request-test-key'
+    )
+  })
+
+  it('uses singular source-image wording for a one-image Studio edit', () => {
+    const params: NanoBananaParams = {
+      prompt: 'Remove the pickles from the plate.',
+      person_generation: 'dont_allow',
+      request_scope: 'studio_foh_mutation',
+      reference_images: [
+        { mimeType: 'image/jpeg', data: 'c3ViamVjdA==', label: 'source', role: 'dish' },
+      ],
+    }
+
+    const prompt =
+      'Edit the provided source image while preserving its visual identity.\n\n' +
+      'Remove the pickles from the plate.\nNo people in the image.'
+
+    expectByteIdenticalBody(params, {
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: prompt },
+              { inlineData: { mimeType: 'image/jpeg', data: 'c3ViamVjdA==' } },
+            ],
+          },
+        ],
+        generationConfig: {
+          candidateCount: 1,
+          responseModalities: ['IMAGE'],
+          imageConfig: {},
         },
       },
       'https://api.test.nanobanana.com/v1/generateContent?key=request-test-key'

@@ -285,7 +285,7 @@ describe('Task 19.10 — customer FOH source → extract → staged mutate', () 
     expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'HIGH' })
 
     const descriptor = extractDescriptor(body.contents[0].parts[0].text)
-    expect(descriptor.subject.reference).toBe('Image A')
+    expect(descriptor.subject.reference).toBeUndefined()
     expect(descriptor.target.lighting).toEqual({
       quality: 'clean commercial studio light',
       temperature: 'neutral',

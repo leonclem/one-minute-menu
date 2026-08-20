@@ -365,7 +365,7 @@ describe('POST /api/studio/mutate', () => {
         target?: { lighting?: { reference?: string } }
       }
     }
-    expect(compositionInput.descriptor.subject?.reference).toBe('Image A')
+    expect(compositionInput.descriptor.subject?.reference).toBeUndefined()
     expect(compositionInput.descriptor.target?.lighting).not.toHaveProperty('reference')
   })
 

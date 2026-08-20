@@ -185,21 +185,29 @@ function buildAdditionClause(item: string, arrayType: 'garnishes' | 'sides'): st
   )
 }
 
+function formatAddedException(items: readonly string[]): string {
+  const quoted = items.map((item) => `"${item}"`)
+  if (quoted.length === 0) return ''
+  if (quoted.length === 1) return ` except for ${quoted[0]}`
+  if (quoted.length === 2) return ` except for ${quoted[0]} and ${quoted[1]}`
+  return ` except for ${quoted.slice(0, -1).join(', ')}, and ${quoted[quoted.length - 1]}`
+}
+
 /**
  * Build the subject-identity-preservation clause. (Requirement 11.1 / §5.2)
  *
  * Always appended to every directive. Locks dish identity, visible component
- * counts, vessel, colours/textures, and forbids unsolicited props unless the
- * user explicitly staged those changes elsewhere in the directive.
+ * counts, vessel, and colours/textures. The do-not-add sentence is unconditional
+ * unless this delta itself adds named garnishes or sides.
  */
-function buildIdentityPreservationClause(mainItem: string): string {
+function buildIdentityPreservationClause(mainItem: string, addedItems: readonly string[]): string {
   const subject = mainItem.trim().length > 0 ? mainItem.trim() : 'the main dish'
   return (
     `Preserve the identity of ${subject}: ` +
     `maintain texture, shape, structure, and colours exactly as shown. ` +
     `Preserve visible ingredient and component counts. ` +
-    `Preserve the vessel/plate/bowl unless this directive explicitly changes it. ` +
-    `Do not add new food, props, hands, text, labels, logos, napkins, or cutlery unless explicitly requested. ` +
+    `Preserve the vessel/plate/bowl. ` +
+    `Do not add new food, props, hands, text, labels, logos, napkins, or cutlery${formatAddedException(addedItems)}. ` +
     `Keep entire subject and vessel visible, no cropping.`
   )
 }
@@ -340,7 +348,8 @@ export function generateDirective(
   // (Requirement 11.1)
 
   const mainItem = context.schema.food_components.main_item
-  clauses.push(buildIdentityPreservationClause(mainItem))
+  const addedItems = [...delta.arrays.garnishes.added, ...delta.arrays.sides.added]
+  clauses.push(buildIdentityPreservationClause(mainItem, addedItems))
 
   // ── "Leave all other attributes unchanged" (single-attribute changes only)
   // (Requirement 11.3)

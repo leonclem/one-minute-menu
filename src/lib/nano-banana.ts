@@ -107,6 +107,24 @@ export interface GeminiRequest {
   loggedPrompt: string
 }
 
+const REFERENCE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'] as const
+
+/**
+ * Studio FOH opener: letter aliases only when 2+ images are actually attached,
+ * and those letters are assigned by part index so Image A is always the first
+ * attached image. One-image edits name the source image in the singular.
+ */
+function studioFohReferencePreamble(referenceCount: number): string {
+  if (referenceCount === 1) {
+    return 'Edit the provided source image while preserving its visual identity.\n\n'
+  }
+  const labels = Array.from(
+    { length: referenceCount },
+    (_, index) => `Image ${REFERENCE_LETTERS[index] ?? index + 1}`,
+  )
+  return `Edit the provided reference images (${labels.join(', ')}) while preserving their visual identity.\n\n`
+}
+
 /**
  * Builds the Gemini generateContent request without performing I/O.
  *
@@ -125,15 +143,11 @@ export function buildGeminiRequest(
 
   const isStudioFohMutation = params.request_scope === 'studio_foh_mutation'
   const references = params.reference_images || []
-  const alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N']
   let finalPromptText = params.prompt
 
   if (isStudioFohMutation) {
     if (references.length > 0) {
-      const labels = references.map((ref, index) => ref.label ?? alphabet[index])
-      finalPromptText =
-        `Edit the provided reference images (${labels.map((label) => `Image ${label}`).join(', ')}) while preserving their visual identity.\n\n` +
-        finalPromptText
+      finalPromptText = studioFohReferencePreamble(references.length) + finalPromptText
     }
   } else if (references.length > 0) {
     const roleInstructions = references.map((reference, index) => {
@@ -146,7 +160,7 @@ export function buildGeminiRequest(
       else if (role === 'style') roleDescription = 'the art style, lighting, and color palette'
       else if (role === 'layout') roleDescription = 'the plating structure and composition layout'
 
-      return `Use Image ${alphabet[index]} for ${roleDescription}${comment}.`
+      return `Use Image ${REFERENCE_LETTERS[index] ?? index + 1} for ${roleDescription}${comment}.`
     })
 
     finalPromptText =
