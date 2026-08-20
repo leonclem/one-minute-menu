@@ -86,6 +86,10 @@ const SEEDED_BACKGROUND_KEYS = [
   'terracotta',
   'deep-navy',
   'charcoal',
+  'mustard-yellow',
+  'coral-red',
+  'teal',
+  'hot-pink',
 ]
 
 function mockStyleRow(
@@ -329,13 +333,13 @@ describe('Property 12: style library and logging preservation', () => {
   })
 
   /** Validates: Requirements 3.10, 3.11 */
-  it('resolves all eighteen seeded keys and preserves admin lighting/background CRUD round trips', async () => {
+  it('resolves all twenty-two seeded keys and preserves admin lighting/background CRUD round trips', async () => {
     const resolvedLighting = await Promise.all(SEEDED_LIGHTING_KEYS.map(resolveLightingStyle))
     const resolvedBackground = await Promise.all(SEEDED_BACKGROUND_KEYS.map(resolveBackgroundStyle))
 
     expect(resolvedLighting.map((style) => style?.key)).toEqual(SEEDED_LIGHTING_KEYS)
     expect(resolvedBackground.map((style) => style?.key)).toEqual(SEEDED_BACKGROUND_KEYS)
-    expect([...resolvedLighting, ...resolvedBackground]).toHaveLength(18)
+    expect([...resolvedLighting, ...resolvedBackground]).toHaveLength(22)
     expect([...resolvedLighting, ...resolvedBackground].every((style) => style?.prompt_fragment)).toBe(true)
 
     const lightingCreate = await createLighting(

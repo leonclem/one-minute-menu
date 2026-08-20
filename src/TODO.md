@@ -5,15 +5,14 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Expand number of options for each category
+- [ ] Click to draw a circle/oval/eraser to remove element
+- [ ] Click to draw a circle/oval/eraser to move an element
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Click to draw a circle/oval/eraser to remove element
-- [ ] Click to draw a circle/oval/eraser to move an element
 - [ ] Investigate vessel swapping (pro advised to use reference)
 - [ ] During upload of image - maintain user interest (can be very slow)
 - [ ] Allow the user to choose two variants for comparison (slider?)
@@ -170,6 +169,7 @@
 ## /studio
 - [x] Zoom in and out on workbench main image
 - [x] "Re-shoot" action for photos
+- [x] Expand number of options for each category
 
 ## /onboarding
 - [x] New users get 10 credits by default

@@ -287,7 +287,7 @@ export function StudioClient({
   const didAnnounceExportContextRef = useRef(false)
   const [expandedStudioPanel, setExpandedStudioPanel] = useState<'controls' | 'exports'>('controls')
   const [exportContextFlash, setExportContextFlash] = useState(false)
-  const [expandedSection, setExpandedSection] = useState<ControlSection>('lighting')
+  const [expandedSection, setExpandedSection] = useState<ControlSection>('garnishes')
   const [libraryBusy, setLibraryBusy] = useState(false)
   const [libraryError, setLibraryError] = useState<string | null>(null)
   const [lightingStyles, setLightingStyles] = useState<StudioLightingStyleDisplay[]>([])
@@ -1866,83 +1866,12 @@ export function StudioClient({
               ) : (
                 <>
                   <CollapsibleSection
-                    title="Lighting"
-                    isExpanded={expandedSection === 'lighting'}
-                    onExpand={(open) => setExpandedSection(open ? 'lighting' : null)}
-                    badge={
-                      sectionHasPendingChanges.lighting ? (
-                        <PendingEditBadge section="Lighting" />
-                      ) : null
-                    }
-                  >
-                    <VisualOptionTiles
-                      options={lightingOptions}
-                      value={editorState.schema.scene_setup.lighting}
-                      disabled={controlsDisabled}
-                      ariaLabel="Lighting"
-                      onChange={stageLighting}
-                    />
-                  </CollapsibleSection>
-
-                  <CollapsibleSection
-                    title="Tabletop Surface"
-                    isExpanded={expandedSection === 'surface'}
-                    onExpand={(open) => setExpandedSection(open ? 'surface' : null)}
-                    badge={
-                      sectionHasPendingChanges.surface ? (
-                        <PendingEditBadge section="Tabletop Surface" />
-                      ) : null
-                    }
-                  >
-                    {surfaceOptions.length === 0 ? (
-                      <p className="text-xs text-gray-500">No tabletop surfaces available yet.</p>
-                    ) : (
-                      <VisualOptionTiles
-                        options={surfaceOptions}
-                        value={editorState.schema.canvas.surface_style ?? ''}
-                        disabled={controlsDisabled}
-                        ariaLabel="Tabletop Surface"
-                        onChange={stageSurface}
-                      />
-                    )}
-                  </CollapsibleSection>
-
-                  <CollapsibleSection
-                    title="Backdrop"
-                    isExpanded={expandedSection === 'backdrop'}
-                    onExpand={(open) => setExpandedSection(open ? 'backdrop' : null)}
-                    badge={
-                      sectionHasPendingChanges.backdrop ? (
-                        <PendingEditBadge section="Studio Backdrop" />
-                      ) : null
-                    }
-                  >
-                    {backdropKnownFalse && (
-                      <p role="status" className="mb-2 text-xs text-amber-800">
-                        No vertical backdrop was detected in this photo, so backdrop changes are
-                        unavailable.
-                      </p>
-                    )}
-                    {backdropOptions.length === 0 ? (
-                      <p className="text-xs text-gray-500">No studio backdrops available yet.</p>
-                    ) : (
-                      <VisualOptionTiles
-                        options={backdropOptions}
-                        value={editorState.schema.canvas.background_style ?? ''}
-                        disabled={controlsDisabled || backdropKnownFalse}
-                        ariaLabel="Studio Backdrop"
-                        onChange={stageBackground}
-                      />
-                    )}
-                  </CollapsibleSection>
-
-                  <CollapsibleSection
-                    title="Other Elements"
+                    title="Elements"
                     isExpanded={expandedSection === 'garnishes'}
                     onExpand={(open) => setExpandedSection(open ? 'garnishes' : null)}
                     badge={
                       sectionHasPendingChanges.garnishes ? (
-                        <PendingEditBadge section="Other Elements" />
+                        <PendingEditBadge section="Elements" />
                       ) : null
                     }
                   >
@@ -1976,6 +1905,77 @@ export function StudioClient({
                         })
                       }
                     />
+                  </CollapsibleSection>
+
+                  <CollapsibleSection
+                    title="Lighting"
+                    isExpanded={expandedSection === 'lighting'}
+                    onExpand={(open) => setExpandedSection(open ? 'lighting' : null)}
+                    badge={
+                      sectionHasPendingChanges.lighting ? (
+                        <PendingEditBadge section="Lighting" />
+                      ) : null
+                    }
+                  >
+                    <VisualOptionTiles
+                      options={lightingOptions}
+                      value={editorState.schema.scene_setup.lighting}
+                      disabled={controlsDisabled}
+                      ariaLabel="Lighting"
+                      onChange={stageLighting}
+                    />
+                  </CollapsibleSection>
+
+                  <CollapsibleSection
+                    title="Surface"
+                    isExpanded={expandedSection === 'surface'}
+                    onExpand={(open) => setExpandedSection(open ? 'surface' : null)}
+                    badge={
+                      sectionHasPendingChanges.surface ? (
+                        <PendingEditBadge section="Surface" />
+                      ) : null
+                    }
+                  >
+                    {surfaceOptions.length === 0 ? (
+                      <p className="text-xs text-gray-500">No surfaces available yet.</p>
+                    ) : (
+                      <VisualOptionTiles
+                        options={surfaceOptions}
+                        value={editorState.schema.canvas.surface_style ?? ''}
+                        disabled={controlsDisabled}
+                        ariaLabel="Surface"
+                        onChange={stageSurface}
+                      />
+                    )}
+                  </CollapsibleSection>
+
+                  <CollapsibleSection
+                    title="Backdrop"
+                    isExpanded={expandedSection === 'backdrop'}
+                    onExpand={(open) => setExpandedSection(open ? 'backdrop' : null)}
+                    badge={
+                      sectionHasPendingChanges.backdrop ? (
+                        <PendingEditBadge section="Backdrop" />
+                      ) : null
+                    }
+                  >
+                    {backdropKnownFalse && (
+                      <p role="status" className="mb-2 text-xs text-amber-800">
+                        No vertical backdrop was detected in this photo, so backdrop changes are
+                        unavailable.
+                      </p>
+                    )}
+                    {backdropOptions.length === 0 ? (
+                      <p className="text-xs text-gray-500">No studio backdrops available yet.</p>
+                    ) : (
+                      <VisualOptionTiles
+                        options={backdropOptions}
+                        value={editorState.schema.canvas.background_style ?? ''}
+                        disabled={controlsDisabled || backdropKnownFalse}
+                        ariaLabel="Backdrop"
+                        onChange={stageBackground}
+                      />
+                    )}
                   </CollapsibleSection>
                 </>
               )}
