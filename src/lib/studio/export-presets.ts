@@ -53,7 +53,7 @@ export interface StudioExportPreset {
    * Nearest aspect ratio the image model accepts when outpainting. The output
    * is normalised to the exact `width`/`height` afterwards.
    */
-  requestAspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
+  requestAspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '4:5'
 }
 
 /**
@@ -102,8 +102,8 @@ export const EXPORT_PRESETS: readonly StudioExportPreset[] = [
     baseMethod: 'crop_resize',
     expandMethod: 'ai_expand',
     maxCropLoss: 0.15,
-    // 4:5 is not an accepted model ratio; 3:4 is the nearest portrait option.
-    requestAspectRatio: '3:4',
+    // Flash accepts 4:5 (gemini-3.1-flash-image); request the Instagram ratio directly.
+    requestAspectRatio: '4:5',
   },
   {
     key: 'pdf_menu_tile',

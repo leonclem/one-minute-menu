@@ -157,7 +157,7 @@ describe('export preset configuration', () => {
   })
 
   it('only requests aspect ratios the image model accepts', () => {
-    const accepted = ['1:1', '16:9', '9:16', '4:3', '3:4']
+    const accepted = ['1:1', '16:9', '9:16', '4:3', '3:4', '4:5']
     for (const preset of EXPORT_PRESETS) {
       if (preset.requestAspectRatio) {
         expect(accepted).toContain(preset.requestAspectRatio)
@@ -169,6 +169,11 @@ describe('export preset configuration', () => {
     for (const preset of EXPORT_PRESETS.filter((p) => p.expandMethod)) {
       expect(preset.requestAspectRatio).toBeDefined()
     }
+  })
+
+  it('asks Flash for Instagram 4:5 rather than a neighbouring portrait ratio', () => {
+    expect(getExportPreset('instagram_feed')?.requestAspectRatio).toBe('4:5')
+    expect(getExportPreset('instagram_feed')?.aspectRatio).toBe('4:5')
   })
 
   it('uses unique keys and resolves each one', () => {

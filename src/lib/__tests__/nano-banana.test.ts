@@ -180,8 +180,22 @@ describe('NanoBananaClient', () => {
         prompt: 'test',
         aspect_ratio: '2:3' as any
       })).rejects.toThrow(
-        new NanoBananaError('Invalid aspect ratio. Must be one of: 1:1, 16:9, 9:16, 4:3, 3:4', 'INVALID_PARAMS')
+        new NanoBananaError('Invalid aspect ratio. Must be one of: 1:1, 16:9, 9:16, 4:3, 3:4, 4:5', 'INVALID_PARAMS')
       )
+    })
+
+    it('accepts 4:5 as a Flash image aspect ratio', async () => {
+      mockFetchJsonWithRetry.mockResolvedValueOnce({
+        candidates: [
+          { content: { parts: [{ inlineData: { data: 'base64-encoded-image-data' } }] } }
+        ],
+        metadata: { processing_time_ms: 1, model_version: 'test', safety_filter_applied: false }
+      })
+
+      await expect(client.generateImage({
+        prompt: 'test',
+        aspect_ratio: '4:5',
+      })).resolves.toMatchObject({ images: ['base64-encoded-image-data'] })
     })
 
     it('should throw error for invalid safety filter level', async () => {

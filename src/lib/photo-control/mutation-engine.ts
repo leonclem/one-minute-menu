@@ -71,7 +71,7 @@ export interface MutationInput {
    * Optional target aspect ratio for the generated image. Used by export
    * outpainting; omit to let the model keep the source framing.
    */
-  aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
+  aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '4:5'
   /** Optional style reference images (e.g. lighting, background, plating). */
   styleReferences?: StyleReferenceImage[]
   /** Attach static camera-angle steering references when an admin/sandbox caller opts in. */

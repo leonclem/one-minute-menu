@@ -477,7 +477,7 @@ export class NanoBananaClient {
       )
     }
 
-    const validAspectRatios = ['1:1', '16:9', '9:16', '4:3', '3:4']
+    const validAspectRatios = ['1:1', '16:9', '9:16', '4:3', '3:4', '4:5']
     if (params.aspect_ratio && !validAspectRatios.includes(params.aspect_ratio)) {
       throw new NanoBananaError(
         `Invalid aspect ratio. Must be one of: ${validAspectRatios.join(', ')}`,
