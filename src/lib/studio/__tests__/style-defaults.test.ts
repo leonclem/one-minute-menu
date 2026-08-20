@@ -28,13 +28,13 @@ function schema(overrides: Partial<MinimalSchema['canvas']> = {}): MinimalSchema
 describe('resolveReshootStyleDefaults', () => {
   it('prefers current editor state values', () => {
     const result = resolveReshootStyleDefaults(
-      schema({ background_style: 'studio-red', surface_style: 'dark-slate' }),
+      schema({ background_style: 'terracotta', surface_style: 'dark-stone' }),
       null,
     )
     expect(result).toEqual({
       lighting: 'golden-hour',
-      backdrop: 'studio-red',
-      surface: 'dark-slate',
+      backdrop: 'terracotta',
+      surface: 'dark-stone',
     })
   })
 
@@ -51,16 +51,16 @@ describe('resolveReshootStyleDefaults', () => {
     } as ExtractionDiagnostics
 
     const result = resolveReshootStyleDefaults(schema(), diagnostics)
-    expect(result.backdrop).toBe('dark-slate')
-    expect(result.surface).toBe('rustic-wood')
+    expect(result.backdrop).toBe('soft-neutral')
+    expect(result.surface).toBe('natural-oak')
   })
 
   it('falls back to defined defaults when nothing else matches', () => {
     const result = resolveReshootStyleDefaults(schema(), null)
     expect(result).toEqual({
       lighting: 'golden-hour',
-      backdrop: 'studio-grey-white',
-      surface: 'white-tablecloth',
+      backdrop: 'soft-neutral',
+      surface: 'natural-oak',
     })
   })
 })

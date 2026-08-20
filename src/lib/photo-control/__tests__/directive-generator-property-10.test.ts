@@ -7,9 +7,9 @@
  * generated directive contains the change-appropriate instruction:
  *  - Angle change (Req 5.3): directive mentions the new angle value and
  *    perspective change.
- *  - Lighting low-key → bright-and-airy (Req 6.3): directive mentions "bright",
- *    "airy", "high-key" or "diffused" light, and removal of shadows.
- *  - Lighting bright-and-airy → low-key (Req 6.4): directive mentions "low-key",
+ *  - Lighting dark-moody → bright-clean (Req 6.3): directive mentions commercial
+ *    studio lighting and controlled shadows.
+ *  - Lighting soft-natural → dark-moody (Req 6.4): directive mentions "low-key",
  *    "shadow", "darker".
  *  - Position change (Req 7.3): directive mentions direction of movement and
  *    negative space.
@@ -76,7 +76,7 @@ function makeState(
     scene_setup: {
       angle: overrides.angle ?? '45-degree',
       framing: overrides.framing ?? 'close-up',
-      lighting: overrides.lighting ?? 'low-key',
+      lighting: overrides.lighting ?? 'dark-moody',
     },
     canvas: {
       background: 'white marble',
@@ -169,18 +169,17 @@ describe('Feature: photo-control, Property 10: Directive content per change type
     )
   })
 
-  // ── Property 10b: Lighting low-key → bright-and-airy (Req 6.3) ─────────────
+  // ── Property 10b: Lighting dark-moody → bright-clean (Req 6.3) ─────────────
 
   /**
-   * Lighting low-key → bright-and-airy (Requirement 6.3):
-   * The directive must mention "bright", "airy", "high-key" or "diffused" light,
-   * and removal of shadows.
+   * Lighting dark-moody → bright-clean (Requirement 6.3):
+   * The directive must mention commercial studio lighting and shadows.
    */
-  it('lighting low-key → bright-and-airy: directive mentions bright/airy/high-key/diffused and shadow removal', () => {
+  it('lighting dark-moody → bright-clean: directive mentions commercial studio lighting and shadows', () => {
     fc.assert(
       fc.property(angleArb, framingArb, (angle, framing) => {
-        const original = makeState({ angle, framing, lighting: 'low-key' })
-        const target = makeState({ angle, framing, lighting: 'bright-and-airy' })
+        const original = makeState({ angle, framing, lighting: 'dark-moody' })
+        const target = makeState({ angle, framing, lighting: 'bright-clean' })
         const delta = computeDelta(original, target)
 
         expect(delta.isEmpty).toBe(false)
@@ -189,32 +188,32 @@ describe('Feature: photo-control, Property 10: Directive content per change type
         expect(directive).not.toBeNull()
         const text = directive!
 
-        // Must mention bright/airy/high-key or diffused
-        const mentionsBrightOrAiry =
-          containsCI(text, 'bright') ||
-          containsCI(text, 'airy') ||
-          containsCI(text, 'high-key') ||
-          containsCI(text, 'diffused')
-        expect(mentionsBrightOrAiry).toBe(true)
-
-        // Must mention shadow removal
-        expect(containsCI(text, 'shadow')).toBe(true)
+        const mentionsStudioLighting =
+          containsCI(text, 'commercial') ||
+          containsCI(text, 'studio') ||
+          containsCI(text, 'neutral')
+        expect(mentionsStudioLighting).toBe(true)
+        expect(
+          containsCI(text, 'falloff') ||
+          containsCI(text, 'fill') ||
+          containsCI(text, 'shadow'),
+        ).toBe(true)
       }),
       { numRuns: 150 },
     )
   })
 
-  // ── Property 10c: Lighting bright-and-airy → low-key (Req 6.4) ─────────────
+  // ── Property 10c: Lighting soft-natural → dark-moody (Req 6.4) ─────────────
 
   /**
-   * Lighting bright-and-airy → low-key (Requirement 6.4):
+   * Lighting soft-natural → dark-moody (Requirement 6.4):
    * The directive must mention "low-key", "shadow", and "darker".
    */
-  it('lighting bright-and-airy → low-key: directive mentions low-key, shadow, and darker', () => {
+  it('lighting soft-natural → dark-moody: directive mentions low-key, shadow, and darker', () => {
     fc.assert(
       fc.property(angleArb, framingArb, (angle, framing) => {
-        const original = makeState({ angle, framing, lighting: 'bright-and-airy' })
-        const target = makeState({ angle, framing, lighting: 'low-key' })
+        const original = makeState({ angle, framing, lighting: 'soft-natural' })
+        const target = makeState({ angle, framing, lighting: 'dark-moody' })
         const delta = computeDelta(original, target)
 
         expect(delta.isEmpty).toBe(false)
@@ -417,8 +416,8 @@ describe('Feature: photo-control, Property 10: Directive content per change type
     fc.assert(
       fc.property(angleArb, framingArb, (angle, framing) => {
         // Toggle between the two lighting values
-        const original = makeState({ angle, framing, lighting: 'low-key' })
-        const target = makeState({ angle, framing, lighting: 'bright-and-airy' })
+        const original = makeState({ angle, framing, lighting: 'dark-moody' })
+        const target = makeState({ angle, framing, lighting: 'bright-clean' })
         const delta = computeDelta(original, target)
 
         expect(delta.isEmpty).toBe(false)
@@ -539,13 +538,13 @@ describe('Feature: photo-control, Property 10: Directive content per change type
           const original = makeState({
             angle: anglePair.from,
             framing,
-            lighting: 'low-key',
+            lighting: 'dark-moody',
             garnishes: [],
           })
           const target = makeState({
             angle: anglePair.to,
             framing,
-            lighting: 'low-key',
+            lighting: 'dark-moody',
             garnishes: [item],
           })
           const delta = computeDelta(original, target)

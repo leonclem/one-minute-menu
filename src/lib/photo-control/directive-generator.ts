@@ -108,12 +108,16 @@ function buildAngleClause(to: string): string {
  */
 function buildLightingClause(from: string, to: string): string {
   const lightingMap: Record<string, string> = {
-    'bright-and-airy':
-      'Change the lighting to bright-and-airy high-key diffused light. Remove heavy shadows and keep the scene clean, bright, and airy.',
-    'low-key':
-      'Change the lighting to low-key dramatic light. Add richer shadows and a darker, moodier background while keeping the dish readable.',
-    studio:
-      'Change the lighting to clean commercial studio lighting: even, controlled key light with soft fill, neutral colour temperature, and a polished menu-photo look. Do not change the dish or add props.',
+    'bright-clean':
+      'Change the lighting to clean commercial studio lighting with a soft even key and balanced fill, neutral colour temperature, and smooth gradual falloff.',
+    'soft-natural':
+      'Change the lighting to soft diffused natural daylight with gentle directional illumination, clean neutral daylight colour, and gentle natural falloff.',
+    'golden-hour':
+      'Change the lighting to warm directional late-afternoon golden-hour light with elongated soft-edged shadows and warm highlights.',
+    'dark-moody':
+      'Change the lighting to low-key directional lighting with controlled highlights, deep rich shadows, and pronounced falloff into a darker atmospheric background while keeping the food readable.',
+    'bold-sunlight':
+      'Change the lighting to strong direct daylight with crisp directional illumination, defined crisp-edged shadows, and clear directional falloff with bright highlights.',
   }
 
   const instruction = lightingMap[to]

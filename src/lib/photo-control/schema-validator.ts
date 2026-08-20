@@ -37,6 +37,7 @@ import {
   type MinimalSchema,
   type EnumFieldPath,
 } from './minimal-schema'
+import { normalizeLightingKey } from '@/lib/studio/lighting-keys'
 
 // ============================================================================
 // Validation Result Types
@@ -253,7 +254,7 @@ export class MinimalSchemaValidator {
     warnings: MinimalValidationWarning[],
   ): string {
     if (typeof rawValue === 'string' && rawValue.trim().length > 0) {
-      return rawValue.trim()
+      return normalizeLightingKey(rawValue)
     }
     warnings.push({
       path: 'scene_setup.lighting',

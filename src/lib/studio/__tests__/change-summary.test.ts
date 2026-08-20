@@ -24,8 +24,8 @@ describe('change-summary', () => {
         scalarChanges: [
           {
             path: 'scene_setup.lighting',
-            from: 'bright-and-airy',
-            to: 'low-key',
+            from: 'soft-natural',
+            to: 'dark-moody',
           },
           {
             path: 'scene_setup.angle',
@@ -35,7 +35,7 @@ describe('change-summary', () => {
         ],
       }),
     )
-    expect(chips).toEqual(['Lighting → Low-Key / Dramatic', 'Camera Height → Overhead'])
+    expect(chips).toEqual(['Lighting → Dark & Moody', 'Camera Height → Overhead'])
   })
 
   it('builds chips for background style with label map', () => {
@@ -45,18 +45,18 @@ describe('change-summary', () => {
           {
             path: 'canvas.background_style',
             from: '',
-            to: 'dark-slate',
+            to: 'soft-neutral',
           },
           {
             path: 'canvas.surface_style',
             from: '',
-            to: 'granite-light',
+            to: 'white-marble',
           },
         ],
       }),
-      { backgroundLabels: { 'dark-slate': 'Dark Slate', 'granite-light': 'Light Granite' } },
+      { backgroundLabels: { 'soft-neutral': 'Soft Neutral', 'white-marble': 'White Marble' } },
     )
-    expect(chips).toEqual(['Background → Dark Slate', 'Surface → Light Granite'])
+    expect(chips).toEqual(['Background → Soft Neutral', 'Surface → White Marble'])
   })
 
   it('builds chips for dish spin', () => {
@@ -91,8 +91,8 @@ describe('change-summary', () => {
   })
 
   it('reads changeSummary from metadata', () => {
-    expect(readChangeSummary({ changeSummary: ['Lighting → Studio'] })).toEqual([
-      'Lighting → Studio',
+    expect(readChangeSummary({ changeSummary: ['Lighting → Bright & Clean'] })).toEqual([
+      'Lighting → Bright & Clean',
     ])
     expect(readChangeSummary({})).toEqual([])
   })

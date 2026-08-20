@@ -31,9 +31,11 @@ import { ConfirmDialog } from '@/components/ui'
 import { buildChangeSummary, readChangeSummary } from '@/lib/studio/change-summary'
 import {
   STUDIO_LIGHTING_OPTIONS,
+  backdropStylesToOptions,
   backgroundStylesToOptions,
   fohLightingLabel,
   lightingStylesToOptions,
+  surfaceStylesToOptions,
   styleLabelMap,
   FOH_STYLE_EXCLUDE_PATHS,
 } from '@/lib/studio/control-options'
@@ -222,7 +224,7 @@ function makeDefaultEditorState(): EditorState {
       scene_setup: {
         angle: '45-degree',
         framing: 'close-up',
-        lighting: 'bright-and-airy',
+        lighting: 'bright-clean',
         spin: '0',
       },
       canvas: { background: '', background_style: '', surface_style: '', main_vessel: '' },
@@ -457,12 +459,12 @@ export function StudioClient({
 
   const surfaceOptions = useMemo(() => {
     const filtered = backgroundStyles.filter((style) => style.category === 'surface')
-    return backgroundStylesToOptions(filtered)
+    return surfaceStylesToOptions(filtered)
   }, [backgroundStyles])
 
   const backdropOptions = useMemo(() => {
     const filtered = backgroundStyles.filter((style) => style.category === 'backdrop')
-    return backgroundStylesToOptions(filtered)
+    return backdropStylesToOptions(filtered)
   }, [backgroundStyles])
   const backdropKnownFalse = backdropVisible === false
 
@@ -1906,7 +1908,7 @@ export function StudioClient({
                   </CollapsibleSection>
 
                   <CollapsibleSection
-                    title="Studio Backdrop"
+                    title="Backdrop"
                     isExpanded={expandedSection === 'backdrop'}
                     onExpand={(open) => setExpandedSection(open ? 'backdrop' : null)}
                     badge={

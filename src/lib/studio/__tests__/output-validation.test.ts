@@ -27,7 +27,7 @@ const expected: MinimalSchema = {
   scene_setup: {
     angle: '45-degree',
     framing: 'close-up',
-    lighting: 'bright-and-airy',
+    lighting: 'soft-natural',
     spin: '0',
   },
   canvas: {
@@ -95,7 +95,7 @@ describe('studio output-validation helpers', () => {
         scene_setup: {
           angle: '45-degree',
           framing: 'close-up',
-          lighting: 'bright-and-airy',
+          lighting: 'soft-natural',
         },
         canvas: { background: 'white', main_vessel: 'plate' },
         food_components: { main_item: 'burger', garnishes: [], sides: [] },

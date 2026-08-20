@@ -92,39 +92,42 @@ describe('Camera_Control — segmented selector (Req 5.1)', () => {
 
 describe('Lighting_Control — options (Req 6.1)', () => {
   it('renders all lighting options', () => {
-    render(<Lighting_Control value="bright-and-airy" onChange={jest.fn()} />)
-    expect(screen.getByRole('radio', { name: /bright/i })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /low-key/i })).toBeInTheDocument()
+    render(<Lighting_Control value="bright-clean" onChange={jest.fn()} />)
+    expect(screen.getByRole('radio', { name: /bright & clean/i })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /dark & moody/i })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /soft natural/i })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /golden hour/i })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /bold sunlight/i })).toBeInTheDocument()
   })
 
   it('marks the current value as checked', () => {
-    render(<Lighting_Control value="low-key" onChange={jest.fn()} />)
+    render(<Lighting_Control value="dark-moody" onChange={jest.fn()} />)
     const buttons = screen.getAllByRole('radio')
     const checkedButtons = buttons.filter(
       (btn) => btn.getAttribute('aria-checked') === 'true',
     )
     expect(checkedButtons).toHaveLength(1)
-    expect(checkedButtons[0]).toHaveAttribute('aria-label', expect.stringMatching(/low-key/i))
+    expect(checkedButtons[0]).toHaveAttribute('aria-label', expect.stringMatching(/dark & moody/i))
   })
 
   it('calls onChange with the selected value when a non-selected option is clicked', () => {
     const onChange = jest.fn()
-    render(<Lighting_Control value="bright-and-airy" onChange={onChange} />)
+    render(<Lighting_Control value="bright-clean" onChange={onChange} />)
 
-    fireEvent.click(screen.getByRole('radio', { name: /low-key/i }))
-    expect(onChange).toHaveBeenCalledWith('low-key')
+    fireEvent.click(screen.getByRole('radio', { name: /dark & moody/i }))
+    expect(onChange).toHaveBeenCalledWith('dark-moody')
   })
 
   it('does not call onChange when the already-selected option is clicked', () => {
     const onChange = jest.fn()
-    render(<Lighting_Control value="bright-and-airy" onChange={onChange} />)
+    render(<Lighting_Control value="bright-clean" onChange={onChange} />)
 
-    fireEvent.click(screen.getByRole('radio', { name: /bright/i }))
+    fireEvent.click(screen.getByRole('radio', { name: /bright & clean/i }))
     expect(onChange).not.toHaveBeenCalled()
   })
 
   it('disables all buttons when disabled=true (before hydration)', () => {
-    render(<Lighting_Control value="bright-and-airy" onChange={jest.fn()} disabled />)
+    render(<Lighting_Control value="bright-clean" onChange={jest.fn()} disabled />)
     const buttons = screen.getAllByRole('radio')
     for (const btn of buttons) {
       expect(btn).toBeDisabled()
@@ -132,7 +135,7 @@ describe('Lighting_Control — options (Req 6.1)', () => {
   })
 
   it('enables all buttons when disabled=false (after hydration)', () => {
-    render(<Lighting_Control value="bright-and-airy" onChange={jest.fn()} disabled={false} />)
+    render(<Lighting_Control value="bright-clean" onChange={jest.fn()} disabled={false} />)
     const buttons = screen.getAllByRole('radio')
     for (const btn of buttons) {
       expect(btn).not.toBeDisabled()
@@ -319,7 +322,7 @@ describe('Controls disabled before hydration (Req 4.5, 4.7)', () => {
   })
 
   it('Lighting_Control is disabled before hydration (disabled=true)', () => {
-    render(<Lighting_Control value="bright-and-airy" onChange={jest.fn()} disabled={true} />)
+    render(<Lighting_Control value="bright-clean" onChange={jest.fn()} disabled={true} />)
     const buttons = screen.getAllByRole('radio')
     for (const btn of buttons) {
       expect(btn).toBeDisabled()
@@ -373,7 +376,7 @@ describe('Non-blocking warning badge when strictConformance=false (Req 4.8)', ()
   })
 
   it('Lighting_Control remains enabled when strictConformance=false (disabled=false)', () => {
-    render(<Lighting_Control value="bright-and-airy" onChange={jest.fn()} disabled={false} />)
+    render(<Lighting_Control value="bright-clean" onChange={jest.fn()} disabled={false} />)
     const buttons = screen.getAllByRole('radio')
     for (const btn of buttons) {
       expect(btn).not.toBeDisabled()

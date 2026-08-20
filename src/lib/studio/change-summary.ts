@@ -3,7 +3,7 @@
  */
 
 import type { StateDelta } from '@/lib/photo-control/minimal-schema'
-import { fohAngleLabel, fohLightingLabel } from '@/lib/studio/control-options'
+import { fohAngleLabel, fohBackdropLabel, fohLightingLabel, fohSurfaceLabel } from '@/lib/studio/control-options'
 
 export interface ChangeSummaryLabelMaps {
   lightingLabels?: Record<string, string>
@@ -33,12 +33,12 @@ export function buildChangeSummary(
     } else if (change.path === 'canvas.background_style') {
       const label =
         labels?.backgroundLabels?.[change.to] ??
-        (change.to.trim() ? change.to : 'Original')
+        (change.to.trim() ? fohBackdropLabel(change.to) : 'Original')
       chips.push(`Background → ${label}`)
     } else if (change.path === 'canvas.surface_style') {
       const label =
         labels?.backgroundLabels?.[change.to] ??
-        (change.to.trim() ? change.to : 'Original')
+        (change.to.trim() ? fohSurfaceLabel(change.to) : 'Original')
       chips.push(`Surface → ${label}`)
     }
   }

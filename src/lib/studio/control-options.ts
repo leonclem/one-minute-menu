@@ -11,6 +11,18 @@ import type {
   StudioBackgroundStyleDisplay,
   StudioLightingStyleDisplay,
 } from '@/lib/studio/types'
+import {
+  fohLightingLabel,
+  STUDIO_LIGHTING_OPTION_ORDER,
+} from '@/lib/studio/lighting-keys'
+import {
+  fohBackdropLabel,
+  STUDIO_BACKDROP_OPTION_ORDER,
+} from '@/lib/studio/backdrop-keys'
+import {
+  fohSurfaceLabel,
+  STUDIO_SURFACE_OPTION_ORDER,
+} from '@/lib/studio/surface-keys'
 
 export interface StudioVisualOption<T extends string> {
   id: string
@@ -38,15 +50,36 @@ export const STUDIO_SPIN_OPTIONS: StudioVisualOption<string>[] = [
 
 /** Fallback lighting tiles when the styles API is unavailable. */
 export const STUDIO_LIGHTING_OPTIONS: StudioVisualOption<string>[] = [
-  { id: 'light-studio', label: 'Studio', assetBasename: 'lighting/lighting-studio', value: 'studio' },
   {
-    id: 'light-natural',
-    label: 'Window Light',
-    assetBasename: 'lighting/lighting-natural',
-    value: 'bright-and-airy',
+    id: 'light-bright-clean',
+    label: 'Bright & Clean',
+    assetBasename: 'lighting/lighting-bright-clean',
+    value: 'bright-clean',
   },
-  { id: 'light-golden-hour', label: 'Golden Hour', assetBasename: 'lighting/lighting-golden-hour', value: 'golden-hour' },
-  { id: 'light-moody', label: 'Low-Key / Dramatic', assetBasename: 'lighting/lighting-moody', value: 'low-key' },
+  {
+    id: 'light-bold-sunlight',
+    label: 'Bold Sunlight',
+    assetBasename: 'lighting/lighting-bold-sunlight',
+    value: 'bold-sunlight',
+  },
+  {
+    id: 'light-soft-natural',
+    label: 'Soft Natural',
+    assetBasename: 'lighting/lighting-soft-natural',
+    value: 'soft-natural',
+  },
+  {
+    id: 'light-golden-hour',
+    label: 'Golden Hour',
+    assetBasename: 'lighting/lighting-golden-hour',
+    value: 'golden-hour',
+  },
+  {
+    id: 'light-dark-moody',
+    label: 'Dark & Moody',
+    assetBasename: 'lighting/lighting-dark-moody',
+    value: 'dark-moody',
+  },
 ]
 
 const ANGLE_FOH_LABELS: Partial<Record<AngleValue, string>> = {
@@ -55,21 +88,11 @@ const ANGLE_FOH_LABELS: Partial<Record<AngleValue, string>> = {
   'eye-level': 'Eye-Level',
 }
 
-const LIGHTING_FOH_LABELS: Record<string, string> = {
-  'bright-and-airy': 'Window Light',
-  'low-key': 'Low-Key / Dramatic',
-  studio: 'Studio',
-  'golden-hour': 'Golden Hour',
-}
-
 export function fohAngleLabel(value: string): string {
   return ANGLE_FOH_LABELS[value as AngleValue] ?? value
 }
 
-/** Return the requested Studio label, falling back to a custom DB name. */
-export function fohLightingLabel(value: string, fallback?: string): string {
-  return LIGHTING_FOH_LABELS[value] ?? fallback ?? value
-}
+export { fohBackdropLabel, fohLightingLabel, fohSurfaceLabel }
 
 export function controlAssetSrc(basename: string): string {
   if (basename.includes('/')) {
@@ -88,15 +111,13 @@ export const FOH_STYLE_EXCLUDE_PATHS = [
   'canvas.surface_style',
 ] as const
 
-const LIGHTING_OPTION_ORDER = ['studio', 'bright-and-airy', 'golden-hour', 'low-key']
-
 export function lightingStylesToOptions(
   styles: StudioLightingStyleDisplay[],
 ): StudioVisualOption<string>[] {
   return [...styles]
     .sort((a, b) => {
-      const aIndex = LIGHTING_OPTION_ORDER.indexOf(a.key)
-      const bIndex = LIGHTING_OPTION_ORDER.indexOf(b.key)
+      const aIndex = STUDIO_LIGHTING_OPTION_ORDER.indexOf(a.key as (typeof STUDIO_LIGHTING_OPTION_ORDER)[number])
+      const bIndex = STUDIO_LIGHTING_OPTION_ORDER.indexOf(b.key as (typeof STUDIO_LIGHTING_OPTION_ORDER)[number])
       if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
       if (aIndex !== -1) return -1
       if (bIndex !== -1) return 1
@@ -105,7 +126,7 @@ export function lightingStylesToOptions(
     .map((style) => ({
       id: `light-${style.key}`,
       label: fohLightingLabel(style.key, style.name),
-      assetBasename: style.thumbnail_path || `light-${style.key}`,
+      assetBasename: style.thumbnail_path || `lighting/lighting-${style.key}`,
       value: style.key,
     }))
 }
@@ -119,6 +140,46 @@ export function backgroundStylesToOptions(
     assetBasename: style.thumbnail_path || `bg-${style.key}`,
     value: style.key,
   }))
+}
+
+export function backdropStylesToOptions(
+  styles: StudioBackgroundStyleDisplay[],
+): StudioVisualOption<string>[] {
+  return [...styles]
+    .sort((a, b) => {
+      const aIndex = STUDIO_BACKDROP_OPTION_ORDER.indexOf(a.key as (typeof STUDIO_BACKDROP_OPTION_ORDER)[number])
+      const bIndex = STUDIO_BACKDROP_OPTION_ORDER.indexOf(b.key as (typeof STUDIO_BACKDROP_OPTION_ORDER)[number])
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
+      if (aIndex !== -1) return -1
+      if (bIndex !== -1) return 1
+      return a.sort_order - b.sort_order
+    })
+    .map((style) => ({
+      id: `backdrop-${style.key}`,
+      label: fohBackdropLabel(style.key, style.name),
+      assetBasename: style.thumbnail_path || `backdrops/backdrop-${style.key}`,
+      value: style.key,
+    }))
+}
+
+export function surfaceStylesToOptions(
+  styles: StudioBackgroundStyleDisplay[],
+): StudioVisualOption<string>[] {
+  return [...styles]
+    .sort((a, b) => {
+      const aIndex = STUDIO_SURFACE_OPTION_ORDER.indexOf(a.key as (typeof STUDIO_SURFACE_OPTION_ORDER)[number])
+      const bIndex = STUDIO_SURFACE_OPTION_ORDER.indexOf(b.key as (typeof STUDIO_SURFACE_OPTION_ORDER)[number])
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
+      if (aIndex !== -1) return -1
+      if (bIndex !== -1) return 1
+      return a.sort_order - b.sort_order
+    })
+    .map((style) => ({
+      id: `surface-${style.key}`,
+      label: fohSurfaceLabel(style.key, style.name),
+      assetBasename: style.thumbnail_path || `surfaces/surface-${style.key}`,
+      value: style.key,
+    }))
 }
 
 export function styleLabelMap(

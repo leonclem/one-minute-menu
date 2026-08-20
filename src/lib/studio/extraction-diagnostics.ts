@@ -37,7 +37,9 @@ export interface BuildExtractionDiagnosticsInput {
   strictConformance: boolean
 }
 
-const SEEDED_LIGHTING_KEYS = ['bright-and-airy', 'low-key', 'studio', 'golden-hour'] as const
+import { STUDIO_LIGHTING_KEYS } from '@/lib/studio/lighting-keys'
+
+const SEEDED_LIGHTING_KEYS = STUDIO_LIGHTING_KEYS
 const EXPECTED_PATHS = [
   'scene_setup.angle',
   'scene_setup.framing',

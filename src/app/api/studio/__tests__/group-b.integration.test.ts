@@ -47,25 +47,25 @@ const API_RESPONSE = {
 const styleRows: Record<string, Record<string, unknown>> = {}
 
 function resetStyleRows(): void {
-  styleRows.studio = {
-    id: 'lighting-studio', key: 'studio', name: 'Studio',
+  styleRows['bright-clean'] = {
+    id: 'lighting-bright-clean', key: 'bright-clean', name: 'Bright & Clean',
     short_description: 'Clean commercial studio light',
     prompt_fragment: 'Apply clean commercial studio light.',
     negative_constraints: 'Do not add props.',
     descriptor: { quality: 'clean commercial studio light', temperature: 'neutral', shadows: 'soft, controlled shadows', falloff: 'gradual' },
     is_active: true,
   }
-  styleRows['studio-yellow'] = {
-    id: 'backdrop-studio-yellow', key: 'studio-yellow', name: 'Studio Yellow', category: 'backdrop',
-    short_description: 'Vibrant yellow studio backdrop',
-    prompt_fragment: 'Replace the backdrop with vibrant yellow.', negative_constraints: 'Do not change the dish.',
-    descriptor: { material: 'vibrant solid yellow studio backdrop', colour: '#F2C200', falloff: 'soft, professional studio lighting' }, is_active: true,
+  styleRows['warm-sand'] = {
+    id: 'backdrop-warm-sand', key: 'warm-sand', name: 'Warm Sand', category: 'backdrop',
+    short_description: 'Warm muted sand-toned background',
+    prompt_fragment: 'Replace the backdrop with warm sand.', negative_constraints: 'Do not change the dish.',
+    descriptor: { appearance: 'warm muted sand-toned studio backdrop', colour: '#CDBA9C', falloff: 'soft, professional studio lighting' }, is_active: true,
   }
-  styleRows['dark-slate'] = {
-    id: 'surface-dark-slate', key: 'dark-slate', name: 'Dark Slate', category: 'surface',
-    short_description: 'Dark slate stone', prompt_fragment: 'Use a dark slate tabletop.',
+  styleRows['dark-stone'] = {
+    id: 'surface-dark-stone', key: 'dark-stone', name: 'Dark Stone', category: 'surface',
+    short_description: 'Dark stone tabletop', prompt_fragment: 'Use a dark stone tabletop.',
     negative_constraints: 'Do not add props.',
-    descriptor: { material: 'dark slate stone', finish: 'honed matte with subtle natural texture', colour: '#2E3338' }, is_active: true,
+    descriptor: { material: 'dark stone', finish: 'honed matte with subtle natural texture', colour: '#2E3338' }, is_active: true,
   }
 }
 
@@ -166,19 +166,19 @@ function request(url: string, body: unknown): NextRequest {
 }
 
 const originalState: MinimalSchema = {
-  scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy', spin: '0' },
+  scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'soft-natural', spin: '0' },
   canvas: { background: 'visible studio wall', background_style: '', surface_style: '', main_vessel: 'ceramic plate' },
   food_components: { main_item: 'Hainanese chicken rice', garnishes: ['cucumber'], sides: ['chilli sauce'] },
 }
 
 const targetState: MinimalSchema = {
-  scene_setup: { ...originalState.scene_setup, lighting: 'studio' },
-  canvas: { ...originalState.canvas, background_style: 'studio-yellow', surface_style: 'dark-slate' },
+  scene_setup: { ...originalState.scene_setup, lighting: 'bright-clean' },
+  canvas: { ...originalState.canvas, background_style: 'warm-sand', surface_style: 'dark-stone' },
   food_components: { ...originalState.food_components },
 }
 
 const extraction = {
-  scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy', spin: '0' },
+  scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'soft-natural', spin: '0' },
   canvas: { background: 'visible studio wall', background_style: '', surface_style: '', main_vessel: 'ceramic plate' },
   food_components: { main_item: 'Hainanese chicken rice', garnishes: ['cucumber'], sides: ['chilli sauce'] },
 }
@@ -268,7 +268,7 @@ describe('Task 19.10 — customer FOH source → extract → staged mutate', () 
     const mutateResponse = await mutatePOST(request('/api/studio/mutate', {
       dishId: 'dish-1', sourceImageId: 'source-1', originalState, targetState,
       directive: 'Apply the staged lighting, backdrop, and tabletop surface while preserving the dish.',
-      changeSummary: ['Studio lighting', 'Studio Yellow', 'Dark Slate'],
+      changeSummary: ['Bright & Clean', 'Warm Sand', 'Dark Stone'],
       extractionDiagnostics: extracted.diagnostics,
     }))
 
@@ -293,13 +293,13 @@ describe('Task 19.10 — customer FOH source → extract → staged mutate', () 
       falloff: 'gradual',
     })
     expect(descriptor.target.backdrop).toEqual({
-      material: 'vibrant solid yellow studio backdrop',
-      colour: '#F2C200',
+      appearance: 'warm muted sand-toned studio backdrop',
+      colour: '#CDBA9C',
       falloff: 'soft, professional studio lighting',
       mode: 'replace',
     })
     expect(descriptor.target.surface).toEqual({
-      material: 'dark slate stone',
+      material: 'dark stone',
       finish: 'honed matte with subtle natural texture',
       colour: '#2E3338',
     })
@@ -315,7 +315,7 @@ describe('Task 19.10 — customer FOH source → extract → staged mutate', () 
   it('keeps validation telemetry persisted while the customer response and FOH page expose no validation indicator', async () => {
     const response = await mutatePOST(request('/api/studio/mutate', {
       dishId: 'dish-1', sourceImageId: 'source-1', originalState,
-      targetState: { ...originalState, scene_setup: { ...originalState.scene_setup, lighting: 'studio' } },
+      targetState: { ...originalState, scene_setup: { ...originalState.scene_setup, lighting: 'bright-clean' } },
       directive: 'Apply the staged lighting.',
     }))
     expect(response.status).toBe(200)
@@ -342,9 +342,9 @@ describe('Task 19.10 — admin Photo Control multi-reference flow', () => {
       target: targetState,
       delta,
       styles: {
-        lighting: styleRows.studio as any,
-        backdrop: styleRows['studio-yellow'] as any,
-        surface: styleRows['dark-slate'] as any,
+        lighting: styleRows['bright-clean'] as any,
+        backdrop: styleRows['warm-sand'] as any,
+        surface: styleRows['dark-stone'] as any,
       },
       observations: {},
       labels: ['Image A', 'Image B', 'Image C', 'Image D'],
@@ -377,9 +377,9 @@ describe('Task 19.10 — admin Photo Control multi-reference flow', () => {
   })
 
   it('fits or rejects an oversized swatch and names the rejected reference in a warning', async () => {
-    const oversizedPath = path.join(process.cwd(), 'public', 'studio', 'backdrops', 'backdrop-studio-yellow.png')
-    expect(fs.existsSync(oversizedPath)).toBe(true)
-    const oversized = fs.readFileSync(oversizedPath).toString('base64')
+    const oversized = (await require('sharp')({
+      create: { width: 2404, height: 2126, channels: 3, background: { r: 205, g: 186, b: 156 } },
+    }).png().toBuffer() as Buffer).toString('base64')
     const warningSpy = jest.spyOn(logger, 'warn').mockImplementation(() => undefined)
 
     try {
@@ -429,14 +429,14 @@ describe('Task 19.10 — admin Photo Control multi-reference flow', () => {
 describe('Task 19.10 — migration compatibility and Tier 1 preservation', () => {
   /** **Validates: Requirements 3.10** */
   it('successfully generates when migration 075 exists but the resolved style descriptor is null', async () => {
-    styleRows.studio.descriptor = null
-    styleRows.studio.short_description = 'Soft directional window light'
-    styleRows.studio.prompt_fragment = 'Apply soft directional window light while preserving the dish.'
+    styleRows['bright-clean'].descriptor = null
+    styleRows['bright-clean'].short_description = 'Soft directional window light'
+    styleRows['bright-clean'].prompt_fragment = 'Apply soft directional window light while preserving the dish.'
 
     const response = await mutatePOST(request('/api/studio/mutate', {
       dishId: 'dish-1', sourceImageId: 'source-1',
       originalState,
-      targetState: { ...originalState, scene_setup: { ...originalState.scene_setup, lighting: 'studio' } },
+      targetState: { ...originalState, scene_setup: { ...originalState.scene_setup, lighting: 'bright-clean' } },
       directive: 'Apply the selected lighting style.',
     }))
 
@@ -471,7 +471,7 @@ describe('Task 19.10 — migration compatibility and Tier 1 preservation', () =>
     const { ANGLE_VALUES, FRAMING_VALUES, LIGHTING_VALUES, SPIN_VALUES } = require('@/lib/photo-control/minimal-schema')
     expect(ANGLE_VALUES).toEqual(['top-down', '45-degree', 'eye-level', 'macro-close-up'])
     expect(FRAMING_VALUES).toEqual(['close-up', 'medium', 'wide'])
-    expect(LIGHTING_VALUES).toEqual(['low-key', 'bright-and-airy', 'studio'])
+    expect(LIGHTING_VALUES).toEqual(['bright-clean', 'bold-sunlight', 'soft-natural', 'golden-hour', 'dark-moody'])
     expect(SPIN_VALUES).toEqual(['0', 'left-45', 'right-45'])
 
     const beforeOriginal = JSON.stringify(originalState)
@@ -481,7 +481,7 @@ describe('Task 19.10 — migration compatibility and Tier 1 preservation', () =>
       { schema: targetState, position: CENTER },
     )
     expect(JSON.stringify(delta)).toBe(
-      '{"scalarChanges":[{"path":"scene_setup.lighting","from":"bright-and-airy","to":"studio"},{"path":"canvas.background_style","from":"","to":"studio-yellow"},{"path":"canvas.surface_style","from":"","to":"dark-slate"}],"arrays":{"garnishes":{"added":[],"removed":[]},"sides":{"added":[],"removed":[]}},"isEmpty":false}',
+      '{"scalarChanges":[{"path":"scene_setup.lighting","from":"soft-natural","to":"bright-clean"},{"path":"canvas.background_style","from":"","to":"warm-sand"},{"path":"canvas.surface_style","from":"","to":"dark-stone"}],"arrays":{"garnishes":{"added":[],"removed":[]},"sides":{"added":[],"removed":[]}},"isEmpty":false}',
     )
 
     const descriptor = buildSceneDescriptor({
@@ -489,9 +489,9 @@ describe('Task 19.10 — migration compatibility and Tier 1 preservation', () =>
       target: targetState,
       delta,
       styles: {
-        lighting: styleRows.studio as any,
-        backdrop: styleRows['studio-yellow'] as any,
-        surface: styleRows['dark-slate'] as any,
+        lighting: styleRows['bright-clean'] as any,
+        backdrop: styleRows['warm-sand'] as any,
+        surface: styleRows['dark-stone'] as any,
       },
       observations: {},
       labels: ['Image A'],

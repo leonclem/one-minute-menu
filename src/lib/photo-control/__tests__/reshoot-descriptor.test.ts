@@ -12,7 +12,7 @@ function schema(): MinimalSchema {
     },
     canvas: {
       background: 'restaurant wall',
-      background_style: 'studio-grey-white',
+      background_style: 'soft-neutral',
       surface_style: 'white-tablecloth',
       main_vessel: 'white plate',
     },
@@ -29,7 +29,12 @@ const styles = {
     descriptor: { quality: 'clean studio', temperature: 'neutral', shadows: 'soft', falloff: 'gradual' },
   },
   backdrop: {
-    descriptor: { material: 'seamless grey', colour: '#E8E8E8', falloff: 'soft' },
+    descriptor: {
+      appearance: 'soft warm neutral background',
+      colour: '#E7E3DC',
+      texture: 'smooth matte appearance with extremely subtle natural tonal variation',
+      falloff: 'soft, even and unobtrusive',
+    },
   },
   surface: {
     descriptor: { material: 'white cloth', finish: 'matte', colour: '#FFFFFF' },

@@ -9,6 +9,9 @@
 
 import type { MinimalSchema } from './minimal-schema'
 import type { SceneDescriptor } from './scene-descriptor'
+import { STUDIO_BACKDROP_KEYS } from '@/lib/studio/backdrop-keys'
+import { STUDIO_LIGHTING_KEYS } from '@/lib/studio/lighting-keys'
+import { STUDIO_SURFACE_KEYS } from '@/lib/studio/surface-keys'
 
 // ============================================================================
 // Types
@@ -121,12 +124,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * New Studio callers should pass the descriptor built by buildSceneDescriptor.
  * The fallback uses semantic names and never compresses or slices values.
  */
-const LEGACY_STYLE_KEYS = new Set([
-  'studio',
-  'studio-yellow',
-  'dark-slate',
-  'bright-and-airy',
-  'golden-hour',
+const LEGACY_STYLE_KEYS = new Set<string>([
+  ...STUDIO_BACKDROP_KEYS,
+  ...STUDIO_LIGHTING_KEYS,
+  ...STUDIO_SURFACE_KEYS,
 ])
 
 function legacyStyleDescription(value: string, kind: 'lighting' | 'backdrop' | 'surface'): string {
@@ -206,11 +207,11 @@ function descriptorFromStates(
   if (backdropStyleChanged) {
     current.backdrop = {
       ...current.backdrop,
-      material: legacyStyleDescription(originalCanvas.background_style, 'backdrop'),
+      appearance: legacyStyleDescription(originalCanvas.background_style, 'backdrop'),
     }
     targetState.backdrop = {
       ...(targetState.backdrop ?? {}),
-      material: legacyStyleDescription(targetCanvas.background_style, 'backdrop'),
+      appearance: legacyStyleDescription(targetCanvas.background_style, 'backdrop'),
     }
   }
   if (surfaceStyleChanged) {

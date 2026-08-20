@@ -64,6 +64,8 @@ export interface SceneStyleSection {
   temperature?: string
   shadows?: string
   falloff?: string
+  appearance?: string
+  texture?: string
   material?: string
   finish?: string
   colour?: string
@@ -144,7 +146,7 @@ const PLATING_LOCK = 'plating arrangement'
 
 const STYLE_ATTRIBUTES: Record<SceneStyleKind, readonly string[]> = {
   lighting: ['quality', 'temperature', 'shadows', 'falloff'],
-  backdrop: ['material', 'colour', 'falloff'],
+  backdrop: ['appearance', 'texture', 'colour', 'falloff'],
   surface: ['material', 'finish', 'colour'],
 }
 
@@ -180,6 +182,14 @@ function copyStyleAttributes(
     }
   }
 
+  if (
+    kind === 'backdrop' &&
+    !result.appearance &&
+    validAttribute(kind, 'appearance', source.material)
+  ) {
+    result.appearance = source.material as string
+  }
+
   if (kind === 'backdrop' && validAttribute(kind, 'mode', source.mode)) {
     result.mode = source.mode as 'replace' | 'establish'
   }
@@ -205,7 +215,7 @@ function describeStyle(
   }
 
   const fallback: SceneStyleSection = {}
-  const fallbackKey = kind === 'lighting' ? 'quality' : 'material'
+  const fallbackKey = kind === 'lighting' ? 'quality' : kind === 'backdrop' ? 'appearance' : 'material'
   if (nonEmptyString(row.short_description)) {
     fallback[fallbackKey] = row.short_description
   }
@@ -310,6 +320,11 @@ function describeObservation(
 
   if (kind === 'lighting') {
     return isOmitted(observations, 'lighting.quality') ? {} : { quality: value }
+  }
+  if (kind === 'backdrop') {
+    return isOmitted(observations, 'backdrop.appearance') && isOmitted(observations, 'backdrop.material')
+      ? {}
+      : { appearance: value }
   }
   return isOmitted(observations, `${kind}.material`) ? {} : { material: value }
 }

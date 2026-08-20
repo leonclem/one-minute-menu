@@ -3,6 +3,9 @@
  */
 
 import { CENTER, type EditorState, type MinimalSchema } from '@/lib/photo-control/minimal-schema'
+import { normalizeBackdropKey } from '@/lib/studio/backdrop-keys'
+import { normalizeLightingKey } from '@/lib/studio/lighting-keys'
+import { normalizeSurfaceKey } from '@/lib/studio/surface-keys'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -30,15 +33,21 @@ export function readEditorStateFromMetadata(
     schema.scene_setup.spin = '0'
   }
 
+  schema.scene_setup.lighting = normalizeLightingKey(schema.scene_setup.lighting)
+
   // Chunk 2/3 rows may lack background_style — default to empty.
   if (!schema.canvas) {
     schema.canvas = { background: '', background_style: '', surface_style: '', main_vessel: '' }
   } else {
     if (typeof schema.canvas.background_style !== 'string') {
       schema.canvas.background_style = ''
+    } else {
+      schema.canvas.background_style = normalizeBackdropKey(schema.canvas.background_style)
     }
     if (typeof schema.canvas.surface_style !== 'string') {
       schema.canvas.surface_style = ''
+    } else {
+      schema.canvas.surface_style = normalizeSurfaceKey(schema.canvas.surface_style)
     }
   }
 

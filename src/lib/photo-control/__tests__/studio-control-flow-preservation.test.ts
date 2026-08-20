@@ -182,7 +182,7 @@ function createSchema(): MinimalSchema {
     scene_setup: {
       angle: '45-degree',
       framing: 'close-up',
-      lighting: 'low-key',
+      lighting: 'dark-moody',
       spin: '0',
     },
     canvas: {
@@ -197,14 +197,14 @@ function createSchema(): MinimalSchema {
 
 function createMutationBody(): Record<string, unknown> {
   const originalState = createSchema()
-  originalState.scene_setup.lighting = 'bright-and-airy'
+  originalState.scene_setup.lighting = 'soft-natural'
 
   return {
     dishId: 'dish-1',
     sourceImageId: 'source-1',
     originalState,
     targetState: createSchema(),
-    directive: 'Change lighting to low-key',
+    directive: 'Change lighting to dark-moody',
   }
 }
 

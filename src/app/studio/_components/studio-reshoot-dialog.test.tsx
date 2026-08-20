@@ -26,22 +26,22 @@ const baseSchema: MinimalSchema = {
 }
 
 const lightingOptions = [
-  { id: 'light-studio', label: 'Studio', assetBasename: 'lighting/lighting-studio', value: 'studio' },
+  { id: 'light-bright-clean', label: 'Bright & Clean', assetBasename: 'lighting/lighting-bright-clean', value: 'bright-clean' },
 ]
 const backdropOptions = [
   {
     id: 'bg-grey',
-    label: 'Grey',
-    assetBasename: 'backgrounds/bg-grey',
-    value: 'studio-grey-white',
+    label: 'Soft Neutral',
+    assetBasename: 'backdrops/backdrop-soft-neutral',
+    value: 'soft-neutral',
   },
 ]
 const surfaceOptions = [
   {
-    id: 'surface-cloth',
-    label: 'Cloth',
-    assetBasename: 'surfaces/surface-cloth',
-    value: 'white-tablecloth',
+    id: 'surface-oak',
+    label: 'Natural Oak',
+    assetBasename: 'surfaces/surface-natural-oak',
+    value: 'natural-oak',
   },
 ]
 
@@ -68,9 +68,9 @@ describe('StudioReshootDialog', () => {
     expect(onConfirm).toHaveBeenCalledWith({
       improvePlating: true,
       styles: {
-        lighting: 'studio',
-        backdrop: 'studio-grey-white',
-        surface: 'white-tablecloth',
+        lighting: 'bright-clean',
+        backdrop: 'soft-neutral',
+        surface: 'natural-oak',
       },
     })
   })

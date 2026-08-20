@@ -54,26 +54,26 @@ describe('resolve-style-directives', () => {
     const mockBackgroundRecord = {
       prompt_fragment: 'BACKGROUND_CLAUSE',
       negative_constraints: null,
-      thumbnail_path: 'bg-dark-slate',
-      name: 'Dark Slate',
+      thumbnail_path: 'bg-soft-neutral',
+      name: 'Soft Neutral',
     }
     const mockSurfaceRecord = {
       prompt_fragment: 'SURFACE_CLAUSE',
       negative_constraints: null,
-      thumbnail_path: 'surface-granite-light',
-      name: 'Light Granite',
+      thumbnail_path: 'surface-white-marble',
+      name: 'White Marble',
     }
 
     mockResolveLighting.mockResolvedValue(mockLightingRecord)
     mockResolveBackground.mockImplementation((key) => {
-      if (key === 'dark-slate') return Promise.resolve(mockBackgroundRecord)
-      if (key === 'granite-light') return Promise.resolve(mockSurfaceRecord)
+      if (key === 'soft-neutral') return Promise.resolve(mockBackgroundRecord)
+      if (key === 'white-marble') return Promise.resolve(mockSurfaceRecord)
       return Promise.resolve(null)
     })
 
     const result = await resolveStyleDirectiveClauses(
       schema({ lighting: 'bright-and-airy', backgroundStyle: '', surfaceStyle: '' }),
-      schema({ lighting: 'low-key', backgroundStyle: 'dark-slate', surfaceStyle: 'granite-light' }),
+      schema({ lighting: 'low-key', backgroundStyle: 'soft-neutral', surfaceStyle: 'white-marble' }),
     )
 
     expect(result.error).toBeUndefined()

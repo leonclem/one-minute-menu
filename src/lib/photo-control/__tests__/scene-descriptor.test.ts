@@ -58,11 +58,12 @@ const styles: SceneDescriptorStyles = {
     negative_constraints: 'Do not add props.',
   },
   backdrop: {
-    key: 'studio-yellow',
+    key: 'warm-sand',
     descriptor: {
-      material: 'seamless studio backdrop',
-      colour: '#F2C200',
-      falloff: 'soft professional',
+      appearance: 'warm muted sand-toned background',
+      colour: '#CDBA9C',
+      texture: 'smooth matte appearance with subtle warm tonal variation',
+      falloff: 'soft and gradual',
     },
   },
   surface: {
@@ -83,14 +84,14 @@ describe('buildSceneDescriptor', () => {
     })
     const target = schema({
       scene_setup: { lighting: 'studio' },
-      canvas: { background_style: 'studio-yellow', surface_style: 'dark-slate' },
+      canvas: { background_style: 'warm-sand', surface_style: 'dark-slate' },
     })
     const result = buildSceneDescriptor({
       original,
       target,
       delta: delta([
         { path: 'scene_setup.lighting', from: 'bright-and-airy', to: 'studio' },
-        { path: 'canvas.background_style', from: '', to: 'studio-yellow' },
+        { path: 'canvas.background_style', from: '', to: 'warm-sand' },
         { path: 'canvas.surface_style', from: '', to: 'dark-slate' },
       ]),
       styles,
@@ -109,14 +110,15 @@ describe('buildSceneDescriptor', () => {
       falloff: 'gradual',
     })
     expect(result.target.backdrop).toEqual({
-      material: 'seamless studio backdrop',
-      colour: '#F2C200',
-      falloff: 'soft professional',
+      appearance: 'warm muted sand-toned background',
+      colour: '#CDBA9C',
+      texture: 'smooth matte appearance with subtle warm tonal variation',
+      falloff: 'soft and gradual',
       mode: 'replace',
     })
     expect(result.target.surface).toEqual(styles.surface!.descriptor)
     expect(result.current.lighting).toEqual({ quality: 'observed household light' })
-    expect(result.current.backdrop).toEqual({ material: 'visible restaurant wall' })
+    expect(result.current.backdrop).toEqual({ appearance: 'visible restaurant wall' })
     expect(result.current.surface).toEqual({ material: 'wooden table' })
     expect(result.target).toHaveProperty('surface')
   })
@@ -188,12 +190,12 @@ describe('buildSceneDescriptor', () => {
   it('omits legacy prompt fragments when building the FOH descriptor', () => {
     const result = buildSceneDescriptor({
       original: schema(),
-      target: schema({ canvas: { background_style: 'studio-yellow' } }),
-      delta: delta([{ path: 'canvas.background_style', from: '', to: 'studio-yellow' }]),
+      target: schema({ canvas: { background_style: 'warm-sand' } }),
+      delta: delta([{ path: 'canvas.background_style', from: '', to: 'warm-sand' }]),
       styles: {
         backdrop: {
           descriptor: null,
-          short_description: 'Vibrant yellow studio backdrop',
+          short_description: 'Warm muted sand-toned background',
           prompt_fragment: 'Change only the vertical backdrop/wall behind the tabletop to yellow.',
         },
       },
@@ -203,7 +205,7 @@ describe('buildSceneDescriptor', () => {
     })
 
     expect(result.target.backdrop).toEqual({
-      material: 'Vibrant yellow studio backdrop',
+      appearance: 'Warm muted sand-toned background',
       mode: 'establish',
     })
     expect(JSON.stringify(result)).not.toContain('Change only the vertical backdrop')
@@ -213,14 +215,14 @@ describe('buildSceneDescriptor', () => {
     const original = schema()
     const target = schema({
       scene_setup: { lighting: 'studio' },
-      canvas: { background_style: 'studio-yellow', surface_style: 'dark-slate' },
+      canvas: { background_style: 'warm-sand', surface_style: 'dark-slate' },
     })
     const result = buildSceneDescriptor({
       original,
       target,
       delta: delta([
         { path: 'scene_setup.lighting', from: 'bright-and-airy', to: 'studio' },
-        { path: 'canvas.background_style', from: '', to: 'studio-yellow' },
+        { path: 'canvas.background_style', from: '', to: 'warm-sand' },
         { path: 'canvas.surface_style', from: '', to: 'dark-slate' },
       ]),
       styles,
@@ -238,7 +240,7 @@ describe('buildSceneDescriptor', () => {
       target,
       delta: delta([
         { path: 'scene_setup.lighting', from: 'bright-and-airy', to: 'studio' },
-        { path: 'canvas.background_style', from: '', to: 'studio-yellow' },
+        { path: 'canvas.background_style', from: '', to: 'warm-sand' },
         { path: 'canvas.surface_style', from: '', to: 'dark-slate' },
       ]),
       styles,

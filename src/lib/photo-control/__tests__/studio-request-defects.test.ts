@@ -495,31 +495,27 @@ describe('Studio request defects: reference dwarfing the subject', () => {
     loggerWarnSpy.mockRestore()
   })
 
-  it('rejects or fits the recorded 2404×2126, 3,988 KB studio-yellow backdrop against the 434 KB subject without downscaling the subject', async () => {
+  it('rejects or fits an oversized 2404×2126 backdrop against the 434 KB subject without downscaling the subject', async () => {
     // The source values are the archived pre-change Studio capture: 1024×612 and 434,718 bytes.
     // Its binary is intentionally represented by its recorded byte payload because this test captures
-    // request assembly rather than calling the external model.
+    // request assembly rather than calling the external model. The retired studio-yellow PNG is
+    // synthesized at the same recorded pixel size so the fit/reject path stays covered.
     const source = Buffer.alloc(434_718, 0x53)
-    const backdropPath = require('path').join(
-      process.cwd(),
-      'public',
-      'studio',
-      'backdrops',
-      'backdrop-studio-yellow.png',
-    )
-    const backdrop = require('fs').readFileSync(backdropPath) as Buffer
+    const backdrop = await require('sharp')({
+      create: { width: 2404, height: 2126, channels: 3, background: { r: 242, g: 194, b: 0 } },
+    }).png().toBuffer() as Buffer
     const backdropMetadata = await require('sharp')(backdrop).metadata()
     const subject: ReferenceFitMetrics = { pixelArea: 1024 * 612, bytes: source.length }
     const reference: ReferenceFitMetrics = {
-      pixelArea: backdropMetadata.width * backdropMetadata.height,
+      pixelArea: (backdropMetadata.width ?? 0) * (backdropMetadata.height ?? 0),
       bytes: backdrop.length,
     }
 
-    expect({ width: backdropMetadata.width, height: backdropMetadata.height, bytes: backdrop.length }).toEqual({
+    expect({ width: backdropMetadata.width, height: backdropMetadata.height }).toEqual({
       width: 2404,
       height: 2126,
-      bytes: 4_083_924,
     })
+    expect(reference.pixelArea).toBeGreaterThan(subject.pixelArea)
 
     const request = await captureReferenceFitRequest(source, backdrop)
     const referenceFitsSubject =

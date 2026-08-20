@@ -40,7 +40,7 @@ function fullyConformantInput() {
     scene_setup: {
       angle: 'top-down',
       framing: 'medium',
-      lighting: 'bright-and-airy',
+      lighting: 'bright-clean',
     },
     canvas: {
       background: 'rustic wooden table',
@@ -94,7 +94,7 @@ describe('MinimalSchemaValidator — result shape (Req 3.8)', () => {
   it('every warning has a string path, string message, and valid severity', () => {
     // Use an input that triggers both enum and non-enum warnings.
     const result = validateMinimalSchema({
-      scene_setup: { angle: 'drone-shot', framing: 'medium', lighting: 'low-key' },
+      scene_setup: { angle: 'drone-shot', framing: 'medium', lighting: 'dark-moody' },
       canvas: { background: 'table' /* main_vessel missing → warning */ },
       food_components: { main_item: 'steak', garnishes: 'not-an-array', sides: [] },
     })
@@ -125,7 +125,7 @@ describe('MinimalSchemaValidator — result shape (Req 3.8)', () => {
     expect(result.data.scene_setup).toEqual({
       angle: 'top-down',
       framing: 'medium',
-      lighting: 'bright-and-airy',
+      lighting: 'bright-clean',
       spin: '0',
     })
   })
@@ -136,7 +136,7 @@ describe('MinimalSchemaValidator — result shape (Req 3.8)', () => {
       scene_setup: {
         angle: 'birds-eye', // out-of-set → default
         framing: 'panoramic', // out-of-set → default
-        lighting: 'bright-and-airy', // in-set → preserved
+        lighting: 'bright-clean', // in-set → preserved
       },
       canvas: { background: 'slate', main_vessel: 'bowl' },
       food_components: { main_item: 'ramen', garnishes: [], sides: [] },
@@ -147,7 +147,7 @@ describe('MinimalSchemaValidator — result shape (Req 3.8)', () => {
     // Coerced fields fall back to their defined defaults; in-set field preserved.
     expect(result.data.scene_setup.angle).toBe(ENUM_DEFAULTS['scene_setup.angle'])
     expect(result.data.scene_setup.framing).toBe(ENUM_DEFAULTS['scene_setup.framing'])
-    expect(result.data.scene_setup.lighting).toBe('bright-and-airy')
+    expect(result.data.scene_setup.lighting).toBe('bright-clean')
 
     // Exactly one warning per coerced enum field, naming the field + original value.
     expect(warningsFor(result, 'scene_setup.angle')).toHaveLength(1)
@@ -167,7 +167,7 @@ describe('MinimalSchemaValidator — result shape (Req 3.8)', () => {
     expect(ANGLE_VALUES).toContain(result.data.scene_setup.angle)
     expect(FRAMING_VALUES).toContain(result.data.scene_setup.framing)
     // Lighting falls back to the default style key when non-string.
-    expect(result.data.scene_setup.lighting).toBe('bright-and-airy')
+    expect(result.data.scene_setup.lighting).toBe('bright-clean')
     expect(result.data.canvas.background_style).toBe('')
   })
 
@@ -191,7 +191,7 @@ describe('MinimalSchemaValidator — result shape (Req 3.8)', () => {
       scene_setup: {
         angle: '45-degree',
         framing: 'close-up',
-        lighting: 'bright-and-airy',
+        lighting: 'bright-clean',
       },
       canvas: { background: 'table', main_vessel: 'plate', background_style: '', surface_style: 'granite-light' },
       food_components: { main_item: 'salad', garnishes: [], sides: [] },
@@ -204,7 +204,7 @@ describe('MinimalSchemaValidator — result shape (Req 3.8)', () => {
   // Representative case: non-enum repair does not affect strictConformance.
   it('non-enum repairs warn but keep strictConformance true when enums are in-set', () => {
     const result = validateMinimalSchema({
-      scene_setup: { angle: 'eye-level', framing: 'wide', lighting: 'low-key' },
+      scene_setup: { angle: 'eye-level', framing: 'wide', lighting: 'dark-moody' },
       canvas: {}, // both non-enum strings missing → warnings, not conformance failures
       food_components: { main_item: 42, garnishes: ['chive'], sides: ['fries'] },
     })
@@ -240,7 +240,7 @@ describe('MinimalSchemaValidator — array-of-strings handling (Req 3.7)', () =>
     const garnishes = ['microgreens', 'sesame seeds', 'chili oil']
     const sides = ['kimchi', 'pickled radish']
     const result = validateMinimalSchema({
-      scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'low-key' },
+      scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'dark-moody' },
       canvas: { background: 'stone', main_vessel: 'bowl' },
       food_components: { main_item: 'bibimbap', garnishes, sides },
     })
@@ -254,7 +254,7 @@ describe('MinimalSchemaValidator — array-of-strings handling (Req 3.7)', () =>
 
   it('drops non-string members, keeping only the strings in order', () => {
     const result = validateMinimalSchema({
-      scene_setup: { angle: 'top-down', framing: 'medium', lighting: 'low-key' },
+      scene_setup: { angle: 'top-down', framing: 'medium', lighting: 'dark-moody' },
       canvas: { background: 'linen', main_vessel: 'platter' },
       food_components: {
         main_item: 'charcuterie',
@@ -294,7 +294,7 @@ describe('MinimalSchemaValidator — array-of-strings handling (Req 3.7)', () =>
 
   it('coerces a non-array garnishes/sides value to an empty array', () => {
     const result = validateMinimalSchema({
-      scene_setup: { angle: 'macro-close-up', framing: 'close-up', lighting: 'low-key' },
+      scene_setup: { angle: 'macro-close-up', framing: 'close-up', lighting: 'dark-moody' },
       canvas: { background: 'wood', main_vessel: 'skillet' },
       food_components: {
         main_item: 'paella',
@@ -311,7 +311,7 @@ describe('MinimalSchemaValidator — array-of-strings handling (Req 3.7)', () =>
 
   it('keeps an empty array as empty without recording a drop warning', () => {
     const result = validateMinimalSchema({
-      scene_setup: { angle: 'top-down', framing: 'medium', lighting: 'low-key' },
+      scene_setup: { angle: 'top-down', framing: 'medium', lighting: 'dark-moody' },
       canvas: { background: 'table', main_vessel: 'bowl' },
       food_components: { main_item: 'soup', garnishes: [], sides: [] },
     })

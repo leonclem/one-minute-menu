@@ -5,6 +5,8 @@ import {
   resolveBackgroundStyle,
   resolveLightingStyle,
 } from '@/lib/studio/reference-libraries'
+import { normalizeBackdropKey } from '@/lib/studio/backdrop-keys'
+import { normalizeSurfaceKey } from '@/lib/studio/surface-keys'
 
 import type {
   StudioBackgroundStyleRecord,
@@ -39,7 +41,7 @@ export async function resolveStyleDirectiveClauses(
   const fromBackground = originalState.canvas?.background_style ?? ''
   const toBackground = targetState.canvas?.background_style ?? ''
   if (toBackground && toBackground !== fromBackground) {
-    const style = await resolveBackgroundStyle(toBackground)
+    const style = await resolveBackgroundStyle(normalizeBackdropKey(toBackground))
     if (!style) {
       return {
         error: `Unknown or inactive background style: ${toBackground}`,
@@ -51,7 +53,7 @@ export async function resolveStyleDirectiveClauses(
   const fromSurface = originalState.canvas?.surface_style ?? ''
   const toSurface = targetState.canvas?.surface_style ?? ''
   if (toSurface && toSurface !== fromSurface) {
-    const style = await resolveBackgroundStyle(toSurface)
+    const style = await resolveBackgroundStyle(normalizeSurfaceKey(toSurface))
     if (!style) {
       return {
         error: `Unknown or inactive surface style: ${toSurface}`,

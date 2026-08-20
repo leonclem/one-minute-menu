@@ -28,43 +28,43 @@ function state(
 
 describe('restage', () => {
   it('nudges baseline when re-applying the same angle', () => {
-    const current = state('45-degree', 'bright-and-airy')
+    const current = state('45-degree', 'soft-natural')
     const nextBaseline = ensureAngleRestageBaseline(current, current, '45-degree')
     expect(nextBaseline.schema.scene_setup.angle).not.toBe('45-degree')
   })
 
   it('does not nudge when switching to a different angle', () => {
-    const baseline = state('45-degree', 'bright-and-airy')
-    const current = state('top-down', 'bright-and-airy')
+    const baseline = state('45-degree', 'soft-natural')
+    const current = state('top-down', 'soft-natural')
     const nextBaseline = ensureAngleRestageBaseline(baseline, current, '45-degree')
     expect(nextBaseline.schema.scene_setup.angle).toBe('45-degree')
   })
 
   it('nudges lighting baseline on re-apply', () => {
-    const current = state('45-degree', 'low-key')
-    const nextBaseline = ensureLightingRestageBaseline(current, current, 'low-key')
-    expect(nextBaseline.schema.scene_setup.lighting).not.toBe('low-key')
+    const current = state('45-degree', 'dark-moody')
+    const nextBaseline = ensureLightingRestageBaseline(current, current, 'dark-moody')
+    expect(nextBaseline.schema.scene_setup.lighting).not.toBe('dark-moody')
   })
 
   it('nudges background baseline on re-apply', () => {
-    const current = state('45-degree', 'bright-and-airy', 'dark-slate')
+    const current = state('45-degree', 'soft-natural', 'studio-yellow')
     const nextBaseline = ensureBackgroundRestageBaseline(
       current,
       current,
-      'dark-slate',
-      ['dark-slate', 'clean-white-studio'],
+      'studio-yellow',
+      ['studio-yellow', 'studio-grey-white'],
     )
-    expect(nextBaseline.schema.canvas.background_style).not.toBe('dark-slate')
+    expect(nextBaseline.schema.canvas.background_style).not.toBe('studio-yellow')
   })
 
   it('nudges surface baseline on re-apply', () => {
-    const current = state('45-degree', 'bright-and-airy', '', 'granite-light')
+    const current = state('45-degree', 'soft-natural', '', 'terrazzo')
     const nextBaseline = ensureSurfaceRestageBaseline(
       current,
       current,
-      'granite-light',
-      ['granite-light', 'marble-light'],
+      'terrazzo',
+      ['terrazzo', 'white-marble'],
     )
-    expect(nextBaseline.schema.canvas.surface_style).not.toBe('granite-light')
+    expect(nextBaseline.schema.canvas.surface_style).not.toBe('terrazzo')
   })
 })

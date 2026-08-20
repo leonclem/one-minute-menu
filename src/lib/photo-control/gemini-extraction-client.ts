@@ -22,6 +22,7 @@
 
 import { fetchJsonWithRetry } from '../retry'
 import { STUDIO_EXTRACTION_MODEL } from '@/lib/studio/model-config'
+import { STUDIO_LIGHTING_KEYS } from '@/lib/studio/lighting-keys'
 
 // ============================================================================
 // Constants
@@ -43,7 +44,7 @@ export const EXTRACTION_RESPONSE_SCHEMA = {
       properties: {
         angle: { type: 'STRING', enum: ['top-down', '45-degree', 'eye-level', 'macro-close-up'] },
         framing: { type: 'STRING', enum: ['close-up', 'medium', 'wide'] },
-        lighting: { type: 'STRING', enum: ['bright-and-airy', 'low-key', 'studio', 'golden-hour'] },
+        lighting: { type: 'STRING', enum: [...STUDIO_LIGHTING_KEYS] },
         spin: { type: 'STRING', enum: ['0', 'left-45', 'right-45'] },
       },
       required: ['angle', 'framing', 'lighting', 'spin'],
@@ -91,7 +92,7 @@ export const EXTRACTION_RESPONSE_SCHEMA = {
  */
 export const EXTRACTION_SYSTEM_PROMPT = `You are a food photography analyst. Analyze the provided food photograph and return only the JSON object described by the response schema.
 
-Use the complete lighting key set: bright-and-airy, low-key, studio, or golden-hour. Describe the observed backdrop and tabletop surface with material and six-digit hex colour when visible. Set backdrop_visible and surface_visible from the photograph; do not invent a value when the evidence is unavailable. Include a concise prose description of the complete composition. Return empty arrays for garnishes and sides when none are present. Values must describe what is observed, not a requested edit.`
+Use the complete lighting key set: bright-clean, soft-natural, golden-hour, dark-moody, or bold-sunlight. Describe the observed backdrop and tabletop surface with material and six-digit hex colour when visible. Set backdrop_visible and surface_visible from the photograph; do not invent a value when the evidence is unavailable. Include a concise prose description of the complete composition. Return empty arrays for garnishes and sides when none are present. Values must describe what is observed, not a requested edit.`
 
 // ============================================================================
 // Types

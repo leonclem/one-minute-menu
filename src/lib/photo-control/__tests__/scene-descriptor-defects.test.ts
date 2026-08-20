@@ -34,10 +34,13 @@ type StagedPath =
   | 'canvas.surface_style'
 
 const DB_STYLE_KEYS = [
-  'studio',
-  'studio-yellow',
-  'dark-slate',
-  'bright-and-airy',
+  'bright-clean',
+  'soft-natural',
+  'dark-moody',
+  'bold-sunlight',
+  'warm-sand',
+  'dark-stone',
+  'white-marble',
   'golden-hour',
 ] as const
 
@@ -277,7 +280,7 @@ describe('Studio scene descriptor defects: Property 6', () => {
       scene_setup: { angle: '45-degree', framing: 'medium', lighting: 'studio', spin: '0' },
       canvas: {
         background,
-        background_style: 'studio-yellow',
+        background_style: 'warm-sand',
         surface_style: 'dark-slate',
         main_vessel: 'white ceramic plate',
       },
@@ -398,7 +401,7 @@ describe('Studio scene descriptor defects: Property 6', () => {
       scene_setup: { angle: '45-degree', framing: 'medium', lighting: 'studio', spin: '0' },
       canvas: {
         background: 'plain background',
-        background_style: 'studio-yellow',
+        background_style: 'warm-sand',
         surface_style: 'dark-slate',
         main_vessel: 'ceramic plate',
       },
@@ -420,7 +423,7 @@ describe('Studio scene descriptor defects: Property 6', () => {
       scene_setup: { angle: '45-degree', framing: 'medium', lighting: 'studio', spin: '0' },
       canvas: {
         background: 'A 120-character background description is preserved in the descriptor without slicing.'.padEnd(120, 'x'),
-        background_style: 'studio-yellow',
+        background_style: 'warm-sand',
         surface_style: 'dark-slate',
         main_vessel: 'hand-thrown ceramic serving bowl',
       },

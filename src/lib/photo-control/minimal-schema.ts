@@ -22,6 +22,10 @@
  */
 
 import { z } from 'zod'
+import {
+  DEFAULT_STUDIO_LIGHTING_KEY,
+  STUDIO_LIGHTING_KEYS,
+} from '@/lib/studio/lighting-keys'
 
 // ============================================================================
 // Enum value tuples (Enum_Field allowed sets)
@@ -46,7 +50,7 @@ export const ANGLE_VALUES = [
  * FOH Studio lighting is a DB style-key string (Chunk 4); this tuple remains for
  * the admin `Lighting_Control` and as the extraction default set.
  */
-export const LIGHTING_VALUES = ['low-key', 'bright-and-airy', 'studio'] as const
+export const LIGHTING_VALUES = STUDIO_LIGHTING_KEYS
 
 /**
  * Allowed `scene_setup.framing` values. (Requirement 3.4)
@@ -68,7 +72,7 @@ export type FramingValue = (typeof FRAMING_VALUES)[number]
 export type SpinValue = (typeof SPIN_VALUES)[number]
 
 /** Default lighting style key when extraction omits a value. */
-export const DEFAULT_LIGHTING_KEY = 'bright-and-airy'
+export const DEFAULT_LIGHTING_KEY = DEFAULT_STUDIO_LIGHTING_KEY
 
 /**
  * Coercion defaults for each `Enum_Field`, keyed by dotted schema path.

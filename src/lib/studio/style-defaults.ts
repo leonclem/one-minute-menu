@@ -4,6 +4,13 @@
 
 import type { MinimalSchema } from '@/lib/photo-control/minimal-schema'
 import type { ExtractionDiagnostics } from '@/lib/studio/extraction-diagnostics'
+import { DEFAULT_STUDIO_BACKDROP_KEY, normalizeBackdropKey } from '@/lib/studio/backdrop-keys'
+import { DEFAULT_STUDIO_LIGHTING_KEY, normalizeLightingKey } from '@/lib/studio/lighting-keys'
+import {
+  DEFAULT_STUDIO_SURFACE_KEY,
+  normalizeSurfaceKey,
+  type StudioSurfaceKey,
+} from '@/lib/studio/surface-keys'
 
 export interface ReshootStyleKeys {
   lighting: string
@@ -11,15 +18,18 @@ export interface ReshootStyleKeys {
   surface: string
 }
 
-const DEFAULT_BACKDROP = 'studio-grey-white'
-const DEFAULT_SURFACE = 'white-tablecloth'
+const DEFAULT_BACKDROP = DEFAULT_STUDIO_BACKDROP_KEY
 
-const MATERIAL_KEYWORDS: Array<{ pattern: RegExp; key: string }> = [
-  { pattern: /\bslate\b/i, key: 'dark-slate' },
-  { pattern: /\bwood(?:en)?\b/i, key: 'rustic-wood' },
-  { pattern: /\bmarble\b/i, key: 'marble-light' },
-  { pattern: /\bgranite\b/i, key: 'granite-light' },
-  { pattern: /\bcloth\b/i, key: 'white-tablecloth' },
+const MATERIAL_KEYWORDS: Array<{ pattern: RegExp; key: StudioSurfaceKey }> = [
+  { pattern: /\bconcrete\b/i, key: 'raw-concrete' },
+  { pattern: /\bterrazzo\b/i, key: 'terrazzo' },
+  { pattern: /\bgranite\b/i, key: 'terrazzo' },
+  { pattern: /\bwalnut\b/i, key: 'dark-walnut' },
+  { pattern: /\boak\b/i, key: 'natural-oak' },
+  { pattern: /\bwood(?:en)?\b/i, key: 'natural-oak' },
+  { pattern: /\bmarble\b/i, key: 'white-marble' },
+  { pattern: /\blinen\b|\bcloth\b|\bfabric\b|\btablecloth\b/i, key: 'natural-linen' },
+  { pattern: /\bslate\b|\bstone\b/i, key: 'dark-stone' },
 ]
 
 function getPath(root: unknown, path: string): unknown {
@@ -33,13 +43,9 @@ function getPath(root: unknown, path: string): unknown {
 }
 
 function keywordMatch(material: string | undefined, kind: 'backdrop' | 'surface'): string | null {
-  if (!material) return null
+  if (!material || kind !== 'surface') return null
   for (const { pattern, key } of MATERIAL_KEYWORDS) {
-    if (pattern.test(material)) {
-      if (kind === 'backdrop' && key === 'white-tablecloth') continue
-      if (kind === 'surface' && key === 'dark-slate' && /\bslate\b/i.test(material)) return key
-      return key
-    }
+    if (pattern.test(material)) return key
   }
   return null
 }
@@ -56,21 +62,17 @@ export function resolveReshootStyleDefaults(
   schema: MinimalSchema,
   diagnostics?: ExtractionDiagnostics | null,
 ): ReshootStyleKeys {
-  const lighting = schema.scene_setup.lighting || 'bright-and-airy'
+  const lighting = normalizeLightingKey(schema.scene_setup.lighting || DEFAULT_STUDIO_LIGHTING_KEY)
 
-  const backdropFromState = schema.canvas.background_style?.trim()
-  const backdropFromObserved = keywordMatch(
-    observedMaterial(diagnostics, 'backdrop.material'),
-    'backdrop',
-  )
-  const backdrop = backdropFromState || backdropFromObserved || DEFAULT_BACKDROP
+  const backdropFromState = normalizeBackdropKey(schema.canvas.background_style?.trim())
+  const backdrop = backdropFromState || DEFAULT_BACKDROP
 
-  const surfaceFromState = schema.canvas.surface_style?.trim()
+  const surfaceFromState = normalizeSurfaceKey(schema.canvas.surface_style?.trim())
   const surfaceFromObserved = keywordMatch(
     observedMaterial(diagnostics, 'surface.material'),
     'surface',
   )
-  const surface = surfaceFromState || surfaceFromObserved || DEFAULT_SURFACE
+  const surface = surfaceFromState || surfaceFromObserved || DEFAULT_STUDIO_SURFACE_KEY
 
   return { lighting, backdrop, surface }
 }

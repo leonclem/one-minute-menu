@@ -1,10 +1,10 @@
 'use client'
 
 /**
- * Lighting_Control — Two-state toggle for `scene_setup.lighting`
+ * Lighting_Control — segmented selector for `scene_setup.lighting`
  *
- * Presents a toggle between `low-key` and `bright-and-airy`. Toggling always
- * switches to the other value; the parent computes the delta and dispatches
+ * Presents the current studio lighting keys. Selecting a different option
+ * always switches to that value; the parent computes the delta and dispatches
  * mutation.
  *
  * Controls are disabled until hydration completes (when `disabled` is true).
@@ -13,17 +13,14 @@
  */
 
 import { LIGHTING_VALUES, type LightingValue } from '@/lib/photo-control/minimal-schema'
-
-const LIGHTING_LABELS: Record<LightingValue, string> = {
-  'low-key': 'Low-Key',
-  'bright-and-airy': 'Bright & Airy',
-  studio: 'Studio',
-}
+import { fohLightingLabel, normalizeLightingKey } from '@/lib/studio/lighting-keys'
 
 const LIGHTING_DESCRIPTIONS: Record<LightingValue, string> = {
-  'low-key': 'Dramatic lighting, rich shadows',
-  'bright-and-airy': 'Clean high-key diffused light',
-  studio: 'Even commercial studio light',
+  'bright-clean': 'Clean commercial studio light',
+  'bold-sunlight': 'Strong direct daylight, crisp contrast',
+  'soft-natural': 'Soft diffused natural daylight',
+  'golden-hour': 'Warm late-afternoon directional light',
+  'dark-moody': 'Low-key directional light, rich shadows',
 }
 
 export interface LightingControlProps {
@@ -36,13 +33,16 @@ export interface LightingControlProps {
 }
 
 export function Lighting_Control({ value, onChange, disabled = false }: LightingControlProps) {
+  const selected = normalizeLightingKey(value)
+
   return (
     <div>
       <p className="mb-2 text-sm font-medium text-gray-700">Lighting</p>
       <div className="flex rounded-md border border-gray-300 overflow-hidden">
         {LIGHTING_VALUES.map((lighting, index) => {
-          const isSelected = lighting === value
+          const isSelected = lighting === selected
           const isFirst = index === 0
+          const label = fohLightingLabel(lighting)
 
           return (
             <button
@@ -50,7 +50,7 @@ export function Lighting_Control({ value, onChange, disabled = false }: Lighting
               type="button"
               role="radio"
               aria-checked={isSelected}
-              aria-label={`${LIGHTING_LABELS[lighting]}: ${LIGHTING_DESCRIPTIONS[lighting]}`}
+              aria-label={`${label}: ${LIGHTING_DESCRIPTIONS[lighting]}`}
               disabled={disabled}
               onClick={() => {
                 if (!isSelected) {
@@ -68,7 +68,7 @@ export function Lighting_Control({ value, onChange, disabled = false }: Lighting
                 .filter(Boolean)
                 .join(' ')}
             >
-              <span className="block">{LIGHTING_LABELS[lighting]}</span>
+              <span className="block">{label}</span>
               <span
                 className={[
                   'block text-xs mt-0.5',

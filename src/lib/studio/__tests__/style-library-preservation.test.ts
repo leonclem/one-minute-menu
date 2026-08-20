@@ -71,17 +71,21 @@ import {
 
 const mockLogger = logger as jest.Mocked<typeof logger>
 
-const SEEDED_LIGHTING_KEYS = ['bright-and-airy', 'low-key', 'studio', 'golden-hour']
+const SEEDED_LIGHTING_KEYS = ['bright-clean', 'soft-natural', 'golden-hour', 'dark-moody', 'bold-sunlight']
 const SEEDED_BACKGROUND_KEYS = [
-  'dark-slate',
-  'rustic-wood',
-  'granite-light',
-  'marble-light',
-  'white-tablecloth',
-  'studio-nightsky',
-  'studio-red',
-  'studio-grey-white',
-  'studio-yellow',
+  'natural-oak',
+  'dark-walnut',
+  'white-marble',
+  'raw-concrete',
+  'dark-stone',
+  'natural-linen',
+  'terrazzo',
+  'soft-neutral',
+  'warm-sand',
+  'sage-green',
+  'terracotta',
+  'deep-navy',
+  'charcoal',
 ]
 
 function mockStyleRow(
@@ -221,7 +225,7 @@ function mockSelect(
 function mockEditorState(background: string, overrides: Partial<EditorState['schema']['canvas']> = {}): EditorState {
   return {
     schema: {
-      scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy', spin: '0' },
+      scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-clean', spin: '0' },
       canvas: {
         background,
         background_style: '',
@@ -325,13 +329,13 @@ describe('Property 12: style library and logging preservation', () => {
   })
 
   /** Validates: Requirements 3.10, 3.11 */
-  it('resolves all thirteen seeded keys and preserves admin lighting/background CRUD round trips', async () => {
+  it('resolves all eighteen seeded keys and preserves admin lighting/background CRUD round trips', async () => {
     const resolvedLighting = await Promise.all(SEEDED_LIGHTING_KEYS.map(resolveLightingStyle))
     const resolvedBackground = await Promise.all(SEEDED_BACKGROUND_KEYS.map(resolveBackgroundStyle))
 
     expect(resolvedLighting.map((style) => style?.key)).toEqual(SEEDED_LIGHTING_KEYS)
     expect(resolvedBackground.map((style) => style?.key)).toEqual(SEEDED_BACKGROUND_KEYS)
-    expect([...resolvedLighting, ...resolvedBackground]).toHaveLength(13)
+    expect([...resolvedLighting, ...resolvedBackground]).toHaveLength(18)
     expect([...resolvedLighting, ...resolvedBackground].every((style) => style?.prompt_fragment)).toBe(true)
 
     const lightingCreate = await createLighting(
@@ -414,7 +418,7 @@ describe('Property 12: style library and logging preservation', () => {
       fc.property(mockTextArbitrary, (background) => {
         const original = mockEditorState(`extracted background: ${background}`)
         const target = mockEditorState(`attempted replacement: ${background}`)
-        target.schema.scene_setup.lighting = 'low-key'
+        target.schema.scene_setup.lighting = 'dark-moody'
 
         const delta = computeDelta(original, target)
         const applied = applyDelta(original, delta)
@@ -437,13 +441,13 @@ describe('Property 12: style library and logging preservation', () => {
   it('keeps a visible backdrop selectable and emits the existing replace-the-backdrop directive', () => {
     const original = mockEditorState('Visible vertical restaurant wall behind the tabletop.')
     const target = mockEditorState('Visible vertical restaurant wall behind the tabletop.', {
-      background_style: 'studio-yellow',
+      background_style: 'warm-sand',
     })
 
     const directive = generateDirective(computeDelta(original, target), original)
 
     expect(directive).toContain('Change only the background backdrop')
-    expect(directive).toContain('studio-yellow')
+    expect(directive).toContain('warm-sand')
     expect(directive).toContain('Keep the tabletop surface')
   })
 

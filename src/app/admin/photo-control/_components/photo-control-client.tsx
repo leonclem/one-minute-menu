@@ -40,6 +40,7 @@ import { generateDirective } from '@/lib/photo-control/directive-generator'
 import { MAX_PENDING_CHANGES } from '@/lib/photo-control/edit-limits'
 import {
   CENTER,
+  DEFAULT_LIGHTING_KEY,
   type AngleValue,
   type EditorState,
   type LightingValue,
@@ -83,7 +84,7 @@ function parseDataUrl(dataUrl: string): { base64: string; mimeType: string } | n
 function makeDefaultEditorState(): EditorState {
   return {
     schema: {
-      scene_setup: { angle: '45-degree', framing: 'close-up', lighting: 'bright-and-airy', spin: '0' },
+      scene_setup: { angle: '45-degree', framing: 'close-up', lighting: DEFAULT_LIGHTING_KEY, spin: '0' },
       canvas: { background: '', background_style: '', surface_style: '', main_vessel: '' },
       food_components: { main_item: '', garnishes: [], sides: [] },
     },

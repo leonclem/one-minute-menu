@@ -6,6 +6,7 @@
  */
 
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
+import { normalizeLightingKey } from '@/lib/studio/lighting-keys'
 import type {
   StudioBackgroundCategory,
   StudioBackgroundStyleDisplay,
@@ -78,7 +79,7 @@ export async function listActiveBackgroundStyles(): Promise<StudioBackgroundStyl
 export async function resolveLightingStyle(
   key: string,
 ): Promise<StudioLightingStyleRecord | null> {
-  const normalized = key.trim()
+  const normalized = normalizeLightingKey(key)
   if (!normalized) return null
 
   const supabase = createAdminSupabaseClient()

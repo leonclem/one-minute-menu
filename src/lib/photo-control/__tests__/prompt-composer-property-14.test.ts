@@ -106,7 +106,7 @@ function expectSemanticStateRepresentation(
     expect(descriptor.target.lighting).toBeDefined()
   }
   if (originalState.canvas.background_style !== targetState.canvas.background_style) {
-    expect(descriptor.target.backdrop.material).toBeDefined()
+    expect(descriptor.target.backdrop.appearance).toBeDefined()
   }
   if (originalState.canvas.surface_style !== targetState.canvas.surface_style) {
     expect(descriptor.target.surface.material).toBeDefined()

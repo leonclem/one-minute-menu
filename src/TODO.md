@@ -4,16 +4,14 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## Social Media and Advertising
-- [ ] Start posting
+## /studio
+- [ ] Expand number of options for each category
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Expand options for each category
-- [x] "Re-shoot" action for photos that cannot be saved by constrained edits (`NEXT_PUBLIC_STUDIO_ENABLE_RESHOOT`, default off)
 - [ ] Click to draw a circle/oval/eraser to remove element
 - [ ] Click to draw a circle/oval/eraser to move an element
 - [ ] Investigate vessel swapping (pro advised to use reference)
@@ -37,9 +35,12 @@
 ## Social Media and Advertising
 - [ ] Investigate what's required for name change
 - [ ] "How to design a restaurant menu" Starter Story Build May 26 "How to Get 1,000 Downloads On Your App in 30 Days (From Scratch)"
+- [ ] Understand what is required and potential upside to conduct a cold email campaign
 
 ## /studio
 - [ ] Add steam, shimmer, etc. (pro advised to use reference)
+- [ ] See Pinterest "food photography".  Best photos seem to create depth through focus and have some action/drama occurring
+- [ ] Overhead shot
 - [ ] Branching [grid tiles?] structure rather than timeline
 - [ ] While generation is in progress, the "variants" ...
 - [ ] Crop
@@ -49,9 +50,11 @@
 - [ ] Click to draw a circle/oval/eraser to change an element
 - [ ] Image downsizing functionality (in-browser)
 - [ ] If a user likes a certain mutation combo (e.g. studio lighting + yellow backdrop + white tablecloth) -> allow style save (for application to other dishes, e.g. "apply to all").
+- [ ] Custom background (hex) colour
 - [ ] Brand kit
 - [ ] Image options like "denoise", "sharpen", "de-yellow", "re-render at 2K/4K".
 - [ ] Add guidance info to CP, e.g. if users upload an image with no backdrop, attempting to change the backdrop may lead to unexpected results.
+- [ ] Notice: AI can sometimes get things wrong
 
 ## Bugs
 
@@ -131,9 +134,6 @@
 - [ ] Playwright (Patrick Ellis YT video)
 - [ ] App
 
-## Social Media and Advertising
-- [ ] Understand what is required and potential upside to conduct a cold email campaign
-
 ## Unclassified
 - [ ] Remove m-dashes across the project
 - [ ] Rule in Cursor for no m-dashes 
@@ -165,9 +165,11 @@
 ## Social Media and Advertising
 - [x] Post to identified subreddits for feedback
 - [x] Social Media "GridMenu is changing"
+- [x] Start posting
 
 ## /studio
 - [x] Zoom in and out on workbench main image
+- [x] "Re-shoot" action for photos
 
 ## /onboarding
 - [x] New users get 10 credits by default
