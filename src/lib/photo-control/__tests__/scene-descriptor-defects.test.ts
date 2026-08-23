@@ -10,7 +10,7 @@
  */
 
 import fc from 'fast-check'
-import { composePrompt } from '../prompt-composer'
+import { composePrompt, MAX_PROMPT_LENGTH_BY_TASK } from '../prompt-composer'
 import {
   ANGLE_VALUES,
   FRAMING_VALUES,
@@ -440,7 +440,7 @@ describe('Studio scene descriptor defects: Property 6', () => {
       targetState: cloneSchema(originalState),
     })
 
-    expect(prompt.length).toBeLessThan(2492)
+    expect(prompt.length).toBeLessThan(MAX_PROMPT_LENGTH_BY_TASK.edit)
     expect(jsonShare(prompt, payload)).toBeGreaterThanOrEqual(0.8)
   })
 })
@@ -450,4 +450,4 @@ describe('Studio scene descriptor defects: Property 6', () => {
 // - The opaque `f` key is used for framing and again for food_components.
 // - `surface_style` is absent, so a surface-only Original/Target pair is identical.
 // - The legacy style clauses/identity prose repeat each prohibition four times.
-// - The prose-heavy 2,492-character request violates the budget and JSON-share target.
+// - The prose-heavy request used to violate a 2,492-character budget that was a test-fixture length, not a model limit.

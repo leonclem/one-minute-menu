@@ -2,10 +2,17 @@ import {
   buildExtractionDiagnostics,
   EXTRACTION_DIAGNOSTICS_MAX_BYTES,
   EXTRACTION_DIAGNOSTICS_VERSION,
+  extractionDiagnosticsNeedsRefresh,
   OBSERVED_PATH_LIMITS,
   sanitizeExtractionDiagnostics,
 } from '../extraction-diagnostics'
 import { validateMinimalSchema } from '@/lib/photo-control/schema-validator'
+
+/** Spaced prose so `safeText` does not treat the string as an echoed data URL. */
+function longProse(length: number): string {
+  const unit = 'plated chicken rice with cucumber and chilli. '
+  return unit.repeat(Math.ceil(length / unit.length)).slice(0, length)
+}
 
 describe('buildExtractionDiagnostics', () => {
   it('classifies absent, invalid, and control-state coercion omissions', () => {
@@ -70,7 +77,7 @@ describe('buildExtractionDiagnostics', () => {
   })
 
   it('applies per-path limits at build time', () => {
-    const longDescription = Array.from({ length: 900 }, (_, i) => `word${i % 17}`).join(' ')
+    const longDescription = longProse(OBSERVED_PATH_LIMITS.description + 200)
     const longMaterial = Array.from({ length: 200 }, (_, i) => `mat${i % 11}`).join(' ')
     const raw = {
       scene_setup: { angle: 'top-down', framing: 'medium', lighting: 'studio', spin: '0' },
@@ -91,11 +98,13 @@ describe('buildExtractionDiagnostics', () => {
     expect((diagnostics.observations as { description?: string }).description).toHaveLength(
       OBSERVED_PATH_LIMITS.description,
     )
-    expect((diagnostics.observations as { backdrop?: { material?: string } }).backdrop?.material).toHaveLength(120)
+    expect((diagnostics.observations as { backdrop?: { material?: string } }).backdrop?.material).toHaveLength(
+      OBSERVED_PATH_LIMITS['backdrop.material'],
+    )
   })
 
   it('applies the same per-path limits when sanitizing client-posted diagnostics', () => {
-    const longDescription = Array.from({ length: 900 }, (_, i) => `word${i % 17}`).join(' ')
+    const longDescription = longProse(OBSERVED_PATH_LIMITS.description + 200)
     const posted = {
       version: 1,
       strictConformance: true,
@@ -141,5 +150,50 @@ describe('buildExtractionDiagnostics', () => {
 
     expect(Object.keys(diagnostics.observations).length).toBeGreaterThan(0)
     expect(JSON.stringify(diagnostics).length).toBeLessThanOrEqual(EXTRACTION_DIAGNOSTICS_MAX_BYTES)
+  })
+
+  it('keeps a full-length description without degrading a typical block', () => {
+    const description = longProse(OBSERVED_PATH_LIMITS.description)
+    const raw = {
+      scene_setup: { angle: 'top-down', framing: 'medium', lighting: 'studio', spin: '0' },
+      canvas: { background: 'table', main_vessel: 'plate' },
+      food_components: { main_item: 'dish', garnishes: ['herb'], sides: [] },
+      description,
+    }
+    const validated = validateMinimalSchema(raw)
+    const diagnostics = buildExtractionDiagnostics({
+      raw,
+      validated,
+      warnings: validated.warnings,
+      strictConformance: validated.strictConformance,
+    })
+
+    expect((diagnostics.observations as { description?: string }).description).toBe(description)
+    expect(JSON.stringify(diagnostics).length).toBeLessThanOrEqual(EXTRACTION_DIAGNOSTICS_MAX_BYTES)
+  })
+
+  it('treats prior diagnostics versions as stale so source images re-extract', () => {
+    expect(extractionDiagnosticsNeedsRefresh(null)).toBe(true)
+    expect(extractionDiagnosticsNeedsRefresh({
+      version: 1,
+      strictConformance: false,
+      warnings: [],
+      omittedFields: [],
+      observations: {},
+    })).toBe(true)
+    expect(extractionDiagnosticsNeedsRefresh({
+      version: 2,
+      strictConformance: false,
+      warnings: [],
+      omittedFields: [],
+      observations: {},
+    })).toBe(true)
+    expect(extractionDiagnosticsNeedsRefresh({
+      version: EXTRACTION_DIAGNOSTICS_VERSION,
+      strictConformance: false,
+      warnings: [],
+      omittedFields: [],
+      observations: {},
+    })).toBe(false)
   })
 })

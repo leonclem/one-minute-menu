@@ -45,15 +45,17 @@ export class CompositionFailureError extends Error {
 }
 
 /**
- * Guards against runaway descriptor construction; these are not model limits.
- * Flash Image accepts 131k input tokens and Pro Image 64k, so the real ceiling
- * is 260k-520k characters. `edit` is a bug-catcher only. `reshoot` stays lower
- * because its descriptor carries the observed description, which is trimmed to
- * fit rather than rejected.
+ * Ours, not Gemini's. Flash Image accepts ~131k input tokens and Pro Image ~64k
+ * (including the reference image). 100k characters is a runaway-construction
+ * tripwire (~25-50k text tokens), still below both model windows. Edit and
+ * reshoot share it so a richer observed description cannot fail composition on
+ * the reshoot path.
  */
+const MAX_PROMPT_LENGTH = 100_000
+
 const MAX_PROMPT_LENGTH_BY_TASK = {
-  edit: 20000,
-  reshoot: 6000,
+  edit: MAX_PROMPT_LENGTH,
+  reshoot: MAX_PROMPT_LENGTH,
 } as const
 
 /** Floor for a trimmed description; below this the text stops being useful. */

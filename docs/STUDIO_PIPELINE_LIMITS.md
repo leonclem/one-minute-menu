@@ -20,7 +20,7 @@ Supabase Storage ──► studio_images row
   ▼
 raw extraction JSON
   ├──► ③ validator ──► metadata.editorState   (no length limits)
-  └──► ④ diagnostics ──► metadata.extraction   (per-path limits + 8 KB bound)
+  └──► ④ diagnostics ──► metadata.extraction   (per-path limits + 64 KB bound)
   │  ⑤ scene descriptor + prompt composition
   ▼
 prompt string ── ⑥ generation request → gemini-3.1-flash-image / gemini-3-pro-image
@@ -88,7 +88,7 @@ photo — cutlery, napkins, hands, stray packaging — have no structured field,
 appear inside the prose `description`. Generation directives forbid *adding* props, but there
 is no symmetric structured path to *remove* props already in the upload. Extending the schema
 would mean a new array plus validator, hydrator, state-delta, directive, control-panel, and
-persistence changes, and would add pressure to the 8 KB diagnostics budget. Deliberately
+persistence changes, and would add pressure to the 64 KB diagnostics budget. Deliberately
 deferred (2026-08-18) in favour of exploring a draw-to-remove eraser instead.
 
 ---
@@ -116,20 +116,22 @@ metadata hygiene ended up governing generation quality.
 when extraction runs, and `sanitizeExtractionDiagnostics` when a stored block is read back
 on the mutate/re-shoot path. Both end with `boundDiagnostics`.
 
-Current version: `EXTRACTION_DIAGNOSTICS_VERSION = 2`. Version 1 blocks are treated as stale
-by `extractionDiagnosticsNeedsRefresh`, which triggers re-extraction so images uploaded under
-the old 120-character description limit pick up the longer one.
+Current version: `EXTRACTION_DIAGNOSTICS_VERSION = 3`. Version 1 and 2 blocks are treated as
+stale by `extractionDiagnosticsNeedsRefresh`, which triggers re-extraction so images
+uploaded under the old 120- then 800-character description limits pick up the longer one.
+Opening a source image in Studio re-extracts once; generated variants are not refreshed by
+this check.
 
 ### Per-value limits
 
 | Value | Limit | Constant |
 |---|---|---|
-| `description` | 800 chars | `OBSERVED_PATH_LIMITS.description` |
+| `description` | 8000 chars | `OBSERVED_PATH_LIMITS.description` |
 | `backdrop.material`, `backdrop.colour`, `surface.material`, `surface.colour` | 120 chars | `OBSERVED_PATH_LIMITS` |
 | Any other observed string | 120 chars | `DEFAULT_STRING_LIMIT` |
 | Array items (`garnishes`, `sides`) | 12 items × 80 chars | `MAX_ARRAY_ITEMS`, `ARRAY_ITEM_LIMIT` |
 | Warnings | 16 entries; `path` 80 chars, `message` 160 chars | `safeWarning`, `.slice(0, 16)` |
-| Whole block | 8192 | `EXTRACTION_DIAGNOSTICS_MAX_BYTES` |
+| Whole block | 65536 | `EXTRACTION_DIAGNOSTICS_MAX_BYTES` |
 
 Despite the name, the block bound counts **characters**, not bytes: `diagnosticsSize` is
 `JSON.stringify(value).length`. For ASCII text the two coincide, but a description full of
@@ -141,17 +143,19 @@ with `[redacted]`. That guard is the one with a clear purpose: it stops an accid
 echoed data URL from being persisted into metadata. It is independent of the length limits
 and would still work without them.
 
-`description` was raised from 120 to 800 because 120 characters is roughly one clause — not
-enough to carry plating, portioning, or non-food props into a re-shoot prompt, which is the
-one place the observed prose is genuinely load-bearing. 800 characters comfortably fits the
-`reshoot` prompt budget while leaving room for the rest of the descriptor.
+`description` was raised from 120 to 800 (2026-08-19) because 120 characters is roughly one
+clause — not enough to carry plating, portioning, or non-food props into a re-shoot prompt.
+It was raised again from 800 to 8000 (2026-08-22) because 800 was still a hygiene number, not
+a model limit, and was the field that actually starved generation quality. 8000 characters is
+several paragraphs of observed detail and still sits comfortably under the 64 KB block bound
+and the 100k prompt ceiling.
 
 ### Degradation ladder (`boundDiagnostics`)
 
-If the block exceeds 8 KB it is shrunk in this order, returning as soon as it fits:
+If the block exceeds 64 KB it is shrunk in this order, returning as soon as it fits:
 
 1. Warnings truncated to 8.
-2. `description` cut to 400, then 200, then 100, then 50.
+2. `description` cut to 4000, then 2000, then 800, then 400, then 200, then 100, then 50.
 3. `garnishes`/`sides` capped at 8, then 4, then 2, then 0 items.
 4. Observation sections dropped in `dropObservationSections` order — garnishes, sides,
    backdrop colour, surface colour, backdrop material, surface material, canvas background,
@@ -169,8 +173,8 @@ shortened one only costs prompt richness.
 
 | Limit | Value | Notes |
 |---|---|---|
-| `MAX_PROMPT_LENGTH_BY_TASK.edit` | 20000 chars | Sanity ceiling / bug-catcher, not a model limit. |
-| `MAX_PROMPT_LENGTH_BY_TASK.reshoot` | 6000 chars | Lower because this descriptor carries the observed description; overflow is trimmed, not rejected. |
+| `MAX_PROMPT_LENGTH_BY_TASK.edit` | 100000 chars | Shared rogue-construction tripwire. Ours, not a model limit. |
+| `MAX_PROMPT_LENGTH_BY_TASK.reshoot` | 100000 chars | Same ceiling as edit. Overflow is trimmed, not rejected. |
 | `MIN_DESCRIPTION_LENGTH` | 50 chars | Floor below which a trimmed description stops being useful. |
 | Directive size switch | 500 chars | Triggers three behaviours at once — see below. |
 
@@ -179,7 +183,7 @@ The 500-character directive threshold is doing more than it looks. Above it,
 descriptor) the directive moves into `descriptor.instruction` instead of its own
 `Requested directive:` line, while the descriptor JSON switches from indented to compact.
 A separate 500-character check on the serialized descriptor controls the same indentation
-choice. These are space-saving measures from the era of the 2492-character cap; with a 20000
+choice. These are space-saving measures from the era of the 2492-character cap; with a 100000
 ceiling they mostly change prompt formatting rather than fit, and are worth revisiting as a
 group rather than individually.
 
@@ -193,18 +197,20 @@ returns 400 without debiting credits.
 ### The real Gemini ceiling, for calibration
 
 Flash Image accepts ~131k input tokens and Pro Image ~64k, which is on the order of
-260k–520k characters. Both of our caps are one to two orders of magnitude below that. They
-exist to catch runaway descriptor construction, not to satisfy the API.
+260k–520k characters of text *before* counting the reference image. Our 100k-character
+ceiling is a runaway-construction tripwire (~25-50k text tokens), still below both model
+windows after the source photo is attached. It exists to catch a bug, not to satisfy the API.
 
 ### Cautionary note: the 2492 limit
 
 `edit` was capped at 2492 characters until 2026-08-19. That number was not from Google — it
 was the length of a test fixture's prompt, frozen into a constant and then treated as an API
 constraint by everyone who read it. Once the diagnostics description grew to 800 characters,
-previously working edits started failing composition. The fix was to raise the cap to a
-plausible sanity ceiling, document that it is ours, and give the edit path the same graceful
-trimming re-shoot already had. **Any new limit added to this pipeline should be documented
-here with its origin at the moment it is introduced.**
+previously working edits started failing composition. The cap was raised to 20000 as a
+plausible sanity ceiling, then to a shared 100000 for edit and reshoot on 2026-08-22 when
+the 20000/6000 split was recognised as leftover from that same misconception. **Any new
+limit added to this pipeline should be documented here with its origin at the moment it is
+introduced.**
 
 ---
 
@@ -229,7 +235,7 @@ rather than silently changing the prompt.
 
 Those suffixes, along with `negative_prompt` and the non-Studio aspect-ratio line, are
 appended **after** `composePrompt` has already checked its budget, so they are not counted
-against `MAX_PROMPT_LENGTH_BY_TASK`. The overrun is tens of characters against a 20000
+against `MAX_PROMPT_LENGTH_BY_TASK`. The overrun is tens of characters against a 100000
 ceiling, so it does not matter today, but a future caller adding a large suffix here would
 bypass the composer's accounting entirely.
 
@@ -276,11 +282,10 @@ candidate for either justification or removal — not as a constraint to design 
 | Limit | Value | Why it is unclear |
 |---|---|---|
 | Extraction `thinkingBudget` | 512 | No note on where 512 came from or what quality/cost trade-off it represents. Untested against 0 or a higher budget. |
-| `EXTRACTION_DIAGNOSTICS_MAX_BYTES` | 8192 | Nothing in Postgres or Supabase forces 8 KB; JSONB fields tolerate vastly more. Probably metadata hygiene. The whole degradation ladder exists to serve this one unexplained number. |
-| `DEFAULT_STRING_LIMIT` | 120 | The stated goals (no secrets, bounded rows) are already met by base64 redaction and the 8 KB bound. 120 was the value that silently starved the description field for months. |
+| `EXTRACTION_DIAGNOSTICS_MAX_BYTES` | 65536 | Nothing in Postgres or Supabase forces 64 KB; JSONB fields tolerate vastly more. Raised from 8192 on 2026-08-22 as a runaway-metadata tripwire. The degradation ladder still exists to serve this number. |
+| `DEFAULT_STRING_LIMIT` | 120 | The stated goals (no secrets, bounded rows) are already met by base64 redaction and the 64 KB bound. 120 was the value that silently starved the description field for months; description now has its own 8000-character path. |
 | `ARRAY_ITEM_LIMIT` / `MAX_ARRAY_ITEMS` | 80 / 12 | No rationale. A dish with 13 garnishes silently loses the rest. |
-| Warning caps | 16 entries, 80/160 chars | No rationale, and warnings are one of the largest consumers of the 8 KB budget. |
-| `MAX_PROMPT_LENGTH_BY_TASK.reshoot` | 6000 | Our own estimate of "enough for a descriptor plus 800-char description", never validated against a real failure. |
+| Warning caps | 16 entries, 80/160 chars | No rationale. |
 | `MIN_DESCRIPTION_LENGTH` | 50 | Inherited from the original re-shoot trim loop. 50 characters is likely below the point where the text helps at all. |
 | Directive/descriptor 500-char switches | 500 | Three separate behaviours keyed off the same unexplained number, all inherited from the 2492-cap era. |
 | Upload cap | 9 MiB | Why 9 and not 10 or 20 is unrecorded. Gemini's inline-data request ceiling should be confirmed before treating 9 MiB as safe headroom rather than an arbitrary round-down. |

@@ -5,6 +5,7 @@ import {
   type CompositionResult,
 } from '../prompt-composer'
 import type { SceneDescriptor } from '../scene-descriptor'
+import { OBSERVED_PATH_LIMITS } from '@/lib/studio/extraction-diagnostics'
 
 const descriptor: SceneDescriptor = {
   task: 'edit',
@@ -116,9 +117,11 @@ describe('composePrompt', () => {
     if (!oversized.ok) expect(oversized.code).toBe('COMPOSITION_FAILURE')
   })
 
-  it('composes an edit prompt carrying a full-length observed description', () => {
-    const description = 'A close-up 45-degree view of the plated dish. '.repeat(18).slice(0, 800)
-    expect(description).toHaveLength(800)
+  it('composes an edit prompt carrying a long observed description', () => {
+    const description = 'A close-up 45-degree view of the plated dish. '
+      .repeat(180)
+      .slice(0, OBSERVED_PATH_LIMITS.description)
+    expect(description).toHaveLength(OBSERVED_PATH_LIMITS.description)
 
     const prompt = successful(
       composePrompt({

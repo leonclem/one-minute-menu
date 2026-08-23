@@ -48,8 +48,8 @@ describe('reshoot descriptor and prompt modes', () => {
     )
   })
 
-  it('keeps the edit ceiling clear of realistic prompt sizes', () => {
-    expect(MAX_PROMPT_LENGTH_BY_TASK.edit).toBe(20000)
+  it('uses the same rogue-prompt ceiling for edit and reshoot', () => {
+    expect(MAX_PROMPT_LENGTH_BY_TASK.reshoot).toBe(MAX_PROMPT_LENGTH_BY_TASK.edit)
   })
 
   it('locks plating arrangement when improvePlating is false', () => {
@@ -87,7 +87,7 @@ describe('reshoot descriptor and prompt modes', () => {
     expect(descriptor.target.surface).toBeDefined()
   })
 
-  it('uses the reshoot framing and higher prompt cap', () => {
+  it('uses the reshoot framing under the shared prompt ceiling', () => {
     const descriptor = buildReshootDescriptor({
       base: schema(),
       styles,

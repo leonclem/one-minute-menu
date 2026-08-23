@@ -8,8 +8,9 @@ import type {
   MinimalValidationWarning,
 } from '@/lib/photo-control/schema-validator'
 
-export const EXTRACTION_DIAGNOSTICS_MAX_BYTES = 8192
-export const EXTRACTION_DIAGNOSTICS_VERSION = 2 as const
+/** Ours, not a Postgres/Supabase ceiling. JSONB can hold far more; this is a runaway-metadata tripwire. */
+export const EXTRACTION_DIAGNOSTICS_MAX_BYTES = 65_536
+export const EXTRACTION_DIAGNOSTICS_VERSION = 3 as const
 
 export type ExtractionOmissionReason =
   | 'absent'
@@ -22,7 +23,7 @@ export interface ExtractionOmission {
 }
 
 export interface ExtractionDiagnostics {
-  version: typeof EXTRACTION_DIAGNOSTICS_VERSION | 1
+  version: typeof EXTRACTION_DIAGNOSTICS_VERSION | 1 | 2
   strictConformance: boolean
   warnings: Array<Pick<MinimalValidationWarning, 'path' | 'message' | 'severity'>>
   omittedFields: ExtractionOmission[]
@@ -61,9 +62,9 @@ const EXPECTED_PATHS = [
   'description',
 ] as const
 
-/** Per-path string limits applied at both extract and sanitize call sites. */
+/** Per-path string limits applied at both extract and sanitize call sites. Ours, not Gemini's. */
 export const OBSERVED_PATH_LIMITS: Record<string, number> = {
-  description: 800,
+  description: 8000,
   'backdrop.material': 120,
   'backdrop.colour': 120,
   'surface.material': 120,
@@ -262,7 +263,7 @@ function boundDiagnostics(value: ExtractionDiagnostics): ExtractionDiagnostics {
   if (diagnosticsSize(result) <= EXTRACTION_DIAGNOSTICS_MAX_BYTES) return result
 
   const observations = { ...result.observations }
-  for (const half of [400, 200, 100, 50]) {
+  for (const half of [4000, 2000, 800, 400, 200, 100, 50]) {
     trimDescription(observations, half)
     result = { ...result, observations: { ...observations } }
     if (diagnosticsSize(result) <= EXTRACTION_DIAGNOSTICS_MAX_BYTES) return result
@@ -297,7 +298,9 @@ export function sanitizeExtractionDiagnostics(value: unknown): ExtractionDiagnos
     ? value.warnings.map(safeWarning).filter((warning): warning is NonNullable<ReturnType<typeof safeWarning>> => warning !== null).slice(0, 16)
     : []
   const version =
-    value.version === EXTRACTION_DIAGNOSTICS_VERSION || value.version === 1
+    value.version === 1 ||
+    value.version === 2 ||
+    value.version === EXTRACTION_DIAGNOSTICS_VERSION
       ? value.version
       : EXTRACTION_DIAGNOSTICS_VERSION
   const sanitized: ExtractionDiagnostics = {
