@@ -4,6 +4,7 @@
  * Customer-facing Food Photo Studio — control panel + preview/variants shell.
  */
 
+import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { AllowedMimeType, SourceImage } from '@/lib/photo-control/image-uploader'
@@ -2108,10 +2109,12 @@ export function StudioClient({
                             .join(' ')}
                           onClick={() => void handleReuseImage(item)}
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                          <Image
                             src={item.public_url}
                             alt=""
+                            width={80}
+                            height={80}
+                            sizes="80px"
                             className="aspect-square w-full bg-[#edf1ef] object-contain"
                           />
                           <span className="block truncate bg-gray-50 px-1 py-0.5 text-center text-[10px] font-medium text-gray-600">

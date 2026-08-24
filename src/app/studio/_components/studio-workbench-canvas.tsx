@@ -5,7 +5,8 @@
  * Expand stays a toolbar action so dragging is not captured by a full-image click.
  */
 
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
+import Image from 'next/image'
+import { useCallback, useEffect, useRef, useState, type PointerEvent, type SyntheticEvent } from 'react'
 import { Maximize2, Minus, Plus } from 'lucide-react'
 
 import {
@@ -79,24 +80,16 @@ export function StudioWorkbenchCanvas({
   useEffect(() => {
     cameraRef.current = WORKBENCH_FIT_CAMERA
     setCamera(WORKBENCH_FIT_CAMERA)
-
-    let cancelled = false
-    const probe = new Image()
-    const apply = () => {
-      if (cancelled || probe.naturalWidth <= 0) return
-      const width = probe.naturalWidth
-      const height = probe.naturalHeight
-      setImageSize((prev) =>
-        prev.width === width && prev.height === height ? prev : { width, height },
-      )
-    }
-    probe.onload = apply
-    probe.src = src
-    if (probe.complete) apply()
-    return () => {
-      cancelled = true
-    }
+    setImageSize({ width: 0, height: 0 })
   }, [src])
+
+  const handleImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
+    const { naturalHeight: height, naturalWidth: width } = event.currentTarget
+    if (width <= 0 || height <= 0) return
+    setImageSize((previous) =>
+      previous.width === width && previous.height === height ? previous : { width, height },
+    )
+  }
 
   useEffect(() => {
     const el = viewportRef.current
@@ -242,17 +235,30 @@ export function StudioWorkbenchCanvas({
         }}
       >
         {box ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <div
+            className="absolute"
+            style={{ left: box.left, top: box.top, width: box.width, height: box.height }}
+          >
+            <Image
+              src={src}
+              alt={alt}
+              fill
+              draggable={false}
+              sizes="(max-width: 1024px) 100vw, 1024px"
+              className="select-none object-contain"
+              onLoad={handleImageLoad}
+            />
+          </div>
+        ) : (
+          <Image
             src={src}
             alt={alt}
+            fill
             draggable={false}
-            className="absolute max-w-none select-none"
-            style={{ left: box.left, top: box.top, width: box.width, height: box.height }}
+            sizes="(max-width: 1024px) 100vw, 1024px"
+            className="select-none object-contain"
+            onLoad={handleImageLoad}
           />
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt={alt} draggable={false} className="h-full w-full object-contain" />
         )}
       </div>
       <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex items-center gap-1">

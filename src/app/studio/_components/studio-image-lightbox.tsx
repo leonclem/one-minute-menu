@@ -5,6 +5,7 @@
  * Opened by StudioExpandablePreview; one dialog style for both surfaces.
  */
 
+import Image from 'next/image'
 import { useCallback, useEffect, useRef } from 'react'
 
 interface StudioImageLightboxProps {
@@ -78,12 +79,15 @@ export function StudioImageLightbox({
           className="flex flex-1 items-center justify-center overflow-auto p-4"
           style={transparent ? { background: CHECKERBOARD } : undefined}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageUrl}
-            alt={`${title} preview`}
-            className="max-h-[70vh] w-auto max-w-full object-contain"
-          />
+          <div className="relative h-[70vh] w-full max-w-full">
+            <Image
+              src={imageUrl}
+              alt={`${title} preview`}
+              fill
+              sizes="(max-width: 1024px) 100vw, 1024px"
+              className="object-contain"
+            />
+          </div>
         </div>
       </div>
     </div>

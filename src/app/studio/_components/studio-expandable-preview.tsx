@@ -5,6 +5,8 @@
  * Hover/focus shows an EXPAND overlay; click opens StudioImageLightbox.
  */
 
+import Image from 'next/image'
+
 const CHECKERBOARD =
   'repeating-conic-gradient(#e5e7eb 0% 25%, #ffffff 0% 50%) 50% / 12px 12px'
 
@@ -38,8 +40,9 @@ export function StudioExpandablePreview({
       style={transparent ? { background: CHECKERBOARD } : undefined}
       onClick={onExpand}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt} className={imageClassName} />
+      <span className={`relative block ${imageClassName}`.trim()}>
+        <Image src={src} alt={alt} fill sizes="(max-width: 1024px) 100vw, 1024px" className="object-contain" />
+      </span>
       <span
         className={`pointer-events-none absolute inset-0 hidden items-center justify-center bg-black/40 text-[11px] font-bold uppercase tracking-wide text-white group-hover:flex group-focus-visible:flex ${overlayClassName}`.trim()}
       >

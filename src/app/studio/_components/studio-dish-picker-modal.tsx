@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+
 import type { StudioDishListItem } from '@/lib/studio/types'
 
 interface StudioDishPickerModalProps {
@@ -74,10 +76,12 @@ export function StudioDishPickerModal({
                     >
                       <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-100">
                         {dish.current_image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <Image
                             src={dish.current_image_url}
                             alt=""
+                            width={48}
+                            height={48}
+                            sizes="48px"
                             className="h-full w-full object-cover"
                           />
                         ) : (
