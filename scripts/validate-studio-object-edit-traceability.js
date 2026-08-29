@@ -175,7 +175,19 @@ function loadRegistry(filePath = TRACEABILITY_PATH) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'))
 }
 
+function shouldSkipMissingRegistry(env = process.env, filePath = TRACEABILITY_PATH) {
+  const deployOrCi = Boolean(env.VERCEL || env.CI)
+  return deployOrCi && !fs.existsSync(filePath)
+}
+
 function main() {
+  if (shouldSkipMissingRegistry()) {
+    console.log(
+      'Traceability registry is not present in this deploy/CI checkout; skipping validation.',
+    )
+    return
+  }
+
   let registry
   try {
     registry = loadRegistry()
@@ -205,5 +217,6 @@ module.exports = {
   TRACEABILITY_PATH,
   expandCriteria,
   loadRegistry,
+  shouldSkipMissingRegistry,
   validateRegistry,
 }

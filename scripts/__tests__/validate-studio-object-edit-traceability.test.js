@@ -1,7 +1,9 @@
 const {
   REQUIREMENT_CRITERION_COUNTS,
+  TRACEABILITY_PATH,
   expandCriteria,
   loadRegistry,
+  shouldSkipMissingRegistry,
   validateRegistry,
 } = require('../validate-studio-object-edit-traceability')
 
@@ -61,5 +63,15 @@ describe('studio object-edit traceability validator', () => {
       16: 62,
       20: 17,
     })
+  })
+
+  it('skips a missing registry on Vercel or CI, but not in a local checkout', () => {
+    const missingPath = `${TRACEABILITY_PATH}.does-not-exist`
+    const presentPath = __filename
+
+    expect(shouldSkipMissingRegistry({ VERCEL: '1' }, missingPath)).toBe(true)
+    expect(shouldSkipMissingRegistry({ CI: 'true' }, missingPath)).toBe(true)
+    expect(shouldSkipMissingRegistry({}, missingPath)).toBe(false)
+    expect(shouldSkipMissingRegistry({ VERCEL: '1' }, presentPath)).toBe(false)
   })
 })
