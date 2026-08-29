@@ -165,7 +165,6 @@ export default async function StudioPage({
     activeDishId ? listStudioImagesForDish(user.id, activeDishId) : Promise.resolve([]),
     getStudioCreditBalance(user.id),
   ])
-
   return (
     <StudioShell userEmail={user.email ?? undefined} isAdmin={isAdmin} isNewSignup={isNewSignup}>
       <StudioClient

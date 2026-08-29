@@ -1,6 +1,7 @@
 import { fetchJsonWithRetry, HttpError } from './retry'
 import type { NanoBananaParams, GenerationError } from '@/types'
 import { logger } from '@/lib/logger'
+import { isPhotoControlMimeType } from '@/lib/studio/storage-paths'
 import { modelSupportsThinkingLevel, referenceLimitForModel } from '@/lib/studio/model-config'
 import { createHash } from 'crypto'
 
@@ -142,6 +143,8 @@ export function buildGeminiRequest(
   const candidateCount = Math.min(Math.max(params.number_of_images || 1, 1), 4)
 
   const isStudioFohMutation = params.request_scope === 'studio_foh_mutation'
+  const isStudioObjectEdit = params.request_scope === 'studio_object_edit'
+  const isStudioRequest = isStudioFohMutation || isStudioObjectEdit
   const references = params.reference_images || []
   let finalPromptText = params.prompt
 
@@ -149,7 +152,7 @@ export function buildGeminiRequest(
     if (references.length > 0) {
       finalPromptText = studioFohReferencePreamble(references.length) + finalPromptText
     }
-  } else if (references.length > 0) {
+  } else if (!isStudioObjectEdit && references.length > 0) {
     const roleInstructions = references.map((reference, index) => {
       const role = reference.role || 'other'
       const comment = reference.comment ? `. Instruction: ${reference.comment}` : ''
@@ -174,7 +177,7 @@ export function buildGeminiRequest(
     finalPromptText += `\nExclude: ${params.negative_prompt}`
   }
 
-  if (!isStudioFohMutation && params.aspect_ratio) {
+  if (!isStudioRequest && params.aspect_ratio) {
     finalPromptText += `\nAspect ratio: ${params.aspect_ratio}`
   }
 
@@ -182,11 +185,13 @@ export function buildGeminiRequest(
     finalPromptText += `\nNo people in the image.`
   }
 
-  if (!isStudioFohMutation && params.safety_filter_level) {
+  if (!isStudioRequest && params.safety_filter_level) {
     finalPromptText += `\nContent safety: ${params.safety_filter_level}`
   }
 
-  const loggedPrompt = isStudioFohMutation
+  // Object-edit instructions already assign Image A/B roles. Do not add the
+  // generic Studio preamble used by the legacy FOH mutation path.
+  const loggedPrompt = isStudioRequest
     ? finalPromptText
     : `Generate an image of: ${finalPromptText}`
   const parts: Array<Record<string, unknown>> = [{ text: loggedPrompt }]
@@ -201,16 +206,16 @@ export function buildGeminiRequest(
     })
   }
 
-  const imageConfig: Record<string, string> = isStudioFohMutation
+  const imageConfig: Record<string, string> = isStudioRequest
     ? {}
     : {
         aspectRatio: params.aspect_ratio || '1:1',
         imageSize: params.image_size || '1k',
       }
-  if (isStudioFohMutation && params.aspect_ratio) {
+  if (isStudioRequest && params.aspect_ratio) {
     imageConfig.aspectRatio = params.aspect_ratio
   }
-  if (isStudioFohMutation && params.image_size) {
+  if (isStudioRequest && params.image_size) {
     imageConfig.imageSize = params.image_size.toUpperCase()
   }
 
@@ -221,7 +226,7 @@ export function buildGeminiRequest(
     imageConfig,
   }
 
-  if (isStudioFohMutation) {
+  if (isStudioRequest) {
     if (params.thinking_level && modelSupportsThinkingLevel(model)) {
       generationConfig.thinkingConfig = {
         thinkingLevel: params.thinking_level.toUpperCase(),
@@ -279,9 +284,13 @@ export class NanoBananaClient {
    */
   async generateImage(params: NanoBananaParams): Promise<{
     images: string[]
+    /** Provider-reported MIME types aligned with `images`; raw values retained for diagnostics. */
+    imageMimeTypes: Array<string | null>
     metadata: {
       processingTime: number
       modelVersion: string
+      /** Server-only value reported by the provider, without a configured fallback. */
+      providerModelIdentity: string | null
       safetyFilterApplied?: boolean
       filterReason?: string
     }
@@ -313,7 +322,7 @@ export class NanoBananaClient {
         imageConfig: unknown
       }
 
-      // Important: never log reference image bytes; prompts can be logged for learning.
+      // Never log reference-image bytes or prompt content; the digest supports correlation without exposing instructions or coordinates.
       logger.info('🎨 [Nano Banana] Outbound request', {
         model,
         candidateCount,
@@ -323,7 +332,6 @@ export class NanoBananaClient {
         referenceMode: requestParams.reference_mode || null,
         referenceImages: refMeta,
         promptHash,
-        promptText: loggedPrompt,
         promptLength: loggedPrompt.length,
       })
 
@@ -355,8 +363,10 @@ export class NanoBananaClient {
         }
       )
 
-      // Parse Gemini response → base64 images array
+      // Parse Gemini response. Keep the provider's claim aligned with every
+      // image rather than assuming it honored the requested output encoding.
       const images: string[] = []
+      const imageMimeTypes: Array<string | null> = []
       const candidates = apiResponse?.candidates || []
       
       console.log('🔍 [Nano Banana] Processing API response:', {
@@ -408,6 +418,10 @@ export class NanoBananaClient {
           const inline = part?.inlineData
           if (inline?.data) {
             images.push(inline.data)
+            // Keep an unknown provider value for observability, but normalize
+            // supported labels so downstream comparisons are case-stable.
+            const claimed = typeof inline.mimeType === 'string' ? inline.mimeType.trim().toLowerCase() : ''
+            imageMimeTypes.push(claimed || null)
           }
         }
       }
@@ -422,17 +436,28 @@ export class NanoBananaClient {
         )
       }
 
+      const providerModelIdentity =
+        typeof apiResponse?.metadata?.model_version === 'string' && apiResponse.metadata.model_version.trim()
+          ? apiResponse.metadata.model_version.trim()
+          : null
+
       logger.info('✅ [Nano Banana] Response received', {
-        modelVersion: apiResponse?.metadata?.model_version || 'gemini-3.1-flash-image',
+        modelVersion: providerModelIdentity || 'gemini-3.1-flash-image',
         imageCount: images.length,
+        providerImageMimeTypes: imageMimeTypes,
+        unsupportedProviderImageMimeTypes: imageMimeTypes.filter(
+          (mimeType): mimeType is string => mimeType !== null && !isPhotoControlMimeType(mimeType),
+        ),
         processingTimeMs: apiResponse?.metadata?.processing_time_ms || 0,
       })
 
       return {
         images,
+        imageMimeTypes,
         metadata: {
           processingTime: apiResponse?.metadata?.processing_time_ms || 0,
-          modelVersion: apiResponse?.metadata?.model_version || 'gemini-3.1-flash-image',
+          modelVersion: providerModelIdentity || 'gemini-3.1-flash-image',
+          providerModelIdentity,
           safetyFilterApplied: apiResponse?.metadata?.safety_filter_applied,
           filterReason: apiResponse?.metadata?.filter_reason
         }

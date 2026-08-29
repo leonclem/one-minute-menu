@@ -82,6 +82,30 @@ export const EXTRACTION_RESPONSE_SCHEMA = {
       },
       required: ['main_item', 'garnishes', 'sides'],
     },
+    // Optional, coarse observations are intentionally outside the canonical
+    // Minimal Schema and are validated separately by Studio.
+    spatial_inventory: {
+      type: 'OBJECT',
+      properties: {
+        extractorVersion: { type: 'STRING' },
+        elements: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              label: { type: 'STRING' },
+              visibility: { type: 'STRING', enum: ['visible', 'partial', 'occluded', 'removed'] },
+              confidence: { type: 'NUMBER' },
+              evidence: { type: 'STRING' },
+              hint: { type: 'OBJECT' },
+              componentRef: { type: 'OBJECT' },
+            },
+            required: ['label', 'visibility', 'hint'],
+          },
+        },
+      },
+      required: ['elements'],
+    },
   },
   required: ['description', 'scene_setup', 'canvas', 'food_components'],
 } as const
@@ -92,7 +116,7 @@ export const EXTRACTION_RESPONSE_SCHEMA = {
  */
 export const EXTRACTION_SYSTEM_PROMPT = `You are a food photography analyst. Analyze the provided food photograph and return only the JSON object described by the response schema.
 
-Use the complete lighting key set: bright-clean, soft-natural, golden-hour, dark-moody, or bold-sunlight. Describe the observed backdrop and tabletop surface with material and six-digit hex colour when visible. Set backdrop_visible and surface_visible from the photograph; do not invent a value when the evidence is unavailable. Include a concise prose description of the complete composition. Return empty arrays for garnishes and sides when none are present. Values must describe what is observed, not a requested edit.`
+Use the complete lighting key set: bright-clean, soft-natural, golden-hour, dark-moody, or bold-sunlight. Describe the observed backdrop and tabletop surface with material and six-digit hex colour when visible. Set backdrop_visible and surface_visible from the photograph; do not invent a value when the evidence is unavailable. Include a concise prose description of the complete composition. Return empty arrays for garnishes and sides when none are present. Values must describe what is observed, not a requested edit. You may optionally include spatial_inventory with only coarse center or region hints for visible composition elements; never return masks, pixel coordinates, or provider IDs.`
 
 // ============================================================================
 // Types

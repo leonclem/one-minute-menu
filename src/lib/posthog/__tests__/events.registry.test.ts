@@ -4,8 +4,8 @@ describe('ANALYTICS_EVENTS registry', () => {
   const entries = Object.entries(ANALYTICS_EVENTS)
   const values = Object.values(ANALYTICS_EVENTS)
 
-  it('has exactly 46 entries, including Studio export events', () => {
-    expect(entries).toHaveLength(46)
+  it('has exactly 55 entries, including Studio object-edit and export events', () => {
+    expect(entries).toHaveLength(55)
   })
 
   it('contains every required key from Req 3.1', () => {
@@ -122,7 +122,7 @@ describe('ANALYTICS_EVENTS registry', () => {
     // This is a compile-time check: assigning each value to AnalyticsEventName must compile.
     // If the type is wrong, TypeScript will error here.
     const allValues: AnalyticsEventName[] = Object.values(ANALYTICS_EVENTS)
-    expect(allValues).toHaveLength(46)
+    expect(allValues).toHaveLength(55)
   })
 
   it('all values are unique (no duplicates)', () => {

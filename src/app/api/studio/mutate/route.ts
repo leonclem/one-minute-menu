@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
     })
 
     const engine = getMutationEngine()
-    const { imageBase64 } = await engine.mutate({
+    const { imageBase64, mimeType: generatedMimeType, providerMimeType } = await engine.mutate({
       sourceImageBase64,
       mimeType,
       prompt: compositionResult.prompt,
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
 
     const validationResult = await runStudioOutputValidation({
       imageBase64,
-      mimeType: 'image/png',
+      mimeType: generatedMimeType ?? 'image/png',
       expected: targetSchema,
       stagedFields,
       requestedStyleDescriptors: {
@@ -236,7 +236,8 @@ export async function POST(request: NextRequest) {
         dishId,
         role: 'generated',
         imageBase64,
-        mimeType: 'image/png',
+        mimeType: generatedMimeType ?? 'image/png',
+        providerMimeType,
         sourceImageId,
         prompt: compositionResult.prompt,
         model: requestedModel,

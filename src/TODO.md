@@ -6,16 +6,19 @@
 
 ## /studio
 - [ ] Click to draw a circle/oval/eraser to remove element
-- [ ] Click to draw a circle/oval/eraser to move an element
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
+- [ ] Decorate, e.g. add garnishes, surrounding ingredients, etc.
+- [ ] Crop
+- [ ] Magic expand
+- [ ] Investigate rotation/angle manipulation (best with cut-out perhaps, but still potential risks)
 - [ ] Investigate vessel swapping (pro advised to use reference)
-- [ ] During upload of image - maintain user interest (can be very slow)
-- [ ] Allow the user to choose two variants for comparison (slider?)
+- [ ] STUDIO_MOBILE_FOCUS_SWITCHER_PROPOSAL.md
+- [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
 
 ## UI Review
 - [ ] Create design system with Pinterest / Claude
@@ -37,14 +40,13 @@
 - [ ] Understand what is required and potential upside to conduct a cold email campaign
 
 ## /studio
+- [ ] During upload of image - maintain user interest (can be very slow)
+- [ ] Allow the user to choose two variants for comparison (slider?)
 - [ ] Add steam, shimmer, etc. (pro advised to use reference)
 - [ ] See Pinterest "food photography".  Best photos seem to create depth through focus and have some action/drama occurring
 - [ ] Overhead shot
 - [ ] Branching [grid tiles?] structure rather than timeline
 - [ ] While generation is in progress, the "variants" ...
-- [ ] Crop
-- [ ] Magic expand
-- [ ] Investigate rotation/angle manipulation (best with cut-out perhaps, but still potential risks)
 - [ ] Flash-Lite option (a 3rd tier) (1K outputs only)
 - [ ] Click to draw a circle/oval/eraser to change an element
 - [ ] Image downsizing functionality (in-browser)
@@ -52,13 +54,18 @@
 - [ ] Custom background (hex) colour
 - [ ] Brand kit
 - [ ] Image options like "denoise", "sharpen", "de-yellow", "re-render at 2K/4K".
-- [ ] Add guidance info to CP, e.g. if users upload an image with no backdrop, attempting to change the backdrop may lead to unexpected results.
 - [ ] Notice: AI can sometimes get things wrong
+- [ ] STUDIO_GENERATION_WORKER_QUEUE_PLAN.md
+- [ ] Click to draw a circle/oval/eraser to move an element
+- [ ] Feed exports back to workbench as new variants
 
 ## Bugs
 
 ## Issues
+- [ ] Mobile view delete dish button not enough space
+- [ ] Scroll bars on image variants observed, possibly when more than n variants
 - [ ] Why is cutout worker still appearing in Vercel logs?
+- [ ] Historical spike/review data for move/remove features is stored in supabase
 
 ## Deployment
 - [x] Upgrade Vercel package
@@ -124,7 +131,6 @@
 - [ ] Talk to JBL about SUTE Tax Exemption
 
 ## FAQ
-- [ ] Add "I didn't receive my menu?", check junk/spam folders, etc. or contact support for re-issue
 
 ## Structural / Architectural
 - [ ] Use a different model than Gemini for OCR analysis step (e.g. this from 04/08/2026: https://signals.forwardfuture.com/qwen3-8-benchmarks/). Sometimes still offering "Studio Backdrop" even if only the surface is visible.  Gemini recommends "Monocular Depth Estimation Models"

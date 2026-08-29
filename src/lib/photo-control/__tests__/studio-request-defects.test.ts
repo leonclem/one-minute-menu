@@ -5,6 +5,7 @@
  * **Validates: Requirements 2.1, 2.2, 3.1**
  */
 
+import { createHash } from 'node:crypto'
 import fc from 'fast-check'
 import { MutationEngine, type MutationInput, type StyleReferenceImage } from '../mutation-engine'
 import { buildGeminiRequest, NanoBananaClient } from '../../nano-banana'
@@ -320,13 +321,14 @@ describe('Studio request defects: thinking level discarded', () => {
  * **Validates: Requirements 2.6, 2.7, 2.8, 3.4**
  */
 type OutboundRequestLog = {
-  promptText: string
+  promptHash: string
+  promptText?: string
 }
 
 async function captureStudioOutboundRequest(
   input: MutationInput,
   loggerInfoSpy: jest.SpyInstance,
-): Promise<{ request: CapturedRequestBody; loggedPrompt: string }> {
+): Promise<{ request: CapturedRequestBody; loggedPromptHash: string }> {
   mockFetchJsonWithRetry.mockClear()
   mockFetchJsonWithRetry.mockResolvedValue(GENERATION_RESPONSE)
 
@@ -341,7 +343,7 @@ async function captureStudioOutboundRequest(
 
   return {
     request: capturedRequestBody(),
-    loggedPrompt: (outboundLogCall[1] as OutboundRequestLog).promptText,
+    loggedPromptHash: (outboundLogCall[1] as OutboundRequestLog).promptHash,
   }
 }
 
@@ -371,7 +373,7 @@ describe('Studio request defects: log divergence, synthesis framing, and leaked 
   it('keeps the log faithful, frames every Studio request as an edit, and excludes config tokens', async () => {
     await fc.assert(
       fc.asyncProperty(arbitraryStudioRequest, async ({ prompt, source, stagedStyles }) => {
-        const { request, loggedPrompt } = await captureStudioOutboundRequest(
+        const { request, loggedPromptHash } = await captureStudioOutboundRequest(
           {
             sourceImageBase64: Buffer.from(source).toString('base64'),
             mimeType: 'image/jpeg',
@@ -384,7 +386,7 @@ describe('Studio request defects: log divergence, synthesis framing, and leaked 
         const opener = sentText.split('\n\n')[0] ?? ''
 
         expect({
-          loggedPromptMatchesSentText: loggedPrompt === sentText,
+          loggedPromptHashMatchesSentText: loggedPromptHash === createHash('sha256').update(sentText).digest('hex'),
           excludesGenerateImagePrefix: !sentText.includes('Generate an image of:'),
           excludesComposeNewImageFraming: !sentText.includes('Compose a new image'),
           excludesContentSafetyToken: !sentText.includes('Content safety:'),
@@ -394,7 +396,7 @@ describe('Studio request defects: log divergence, synthesis framing, and leaked 
           omitsImageLetterAlias: !/\bImage [A-Z]\b/.test(opener),
           retainsNoPeopleInstruction: sentText.includes('No people in the image.'),
         }).toEqual({
-          loggedPromptMatchesSentText: true,
+          loggedPromptHashMatchesSentText: true,
           excludesGenerateImagePrefix: true,
           excludesComposeNewImageFraming: true,
           excludesContentSafetyToken: true,

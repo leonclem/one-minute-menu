@@ -168,3 +168,35 @@ if (typeof global.IntersectionObserver === 'undefined') {
     disconnect() {}
   }
 }
+
+// jsdom 20 does not implement PointerEvent, so fireEvent.pointerDown/Move/Up
+// would otherwise fall back to a bare Event and drop clientX, pointerId, and
+// pointerType. Extending MouseEvent keeps the coordinate properties intact.
+if (typeof window !== 'undefined' && typeof window.PointerEvent === 'undefined') {
+  class PointerEvent extends window.MouseEvent {
+    constructor(type, params = {}) {
+      super(type, params)
+      this.pointerId = params.pointerId ?? 0
+      this.pointerType = params.pointerType ?? ''
+      this.isPrimary = params.isPrimary ?? true
+      this.width = params.width ?? 1
+      this.height = params.height ?? 1
+      this.pressure = params.pressure ?? 0
+    }
+  }
+  window.PointerEvent = PointerEvent
+  global.PointerEvent = PointerEvent
+}
+
+if (typeof window !== 'undefined' && typeof Element !== 'undefined') {
+  for (const method of ['setPointerCapture', 'releasePointerCapture']) {
+    if (typeof Element.prototype[method] !== 'function') {
+      Element.prototype[method] = function () {}
+    }
+  }
+  if (typeof Element.prototype.hasPointerCapture !== 'function') {
+    Element.prototype.hasPointerCapture = function () {
+      return false
+    }
+  }
+}

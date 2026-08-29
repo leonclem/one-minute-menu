@@ -5,8 +5,10 @@
 import { randomUUID } from 'crypto'
 import sharp from 'sharp'
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
+import { logger } from '@/lib/logger'
 import { touchStudioDish } from '@/lib/studio/dishes'
 import { downloadStudioStorageObject, StudioImageLoadError } from '@/lib/studio/image-bytes'
+import { resolveStudioImageMimeType } from '@/lib/studio/image-format'
 import {
   buildStudioStoragePath,
   normalizeStoragePublicUrl,
@@ -23,6 +25,8 @@ export interface PersistStudioImageInput {
   /** Raw base64 (no data-URL prefix). */
   imageBase64: string
   mimeType: string
+  /** Optional provider inlineData MIME claim for mismatch diagnostics. */
+  providerMimeType?: string | null
   sourceImageId?: string | null
   prompt?: string | null
   model?: string | null
@@ -116,14 +120,27 @@ export async function persistStudioImage(
 
   const supabase = createAdminSupabaseClient()
   const imageId = randomUUID()
-  const storagePath = buildStudioStoragePath(input.userId, imageId, input.mimeType)
   const buffer = Buffer.from(input.imageBase64, 'base64')
   const dimensions = await readImageDimensions(buffer)
+
+  // Provider output is uploaded verbatim, so the recorded type must describe the
+  // bytes rather than the type the caller asked for.
+  const resolvedMime = resolveStudioImageMimeType(buffer, input.mimeType)
+  if (resolvedMime.mismatched || (input.providerMimeType && input.providerMimeType !== resolvedMime.mimeType)) {
+    logger.warn('Generated image MIME metadata differs from its returned byte container', {
+      declaredMimeType: input.mimeType,
+      providerMimeType: input.providerMimeType ?? null,
+      detectedMimeType: resolvedMime.detected,
+      persistedMimeType: resolvedMime.mimeType,
+    })
+  }
+  const storedMimeType = resolvedMime.mimeType
+  const storagePath = buildStudioStoragePath(input.userId, imageId, storedMimeType)
 
   const { error: uploadError } = await supabase.storage
     .from(STUDIO_STORAGE_BUCKET)
     .upload(storagePath, buffer, {
-      contentType: input.mimeType,
+      contentType: storedMimeType,
       cacheControl: '31536000',
       upsert: false,
     })
@@ -143,7 +160,7 @@ export async function persistStudioImage(
     source_image_id: input.sourceImageId ?? null,
     storage_path: storagePath,
     public_url: publicUrl,
-    mime_type: input.mimeType,
+    mime_type: storedMimeType,
     width: dimensions.width,
     height: dimensions.height,
     prompt: input.prompt ?? null,

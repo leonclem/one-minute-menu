@@ -65,6 +65,25 @@ describe('loadStudioImageBytes', () => {
       'does not belong to the authenticated user',
     )
   })
+
+  it('returns the container the bytes actually are, not the mislabeled column', async () => {
+    // A generated child can be stored as image/png while holding JPEG bytes,
+    // because provider output is uploaded verbatim under a declared type.
+    mockDownload.mockResolvedValue({
+      data: {
+        arrayBuffer: async () => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from('JFIF')]),
+      },
+      error: null,
+    })
+
+    const result = await loadStudioImageBytes('user-1', 'img-1')
+    expect(result.mimeType).toBe('image/jpeg')
+  })
+
+  it('keeps the stored type when the container cannot be identified', async () => {
+    const result = await loadStudioImageBytes('user-1', 'img-1')
+    expect(result.mimeType).toBe('image/png')
+  })
 })
 
 describe('downloadStudioStorageObject', () => {

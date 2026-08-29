@@ -719,10 +719,10 @@ export interface NanoBananaParams {
    */
   thinking_level?: 'minimal' | 'high' | 'dynamic' | 'standard'
   /**
-   * Internal application discriminator for the customer Studio mutation route.
-   * It is not sent to Gemini and must not be set by legacy or admin callers.
+   * Internal application discriminator for Studio provider requests. It is
+   * never serialized as a Gemini top-level request field.
    */
-  request_scope?: 'studio_foh_mutation'
+  request_scope?: 'studio_foh_mutation' | 'studio_object_edit'
 }
 
 export interface GenerationQuota {

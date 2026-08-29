@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/check-production-safety.js && next build",
+    "build": "node scripts/check-production-safety.js && npm run validate:studio-object-edit-traceability && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
@@ -22,6 +22,10 @@
     "deploy-check": "node scripts/deploy-check.js",
     "deploy:vercel": "vercel --prod",
     "scan:secrets": "node scripts/scan-secrets.js",
+    "validate:studio-object-edit-traceability": "node scripts/validate-studio-object-edit-traceability.js",
+    "verify:studio-object-edit-local-db": "node scripts/verify-studio-object-edit-local-db.js",
+    "repair:studio-image-mime": "node scripts/repair-studio-image-mime-metadata.js",
+    "report:studio-object-edit-traceability": "node scripts/generate-studio-object-edit-traceability-report.js",
     "prewarm:demo-pdf": "node scripts/prewarm-demo-pdf-cache.js",
     "sync:placeholder-images": "node scripts/sync-placeholder-images.js",
     "test:emails:only": "node scripts/send-test-emails.js --to"

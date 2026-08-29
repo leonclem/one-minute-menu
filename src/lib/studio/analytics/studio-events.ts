@@ -31,4 +31,15 @@ export const STUDIO_ALLOWED_PROPERTY_KEYS = [
   'variant_type',
   'generation_method',
   'export_ready_count',
+  // Object-edit analytics are intentionally coarse and never carry image,
+  // prompt, coordinate, canonical, spatial, or provider-response data.
+  'generation_kind',
+  'edit_operation',
+  'reason_bucket',
+  'count_bucket',
+  'audience',
+  'gate_reason',
+  'spatial_outcome',
+  'decision',
+  'evidence_outcome',
 ] as const

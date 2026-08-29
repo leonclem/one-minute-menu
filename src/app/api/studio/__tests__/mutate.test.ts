@@ -258,10 +258,15 @@ describe('POST /api/studio/mutate', () => {
     const res = await POST(makeRequest(validBody))
     expect(res.status).toBe(200)
     const json = await res.json()
-    expect(json.imageId).toBe('gen-1')
-    expect(json.imageUrl).toBe('https://cdn.example/gen-1.png')
-    expect(json.credits).toEqual({ cost: 1, balanceAfter: 9 })
-    expect(json).not.toHaveProperty('validation')
+    expect(json).toEqual({
+      imageUrl: 'https://cdn.example/gen-1.png',
+      imageId: 'gen-1',
+      dishId: 'dish-1',
+      model: STUDIO_FLASH_MODEL,
+      validationStatus: 'pass',
+      credits: { cost: 1, balanceAfter: 9 },
+    })
+    expect(json).not.toHaveProperty('providerModelIdentity')
     expect(mockPersist).toHaveBeenCalledWith(
       expect.objectContaining({
         dishId: 'dish-1',

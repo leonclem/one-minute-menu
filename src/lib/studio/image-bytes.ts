@@ -9,11 +9,13 @@ import {
   type PhotoControlMimeType,
 } from '@/lib/photo-control/request-validation'
 import { getStudioImage } from '@/lib/studio/library'
+import { resolveStudioImageMimeType } from '@/lib/studio/image-format'
 import {
   STUDIO_STORAGE_BUCKET,
   assertStudioStoragePathOwnedByUser,
   isPhotoControlMimeType,
 } from '@/lib/studio/storage-paths'
+import { logger } from '@/lib/logger'
 
 export class StudioImageLoadError extends Error {
   readonly status: number
@@ -50,6 +52,7 @@ export async function loadStudioImageBytes(
   }
 
   const supabase = createAdminSupabaseClient()
+
   const { data, error } = await supabase.storage
     .from(STUDIO_STORAGE_BUCKET)
     .download(image.storage_path)
@@ -69,8 +72,20 @@ export async function loadStudioImageBytes(
     )
   }
 
+  // The stored column can disagree with the object it labels, because provider
+  // output is uploaded verbatim under a declared type. Consumers that decode
+  // these bytes must be told what they actually are.
+  const resolved = resolveStudioImageMimeType(buffer, image.mime_type)
+  if (resolved.mismatched) {
+    logger.warn('Studio image MIME type disagrees with its stored bytes; using the detected format', {
+      imageId,
+      storedMimeType: image.mime_type,
+      detectedMimeType: resolved.detected,
+    })
+  }
+
   return {
-    mimeType: image.mime_type,
+    mimeType: resolved.mimeType,
     base64: buffer.toString('base64'),
     byteLength: buffer.length,
   }

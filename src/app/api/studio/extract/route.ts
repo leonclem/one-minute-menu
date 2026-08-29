@@ -6,15 +6,32 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireStudioApi } from '@/lib/studio/studio-api-auth'
-import { GeminiExtractionClient, UnparseableExtractionResponseError } from '@/lib/photo-control/gemini-extraction-client'
+import {
+  GeminiExtractionClient,
+  UnparseableExtractionResponseError,
+} from '@/lib/photo-control/gemini-extraction-client'
 import { MinimalSchemaValidator } from '@/lib/photo-control/schema-validator'
 import { loadStudioImageBytes, StudioImageLoadError } from '@/lib/studio/image-bytes'
 import { buildExtractionDiagnostics } from '@/lib/studio/extraction-diagnostics'
-import { updateStudioImageMetadata } from '@/lib/studio/library'
+import { getStudioImage, updateStudioImageMetadata } from '@/lib/studio/library'
+import {
+  buildSpatialInventory,
+  persistSpatialInventory,
+  type SpatialInventoryV1,
+} from '@/lib/studio/object-edit/spatial-inventory'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
+
+function hasSpatialObservation(raw: unknown): boolean {
+  return (
+    typeof raw === 'object' &&
+    raw !== null &&
+    !Array.isArray(raw) &&
+    ('spatialInventory' in raw || 'spatial_inventory' in raw)
+  )
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,12 +99,53 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Spatial evidence is additive and entirely optional. Its validation or
+    // persistence must never change a successful canonical extraction response.
+    let spatialInventory: SpatialInventoryV1 | undefined
+    let spatialDiagnosticsStatus: 'validated' | 'validation_failed' | 'persistence_failed' | undefined
+    if (hasSpatialObservation(raw)) {
+      try {
+        const source = await getStudioImage(auth.user.id, imageId)
+        const candidate = source ? buildSpatialInventory(source, raw) : null
+        if (!candidate || !source?.dish_id) {
+          spatialDiagnosticsStatus = 'validation_failed'
+        } else {
+          try {
+            await persistSpatialInventory({
+              userId: auth.user.id,
+              dishId: source.dish_id,
+              inventory: candidate,
+            })
+            spatialInventory = candidate
+            spatialDiagnosticsStatus = 'validated'
+          } catch (spatialError) {
+            spatialDiagnosticsStatus = 'persistence_failed'
+            logger.warn('⚠️ [Studio Extract] Spatial inventory persistence failed', {
+              userId: auth.user.id,
+              imageId,
+              error: spatialError,
+            })
+          }
+        }
+      } catch (spatialError) {
+        spatialDiagnosticsStatus = 'validation_failed'
+        logger.warn('⚠️ [Studio Extract] Spatial inventory validation failed', {
+          userId: auth.user.id,
+          imageId,
+          error: spatialError,
+        })
+      }
+    }
+
     // Diagnostics are evidence, not a generation prerequisite. The metadata
     // helper merges with the existing JSON object, so editorState and other
     // keys cannot be displaced by this best-effort write.
     try {
       await updateStudioImageMetadata(auth.user.id, imageId, {
         extractionDiagnostics: diagnostics,
+        ...(spatialDiagnosticsStatus
+          ? { spatialInventoryDiagnostics: { version: 1, status: spatialDiagnosticsStatus } }
+          : {}),
       })
     } catch (diagnosticsError) {
       logger.warn('⚠️ [Studio Extract] Failed to persist extraction diagnostics', {
@@ -102,9 +160,16 @@ export async function POST(request: NextRequest) {
       imageId,
       strictConformance,
       warningCount: warnings.length,
+      spatialInventory: spatialInventory ? 'available' : 'unavailable',
     })
 
-    return NextResponse.json({ strictConformance, data, warnings, diagnostics })
+    return NextResponse.json({
+      strictConformance,
+      data,
+      warnings,
+      diagnostics,
+      ...(spatialInventory ? { spatialInventory } : {}),
+    })
   } catch (error) {
     if (error instanceof StudioImageLoadError) {
       return NextResponse.json({ error: error.message }, { status: error.status })

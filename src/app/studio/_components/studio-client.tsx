@@ -5,7 +5,7 @@
  */
 
 import Image from 'next/image'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 
 import type { AllowedMimeType, SourceImage } from '@/lib/photo-control/image-uploader'
 import { uploadStudioSourceFile, removeStudioStorageObject } from '@/lib/studio/client-upload'
@@ -71,10 +71,23 @@ import { StudioPendingChangesDialog } from './studio-pending-changes-dialog'
 import { StudioCreditsDialog } from './studio-credits-dialog'
 import { StudioModelSwitchDialog } from './studio-model-switch-dialog'
 import { StudioReshootDialog } from './studio-reshoot-dialog'
+import {
+  StudioObjectEditLauncher,
+  StudioObjectEditPanel,
+} from './studio-object-edit'
 import { VisualOptionTiles } from './visual-option-tiles'
 import { parentVariantLineageText, studioVariantShortLabel, studioVariantSpokenLabel } from '@/lib/studio/variant-labels'
 import { formatExportCreditLabel } from '@/lib/studio/export-presets'
 import { STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
+import {
+  INITIAL_OBJECT_EDIT_EDITOR_STATE,
+  objectEditEditorReducer,
+} from '@/lib/studio/object-edit/editor-state'
+import {
+  undoSelection,
+  type SelectionRejectReason,
+} from '@/lib/studio/object-edit/selection'
+import type { NaturalImageSize } from '@/lib/studio/object-edit/coordinate-transform'
 
 type ExtractResponse = MinimalValidationResult & {
   diagnostics?: ExtractionDiagnostics
@@ -297,6 +310,16 @@ export function StudioClient({
   const [modelWarningOpen, setModelWarningOpen] = useState(false)
   const [dontShowModelWarning, setDontShowModelWarning] = useState(false)
   const [proWarningDismissed, setProWarningDismissed] = useState(false)
+  const [objectEditOpen, setObjectEditOpen] = useState(false)
+  const [objectEditState, dispatchObjectEdit] = useReducer(
+    objectEditEditorReducer,
+    INITIAL_OBJECT_EDIT_EDITOR_STATE,
+  )
+  const [objectEditNaturalSize, setObjectEditNaturalSize] = useState<NaturalImageSize>({
+    width: 0,
+    height: 0,
+  })
+  const [objectEditRejection, setObjectEditRejection] = useState<string | null>(null)
 
   const [createOpen, setCreateOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
@@ -544,6 +567,8 @@ export function StudioClient({
     setBackdropVisible(undefined)
     setPendingChangeCandidate(null)
     setDontShowPendingChangeWarning(false)
+    dispatchObjectEdit({ type: 'SOURCE_CHANGED' })
+    setObjectEditRejection(null)
   }, [])
 
   const persistDishCurrent = useCallback(async (dishId: string, imageId: string | null) => {
@@ -648,6 +673,9 @@ export function StudioClient({
 
   const activateImage = useCallback(
     async (image: StudioImageRecord, options?: { persistCurrent?: boolean }) => {
+      dispatchObjectEdit({ type: 'SOURCE_CHANGED' })
+      setObjectEditOpen(false)
+      setObjectEditRejection(null)
       setSelectedImageId(image.id)
       setLibraryBusy(true)
       setLibraryError(null)
@@ -694,7 +722,11 @@ export function StudioClient({
   )
 
   const loadGalleryForDish = useCallback(
-    async (dishId: string, dishRecord?: StudioDishRecord) => {
+    async (
+      dishId: string,
+      dishRecord?: StudioDishRecord,
+      preferredImageId?: string,
+    ): Promise<boolean> => {
       const imagesRes = await fetch(`/api/studio/images?dishId=${encodeURIComponent(dishId)}`)
       if (!imagesRes.ok) {
         const err = await imagesRes.json().catch(() => null)
@@ -704,15 +736,17 @@ export function StudioClient({
       const next = data.images ?? []
       setGallery(next)
       const dish = dishRecord ?? dishes.find((d) => d.id === dishId)
-      const current = resolveCurrentImage(dish, next)
+      const current =
+        (preferredImageId ? next.find((image) => image.id === preferredImageId) : null) ??
+        resolveCurrentImage(dish, next)
       setSelectedImageId(current?.id ?? null)
       if (current) {
-        await activateImage(current, { persistCurrent: false })
-      } else {
-        resetEditorForNewSource()
-        setSourceImage(null)
-        setPersistedSourceId(null)
+        return await activateImage(current, { persistCurrent: false })
       }
+      resetEditorForNewSource()
+      setSourceImage(null)
+      setPersistedSourceId(null)
+      return false
     },
     [activateImage, dishes, resetEditorForNewSource]
   )
@@ -1182,6 +1216,208 @@ export function StudioClient({
     selectedModel,
     variants.length,
     creditBalance,
+  ])
+
+  const handleObjectEditOpen = useCallback(() => {
+    dispatchObjectEdit({ type: 'OPERATION_CHANGED', operation: 'remove' })
+    setObjectEditRejection(null)
+    setObjectEditOpen(true)
+    trackStudioEvent(ANALYTICS_EVENTS.STUDIO_OBJECT_EDIT_OPENED, {
+      edit_operation: 'remove',
+      surface: 'studio',
+    })
+    trackStudioEvent(ANALYTICS_EVENTS.STUDIO_OBJECT_EDIT_OPERATION_SELECTED, {
+      edit_operation: 'remove',
+      surface: 'studio',
+    })
+  }, [])
+
+  const handleObjectEditUndo = useCallback(() => {
+    if (objectEditNaturalSize.width <= 0 || objectEditNaturalSize.height <= 0) return
+    dispatchObjectEdit({
+      type: 'UNDO_APPLIED',
+      selection: undoSelection(objectEditState.selection, objectEditNaturalSize),
+    })
+    setObjectEditRejection(null)
+  }, [objectEditNaturalSize, objectEditState.selection])
+
+  const handleObjectEditClear = useCallback(() => {
+    dispatchObjectEdit({ type: 'CLEAR' })
+    setObjectEditRejection(null)
+  }, [])
+
+  const handleObjectEditClose = useCallback(() => {
+    dispatchObjectEdit({ type: 'CLOSE' })
+    setObjectEditOpen(false)
+    setObjectEditRejection(null)
+    trackStudioEvent(ANALYTICS_EVENTS.STUDIO_OBJECT_EDIT_CANCELLED, {
+      edit_operation: 'remove',
+      surface: 'studio',
+    })
+  }, [])
+
+  const objectEditRejectionText = useCallback((reason: SelectionRejectReason): string => {
+    switch (reason) {
+      case 'stroke-limit':
+        return 'That mark was not added because the selection limit was reached.'
+      case 'point-limit':
+        return 'That mark was not added because the selection is full.'
+      case 'path-simplification':
+        return 'That drawing was too detailed to add. Try a shorter mark.'
+      default:
+        return 'That mark was not added. Try tapping or drawing again.'
+    }
+  }, [])
+
+  const handleObjectEditGenerate = useCallback(async () => {
+    const selection = objectEditState.selection
+    if (
+      selection.strokes.length === 0 ||
+      !selection.boundingRegion ||
+      !activeDishId ||
+      !persistedSourceId
+    ) {
+      return
+    }
+    if (insufficientCredits) {
+      setCreditsDialogOpen(true)
+      return
+    }
+
+    const generationStartedAt = Date.now()
+    trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_STARTED, {
+      model_class: toModelClass(selectedModel),
+      stage: 'object_edit',
+      generation_kind: 'object_edit',
+      edit_operation: 'remove',
+    })
+    setIsGenerating(true)
+    setObjectEditRejection(null)
+    setMutationError(null)
+    try {
+      const response = await fetch('/api/studio/object-edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dishId: activeDishId,
+          sourceImageId: persistedSourceId,
+          model: selectedModel,
+          editIntent: {
+            version: 1,
+            operation: 'remove',
+            selection: {
+              version: 1,
+              strokes: selection.strokes,
+              boundingRegion: selection.boundingRegion,
+            },
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string
+          code?: string
+        } | null
+        if (payload?.code === 'STUDIO_INSUFFICIENT_CREDITS') setCreditsDialogOpen(true)
+        trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED, {
+          model_class: toModelClass(selectedModel),
+          stage: 'object_edit',
+          generation_kind: 'object_edit',
+          edit_operation: 'remove',
+          outcome: 'failure',
+          failure_class: payload?.code ?? 'http_error',
+        })
+        setObjectEditRejection(payload?.error ?? `Remove failed (HTTP ${response.status})`)
+        return
+      }
+
+      const data = (await response.json()) as MutateResponse
+      trackStudioGenerationCompleted({
+        model: data.model,
+        validationStatus: generationValidationStatus(data.validationStatus),
+        startedAt: generationStartedAt,
+        endedAt: Date.now(),
+        balanceAfter:
+          typeof data.credits?.balanceAfter === 'number'
+            ? data.credits.balanceAfter
+            : (creditBalance ?? 0),
+        cost: data.credits?.cost,
+        generationKind: 'object_edit',
+        editOperation: 'remove',
+      })
+      if (data.credits && typeof data.credits.balanceAfter === 'number') {
+        setCreditBalance(data.credits.balanceAfter)
+      }
+
+      const updatedDish = activeDish
+        ? {
+            ...activeDish,
+            current_image_id: data.imageId,
+            generation_failure_count: 0,
+            generation_blocked_at: null,
+            generation_blocked_reason: null,
+          }
+        : undefined
+      setDishes((prev) =>
+        prev.map((dish) => (dish.id === activeDishId && updatedDish ? updatedDish : dish)),
+      )
+
+      let refreshedChild = false
+      try {
+        refreshedChild = await loadGalleryForDish(activeDishId, updatedDish, data.imageId)
+      } catch {
+        // The committed child is still usable through the response fallback below.
+      }
+
+      if (!refreshedChild) {
+        const row: StudioImageRecord = {
+          id: data.imageId,
+          user_id: '',
+          dish_id: activeDishId,
+          role: 'generated',
+          source_image_id: persistedSourceId,
+          storage_path: '',
+          public_url: data.imageUrl,
+          mime_type: 'image/png',
+          width: null,
+          height: null,
+          prompt: null,
+          model: data.model,
+          metadata: { objectEdit: { operation: 'remove' } },
+          is_favourite: false,
+          archived_at: null,
+          created_at: new Date().toISOString(),
+        }
+        setGallery((prev) => [...prev.filter((image) => image.id !== row.id), row])
+        setSelectedImageId(data.imageId)
+        setPersistedSourceId(data.imageId)
+        setSourceImage(sourceImageFromRecord(data.imageUrl, 'image/png'))
+      }
+      dispatchObjectEdit({ type: 'SUBMISSION_ACCEPTED' })
+      setObjectEditOpen(false)
+    } catch (error) {
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED, {
+        model_class: toModelClass(selectedModel),
+        stage: 'object_edit',
+        generation_kind: 'object_edit',
+        edit_operation: 'remove',
+        outcome: 'failure',
+        failure_class: error instanceof TypeError ? 'network' : 'unexpected',
+      })
+      setObjectEditRejection(error instanceof Error ? error.message : 'Remove failed unexpectedly.')
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [
+    activeDish,
+    activeDishId,
+    creditBalance,
+    insufficientCredits,
+    loadGalleryForDish,
+    objectEditState.selection,
+    persistedSourceId,
+    selectedModel,
   ])
 
   const handleReshoot = useCallback(
@@ -1683,6 +1919,12 @@ export function StudioClient({
             </>
           ) : null}
           <div className="flex flex-wrap items-center justify-end gap-2">
+            {sourceImage && persistedSourceId && (
+              <StudioObjectEditLauncher
+                disabled={busy || dishBlocked}
+                onOpen={handleObjectEditOpen}
+              />
+            )}
             <button
               type="button"
               disabled={busy}
@@ -1860,6 +2102,25 @@ export function StudioClient({
               </div>
             </div>
             <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
+              {objectEditOpen && (
+                <StudioObjectEditPanel
+                  selection={objectEditState.selection}
+                  rejection={objectEditRejection}
+                  canGenerate={
+                    objectEditState.operation === 'remove' &&
+                    objectEditState.selection.strokes.length > 0 &&
+                    !insufficientCredits &&
+                    Boolean(activeDishId && persistedSourceId && sourceImage)
+                  }
+                  busy={isGenerating}
+                  creditLabel={generateCreditLabel}
+                  onUndo={handleObjectEditUndo}
+                  onClear={handleObjectEditClear}
+                  onGenerate={() => void handleObjectEditGenerate()}
+                  onCancel={handleObjectEditClose}
+                  onClose={handleObjectEditClose}
+                />
+              )}
               {!isHydrated && !isExtracting ? (
                 <p className="px-1 py-4 text-sm text-gray-500">
                   Upload a photo (or select a variant) to enable controls.
@@ -2012,6 +2273,30 @@ export function StudioClient({
                   expandLabel={`Expand ${selectedVariantLabel} preview`}
                   transparent={selectedImage?.mime_type === 'image/png'}
                   onExpand={() => setWorkbenchImageExpanded(true)}
+                  selectionMode={objectEditOpen}
+                  selection={objectEditState.selection}
+                  naturalSize={objectEditNaturalSize}
+                  onNaturalSizeChange={setObjectEditNaturalSize}
+                  onSelectionChange={(selection) => {
+                    dispatchObjectEdit({ type: 'SELECTION_ACCEPTED', selection })
+                    setObjectEditRejection(null)
+                    trackStudioEvent(ANALYTICS_EVENTS.STUDIO_OBJECT_EDIT_STROKE_ACCEPTED, {
+                      edit_operation: 'remove',
+                      count_bucket:
+                        selection.strokes.length >= 8
+                          ? '8'
+                          : selection.strokes.length >= 4
+                            ? '4-7'
+                            : '1-3',
+                    })
+                  }}
+                  onSelectionRejected={(reason) => {
+                    setObjectEditRejection(objectEditRejectionText(reason))
+                    trackStudioEvent(ANALYTICS_EVENTS.STUDIO_OBJECT_EDIT_STROKE_REJECTED, {
+                      edit_operation: 'remove',
+                      reason_bucket: reason,
+                    })
+                  }}
                 />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-gray-300 text-sm text-gray-400">

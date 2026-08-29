@@ -96,6 +96,9 @@ export interface GenerationCompletedPayloadInput {
   balanceAfter: number
   /** Use the already-computed debit when available; otherwise derive it. */
   cost?: number
+  /** Coarse funnel context; never include provider-specific identifiers. */
+  generationKind?: 'standard' | 'object_edit'
+  editOperation?: 'remove'
 }
 
 export const STUDIO_CONVERSION_EVENTS = {
@@ -119,6 +122,8 @@ export function buildGenerationCompletedPayload(
     duration_ms: duration,
     outcome: 'success',
     credit_balance_after: input.balanceAfter,
+    ...(input.generationKind ? { generation_kind: input.generationKind } : {}),
+    ...(input.editOperation ? { edit_operation: input.editOperation } : {}),
   })
 }
 
