@@ -6,6 +6,7 @@ interface StudioTextModalProps {
   open: boolean
   title: string
   label: string
+  helperText?: string
   initialValue?: string
   confirmText?: string
   onConfirm: (value: string) => void
@@ -16,6 +17,7 @@ export function StudioTextModal({
   open,
   title,
   label,
+  helperText,
   initialValue = '',
   confirmText = 'Save',
   onConfirm,
@@ -45,20 +47,33 @@ export function StudioTextModal({
           </h3>
         </div>
         <div className="px-4 py-3">
-          <label className="block text-sm text-gray-700">
-            <span className="mb-1 block font-medium">{label}</span>
-            <input
-              autoFocus
-              type="text"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && trimmed) onConfirm(trimmed)
-                if (e.key === 'Escape') onCancel()
-              }}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-ux-primary focus:outline-none focus:ring-2 focus:ring-ux-primary/30"
-            />
+          <label
+            htmlFor="studio-text-modal-input"
+            className="mb-1 block text-sm font-medium text-gray-700"
+          >
+            {label}
           </label>
+          <input
+            id="studio-text-modal-input"
+            autoFocus
+            type="text"
+            value={value}
+            aria-describedby={helperText ? 'studio-text-modal-helper' : undefined}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && trimmed) onConfirm(trimmed)
+              if (e.key === 'Escape') onCancel()
+            }}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-ux-primary focus:outline-none focus:ring-2 focus:ring-ux-primary/30"
+          />
+          {helperText ? (
+            <p
+              id="studio-text-modal-helper"
+              className="mt-2 text-xs leading-5 text-gray-500"
+            >
+              {helperText}
+            </p>
+          ) : null}
         </div>
         <div className="flex justify-end gap-2 border-t bg-gray-50/50 px-4 py-3">
           <button

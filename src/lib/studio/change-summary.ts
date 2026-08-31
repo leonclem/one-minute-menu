@@ -8,6 +8,7 @@ import { fohAngleLabel, fohBackdropLabel, fohLightingLabel, fohSurfaceLabel } fr
 export interface ChangeSummaryLabelMaps {
   lightingLabels?: Record<string, string>
   backgroundLabels?: Record<string, string>
+  finishingTouchesCount?: number
 }
 
 export function buildChangeSummary(
@@ -17,6 +18,11 @@ export function buildChangeSummary(
   if (delta.isEmpty) return []
 
   const chips: string[] = []
+  if (labels?.finishingTouchesCount) {
+    chips.push(
+      `Finishing touches: ${labels.finishingTouchesCount} selected`,
+    )
+  }
 
   for (const change of delta.scalarChanges ?? []) {
     if (change.path === 'scene_setup.lighting') {

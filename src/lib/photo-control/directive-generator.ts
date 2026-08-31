@@ -31,8 +31,8 @@
  * - **Array removal** — instruct entire removal of the named item and natural
  *   filling of the vacant space with the matching underlying background
  *   texture. (Req 8.4)
- * - **Array addition** — instruct placement of the named item consistent with
- *   the existing composition. (Req 8.5)
+ * - **Array addition** — instruct named finishing touches on the food/vessel
+ *   with restrained table scatter and no extra props. (Req 8.5)
  * - **Subject-identity-preservation clause** — always appended; references the
  *   physical texture, shape, and structure of the main dish. (Req 11.1)
  * - **"Leave all other attributes unchanged"** — appended when the delta
@@ -41,6 +41,7 @@
 
 import { type EditorState, type StateDelta } from './minimal-schema'
 import { countEditableChanges } from './state-delta'
+import { buildFinishingTouchesAdditionClause } from '@/lib/studio/finishing-touches/directive'
 
 // ============================================================================
 // Internal clause builders
@@ -172,19 +173,6 @@ function buildRemovalClause(item: string, arrayType: 'garnishes' | 'sides'): str
   )
 }
 
-/**
- * Build an array-addition instruction clause. (Requirement 8.5)
- *
- * Instructs placement of the named item consistent with the existing
- * composition.
- */
-function buildAdditionClause(item: string, arrayType: 'garnishes' | 'sides'): string {
-  const category = arrayType === 'garnishes' ? 'garnish' : 'side item'
-  return (
-    `Add "${item}" as a ${category}, placed consistently with the existing composition.`
-  )
-}
-
 function formatAddedException(items: readonly string[]): string {
   const quoted = items.map((item) => `"${item}"`)
   if (quoted.length === 0) return ''
@@ -227,9 +215,9 @@ const LEAVE_UNCHANGED_CLAUSE =
 /**
  * Count the number of distinct attribute changes in a delta.
  *
- * Each scalar change counts as one attribute. Each (item, arrayType) pair in
- * the array diffs counts as one attribute. A position change counts as one
- * attribute.
+ * Each scalar change counts as one attribute. Garnish/side additions count as
+ * one Elements bundle. Each garnish/side removal counts as one. A position
+ * change counts as one attribute.
  *
  * This is used to decide whether to append the "leave all other attributes
  * unchanged" clause (only when exactly one attribute changed). (Requirement 11.3)
@@ -325,17 +313,16 @@ export function generateDirective(
   for (const item of delta.arrays.garnishes.removed) {
     clauses.push(buildRemovalClause(item, 'garnishes'))
   }
-  for (const item of delta.arrays.garnishes.added) {
-    clauses.push(buildAdditionClause(item, 'garnishes'))
-  }
 
   // ── Array changes — sides ────────────────────────────────────────────────
 
   for (const item of delta.arrays.sides.removed) {
     clauses.push(buildRemovalClause(item, 'sides'))
   }
-  for (const item of delta.arrays.sides.added) {
-    clauses.push(buildAdditionClause(item, 'sides'))
+
+  const addedItems = [...delta.arrays.garnishes.added, ...delta.arrays.sides.added]
+  if (addedItems.length > 0) {
+    clauses.push(buildFinishingTouchesAdditionClause(addedItems, delta))
   }
 
   // ── Editor-only position changes ──────────────────────────────────────────
@@ -348,7 +335,6 @@ export function generateDirective(
   // (Requirement 11.1)
 
   const mainItem = context.schema.food_components.main_item
-  const addedItems = [...delta.arrays.garnishes.added, ...delta.arrays.sides.added]
   clauses.push(buildIdentityPreservationClause(mainItem, addedItems))
 
   // ── "Leave all other attributes unchanged" (single-attribute changes only)

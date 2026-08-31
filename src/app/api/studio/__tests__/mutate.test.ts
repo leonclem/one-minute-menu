@@ -291,6 +291,49 @@ describe('POST /api/studio/mutate', () => {
     )
   })
 
+  it('persists finishingTouches metadata when the client sends a valid blob', async () => {
+    mockRequireStudioApi.mockResolvedValue({
+      ok: true,
+      user: { id: 'user-1' },
+      supabase: {},
+    })
+
+    const res = await POST(
+      makeRequest({
+        ...validBody,
+        originalState: {
+          ...validBody.originalState,
+          food_components: { main_item: 'massaman curry', garnishes: [], sides: [] },
+        },
+        targetState: {
+          ...validBody.targetState,
+          food_components: {
+            main_item: 'massaman curry',
+            garnishes: ['Coriander', 'Lime wedges'],
+            sides: [],
+          },
+        },
+        finishingTouches: {
+          stackIds: ['coriander', 'lime_wedge', 'red_chilli', 'cashews'],
+          level: 2,
+          auto: true,
+        },
+      }),
+    )
+    expect(res.status).toBe(200)
+    expect(mockPersist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          finishingTouches: {
+            stackIds: ['coriander', 'lime_wedge', 'red_chilli', 'cashews'],
+            level: 2,
+            auto: true,
+          },
+        }),
+      }),
+    )
+  })
+
   it('passes resolved style rows to the descriptor without stacking prohibition clauses', async () => {
     mockRequireStudioApi.mockResolvedValue({
       ok: true,

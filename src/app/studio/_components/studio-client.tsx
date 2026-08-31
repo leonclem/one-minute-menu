@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import type { AllowedMimeType, SourceImage } from '@/lib/photo-control/image-uploader'
 import { uploadStudioSourceFile, removeStudioStorageObject } from '@/lib/studio/client-upload'
 import { hydrate } from '@/lib/photo-control/hydrator'
-import { computeDelta, countEditableChanges } from '@/lib/photo-control/state-delta'
+import { computeDelta } from '@/lib/photo-control/state-delta'
 import { generateDirective } from '@/lib/photo-control/directive-generator'
 import { MAX_PENDING_CHANGES } from '@/lib/photo-control/edit-limits'
 import { CENTER, type AngleValue, type EditorState } from '@/lib/photo-control/minimal-schema'
@@ -30,6 +30,16 @@ import { Component_Control } from '@/components/photo-controls'
 import { CollapsibleSection } from '@/components/ux'
 import { ConfirmDialog } from '@/components/ui'
 import { buildChangeSummary, readChangeSummary } from '@/lib/studio/change-summary'
+import {
+  countStudioPendingChanges,
+  editorStateWithFinishingTouches,
+  finishingTouchesCountBucket,
+  isFinishingTouchesStaged,
+  parseFinishingTouchesMetadata,
+  stackFromIds,
+  type FinishingTouchCatalogueItem,
+} from '@/lib/studio/finishing-touches'
+import { StudioFinishingTouchesControl } from './studio-finishing-touches'
 import {
   STUDIO_LIGHTING_OPTIONS,
   backdropStylesToOptions,
@@ -124,6 +134,7 @@ interface StudioPendingChangeCandidate {
   state: EditorState
   baseline: EditorState
   changeCount: number
+  finishingSelection?: string[]
 }
 
 interface DishDeletionSummary {
@@ -351,6 +362,11 @@ export function StudioClient({
     useState<StudioPendingChangeCandidate | null>(null)
   const [dontShowPendingChangeWarning, setDontShowPendingChangeWarning] = useState(false)
   const skipPendingChangeWarningRef = useRef(false)
+  const [finishingStack, setFinishingStack] = useState<FinishingTouchCatalogueItem[]>([])
+  const [finishingSelectedIds, setFinishingSelectedIds] = useState<string[]>([])
+  const [finishingCacheKey, setFinishingCacheKey] = useState<string | null>(null)
+  const [finishingLoading, setFinishingLoading] = useState(false)
+  const [finishingError, setFinishingError] = useState<string | null>(null)
   const [baselineVersion, setBaselineVersion] = useState(0)
   const [creditBalance, setCreditBalance] = useState<number | null>(initialCreditBalance)
   const [creditCostNb2, setCreditCostNb2] = useState(1)
@@ -405,12 +421,20 @@ export function StudioClient({
   }, [])
   const feedbackImage = selectedImage?.role === 'generated' ? selectedImage : null
 
+  const selectedFinishingStack = useMemo(
+    () => finishingStack.filter((item) => finishingSelectedIds.includes(item.id)),
+    [finishingSelectedIds, finishingStack],
+  )
+  const finishingStaged = isFinishingTouchesStaged(
+    selectedFinishingStack,
+    selectedFinishingStack.length,
+  )
   const pendingDelta = useMemo(() => {
     void baselineVersion
     return computeDelta(originalStateRef.current, editorState)
   }, [editorState, baselineVersion])
 
-  const pendingChangeCount = pendingDelta.isEmpty ? 0 : countEditableChanges(pendingDelta)
+  const pendingChangeCount = countStudioPendingChanges(pendingDelta, finishingStaged)
   const hasPendingChanges = pendingChangeCount > 0
   const sectionHasPendingChanges = {
     lighting: pendingDelta.scalarChanges.some((change) => change.path === 'scene_setup.lighting'),
@@ -419,9 +443,8 @@ export function StudioClient({
       (change) => change.path === 'canvas.background_style'
     ),
     garnishes:
-      pendingDelta.arrays.garnishes.added.length > 0 ||
+      finishingStaged ||
       pendingDelta.arrays.garnishes.removed.length > 0 ||
-      pendingDelta.arrays.sides.added.length > 0 ||
       pendingDelta.arrays.sides.removed.length > 0,
   }
   const controlsDisabled = !isHydrated || isGenerating || dishBlocked
@@ -555,6 +578,14 @@ export function StudioClient({
     }
   }, [])
 
+  const resetFinishingTouches = useCallback(() => {
+    setFinishingStack([])
+    setFinishingSelectedIds([])
+    setFinishingCacheKey(null)
+    setFinishingLoading(false)
+    setFinishingError(null)
+  }, [])
+
   const resetEditorForNewSource = useCallback(() => {
     setIsHydrated(false)
     setEditorState(makeDefaultEditorState())
@@ -567,9 +598,10 @@ export function StudioClient({
     setBackdropVisible(undefined)
     setPendingChangeCandidate(null)
     setDontShowPendingChangeWarning(false)
+    resetFinishingTouches()
     dispatchObjectEdit({ type: 'SOURCE_CHANGED' })
     setObjectEditRejection(null)
-  }, [])
+  }, [resetFinishingTouches])
 
   const persistDishCurrent = useCallback(async (dishId: string, imageId: string | null) => {
     const res = await fetch(`/api/studio/dishes/${dishId}`, {
@@ -676,6 +708,7 @@ export function StudioClient({
       dispatchObjectEdit({ type: 'SOURCE_CHANGED' })
       setObjectEditOpen(false)
       setObjectEditRejection(null)
+      resetFinishingTouches()
       setSelectedImageId(image.id)
       setLibraryBusy(true)
       setLibraryError(null)
@@ -718,7 +751,7 @@ export function StudioClient({
         setLibraryBusy(false)
       }
     },
-    [applyHydratedState, persistDishCurrent, persistEditorState, runExtraction]
+    [applyHydratedState, persistDishCurrent, persistEditorState, resetFinishingTouches, runExtraction]
   )
 
   const loadGalleryForDish = useCallback(
@@ -926,7 +959,10 @@ export function StudioClient({
         return
       }
 
-      const nextCount = countEditableChanges(delta)
+      const nextCount = countStudioPendingChanges(
+        delta,
+        finishingStaged,
+      )
       if (nextCount > MAX_PENDING_CHANGES && !skipPendingChangeWarningRef.current) {
         setPendingChangeCandidate({
           state: nextState,
@@ -939,8 +975,84 @@ export function StudioClient({
 
       commitStagedChange(nextState, nextBaseline)
     },
-    [commitStagedChange]
+    [commitStagedChange, finishingStaged]
   )
+
+  const handleToggleFinishingTouch = useCallback(
+    (id: string) => {
+      const alreadySelected = finishingSelectedIds.includes(id)
+      const nextSelection = alreadySelected
+        ? finishingSelectedIds.filter((selectedId) => selectedId !== id)
+        : [...finishingSelectedIds, id]
+      const addingFirstSelection = !alreadySelected && finishingSelectedIds.length === 0
+      const delta = computeDelta(originalStateRef.current, editorState)
+      const nextCount = countStudioPendingChanges(delta, nextSelection.length > 0)
+      if (
+        addingFirstSelection &&
+        nextCount > MAX_PENDING_CHANGES &&
+        !skipPendingChangeWarningRef.current
+      ) {
+        setPendingChangeCandidate({
+          state: editorState,
+          baseline: originalStateRef.current,
+          changeCount: nextCount,
+          finishingSelection: nextSelection,
+        })
+        setDontShowPendingChangeWarning(false)
+        return
+      }
+      setFinishingSelectedIds(nextSelection)
+    },
+    [editorState, finishingSelectedIds],
+  )
+
+  const handleLoadFinishingTouches = useCallback(async () => {
+    if (finishingLoading) return
+    if (finishingCacheKey !== null && finishingCacheKey === persistedSourceId) {
+      return
+    }
+    setFinishingLoading(true)
+    setFinishingError(null)
+    try {
+      const observations = extractionDiagnosticsRef.current?.observations
+      const description =
+        typeof observations?.description === 'string' ? observations.description : undefined
+      const response = await fetch('/api/studio/finishing-touches/recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dishName: activeDish?.name,
+          mainItem: editorState.schema.food_components.main_item,
+          garnishes: originalStateRef.current.schema.food_components.garnishes,
+          sides: originalStateRef.current.schema.food_components.sides,
+          description,
+        }),
+      })
+      if (!response.ok) {
+        setFinishingError('Could not load finishing touches. Try again.')
+        return
+      }
+      const data = (await response.json()) as { stackIds?: unknown }
+      const stack = stackFromIds(Array.isArray(data.stackIds) ? data.stackIds.filter((id): id is string => typeof id === 'string') : [])
+      setFinishingStack(stack)
+      setFinishingCacheKey(persistedSourceId)
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_FINISHING_TOUCHES_RECOMMENDED, {
+        count_bucket: finishingTouchesCountBucket(stack.length || 0),
+        generation_kind: 'finishing_touches',
+      })
+      setFinishingSelectedIds([])
+    } catch {
+      setFinishingError('Could not load finishing touches. Try again.')
+    } finally {
+      setFinishingLoading(false)
+    }
+  }, [
+    activeDish?.name,
+    editorState.schema.food_components.main_item,
+    finishingCacheKey,
+    finishingLoading,
+    persistedSourceId,
+  ])
 
   const stageLighting = useCallback(
     (lighting: string) => {
@@ -1018,6 +1130,7 @@ export function StudioClient({
     setEditorState(originalStateRef.current)
     setPendingChangeCandidate(null)
     setDontShowPendingChangeWarning(false)
+    setFinishingSelectedIds([])
   }, [])
 
   const handleApplyPendingChangeAnyway = useCallback(() => {
@@ -1026,6 +1139,9 @@ export function StudioClient({
       skipPendingChangeWarningRef.current = true
     }
     commitStagedChange(pendingChangeCandidate.state, pendingChangeCandidate.baseline)
+    if (pendingChangeCandidate.finishingSelection) {
+      setFinishingSelectedIds(pendingChangeCandidate.finishingSelection)
+    }
     setPendingChangeCandidate(null)
     setDontShowPendingChangeWarning(false)
   }, [commitStagedChange, dontShowPendingChangeWarning, pendingChangeCandidate])
@@ -1040,7 +1156,12 @@ export function StudioClient({
 
   const submitPendingChanges = useCallback(async () => {
     const original = originalStateRef.current
-    const nextState = editorState
+    const nextState = editorStateWithFinishingTouches(
+      editorState,
+      original,
+      selectedFinishingStack,
+      selectedFinishingStack.length,
+    )
     const delta = computeDelta(original, nextState)
     if (delta.isEmpty || !sourceImage || !activeDishId || !persistedSourceId) return
 
@@ -1049,17 +1170,34 @@ export function StudioClient({
     })
     if (!directive) return
 
+    const finishingTouches = parseFinishingTouchesMetadata(
+      selectedFinishingStack.length > 0 &&
+        (delta.arrays.garnishes.added.length > 0 || delta.arrays.sides.added.length > 0)
+        ? {
+            stackIds: selectedFinishingStack.map((item) => item.id),
+            level: selectedFinishingStack.length,
+            auto: true,
+          }
+        : undefined,
+    )
+
     const changeSummary = buildChangeSummary(delta, {
       lightingLabels: lightingLabelMap,
       backgroundLabels: backgroundLabelMap,
+      finishingTouchesCount: finishingTouches?.level,
     })
     const generationStartedAt = Date.now()
+    const generationKind = finishingTouches ? 'finishing_touches' : undefined
 
     trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_STARTED, {
       model_class: toModelClass(selectedModel),
       stage: 'generation',
       has_source_image: Boolean(sourceImage),
       variant_count: variants.length,
+      ...(generationKind ? { generation_kind: generationKind } : {}),
+      ...(finishingTouches
+        ? { count_bucket: finishingTouchesCountBucket(finishingTouches.level) }
+        : {}),
     })
 
     setIsGenerating(true)
@@ -1078,6 +1216,7 @@ export function StudioClient({
           changeSummary,
           model: selectedModel,
           extractionDiagnostics: extractionDiagnosticsRef.current,
+          finishingTouches,
         }),
       })
 
@@ -1146,11 +1285,16 @@ export function StudioClient({
             ? data.credits.balanceAfter
             : (creditBalance ?? 0),
         cost: data.credits?.cost,
+        generationKind,
+        ...(finishingTouches
+          ? { countBucket: finishingTouchesCountBucket(finishingTouches.level) }
+          : {}),
       })
       setMutatedImageUrl(data.imageUrl)
       if (data.credits && typeof data.credits.balanceAfter === 'number') {
         setCreditBalance(data.credits.balanceAfter)
       }
+      setEditorState(nextState)
       originalStateRef.current = nextState
       setBaselineVersion((v) => v + 1)
       const row: StudioImageRecord = {
@@ -1172,6 +1316,7 @@ export function StudioClient({
           ...(extractionDiagnosticsRef.current
             ? { extractionDiagnostics: extractionDiagnosticsRef.current }
             : {}),
+          ...(finishingTouches ? { finishingTouches } : {}),
         },
         is_favourite: false,
         archived_at: null,
@@ -1194,6 +1339,7 @@ export function StudioClient({
         )
       )
       setSourceImage(sourceImageFromRecord(data.imageUrl, 'image/png'))
+      resetFinishingTouches()
     } catch (err) {
       trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED, {
         model_class: toModelClass(selectedModel),
@@ -1216,6 +1362,8 @@ export function StudioClient({
     selectedModel,
     variants.length,
     creditBalance,
+    selectedFinishingStack,
+    resetFinishingTouches,
   ])
 
   const handleObjectEditOpen = useCallback(() => {
@@ -2137,6 +2285,7 @@ export function StudioClient({
                       ) : null
                     }
                   >
+                    <div className="space-y-4">
                     <Component_Control
                       garnishes={editorState.schema.food_components.garnishes}
                       sides={editorState.schema.food_components.sides}
@@ -2167,6 +2316,19 @@ export function StudioClient({
                         })
                       }
                     />
+                    <StudioFinishingTouchesControl
+                      disabled={controlsDisabled}
+                      loading={finishingLoading}
+                      error={finishingError}
+                      stackLoaded={
+                        finishingCacheKey !== null && finishingCacheKey === persistedSourceId
+                      }
+                      selectedIds={finishingSelectedIds}
+                      options={finishingStack}
+                      onRequestStack={() => void handleLoadFinishingTouches()}
+                      onToggle={handleToggleFinishingTouch}
+                    />
+                    </div>
                   </CollapsibleSection>
 
                   <CollapsibleSection
@@ -2540,7 +2702,8 @@ export function StudioClient({
       <StudioTextModal
         open={createOpen}
         title={activeDishId ? 'New dish' : 'Name your dish'}
-        label="Dish name"
+        label="What is the dish?"
+        helperText="Use a clear food name, such as “Double cheeseburger”, rather than a menu nickname such as “EZ Cheezey”. We use this to tailor editing suggestions. You can rename it later."
         confirmText="Create"
         onCancel={() => {
           pendingUploadAfterCreateRef.current = false

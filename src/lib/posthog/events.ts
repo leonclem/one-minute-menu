@@ -36,6 +36,7 @@ export const ANALYTICS_EVENTS = {
   STUDIO_GENERATION_FAILED: 'studio_generation_failed',
   STUDIO_GENERATION_BLOCKED_CREDITS: 'studio_generation_blocked_credits',
   STUDIO_GENERATION_BLOCKED_DISH: 'studio_generation_blocked_dish',
+  STUDIO_FINISHING_TOUCHES_RECOMMENDED: 'studio_finishing_touches_recommended',
   STUDIO_OBJECT_EDIT_OPENED: 'studio_object_edit_opened',
   STUDIO_OBJECT_EDIT_CANCELLED: 'studio_object_edit_cancelled',
   STUDIO_OBJECT_EDIT_OPERATION_SELECTED: 'studio_object_edit_operation_selected',

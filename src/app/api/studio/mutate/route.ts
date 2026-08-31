@@ -28,6 +28,7 @@ import {
   mapStudioGenerationError,
 } from '@/lib/studio/generation-request'
 import { sanitizeExtractionDiagnostics } from '@/lib/studio/extraction-diagnostics'
+import { parseFinishingTouchesMetadata } from '@/lib/studio/finishing-touches/metadata'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
       changeSummary?: unknown
       model?: unknown
       extractionDiagnostics?: unknown
+      finishingTouches?: unknown
     }
 
     const {
@@ -80,8 +82,10 @@ export async function POST(request: NextRequest) {
       changeSummary,
       model,
       extractionDiagnostics,
+      finishingTouches: finishingTouchesRaw,
     } = body
     const safeExtractionDiagnostics = sanitizeExtractionDiagnostics(extractionDiagnostics)
+    const finishingTouches = parseFinishingTouchesMetadata(finishingTouchesRaw)
 
     const changeSummaryChips = Array.isArray(changeSummary)
       ? changeSummary.filter((item): item is string => typeof item === 'string')
@@ -224,6 +228,9 @@ export async function POST(request: NextRequest) {
     }
     if (safeExtractionDiagnostics) {
       generatedMetadata.extractionDiagnostics = safeExtractionDiagnostics
+    }
+    if (finishingTouches) {
+      generatedMetadata.finishingTouches = finishingTouches
     }
 
     const { record, debit } = await finaliseStudioGeneration({

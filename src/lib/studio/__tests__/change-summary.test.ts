@@ -74,6 +74,19 @@ describe('change-summary', () => {
     expect(chips).toEqual(['Dish Spin → Spin Left 45°'])
   })
 
+  it('builds chips for added garnishes', () => {
+    const chips = buildChangeSummary(
+      emptyDelta({
+        arrays: {
+          garnishes: { added: ['Coriander'], removed: [] },
+          sides: { added: [], removed: [] },
+        },
+      }),
+      { finishingTouchesCount: 1 },
+    )
+    expect(chips).toEqual(['Finishing touches: 1 selected', 'Added garnish: Coriander'])
+  })
+
   it('builds chips for removed garnishes', () => {
     const chips = buildChangeSummary(
       emptyDelta({

@@ -13,6 +13,7 @@ function editor(partial?: {
   angle?: MinimalSchema['scene_setup']['angle']
   lighting?: MinimalSchema['scene_setup']['lighting']
   garnishes?: string[]
+  surfaceStyle?: string
   position?: { x: number; y: number }
 }): EditorState {
   return {
@@ -21,8 +22,14 @@ function editor(partial?: {
         angle: partial?.angle ?? '45-degree',
         framing: 'close-up',
         lighting: partial?.lighting ?? 'low-key',
+        spin: '0',
       },
-      canvas: { background: '', background_style: '', main_vessel: '' },
+      canvas: {
+        background: '',
+        background_style: '',
+        surface_style: partial?.surfaceStyle ?? '',
+        main_vessel: '',
+      },
       food_components: {
         main_item: 'burger',
         garnishes: partial?.garnishes ?? [],
@@ -53,6 +60,27 @@ describe('countEditableChanges', () => {
     const target = editor({ garnishes: ['mint'] })
     const delta = computeDelta(original, target)
     expect(countEditableChanges(delta)).toBe(2)
+  })
+
+  it('counts any number of garnish and side adds as one Elements bundle', () => {
+    const original = editor()
+    const target = editor({
+      garnishes: ['Coriander', 'Lime wedges', 'Red chilli', 'Cashews'],
+    })
+    const delta = computeDelta(original, target)
+    expect(delta.arrays.garnishes.added).toHaveLength(4)
+    expect(countEditableChanges(delta)).toBe(1)
+  })
+
+  it('allows a finishing-touch bundle to sit with lighting and surface under the cap of 3', () => {
+    const original = editor()
+    const target = editor({
+      lighting: 'bright-and-airy',
+      garnishes: ['Coriander', 'Lime wedges', 'Red chilli', 'Cashews'],
+      surfaceStyle: 'white-marble',
+    })
+    const delta = computeDelta(original, target)
+    expect(countEditableChanges(delta)).toBe(3)
   })
 
   it('includes position as one change', () => {

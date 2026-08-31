@@ -254,14 +254,17 @@ export function computeDelta(original: EditorState, target: EditorState): StateD
 /**
  * Count distinct editable-attribute changes in a delta.
  *
- * Each scalar change, each garnish/side add or remove counts as one.
- * Used to cap how many attributes are batched per mutation.
+ * Each scalar change counts as one. Garnish/side additions count as a single
+ * Elements bundle regardless of how many names were added. Each garnish/side
+ * removal still counts as one. Used to cap how many attributes are batched
+ * per mutation.
  */
 export function countEditableChanges(delta: StateDelta): number {
   let count = delta.scalarChanges.length
-  count += delta.arrays.garnishes.added.length
+  if (delta.arrays.garnishes.added.length > 0 || delta.arrays.sides.added.length > 0) {
+    count += 1
+  }
   count += delta.arrays.garnishes.removed.length
-  count += delta.arrays.sides.added.length
   count += delta.arrays.sides.removed.length
   if (delta.position) {
     count += 1
