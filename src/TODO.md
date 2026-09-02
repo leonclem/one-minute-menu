@@ -5,20 +5,21 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Click to draw a circle/oval/eraser to remove element
+- [ ] Crop
+- [ ] Magic expand
+- [ ] Degradation pre-notice and warning
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Decorate, e.g. add garnishes, surrounding ingredients, etc.
-- [ ] Crop
-- [ ] Magic expand
+- [ ] Remove inverse
 - [ ] Investigate rotation/angle manipulation (best with cut-out perhaps, but still potential risks)
 - [ ] Investigate vessel swapping (pro advised to use reference)
-- [ ] STUDIO_MOBILE_FOCUS_SWITCHER_PROPOSAL.md
 - [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
+- [ ] Add "cooking" SVG animation(s) instead of boring "Generating..." (but maintain translucency)
+- [ ] STUDIO_MOBILE_FOCUS_SWITCHER_PROPOSAL.md
 
 ## UI Review
 - [ ] Create design system with Pinterest / Claude
@@ -46,9 +47,7 @@
 - [ ] See Pinterest "food photography".  Best photos seem to create depth through focus and have some action/drama occurring
 - [ ] Overhead shot
 - [ ] Branching [grid tiles?] structure rather than timeline
-- [ ] While generation is in progress, the "variants" ...
 - [ ] Flash-Lite option (a 3rd tier) (1K outputs only)
-- [ ] Click to draw a circle/oval/eraser to change an element
 - [ ] Image downsizing functionality (in-browser)
 - [ ] If a user likes a certain mutation combo (e.g. studio lighting + yellow backdrop + white tablecloth) -> allow style save (for application to other dishes, e.g. "apply to all").
 - [ ] Custom background (hex) colour
@@ -174,8 +173,10 @@
 
 ## /studio
 - [x] Zoom in and out on workbench main image
-- [x] "Re-shoot" action for photos
+- [x] "Re-shoot" action for photos (parked / not working as intended)
 - [x] Expand number of options for each category
+- [x] Click to draw a circle/oval/eraser to remove element
+- [x] Decorate, e.g. add garnishes, surrounding ingredients, etc.
 
 ## /onboarding
 - [x] New users get 10 credits by default
