@@ -44,7 +44,8 @@ Reasoning that is recorded:
 - **Aspect rail** — mutate preserves the source framing, so an extreme panorama is both
   unusable in the Workbench and not something the model will hold onto. The threshold of 3
   was chosen to accept every common phone ratio (square, 4:3, 3:4, 16:9, 9:16 ≈ 1.78) with
-  headroom, and reject 21:9 and wider.
+  headroom. 21:9 (≈ 2.33) is still under the rail. Reject only when the longer side is more
+  than 3× the shorter side (true panoramas).
 - **Direct-to-Storage upload** — exists because Vercel caps request bodies at 4.5 MB. That
   external limit is the reason the browser PUTs to a signed Storage URL instead of posting
   the file to an API route. It is *not* the reason for the 9 MiB number.

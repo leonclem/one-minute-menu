@@ -5,9 +5,8 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Crop
 - [ ] Magic expand
-- [ ] Degradation pre-notice and warning
+- [ ] Degradation pre-notice and warning, e.g. at 3rd-generation variation request
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
@@ -57,6 +56,7 @@
 - [ ] STUDIO_GENERATION_WORKER_QUEUE_PLAN.md
 - [ ] Click to draw a circle/oval/eraser to move an element
 - [ ] Feed exports back to workbench as new variants
+- [ ] Upscale resolution (via Replicate models)
 
 ## Bugs
 
@@ -177,6 +177,7 @@
 - [x] Expand number of options for each category
 - [x] Click to draw a circle/oval/eraser to remove element
 - [x] Decorate, e.g. add garnishes, surrounding ingredients, etc.
+- [x] Crop
 
 ## /onboarding
 - [x] New users get 10 credits by default

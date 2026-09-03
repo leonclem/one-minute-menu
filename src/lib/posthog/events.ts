@@ -55,6 +55,8 @@ export const ANALYTICS_EVENTS = {
   STUDIO_EXPORT_GENERATION_FAILED: 'studio_export_generation_failed',
   STUDIO_EXPORT_DOWNLOADED: 'studio_export_downloaded',
   STUDIO_EXPORT_EXPANDED: 'studio_export_expanded',
+  STUDIO_CROP_COMPLETED: 'studio_crop_completed',
+  STUDIO_CROP_FAILED: 'studio_crop_failed',
 } as const
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS]

@@ -20,7 +20,8 @@ export interface StudioFirstRunPanelProps {
 const WORKFLOW_STEPS = [
   {
     title: 'Name the dish, then upload a photo',
-    description: 'Give the dish a name, then start with a clear photo of the dish you want to improve.',
+    description:
+      'Give the dish a name, then upload a clear original camera photo with the dish filling most of the frame. Avoid screenshots and heavily compressed social downloads.',
   },
   {
     title: 'Choose controlled changes',

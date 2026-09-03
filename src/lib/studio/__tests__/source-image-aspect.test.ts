@@ -8,6 +8,7 @@ describe('sourceAspectRejection', () => {
     expect(sourceAspectRejection(1600, 1200)).toBeNull()
     expect(sourceAspectRejection(1200, 1600)).toBeNull()
     expect(sourceAspectRejection(1080, 1350)).toBeNull()
+    expect(sourceAspectRejection(2100, 900)).toBeNull()
   })
 
   it(`rejects images longer than ${MAX_SOURCE_ASPECT_ELONGATION}:1`, () => {

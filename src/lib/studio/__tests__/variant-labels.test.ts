@@ -65,7 +65,7 @@ describe('parentVariantShortLabel', () => {
 })
 
 describe('parentVariantLineageText', () => {
-  it('uses From for standard generations and Re-shot from for reshoots', () => {
+  it('uses From for standard generations, Re-shot from for reshoots, and Cropped from for crops', () => {
     expect(parentVariantLineageText(v1, variants)).toBe('From OG')
     expect(
       parentVariantLineageText(
@@ -79,5 +79,11 @@ describe('parentVariantLineageText', () => {
         variants,
       ),
     ).toBe('Re-shot from V1')
+    expect(
+      parentVariantLineageText(
+        image({ id: 'cr', role: 'generated', source_image_id: 'og', metadata: { mode: 'crop' } }),
+        variants,
+      ),
+    ).toBe('Cropped from OG')
   })
 })

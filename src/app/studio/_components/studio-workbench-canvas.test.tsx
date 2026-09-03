@@ -230,4 +230,40 @@ describe('StudioWorkbenchCanvas selection gestures', () => {
     const selection = onSelectionChange.mock.calls[0][0] as SelectionState
     expect(selection.strokes[0].kind).toBe('path')
   })
+
+  it('does not start object-edit selection when crop mode is open', () => {
+    const onSelectionChange = jest.fn()
+    const onCropRectChange = jest.fn()
+    const view = render(
+      <StudioWorkbenchCanvas
+        src="https://example.com/dish.png"
+        alt="Current studio image"
+        expandLabel="Expand Variant 1 preview"
+        onExpand={jest.fn()}
+        selectionMode
+        cropMode
+        selection={EMPTY_SELECTION}
+        naturalSize={NATURAL_SIZE}
+        cropRect={{ x: 0.1, y: 0.1, width: 0.8, height: 0.8 }}
+        onSelectionChange={onSelectionChange}
+        onCropRectChange={onCropRectChange}
+      />,
+    )
+    loadImage()
+
+    expect(screen.getByTestId('studio-crop-overlay')).toBeInTheDocument()
+    expect(view.container.querySelector('.cursor-crosshair')).not.toBeInTheDocument()
+
+    const surface = view.container.querySelector<HTMLElement>('[tabindex="0"]')
+    if (!surface) throw new Error('Missing canvas surface')
+    fireEvent.pointerDown(surface, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+    })
+    fireEvent.pointerUp(surface, { pointerId: 1, pointerType: 'mouse', clientX: 100, clientY: 100 })
+    expect(onSelectionChange).not.toHaveBeenCalled()
+  })
 })

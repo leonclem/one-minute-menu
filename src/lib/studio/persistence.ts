@@ -206,6 +206,8 @@ export async function countTodayGeneratedStudioImages(userId: string): Promise<n
     .eq('user_id', userId)
     .eq('role', 'generated')
     .gte('created_at', startOfDay.toISOString())
+    // Deterministic workbench crops are free variants, not generations.
+    .or('metadata->>mode.is.null,metadata->>mode.neq.crop')
 
   if (error) {
     throw new Error(`Failed to count daily studio generations: ${error.message}`)

@@ -41,5 +41,9 @@ export function parentVariantLineageText(
 ): string | null {
   const parent = parentVariantShortLabel(image, variants)
   if (!parent) return null
-  return image.metadata?.mode === 'reshoot' ? `Re-shot from ${parent}` : `From ${parent}`
+  return image.metadata?.mode === 'reshoot'
+    ? `Re-shot from ${parent}`
+    : image.metadata?.mode === 'crop'
+      ? `Cropped from ${parent}`
+      : `From ${parent}`
 }

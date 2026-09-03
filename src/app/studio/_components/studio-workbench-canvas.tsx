@@ -30,6 +30,8 @@ import {
 } from '@/lib/studio/object-edit/coordinate-transform'
 import type { NormalizedPoint } from '@/lib/studio/object-edit/contracts'
 import { StudioSelectionOverlay } from './studio-object-edit'
+import { StudioCropOverlay } from './studio-crop'
+import { CROP_UNKNOWN_PIXEL_SIZE, type NormalizedCropRect } from '@/lib/studio/crop'
 
 const CHECKERBOARD =
   'repeating-conic-gradient(#e5e7eb 0% 25%, #ffffff 0% 50%) 50% / 12px 12px'
@@ -104,6 +106,11 @@ interface StudioWorkbenchCanvasProps {
   onSelectionChange?: (selection: SelectionState) => void
   onSelectionRejected?: (reason: SelectionRejectReason) => void
   onNaturalSizeChange?: (size: NaturalImageSize) => void
+  cropMode?: boolean
+  cropRect?: NormalizedCropRect | null
+  cropPixelAspect?: number | null
+  cropNaturalSize?: NaturalImageSize | null
+  onCropRectChange?: (rect: NormalizedCropRect) => void
 }
 
 export function StudioWorkbenchCanvas({
@@ -118,6 +125,11 @@ export function StudioWorkbenchCanvas({
   onSelectionChange,
   onSelectionRejected,
   onNaturalSizeChange,
+  cropMode = false,
+  cropRect = null,
+  cropPixelAspect = null,
+  cropNaturalSize = null,
+  onCropRectChange,
 }: StudioWorkbenchCanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ pointerId: number; x: number; y: number; camera: WorkbenchCamera } | null>(
@@ -175,6 +187,8 @@ export function StudioWorkbenchCanvas({
     setImageSize((previous) =>
       previous.width === width && previous.height === height ? previous : nextSize,
     )
+    // Preview pixel size (Next/Image AVIF/WebP). Object-edit strokes use this
+    // display space. Crop floors must use studio_images.width/height instead.
     onNaturalSizeChange?.(nextSize)
   }
 
@@ -276,6 +290,10 @@ export function StudioWorkbenchCanvas({
     }
 
     if (pinchRef.current) return
+
+    if (cropMode) {
+      return
+    }
 
     if (
       selectionMode &&
@@ -392,9 +410,11 @@ export function StudioWorkbenchCanvas({
         tabIndex={0}
         className={[
           'absolute inset-0 overflow-hidden outline-none',
-          selectionMode
+          selectionMode && !cropMode
             ? 'cursor-crosshair touch-none'
-            : camera.zoom > 1
+            : cropMode
+              ? 'cursor-default touch-none'
+              : camera.zoom > 1
               ? 'cursor-grab touch-pan-y active:cursor-grabbing'
               : 'cursor-default touch-pan-y',
         ].join(' ')}
@@ -431,8 +451,20 @@ export function StudioWorkbenchCanvas({
               className="select-none object-contain"
               onLoad={handleImageLoad}
             />
-            {selectionMode && selection && (
+            {selectionMode && !cropMode && selection && (
               <StudioSelectionOverlay selection={selection} previewPoints={selectionPreview} />
+            )}
+            {cropMode && cropRect && onCropRectChange && (
+              <StudioCropOverlay
+                crop={cropRect}
+                natural={
+                  cropNaturalSize && cropNaturalSize.width > 0 && cropNaturalSize.height > 0
+                    ? cropNaturalSize
+                    : CROP_UNKNOWN_PIXEL_SIZE
+                }
+                pixelAspect={cropPixelAspect}
+                onChange={onCropRectChange}
+              />
             )}
           </div>
         ) : (

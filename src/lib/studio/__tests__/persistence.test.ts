@@ -35,7 +35,13 @@ jest.mock('@/lib/supabase-server', () => ({
         select: () => ({
           eq: () => ({
             eq: () => ({
-              gte: (...args: unknown[]) => mockGte(...args),
+              gte: (...args: unknown[]) => {
+                const result = mockGte(...args)
+                if (result && typeof result === 'object' && 'or' in result) return result
+                return {
+                  or: () => result,
+                }
+              },
             }),
           }),
         }),
@@ -174,5 +180,13 @@ describe('studio persistence', () => {
   it('countTodayGeneratedStudioImages returns count', async () => {
     await expect(countTodayGeneratedStudioImages('user-1')).resolves.toBe(3)
     expect(mockGte).toHaveBeenCalled()
+  })
+
+  it('countTodayGeneratedStudioImages excludes workbench crops', async () => {
+    const mockOr = jest.fn().mockResolvedValue({ count: 2, error: null })
+    mockGte.mockReturnValueOnce({ or: mockOr })
+
+    await expect(countTodayGeneratedStudioImages('user-1')).resolves.toBe(2)
+    expect(mockOr).toHaveBeenCalledWith('metadata->>mode.is.null,metadata->>mode.neq.crop')
   })
 })

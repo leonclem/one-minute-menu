@@ -11,7 +11,7 @@
 export const MAX_SOURCE_ASPECT_ELONGATION = 3
 
 export const SOURCE_ASPECT_REJECTION =
-  'This photo is too wide or too tall for Studio. Crop it toward a normal photo (square, 4:3, 16:9, or 9:16) and try again.'
+  'This photo is too wide or too tall for Studio. Crop it in another app toward a normal photo (square, 4:3, 16:9, or 9:16) and try again.'
 
 export function sourceAspectRejection(width: number, height: number): string | null {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {

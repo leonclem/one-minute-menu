@@ -85,6 +85,11 @@ import {
   StudioObjectEditLauncher,
   StudioObjectEditPanel,
 } from './studio-object-edit'
+import {
+  StudioCropLauncher,
+  StudioCropPanel,
+  StudioLowResNotice,
+} from './studio-crop'
 import { VisualOptionTiles } from './visual-option-tiles'
 import { parentVariantLineageText, studioVariantShortLabel, studioVariantSpokenLabel } from '@/lib/studio/variant-labels'
 import { formatExportCreditLabel } from '@/lib/studio/export-presets'
@@ -98,6 +103,13 @@ import {
   type SelectionRejectReason,
 } from '@/lib/studio/object-edit/selection'
 import type { NaturalImageSize } from '@/lib/studio/object-edit/coordinate-transform'
+import {
+  cropForPreset,
+  resolveCropPixelAspect,
+  storedPixelSize,
+  type CropAspectPreset,
+  type NormalizedCropRect,
+} from '@/lib/studio/crop'
 
 type ExtractResponse = MinimalValidationResult & {
   diagnostics?: ExtractionDiagnostics
@@ -331,6 +343,18 @@ export function StudioClient({
     height: 0,
   })
   const [objectEditRejection, setObjectEditRejection] = useState<string | null>(null)
+  const [cropOpen, setCropOpen] = useState(false)
+  const [cropPreset, setCropPreset] = useState<CropAspectPreset>('original')
+  const [cropRect, setCropRect] = useState<NormalizedCropRect | null>(null)
+  const [isCropping, setIsCropping] = useState(false)
+  const [cropError, setCropError] = useState<string | null>(null)
+  const [isRefreshingExtract, setIsRefreshingExtract] = useState(false)
+  const [refreshExtractError, setRefreshExtractError] = useState<string | null>(null)
+  const selectedImageIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    selectedImageIdRef.current = selectedImageId
+  }, [selectedImageId])
 
   const [createOpen, setCreateOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
@@ -383,6 +407,7 @@ export function StudioClient({
   const dishBlocked = Boolean(activeDish?.generation_blocked_at)
   const variants = useMemo(() => sortVariants(gallery), [gallery])
   const selectedImage = variants.find((v) => v.id === selectedImageId) ?? null
+  const cropStoredSize = storedPixelSize(selectedImage)
   const selectedVariantLabel = useMemo(() => {
     if (!selectedImage) return 'No image selected'
     if (selectedImage.role === 'source') return 'Original image'
@@ -453,7 +478,7 @@ export function StudioClient({
   const generateCreditLabel = formatExportCreditLabel(generateCreditCost)
   const insufficientCredits =
     creditBalance !== null && creditBalance < generateCreditCost
-  const busy = libraryBusy || isUploading || isExtracting || isGenerating
+  const busy = libraryBusy || isUploading || isExtracting || isGenerating || isCropping
 
   useEffect(() => {
     setProWarningDismissed(hasDismissedStudioProWarning())
@@ -638,7 +663,7 @@ export function StudioClient({
   }, [])
 
   const runExtraction = useCallback(
-    async (imageId: string): Promise<EditorState | null> => {
+    async (imageId: string, options?: { quiet?: boolean }): Promise<EditorState | null> => {
       const startedAt = Date.now()
       const duration = () => Math.max(0, Date.now() - startedAt)
       const emitExtractionFailure = (status?: number, error?: unknown) => {
@@ -650,15 +675,22 @@ export function StudioClient({
       }
 
       if (typeof imageId !== 'string' || !imageId) {
-        setExtractionError(
-          'Could not start extraction for this image. Refresh the page and try uploading again.'
-        )
+        if (!options?.quiet) {
+          setExtractionError(
+            'Could not start extraction for this image. Refresh the page and try uploading again.'
+          )
+        }
         emitExtractionFailure(undefined, new Error('invalid image reference'))
         return null
       }
 
-      setIsExtracting(true)
-      setExtractionError(null)
+      if (options?.quiet) {
+        setIsRefreshingExtract(true)
+        setRefreshExtractError(null)
+      } else {
+        setIsExtracting(true)
+        setExtractionError(null)
+      }
 
       try {
         const response = await fetch('/api/studio/extract', {
@@ -669,15 +701,18 @@ export function StudioClient({
 
         if (!response.ok) {
           const err = await response.json().catch(() => null)
-          setExtractionError(
+          const message =
             (err as { error?: string } | null)?.error ??
-              `Extraction failed (HTTP ${response.status})`
-          )
+            `Extraction failed (HTTP ${response.status})`
+          if (options?.quiet) setRefreshExtractError(message)
+          else setExtractionError(message)
           emitExtractionFailure(response.status)
           return null
         }
 
         const data = (await response.json()) as ExtractResponse
+        if (selectedImageIdRef.current !== imageId) return null
+
         extractionDiagnosticsRef.current = data.diagnostics ?? null
         setBackdropVisible(knownBackdropVisibility(data.diagnostics ?? null))
         const { editorState: hydratedState } = hydrate({
@@ -693,11 +728,14 @@ export function StudioClient({
         })
         return hydratedState
       } catch (err) {
-        setExtractionError(err instanceof Error ? err.message : 'Extraction failed unexpectedly.')
+        const message = err instanceof Error ? err.message : 'Extraction failed unexpectedly.'
+        if (options?.quiet) setRefreshExtractError(message)
+        else setExtractionError(message)
         emitExtractionFailure(undefined, err)
         return null
       } finally {
-        setIsExtracting(false)
+        if (options?.quiet) setIsRefreshingExtract(false)
+        else setIsExtracting(false)
       }
     },
     [applyHydratedState]
@@ -708,6 +746,8 @@ export function StudioClient({
       dispatchObjectEdit({ type: 'SOURCE_CHANGED' })
       setObjectEditOpen(false)
       setObjectEditRejection(null)
+      setCropOpen(false)
+      setCropError(null)
       resetFinishingTouches()
       setSelectedImageId(image.id)
       setLibraryBusy(true)
@@ -1007,7 +1047,7 @@ export function StudioClient({
   )
 
   const handleLoadFinishingTouches = useCallback(async () => {
-    if (finishingLoading) return
+    if (finishingLoading || isRefreshingExtract) return
     if (finishingCacheKey !== null && finishingCacheKey === persistedSourceId) {
       return
     }
@@ -1051,6 +1091,7 @@ export function StudioClient({
     editorState.schema.food_components.main_item,
     finishingCacheKey,
     finishingLoading,
+    isRefreshingExtract,
     persistedSourceId,
   ])
 
@@ -1367,6 +1408,7 @@ export function StudioClient({
   ])
 
   const handleObjectEditOpen = useCallback(() => {
+    setCropOpen(false)
     dispatchObjectEdit({ type: 'OPERATION_CHANGED', operation: 'remove' })
     setObjectEditRejection(null)
     setObjectEditOpen(true)
@@ -1403,6 +1445,113 @@ export function StudioClient({
       surface: 'studio',
     })
   }, [])
+
+  const handleCropOpen = useCallback(() => {
+    setObjectEditOpen(false)
+    setObjectEditRejection(null)
+    setCropError(null)
+    const size =
+      cropStoredSize ??
+      (objectEditNaturalSize.width > 0 && objectEditNaturalSize.height > 0
+        ? objectEditNaturalSize
+        : null)
+    const preset: CropAspectPreset = 'original'
+    setCropPreset(preset)
+    setCropRect(size ? cropForPreset(preset, size) : { x: 0, y: 0, width: 1, height: 1 })
+    setCropOpen(true)
+  }, [cropStoredSize, objectEditNaturalSize])
+
+  const handleCropPresetChange = useCallback(
+    (preset: CropAspectPreset) => {
+      setCropPreset(preset)
+      const size =
+        cropStoredSize ??
+        (objectEditNaturalSize.width > 0 && objectEditNaturalSize.height > 0
+          ? objectEditNaturalSize
+          : null)
+      if (size) setCropRect(cropForPreset(preset, size))
+    },
+    [cropStoredSize, objectEditNaturalSize],
+  )
+
+  const handleCropCancel = useCallback(() => {
+    setCropOpen(false)
+    setCropError(null)
+  }, [])
+
+  const handleCropApply = useCallback(async () => {
+    if (!cropRect || !persistedSourceId || !activeDishId) return
+
+    setIsCropping(true)
+    setCropError(null)
+    try {
+      const response = await fetch('/api/studio/crop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceImageId: persistedSourceId,
+          dishId: activeDishId,
+          crop: cropRect,
+          aspectPreset: cropPreset,
+        }),
+      })
+      if (!response.ok) {
+        const err = await response.json().catch(() => null)
+        const message =
+          (err as { error?: string } | null)?.error ?? `Crop failed (HTTP ${response.status})`
+        setCropError(message)
+        trackStudioEvent(ANALYTICS_EVENTS.STUDIO_CROP_FAILED, {
+          outcome: 'failed',
+          failure_class: extractionFailureClass(response.status),
+          variant_count: variants.length,
+        })
+        return
+      }
+
+      const data = (await response.json()) as { image: StudioImageRecord }
+      const row = data.image
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_CROP_COMPLETED, {
+        outcome: 'success',
+        variant_count: variants.length + 1,
+      })
+      setGallery((prev) => [...prev.filter((image) => image.id !== row.id), row])
+      setSelectedImageId(row.id)
+      setPersistedSourceId(row.id)
+      setMutatedImageUrl(undefined)
+      setSourceImage(sourceImageFromRecord(row.public_url, row.mime_type))
+      setDishes((prev) =>
+        prev.map((d) => (d.id === activeDishId ? { ...d, current_image_id: row.id } : d)),
+      )
+      const stored = readEditorStateFromMetadata(row.metadata)
+      if (stored) applyHydratedState(stored)
+      resetFinishingTouches()
+      setCropOpen(false)
+      setIsCropping(false)
+      const extracted = await runExtraction(row.id, { quiet: true })
+      if (extracted && selectedImageIdRef.current === row.id) {
+        await persistEditorState(row.id, extracted)
+      }
+    } catch {
+      setCropError('Could not crop this image. Try again.')
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_CROP_FAILED, {
+        outcome: 'failed',
+        failure_class: 'network',
+        variant_count: variants.length,
+      })
+    } finally {
+      setIsCropping(false)
+    }
+  }, [
+    activeDishId,
+    applyHydratedState,
+    cropPreset,
+    cropRect,
+    persistEditorState,
+    persistedSourceId,
+    resetFinishingTouches,
+    runExtraction,
+    variants.length,
+  ])
 
   const objectEditRejectionText = useCallback((reason: SelectionRejectReason): string => {
     switch (reason) {
@@ -2068,10 +2217,16 @@ export function StudioClient({
           ) : null}
           <div className="flex flex-wrap items-center justify-end gap-2">
             {sourceImage && persistedSourceId && (
-              <StudioObjectEditLauncher
-                disabled={busy || dishBlocked}
-                onOpen={handleObjectEditOpen}
-              />
+              <>
+                <StudioCropLauncher
+                  disabled={busy || dishBlocked}
+                  onOpen={handleCropOpen}
+                />
+                <StudioObjectEditLauncher
+                  disabled={busy || dishBlocked}
+                  onOpen={handleObjectEditOpen}
+                />
+              </>
             )}
             <button
               type="button"
@@ -2250,6 +2405,18 @@ export function StudioClient({
               </div>
             </div>
             <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
+              {cropOpen && cropRect && (
+                <StudioCropPanel
+                  preset={cropPreset}
+                  natural={cropStoredSize}
+                  crop={cropRect}
+                  busy={isCropping}
+                  error={cropError}
+                  onPresetChange={handleCropPresetChange}
+                  onApply={() => void handleCropApply()}
+                  onCancel={handleCropCancel}
+                />
+              )}
               {objectEditOpen && (
                 <StudioObjectEditPanel
                   selection={objectEditState.selection}
@@ -2286,6 +2453,17 @@ export function StudioClient({
                     }
                   >
                     <div className="space-y-4">
+                    {isRefreshingExtract ? (
+                      <p className="text-xs text-gray-500" role="status">
+                        Updating dish details…
+                      </p>
+                    ) : null}
+                    {refreshExtractError ? (
+                      <p className="text-xs text-amber-900" role="status">
+                        Dish details could not be refreshed. You can still Generate lighting and
+                        surface.
+                      </p>
+                    ) : null}
                     <Component_Control
                       garnishes={editorState.schema.food_components.garnishes}
                       sides={editorState.schema.food_components.sides}
@@ -2317,7 +2495,7 @@ export function StudioClient({
                       }
                     />
                     <StudioFinishingTouchesControl
-                      disabled={controlsDisabled}
+                      disabled={controlsDisabled || isRefreshingExtract}
                       loading={finishingLoading}
                       error={finishingError}
                       stackLoaded={
@@ -2424,6 +2602,7 @@ export function StudioClient({
             </h2>
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
+            <StudioLowResNotice natural={cropStoredSize} />
             <div
               className="relative min-h-[16rem] flex-1 overflow-hidden rounded-md border border-[#d8e1dc] bg-[#edf1ef]"
               aria-busy={isUploading || isExtracting || isGenerating}
@@ -2436,6 +2615,17 @@ export function StudioClient({
                   transparent={selectedImage?.mime_type === 'image/png'}
                   onExpand={() => setWorkbenchImageExpanded(true)}
                   selectionMode={objectEditOpen}
+                  cropMode={cropOpen}
+                  cropRect={cropRect}
+                  cropPixelAspect={
+                    cropStoredSize
+                      ? resolveCropPixelAspect(cropPreset, cropStoredSize)
+                      : objectEditNaturalSize.width > 0
+                        ? resolveCropPixelAspect(cropPreset, objectEditNaturalSize)
+                        : null
+                  }
+                  cropNaturalSize={cropStoredSize}
+                  onCropRectChange={setCropRect}
                   selection={objectEditState.selection}
                   naturalSize={objectEditNaturalSize}
                   onNaturalSizeChange={setObjectEditNaturalSize}
