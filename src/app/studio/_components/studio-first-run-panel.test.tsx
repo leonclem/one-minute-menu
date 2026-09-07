@@ -9,22 +9,27 @@ jest.mock('@/lib/studio/analytics/studio-analytics', () => ({
 }))
 
 describe('StudioFirstRunPanel', () => {
-  it('asks for a dish name before upload when no dish exists', () => {
-    const onOpenFilePicker = jest.fn()
-    render(<StudioFirstRunPanel onOpenFilePicker={onOpenFilePicker} needsDishName />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Name your dish' }))
-    expect(onOpenFilePicker).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('button', { name: 'Upload a dish photo' })).not.toBeInTheDocument()
-  })
-
-  it('opens the file picker when a dish already exists', () => {
+  it('starts with + New dish and hides dismiss until a dish exists', () => {
     const onOpenFilePicker = jest.fn()
     render(<StudioFirstRunPanel onOpenFilePicker={onOpenFilePicker} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Upload a dish photo' }))
+    fireEvent.click(screen.getByRole('button', { name: '+ New dish' }))
     expect(onOpenFilePicker).toHaveBeenCalledTimes(1)
-    expect(screen.getByText(/original camera photo/i)).toBeInTheDocument()
-    expect(screen.getByText(/new accounts start with 10/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText("Don't show this again")).not.toBeInTheDocument()
+    expect(screen.getByText(/dish filling most of the frame/i)).toBeInTheDocument()
+    expect(screen.getByText(/choose the changes you want to make, and execute/i)).toBeInTheDocument()
+    expect(screen.queryByText(/without compromising the dish identity/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/obtain them via the pricing page/i)).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Photo Studio workflow' }).querySelectorAll('li')).toHaveLength(
+      3,
+    )
+  })
+
+  it('offers Don’t show this again after the user has a dish', () => {
+    render(
+      <StudioFirstRunPanel onOpenFilePicker={jest.fn()} onDismiss={jest.fn()} canDismiss />,
+    )
+    expect(screen.getByRole('button', { name: '+ New dish' })).toBeInTheDocument()
+    expect(screen.getByLabelText("Don't show this again")).toBeInTheDocument()
   })
 })

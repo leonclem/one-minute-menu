@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { StudioVisualOption } from '@/lib/studio/control-options'
 import { resolveReshootStyleDefaults } from '@/lib/studio/style-defaults'
 import type { MinimalSchema } from '@/lib/photo-control/minimal-schema'
@@ -25,6 +25,7 @@ interface StudioReshootDialogProps {
   creditLabel: string
   busy?: boolean
   backdropUnavailable?: boolean
+  degradationCallout?: ReactNode
 }
 
 export function StudioReshootDialog({
@@ -39,6 +40,7 @@ export function StudioReshootDialog({
   creditLabel,
   busy = false,
   backdropUnavailable = false,
+  degradationCallout,
 }: StudioReshootDialogProps) {
   const defaults = useMemo(
     () => resolveReshootStyleDefaults(baseSchema, extractionDiagnostics),
@@ -85,6 +87,8 @@ export function StudioReshootDialog({
               ? ' This is also the only way to add a backdrop when none was detected in your upload.'
               : ''}
           </p>
+
+          {degradationCallout}
 
           <label className="flex items-start gap-2 text-sm text-gray-700">
             <input

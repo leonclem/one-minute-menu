@@ -50,10 +50,10 @@ export function BillingSettings({ userId, initialBillingCurrency, initialCanChan
 
   return (
     <UXCard>
-      <div className="p-6 space-y-5">
+      <div className="space-y-5">
         <div>
-          <h2 className="text-xl font-semibold text-ux-text">Subscription & Billing</h2>
-          <p className="text-sm text-ux-text-secondary mt-1">
+          <h2 className="text-xl font-semibold text-white">Subscription & Billing</h2>
+          <p className="mt-1 text-sm text-white/60">
             Manage your subscription, update your payment method, or view invoices via the Stripe billing portal.
           </p>
         </div>
@@ -64,6 +64,7 @@ export function BillingSettings({ userId, initialBillingCurrency, initialCanChan
 
         <UXButton
           variant="primary"
+          noShadow
           onClick={handleManageSubscription}
           disabled={portalLoading}
         >
@@ -72,15 +73,15 @@ export function BillingSettings({ userId, initialBillingCurrency, initialCanChan
 
         {/* Billing currency lock notice — only shown when locked */}
         {!canChangeBilling && (
-          <div className="pt-4 border-t border-ux-border">
-            <h3 className="text-base font-semibold text-ux-text">Billing Currency</h3>
-            <p className="text-sm text-ux-text-secondary mt-1">How you pay GridMenu for your subscription</p>
-            <div className="mt-3 p-4 bg-ux-background-secondary rounded-md border border-ux-border">
-              <p className="text-sm text-ux-text">
+          <div className="border-t border-white/10 pt-4">
+            <h3 className="text-base font-semibold text-white">Billing Currency</h3>
+            <p className="mt-1 text-sm text-white/60">How you pay GridMenu for your subscription</p>
+            <div className="mt-3 rounded-md border border-white/10 bg-black/20 p-4">
+              <p className="text-sm text-white/80">
                 {billingChangeReason ?? 'You must cancel your current subscription before changing billing currency. Your subscription will remain active until the end of the current billing period.'}
               </p>
-              <p className="text-sm text-ux-text-secondary mt-2">
-                Current billing currency: <strong>{getCurrencyMetadata(billingCurrency).symbol} {billingCurrency}</strong>
+              <p className="mt-2 text-sm text-white/55">
+                Current billing currency: <strong className="text-white">{getCurrencyMetadata(billingCurrency).symbol} {billingCurrency}</strong>
               </p>
             </div>
           </div>

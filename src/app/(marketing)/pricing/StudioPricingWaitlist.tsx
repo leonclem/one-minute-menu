@@ -97,49 +97,51 @@ export default function StudioPricingWaitlist({
 
       <div className="container-ux">
         {isLoggedIn && (
-          <div className="max-w-7xl mx-auto mb-5 text-sm text-white text-hero-shadow">
-            <p className="font-semibold">
-              {`Your Studio credits: ${creditBalance}`}
+          <div className="mx-auto mb-6 max-w-7xl text-sm text-white/80">
+            <p>
+              Your Studio credits:{' '}
+              <span className="font-bold text-[var(--studio-amber,#f8bc02)]">{creditBalance}</span>
             </p>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-8 pt-2">
+        <div className="mx-auto mb-10 grid max-w-7xl grid-cols-1 gap-6 pt-4 md:grid-cols-3 md:gap-5 lg:gap-8">
           {STUDIO_PRICING_TIERS.map((tier) => (
             <UXCard
               key={tier.id}
-              className={`relative flex flex-col ${tier.recommended ? 'ring-2 ring-ux-primary shadow-xl scale-105 z-10' : ''} hover:shadow-lg transition-all duration-200`}
+              className={`relative flex flex-col overflow-visible ${
+                tier.recommended
+                  ? 'z-10 border-2 border-[var(--studio-teal,#01b3bf)]'
+                  : ''
+              }`}
               role="article"
               aria-labelledby={`tier-${tier.id}-title`}
             >
-              <div className="text-center flex-grow">
-                {tier.recommended && (
-                  <div className="mb-4 -mt-2">
-                    <span className="inline-block bg-ux-primary text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
-                      Recommended
-                    </span>
-                  </div>
-                )}
-                <h2 id={`tier-${tier.id}-title`} className="text-2xl font-bold text-ux-text mb-1">
+              {tier.recommended && (
+                <span className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--studio-teal,#01b3bf)] px-3 py-1 text-xs font-bold text-[#03272a]">
+                  Recommended
+                </span>
+              )}
+              <div className={`flex-grow text-center ${tier.recommended ? 'pt-3' : ''}`}>
+                <h2 id={`tier-${tier.id}-title`} className="text-2xl font-bold text-white">
                   {tier.name}
                 </h2>
                 {tier.tagline && (
-                  <p className="text-ux-primary-dark font-semibold text-sm mb-2">
+                  <p className="mt-1 text-sm font-semibold text-[var(--studio-teal,#01b3bf)]">
                     {tier.tagline}
                   </p>
                 )}
-                <p className="text-gray-600 mb-4 text-sm min-h-[3rem]">{tier.description}</p>
-                <div className="mb-6">
-                  <span className="text-4xl font-bold text-ux-text">
+                <div className="mb-6 mt-5">
+                  <span className="text-4xl font-extrabold tracking-[-0.03em] text-white">
                     {formatPrice(tier.prices[selectedCurrency], selectedCurrency)}
                   </span>
-                  <span className="text-gray-500 text-sm block mt-1">{tier.period}</span>
+                  <span className="mt-1 block text-sm text-white/45">{tier.period}</span>
                 </div>
-                <ul className="mb-8 text-left space-y-2">
+                <ul className="mb-8 space-y-2.5 text-left">
                   {tier.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2 text-gray-700 text-sm">
+                    <li key={feature} className="flex items-start gap-2 text-sm text-white/70">
                       <Play
-                        className="mt-0.5 h-3 w-3 shrink-0 fill-ux-primary text-ux-primary"
+                        className="mt-0.5 h-3 w-3 shrink-0 fill-[var(--studio-teal,#01b3bf)] text-[var(--studio-teal,#01b3bf)]"
                         aria-hidden="true"
                       />
                       {feature}
@@ -150,8 +152,9 @@ export default function StudioPricingWaitlist({
               <div className="mt-auto">
                 <UXButton
                   variant={tier.recommended ? 'primary' : 'outline'}
-                  className="w-full mb-3"
+                  className="mb-3 w-full"
                   size="lg"
+                  noShadow
                   aria-label={`${tier.cta} for ${tier.name}`}
                   onClick={() => handleCheckout(tier.id)}
                   loading={loading === tier.id}
@@ -159,29 +162,40 @@ export default function StudioPricingWaitlist({
                   {isLoggedIn ? tier.cta : 'Sign up to buy'}
                 </UXButton>
                 {tier.subtext && (
-                  <p className="text-[10px] text-gray-500 italic text-center leading-tight">{tier.subtext}</p>
+                  <p className="text-center text-[10px] leading-tight text-white/40">
+                    {tier.subtext}
+                  </p>
                 )}
               </div>
             </UXCard>
           ))}
         </div>
 
-        <div className="flex flex-col items-center gap-1.5 mb-12">
-          <label htmlFor="currency-selector" className="text-xs text-white/70 font-medium">
+        <div className="mb-12 flex flex-col items-center gap-1.5">
+          <label
+            htmlFor="currency-selector"
+            className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/45"
+          >
             Billing currency
           </label>
           <BillingCurrencySelector
             userId={(user as { id?: string } | null)?.id}
             onCurrencyChange={setSelectedCurrency}
-            selectClassName="text-sm py-1.5 px-3"
+            selectClassName="text-sm py-1.5 px-3 rounded-[9px]"
           />
         </div>
 
-        <div className="max-w-7xl mx-auto mb-16 bg-gradient-to-br from-ux-primary/30 to-ux-primary/40 rounded-md p-8 md:p-10 border border-ux-primary/40 shadow-xl text-white">
-          <h2 className="text-xl font-bold text-white text-hero-shadow mb-4">How credits work</h2>
-          <ul className="list-disc pl-5 space-y-2 text-white/90 text-hero-shadow-strong text-sm leading-relaxed">
+        <div className="card-ux mx-auto mb-16 max-w-7xl p-8 md:p-10">
+          <h2 className="mb-4 text-xl font-bold text-white">How credits work</h2>
+          <ul className="space-y-2.5 text-sm leading-relaxed text-white/65">
             {EXPLAINER.map((line) => (
-              <li key={line}>{line}</li>
+              <li key={line} className="flex items-start gap-3">
+                <span
+                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--studio-teal,#01b3bf)]"
+                  aria-hidden="true"
+                />
+                {line}
+              </li>
             ))}
           </ul>
         </div>

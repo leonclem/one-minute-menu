@@ -1,0 +1,27 @@
+/* Shared Studio palette. Applied on customer chrome (.ux-implementation) and
+   Studio (.studio-shell). Admin stays on its own light surfaces. */
+
+.studio-shell,
+.ux-implementation {
+  --studio-bg: #0c1416;
+  --studio-panel: #0f1c1f;
+  --studio-radial: #16292c;
+  --studio-text: #eef4f4;
+  --studio-heading: #ffffff;
+  --studio-muted: rgba(255, 255, 255, 0.55);
+  --studio-muted-strong: rgba(255, 255, 255, 0.66);
+  --studio-muted-soft: rgba(255, 255, 255, 0.4);
+  --studio-border: rgba(255, 255, 255, 0.1);
+  --studio-border-strong: rgba(255, 255, 255, 0.16);
+  --studio-teal: #01b3bf;
+  --studio-teal-hover: #018f99;
+  --studio-link: #5fd3da;
+  --studio-teal-tint: rgba(1, 179, 191, 0.14);
+  --studio-amber: #f8bc02;
+  --studio-on-amber: #03272a;
+  --studio-amber-tint: rgba(248, 188, 2, 0.14);
+  --studio-destroy: #ff8a80;
+  --studio-radius-btn: 9px;
+  --studio-radius-card: 16px;
+  --font-studio-fallback: ui-sans-serif, system-ui, sans-serif;
+}

@@ -2,6 +2,7 @@
  * Photo Studio — Export Variants
  *
  * GET  /api/studio/exports?sourceImageId=…  list the export grid for a hero image
+ * GET  /api/studio/exports?dishId=…         list every shot’s export grid
  * POST /api/studio/exports                  produce or enqueue one export variant
  *
  * Split by cost of the work:
@@ -49,6 +50,7 @@ import {
   stageExportVariant,
   StudioExportError,
 } from '@/lib/studio/export-variants'
+import { loadDishExportMatrix } from '@/lib/studio/dish-export-matrix'
 import { loadStudioImageBytes, StudioImageLoadError } from '@/lib/studio/image-bytes'
 import { getStudioImage } from '@/lib/studio/library'
 import { requireStudioApi } from '@/lib/studio/studio-api-auth'
@@ -103,6 +105,19 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireStudioApi()
     if (!auth.ok) return auth.response
+
+    const dishId = request.nextUrl.searchParams.get('dishId')
+    if (dishId) {
+      const dish = await getStudioDish(auth.user.id, dishId)
+      if (!dish) {
+        return NextResponse.json({ error: 'Dish not found' }, { status: 404 })
+      }
+
+      const payload = await loadDishExportMatrix(auth.user.id, dishId)
+      const response = NextResponse.json(payload)
+      response.headers.set('Cache-Control', 'no-store')
+      return response
+    }
 
     const sourceImageId = request.nextUrl.searchParams.get('sourceImageId')
     const hero = await resolveHeroImage(auth.user.id, sourceImageId)

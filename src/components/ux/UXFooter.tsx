@@ -5,10 +5,10 @@ export function UXFooter() {
   const year = new Date().getFullYear()
   const studioPublic = isStudioPublicSurface()
   return (
-    <footer className="ux-footer shrink-0" style={{ backgroundColor: 'rgb(var(--ux-primary))' }}>
+    <footer className="ux-footer shrink-0" data-brand-chrome="studio">
       <div className="container-ux py-6">
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-          <p className="text-sm text-white/90 text-soft-shadow">
+          <p className="text-sm text-[var(--studio-muted-strong,#ffffffa8)]">
             © {year} GridMenu. Built for food & beverage businesses.
           </p>
           <div className="flex items-center gap-4">
@@ -45,7 +45,7 @@ export function UXFooter() {
                 >
                   <circle cx="12" cy="12" r="10" fill="#ffffff" />
                   <path
-                    fill="rgb(var(--ux-primary))"
+                    fill="var(--studio-bg, #0c1416)"
                     d="M8 7.2h1.7l2.1 2.9 2.5-2.9H16l-3.1 3.5L16.2 17h-1.7l-2.3-3.1L10 17H8.3l3.3-3.7z"
                   />
                 </svg>
@@ -66,7 +66,7 @@ export function UXFooter() {
                 >
                   <circle cx="12" cy="12" r="10" fill="#ffffff" />
                   <path
-                    fill="rgb(var(--ux-primary))"
+                    fill="var(--studio-bg, #0c1416)"
                     d="M13.3 8H14.8V6.1C14.5 6.1 13.7 6 12.8 6c-1.9 0-3.1 1.1-3.1 3.2V11H8v2h1.7v5h2.1v-5h1.7l.3-2h-2V9.4c0-.8.3-1.4 1.5-1.4z"
                   />
                 </svg>
@@ -87,7 +87,7 @@ export function UXFooter() {
                 >
                   <circle cx="12" cy="12" r="10" fill="#ffffff" />
                   <path
-                    fill="rgb(var(--ux-primary))"
+                    fill="var(--studio-bg, #0c1416)"
                     d="M12 8.8c-1.8 0-3.2 1.4-3.2 3.2s1.4 3.2 3.2 3.2 3.2-1.4 3.2-3.2-1.4-3.2-3.2-3.2zm0 5.3c-1.1 0-2.1-.9-2.1-2.1s.9-2.1 2.1-2.1 2.1.9 2.1 2.1-.9 2.1-2.1 2.1zm4.1-5.4c0 .4-.3.8-.8.8s-.8-.3-.8-.8.3-.8.8-.8.8.4.8.8zM14.8 7H9.2C8 7 7 8 7 9.2v5.6C7 16 8 17 9.2 17h5.6c1.2 0 2.2-1 2.2-2.2V9.2C17 8 16 7 14.8 7zm1.1 7.8c0 .6-.5 1.1-1.1 1.1H9.2c-.6 0-1.1-.5-1.1-1.1V9.2c0-.6.5-1.1 1.1-1.1h5.6c.6 0 1.1.5 1.1 1.1v5.6z"
                   />
                 </svg>
@@ -96,7 +96,7 @@ export function UXFooter() {
           </div>
         </div>
         <div className="mt-4 text-left">
-          <p className="text-[10px] text-white/60 text-soft-shadow leading-relaxed">
+          <p className="text-[10px] text-[var(--studio-muted-soft,rgba(255,255,255,0.4))] leading-relaxed">
             GridMenu is operated by Gorrrf Private Ltd (UEN: 202550882W), registered in Singapore. &nbsp;•&nbsp; Registered address: 111 Somerset Road, #08-10A, 111 Somerset, Singapore 238164.
           </p>
         </div>

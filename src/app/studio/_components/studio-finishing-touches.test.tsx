@@ -22,7 +22,7 @@ describe('StudioFinishingTouchesControl', () => {
     )
 
     const loadButton = screen.getByRole('button', { name: 'Add finishing touches' })
-    expect(loadButton).toHaveClass('bg-amber-400')
+    expect(loadButton).toHaveClass('bg-[#f8bc02]')
     fireEvent.click(loadButton)
     expect(onRequestStack).toHaveBeenCalledTimes(1)
     expect(screen.getByText(/Does not run until you hit Generate/i)).toBeInTheDocument()

@@ -64,6 +64,7 @@ const config: Config = {
       // Typography system
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        studio: ['var(--font-studio)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       fontSize: {

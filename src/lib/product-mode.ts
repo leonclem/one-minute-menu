@@ -136,3 +136,11 @@ export function shouldShowStudioNav(
 export function isStudioReshootEnabled(): boolean {
   return process.env.NEXT_PUBLIC_STUDIO_ENABLE_RESHOOT === 'true'
 }
+
+/**
+ * Whether the Std / Pro model switch is shown in the Studio workbench.
+ * Defaults to false (NB2 remains the only engine).
+ */
+export function isStudioProEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_STUDIO_ENABLE_PRO === 'true'
+}

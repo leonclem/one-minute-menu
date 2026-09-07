@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
+import { Crop } from 'lucide-react'
 
 import {
   CROP_ASPECT_PRESETS,
@@ -16,21 +17,32 @@ import {
 
 export function StudioCropLauncher({
   disabled = false,
+  hint = 'Free · lossless',
+  overlay = false,
+  pressed = false,
   onOpen,
 }: {
   disabled?: boolean
+  hint?: string
+  overlay?: boolean
+  pressed?: boolean
   onOpen: () => void
 }) {
   return (
     <button
       type="button"
       data-testid="studio-crop-launcher"
-      aria-label="Crop image"
+      aria-label="Reframe image"
+      aria-pressed={pressed}
       disabled={disabled}
-      className="inline-flex min-h-11 items-center justify-center rounded-md border border-ux-primary bg-white px-3 py-2 text-sm font-semibold text-ux-primary shadow-sm hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50"
+      className={['studio-tool-chip min-h-11', overlay && 'studio-tool-chip-overlay'].filter(Boolean).join(' ')}
       onClick={onOpen}
     >
-      Crop
+      <span className="studio-tool-chip-label">
+        <Crop className="h-3.5 w-3.5" aria-hidden strokeWidth={2.25} />
+        Reframe
+      </span>
+      <span className="studio-tool-chip-hint">{hint}</span>
     </button>
   )
 }
@@ -41,7 +53,7 @@ export function StudioLowResNotice({ natural }: { natural: NaturalImageSize | nu
     <p
       role="status"
       data-testid="studio-low-res-notice"
-      className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
+      className="rounded-[9px] border border-[#f8bc02]/40 bg-[rgba(248,188,2,0.14)] px-3 py-2 text-xs text-[#f8bc02]"
     >
       {LOW_RES_NOTICE_TEXT}
     </p>
@@ -54,6 +66,7 @@ export function StudioCropPanel({
   crop,
   busy = false,
   error = null,
+  overlay = false,
   onPresetChange,
   onApply,
   onCancel,
@@ -63,6 +76,7 @@ export function StudioCropPanel({
   crop: NormalizedCropRect
   busy?: boolean
   error?: string | null
+  overlay?: boolean
   onPresetChange: (preset: CropAspectPreset) => void
   onApply: () => void
   onCancel: () => void
@@ -70,11 +84,22 @@ export function StudioCropPanel({
   const floorHint = natural ? cropFloorHint(crop, natural) : null
 
   return (
-    <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3" data-testid="studio-crop-panel">
-      <p className="text-sm font-semibold text-gray-900">Crop</p>
-      <p className="text-xs text-gray-600">
-        Drag the photo behind the window. Apply creates a new version. This does not use credits.
-      </p>
+    <div
+      className={
+        overlay
+          ? 'studio-tool-dock space-y-2'
+          : 'space-y-3 rounded-[11px] border border-white/[0.1] bg-[#0f1c1f] p-3'
+      }
+      data-testid="studio-crop-panel"
+    >
+      {overlay ? null : (
+        <>
+          <p className="text-sm font-semibold text-white">Reframe</p>
+          <p className="text-xs text-white/55">
+            Drag the photo behind the window. Apply creates a new version. This does not use credits.
+          </p>
+        </>
+      )}
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Crop aspect ratio">
         {CROP_ASPECT_PRESETS.map((item) => (
           <button
@@ -84,10 +109,10 @@ export function StudioCropPanel({
             disabled={busy}
             onClick={() => onPresetChange(item.id)}
             className={[
-              'min-h-9 rounded-md border px-2.5 py-1 text-xs font-semibold',
+              'min-h-9 rounded-[7px] border px-2.5 py-1 text-xs font-semibold',
               preset === item.id
-                ? 'border-ux-primary bg-ux-primary text-white'
-                : 'border-gray-300 bg-white text-gray-800 hover:border-ux-primary/60',
+                ? 'border-[#01b3bf] bg-[#01b3bf] text-white'
+                : 'border-white/[0.16] bg-transparent text-white/80 hover:border-[#01b3bf]/60',
               busy && 'cursor-not-allowed opacity-50',
             ]
               .filter(Boolean)
@@ -98,12 +123,12 @@ export function StudioCropPanel({
         ))}
       </div>
       {floorHint ? (
-        <p role="status" className="text-xs text-amber-900">
+        <p role="status" className="text-xs text-[#f8bc02]">
           {floorHint}
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="text-xs text-red-800">
+        <p role="alert" className="text-xs text-[#ff8a80]">
           {error}
         </p>
       ) : null}
@@ -111,15 +136,15 @@ export function StudioCropPanel({
         <button
           type="button"
           data-testid="studio-crop-apply"
-          className="min-h-11 rounded-md bg-ux-primary px-3 py-2 text-sm font-bold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+          className="studio-btn-primary min-h-11 px-3 py-2 text-sm disabled:bg-white/10 disabled:text-white/40"
           disabled={busy}
           onClick={onApply}
         >
-          {busy ? 'Cropping…' : 'Apply crop'}
+          {busy ? 'Applying…' : 'Apply reframe'}
         </button>
         <button
           type="button"
-          className="min-h-11 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="studio-btn-ghost min-h-11 px-3 py-2 text-sm"
           disabled={busy}
           onClick={onCancel}
         >

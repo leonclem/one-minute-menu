@@ -6,30 +6,26 @@ import type { StudioAccessReason } from '@/lib/studio/access/studio-access-decis
 import type { AccessMode } from '@/lib/studio/access/studio-access-mode'
 
 export interface StudioFirstRunPanelProps {
-  /** Opens the hidden file input owned by the Studio editor, or asks for a dish name first. */
+  /** Opens the New dish modal. */
   onOpenFilePicker: () => void
   /** Persists the user's choice to hide this panel in the future. */
   onDismiss?: () => Promise<void> | void
   accessMode?: AccessMode
   accessReason?: StudioAccessReason
   isAdmin?: boolean
-  /** When true, the primary CTA asks for a dish name before upload. */
-  needsDishName?: boolean
+  /** Show “Don’t show this again” only after the account already has a dish. */
+  canDismiss?: boolean
 }
 
 const WORKFLOW_STEPS = [
   {
     title: 'Name the dish, then upload a photo',
     description:
-      'Give the dish a name, then upload a clear original camera photo with the dish filling most of the frame. Avoid screenshots and heavily compressed social downloads.',
+      'Upload a clear original camera photo with the dish filling most of the frame. Avoid screenshots and social media copies.',
   },
   {
-    title: 'Choose controlled changes',
-    description: 'Use the Studio controls to choose the changes you want to make.',
-  },
-  {
-    title: 'Generate a version',
-    description: 'Create a new version while keeping the dish identity in view.',
+    title: 'Choose controlled changes and generate',
+    description: 'Use the controls to choose the changes you want to make, and execute.',
   },
   {
     title: 'Download or give feedback',
@@ -38,8 +34,8 @@ const WORKFLOW_STEPS = [
 ] as const
 
 /**
- * Explains the first Studio workflow before a user has uploaded an image.
- * The editor owns the file input; this panel only requests that it open.
+ * Explains the first Studio workflow. Shown until the user dismisses it;
+ * dismiss is offered only after they already have a dish.
  */
 export function StudioFirstRunPanel({
   onOpenFilePicker,
@@ -47,7 +43,7 @@ export function StudioFirstRunPanel({
   accessMode = 'admin-only',
   accessReason = 'granted_admin',
   isAdmin = false,
-  needsDishName = false,
+  canDismiss = false,
 }: StudioFirstRunPanelProps) {
   const didTrackRef = useRef(false)
   const [dismissed, setDismissed] = useState(false)
@@ -87,74 +83,77 @@ export function StudioFirstRunPanel({
     <section
       role="region"
       aria-labelledby="studio-first-run-heading"
-      className="rounded-xl border border-gray-200 bg-white/90 p-6 shadow-sm md:p-8"
+      data-testid="studio-first-run-panel"
+      className="rounded-[16px] border border-white/[0.1] bg-[#0f1c1f] p-6 md:p-8"
     >
       <div className="max-w-2xl">
-        <p className="text-sm font-semibold uppercase tracking-wide text-ux-primary">
+        <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5fd3da]">
           Photo Studio
         </p>
-        <h2 id="studio-first-run-heading" className="mt-2 text-2xl font-bold text-gray-900">
+        <h2
+          id="studio-first-run-heading"
+          className="mt-2 text-xl font-extrabold tracking-[-0.03em] text-white sm:text-[1.35rem]"
+        >
           🧙‍♂️ Bring one dish photo to life
         </h2>
-        <p className="mt-2 text-sm leading-6 text-gray-600">
+        <p className="mt-2 text-sm leading-6 text-white/55">
           Make focused changes to a real dish photo without writing prompts.
         </p>
       </div>
 
       <ol
         aria-label="Photo Studio workflow"
-        className="mt-6 grid list-none gap-4 pl-0 sm:grid-cols-2 lg:grid-cols-4"
+        className="mt-6 grid list-none gap-3 pl-0 sm:grid-cols-2 lg:grid-cols-3"
       >
         {WORKFLOW_STEPS.map((step, index) => (
           <li
             key={step.title}
-            className="rounded-lg border border-gray-200 bg-gray-50 p-4"
+            className="rounded-[14px] border border-white/[0.1] bg-white/[0.03] p-4"
           >
-            <h3 className="text-sm font-semibold leading-5 text-gray-900">
+            <h3 className="text-sm font-bold leading-5 text-white">
               <span aria-hidden="true">{index + 1}. </span>
               {step.title}
             </h3>
-            <p className="mt-2 text-sm leading-5 text-gray-600">{step.description}</p>
+            <p className="mt-2 text-sm leading-5 text-white/55">{step.description}</p>
           </li>
         ))}
       </ol>
 
       <div
         aria-labelledby="studio-first-run-credits-heading"
-        className="mt-6 rounded-lg border border-teal-100 bg-teal-50/70 p-4"
+        className="mt-6 rounded-[11px] border border-[#f8bc02]/35 bg-[rgba(248,188,2,0.13)] p-4"
       >
-        <h3 id="studio-first-run-credits-heading" className="text-sm font-semibold text-teal-950">
+        <p id="studio-first-run-credits-heading" className="text-sm font-bold text-[#f8bc02]">
           How credits work
-        </h3>
-        <p className="mt-1 text-sm leading-5 text-teal-900">
+        </p>
+        <p className="mt-1 text-sm leading-5 text-[#f8bc02]/90">
           Uploading a photo and extracting dish details are free. A successful generation uses
-          credits. New accounts start with 10. Buy more on the pricing page.
+          credits (where new accounts start with 10). If you need more credits, you can obtain them
+          via the pricing page.
         </p>
       </div>
 
       <div className="mt-6 flex flex-col items-start gap-3">
-        <button
-          type="button"
-          onClick={onOpenFilePicker}
-          className="rounded-md bg-ux-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ux-primary/40 focus:ring-offset-2"
-        >
-          {needsDishName ? 'Name your dish' : 'Upload a dish photo'}
+        <button type="button" onClick={onOpenFilePicker} className="studio-btn-primary">
+          + New dish
         </button>
-        <label className="flex items-center gap-2 text-sm text-gray-600">
-          <input
-            type="checkbox"
-            checked={dismissed}
-            disabled={isDismissing}
-            onChange={(event) => void handleDismissChange(event.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-ux-primary focus:ring-ux-primary"
-          />
-          Don&apos;t show this again
-        </label>
-        {dismissalError && (
-          <p role="alert" className="text-sm text-red-600">
+        {canDismiss ? (
+          <label className="flex items-center gap-2 text-sm text-white/55">
+            <input
+              type="checkbox"
+              checked={dismissed}
+              disabled={isDismissing}
+              onChange={(event) => void handleDismissChange(event.target.checked)}
+              className="h-4 w-4 rounded border-white/30 bg-transparent text-[#01b3bf] focus:ring-[#01b3bf]/50"
+            />
+            Don&apos;t show this again
+          </label>
+        ) : null}
+        {dismissalError ? (
+          <p role="alert" className="text-sm text-[#ff8a80]">
             {dismissalError}
           </p>
-        )}
+        ) : null}
       </div>
     </section>
   )

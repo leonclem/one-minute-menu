@@ -143,6 +143,7 @@ describe('StudioWorkbenchCanvas', () => {
     expect(screen.getByRole('button', { name: 'Reset zoom' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Zoom in' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Zoom out' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Current studio image' }).closest('.studio-checkerboard')).toBeTruthy()
   })
 })
 

@@ -15,7 +15,7 @@ function TileImage({ basename, label }: { basename: string; label: string }) {
   const [failed, setFailed] = useState(false)
   if (failed) {
     return (
-      <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-gray-100 to-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+      <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md bg-white/[0.06] text-[10px] font-semibold uppercase tracking-wide text-white/40">
         {label}
       </div>
     )
@@ -56,17 +56,17 @@ export function VisualOptionTiles<T extends string>({
             disabled={disabled}
             onClick={() => onChange(option.value)}
             className={[
-              'flex w-full items-center gap-3 rounded-md border p-1.5 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-ux-primary/40',
+              'studio-option-tile flex w-full items-center gap-3 rounded-[11px] border p-1.5 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-[#01b3bf]/40',
               selected
-                ? 'border-ux-primary bg-ux-primary/5 ring-1 ring-ux-primary'
-                : 'border-gray-200 bg-white hover:border-gray-300',
+                ? 'border-[#01b3bf] bg-[#01b3bf]/10 ring-1 ring-[#01b3bf]'
+                : 'border-white/[0.1] bg-white/[0.03] hover:border-white/[0.16]',
               disabled && 'cursor-not-allowed opacity-50',
             ]
               .filter(Boolean)
               .join(' ')}
           >
             <TileImage basename={option.assetBasename} label={option.label} />
-            <span className="text-sm font-medium text-gray-800">
+            <span className="text-sm font-medium text-white">
               {option.label}
             </span>
           </button>

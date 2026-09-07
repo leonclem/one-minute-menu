@@ -39,17 +39,17 @@ export function StudioTextModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="studio-text-modal-title"
-        className="w-full max-w-sm overflow-hidden rounded-lg bg-white shadow-lg"
+        className="w-full max-w-sm overflow-hidden rounded-[16px] border border-[var(--studio-border,rgba(255,255,255,0.1))] bg-[var(--studio-panel,#0f1c1f)] shadow-lg"
       >
-        <div className="border-b px-4 py-3">
-          <h3 id="studio-text-modal-title" className="font-medium text-gray-900">
+        <div className="border-b border-[var(--studio-border,rgba(255,255,255,0.1))] px-4 py-3">
+          <h3 id="studio-text-modal-title" className="font-bold text-[var(--studio-heading,#fff)]">
             {title}
           </h3>
         </div>
         <div className="px-4 py-3">
           <label
             htmlFor="studio-text-modal-input"
-            className="mb-1 block text-sm font-medium text-gray-700"
+            className="mb-1 block text-sm font-semibold text-[var(--studio-muted-strong,rgba(255,255,255,0.66))]"
           >
             {label}
           </label>
@@ -64,21 +64,21 @@ export function StudioTextModal({
               if (e.key === 'Enter' && trimmed) onConfirm(trimmed)
               if (e.key === 'Escape') onCancel()
             }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-ux-primary focus:outline-none focus:ring-2 focus:ring-ux-primary/30"
+            className="w-full rounded-[9px] border border-[var(--studio-border-strong,rgba(255,255,255,0.16))] bg-black/20 px-3 py-2 text-sm text-[var(--studio-text,#eef4f4)] focus:border-[#01b3bf] focus:outline-none focus:ring-2 focus:ring-[#01b3bf]/30"
           />
           {helperText ? (
             <p
               id="studio-text-modal-helper"
-              className="mt-2 text-xs leading-5 text-gray-500"
+              className="mt-2 text-xs leading-5 text-[var(--studio-muted-soft,rgba(255,255,255,0.4))]"
             >
               {helperText}
             </p>
           ) : null}
         </div>
-        <div className="flex justify-end gap-2 border-t bg-gray-50/50 px-4 py-3">
+        <div className="flex justify-end gap-2 border-t border-[var(--studio-border,rgba(255,255,255,0.1))] px-4 py-3">
           <button
             type="button"
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            className="rounded-[9px] border border-[var(--studio-border-strong,rgba(255,255,255,0.16))] bg-transparent px-3 py-2 text-sm text-[var(--studio-muted-strong,rgba(255,255,255,0.66))] hover:bg-white/5"
             onClick={onCancel}
           >
             Cancel
@@ -86,7 +86,7 @@ export function StudioTextModal({
           <button
             type="button"
             disabled={!trimmed}
-            className="rounded-md bg-ux-primary px-3 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-[9px] bg-[#01b3bf] px-3 py-2 text-sm font-bold text-white hover:bg-[#018f99] disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => onConfirm(trimmed)}
           >
             {confirmText}

@@ -24,18 +24,18 @@ export function PendingApproval({ email }: { email?: string }) {
             </svg>
           </div>
           
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Your account is being reviewed</h1>
-          <p className="text-lg font-semibold mb-6" style={{ color: '#008B9A' }}>
+          <h1 className="mb-2 text-2xl font-bold text-ux-text">Your account is being reviewed</h1>
+          <p className="mb-6 text-lg font-semibold text-[var(--studio-teal,#01B3BF)]">
             Your registration request has been sent to GridMenu
           </p>
           
-          <div className="space-y-4 text-gray-600 mb-8 text-left bg-[#01B3BF]/5 p-6 rounded-lg border border-[#01B3BF]/20">
+          <div className="mb-8 space-y-4 rounded-lg border border-[var(--studio-teal,#01B3BF)]/25 bg-[var(--studio-teal-tint,rgba(1,179,191,0.09))] p-6 text-left text-ux-text-secondary">
             <p className="flex items-start">
-              <svg className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" style={{ color: '#01B3BF' }} fill="currentColor" viewBox="0 0 20 20">
+              <svg className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0 text-[var(--studio-teal,#01B3BF)]" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               <span>
-                <strong>Welcome to GridMenu!</strong> We've received your registration for <strong className="text-gray-900">{email}</strong>
+                <strong className="text-ux-text">Welcome to GridMenu!</strong> We've received your registration for <strong className="text-ux-text">{email}</strong>
               </span>
             </p>
             <p className="flex items-start">
@@ -67,18 +67,17 @@ export function PendingApproval({ email }: { email?: string }) {
             
             <button
               onClick={handleSignOut}
-              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              className="text-sm text-ux-text-secondary transition-colors hover:text-ux-text"
             >
               Sign out
             </button>
           </div>
           
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <p className="text-sm text-gray-500 mb-2">Need urgent access?</p>
+          <div className="mt-8 border-t border-ux-border pt-6">
+            <p className="mb-2 text-sm text-ux-text-secondary">Need urgent access?</p>
             <a 
               href="mailto:support@gridmenu.ai" 
-              className="text-sm font-semibold transition-colors hover:underline"
-              style={{ color: '#008B9A' }}
+              className="text-sm font-semibold text-[var(--studio-link,#5fd3da)] transition-colors hover:underline"
             >
               Contact us at support@gridmenu.ai
             </a>

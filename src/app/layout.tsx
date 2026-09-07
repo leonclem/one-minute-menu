@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Figtree, Inter } from 'next/font/google'
 import './globals.css'
 import { ToastProvider } from '@/components/ui'
 import { ConsentBanner } from '@/components/privacy/ConsentBanner'
@@ -13,6 +13,14 @@ const inter = Inter({
   variable: '--font-inter',
   adjustFontFallback: true,
   fallback: ['system-ui', 'arial'],
+})
+
+const figtree = Figtree({
+  subsets: ['latin'],
+  weight: ['500', '700', '800'],
+  display: 'swap',
+  variable: '--font-studio',
+  fallback: ['ui-sans-serif', 'system-ui', 'sans-serif'],
 })
 
 export const viewport: Viewport = {
@@ -110,7 +118,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${figtree.variable}`}>
       <head>
         {/* PWA meta tags */}
         <meta name="application-name" content="GridMenu" />

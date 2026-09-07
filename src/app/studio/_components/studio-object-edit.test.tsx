@@ -37,7 +37,7 @@ describe('Remove-only object-edit components', () => {
     const onOpen = jest.fn()
     render(<StudioObjectEditLauncher onOpen={onOpen} />)
 
-    const launcher = screen.getByRole('button', { name: 'Edit image' })
+    const launcher = screen.getByRole('button', { name: 'Remove object' })
     expect(launcher).toHaveClass('min-h-11')
     fireEvent.click(launcher)
     expect(onOpen).toHaveBeenCalledTimes(1)
@@ -130,7 +130,8 @@ describe('Remove-only object-edit components', () => {
     )
 
     expect(screen.getByRole('status')).toHaveTextContent('Selection added')
-    expect(screen.getByText('Remove one object by tapping or drawing over it.')).toBeInTheDocument()
+    expect(screen.getByText(/Remove one object by tapping or drawing over it/)).toBeInTheDocument()
+    expect(screen.getByText(/Counts as a generation/)).toBeInTheDocument()
     expect(screen.queryByText(/^Move\b/i)).not.toBeInTheDocument()
     for (const name of ['Undo', 'Clear', 'Remove selected object, 1 credit', 'Cancel', 'Close image editing']) {
       const button = screen.getByRole('button', { name })
@@ -143,6 +144,49 @@ describe('Remove-only object-edit components', () => {
     expect(handlers.onGenerate).toHaveBeenCalled()
     expect(handlers.onCancel).toHaveBeenCalled()
     expect(handlers.onClose).toHaveBeenCalled()
+  })
+
+  it('compacts the Remove dock and drops the extra Close control', () => {
+    render(
+      <StudioObjectEditPanel
+        overlay
+        selection={selection}
+        canGenerate
+        creditLabel="1 credit"
+        busy={false}
+        onUndo={jest.fn()}
+        onClear={jest.fn()}
+        onGenerate={jest.fn()}
+        onCancel={jest.fn()}
+        onClose={jest.fn()}
+      />,
+    )
+    expect(screen.getByTestId('studio-object-edit-panel')).toHaveClass('studio-tool-dock')
+    expect(screen.queryByText(/Counts as a generation/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Close image editing' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Selection added')
+  })
+
+  it('shows a GEN 3+ callout and still runs Remove', () => {
+    const onGenerate = jest.fn()
+    render(
+      <StudioObjectEditPanel
+        selection={selection}
+        canGenerate
+        creditLabel="1 credit"
+        busy={false}
+        onUndo={jest.fn()}
+        onClear={jest.fn()}
+        onGenerate={onGenerate}
+        onCancel={jest.fn()}
+        onClose={jest.fn()}
+        degradationCallout={<div data-testid="studio-degradation-callout">GEN 3 warning</div>}
+      />,
+    )
+    expect(screen.getByTestId('studio-degradation-callout')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove selected object, 1 credit' }))
+    expect(onGenerate).toHaveBeenCalled()
   })
 
   it('uses the selected model credit label and gives focused-limit guidance without semantic internals', () => {

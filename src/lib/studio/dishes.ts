@@ -3,6 +3,7 @@
  */
 
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
+import { attachStudioDishListStats } from '@/lib/studio/dish-list-stats'
 import { STUDIO_STORAGE_BUCKET } from '@/lib/studio/storage-paths'
 import type { StudioDishListItem, StudioDishRecord } from '@/lib/studio/types'
 
@@ -30,7 +31,7 @@ export async function listStudioDishes(userId: string): Promise<StudioDishRecord
 }
 
 /**
- * List dishes with Current variant public URLs for the dish picker modal.
+ * List dishes with Current preview URL, shot count, and ready-export count.
  */
 export async function listStudioDishesWithThumbnails(
   userId: string,
@@ -38,34 +39,32 @@ export async function listStudioDishesWithThumbnails(
   const dishes = await listStudioDishes(userId)
   if (dishes.length === 0) return []
 
-  const currentIds = dishes
-    .map((d) => d.current_image_id)
-    .filter((id): id is string => typeof id === 'string' && id.length > 0)
-
-  const urlById = new Map<string, string>()
-  if (currentIds.length > 0) {
-    const supabase = createAdminSupabaseClient()
-    const { data, error } = await supabase
+  const supabase = createAdminSupabaseClient()
+  const [imagesResult, exportsResult] = await Promise.all([
+    supabase
       .from('studio_images')
-      .select('id, public_url')
+      .select('id, dish_id, public_url')
       .eq('user_id', userId)
-      .in('id', currentIds)
+      .is('archived_at', null),
+    supabase
+      .from('studio_export_variants')
+      .select('dish_id')
+      .eq('user_id', userId)
+      .eq('status', 'ready'),
+  ])
 
-    if (error) {
-      throw new Error(`Failed to load dish thumbnails: ${error.message}`)
-    }
-
-    for (const row of data ?? []) {
-      urlById.set(row.id as string, row.public_url as string)
-    }
+  if (imagesResult.error) {
+    throw new Error(`Failed to load dish thumbnails: ${imagesResult.error.message}`)
+  }
+  if (exportsResult.error) {
+    throw new Error(`Failed to load dish export counts: ${exportsResult.error.message}`)
   }
 
-  return dishes.map((dish) => ({
-    ...dish,
-    current_image_url: dish.current_image_id
-      ? (urlById.get(dish.current_image_id) ?? null)
-      : null,
-  }))
+  return attachStudioDishListStats(
+    dishes,
+    (imagesResult.data ?? []) as { id: string; dish_id: string | null; public_url: string }[],
+    (exportsResult.data ?? []) as { dish_id: string }[],
+  )
 }
 
 export async function createStudioDish(

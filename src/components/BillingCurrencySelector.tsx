@@ -218,20 +218,21 @@ export default function BillingCurrencySelector({
   const supportedCurrencies = getSupportedBillingCurrencies()
 
   if (loading) {
-    const loadingSelectClass = `px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-400 cursor-not-allowed ${selectClassName}`.trim()
+    const loadingSelectClass = `px-4 py-2 border rounded-lg cursor-not-allowed opacity-60 ${selectClassName}`.trim()
     return (
       <div className={`inline-block ${className}`}>
-        <select disabled className={loadingSelectClass}>
+        <select disabled id="currency-selector" className={loadingSelectClass}>
           <option>Loading...</option>
         </select>
       </div>
     )
   }
 
-  const selectClass = `px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-ux-primary focus:border-transparent transition-colors cursor-pointer ${selectClassName}`.trim()
+  const selectClass = `px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ux-primary focus:border-transparent transition-colors cursor-pointer ${selectClassName}`.trim()
   return (
     <div className={`inline-block ${className}`}>
-      <select
+        <select
+        id="currency-selector"
         value={selectedCurrency}
         onChange={handleCurrencyChange}
         className={selectClass}

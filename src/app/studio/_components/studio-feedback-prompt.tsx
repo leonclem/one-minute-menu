@@ -137,7 +137,7 @@ export function StudioFeedbackPrompt({ studioImageId }: StudioFeedbackPromptProp
           type="button"
           onClick={openModal}
           title="Share feedback about this generated result"
-          className={`inline-flex items-center gap-1.5 rounded-full border border-ux-primary/30 bg-white px-3 py-1.5 text-xs font-semibold text-ux-primary shadow-sm transition hover:border-ux-primary hover:bg-ux-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary/40 ${
+          className={`studio-overlay-pill inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#01b3bf]/40 ${
             isPulsing ? 'animate-pulse motion-reduce:animate-none' : ''
           }`}
         >

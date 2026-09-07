@@ -23,24 +23,13 @@ export default async function MarketingLayout({
   const user = await getCurrentUser()
 
   return (
-    <div className="ux-implementation min-h-dvh md:min-h-screen flex flex-col overflow-x-hidden relative">
-      {/* Background image fixed to viewport so tall UX pages scroll over it without stretching */}
-      <div
-        aria-hidden
-        className="fixed inset-0 -z-10"
-        style={{
-          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.45)), url(/backgrounds/kung-pao-chicken.png)`,
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center 30%'
-        }}
-      />
+    <div className="ux-implementation ux-studio-surface min-h-dvh md:min-h-screen flex flex-col overflow-x-hidden relative">
       <a href="#ux-main-content" className="sr-only-focusable">
         Skip to main content
       </a>
       <UXHeader userEmail={user?.email} />
       <UXAnalyticsProvider>
-        <main id="ux-main-content" className="flex-1 grid place-items-center">
+        <main id="ux-main-content" className="flex-1 w-full">
           {children}
         </main>
       </UXAnalyticsProvider>

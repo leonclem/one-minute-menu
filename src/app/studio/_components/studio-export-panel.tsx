@@ -51,8 +51,6 @@ interface StudioExportPanelProps {
   sourceImageId: string | null
   /** Human-readable label for the selected source image, supplied by the Workbench. */
   sourceImageLabel?: string
-  /** Briefly highlights the automatically updated export context after variant selection. */
-  contextFlash?: boolean
   dishName?: string | null
   /** True while the editor is mid-upload/extract/generate. */
   editorBusy?: boolean
@@ -60,44 +58,47 @@ interface StudioExportPanelProps {
   dishBlocked?: boolean
   creditBalance: number | null
   onCreditBalanceChange?: (balance: number) => void
+  /** Ready-file count for the workbench Exports tab badge. */
+  onReadyCountChange?: (count: number) => void
 }
 
-const STATUS_LABEL: Record<StudioExportStatus, string> = {
-  empty: 'Not generated',
-  queued: 'Queued',
-  generating: 'Generating…',
-  ready: 'Ready',
-  failed: 'Generation failed',
-}
-
-const STATUS_DOT: Record<StudioExportStatus, string> = {
-  empty: 'bg-gray-300',
-  queued: 'bg-amber-400',
-  generating: 'bg-amber-400 animate-pulse',
-  ready: 'bg-emerald-500',
-  failed: 'bg-rose-500',
-}
-
-function methodLabel(tile: StudioExportTile): string {
+function methodHint(tile: StudioExportTile): string {
   switch (tile.generationMethod) {
     case 'crop_resize':
-      return 'Resize'
+      return 'free resize'
     case 'ai_expand':
-      return 'AI expand'
     case 'ai_recompose':
-      return 'AI recompose'
     case 'cutout':
-      return 'Cut-out'
+      return 'needs AI fill'
     default:
-      return 'Export'
+      return 'export'
   }
 }
 
-const PRIMARY_ACTION_CLASS =
-  'flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md bg-ux-primary px-2 py-1.5 text-[11px] font-bold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500'
+function statusLine(status: StudioExportStatus, tile: StudioExportTile): string {
+  if (status === 'ready') return 'Ready'
+  if (status === 'queued') return 'Queued'
+  if (status === 'generating') return 'Generating…'
+  if (status === 'failed') return 'Generation failed'
+  return `Not made · ${methodHint(tile)}`
+}
+
+function compactCreditLabel(credits: number): string {
+  return credits > 0 ? `${credits} cr` : 'free'
+}
+
+function aspectBoxSize(width: number, height: number, max = 48): { width: number; height: number } {
+  if (width <= 0 || height <= 0) return { width: max, height: max }
+  const ratio = width / height
+  if (ratio >= 1) return { width: max, height: Math.max(28, Math.round(max / ratio)) }
+  return { width: Math.max(28, Math.round(max * ratio)), height: max }
+}
+
+const MAKE_ACTION_CLASS =
+  'inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full bg-[#01b3bf] px-3 py-1.5 text-[11px] font-bold text-[#0c1416] hover:bg-[#018f99] disabled:cursor-not-allowed disabled:opacity-40'
 
 const DOWNLOAD_ICON_CLASS =
-  'flex w-9 shrink-0 items-center justify-center rounded-md bg-amber-400 text-gray-900 shadow-sm hover:bg-amber-300'
+  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f8bc02] text-[#03272a] hover:brightness-95'
 
 function ActionLabel({
   label,
@@ -122,20 +123,20 @@ function generateActionCopy(
   if (status === 'queued') return { label: 'Queued…', creditLabel: null }
   if (status === 'generating') return { label: 'Generating…', creditLabel: null }
   return {
-    label: status === 'failed' ? 'Retry' : 'Generate',
-    creditLabel: creditCost > 0 ? formatExportCreditLabel(creditCost) : null,
+    label: status === 'failed' ? 'Retry' : 'Make',
+    creditLabel: compactCreditLabel(creditCost),
   }
 }
 
 export function StudioExportPanel({
   sourceImageId,
   sourceImageLabel = 'selected image',
-  contextFlash = false,
   dishName,
   editorBusy = false,
   dishBlocked = false,
   creditBalance,
   onCreditBalanceChange,
+  onReadyCountChange,
 }: StudioExportPanelProps) {
   const [tiles, setTiles] = useState<StudioExportTile[]>([])
   const [loading, setLoading] = useState(false)
@@ -148,51 +149,16 @@ export function StudioExportPanel({
   const [expanded, setExpanded] = useState<StudioExportTile | null>(null)
   const [downloadingAll, setDownloadingAll] = useState(false)
   const [creditsHelpOpen, setCreditsHelpOpen] = useState(false)
-  const [contextEntryCue, setContextEntryCue] = useState(false)
   const requestIdRef = useRef(0)
-  const sectionRef = useRef<HTMLElement>(null)
-  const previousSourceImageIdRef = useRef<string | null | undefined>(undefined)
-
-  useEffect(() => {
-    const previousSourceImageId = previousSourceImageIdRef.current
-    previousSourceImageIdRef.current = sourceImageId
-    setContextEntryCue(false)
-
-    // The first image establishes the panel. Later selections should draw
-    // attention when this panel is actually visible, including after a user
-    // scrolls to it on a narrower screen.
-    if (
-      previousSourceImageId === undefined ||
-      previousSourceImageId === sourceImageId ||
-      !sourceImageId ||
-      !sectionRef.current ||
-      typeof IntersectionObserver === 'undefined'
-    ) {
-      return
-    }
-
-    let timeout: number | undefined
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return
-        observer.disconnect()
-        setContextEntryCue(true)
-        timeout = window.setTimeout(() => setContextEntryCue(false), 1800)
-      },
-      { threshold: 0.2 },
-    )
-    observer.observe(sectionRef.current)
-
-    return () => {
-      observer.disconnect()
-      if (timeout !== undefined) window.clearTimeout(timeout)
-    }
-  }, [sourceImageId])
 
   const readyTiles = useMemo(
     () => tiles.filter((tile) => tile.status === 'ready' && tile.previewUrl),
     [tiles],
   )
+
+  useEffect(() => {
+    onReadyCountChange?.(readyTiles.length)
+  }, [onReadyCountChange, readyTiles.length])
 
   // Paid formats run on the background worker, so the panel polls until every
   // tile reaches a terminal state.
@@ -402,54 +368,45 @@ export function StudioExportPanel({
 
   return (
     <section
-      ref={sectionRef}
       id="studio-export-panel"
-      className={[
-        'flex h-full flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white/95 shadow-md transition-[background-color,box-shadow] duration-300 motion-reduce:transition-none',
-        (contextFlash || contextEntryCue) && 'studio-export-context-flash',
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className="flex h-full min-h-0 flex-col overflow-hidden"
       data-testid="studio-export-panel"
     >
-      <div className="shrink-0 border-b bg-neutral-100 px-4 py-3">
+      <div className="shrink-0 px-3 pt-1 sm:px-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="flex items-center gap-1">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
-                Export variants
-              </h2>
-              <button
-                type="button"
-                aria-expanded={creditsHelpOpen}
-                aria-controls="studio-export-credits-help"
-                aria-label="Why some export formats use credits"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ux-text-secondary hover:bg-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary"
-                onClick={() => setCreditsHelpOpen((open) => !open)}
-              >
-                <Info className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            </div>
-            <p className="mt-0.5 truncate text-[11px] font-medium text-ux-primary" aria-live="polite">
-              For {sourceImageLabel}
-            </p>
-          </div>
-          {readyTiles.length > 1 && (
-            <button
-              type="button"
-              disabled={downloadingAll}
-              className="shrink-0 text-xs font-bold uppercase tracking-wide text-ux-primary hover:underline disabled:cursor-not-allowed disabled:text-gray-400"
-              onClick={() => void handleDownloadAll()}
-            >
-              {downloadingAll ? 'Downloading…' : `Download all (${readyTiles.length})`}
-            </button>
-          )}
+          <p className="text-xs leading-5 text-white/55">
+            Files made from <span className="font-bold text-white/80">this</span> shot. Each
+            preview is the true shape of the file.
+          </p>
+          <button
+            type="button"
+            aria-expanded={creditsHelpOpen}
+            aria-controls="studio-export-credits-help"
+            aria-label="Why some export formats use credits"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/45 hover:bg-white/[0.06] hover:text-white/80"
+            onClick={() => setCreditsHelpOpen((open) => !open)}
+          >
+            <Info className="h-3.5 w-3.5" aria-hidden />
+          </button>
         </div>
+        <p className="sr-only" aria-live="polite">
+          Exports for {sourceImageLabel}
+        </p>
+        {readyTiles.length > 1 && (
+          <button
+            type="button"
+            disabled={downloadingAll}
+            className="mt-1 text-xs font-bold text-[#5fd3da] hover:underline disabled:cursor-not-allowed disabled:text-white/30"
+            onClick={() => void handleDownloadAll()}
+          >
+            {downloadingAll ? 'Downloading…' : `Download all (${readyTiles.length})`}
+          </button>
+        )}
         {creditsHelpOpen && (
           <p
             id="studio-export-credits-help"
             role="note"
-            className="mt-2 text-xs leading-5 text-gray-700"
+            className="mt-2 text-xs leading-5 text-white/55"
           >
             Credits are charged when a format needs AI — expanding the canvas to a
             new aspect ratio, or cutting the dish out of its background. A straight
@@ -458,173 +415,147 @@ export function StudioExportPanel({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
         {!sourceImageId ? (
-          <p className="px-1 py-4 text-sm text-gray-500" data-testid="studio-exports-empty">
+          <p className="px-1 py-4 text-sm text-white/40" data-testid="studio-exports-empty">
             Upload or select a dish photo to prepare channel-ready exports.
           </p>
         ) : loading ? (
-          <p className="px-1 py-4 text-sm text-gray-500">Loading export formats…</p>
+          <p className="px-1 py-4 text-sm text-white/40">Loading export formats…</p>
         ) : loadError ? (
           <div className="space-y-2 px-1 py-3">
-            <p role="alert" className="text-sm text-red-800">
+            <p role="alert" className="text-sm text-[#ff8a80]">
               {loadError}
             </p>
             <button
               type="button"
-              className="text-xs font-bold uppercase tracking-wide text-ux-primary hover:underline"
+              className="text-xs font-bold text-[#5fd3da] hover:underline"
               onClick={() => void loadTiles(sourceImageId)}
             >
               Retry
             </button>
           </div>
         ) : (
-          <>
-            <ul className="grid gap-3 sm:grid-cols-2" data-testid="studio-export-grid">
-              {tiles.map((tile) => {
-                const inFlightLocally = submitting.has(tile.variantType)
-                const status: StudioExportStatus = inFlightLocally
-                  ? 'generating'
-                  : tile.status
-                const inFlight =
-                  inFlightLocally || status === 'queued' || status === 'generating'
-                const isReady = status === 'ready' && Boolean(tile.previewUrl)
-                const transparent = tile.fileType === 'png'
-                const error = tileErrors[tile.variantType] ?? tile.errorMessage
-                const blockedReason = dishBlocked
-                  ? 'Generations for this dish are paused.'
-                  : !tile.available
-                    ? tile.unavailableReason
-                    : creditBalance !== null &&
-                        tile.estimatedCredits > 0 &&
-                        creditBalance < tile.estimatedCredits
-                      ? 'Not enough credits for this format.'
-                      : null
-                const canGenerate =
-                  !inFlight && !editorBusy && !anyInFlight && blockedReason === null
-                const generateCopy = generateActionCopy(status, tile.estimatedCredits)
-                const generateAriaLabel = generateCopy.creditLabel
-                  ? `${generateCopy.label}, ${generateCopy.creditLabel}`
-                  : generateCopy.label
-                const redoAriaLabel =
-                  tile.estimatedCredits > 0
-                    ? `Regenerate ${tile.label}, ${formatExportCreditLabel(tile.estimatedCredits)}`
-                    : `Regenerate ${tile.label}`
+          <ul className="space-y-2" data-testid="studio-export-list">
+            {tiles.map((tile) => {
+              const inFlightLocally = submitting.has(tile.variantType)
+              const status: StudioExportStatus = inFlightLocally
+                ? 'generating'
+                : tile.status
+              const inFlight =
+                inFlightLocally || status === 'queued' || status === 'generating'
+              const isReady = status === 'ready' && Boolean(tile.previewUrl)
+              const transparent = tile.fileType === 'png'
+              const error = tileErrors[tile.variantType] ?? tile.errorMessage
+              const blockedReason = dishBlocked
+                ? 'Generations for this dish are paused.'
+                : !tile.available
+                  ? tile.unavailableReason
+                  : creditBalance !== null &&
+                      tile.estimatedCredits > 0 &&
+                      creditBalance < tile.estimatedCredits
+                    ? 'Not enough credits for this format.'
+                    : null
+              const canGenerate =
+                !inFlight && !editorBusy && !anyInFlight && blockedReason === null
+              const generateCopy = generateActionCopy(status, tile.estimatedCredits)
+              const generateAriaLabel = generateCopy.creditLabel
+                ? `${generateCopy.label}, ${generateCopy.creditLabel}`
+                : generateCopy.label
+              const redoAriaLabel =
+                tile.estimatedCredits > 0
+                  ? `Regenerate ${tile.label}, ${formatExportCreditLabel(tile.estimatedCredits)}`
+                  : `Regenerate ${tile.label}`
+              const box = aspectBoxSize(tile.width, tile.height)
 
-                return (
-                  <li
-                    key={tile.variantType}
-                    // Sharp-edged tiles: the export grid should read as an asset
-                    // grid, not as generic rounded SaaS cards.
-                    className="flex flex-col border border-black/10 bg-white"
-                    data-testid={`studio-export-tile-${tile.variantType}`}
-                  >
-                    <div className="border-b border-black/[0.06] px-3 py-2">
-                      <p className="truncate text-xs font-bold uppercase tracking-wide text-ux-text">
-                        {tile.label}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-gray-500">
-                        {tile.width} × {tile.height} ({tile.aspectRatio}) ·{' '}
-                        {tile.fileType.toUpperCase()}
-                      </p>
-                    </div>
-
-                    {isReady && tile.previewUrl ? (
+              return (
+                <li
+                  key={tile.variantType}
+                  className="flex items-center gap-3 rounded-[14px] bg-white/[0.04] px-3 py-2.5"
+                  data-testid={`studio-export-tile-${tile.variantType}`}
+                >
+                  {isReady && tile.previewUrl ? (
+                    <div
+                      className="shrink-0 overflow-hidden rounded-[6px]"
+                      style={{ width: box.width, height: box.height }}
+                    >
                       <StudioExpandablePreview
                         src={tile.previewUrl}
                         expandLabel={`Expand ${tile.label} preview`}
                         transparent={transparent}
-                        imageClassName="h-24 w-full object-contain p-1.5"
+                        className="h-full w-full"
+                        imageClassName="h-full w-full object-contain"
                         onExpand={() => handleExpand(tile)}
                       />
-                    ) : (
-                      <div
-                        className="flex h-24 items-center justify-center border-b border-black/[0.06] bg-neutral-50 px-2 text-center text-[11px] text-gray-400"
-                        aria-hidden={status !== 'generating'}
-                      >
-                        {inFlight ? (
-                          <span className="font-semibold text-ux-primary">
-                            {status === 'queued' ? 'Queued…' : 'Generating…'}
-                          </span>
-                        ) : (
-                          <span>{tile.aspectRatio}</span>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex flex-1 flex-col gap-2 p-2.5">
-                      <div className="space-y-0.5 text-[11px] leading-tight">
-                        <p className="flex items-center gap-1.5 text-gray-700">
-                          <span
-                            aria-hidden
-                            className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[status]}`}
-                          />
-                          <span>{STATUS_LABEL[status]}</span>
-                        </p>
-                        {!inFlight && !isReady && (
-                          <p className="pl-3 text-gray-500">{methodLabel(tile)}</p>
-                        )}
-                      </div>
-
-                      {error && status === 'failed' && (
-                        <p role="alert" className="text-[11px] text-red-800">
-                          {error}
-                        </p>
-                      )}
-                      {blockedReason && status !== 'ready' && (
-                        <p className="text-[11px] text-amber-800">{blockedReason}</p>
-                      )}
-
-                      <div className="mt-auto">
-                        {isReady ? (
-                          <div className="flex items-stretch gap-1.5">
-                            <button
-                              type="button"
-                              aria-label={`Download ${tile.label}`}
-                              className={DOWNLOAD_ICON_CLASS}
-                              onClick={() => void handleDownload(tile)}
-                            >
-                              <Download className="h-3.5 w-3.5" aria-hidden />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={!canGenerate}
-                              aria-label={redoAriaLabel}
-                              data-testid={`studio-export-redo-${tile.variantType}`}
-                              className={PRIMARY_ACTION_CLASS}
-                              onClick={() => void handleGenerate(tile)}
-                            >
-                              <ActionLabel
-                                label="Redo"
-                                creditLabel={
-                                  tile.estimatedCredits > 0
-                                    ? formatExportCreditLabel(tile.estimatedCredits)
-                                    : null
-                                }
-                              />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={!canGenerate}
-                            aria-label={generateAriaLabel}
-                            className={PRIMARY_ACTION_CLASS}
-                            onClick={() => void handleGenerate(tile)}
-                          >
-                            <ActionLabel
-                              label={generateCopy.label}
-                              creditLabel={generateCopy.creditLabel}
-                            />
-                          </button>
-                        )}
-                      </div>
                     </div>
-                  </li>
-                )
-              })}
-            </ul>
-          </>
+                  ) : (
+                    <div
+                      className="flex shrink-0 items-center justify-center rounded-[6px] border border-dashed border-white/25 text-[10px] font-semibold text-white/45"
+                      style={{ width: box.width, height: box.height }}
+                      aria-hidden={status !== 'generating'}
+                    >
+                      {inFlight ? '…' : tile.aspectRatio}
+                    </div>
+                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-white">{tile.label}</p>
+                    <p className="truncate text-[11px] text-white/45">
+                      {tile.width} × {tile.height} · {tile.aspectRatio}
+                    </p>
+                    <p className="truncate text-[11px] text-white/40">{statusLine(status, tile)}</p>
+                    {error && status === 'failed' ? (
+                      <p role="alert" className="mt-0.5 text-[11px] text-[#ff8a80]">
+                        {error}
+                      </p>
+                    ) : null}
+                    {blockedReason && status !== 'ready' ? (
+                      <p className="mt-0.5 text-[11px] text-[#f8bc02]">{blockedReason}</p>
+                    ) : null}
+                  </div>
+
+                  {isReady ? (
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        aria-label={`Download ${tile.label}`}
+                        className={DOWNLOAD_ICON_CLASS}
+                        onClick={() => void handleDownload(tile)}
+                      >
+                        <Download className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!canGenerate}
+                        aria-label={redoAriaLabel}
+                        data-testid={`studio-export-redo-${tile.variantType}`}
+                        className={MAKE_ACTION_CLASS}
+                        onClick={() => void handleGenerate(tile)}
+                      >
+                        <ActionLabel
+                          label="Redo"
+                          creditLabel={compactCreditLabel(tile.estimatedCredits)}
+                        />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!canGenerate}
+                      aria-label={generateAriaLabel}
+                      className={MAKE_ACTION_CLASS}
+                      onClick={() => void handleGenerate(tile)}
+                    >
+                      <ActionLabel
+                        label={generateCopy.label}
+                        creditLabel={generateCopy.creditLabel}
+                      />
+                    </button>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
         )}
       </div>
 

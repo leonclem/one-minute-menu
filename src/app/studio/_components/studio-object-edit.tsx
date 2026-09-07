@@ -1,27 +1,39 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
+import { Eraser } from 'lucide-react'
 
 import type { AnnotationStroke, NormalizedPoint } from '@/lib/studio/object-edit/contracts'
 import type { SelectionState } from '@/lib/studio/object-edit/selection'
 
 export interface StudioObjectEditLauncherProps {
   disabled?: boolean
+  hint?: string
+  overlay?: boolean
+  pressed?: boolean
   onOpen: () => void
 }
 
 export function StudioObjectEditLauncher({
   disabled = false,
+  hint = '1 credit · re-renders',
+  overlay = false,
+  pressed = false,
   onOpen,
 }: StudioObjectEditLauncherProps) {
   return (
     <button
       type="button"
       data-testid="studio-object-edit-launcher"
-      aria-label="Edit image"
+      aria-label="Remove object"
+      aria-pressed={pressed}
       disabled={disabled}
-      className="inline-flex min-h-11 items-center justify-center rounded-md border border-ux-primary bg-white px-3 py-2 text-sm font-semibold text-ux-primary shadow-sm hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50"
+      className={['studio-tool-chip min-h-11', overlay && 'studio-tool-chip-overlay'].filter(Boolean).join(' ')}
       onClick={onOpen}
     >
-      Edit image
+      <span className="studio-tool-chip-label">
+        <Eraser className="h-3.5 w-3.5" aria-hidden strokeWidth={2.25} />
+        Remove
+      </span>
+      <span className="studio-tool-chip-hint">{hint}</span>
     </button>
   )
 }
@@ -30,6 +42,7 @@ export interface StudioObjectEditControlsProps {
   canGenerate: boolean
   busy?: boolean
   creditLabel: string
+  showClose?: boolean
   onUndo: () => void
   onClear: () => void
   onGenerate: () => void
@@ -41,6 +54,7 @@ export function StudioObjectEditControls({
   canGenerate,
   busy = false,
   creditLabel,
+  showClose = true,
   onUndo,
   onClear,
   onGenerate,
@@ -51,7 +65,7 @@ export function StudioObjectEditControls({
     <div className="flex flex-wrap gap-2" data-testid="studio-object-edit-controls">
       <button
         type="button"
-        className="min-h-11 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        className="studio-btn-ghost min-h-11 px-3 py-2 text-sm"
         disabled={busy}
         onClick={onUndo}
       >
@@ -59,7 +73,7 @@ export function StudioObjectEditControls({
       </button>
       <button
         type="button"
-        className="min-h-11 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        className="studio-btn-ghost min-h-11 px-3 py-2 text-sm"
         disabled={busy}
         onClick={onClear}
       >
@@ -67,7 +81,7 @@ export function StudioObjectEditControls({
       </button>
       <button
         type="button"
-        className="min-h-11 rounded-md bg-ux-primary px-3 py-2 text-sm font-bold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+        className="studio-btn-primary min-h-11 px-3 py-2 text-sm disabled:bg-white/10 disabled:text-white/40"
         aria-label={`Remove selected object, ${creditLabel}`}
         disabled={!canGenerate || busy}
         onClick={onGenerate}
@@ -76,21 +90,23 @@ export function StudioObjectEditControls({
       </button>
       <button
         type="button"
-        className="min-h-11 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        className="studio-btn-ghost min-h-11 px-3 py-2 text-sm"
         disabled={busy}
         onClick={onCancel}
       >
         Cancel
       </button>
-      <button
-        type="button"
-        aria-label="Close image editing"
-        className="min-h-11 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={busy}
-        onClick={onClose}
-      >
-        Close
-      </button>
+      {showClose ? (
+        <button
+          type="button"
+          aria-label="Close image editing"
+          className="studio-btn-ghost min-h-11 px-3 py-2 text-sm"
+          disabled={busy}
+          onClick={onClose}
+        >
+          Close
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -109,13 +125,13 @@ export function StudioObjectEditStatus({
   const status = count > 0 ? 'Selection added' : 'Tap or draw over one object.'
 
   return (
-    <div className="space-y-1 text-sm text-gray-700" data-testid="studio-object-edit-status">
+    <div className="space-y-1 text-sm text-white/70" data-testid="studio-object-edit-status">
       <p role="status" aria-live="polite">
         {status} {count > 0 ? `(${count}/8 marks)` : ''}
       </p>
-      {focusGuidance && <p className="text-amber-800">{focusGuidance}</p>}
-      {count >= 8 && <p className="text-amber-800">The maximum number of marks is reached. Use Undo or Clear.</p>}
-      {rejection && <p role="alert" className="text-red-800">{rejection}</p>}
+      {focusGuidance && <p className="text-[#f8bc02]">{focusGuidance}</p>}
+      {count >= 8 && <p className="text-[#f8bc02]">The maximum number of marks is reached. Use Undo or Clear.</p>}
+      {rejection && <p role="alert" className="text-[#ff8a80]">{rejection}</p>}
     </div>
   )
 }
@@ -223,25 +239,38 @@ export function StudioSelectionOverlay({ selection, previewPoints = [] }: Studio
 export interface StudioObjectEditPanelProps extends StudioObjectEditControlsProps {
   selection: SelectionState
   rejection?: string | null
+  overlay?: boolean
+  degradationCallout?: ReactNode
 }
 
 export function StudioObjectEditPanel({
   selection,
   rejection,
+  overlay = false,
+  degradationCallout,
   ...controls
 }: StudioObjectEditPanelProps) {
   return (
     <section
-      aria-label="Edit image"
+      aria-label="Remove object"
       data-testid="studio-object-edit-panel"
-      className="space-y-3 rounded-lg border border-ux-primary/30 bg-teal-50/90 p-3 shadow-sm"
+      className={
+        overlay
+          ? 'studio-tool-dock space-y-2'
+          : 'space-y-3 rounded-[11px] border border-white/[0.1] bg-[#0f1c1f] p-3 shadow-sm'
+      }
     >
-      <div>
-        <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">Edit image</h2>
-        <p className="mt-1 text-sm text-gray-700">Remove one object by tapping or drawing over it.</p>
-      </div>
+      {overlay ? null : (
+        <div>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-white/55">Remove</h2>
+          <p className="mt-1 text-sm text-white/70">
+            Remove one object by tapping or drawing over it. Counts as a generation.
+          </p>
+        </div>
+      )}
       <StudioObjectEditStatus selection={selection} rejection={rejection} />
-      <StudioObjectEditControls {...controls} />
+      {degradationCallout}
+      <StudioObjectEditControls {...controls} showClose={!overlay} />
     </section>
   )
 }

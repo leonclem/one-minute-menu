@@ -31,8 +31,8 @@ export function StudioFinishingTouchesControl({
         disabled={disabled || loading}
         onClick={onRequestStack}
         className={[
-          'w-full rounded-md bg-amber-400 px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm',
-          'hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-400/50',
+          'w-full rounded-[9px] bg-[#f8bc02] px-3 py-1.5 text-sm font-semibold text-[#03272a] shadow-sm',
+          'hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[#f8bc02]/50',
           (disabled || loading) && 'cursor-not-allowed opacity-50',
         ]
           .filter(Boolean)
@@ -40,16 +40,16 @@ export function StudioFinishingTouchesControl({
       >
         {loading ? 'Choosing finishing touches…' : 'Add finishing touches'}
       </button>
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-white/40">
         Stages garnishes for Generate. Does not run until you hit Generate.
       </p>
       {error ? (
-        <p className="text-xs text-rose-600" role="alert">
+        <p className="text-xs text-[#ff8a80]" role="alert">
           {error}
         </p>
       ) : null}
       {stackLoaded && options.length === 0 ? (
-        <p className="text-xs text-gray-500">This dish already looks finished.</p>
+        <p className="text-xs text-white/40">This dish already looks finished.</p>
       ) : null}
       {options.length > 0 ? (
         <div
@@ -67,10 +67,10 @@ export function StudioFinishingTouchesControl({
                 disabled={disabled}
                 onClick={() => onToggle(option.id)}
                 className={[
-                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ux-primary/40',
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-[#01b3bf]/40',
                   selected
-                    ? 'border-ux-primary bg-ux-primary/10 text-gray-900 ring-1 ring-ux-primary'
-                    : 'border-gray-200 bg-white text-gray-800 hover:border-ux-primary/50',
+                    ? 'border-[#01b3bf] bg-[#01b3bf]/15 text-white ring-1 ring-[#01b3bf]'
+                    : 'border-white/[0.16] bg-white/[0.04] text-white/80 hover:border-[#01b3bf]/50',
                   disabled && 'cursor-not-allowed opacity-50',
                 ]
                   .filter(Boolean)
@@ -78,7 +78,7 @@ export function StudioFinishingTouchesControl({
               >
                 <span
                   aria-hidden="true"
-                  className="text-base font-bold leading-none text-ux-primary"
+                  className="text-base font-bold leading-none text-[#5fd3da]"
                 >
                   {selected ? '✓' : '+'}
                 </span>

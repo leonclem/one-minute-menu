@@ -56,6 +56,9 @@ describe('studio-public homepage and footer', () => {
     expect(screen.getByRole('heading', { name: /how ai food photos work/i })).toBeInTheDocument()
     expect(screen.queryByText(/menu subscription/i)).not.toBeInTheDocument()
     expect(document.querySelector('a[href="/demo/sample"]')).toBeNull()
+    expect(screen.getByRole('link', { name: /visit our support page/i })).toHaveAttribute('href', '/support')
+    expect(screen.getByRole('heading', { name: /ready to try photo studio/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /ready to create your restaurant menu/i })).not.toBeInTheDocument()
   })
 
   it('hides the Blog footer link on the studio-public surface', () => {
@@ -70,5 +73,13 @@ describe('studio-public homepage and footer', () => {
     render(<UXFooter />)
 
     expect(screen.getByRole('link', { name: /blog/i })).toHaveAttribute('href', '/blog')
+  })
+
+  it('uses Studio brand chrome on the customer footer', () => {
+    const { container } = render(<UXFooter />)
+    const footer = container.querySelector('footer')
+    expect(footer).toHaveClass('ux-footer')
+    expect(footer).toHaveAttribute('data-brand-chrome', 'studio')
+    expect(footer).not.toHaveAttribute('style')
   })
 })

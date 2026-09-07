@@ -140,7 +140,7 @@ export function AuthOTPForm({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="ux-auth-form space-y-6">
       {isLocalDev && (
         <div className="rounded-lg bg-ux-warning/40 border border-ux-warning/30 p-4">
           <div className="flex">
@@ -160,7 +160,7 @@ export function AuthOTPForm({
       )}
 
       <div className="mb-6">
-        <h3 className="text-xl font-semibold text-ux-text mb-2">
+        <h3 className="mb-2 text-xl font-bold text-ux-text">
           {title}
         </h3>
         <p className="text-sm text-ux-text-secondary">
@@ -180,6 +180,7 @@ export function AuthOTPForm({
           disabled={loading}
           autoComplete="email"
           autoFocus
+          labelClassName="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-white/55"
         />
 
         <UXButton

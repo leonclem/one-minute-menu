@@ -9,6 +9,7 @@ describe('product-mode', () => {
     'NEXT_PUBLIC_ENABLE_LEGACY_MENUS',
     'NEXT_PUBLIC_STUDIO_ADMIN_ONLY',
     'NEXT_PUBLIC_STUDIO_ACCESS_MODE',
+    'NEXT_PUBLIC_STUDIO_ENABLE_PRO',
   ] as const
 
   const originalEnv: Record<string, string | undefined> = {}
@@ -290,6 +291,19 @@ describe('product-mode', () => {
       process.env.NEXT_PUBLIC_STUDIO_ADMIN_ONLY = 'false'
       const { shouldShowStudioNav } = await loadModule()
       expect(shouldShowStudioNav(false)).toBe(true)
+    })
+  })
+
+  describe('isStudioProEnabled', () => {
+    it('defaults to false when unset', async () => {
+      const { isStudioProEnabled } = await loadModule()
+      expect(isStudioProEnabled()).toBe(false)
+    })
+
+    it('returns true only when exactly "true"', async () => {
+      process.env.NEXT_PUBLIC_STUDIO_ENABLE_PRO = 'true'
+      const { isStudioProEnabled } = await loadModule()
+      expect(isStudioProEnabled()).toBe(true)
     })
   })
 })

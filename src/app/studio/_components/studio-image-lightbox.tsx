@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * Full-size image preview for Workbench and export tiles.
- * Opened by StudioExpandablePreview; one dialog style for both surfaces.
+ * Full-size image preview for export tiles.
+ * Workbench expand uses the live canvas overlay instead.
  */
 
 import Image from 'next/image'
@@ -17,9 +17,6 @@ interface StudioImageLightboxProps {
   transparent?: boolean
   onClose: () => void
 }
-
-const CHECKERBOARD =
-  'repeating-conic-gradient(#e5e7eb 0% 25%, #ffffff 0% 50%) 50% / 20px 20px'
 
 export function StudioImageLightbox({
   open,
@@ -52,39 +49,43 @@ export function StudioImageLightbox({
       role="dialog"
       aria-modal="true"
       aria-label={`${title} preview`}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="studio-shell fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-5"
       onClick={onClose}
     >
       <div
-        className="flex max-h-full w-full max-w-4xl flex-col overflow-hidden border border-white/10 bg-white shadow-2xl"
+        className="flex h-[min(96dvh,100%)] w-full max-w-[96rem] flex-col overflow-hidden rounded-[16px] border border-white/10 bg-[#0c1416] shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 border-b bg-neutral-100 px-4 py-3">
-          <div>
-            <h2 className="text-sm font-bold uppercase tracking-wider text-ux-text-secondary">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 px-4 py-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-[11px] font-bold uppercase tracking-[0.08em] text-white/45">
               {title}
             </h2>
-            {subtitle && <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p>}
+            {subtitle && (
+              <p className="mt-0.5 truncate text-sm font-bold text-white">{subtitle}</p>
+            )}
           </div>
           <button
             ref={closeRef}
             type="button"
-            className="rounded-md px-2 py-1 text-sm font-semibold text-gray-600 hover:bg-gray-200"
+            className="studio-btn-ghost shrink-0"
             onClick={onClose}
           >
             Close
           </button>
         </div>
         <div
-          className="flex flex-1 items-center justify-center overflow-auto p-4"
-          style={transparent ? { background: CHECKERBOARD } : undefined}
+          className={[
+            'flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-4',
+            transparent ? 'studio-checkerboard' : '',
+          ].join(' ')}
         >
-          <div className="relative h-[70vh] w-full max-w-full">
+          <div className="relative h-full w-full">
             <Image
               src={imageUrl}
               alt={`${title} preview`}
               fill
-              sizes="(max-width: 1024px) 100vw, 1024px"
+              sizes="100vw"
               className="object-contain"
             />
           </div>

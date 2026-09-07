@@ -44,19 +44,9 @@ export default async function SettingsPage() {
     })
   ) {
     return (
-      <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
-        <div
-          aria-hidden
-          className="absolute inset-0 -z-10"
-          style={{
-            backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.45)), url(/backgrounds/kung-pao-chicken.png)`,
-            backgroundSize: 'cover',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center 30%',
-          }}
-        />
+      <div className="ux-implementation ux-studio-surface relative flex min-h-screen flex-col overflow-x-hidden">
         <UXHeader userEmail={user.email ?? undefined} isAdmin={false} />
-        <main className="container-ux py-10 md:py-12 flex-1">
+        <main className="container-ux flex-1 py-10 md:py-12">
           <PendingApproval email={user.email} />
         </main>
         <UXFooter />
@@ -65,31 +55,16 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
-      {/* Background image + soft overlay */}
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-10"
-        style={{
-          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.45)), url(/backgrounds/kung-pao-chicken.png)`,
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center 30%',
-          backgroundAttachment: 'fixed'
-        }}
-      />
-
+    <div className="ux-implementation ux-studio-surface relative flex min-h-screen flex-col overflow-x-hidden">
       <UXHeader userEmail={user.email ?? undefined} isAdmin={isAdmin} />
 
-      {/* Main Content */}
-      <main className="container-ux w-full py-10 md:py-12 flex-1">
-        <div className="max-w-4xl mx-auto space-y-8">
-          {/* Page Header */}
+      <main className="container-ux w-full flex-1 py-10 md:py-12">
+        <div className="mx-auto max-w-4xl space-y-8">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white tracking-[0.5px] text-hero-shadow leading-tight">
+            <h1 className="text-3xl font-extrabold leading-tight tracking-[-0.03em] text-white md:text-4xl">
               Account Settings
             </h1>
-            <p className="mt-2 text-white/90 text-hero-shadow-strong">
+            <p className="mt-2 text-white/60">
               {showLegacySettings
                 ? 'Manage your currency preferences and account settings'
                 : 'Manage your account and billing'}

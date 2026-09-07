@@ -224,6 +224,24 @@ export async function listExportVariantsForSource(
   return (data ?? []) as StudioExportVariantRecord[]
 }
 
+export async function listExportVariantsForDish(
+  userId: string,
+  dishId: string,
+  client?: ExportDbClient,
+): Promise<StudioExportVariantRecord[]> {
+  const { data, error } = await db(client)
+    .from(TABLE)
+    .select('*')
+    .eq('user_id', userId)
+    .eq('dish_id', dishId)
+
+  if (error) {
+    throw new Error(`Failed to list studio export variants for dish: ${error.message}`)
+  }
+
+  return (data ?? []) as StudioExportVariantRecord[]
+}
+
 export async function getExportVariant(
   userId: string,
   sourceImageId: string,

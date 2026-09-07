@@ -239,20 +239,20 @@ export function StudioFeedbackPanel({
   const headingId = 'studio-feedback-heading'
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div className="studio-shell fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby={headingId}
         data-testid="studio-feedback-panel"
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-ux-border/60 bg-white shadow-2xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[16px] border border-white/10 bg-[#0f1c1f] shadow-2xl"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-ux-border/60 px-5 pb-3 pt-5">
+        <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 pb-3 pt-5">
           <div>
-            <h2 id={headingId} className="text-base font-semibold text-ux-text">
+            <h2 id={headingId} className="text-base font-bold text-white">
               How did this result turn out?
             </h2>
-            <p className="mt-1 text-sm text-ux-text-secondary">
+            <p className="mt-1 text-sm text-white/55">
               Your feedback helps us improve Photo Studio. All fields are optional, but choose at
               least one.
             </p>
@@ -262,7 +262,7 @@ export function StudioFeedbackPanel({
             onClick={() => void dismiss()}
             disabled={isDismissing || isSubmitting}
             aria-label="Dismiss feedback"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ux-text-secondary transition-colors hover:bg-ux-background-secondary hover:text-ux-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#01b3bf]/40 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <svg
               className="h-4 w-4"
@@ -281,14 +281,14 @@ export function StudioFeedbackPanel({
           {error && (
             <div
               role="alert"
-              className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+              className="rounded-[9px] border border-[#ff8a80]/40 bg-[rgba(255,138,128,0.12)] p-3 text-sm text-[#ff8a80]"
             >
               {error}
             </div>
           )}
 
           <fieldset className={error ? 'mt-4' : ''}>
-            <legend className="text-sm font-medium text-ux-text">Rating</legend>
+            <legend className="text-sm font-semibold text-white">Rating</legend>
             <div
               role="radiogroup"
               aria-label="Rate this generated image from 1 to 5"
@@ -307,7 +307,7 @@ export function StudioFeedbackPanel({
                   tabIndex={rating === null ? (value === 1 ? 0 : -1) : rating === value ? 0 : -1}
                   onClick={() => selectRating(value)}
                   onKeyDown={(event) => handleRatingKeyDown(event, value)}
-                  className="flex h-10 w-10 items-center justify-center rounded-md border border-gray-300 text-sm font-semibold text-gray-800 hover:border-ux-primary hover:bg-ux-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary/40 aria-checked:border-ux-primary aria-checked:bg-ux-primary aria-checked:text-white"
+                  className="flex h-10 w-10 min-h-0 min-w-10 items-center justify-center rounded-[9px] border border-white/16 text-sm font-bold text-white/80 hover:border-[#01b3bf] hover:bg-[rgba(1,179,191,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#01b3bf]/40 aria-checked:border-[#01b3bf] aria-checked:bg-[#01b3bf] aria-checked:text-[#0c1416]"
                 >
                   {value}
                 </button>
@@ -316,7 +316,7 @@ export function StudioFeedbackPanel({
           </fieldset>
 
           <fieldset className="mt-4">
-            <legend className="text-sm font-medium text-ux-text">What stood out?</legend>
+            <legend className="text-sm font-semibold text-white">What stood out?</legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {FEEDBACK_REASON_TAGS.map((tag) => {
                 const selected = reasonTags.includes(tag)
@@ -326,7 +326,7 @@ export function StudioFeedbackPanel({
                     type="button"
                     aria-pressed={selected}
                     onClick={() => toggleReason(tag)}
-                    className="rounded-full border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:border-ux-primary hover:bg-ux-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary/40 aria-pressed:border-ux-primary aria-pressed:bg-ux-primary/10 aria-pressed:text-ux-primary"
+                    className="rounded-full border border-white/16 px-3 py-2 text-sm text-white/80 hover:border-[#01b3bf] hover:bg-[rgba(1,179,191,0.09)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#01b3bf]/40 aria-pressed:border-[#01b3bf] aria-pressed:bg-[rgba(1,179,191,0.14)] aria-pressed:text-[#5fd3da]"
                   >
                     {REASON_LABELS[tag]}
                   </button>
@@ -338,9 +338,9 @@ export function StudioFeedbackPanel({
           <div className="mt-4">
             <label
               htmlFor="studio-feedback-comment"
-              className="block text-sm font-medium text-ux-text"
+              className="block text-sm font-semibold text-white"
             >
-              Tell us more <span className="font-normal text-ux-text-secondary">(optional)</span>
+              Tell us more <span className="font-medium text-white/45">(optional)</span>
             </label>
             <textarea
               id="studio-feedback-comment"
@@ -352,25 +352,25 @@ export function StudioFeedbackPanel({
                 setComment(event.target.value)
               }}
               rows={4}
-              className="mt-2 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-ux-primary focus:outline-none focus:ring-2 focus:ring-ux-primary/30"
+              className="mt-2 block w-full rounded-[9px] border border-white/16 bg-black/20 px-3 py-2 text-sm text-[#eef4f4] placeholder:text-white/30 focus:border-[#01b3bf] focus:outline-none focus:ring-2 focus:ring-[#01b3bf]/30"
             />
             <span
               id={counterId}
               role="status"
               aria-live="polite"
-              className="mt-1 block text-right text-xs text-ux-text-secondary"
+              className="mt-1 block text-right text-xs text-white/45"
             >
               {comment.length} of {FEEDBACK_COMMENT_MAX} characters
             </span>
           </div>
 
-          <div className="mt-5 border-t border-ux-border/60 pt-4">
+          <div className="mt-5 border-t border-white/10 pt-4">
             <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => void dismiss()}
                 disabled={isDismissing || isSubmitting}
-                className="rounded-md px-3 py-2 text-sm font-medium text-ux-text-secondary hover:bg-ux-background-secondary hover:text-ux-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-[9px] px-3 py-2 text-sm font-semibold text-white/55 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#01b3bf]/40 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isDismissing ? 'Dismissing…' : 'Dismiss'}
               </button>
@@ -380,7 +380,7 @@ export function StudioFeedbackPanel({
                 disabled={!hasSubmission || isDismissing}
                 aria-describedby={!hasSubmission ? submitReasonId : undefined}
                 aria-busy={isSubmitting}
-                className="rounded-md bg-ux-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ux-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+                className="studio-btn-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? 'Sending…' : 'Send feedback'}
               </button>
@@ -390,7 +390,7 @@ export function StudioFeedbackPanel({
                 id={submitReasonId}
                 role="status"
                 aria-live="polite"
-                className="mt-2 block text-center text-xs text-ux-text-secondary"
+                className="mt-2 block text-center text-xs text-white/45"
               >
                 Choose a rating, reason, or comment to enable submission.
               </span>

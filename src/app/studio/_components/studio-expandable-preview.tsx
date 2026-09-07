@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Shared tap-to-expand preview used by the Workbench and export tiles.
+ * Shared tap-to-expand preview used by export tiles.
  * Hover/focus shows an EXPAND overlay; click opens StudioImageLightbox.
  */
 

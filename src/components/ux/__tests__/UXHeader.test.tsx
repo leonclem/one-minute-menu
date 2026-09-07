@@ -119,4 +119,13 @@ describe('UXHeader', () => {
     expect(screen.queryByRole('link', { name: 'Dashboard' })).not.toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'Sign In' }).length).toBeGreaterThan(0)
   })
+
+  it('uses Studio brand chrome on the customer header', () => {
+    render(<UXHeader />)
+
+    const header = document.querySelector('header')
+    expect(header).toHaveClass('ux-header')
+    expect(header).toHaveAttribute('data-brand-chrome', 'studio')
+    expect(screen.getByText('GridMenu')).toHaveClass('brand-wordmark')
+  })
 })

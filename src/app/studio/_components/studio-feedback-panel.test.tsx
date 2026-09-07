@@ -81,4 +81,11 @@ describe('StudioFeedbackPanel initial values', () => {
     await screen.findByRole('dialog')
     expect(screen.getByRole('button', { name: 'It looks obviously fake' })).toBeVisible()
   })
+
+  it('uses the dark Studio theme', async () => {
+    render(<StudioFeedbackPanel studioImageId={IMAGE_ID} />)
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveClass('bg-[#0f1c1f]')
+    expect(dialog.className).not.toMatch(/\bbg-white\b/)
+  })
 })

@@ -57,7 +57,12 @@ describe('StudioPricingWaitlist', () => {
       <StudioPricingWaitlist initialUser={{ id: 'user-1' }} initialCreditBalance={12} />,
     )
 
-    expect(screen.getByText('Your Studio credits: 12')).toBeInTheDocument()
+    expect(
+      screen.getByText((_, node) => {
+        const text = (node?.textContent ?? '').replace(/\s+/g, ' ').trim()
+        return node?.tagName === 'P' && text === 'Your Studio credits: 12'
+      }),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /open studio/i })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /buy menu pack for menu pack/i })).toBeInTheDocument()
   })
@@ -67,7 +72,12 @@ describe('StudioPricingWaitlist', () => {
       <StudioPricingWaitlist initialUser={{ id: 'user-1' }} initialCreditBalance={1} />,
     )
 
-    expect(screen.getByText('Your Studio credits: 1')).toBeInTheDocument()
+    expect(
+      screen.getByText((_, node) => {
+        const text = (node?.textContent ?? '').replace(/\s+/g, ' ').trim()
+        return node?.tagName === 'P' && text === 'Your Studio credits: 1'
+      }),
+    ).toBeInTheDocument()
   })
 
   it('does not use em dashes in the pricing copy', () => {

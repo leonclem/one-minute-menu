@@ -7,7 +7,7 @@
 
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState, type PointerEvent, type SyntheticEvent } from 'react'
-import { Maximize2, Minus, Plus } from 'lucide-react'
+import { Maximize2, Minimize2, Minus, Plus } from 'lucide-react'
 
 import {
   clampPan,
@@ -33,12 +33,9 @@ import { StudioSelectionOverlay } from './studio-object-edit'
 import { StudioCropOverlay } from './studio-crop'
 import { CROP_UNKNOWN_PIXEL_SIZE, type NormalizedCropRect } from '@/lib/studio/crop'
 
-const CHECKERBOARD =
-  'repeating-conic-gradient(#e5e7eb 0% 25%, #ffffff 0% 50%) 50% / 12px 12px'
-
 /** Overlay controls opt out of the global 44px touch min so the cluster can share one height. */
 const TOOLBAR_CONTROL =
-  'box-border h-11 min-h-11 min-w-11 p-0 leading-none text-gray-700'
+  'box-border h-11 min-h-11 min-w-11 p-0 leading-none text-white/80'
 
 /**
  * Upper bound on transiently tracked pointer samples for one gesture. High
@@ -99,6 +96,7 @@ interface StudioWorkbenchCanvasProps {
   alt?: string
   expandLabel: string
   onExpand: () => void
+  expanded?: boolean
   transparent?: boolean
   selectionMode?: boolean
   selection?: SelectionState
@@ -118,7 +116,7 @@ export function StudioWorkbenchCanvas({
   alt = '',
   expandLabel,
   onExpand,
-  transparent = false,
+  expanded = false,
   selectionMode = false,
   selection,
   naturalSize,
@@ -409,7 +407,7 @@ export function StudioWorkbenchCanvas({
         ref={viewportRef}
         tabIndex={0}
         className={[
-          'absolute inset-0 overflow-hidden outline-none',
+          'studio-checkerboard absolute inset-0 overflow-hidden outline-none',
           selectionMode && !cropMode
             ? 'cursor-crosshair touch-none'
             : cropMode
@@ -418,7 +416,6 @@ export function StudioWorkbenchCanvas({
               ? 'cursor-grab touch-pan-y active:cursor-grabbing'
               : 'cursor-default touch-pan-y',
         ].join(' ')}
-        style={transparent ? { background: CHECKERBOARD } : undefined}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}
@@ -480,17 +477,17 @@ export function StudioWorkbenchCanvas({
         )}
       </div>
       <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex items-center gap-1">
-        <div className="pointer-events-auto flex h-11 overflow-hidden rounded-md border border-black/10 bg-white/95 shadow-sm">
+        <div className="studio-overlay-pill pointer-events-auto flex h-11 overflow-hidden rounded-full">
           <button
             type="button"
-            className={`${TOOLBAR_CONTROL} inline-flex w-8 items-center justify-center hover:bg-gray-100`}
+            className={`${TOOLBAR_CONTROL} inline-flex w-8 items-center justify-center hover:bg-white/[0.06]`}
             aria-label="Zoom out"
             onClick={() => zoomFromCenter(clampZoom(camera.zoom / WORKBENCH_ZOOM_STEP))}
           >
             <Minus className="block h-3.5 w-3.5" aria-hidden="true" strokeWidth={2.25} />
           </button>
           <span
-            className="inline-flex h-11 min-w-[2.75rem] items-center justify-center border-x border-black/10 px-2 text-center text-xs font-semibold leading-none tabular-nums text-gray-700"
+            className="inline-flex h-11 min-w-[2.75rem] items-center justify-center border-x border-white/[0.14] px-2 text-center text-xs font-semibold leading-none tabular-nums text-white/80"
             aria-live="polite"
             aria-label={`Zoom ${zoomLabel}`}
           >
@@ -498,7 +495,7 @@ export function StudioWorkbenchCanvas({
           </span>
           <button
             type="button"
-            className={`${TOOLBAR_CONTROL} inline-flex w-8 items-center justify-center hover:bg-gray-100`}
+            className={`${TOOLBAR_CONTROL} inline-flex w-8 items-center justify-center hover:bg-white/[0.06]`}
             aria-label="Zoom in"
             onClick={() => zoomFromCenter(clampZoom(camera.zoom * WORKBENCH_ZOOM_STEP))}
           >
@@ -507,7 +504,7 @@ export function StudioWorkbenchCanvas({
         </div>
         <button
           type="button"
-          className={`${TOOLBAR_CONTROL} pointer-events-auto inline-flex items-center justify-center rounded-md border border-black/10 bg-white/95 px-2.5 text-xs font-semibold shadow-sm hover:bg-gray-100 disabled:cursor-default disabled:text-gray-400 disabled:hover:bg-white/95`}
+          className={`${TOOLBAR_CONTROL} studio-overlay-pill pointer-events-auto inline-flex items-center justify-center rounded-full px-2.5 text-xs font-semibold`}
           aria-label="Reset zoom"
           title="Reset zoom"
           disabled={atFit}
@@ -517,12 +514,16 @@ export function StudioWorkbenchCanvas({
         </button>
         <button
           type="button"
-          className={`${TOOLBAR_CONTROL} pointer-events-auto inline-flex w-8 items-center justify-center rounded-md border border-black/10 bg-white/95 shadow-sm hover:bg-gray-100`}
+          className={`${TOOLBAR_CONTROL} studio-overlay-pill pointer-events-auto inline-flex w-8 items-center justify-center rounded-full`}
           aria-label={expandLabel}
           title={expandLabel}
           onClick={onExpand}
         >
-          <Maximize2 className="block h-3.5 w-3.5" aria-hidden="true" strokeWidth={2.25} />
+          {expanded ? (
+            <Minimize2 className="block h-3.5 w-3.5" aria-hidden="true" strokeWidth={2.25} />
+          ) : (
+            <Maximize2 className="block h-3.5 w-3.5" aria-hidden="true" strokeWidth={2.25} />
+          )}
         </button>
       </div>
     </div>

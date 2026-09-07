@@ -66,9 +66,11 @@ export interface StudioDishRecord {
   updated_at: string
 }
 
-/** Dish row plus Current preview URL for picker UI. */
+/** Dish row plus Current preview URL and library counts for picker / home grid. */
 export interface StudioDishListItem extends StudioDishRecord {
   current_image_url: string | null
+  shotCount: number
+  readyExportCount: number
 }
 
 export interface StudioImageRecord {
@@ -136,4 +138,10 @@ export interface StudioExportTile {
   available: boolean
   unavailableReason: string | null
   updatedAt: string | null
+}
+
+/** One shot’s export tiles in the dish-level matrix. */
+export interface StudioDishExportShot {
+  imageId: string
+  tiles: StudioExportTile[]
 }

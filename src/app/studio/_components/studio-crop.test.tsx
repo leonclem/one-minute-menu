@@ -9,7 +9,7 @@ describe('StudioCropLauncher', () => {
   it('opens crop mode', () => {
     const onOpen = jest.fn()
     render(<StudioCropLauncher onOpen={onOpen} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Crop image' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reframe image' }))
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 })
@@ -69,6 +69,24 @@ describe('StudioCropPanel', () => {
     )
     fireEvent.click(screen.getByTestId('studio-crop-apply'))
     expect(onApply).toHaveBeenCalledTimes(1)
+  })
+
+  it('compacts into an overlay dock without the stacked heading', () => {
+    render(
+      <StudioCropPanel
+        overlay
+        preset="1:1"
+        natural={natural}
+        crop={{ x: 0.1, y: 0.1, width: 0.8, height: 0.8 }}
+        onPresetChange={jest.fn()}
+        onApply={jest.fn()}
+        onCancel={jest.fn()}
+      />,
+    )
+    expect(screen.getByTestId('studio-crop-panel')).toHaveClass('studio-tool-dock')
+    expect(screen.queryByText(/Drag the photo behind the window/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '1:1' })).toBeInTheDocument()
+    expect(screen.getByTestId('studio-crop-apply')).toBeInTheDocument()
   })
 
   it('enables Apply for a full-frame crop on a large stored photo', () => {

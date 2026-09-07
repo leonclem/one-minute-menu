@@ -143,6 +143,9 @@ jest.mock('@/lib/studio/output-validation', () => ({
   runStudioOutputValidation: (...args: unknown[]) => mockRunValidation(...args),
   validationToMetadata: (value: unknown) => value,
 }))
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() }),
+}))
 
 import { POST as sourcePOST } from '../source/route'
 import { POST as extractPOST } from '../extract/route'

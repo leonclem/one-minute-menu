@@ -5,106 +5,92 @@ import { UXCard } from '@/components/ux'
 import { AuthOTPForm } from '@/components/auth/AuthOTPForm'
 
 interface UXRegisterClientProps {
-  requireAdminApproval: boolean
+  requireAdminApproval?: boolean
 }
 
-export default function UXRegisterClient({ requireAdminApproval }: UXRegisterClientProps) {
+export default function UXRegisterClient({ requireAdminApproval = false }: UXRegisterClientProps) {
   return (
-    <div className="w-full max-w-md mx-auto">
-      {/* Account-approval banner — only when admin approval is required */}
+    <div className="mx-auto w-full max-w-md">
       {requireAdminApproval && (
-        <div className="mb-6 p-6 bg-white/95 backdrop-blur-sm rounded-xl border-2 shadow-lg" style={{ borderColor: '#01B3BF' }}>
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#01B3BF' }}>
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-gray-900 mb-1">Sign up for GridMenu! 🎉</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Your account may need a short review before Studio opens.{' '}
-                <strong className="text-gray-900">Most applications are approved within 24 hours.</strong>
-              </p>
-            </div>
-          </div>
+        <div
+          className="mb-6 rounded-[16px] border p-5"
+          style={{
+            borderColor: 'rgba(1, 179, 191, 0.45)',
+            backgroundColor: 'var(--studio-panel, #0f1c1f)',
+          }}
+        >
+          <h3 className="mb-1 font-bold text-white">Sign up for GridMenu</h3>
+          <p className="text-sm leading-relaxed text-white/65">
+            Your account may need a short review before Studio opens.{' '}
+            <strong className="text-white">Most applications are approved within 24 hours.</strong>
+          </p>
         </div>
       )}
 
-      {/* Registration Form */}
       <UXCard className="mb-8">
-        <div className="p-6">
-          <AuthOTPForm 
-            type="signup"
-            title="Sign up with email"
-            subtitle="We'll send you a secure magic link to get started"
-            buttonText="Send magic link"
-            trackingSource="register_page"
-          />
+        <AuthOTPForm
+          type="signup"
+          title="Sign up with email"
+          subtitle="We'll send you a secure magic link to get started"
+          buttonText="Send magic link"
+          trackingSource="register_page"
+        />
 
-          <div className="mt-8">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-ux-border" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-3 text-ux-text-secondary">
-                  Why magic links?
-                </span>
-              </div>
+        <div className="mt-8">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/10" />
             </div>
-
-            <div className="mt-4 text-sm text-ux-text-secondary">
-              <ul className="space-y-1">
-                <li className="flex items-center">
-                  <svg className="h-4 w-4 text-ux-success mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  No passwords to remember
-                </li>
-                <li className="flex items-center">
-                  <svg className="h-4 w-4 text-ux-success mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  More secure than traditional login
-                </li>
-                <li className="flex items-center">
-                  <svg className="h-4 w-4 text-ux-success mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  Perfect for mobile devices
-                </li>
-                <li className="flex items-center">
-                  <svg className="h-4 w-4 text-ux-success mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  One-click access from your email
-                </li>
-              </ul>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-[var(--studio-panel,#0f1c1f)] px-3 text-white/45">
+                Why magic links?
+              </span>
             </div>
           </div>
+
+          <ul className="mt-4 space-y-2 text-sm text-white/65">
+            {[
+              'No passwords to remember',
+              'More secure than traditional login',
+              'Perfect for mobile devices',
+              'One-click access from your email',
+            ].map((item) => (
+              <li key={item} className="flex items-center">
+                <svg
+                  className="mr-2 h-4 w-4 shrink-0 text-[var(--studio-teal,#01b3bf)]"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
       </UXCard>
 
-      {/* Navigation Links */}
-      <div className="text-center space-y-4">
-        <p className="text-sm text-white text-hero-shadow">
+      <div className="space-y-4 text-center">
+        <p className="text-sm text-white/70">
           Already have an account?{' '}
-          <Link 
-            href="/auth/signin" 
-            className="font-medium text-ux-primary hover:text-ux-primary-dark transition-colors"
+          <Link
+            href="/auth/signin"
+            className="font-semibold text-[var(--studio-link,#5fd3da)] hover:text-[#7fdee4]"
           >
             Sign in
           </Link>
         </p>
 
-        <Link 
-          href="/" 
-          className="inline-flex items-center text-sm rounded-full bg-white/20 border border-white/40 text-white hover:bg-white/30 px-4 py-2 transition-colors"
+        <Link
+          href="/"
+          className="inline-flex items-center rounded-[9px] border border-white/20 px-4 py-2 text-sm text-white transition-colors hover:bg-white/5"
         >
-          <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           Back to Home

@@ -5,13 +5,14 @@ export interface UXInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string
   error?: string
   helperText?: string
+  labelClassName?: string
 }
 
 /**
  * UXInput component with UX implementation styling
  */
 const UXInput = forwardRef<HTMLInputElement, UXInputProps>(
-  ({ className, type = 'text', label, error, helperText, id, ...props }, ref) => {
+  ({ className, type = 'text', label, error, helperText, labelClassName, id, ...props }, ref) => {
     const generatedId = useId()
     const inputId = id || generatedId
     const errorId = `${inputId}-error`
@@ -25,7 +26,7 @@ const UXInput = forwardRef<HTMLInputElement, UXInputProps>(
         {label && (
           <label 
             htmlFor={inputId}
-            className="block text-sm font-medium text-ux-text"
+            className={cn('block text-sm font-medium text-ux-text', labelClassName)}
           >
             {label}
           </label>

@@ -93,4 +93,25 @@ describe('StudioReshootDialog', () => {
 
     expect(screen.getByText(/only way to add a backdrop/i)).toBeInTheDocument()
   })
+
+  it('shows a GEN 3+ callout and still confirms Re-shoot', () => {
+    const onConfirm = jest.fn()
+    render(
+      <StudioReshootDialog
+        open
+        onClose={jest.fn()}
+        onConfirm={onConfirm}
+        baseSchema={baseSchema}
+        extractionDiagnostics={null}
+        lightingOptions={lightingOptions}
+        backdropOptions={backdropOptions}
+        surfaceOptions={surfaceOptions}
+        creditLabel="1 credit"
+        degradationCallout={<div data-testid="studio-degradation-callout">GEN 3 warning</div>}
+      />,
+    )
+    expect(screen.getByTestId('studio-degradation-callout')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Re-shoot/i }))
+    expect(onConfirm).toHaveBeenCalled()
+  })
 })

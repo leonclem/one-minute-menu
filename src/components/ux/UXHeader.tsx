@@ -45,13 +45,13 @@ export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
       ]
 
   return (
-    <header className="ux-header bg-transparent shrink-0">
+    <header className="ux-header shrink-0" data-brand-chrome="studio">
       <div className="container-ux">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <Image src="/logos/logo.svg" alt="GridMenu" width={24} height={24} priority className="logo-drop-shadow" />
-            <span className="font-semibold text-white text-[21px] leading-none text-soft-shadow pl-[2px] pt-[4px]">
+            <span className="brand-wordmark text-[21px] leading-none pl-[2px] pt-[4px]">
               GridMenu
             </span>
           </Link>
@@ -89,7 +89,7 @@ export function UXHeader({ userEmail, isAdmin = false }: UXHeaderProps) {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 rounded-md text-ux-text-secondary hover:text-ux-text hover:bg-ux-background-secondary transition-colors"
+            className="md:hidden p-2 rounded-md text-white/55 hover:text-white hover:bg-white/5 transition-colors"
             aria-label="Toggle menu"
             aria-expanded={isMenuOpen}
           >
