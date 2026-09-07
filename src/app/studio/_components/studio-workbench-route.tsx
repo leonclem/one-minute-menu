@@ -17,7 +17,6 @@ export async function StudioWorkbenchRoute({
     <StudioClient
       reason={data.session.accessReason}
       accessMode={data.session.accessMode}
-      creditBalance={data.session.creditBalance}
       dishes={data.dishes}
       gallery={data.gallery}
       initialActiveDishId={data.dish.id}

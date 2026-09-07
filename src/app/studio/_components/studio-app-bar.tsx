@@ -4,13 +4,15 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
+import { useStudioCredits } from './studio-credits-context'
+
 interface StudioAppBarProps {
-  creditBalance: number | null
   showCredits: boolean
 }
 
-export function StudioAppBar({ creditBalance, showCredits }: StudioAppBarProps) {
+export function StudioAppBar({ showCredits }: StudioAppBarProps) {
   const pathname = usePathname()
+  const { creditBalance } = useStudioCredits()
   const onDishesHome = pathname === '/studio'
 
   return (

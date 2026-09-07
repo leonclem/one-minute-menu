@@ -63,6 +63,7 @@ import type {
 } from '@/lib/studio/types'
 import type { StudioAccessReason } from '@/lib/studio/access/studio-access-decision'
 import { resolveStudioAccessMode, type AccessMode } from '@/lib/studio/access/studio-access-mode'
+import { useStudioCredits } from './studio-credits-context'
 import { StudioStateNotice } from './studio-state-notice'
 import { StudioFeedbackPrompt } from './studio-feedback-prompt'
 import { StudioExportPanel } from './studio-export-panel'
@@ -127,7 +128,6 @@ interface MutateResponse {
 interface StudioClientProps {
   reason?: StudioAccessReason
   accessMode?: AccessMode
-  creditBalance?: number | null
   dishes?: StudioDishRecord[]
   gallery?: StudioImageRecord[]
   /** Legacy aliases retained for existing direct callers. */
@@ -280,7 +280,6 @@ function resolveCurrentImage(
 export function StudioClient({
   reason = 'granted_admin',
   accessMode: providedAccessMode,
-  creditBalance: initialCreditBalance = null,
   dishes: providedDishes,
   gallery: providedGallery,
   initialDishes: legacyDishes,
@@ -382,7 +381,7 @@ export function StudioClient({
   const [finishingLoading, setFinishingLoading] = useState(false)
   const [finishingError, setFinishingError] = useState<string | null>(null)
   const [baselineVersion, setBaselineVersion] = useState(0)
-  const [creditBalance, setCreditBalance] = useState<number | null>(initialCreditBalance)
+  const { creditBalance, setCreditBalance } = useStudioCredits()
   const [creditCostNb2, setCreditCostNb2] = useState(1)
   const [creditCostNbPro, setCreditCostNbPro] = useState(2)
   const [creditsDialogOpen, setCreditsDialogOpen] = useState(false)
