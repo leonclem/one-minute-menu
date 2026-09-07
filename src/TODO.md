@@ -5,20 +5,20 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Magic expand
-- [ ] Degradation pre-notice and warning, e.g. at 3rd-generation variation request
+- [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Remove inverse
-- [ ] Investigate rotation/angle manipulation (best with cut-out perhaps, but still potential risks)
-- [ ] Investigate vessel swapping (pro advised to use reference)
-- [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
+- [ ] Magic expand (parked — no API yet; see docs/STUDIO_PAGE_BUTTONS.md)
+- [ ] Remove inverse (parked — no API yet)
+- [ ] Investigate rotation/angle manipulation (parked — no API yet)
+- [ ] Overhead shot
+- [ ] Investigate vessel swapping (parked — no API yet)
 - [ ] Add "cooking" SVG animation(s) instead of boring "Generating..." (but maintain translucency)
-- [ ] STUDIO_MOBILE_FOCUS_SWITCHER_PROPOSAL.md
+- [ ] STUDIO_MOBILE_FOCUS_SWITCHER_PROPOSAL.md (check if still valid after redesign)
 
 ## UI Review
 - [ ] Create design system with Pinterest / Claude
@@ -44,11 +44,10 @@
 - [ ] Allow the user to choose two variants for comparison (slider?)
 - [ ] Add steam, shimmer, etc. (pro advised to use reference)
 - [ ] See Pinterest "food photography".  Best photos seem to create depth through focus and have some action/drama occurring
-- [ ] Overhead shot
 - [ ] Branching [grid tiles?] structure rather than timeline
 - [ ] Flash-Lite option (a 3rd tier) (1K outputs only)
 - [ ] Image downsizing functionality (in-browser)
-- [ ] If a user likes a certain mutation combo (e.g. studio lighting + yellow backdrop + white tablecloth) -> allow style save (for application to other dishes, e.g. "apply to all").
+- [ ] If a user likes a certain mutation combo (e.g. studio lighting + yellow backdrop + white tablecloth) -> allow style save (for application to other dishes, e.g. "apply to all"). (parked — user-saved Quick Looks)
 - [ ] Custom background (hex) colour
 - [ ] Brand kit
 - [ ] Image options like "denoise", "sharpen", "de-yellow", "re-render at 2K/4K".
@@ -178,6 +177,7 @@
 - [x] Click to draw a circle/oval/eraser to remove element
 - [x] Decorate, e.g. add garnishes, surrounding ingredients, etc.
 - [x] Crop
+- [x] Degradation pre-notice and warning, e.g. at 3rd-generation variation request
 
 ## /onboarding
 - [x] New users get 10 credits by default
