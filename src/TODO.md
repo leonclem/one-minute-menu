@@ -5,24 +5,20 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
+- [ ] UX tidy up
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Magic expand (parked — no API yet; see docs/STUDIO_PAGE_BUTTONS.md)
-- [ ] Remove inverse (parked — no API yet)
-- [ ] Investigate rotation/angle manipulation (parked — no API yet)
 - [ ] Overhead shot
-- [ ] Investigate vessel swapping (parked — no API yet)
+- [ ] Investigate rotation/angle manipulation
+- [ ] Remove inverse
+- [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
+- [ ] Investigate vessel swapping
 - [ ] Add "cooking" SVG animation(s) instead of boring "Generating..." (but maintain translucency)
 - [ ] STUDIO_MOBILE_FOCUS_SWITCHER_PROPOSAL.md (check if still valid after redesign)
-
-## UI Review
-- [ ] Create design system with Pinterest / Claude
-- [ ] Add grid-/tile-inspired images to the home page
 
 ## /pricing
 - [ ] Test production (use 100% off coupon perhaps)
@@ -178,6 +174,7 @@
 - [x] Decorate, e.g. add garnishes, surrounding ingredients, etc.
 - [x] Crop
 - [x] Degradation pre-notice and warning, e.g. at 3rd-generation variation request
+- [x] Magic expand
 
 ## /onboarding
 - [x] New users get 10 credits by default
@@ -187,3 +184,7 @@
 - [x] Update Google Search Console
 - [x] Update Bing Webmaster Tools
 - [x] Keywords still reflect menus
+
+## UI Review
+- [x] Create design system with Pinterest / Claude
+- [x] Add grid-/tile-inspired images to the home page
