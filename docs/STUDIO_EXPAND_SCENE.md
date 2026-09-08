@@ -55,7 +55,7 @@ This is an **enabling** step, not an export format. After expand, the shot is a 
 
 1. Open a shot on the workbench (any variant, including Original).
 2. Open Expand from the third tool chip, next to crop (today’s Reframe) and Remove.
-3. Pick one of **three named amounts** of extra scene, or drag a corner of the frame (snaps to the same three). GridMenu adds space on **all sides**, proportional to width and height, so the photo’s shape does not change.
+3. Pick how much extra scene with the three amount chips. Drag an **edge** to bias one side or a **corner** to bias two; how far you drag snaps to the same three amounts. **All sides** returns to even padding. The frame shape stays the source ratio.
 4. Confirm. Credits and wait behave like **Generate** (a new generated shot, GEN goes up).
 5. The new shot becomes current. Filmstrip / library show it in the lineage. The user continues in Scene as usual.
 
@@ -69,12 +69,20 @@ Suggested preset names (revisable in design):
 
 Do not show percentages, pixel paddings, or “3:4 / 16:9” as the primary choice. Aspect is inherited from the current photo.
 
+Where extra scene goes (same destination size, source aspect). Amount chips set size; handles are drag-only (same as Reframe):
+
+| Control | Extra room | Photo in the frame |
+|---|---|---|
+| Amount chips / **All sides** | Every side | Centred |
+| Left / right / above / below edge | Mostly that side | Hugs the opposite edge |
+| Corner | Those two sides | Hugs the opposite corner |
+
 Optional in the panel: a one-line credit cost (`· N credits`), same pattern as Generate / Remove.
 
 ### What the user does not do in MVP
 
 - Draw a crop window (that remains today’s Reframe / crop).
-- Pick “only left” or “only above” (supported later; not MVP).
+- Change the photo into a different shape (one-edge pad that turns portrait into landscape). Directional expand still keeps the source aspect.
 - Pick a target format (square, story, 16:9). That is **Export**.
 - Type a prompt.
 - Choose feather / restore / model. Those were spike diagnostics only.
@@ -82,7 +90,7 @@ Optional in the panel: a one-line credit cost (`· N credits`), same pattern as 
 ### Result in the product
 
 - New `studio_images` row, `role: generated`, parent = current shot.
-- Title along the lines of `Expanded · Balanced` (exact chip copy is a design choice).
+- Title `Expanded · Balanced` when extra scene is on all sides; `Expanded · Left · Balanced` or `Expanded · Top left · Balanced` when biased.
 - GEN increments. Degradation warning at GEN 3+ still applies if they expand from a late generation.
 - JSON (dish description) is copied from the parent. We do not re-analyse the photo in MVP.
 - Spatial object-edit marks from the parent do not carry over (same as crop: coordinates belong to the old frame).
@@ -117,8 +125,8 @@ Toolbar: **Reframe** (crop), **Expand**, **Remove**. Scene Generate lives in the
 
 - Expand is a **third tool chip** next to crop and Remove.
 - Busy, failure, credits, and mobile chrome **reuse Generate / Remove**.
-- Overlay inverts crop: the photo stays centered; the frame grows around it. **Four corner handles only**. Drag snaps to the same three presets as the chips. No edge handles, no move handle, no free-form percentages.
-- Confirm is `Expand · N credits`. Filmstrip title is `Expanded · Balanced` (etc.). GEN increments.
+- Overlay inverts crop: a white destination frame grows inside a reserved Editorial box so the photo does not jump when amount changes. **Amount chips** set size. **All sides** keeps even padding. **Edge and corner handles are drag-only** (press does nothing), matching Reframe: an edge biases one side, a corner biases two. Drag distance snaps to the three presets. No centre / move handle, no direction-chip row, no free-form percentages.
+- Confirm is `Expand · N credits`. Filmstrip title is `Expanded · Balanced`, or `Expanded · Left · Balanced` / `Expanded · Top left · Balanced` when biased. GEN increments.
 
 ---
 
@@ -140,9 +148,12 @@ The workbench **zoom in/out** on the preview (pinch / buttons) is unrelated. Tha
 ```
 Current shot
     → pad a larger canvas, same aspect (percent of width and of height)
+         `all`: equal pad on every side
+         `left` / `right` / `top` / `bottom`: same canvas size, extra room biased to that side
+         `top_left` / `top_right` / `bottom_left` / `bottom_right`: extra on those two sides
     → Studio Flash image edit
-         prompt: phone zoom-out, camera locked, fill new scene only
-         imageConfig.aspectRatio: nearest Flash ratio to the source
+         prompt: phone zoom-out, camera locked, fill new scene (mostly on the named side when biased)
+         imageConfig.aspectRatio: nearest Flash ratio to the padded canvas
     → save Gemini bytes as the new shot
     → copy parent editor JSON
 ```
@@ -154,7 +165,7 @@ Current shot
 
 Flash only emits a handful of ratios (`1:1`, `4:3`, `3:4`, `16:9`, `9:16`, `4:5`). Odd phone sizes snap to the nearest. Design can ignore that; it should not become a picker.
 
-Later (not MVP): pad only left / only above, by putting the original photo on one side of a larger canvas. Same engine, different layout recipe. Do not put directional handles in the first UI.
+Directional expand is same-aspect: extra FOV on one side or two (a corner), never a one-edge pad that changes ratio. Side layouts still add a little matching pad on the unused axis so the shape holds.
 
 ---
 
@@ -162,7 +173,7 @@ Later (not MVP): pad only left / only above, by putting the original photo on on
 
 - Pixel restore, feathering, or “original photo stamped back”.
 - Target format / delivery / Instagram as part of this control.
-- Subject left / right / up / down.
+- One-edge Magic Expand that changes aspect ratio.
 - Post-expand re-analysis of JSON.
 - Changing export tiles.
 - Sharing a restore compositor with export (restore lost in the spike).
@@ -171,4 +182,4 @@ Downstream Scene edits and export stay as they are. They may need small copy or 
 
 ---
 
-Implementation: `POST /api/studio/expand`. Pad canvas, Flash/Pro mutate with nearest source aspect, persist Gemini bytes, copy parent editor JSON.
+Implementation: `POST /api/studio/expand` with `{ dishId, sourceImageId, preset, layout?, model }`. Omit `layout` to keep even padding (`all`). Pad canvas, Flash/Pro mutate with nearest padded-canvas aspect, persist Gemini bytes, copy parent editor JSON.

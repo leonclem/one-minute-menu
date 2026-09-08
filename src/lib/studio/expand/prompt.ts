@@ -1,4 +1,5 @@
 import type { FlashAspectRatio } from './aspect'
+import { DEFAULT_EXPAND_LAYOUT, type ExpandLayoutId } from './presets'
 
 const PRESERVE = [
   'Widen the field of view as if reducing zoom on a camera phone: same photograph, more of the existing table and backdrop visible, the dish smaller in the frame.',
@@ -10,12 +11,28 @@ const PRESERVE = [
   'Do not add food, props, extra plates, cutlery, glasses, flowers, candles, hands, people, text, logos, or watermarks.',
 ].join(' ')
 
-const ALL_SIDES =
-  'Add the extra scene on every side. Keep the dish in the same place in the frame, just smaller.'
+const DIRECTION: Record<ExpandLayoutId, string> = {
+  all: 'Add the extra scene on every side. Keep the dish in the same place in the frame, just smaller.',
+  left: 'Add extra scene mostly to the left of the dish. Continue a little matching table and backdrop above and below so the frame shape stays the same. Do not add extra scene to the right; the dish stays toward the right of the frame.',
+  right: 'Add extra scene mostly to the right of the dish. Continue a little matching table and backdrop above and below so the frame shape stays the same. Do not add extra scene to the left; the dish stays toward the left of the frame.',
+  top: 'Add extra scene mostly above the dish. Continue a little matching table and backdrop on the left and right so the frame shape stays the same. Do not add extra scene below; the dish stays toward the bottom of the frame.',
+  bottom: 'Add extra scene mostly below the dish. Continue a little matching table and backdrop on the left and right so the frame shape stays the same. Do not add extra scene above; the dish stays toward the top of the frame.',
+  top_left:
+    'Add extra scene mostly above and to the left of the dish. Do not add extra scene below or to the right; the dish stays toward the bottom-right of the frame. Keep the frame shape the same.',
+  top_right:
+    'Add extra scene mostly above and to the right of the dish. Do not add extra scene below or to the left; the dish stays toward the bottom-left of the frame. Keep the frame shape the same.',
+  bottom_left:
+    'Add extra scene mostly below and to the left of the dish. Do not add extra scene above or to the right; the dish stays toward the top-right of the frame. Keep the frame shape the same.',
+  bottom_right:
+    'Add extra scene mostly below and to the right of the dish. Do not add extra scene above or to the left; the dish stays toward the top-left of the frame. Keep the frame shape the same.',
+}
 
-export function buildExpandScenePrompt(aspectRatio?: FlashAspectRatio): string {
+export function buildExpandScenePrompt(
+  aspectRatio?: FlashAspectRatio,
+  layout: ExpandLayoutId = DEFAULT_EXPAND_LAYOUT,
+): string {
   const ratioLine = aspectRatio
     ? ` Emit the result as ${aspectRatio}, matching the source frame.`
     : ''
-  return `${PRESERVE} ${ALL_SIDES}${ratioLine}`
+  return `${PRESERVE} ${DIRECTION[layout]}${ratioLine}`
 }

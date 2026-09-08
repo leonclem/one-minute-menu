@@ -166,6 +166,31 @@ describe('shotTitle', () => {
     expect(
       shotTitle(
         image({
+          id: 'exp-left',
+          role: 'generated',
+          source_image_id: 'og',
+          metadata: { mode: 'expand', expand: { preset: 'balanced', padRatio: 0.2, layout: 'left' } },
+        }),
+        gallery,
+      ),
+    ).toBe('Expanded · Left · Balanced')
+    expect(
+      shotTitle(
+        image({
+          id: 'exp-corner',
+          role: 'generated',
+          source_image_id: 'og',
+          metadata: {
+            mode: 'expand',
+            expand: { preset: 'balanced', padRatio: 0.2, layout: 'top_left' },
+          },
+        }),
+        gallery,
+      ),
+    ).toBe('Expanded · Top left · Balanced')
+    expect(
+      shotTitle(
+        image({
           id: 'rm',
           role: 'generated',
           source_image_id: 'og',

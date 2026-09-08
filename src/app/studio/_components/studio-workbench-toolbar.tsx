@@ -43,7 +43,7 @@ export function StudioWorkbenchToolbar({
         disabled={disabled}
         overlay={overlay}
         pressed={expandOpen}
-        hint={expandOpen ? 'Drag a corner · snap' : `${creditLabel} · zoom out`}
+        hint={expandOpen ? 'Drag a handle · snap' : `${creditLabel} · zoom out`}
         onOpen={onExpand}
       />
       <StudioObjectEditLauncher

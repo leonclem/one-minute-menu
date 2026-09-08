@@ -1,9 +1,10 @@
 /**
- * Transparent all-sides pad for workbench Expand. Directional layouts and
- * pixel restore stay in the spike and are not used here.
+ * Transparent pad for workbench Expand. Directional layouts keep the source
+ * aspect and bias the photo to one side or a corner. Pixel restore stays in the spike.
  */
 
 import sharp from 'sharp'
+import { DEFAULT_EXPAND_LAYOUT, type ExpandLayoutId } from './presets'
 
 const MAX_SOURCE_SIDE = 1600
 
@@ -34,10 +35,17 @@ export type PaddedCanvas = {
 }
 
 /**
- * padRatio of width left/right and of height top/bottom so the canvas keeps
- * the source aspect (phone zoom-out).
+ * Same destination size for every layout: padRatio of width on the horizontal
+ * axis total, padRatio of height on the vertical axis total. `all` splits that
+ * equally; side layouts put the whole extra on one side; corner layouts put
+ * it on two sides so the photo hugs the opposite corner.
  */
-export function paddingPixels(width: number, height: number, padRatio: number): EdgePadding {
+export function paddingPixels(
+  width: number,
+  height: number,
+  padRatio: number,
+  layout: ExpandLayoutId = DEFAULT_EXPAND_LAYOUT,
+): EdgePadding {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) {
     throw new StudioExpandCanvasError('Source dimensions must be positive.', 'EXPAND_INVALID_SOURCE')
   }
@@ -46,7 +54,26 @@ export function paddingPixels(width: number, height: number, padRatio: number): 
   }
   const horizontal = Math.max(1, Math.round(width * padRatio))
   const vertical = Math.max(1, Math.round(height * padRatio))
-  return { top: vertical, right: horizontal, bottom: vertical, left: horizontal }
+  switch (layout) {
+    case 'left':
+      return { top: vertical, right: 0, bottom: vertical, left: 2 * horizontal }
+    case 'right':
+      return { top: vertical, right: 2 * horizontal, bottom: vertical, left: 0 }
+    case 'top':
+      return { top: 2 * vertical, right: horizontal, bottom: 0, left: horizontal }
+    case 'bottom':
+      return { top: 0, right: horizontal, bottom: 2 * vertical, left: horizontal }
+    case 'top_left':
+      return { top: 2 * vertical, right: 0, bottom: 0, left: 2 * horizontal }
+    case 'top_right':
+      return { top: 2 * vertical, right: 2 * horizontal, bottom: 0, left: 0 }
+    case 'bottom_left':
+      return { top: 0, right: 0, bottom: 2 * vertical, left: 2 * horizontal }
+    case 'bottom_right':
+      return { top: 0, right: 2 * horizontal, bottom: 2 * vertical, left: 0 }
+    default:
+      return { top: vertical, right: horizontal, bottom: vertical, left: horizontal }
+  }
 }
 
 export async function prepareExpandSource(sourceBuffer: Buffer): Promise<Buffer> {
@@ -77,7 +104,11 @@ export async function prepareExpandSource(sourceBuffer: Buffer): Promise<Buffer>
   }
 }
 
-export async function padExpandCanvas(sourceBuffer: Buffer, padRatio: number): Promise<PaddedCanvas> {
+export async function padExpandCanvas(
+  sourceBuffer: Buffer,
+  padRatio: number,
+  layout: ExpandLayoutId = DEFAULT_EXPAND_LAYOUT,
+): Promise<PaddedCanvas> {
   const source = await prepareExpandSource(sourceBuffer)
   const meta = await sharp(source).metadata()
   const width = meta.width
@@ -86,7 +117,7 @@ export async function padExpandCanvas(sourceBuffer: Buffer, padRatio: number): P
     throw new StudioExpandCanvasError('Could not read the source image.', 'EXPAND_READ_FAILED')
   }
 
-  const padding = paddingPixels(width, height, padRatio)
+  const padding = paddingPixels(width, height, padRatio, layout)
   const buffer = await sharp(source)
     .extend({
       ...padding,

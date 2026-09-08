@@ -217,8 +217,10 @@ Paid generation. Same dish, wider field of view, same aspect. Persists Gemini’
 | Label                                          | Kind    | When shown    | What it does                                                                 | API                     |
 | ---------------------------------------------- | ------- | ------------- | ---------------------------------------------------------------------------- | ----------------------- |
 | **Expand**                                     | button  | Shot selected | Open expand overlay + panel                                                  | —                       |
-| **A little wider**, **Balanced**, **Editorial** | toggle  | Expand open   | Named extra-scene amounts; drag corners snap to the same three               | —                       |
-| Corner handles                                 | pointer | Expand open   | Grow the frame around a fixed photo; aspect locked                           | —                       |
+| **A little wider**, **Balanced**, **Editorial** | toggle  | Expand open   | Named extra-scene amounts; keep current layout                               | —                       |
+| **All sides**                                  | toggle  | Expand open   | Even padding on every side; photo centred                                    | —                       |
+| Edge handles                                   | pointer | Expand open   | Drag only: extra room on that side; snap amount                              | —                       |
+| Corner handles                                 | pointer | Expand open   | Drag only: extra room on those two sides; photo hugs the opposite corner     | —                       |
 | **Expand · N credits**                         | button  | Expand open   | AI zoom-out; new generated shot; GEN increments                              | `POST /api/studio/expand` |
 | **Cancel**                                     | button  | Expand open   | Close without saving                                                         | —                       |
 

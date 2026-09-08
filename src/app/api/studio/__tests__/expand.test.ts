@@ -264,7 +264,7 @@ describe('POST /api/studio/expand', () => {
     const json = await res.json()
     expect(json.imageId).toBe('expand-1')
     expect(json.credits).toEqual({ cost: 1, balanceAfter: 9 })
-    expect(mockPadExpandCanvas).toHaveBeenCalledWith(expect.any(Buffer), 0.2)
+    expect(mockPadExpandCanvas).toHaveBeenCalledWith(expect.any(Buffer), 0.2, 'all')
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({
         mimeType: 'image/png',
@@ -272,6 +272,7 @@ describe('POST /api/studio/expand', () => {
         aspectRatio: '3:4',
         request_scope: 'studio_foh_mutation',
         sourceImageBase64: Buffer.from('padded').toString('base64'),
+        prompt: expect.stringContaining('Add the extra scene on every side'),
       }),
     )
     expect(mockPersist).toHaveBeenCalledWith(
@@ -283,7 +284,7 @@ describe('POST /api/studio/expand', () => {
         imageBase64: Buffer.from('gemini').toString('base64'),
         metadata: expect.objectContaining({
           mode: 'expand',
-          expand: { preset: 'balanced', padRatio: 0.2 },
+          expand: { preset: 'balanced', padRatio: 0.2, layout: 'all' },
           editorState: parentImage.metadata.editorState,
           extractionDiagnostics: parentImage.metadata.extractionDiagnostics,
           cost_credits: 1,
@@ -295,5 +296,50 @@ describe('POST /api/studio/expand', () => {
     expect(mockDebit).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user-1', cost: 1, studioImageId: 'expand-1' }),
     )
+  })
+
+  it('pads and titles a biased layout', async () => {
+    const res = await POST(makeRequest({ ...validBody, layout: 'left' }))
+    expect(res.status).toBe(200)
+    expect(mockPadExpandCanvas).toHaveBeenCalledWith(expect.any(Buffer), 0.2, 'left')
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: expect.stringContaining('mostly to the left'),
+      }),
+    )
+    expect(mockPersist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          expand: { preset: 'balanced', padRatio: 0.2, layout: 'left' },
+          changeSummary: ['Expanded · Left · Balanced'],
+        }),
+      }),
+    )
+    expect(mockDebit).toHaveBeenCalled()
+  })
+
+  it('pads and titles a corner layout', async () => {
+    const res = await POST(makeRequest({ ...validBody, layout: 'top_left' }))
+    expect(res.status).toBe(200)
+    expect(mockPadExpandCanvas).toHaveBeenCalledWith(expect.any(Buffer), 0.2, 'top_left')
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: expect.stringContaining('mostly above and to the left'),
+      }),
+    )
+    expect(mockPersist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          expand: { preset: 'balanced', padRatio: 0.2, layout: 'top_left' },
+          changeSummary: ['Expanded · Top left · Balanced'],
+        }),
+      }),
+    )
+  })
+
+  it('returns 400 for an unknown layout', async () => {
+    const res = await POST(makeRequest({ ...validBody, layout: 'shortSide' }))
+    expect(res.status).toBe(400)
+    expect(mockMutate).not.toHaveBeenCalled()
   })
 })

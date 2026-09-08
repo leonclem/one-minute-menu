@@ -22,11 +22,13 @@ import {
   mapStudioGenerationError,
 } from '@/lib/studio/generation-request'
 import {
+  EXPAND_LAYOUT_IDS,
   EXPAND_PRESET_IDS,
   buildExpandChildMetadata,
   buildExpandScenePrompt,
   expandPresetDef,
   nearestFlashAspectRatio,
+  parseExpandLayout,
 } from '@/lib/studio/expand'
 import { padExpandCanvas, StudioExpandCanvasError } from '@/lib/studio/expand/canvas'
 import { logger } from '@/lib/logger'
@@ -39,6 +41,7 @@ const ExpandBodyZ = z
     sourceImageId: z.string().min(1),
     dishId: z.string().min(1),
     preset: z.enum(EXPAND_PRESET_IDS),
+    layout: z.enum(EXPAND_LAYOUT_IDS).optional(),
     model: z.string().optional(),
   })
   .strict()
@@ -73,6 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { sourceImageId, dishId, preset, model } = parsed.data
+    const layout = parseExpandLayout(parsed.data.layout)
     failureContext = { userId: auth.user.id, dishId }
 
     const { image: parent } = await loadOwnedDishSource({
@@ -87,9 +91,9 @@ export async function POST(request: NextRequest) {
     const { creditCost, requestedModel } = guard
     const padRatio = expandPresetDef(preset).padRatio
     const loaded = await loadStudioImageBytes(auth.user.id, parent.id)
-    const padded = await padExpandCanvas(Buffer.from(loaded.base64, 'base64'), padRatio)
+    const padded = await padExpandCanvas(Buffer.from(loaded.base64, 'base64'), padRatio, layout)
     const aspectRatio = nearestFlashAspectRatio(padded.width, padded.height)
-    const prompt = buildExpandScenePrompt(aspectRatio)
+    const prompt = buildExpandScenePrompt(aspectRatio, layout)
 
     logger.info('Studio workbench expand requested', {
       userId: auth.user.id,
@@ -97,6 +101,7 @@ export async function POST(request: NextRequest) {
       parentImageId: parent.id,
       preset,
       padRatio,
+      layout,
       aspectRatio,
       creditCost,
     })
@@ -132,6 +137,7 @@ export async function POST(request: NextRequest) {
             parentMetadata: parent.metadata,
             preset,
             padRatio,
+            layout,
           }),
           cost_credits: creditCost,
         },

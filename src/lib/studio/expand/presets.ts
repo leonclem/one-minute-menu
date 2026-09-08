@@ -1,6 +1,6 @@
 /**
- * Named zoom-out amounts for workbench Expand. Users pick a label; the server
- * maps it to padRatio. Drag snaps to the same three steps.
+ * Named zoom-out amounts for workbench Expand. Drag snaps to these three;
+ * the server maps the snap to padRatio.
  */
 
 export const EXPAND_PRESET_IDS = ['a_little', 'balanced', 'editorial'] as const
@@ -25,6 +25,9 @@ export const DEFAULT_EXPAND_PRESET: ExpandPresetId = 'balanced'
 export const EXPAND_HELPER_TEXT =
   'Create more room around your dish without changing the food.'
 
+export const EXPAND_HANDLE_HINT =
+  'Drag a corner or edge to place extra scene. Snaps to three sizes.'
+
 export function isExpandPresetId(value: unknown): value is ExpandPresetId {
   return typeof value === 'string' && (EXPAND_PRESET_IDS as readonly string[]).includes(value)
 }
@@ -44,3 +47,60 @@ export function expandPresetLabel(id: ExpandPresetId): string {
 }
 
 export const EXPAND_MAX_PAD_RATIO = expandPresetDef('editorial').padRatio
+
+export const EXPAND_LAYOUT_IDS = [
+  'all',
+  'left',
+  'right',
+  'top',
+  'bottom',
+  'top_left',
+  'top_right',
+  'bottom_left',
+  'bottom_right',
+] as const
+
+export type ExpandLayoutId = (typeof EXPAND_LAYOUT_IDS)[number]
+
+export type ExpandLayoutDef = {
+  id: ExpandLayoutId
+  label: string
+}
+
+export const EXPAND_LAYOUTS: readonly ExpandLayoutDef[] = [
+  { id: 'all', label: 'All' },
+  { id: 'left', label: 'Left' },
+  { id: 'right', label: 'Right' },
+  { id: 'top', label: 'Above' },
+  { id: 'bottom', label: 'Below' },
+  { id: 'top_left', label: 'Top left' },
+  { id: 'top_right', label: 'Top right' },
+  { id: 'bottom_left', label: 'Bottom left' },
+  { id: 'bottom_right', label: 'Bottom right' },
+]
+
+export const DEFAULT_EXPAND_LAYOUT: ExpandLayoutId = 'all'
+
+export function isExpandLayoutId(value: unknown): value is ExpandLayoutId {
+  return typeof value === 'string' && (EXPAND_LAYOUT_IDS as readonly string[]).includes(value)
+}
+
+export function parseExpandLayout(value: unknown): ExpandLayoutId {
+  return isExpandLayoutId(value) ? value : DEFAULT_EXPAND_LAYOUT
+}
+
+export function expandLayoutDef(id: ExpandLayoutId): ExpandLayoutDef {
+  const found = EXPAND_LAYOUTS.find((item) => item.id === id)
+  if (!found) throw new RangeError(`Unknown expand layout: ${id}`)
+  return found
+}
+
+export function expandLayoutLabel(id: ExpandLayoutId): string {
+  return expandLayoutDef(id).label
+}
+
+export function expandShotTitle(preset: ExpandPresetId, layout: ExpandLayoutId = DEFAULT_EXPAND_LAYOUT): string {
+  const amount = expandPresetLabel(preset)
+  if (layout === 'all') return `Expanded · ${amount}`
+  return `Expanded · ${expandLayoutLabel(layout)} · ${amount}`
+}

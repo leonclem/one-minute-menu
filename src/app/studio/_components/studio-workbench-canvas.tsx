@@ -33,7 +33,7 @@ import { StudioSelectionOverlay } from './studio-object-edit'
 import { StudioCropOverlay } from './studio-crop'
 import { StudioExpandOverlay, expandPhotoFrameStyle } from './studio-expand'
 import { CROP_UNKNOWN_PIXEL_SIZE, type NormalizedCropRect } from '@/lib/studio/crop'
-import { EXPAND_MAX_PAD_RATIO, type ExpandPresetId } from '@/lib/studio/expand'
+import { EXPAND_MAX_PAD_RATIO, expandPresetDef, type ExpandLayoutId, type ExpandPresetId } from '@/lib/studio/expand'
 
 /** Overlay controls opt out of the global 44px touch min so the cluster can share one height. */
 const TOOLBAR_CONTROL =
@@ -113,7 +113,8 @@ interface StudioWorkbenchCanvasProps {
   onCropRectChange?: (rect: NormalizedCropRect) => void
   sceneExpandMode?: boolean
   expandPreset?: ExpandPresetId
-  onExpandPresetChange?: (preset: ExpandPresetId) => void
+  expandLayout?: ExpandLayoutId
+  onExpandGestureChange?: (next: { preset: ExpandPresetId; layout: ExpandLayoutId }) => void
 }
 
 export function StudioWorkbenchCanvas({
@@ -135,7 +136,8 @@ export function StudioWorkbenchCanvas({
   onCropRectChange,
   sceneExpandMode = false,
   expandPreset,
-  onExpandPresetChange,
+  expandLayout,
+  onExpandGestureChange,
 }: StudioWorkbenchCanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ pointerId: number; x: number; y: number; camera: WorkbenchCamera } | null>(
@@ -462,7 +464,10 @@ export function StudioWorkbenchCanvas({
               className="absolute"
               style={
                 sceneExpandMode
-                  ? expandPhotoFrameStyle()
+                  ? expandPhotoFrameStyle(
+                      expandLayout,
+                      expandPreset ? expandPresetDef(expandPreset).padRatio : undefined,
+                    )
                   : { left: 0, top: 0, width: '100%', height: '100%' }
               }
             >
@@ -491,8 +496,11 @@ export function StudioWorkbenchCanvas({
                 onChange={onCropRectChange}
               />
             )}
-            {sceneExpandMode && expandPreset && onExpandPresetChange ? (
-              <StudioExpandOverlay preset={expandPreset} onChange={onExpandPresetChange} />
+            {sceneExpandMode && expandPreset && onExpandGestureChange ? (
+              <StudioExpandOverlay
+                preset={expandPreset}
+                onChange={onExpandGestureChange}
+              />
             ) : null}
           </div>
         ) : (

@@ -6,7 +6,7 @@
  */
 
 import { readChangeSummary } from '@/lib/studio/change-summary'
-import { expandPresetLabel, readExpandPreset } from '@/lib/studio/expand'
+import { expandShotTitle, readExpandLayout, readExpandPreset } from '@/lib/studio/expand'
 import type { StudioImageRecord } from '@/lib/studio/types'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -138,7 +138,8 @@ export function shotTitle(
   }
   if (image.metadata?.mode === 'expand') {
     const preset = readExpandPreset(image.metadata)
-    return preset ? `Expanded · ${expandPresetLabel(preset)}` : 'Expanded'
+    if (!preset) return 'Expanded'
+    return expandShotTitle(preset, readExpandLayout(image.metadata))
   }
   if (image.metadata?.mode === 'reshoot') return 'Re-shot'
   const summary = readChangeSummary(image.metadata)

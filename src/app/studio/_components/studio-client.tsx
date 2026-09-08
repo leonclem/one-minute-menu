@@ -110,7 +110,9 @@ import {
   type NormalizedCropRect,
 } from '@/lib/studio/crop'
 import {
+  DEFAULT_EXPAND_LAYOUT,
   DEFAULT_EXPAND_PRESET,
+  type ExpandLayoutId,
   type ExpandPresetId,
 } from '@/lib/studio/expand'
 
@@ -347,6 +349,7 @@ export function StudioClient({
   const [cropError, setCropError] = useState<string | null>(null)
   const [expandOpen, setExpandOpen] = useState(false)
   const [expandPreset, setExpandPreset] = useState<ExpandPresetId>(DEFAULT_EXPAND_PRESET)
+  const [expandLayout, setExpandLayout] = useState<ExpandLayoutId>(DEFAULT_EXPAND_LAYOUT)
   const [isRefreshingExtract, setIsRefreshingExtract] = useState(false)
   const [refreshExtractError, setRefreshExtractError] = useState<string | null>(null)
   const selectedImageIdRef = useRef<string | null>(null)
@@ -1583,6 +1586,7 @@ export function StudioClient({
     setCropOpen(false)
     setCropError(null)
     setExpandPreset(DEFAULT_EXPAND_PRESET)
+    setExpandLayout(DEFAULT_EXPAND_LAYOUT)
     setExpandOpen(true)
   }, [])
 
@@ -1613,6 +1617,7 @@ export function StudioClient({
           dishId: activeDishId,
           sourceImageId: persistedSourceId,
           preset: expandPreset,
+          layout: expandLayout,
           model: selectedModel,
         }),
       })
@@ -1732,6 +1737,7 @@ export function StudioClient({
     activeDishId,
     applyHydratedState,
     creditBalance,
+    expandLayout,
     expandPreset,
     insufficientCredits,
     persistedSourceId,
@@ -2354,7 +2360,11 @@ export function StudioClient({
                 cropMode={cropOpen}
                 sceneExpandMode={expandOpen}
                 expandPreset={expandPreset}
-                onExpandPresetChange={setExpandPreset}
+                expandLayout={expandLayout}
+                onExpandGestureChange={({ preset, layout }) => {
+                  setExpandPreset(preset)
+                  setExpandLayout(layout)
+                }}
                 cropRect={cropRect}
                 cropPixelAspect={
                   cropStoredSize
@@ -2433,11 +2443,13 @@ export function StudioClient({
           expandOpen ? (
             <StudioExpandPanel
               preset={expandPreset}
+              layout={expandLayout}
               busy={isGenerating}
               overlay={workbenchImageExpanded}
               creditLabel={generateCreditLabel}
               degradationCallout={degradationCallout}
               onPresetChange={setExpandPreset}
+              onLayoutChange={setExpandLayout}
               onApply={() => void handleExpandApply()}
               onCancel={handleExpandCancel}
             />

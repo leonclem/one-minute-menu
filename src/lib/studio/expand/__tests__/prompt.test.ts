@@ -15,4 +15,20 @@ describe('buildExpandScenePrompt', () => {
     expect(prompt).toContain('Add the extra scene on every side')
     expect(prompt).toContain('Emit the result as 3:4')
   })
+
+  it('asks for extra scene mostly on the named side without changing shape', () => {
+    const prompt = buildExpandScenePrompt('3:4', 'left')
+    expect(prompt).toContain('mostly to the left')
+    expect(prompt).toContain('frame shape stays the same')
+    expect(prompt).toContain('Do not add extra scene to the right')
+    expect(prompt).not.toContain('Do not invent scene above, below, or to the right')
+  })
+
+  it('asks for extra scene mostly in a corner without changing shape', () => {
+    const prompt = buildExpandScenePrompt('3:4', 'top_left')
+    expect(prompt).toContain('mostly above and to the left')
+    expect(prompt).toContain('Keep the frame shape the same')
+    expect(prompt).toContain('bottom-right of the frame')
+    expect(prompt).not.toContain('Do not invent scene above, below, or to the right')
+  })
 })

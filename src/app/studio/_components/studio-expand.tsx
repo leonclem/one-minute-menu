@@ -4,17 +4,20 @@ import { useRef, type ReactNode } from 'react'
 import { Expand } from 'lucide-react'
 
 import {
+  DEFAULT_EXPAND_LAYOUT,
   DEFAULT_EXPAND_PRESET,
   EXPAND_CORNER_HANDLES,
+  EXPAND_EDGE_HANDLES,
+  EXPAND_HANDLE_HINT,
   EXPAND_HELPER_TEXT,
   EXPAND_PRESETS,
   expandDestinationInset,
   expandDestinationScale,
-  expandPhotoInset,
-  expandPhotoScale,
+  expandGestureFromPointer,
+  expandPhotoRect,
   expandPresetDef,
-  expandPresetFromPointer,
-  type ExpandCornerHandle,
+  type ExpandHandle,
+  type ExpandLayoutId,
   type ExpandPresetId,
 } from '@/lib/studio/expand'
 
@@ -50,24 +53,39 @@ export function StudioExpandLauncher({
   )
 }
 
+const chipClass = (active: boolean, busy: boolean) =>
+  [
+    'min-h-9 rounded-[7px] border px-2.5 py-1 text-xs font-semibold',
+    active
+      ? 'border-[#01b3bf] bg-[#01b3bf] text-white'
+      : 'border-white/[0.16] bg-transparent text-white/80 hover:border-[#01b3bf]/60',
+    busy && 'cursor-not-allowed opacity-50',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
 export function StudioExpandPanel({
   preset,
+  layout = DEFAULT_EXPAND_LAYOUT,
   busy = false,
   error = null,
   overlay = false,
   creditLabel,
   degradationCallout,
   onPresetChange,
+  onLayoutChange,
   onApply,
   onCancel,
 }: {
   preset: ExpandPresetId
+  layout?: ExpandLayoutId
   busy?: boolean
   error?: string | null
   overlay?: boolean
   creditLabel: string
   degradationCallout?: ReactNode
   onPresetChange: (preset: ExpandPresetId) => void
+  onLayoutChange?: (layout: ExpandLayoutId) => void
   onApply: () => void
   onCancel: () => void
 }) {
@@ -86,28 +104,34 @@ export function StudioExpandPanel({
           <p className="text-xs text-white/55">{EXPAND_HELPER_TEXT}</p>
         </>
       )}
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="How much extra scene">
-        {EXPAND_PRESETS.map((item) => (
+      <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="How much extra scene">
+          {EXPAND_PRESETS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              aria-pressed={preset === item.id}
+              disabled={busy}
+              onClick={() => onPresetChange(item.id)}
+              className={chipClass(preset === item.id, busy)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Even padding">
           <button
-            key={item.id}
             type="button"
-            aria-pressed={preset === item.id}
+            aria-pressed={layout === 'all'}
             disabled={busy}
-            onClick={() => onPresetChange(item.id)}
-            className={[
-              'min-h-9 rounded-[7px] border px-2.5 py-1 text-xs font-semibold',
-              preset === item.id
-                ? 'border-[#01b3bf] bg-[#01b3bf] text-white'
-                : 'border-white/[0.16] bg-transparent text-white/80 hover:border-[#01b3bf]/60',
-              busy && 'cursor-not-allowed opacity-50',
-            ]
-              .filter(Boolean)
-              .join(' ')}
+            onClick={() => onLayoutChange?.('all')}
+            className={chipClass(layout === 'all', busy)}
           >
-            {item.label}
+            All sides
           </button>
-        ))}
+        </div>
       </div>
+      <p className="text-xs text-white/55">{EXPAND_HANDLE_HINT}</p>
       {degradationCallout}
       {error ? (
         <p role="alert" className="text-xs text-[#ff8a80]">
@@ -138,7 +162,7 @@ export function StudioExpandPanel({
   )
 }
 
-function handleStyle(handle: ExpandCornerHandle): string {
+function handleStyle(handle: ExpandHandle): string {
   const common =
     'absolute z-[2] box-border h-3 w-3 min-h-0 min-w-0 p-0 leading-none rounded-sm border-2 border-white bg-ux-primary shadow'
   switch (handle) {
@@ -150,6 +174,14 @@ function handleStyle(handle: ExpandCornerHandle): string {
       return `${common} bottom-0 left-0 -translate-x-1/2 translate-y-1/2 cursor-nesw-resize`
     case 'se':
       return `${common} right-0 bottom-0 translate-x-1/2 translate-y-1/2 cursor-nwse-resize`
+    case 'n':
+      return `${common} left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 cursor-ns-resize`
+    case 's':
+      return `${common} bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 cursor-ns-resize`
+    case 'w':
+      return `${common} left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize`
+    case 'e':
+      return `${common} right-0 top-1/2 translate-x-1/2 -translate-y-1/2 cursor-ew-resize`
   }
 }
 
@@ -169,23 +201,23 @@ export function StudioExpandOverlay({
   onChange,
 }: {
   preset: ExpandPresetId
-  onChange: (preset: ExpandPresetId) => void
+  onChange: (next: { preset: ExpandPresetId; layout: ExpandLayoutId }) => void
 }) {
   const rootRef = useRef<HTMLDivElement>(null)
-  const gestureRef = useRef<{ pointerId: number } | null>(null)
+  const gestureRef = useRef<{ pointerId: number; handle: ExpandHandle } | null>(null)
   const padRatio = expandPresetDef(preset).padRatio
   const inset = expandDestinationInset(padRatio)
   const scale = expandDestinationScale(padRatio)
+  const handles: ExpandHandle[] = [...EXPAND_CORNER_HANDLES, ...EXPAND_EDGE_HANDLES]
 
-  const begin = (event: React.PointerEvent) => {
+  const begin = (event: React.PointerEvent, handle: ExpandHandle) => {
     if (event.pointerType !== 'touch' && event.button !== 0) return
     const bounds = rootRef.current?.getBoundingClientRect()
     if (!bounds) return
     event.preventDefault()
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
-    gestureRef.current = { pointerId: event.pointerId }
-    onChange(expandPresetFromPointer(clientToNormalized(event.clientX, event.clientY, bounds)))
+    gestureRef.current = { pointerId: event.pointerId, handle }
   }
 
   const move = (event: React.PointerEvent) => {
@@ -195,7 +227,12 @@ export function StudioExpandOverlay({
     if (!bounds) return
     event.preventDefault()
     event.stopPropagation()
-    onChange(expandPresetFromPointer(clientToNormalized(event.clientX, event.clientY, bounds)))
+    onChange(
+      expandGestureFromPointer(
+        clientToNormalized(event.clientX, event.clientY, bounds),
+        gesture.handle,
+      ),
+    )
   }
 
   const end = (event: React.PointerEvent) => {
@@ -221,14 +258,14 @@ export function StudioExpandOverlay({
           height: `${scale * 100}%`,
         }}
       >
-        {EXPAND_CORNER_HANDLES.map((handle) => (
+        {handles.map((handle) => (
           <button
             key={handle}
             type="button"
             aria-label={`Resize expand ${handle}`}
             data-expand-handle={handle}
             className={handleStyle(handle)}
-            onPointerDown={begin}
+            onPointerDown={(event) => begin(event, handle)}
           />
         ))}
       </div>
@@ -236,13 +273,15 @@ export function StudioExpandOverlay({
   )
 }
 
-export function expandPhotoFrameStyle(): { left: string; top: string; width: string; height: string } {
-  const inset = expandPhotoInset()
-  const scale = expandPhotoScale()
+export function expandPhotoFrameStyle(
+  layout: ExpandLayoutId = DEFAULT_EXPAND_LAYOUT,
+  padRatio = expandPresetDef(DEFAULT_EXPAND_PRESET).padRatio,
+): { left: string; top: string; width: string; height: string } {
+  const rect = expandPhotoRect(layout, padRatio)
   return {
-    left: `${inset * 100}%`,
-    top: `${inset * 100}%`,
-    width: `${scale * 100}%`,
-    height: `${scale * 100}%`,
+    left: `${rect.x * 100}%`,
+    top: `${rect.y * 100}%`,
+    width: `${rect.width * 100}%`,
+    height: `${rect.height * 100}%`,
   }
 }

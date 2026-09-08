@@ -47,6 +47,26 @@ describe('expand canvas', () => {
     )
   })
 
+  it('keeps source aspect when extra room is biased left', () => {
+    const left = paddingPixels(1080, 1440, 0.2, 'left')
+    expect(left).toEqual({ top: 288, right: 0, bottom: 288, left: 432 })
+    expect((1080 + left.left + left.right) / (1440 + left.top + left.bottom)).toBe(1080 / 1440)
+    expect(paddingPixels(1080, 1440, 0.2, 'right')).toEqual({
+      top: 288,
+      right: 432,
+      bottom: 288,
+      left: 0,
+    })
+  })
+
+  it('keeps source aspect when extra room is biased to a corner', () => {
+    const topLeft = paddingPixels(1080, 1440, 0.2, 'top_left')
+    expect(topLeft).toEqual({ top: 576, right: 0, bottom: 0, left: 432 })
+    expect((1080 + topLeft.left + topLeft.right) / (1440 + topLeft.top + topLeft.bottom)).toBe(
+      1080 / 1440,
+    )
+  })
+
   it('rejects a non-positive pad', () => {
     expect(() => paddingPixels(100, 80, 0)).toThrow(StudioExpandCanvasError)
   })
