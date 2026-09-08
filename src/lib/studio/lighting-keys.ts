@@ -34,18 +34,24 @@ export function isStudioLightingKey(value: string): value is StudioLightingKey {
   return (STUDIO_LIGHTING_KEYS as readonly string[]).includes(value)
 }
 
+/** Own-property lookup so keys like `__proto__` are not inherited from Object. */
+function mappedLegacyLightingKey(value: string): StudioLightingKey | undefined {
+  if (!Object.prototype.hasOwnProperty.call(LEGACY_LIGHTING_KEY_MAP, value)) {
+    return undefined
+  }
+  return LEGACY_LIGHTING_KEY_MAP[value]
+}
+
 export function normalizeLightingKey(value: string | undefined | null): string {
   const trimmed = typeof value === 'string' ? value.trim() : ''
   if (!trimmed) return DEFAULT_STUDIO_LIGHTING_KEY
   if (isStudioLightingKey(trimmed)) return trimmed
-  const mapped = LEGACY_LIGHTING_KEY_MAP[trimmed]
-  if (mapped) return mapped
-  return trimmed
+  return mappedLegacyLightingKey(trimmed) ?? trimmed
 }
 
 export function fohLightingLabel(value: string, fallback?: string): string {
   if (isStudioLightingKey(value)) return LIGHTING_FOH_LABELS[value]
-  const mapped = LEGACY_LIGHTING_KEY_MAP[value]
+  const mapped = mappedLegacyLightingKey(value)
   if (mapped) return LIGHTING_FOH_LABELS[mapped]
   return fallback ?? value
 }

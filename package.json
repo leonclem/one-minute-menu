@@ -28,7 +28,8 @@
     "report:studio-object-edit-traceability": "node scripts/generate-studio-object-edit-traceability-report.js",
     "prewarm:demo-pdf": "node scripts/prewarm-demo-pdf-cache.js",
     "sync:placeholder-images": "node scripts/sync-placeholder-images.js",
-    "test:emails:only": "node scripts/send-test-emails.js --to"
+    "test:emails:only": "node scripts/send-test-emails.js --to",
+    "spike:reframe": "jest --runInBand --testTimeout=360000 --testPathPattern=scripts/studio-reframe-spike"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",

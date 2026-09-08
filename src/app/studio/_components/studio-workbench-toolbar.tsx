@@ -1,25 +1,30 @@
 'use client'
 
 import { StudioCropLauncher } from './studio-crop'
+import { StudioExpandLauncher } from './studio-expand'
 import { StudioObjectEditLauncher } from './studio-object-edit'
 
 interface StudioWorkbenchToolbarProps {
   disabled: boolean
   cropOpen: boolean
+  expandOpen: boolean
   objectEditOpen: boolean
   creditLabel: string
   overlay?: boolean
   onReframe: () => void
+  onExpand: () => void
   onRemove: () => void
 }
 
 export function StudioWorkbenchToolbar({
   disabled,
   cropOpen,
+  expandOpen,
   objectEditOpen,
   creditLabel,
   overlay = false,
   onReframe,
+  onExpand,
   onRemove,
 }: StudioWorkbenchToolbarProps) {
   return (
@@ -33,6 +38,13 @@ export function StudioWorkbenchToolbar({
         pressed={cropOpen}
         hint={cropOpen ? 'Drag the window · free' : 'Free · lossless'}
         onOpen={onReframe}
+      />
+      <StudioExpandLauncher
+        disabled={disabled}
+        overlay={overlay}
+        pressed={expandOpen}
+        hint={expandOpen ? 'Drag a corner · snap' : `${creditLabel} · zoom out`}
+        onOpen={onExpand}
       />
       <StudioObjectEditLauncher
         disabled={disabled}

@@ -19,6 +19,7 @@ interface StudioShotWorkbenchProps {
   notices: ReactNode
   canvas: ReactNode
   cropPanel: ReactNode
+  expandPanel: ReactNode
   removePanel: ReactNode
   scene: ReactNode
   exports: ReactNode
@@ -37,9 +38,11 @@ interface StudioShotWorkbenchProps {
   onNext: () => void
   toolsDisabled: boolean
   cropOpen: boolean
+  expandOpen: boolean
   objectEditOpen: boolean
   creditLabel: string
   onReframe: () => void
+  onExpandScene: () => void
   onRemove: () => void
   expanded?: boolean
   onCloseExpand?: () => void
@@ -52,6 +55,7 @@ export function StudioShotWorkbench({
   notices,
   canvas,
   cropPanel,
+  expandPanel,
   removePanel,
   scene,
   exports,
@@ -70,9 +74,11 @@ export function StudioShotWorkbench({
   onNext,
   toolsDisabled,
   cropOpen,
+  expandOpen,
   objectEditOpen,
   creditLabel,
   onReframe,
+  onExpandScene,
   onRemove,
   expanded = false,
   onCloseExpand,
@@ -189,16 +195,19 @@ export function StudioShotWorkbench({
                       disabled={toolsDisabled}
                       overlay
                       cropOpen={cropOpen}
+                      expandOpen={expandOpen}
                       objectEditOpen={objectEditOpen}
                       creditLabel={creditLabel}
                       onReframe={onReframe}
+                      onExpand={onExpandScene}
                       onRemove={onRemove}
                     />
                   </div>
                 </div>
-                {cropPanel || removePanel ? (
+                {cropPanel || expandPanel || removePanel ? (
                   <StudioWorkbenchDock>
                     {cropPanel}
+                    {expandPanel}
                     {removePanel}
                   </StudioWorkbenchDock>
                 ) : null}
@@ -210,12 +219,15 @@ export function StudioShotWorkbench({
               <StudioWorkbenchToolbar
                 disabled={toolsDisabled}
                 cropOpen={cropOpen}
+                expandOpen={expandOpen}
                 objectEditOpen={objectEditOpen}
                 creditLabel={creditLabel}
                 onReframe={onReframe}
+                onExpand={onExpandScene}
                 onRemove={onRemove}
               />
               {cropPanel}
+              {expandPanel}
               {removePanel}
               <StudioShotFilmstrip
                 images={images}

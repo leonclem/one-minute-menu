@@ -31,7 +31,9 @@ import {
 import type { NormalizedPoint } from '@/lib/studio/object-edit/contracts'
 import { StudioSelectionOverlay } from './studio-object-edit'
 import { StudioCropOverlay } from './studio-crop'
+import { StudioExpandOverlay, expandPhotoFrameStyle } from './studio-expand'
 import { CROP_UNKNOWN_PIXEL_SIZE, type NormalizedCropRect } from '@/lib/studio/crop'
+import { EXPAND_MAX_PAD_RATIO, type ExpandPresetId } from '@/lib/studio/expand'
 
 /** Overlay controls opt out of the global 44px touch min so the cluster can share one height. */
 const TOOLBAR_CONTROL =
@@ -109,6 +111,9 @@ interface StudioWorkbenchCanvasProps {
   cropPixelAspect?: number | null
   cropNaturalSize?: NaturalImageSize | null
   onCropRectChange?: (rect: NormalizedCropRect) => void
+  sceneExpandMode?: boolean
+  expandPreset?: ExpandPresetId
+  onExpandPresetChange?: (preset: ExpandPresetId) => void
 }
 
 export function StudioWorkbenchCanvas({
@@ -128,6 +133,9 @@ export function StudioWorkbenchCanvas({
   cropPixelAspect = null,
   cropNaturalSize = null,
   onCropRectChange,
+  sceneExpandMode = false,
+  expandPreset,
+  onExpandPresetChange,
 }: StudioWorkbenchCanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ pointerId: number; x: number; y: number; camera: WorkbenchCamera } | null>(
@@ -154,15 +162,21 @@ export function StudioWorkbenchCanvas({
     setCamera(next)
   }, [])
 
+  const fitImageWidth = sceneExpandMode
+    ? imageSize.width * (1 + 2 * EXPAND_MAX_PAD_RATIO)
+    : imageSize.width
+  const fitImageHeight = sceneExpandMode
+    ? imageSize.height * (1 + 2 * EXPAND_MAX_PAD_RATIO)
+    : imageSize.height
   const fitScale = computeFitScale(
-    imageSize.width,
-    imageSize.height,
+    fitImageWidth,
+    fitImageHeight,
     viewportSize.width,
     viewportSize.height,
   )
   layoutRef.current = {
-    imageWidth: imageSize.width,
-    imageHeight: imageSize.height,
+    imageWidth: fitImageWidth,
+    imageHeight: fitImageHeight,
     viewportWidth: viewportSize.width,
     viewportHeight: viewportSize.height,
     fitScale,
@@ -177,6 +191,10 @@ export function StudioWorkbenchCanvas({
     touchPointersRef.current.clear()
     pinchRef.current = false
   }, [src])
+
+  useEffect(() => {
+    if (sceneExpandMode) commitCamera(WORKBENCH_FIT_CAMERA)
+  }, [commitCamera, sceneExpandMode])
 
   const handleImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
     const { naturalHeight: height, naturalWidth: width } = event.currentTarget
@@ -213,6 +231,7 @@ export function StudioWorkbenchCanvas({
     const onWheel = (event: WheelEvent) => {
       const layout = layoutRef.current
       if (layout.imageWidth <= 0) return
+      if (cropMode || sceneExpandMode) return
       event.preventDefault()
       const rect = el.getBoundingClientRect()
       const factor = event.deltaY > 0 ? 1 / WORKBENCH_ZOOM_STEP : WORKBENCH_ZOOM_STEP
@@ -232,14 +251,14 @@ export function StudioWorkbenchCanvas({
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [commitCamera])
+  }, [commitCamera, cropMode, sceneExpandMode])
 
   const box =
     imageSize.width > 0 && viewportSize.width > 0
       ? imageBox(
           camera,
-          imageSize.width,
-          imageSize.height,
+          fitImageWidth,
+          fitImageHeight,
           viewportSize.width,
           viewportSize.height,
           fitScale,
@@ -247,15 +266,15 @@ export function StudioWorkbenchCanvas({
       : null
 
   const applyZoom = (nextZoom: number, pointX: number, pointY: number) => {
-    if (imageSize.width <= 0) return
+    if (imageSize.width <= 0 || cropMode || sceneExpandMode) return
     commitCamera(
       zoomAroundPoint(
         cameraRef.current,
         nextZoom,
         pointX,
         pointY,
-        imageSize.width,
-        imageSize.height,
+        fitImageWidth,
+        fitImageHeight,
         viewportSize.width,
         viewportSize.height,
         fitScale,
@@ -289,7 +308,7 @@ export function StudioWorkbenchCanvas({
 
     if (pinchRef.current) return
 
-    if (cropMode) {
+    if (cropMode || sceneExpandMode) {
       return
     }
 
@@ -347,8 +366,8 @@ export function StudioWorkbenchCanvas({
       ...clampPan(
         drag.camera.panX + (event.clientX - drag.x),
         drag.camera.panY + (event.clientY - drag.y),
-        imageSize.width,
-        imageSize.height,
+        fitImageWidth,
+        fitImageHeight,
         viewportSize.width,
         viewportSize.height,
         scale,
@@ -408,9 +427,9 @@ export function StudioWorkbenchCanvas({
         tabIndex={0}
         className={[
           'studio-checkerboard absolute inset-0 overflow-hidden outline-none',
-          selectionMode && !cropMode
+          selectionMode && !cropMode && !sceneExpandMode
             ? 'cursor-crosshair touch-none'
-            : cropMode
+            : cropMode || sceneExpandMode
               ? 'cursor-default touch-none'
               : camera.zoom > 1
               ? 'cursor-grab touch-pan-y active:cursor-grabbing'
@@ -439,16 +458,25 @@ export function StudioWorkbenchCanvas({
             className="absolute"
             style={{ left: box.left, top: box.top, width: box.width, height: box.height }}
           >
-            <Image
-              src={src}
-              alt={alt}
-              fill
-              draggable={false}
-              sizes="(max-width: 1024px) 100vw, 1024px"
-              className="select-none object-contain"
-              onLoad={handleImageLoad}
-            />
-            {selectionMode && !cropMode && selection && (
+            <div
+              className="absolute"
+              style={
+                sceneExpandMode
+                  ? expandPhotoFrameStyle()
+                  : { left: 0, top: 0, width: '100%', height: '100%' }
+              }
+            >
+              <Image
+                src={src}
+                alt={alt}
+                fill
+                draggable={false}
+                sizes="(max-width: 1024px) 100vw, 1024px"
+                className="select-none object-contain"
+                onLoad={handleImageLoad}
+              />
+            </div>
+            {selectionMode && !cropMode && !sceneExpandMode && selection && (
               <StudioSelectionOverlay selection={selection} previewPoints={selectionPreview} />
             )}
             {cropMode && cropRect && onCropRectChange && (
@@ -463,6 +491,9 @@ export function StudioWorkbenchCanvas({
                 onChange={onCropRectChange}
               />
             )}
+            {sceneExpandMode && expandPreset && onExpandPresetChange ? (
+              <StudioExpandOverlay preset={expandPreset} onChange={onExpandPresetChange} />
+            ) : null}
           </div>
         ) : (
           <Image

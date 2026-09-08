@@ -25,4 +25,11 @@ describe('lighting-keys', () => {
     expect(fohLightingLabel('studio')).toBe('Bright & Clean')
     expect(fohLightingLabel('low-key')).toBe('Dark & Moody')
   })
+
+  it('passes through prototype-polluting keys as ordinary strings', () => {
+    expect(normalizeLightingKey('__proto__')).toBe('__proto__')
+    expect(normalizeLightingKey('constructor')).toBe('constructor')
+    expect(fohLightingLabel('__proto__')).toBe('__proto__')
+    expect(fohLightingLabel('constructor', 'Custom')).toBe('Custom')
+  })
 })

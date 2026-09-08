@@ -64,3 +64,6 @@ supabase/.temp/
 
 # Stripe
 stripe.exe
+
+# Isolated Reframe spike outputs (prompts + generated images)
+scripts/studio-reframe-spike/artifacts/

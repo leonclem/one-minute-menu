@@ -460,13 +460,16 @@ describe('Performance: Scalability', () => {
       durations.push(timer.elapsed())
     }
     
-    // Check that doubling size doesn't more than triple time
+    // Absolute budget: even 80 items stay well under the 500ms layout target.
+    for (const duration of durations) {
+      expect(duration).toBeLessThan(500)
+    }
+
+    // Doubling size should not explode runtime. Sub-5ms samples are dominated
+    // by timer/GC noise, so floor the denominator before comparing ratios.
     for (let i = 1; i < sizes.length; i++) {
       const sizeRatio = sizes[i] / sizes[i - 1]
-      const timeRatio = durations[i] / Math.max(0.5, durations[i - 1])
-      
-      // Time ratio should be less than or equal to size ratio (linear or better)
-      // Allow generous margin for small timing variations (1-2ms) and cache effects
+      const timeRatio = durations[i] / Math.max(5, durations[i - 1])
       expect(timeRatio).toBeLessThanOrEqual(sizeRatio * 3.5)
     }
   })

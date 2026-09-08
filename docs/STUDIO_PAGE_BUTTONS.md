@@ -24,7 +24,7 @@ disabled, pending invite) are listed at the end.
 | **What it does** | Client behaviour                                                             |
 | **API**          | HTTP calls this click starts. `—` means local UI only                        |
 
-Credit costs for Generate / Re-shoot / Remove come from `GET /api/studio/credits`
+Credit costs for Generate / Re-shoot / Remove / Expand come from `GET /api/studio/credits`
 (`nb2` vs `nbPro`) and are shown as `· N credits` on the primary action.
 
 ---
@@ -45,7 +45,7 @@ StudioAppBar (GridMenu, All dishes, credits, Settings, Sign out)
 Studio footer (Privacy, Terms, Support)
 ```
 
-Tool modes (Reframe / Remove) stay client state. They are not URL params.
+Tool modes (Reframe / Expand / Remove) stay client state. They are not URL params.
 
 **Same shot list** in the workbench filmstrip (chronological), library grid, and
 library tree (lineage via `source_image_id`).
@@ -176,7 +176,7 @@ as the per-shot panel.
 ## 4. Workbench (`/studio/[dishId]/[imageId]`)
 
 Canvas + filmstrip (full dish shot list). Right column: Scene or Exports.
-Tool bar: **Reframe** and **Remove** only.
+Tool bar: **Reframe**, **Expand**, and **Remove**.
 
 ### Workbench chrome
 
@@ -207,6 +207,20 @@ Deterministic / free. Copy stays lossless, not a re-render.
 | **Apply reframe**                                                              | button           | Reframe open   | Deterministic crop; **does not use credits**; new shot, same GEN    | `POST /api/studio/crop`; then quiet `POST /api/studio/extract`                           |
 | **Cancel**                                                                     | button           | Reframe open   | Close without saving                                                | —                                                                                        |
 | Resize handles                                                                 | pointer          | Reframe open   | Drag crop window                                                    | —                                                                                        |
+
+
+### Tools — Expand (scene zoom-out)
+
+Paid generation. Same dish, wider field of view, same aspect. Persists Gemini’s image.
+
+
+| Label                                          | Kind    | When shown    | What it does                                                                 | API                     |
+| ---------------------------------------------- | ------- | ------------- | ---------------------------------------------------------------------------- | ----------------------- |
+| **Expand**                                     | button  | Shot selected | Open expand overlay + panel                                                  | —                       |
+| **A little wider**, **Balanced**, **Editorial** | toggle  | Expand open   | Named extra-scene amounts; drag corners snap to the same three               | —                       |
+| Corner handles                                 | pointer | Expand open   | Grow the frame around a fixed photo; aspect locked                           | —                       |
+| **Expand · N credits**                         | button  | Expand open   | AI zoom-out; new generated shot; GEN increments                              | `POST /api/studio/expand` |
+| **Cancel**                                     | button  | Expand open   | Close without saving                                                         | —                       |
 
 
 ### Tools — Remove (today’s object-edit)
@@ -266,7 +280,7 @@ Colour Pop = Bold Sunlight + Dark Stone + Mustard Yellow.
 
 ### Degradation warning (GEN 3+)
 
-When Generate / Remove / Re-shoot would produce **GEN 3+** on the current
+When Generate / Remove / Re-shoot / Expand would produce **GEN 3+** on the current
 branch, a gold callout appears. Copy gets stronger at 4 and 5+. **No hard stop.**
 
 
@@ -398,7 +412,6 @@ API for them yet. Do not add toolbar or Scene entries until an API exists.
 
 | Tool                    | Notes                                                                 |
 | ----------------------- | --------------------------------------------------------------------- |
-| Magic expand            | Outpaint / canvas expand. Not on Reframe or Scene.                    |
 | Change angle            | Camera/orbit. Hidden from toolbar and Scene.                          |
 | Swap vessel             | Plate/bowl swap. Hidden from toolbar and Scene.                       |
 | Remove inverse          | Keep-only / inverse of whole-frame Remove.                            |

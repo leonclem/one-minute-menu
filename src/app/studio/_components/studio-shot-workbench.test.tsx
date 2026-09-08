@@ -52,20 +52,24 @@ const lightingOptions: StudioVisualOption<string>[] = [
 ]
 
 describe('StudioWorkbenchToolbar', () => {
-  it('shows Reframe and Remove only', () => {
+  it('shows Reframe, Expand, and Remove', () => {
     render(
       <StudioWorkbenchToolbar
         disabled={false}
         cropOpen={false}
+        expandOpen={false}
         objectEditOpen={false}
         creditLabel="1 credit"
         onReframe={jest.fn()}
+        onExpand={jest.fn()}
         onRemove={jest.fn()}
       />,
     )
     expect(screen.getByRole('button', { name: 'Reframe image' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Expand scene' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove object' })).toBeInTheDocument()
     expect(screen.getByText('Free · lossless')).toBeInTheDocument()
+    expect(screen.getByText('1 credit · zoom out')).toBeInTheDocument()
     expect(screen.getByText('1 credit · re-renders')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Crop image' })).not.toBeInTheDocument()
     expect(screen.queryByText(/angle/i)).not.toBeInTheDocument()
@@ -77,9 +81,11 @@ describe('StudioWorkbenchToolbar', () => {
         disabled={false}
         overlay
         cropOpen
+        expandOpen={false}
         objectEditOpen={false}
         creditLabel="1 credit"
         onReframe={jest.fn()}
+        onExpand={jest.fn()}
         onRemove={jest.fn()}
       />,
     )
@@ -122,6 +128,7 @@ describe('StudioShotWorkbench', () => {
     notices: null,
     canvas: <div>canvas</div>,
     cropPanel: null,
+    expandPanel: null,
     removePanel: null,
     scene: <div>scene body</div>,
     exports: <div>exports body</div>,
@@ -135,9 +142,11 @@ describe('StudioShotWorkbench', () => {
     onNext: jest.fn(),
     toolsDisabled: false,
     cropOpen: false,
+    expandOpen: false,
     objectEditOpen: false,
     creditLabel: '1 credit',
     onReframe: jest.fn(),
+    onExpandScene: jest.fn(),
     onRemove: jest.fn(),
     sceneCount: 0,
     exportsCount: 3,
@@ -232,6 +241,7 @@ describe('StudioShotWorkbench', () => {
     expect(screen.getByRole('button', { name: 'Move panel' })).toBeInTheDocument()
     expect(screen.queryByTestId('studio-gallery')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Reframe image' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Expand scene' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove object' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onCloseExpand).toHaveBeenCalled()

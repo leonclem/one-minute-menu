@@ -97,7 +97,7 @@ export interface GenerationCompletedPayloadInput {
   /** Use the already-computed debit when available; otherwise derive it. */
   cost?: number
   /** Coarse funnel context; never include provider-specific identifiers. */
-  generationKind?: 'standard' | 'object_edit' | 'finishing_touches'
+  generationKind?: 'standard' | 'object_edit' | 'finishing_touches' | 'expand'
   editOperation?: 'remove'
   countBucket?: string
 }

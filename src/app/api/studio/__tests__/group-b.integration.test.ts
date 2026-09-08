@@ -151,6 +151,7 @@ import { POST as sourcePOST } from '../source/route'
 import { POST as extractPOST } from '../extract/route'
 import { POST as mutatePOST } from '../mutate/route'
 import { StudioClient } from '@/app/studio/_components/studio-client'
+import { StudioCreditsProvider } from '@/app/studio/_components/studio-credits-context'
 import { resolveLightingStyle } from '@/lib/studio/reference-libraries'
 import { MutationEngine, type StyleReferenceImage } from '@/lib/photo-control/mutation-engine'
 import { buildSceneDescriptor } from '@/lib/photo-control/scene-descriptor'
@@ -515,17 +516,23 @@ describe('Task 19.10 — migration compatibility and Tier 1 preservation', () =>
       'utf8',
     )
     expect(customerPageSource).not.toContain('validation-indicator')
-    const markup = renderToStaticMarkup(React.createElement(StudioClient, {
-      initialDishes: [{
-        id: 'dish-1', user_id: 'customer-1', name: 'Dish', description: null,
-        current_image_id: null, generation_failure_count: 0,
-        generation_blocked_at: null, generation_blocked_reason: null,
-        created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
-      }],
-      initialActiveDishId: 'dish-1',
-      initialGallery: [],
-      isAdmin: false,
-    }))
+    const markup = renderToStaticMarkup(
+      React.createElement(
+        StudioCreditsProvider,
+        { initialBalance: 0 },
+        React.createElement(StudioClient, {
+          initialDishes: [{
+            id: 'dish-1', user_id: 'customer-1', name: 'Dish', description: null,
+            current_image_id: null, generation_failure_count: 0,
+            generation_blocked_at: null, generation_blocked_reason: null,
+            created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
+          }],
+          initialActiveDishId: 'dish-1',
+          initialGallery: [],
+          isAdmin: false,
+        }),
+      ),
+    )
     expect(markup).not.toContain('validation-indicator')
     expect(markup).not.toContain('Validation:')
   })

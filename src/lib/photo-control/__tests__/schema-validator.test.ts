@@ -186,6 +186,23 @@ describe('MinimalSchemaValidator — result shape (Req 3.8)', () => {
     expect(result.data.scene_setup.lighting).toBe('soft-natural-window')
   })
 
+  it('keeps prototype-polluting lighting keys as hydratable strings', () => {
+    const result = validateMinimalSchema({
+      scene_setup: {
+        angle: '45-degree',
+        framing: 'close-up',
+        lighting: '__proto__',
+        spin: '0',
+      },
+      canvas: { background: 'table', main_vessel: 'plate' },
+      food_components: { main_item: 'salad', garnishes: [], sides: [] },
+    })
+
+    expect(typeof result.data.scene_setup.lighting).toBe('string')
+    expect(result.data.scene_setup.lighting).toBe('__proto__')
+    expect(MinimalSchemaZ.safeParse(result.data).success).toBe(true)
+  })
+
   it('accepts arbitrary surface style keys without failing strictConformance', () => {
     const result = validateMinimalSchema({
       scene_setup: {

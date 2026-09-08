@@ -6,6 +6,7 @@
  */
 
 import { readChangeSummary } from '@/lib/studio/change-summary'
+import { expandPresetLabel, readExpandPreset } from '@/lib/studio/expand'
 import type { StudioImageRecord } from '@/lib/studio/types'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -134,6 +135,10 @@ export function shotTitle(
   if (isLosslessShot(image)) {
     const aspect = cropAspectLabel(image.metadata)
     return aspect ? `Cropped ${aspect}` : 'Cropped'
+  }
+  if (image.metadata?.mode === 'expand') {
+    const preset = readExpandPreset(image.metadata)
+    return preset ? `Expanded · ${expandPresetLabel(preset)}` : 'Expanded'
   }
   if (image.metadata?.mode === 'reshoot') return 'Re-shot'
   const summary = readChangeSummary(image.metadata)

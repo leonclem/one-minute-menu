@@ -54,6 +54,13 @@ const mustard = image({
   created_at: '2026-08-15T02:00:00.000Z',
   metadata: { changeSummary: ['Background → Mustard Yellow'] },
 })
+const expanded = image({
+  id: 'exp',
+  role: 'generated',
+  source_image_id: 'v2',
+  created_at: '2026-08-15T02:30:00.000Z',
+  metadata: { mode: 'expand', expand: { preset: 'balanced', padRatio: 0.2 } },
+})
 const cropped = image({
   id: 'crop',
   role: 'generated',
@@ -81,7 +88,7 @@ const goldenHour = image({
   metadata: { changeSummary: ['Lighting → Golden Hour'] },
 })
 
-const gallery = [original, lighting, mustard, cropped, afterCrop, uploadTwo, goldenHour]
+const gallery = [original, lighting, mustard, expanded, cropped, afterCrop, uploadTwo, goldenHour]
 
 describe('source roots', () => {
   it('labels the first upload Original and later uploads Upload N', () => {
@@ -108,6 +115,7 @@ describe('generativeDepth', () => {
     expect(generativeDepth(original, gallery)).toBe(0)
     expect(generativeDepth(lighting, gallery)).toBe(1)
     expect(generativeDepth(mustard, gallery)).toBe(2)
+    expect(generativeDepth(expanded, gallery)).toBe(3)
     expect(generativeDepth(cropped, gallery)).toBe(2)
     expect(generativeDepth(afterCrop, gallery)).toBe(3)
     expect(generativeDepth(goldenHour, gallery)).toBe(1)
@@ -154,6 +162,7 @@ describe('shotTitle', () => {
     expect(shotTitle(uploadTwo, gallery)).toBe('Upload 2')
     expect(shotTitle(lighting, gallery)).toBe('Lighting → Bright & Clean')
     expect(shotTitle(cropped, gallery)).toBe('Cropped 4:5')
+    expect(shotTitle(expanded, gallery)).toBe('Expanded · Balanced')
     expect(
       shotTitle(
         image({

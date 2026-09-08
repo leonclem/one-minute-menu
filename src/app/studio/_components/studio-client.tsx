@@ -79,6 +79,7 @@ import {
   StudioCropPanel,
   StudioLowResNotice,
 } from './studio-crop'
+import { StudioExpandPanel } from './studio-expand'
 import { neighboringShots, shotShortLabel, shotTitle } from '@/lib/studio/lineage'
 import { degradationWarningForShot } from '@/lib/studio/degradation'
 import { formatExportCreditLabel } from '@/lib/studio/export-presets'
@@ -108,6 +109,10 @@ import {
   type CropAspectPreset,
   type NormalizedCropRect,
 } from '@/lib/studio/crop'
+import {
+  DEFAULT_EXPAND_PRESET,
+  type ExpandPresetId,
+} from '@/lib/studio/expand'
 
 type ExtractResponse = MinimalValidationResult & {
   diagnostics?: ExtractionDiagnostics
@@ -340,6 +345,8 @@ export function StudioClient({
   const [cropRect, setCropRect] = useState<NormalizedCropRect | null>(null)
   const [isCropping, setIsCropping] = useState(false)
   const [cropError, setCropError] = useState<string | null>(null)
+  const [expandOpen, setExpandOpen] = useState(false)
+  const [expandPreset, setExpandPreset] = useState<ExpandPresetId>(DEFAULT_EXPAND_PRESET)
   const [isRefreshingExtract, setIsRefreshingExtract] = useState(false)
   const [refreshExtractError, setRefreshExtractError] = useState<string | null>(null)
   const selectedImageIdRef = useRef<string | null>(null)
@@ -736,6 +743,7 @@ export function StudioClient({
       setObjectEditRejection(null)
       setCropOpen(false)
       setCropError(null)
+      setExpandOpen(false)
       resetFinishingTouches()
       setSelectedImageId(image.id)
       setLibraryBusy(true)
@@ -1423,6 +1431,7 @@ export function StudioClient({
 
   const handleObjectEditOpen = useCallback(() => {
     setCropOpen(false)
+    setExpandOpen(false)
     dispatchObjectEdit({ type: 'OPERATION_CHANGED', operation: 'remove' })
     setObjectEditRejection(null)
     setObjectEditOpen(true)
@@ -1462,6 +1471,7 @@ export function StudioClient({
 
   const handleCropOpen = useCallback(() => {
     setObjectEditOpen(false)
+    setExpandOpen(false)
     setObjectEditRejection(null)
     setCropError(null)
     const size =
@@ -1565,6 +1575,169 @@ export function StudioClient({
     resetFinishingTouches,
     runExtraction,
     variants.length,
+  ])
+
+  const handleExpandOpen = useCallback(() => {
+    setObjectEditOpen(false)
+    setObjectEditRejection(null)
+    setCropOpen(false)
+    setCropError(null)
+    setExpandPreset(DEFAULT_EXPAND_PRESET)
+    setExpandOpen(true)
+  }, [])
+
+  const handleExpandCancel = useCallback(() => {
+    setExpandOpen(false)
+  }, [])
+
+  const handleExpandApply = useCallback(async () => {
+    if (!persistedSourceId || !activeDishId) return
+    if (insufficientCredits) {
+      setCreditsDialogOpen(true)
+      return
+    }
+
+    const generationStartedAt = Date.now()
+    trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_STARTED, {
+      model_class: toModelClass(selectedModel),
+      stage: 'expand',
+      generation_kind: 'expand',
+    })
+    setIsGenerating(true)
+    setMutationError(null)
+    try {
+      const response = await fetch('/api/studio/expand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dishId: activeDishId,
+          sourceImageId: persistedSourceId,
+          preset: expandPreset,
+          model: selectedModel,
+        }),
+      })
+      if (!response.ok) {
+        const err = await response.json().catch(() => null)
+        const payload = err as {
+          error?: string
+          code?: string
+          dishBlocked?: boolean
+        } | null
+        const blockedByCredits = payload?.code === 'STUDIO_INSUFFICIENT_CREDITS'
+        const blockedByDish =
+          payload?.code === 'STUDIO_DISH_GENERATION_BLOCKED' || payload?.dishBlocked
+        const failureProperties = {
+          model_class: toModelClass(selectedModel),
+          stage: 'expand',
+          generation_kind: 'expand',
+          duration_ms: Math.max(0, Date.now() - generationStartedAt),
+        }
+
+        if (blockedByCredits) {
+          setCreditsDialogOpen(true)
+          trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_BLOCKED_CREDITS, {
+            ...failureProperties,
+            outcome: 'blocked',
+            blocked_by: 'credits',
+          })
+        } else if (blockedByDish) {
+          trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_BLOCKED_DISH, {
+            ...failureProperties,
+            outcome: 'blocked',
+            blocked_by: 'dish_breaker',
+          })
+        } else {
+          trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED, {
+            ...failureProperties,
+            outcome: 'failure',
+            failure_class: generationFailureClass(response.status, payload?.code),
+          })
+        }
+
+        setMutationError(payload?.error ?? `Expand failed (HTTP ${response.status})`)
+        if (blockedByDish) {
+          setDishes((prev) =>
+            prev.map((d) =>
+              d.id === activeDishId
+                ? {
+                    ...d,
+                    generation_blocked_at: new Date().toISOString(),
+                    generation_blocked_reason: payload?.error ?? 'Blocked',
+                  }
+                : d,
+            ),
+          )
+        }
+        return
+      }
+
+      const data = (await response.json()) as {
+        image: StudioImageRecord
+        imageUrl: string
+        imageId: string
+        model: string
+        credits?: { cost: number; balanceAfter: number }
+      }
+      trackStudioGenerationCompleted({
+        model: data.model,
+        validationStatus: 'skipped',
+        startedAt: generationStartedAt,
+        endedAt: Date.now(),
+        balanceAfter:
+          typeof data.credits?.balanceAfter === 'number'
+            ? data.credits.balanceAfter
+            : (creditBalance ?? 0),
+        cost: data.credits?.cost,
+        generationKind: 'expand',
+      })
+      const row = data.image
+      if (data.credits && typeof data.credits.balanceAfter === 'number') {
+        setCreditBalance(data.credits.balanceAfter)
+      }
+      setGallery((prev) => [...prev.filter((image) => image.id !== row.id), row])
+      setSelectedImageId(row.id)
+      setPersistedSourceId(row.id)
+      setMutatedImageUrl(undefined)
+      setSourceImage(sourceImageFromRecord(row.public_url, row.mime_type))
+      setDishes((prev) =>
+        prev.map((d) =>
+          d.id === activeDishId
+            ? {
+                ...d,
+                current_image_id: row.id,
+                generation_failure_count: 0,
+                generation_blocked_at: null,
+                generation_blocked_reason: null,
+              }
+            : d,
+        ),
+      )
+      const stored = readEditorStateFromMetadata(row.metadata)
+      if (stored) applyHydratedState(stored)
+      resetFinishingTouches()
+      setExpandOpen(false)
+    } catch {
+      setMutationError('Could not expand this image. Try again.')
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED, {
+        model_class: toModelClass(selectedModel),
+        stage: 'expand',
+        generation_kind: 'expand',
+        outcome: 'failure',
+        failure_class: 'network',
+      })
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [
+    activeDishId,
+    applyHydratedState,
+    creditBalance,
+    expandPreset,
+    insufficientCredits,
+    persistedSourceId,
+    resetFinishingTouches,
+    selectedModel,
+    setCreditBalance,
   ])
 
   const objectEditRejectionText = useCallback((reason: SelectionRejectReason): string => {
@@ -2127,9 +2300,11 @@ export function StudioClient({
         }}
         toolsDisabled={busy || dishBlocked || !sourceImage || !persistedSourceId}
         cropOpen={cropOpen}
+        expandOpen={expandOpen}
         objectEditOpen={objectEditOpen}
         creditLabel={generateCreditLabel}
         onReframe={handleCropOpen}
+        onExpandScene={handleExpandOpen}
         onRemove={handleObjectEditOpen}
         expanded={workbenchImageExpanded}
         onCloseExpand={() => setWorkbenchImageExpanded(false)}
@@ -2177,6 +2352,9 @@ export function StudioClient({
                 onExpand={() => setWorkbenchImageExpanded((open) => !open)}
                 selectionMode={objectEditOpen}
                 cropMode={cropOpen}
+                sceneExpandMode={expandOpen}
+                expandPreset={expandPreset}
+                onExpandPresetChange={setExpandPreset}
                 cropRect={cropRect}
                 cropPixelAspect={
                   cropStoredSize
@@ -2248,6 +2426,20 @@ export function StudioClient({
               onPresetChange={handleCropPresetChange}
               onApply={() => void handleCropApply()}
               onCancel={handleCropCancel}
+            />
+          ) : null
+        }
+        expandPanel={
+          expandOpen ? (
+            <StudioExpandPanel
+              preset={expandPreset}
+              busy={isGenerating}
+              overlay={workbenchImageExpanded}
+              creditLabel={generateCreditLabel}
+              degradationCallout={degradationCallout}
+              onPresetChange={setExpandPreset}
+              onApply={() => void handleExpandApply()}
+              onCancel={handleExpandCancel}
             />
           ) : null
         }
