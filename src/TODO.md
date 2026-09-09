@@ -14,10 +14,9 @@
 ## /studio
 - [ ] Overhead shot
 - [ ] Investigate rotation/angle manipulation
-- [ ] Remove inverse
+- [ ] Remove inverse and darken/shade/stripe area to be removed
 - [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
 - [ ] Investigate vessel swapping
-- [ ] Add "cooking" SVG animation(s) instead of boring "Generating..." (but maintain translucency)
 - [ ] STUDIO_MOBILE_FOCUS_SWITCHER_PROPOSAL.md (check if still valid after redesign)
 
 ## /pricing
@@ -175,6 +174,7 @@
 - [x] Crop
 - [x] Degradation pre-notice and warning, e.g. at 3rd-generation variation request
 - [x] Magic expand
+- [x] Add "cooking" SVG animation(s) instead of boring "Generating..." (but maintain translucency)
 
 ## /onboarding
 - [x] New users get 10 credits by default

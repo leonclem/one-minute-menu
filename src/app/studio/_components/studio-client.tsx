@@ -94,6 +94,10 @@ import { StudioShotWorkbench } from './studio-shot-workbench'
 import { StudioScenePanel } from './studio-scene-panel'
 import { StudioDegradationCallout } from './studio-degradation-callout'
 import {
+  preloadKitchenLoaderSvg,
+  StudioCanvasBusyOverlay,
+} from './studio-cooking-loader'
+import {
   INITIAL_OBJECT_EDIT_EDITOR_STATE,
   objectEditEditorReducer,
 } from '@/lib/studio/object-edit/editor-state'
@@ -500,6 +504,10 @@ export function StudioClient({
   const handleCancelProModel = useCallback(() => {
     setDontShowModelWarning(false)
     setModelWarningOpen(false)
+  }, [])
+
+  useEffect(() => {
+    void preloadKitchenLoaderSvg()
   }, [])
 
   useEffect(() => {
@@ -2405,17 +2413,11 @@ export function StudioClient({
               </div>
             )}
             {(isUploading || isExtracting || isGenerating) && (
-              <div
-                className="absolute inset-0 z-10 flex items-center justify-center rounded-[16px] border border-[#01b3bf]/30 bg-[#0c1416]/70 text-sm text-[#5fd3da] backdrop-blur-sm"
-                role="status"
-                aria-live="polite"
-              >
-                {isUploading
-                  ? 'Uploading photo…'
-                  : isExtracting
-                    ? 'Analysing photo…'
-                    : 'Generating…'}
-              </div>
+              <StudioCanvasBusyOverlay
+                mode={
+                  isUploading ? 'uploading' : isExtracting ? 'extracting' : 'generating'
+                }
+              />
             )}
             {!busy && !workbenchImageExpanded && feedbackImage && currentPreviewUrl ? (
               <div className="absolute bottom-3 right-3 z-10">
