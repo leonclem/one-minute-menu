@@ -59,6 +59,45 @@ describe('finishing-touch catalogue', () => {
     expect(getFinishingTouchById('coriander')?.name).toBe('Coriander')
     expect(getFinishingTouchByName('cilantro')?.id).toBe('coriander')
   })
+
+  it('assigns a prompt-only on-food and table form to every catalogue item', () => {
+    const expected: Record<
+      string,
+      { prep: string; scenePrep?: string }
+    > = {
+      coriander: { prep: 'chopped', scenePrep: 'sprig' },
+      lime_wedge: { prep: 'wedge', scenePrep: 'halved' },
+      red_chilli: { prep: 'fine-chop', scenePrep: 'intact' },
+      cashews: { prep: 'crushed', scenePrep: 'whole-scatter' },
+      parsley: { prep: 'chopped', scenePrep: 'sprig' },
+      basil: { prep: 'leaves', scenePrep: 'sprig' },
+      mint: { prep: 'leaves', scenePrep: 'sprig' },
+      spring_onion: { prep: 'sliced', scenePrep: 'intact' },
+      sesame_seeds: { prep: 'whole' },
+      microgreens: { prep: 'leaves', scenePrep: 'sprig' },
+      lemon_wedge: { prep: 'wedge', scenePrep: 'halved' },
+      peanuts: { prep: 'crushed', scenePrep: 'whole-scatter' },
+      crispy_shallots: { prep: 'whole' },
+      chives: { prep: 'sliced', scenePrep: 'sprig' },
+      chilli_flakes: { prep: 'whole' },
+      grated_parmesan: { prep: 'whole' },
+      pomegranate_seeds: { prep: 'whole' },
+      pickled_red_onion: { prep: 'sliced' },
+      thyme: { prep: 'leaves', scenePrep: 'sprig' },
+      rosemary: { prep: 'leaves', scenePrep: 'sprig' },
+      black_sesame: { prep: 'whole' },
+      fried_garlic: { prep: 'whole' },
+      coconut_flakes: { prep: 'whole' },
+      paprika: { prep: 'whole' },
+    }
+    expect(FINISHING_TOUCH_CATALOGUE.map((item) => item.id).sort()).toEqual(
+      Object.keys(expected).sort(),
+    )
+    for (const item of FINISHING_TOUCH_CATALOGUE) {
+      expect(item.prep).toBe(expected[item.id].prep)
+      expect(item.scenePrep).toBe(expected[item.id].scenePrep)
+    }
+  })
 })
 
 describe('applyFinishingTouchesLevel', () => {

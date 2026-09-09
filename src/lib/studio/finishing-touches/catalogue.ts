@@ -8,6 +8,23 @@ export const DEFAULT_FINISHING_TOUCH_LEVEL = 2
 
 export type FinishingTouchPlacement = 'on-food' | 'on-vessel' | 'scene'
 export type FinishingTouchSchemaField = 'garnishes' | 'sides'
+/**
+ * Prompt-only cut style. Schema still stores the catalogue name only.
+ * `prep` is the on-food (and vessel) form. `scenePrep` overrides table scatter
+ * when the table should show a larger cut of the same ingredient.
+ */
+export type FinishingTouchPrep =
+  | 'chopped'
+  | 'sliced'
+  | 'leaves'
+  | 'whole'
+  | 'halved'
+  | 'intact'
+  | 'wedge'
+  | 'fine-chop'
+  | 'crushed'
+  | 'sprig'
+  | 'whole-scatter'
 
 export interface FinishingTouchCatalogueItem {
   id: string
@@ -15,6 +32,8 @@ export interface FinishingTouchCatalogueItem {
   aliases: readonly string[]
   schemaField: FinishingTouchSchemaField
   placements: readonly FinishingTouchPlacement[]
+  prep: FinishingTouchPrep
+  scenePrep?: FinishingTouchPrep
 }
 
 export function normalizeFinishingTouchLabel(value: string): string {
@@ -22,7 +41,6 @@ export function normalizeFinishingTouchLabel(value: string): string {
 }
 
 const HERB_PLACEMENTS = ['on-food', 'scene'] as const
-const CITRUS_PLACEMENTS = ['on-food', 'on-vessel', 'scene'] as const
 const SCATTER_ON_FOOD = ['on-food', 'scene'] as const
 
 export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] = [
@@ -32,13 +50,17 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['cilantro', 'fresh coriander', 'coriander sprigs'],
     schemaField: 'garnishes',
     placements: HERB_PLACEMENTS,
+    prep: 'chopped',
+    scenePrep: 'sprig',
   },
   {
     id: 'lime_wedge',
     name: 'Lime wedges',
     aliases: ['lime', 'lime wedge', 'lime half'],
     schemaField: 'garnishes',
-    placements: CITRUS_PLACEMENTS,
+    placements: SCATTER_ON_FOOD,
+    prep: 'wedge',
+    scenePrep: 'halved',
   },
   {
     id: 'red_chilli',
@@ -46,6 +68,8 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['chili', 'chilli', 'sliced chilli', 'sliced chili', 'red chili'],
     schemaField: 'garnishes',
     placements: SCATTER_ON_FOOD,
+    prep: 'fine-chop',
+    scenePrep: 'intact',
   },
   {
     id: 'cashews',
@@ -53,6 +77,8 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['cashew', 'cashew nuts', 'roasted cashews'],
     schemaField: 'garnishes',
     placements: SCATTER_ON_FOOD,
+    prep: 'crushed',
+    scenePrep: 'whole-scatter',
   },
   {
     id: 'parsley',
@@ -60,6 +86,8 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['flat-leaf parsley', 'fresh parsley'],
     schemaField: 'garnishes',
     placements: HERB_PLACEMENTS,
+    prep: 'chopped',
+    scenePrep: 'sprig',
   },
   {
     id: 'basil',
@@ -67,6 +95,8 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['fresh basil', 'basil leaves'],
     schemaField: 'garnishes',
     placements: HERB_PLACEMENTS,
+    prep: 'leaves',
+    scenePrep: 'sprig',
   },
   {
     id: 'mint',
@@ -74,6 +104,8 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['fresh mint', 'mint leaves'],
     schemaField: 'garnishes',
     placements: HERB_PLACEMENTS,
+    prep: 'leaves',
+    scenePrep: 'sprig',
   },
   {
     id: 'spring_onion',
@@ -81,6 +113,8 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['scallion', 'scallions', 'green onion', 'green onions'],
     schemaField: 'garnishes',
     placements: SCATTER_ON_FOOD,
+    prep: 'sliced',
+    scenePrep: 'intact',
   },
   {
     id: 'sesame_seeds',
@@ -88,6 +122,7 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['toasted sesame', 'sesame'],
     schemaField: 'garnishes',
     placements: ['on-food'],
+    prep: 'whole',
   },
   {
     id: 'microgreens',
@@ -95,13 +130,17 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['micro greens'],
     schemaField: 'garnishes',
     placements: HERB_PLACEMENTS,
+    prep: 'leaves',
+    scenePrep: 'sprig',
   },
   {
     id: 'lemon_wedge',
     name: 'Lemon wedges',
     aliases: ['lemon', 'lemon wedge'],
     schemaField: 'garnishes',
-    placements: CITRUS_PLACEMENTS,
+    placements: SCATTER_ON_FOOD,
+    prep: 'wedge',
+    scenePrep: 'halved',
   },
   {
     id: 'peanuts',
@@ -109,6 +148,8 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['crushed peanuts', 'roasted peanuts'],
     schemaField: 'garnishes',
     placements: SCATTER_ON_FOOD,
+    prep: 'crushed',
+    scenePrep: 'whole-scatter',
   },
   {
     id: 'crispy_shallots',
@@ -116,6 +157,7 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['fried shallots', 'crispy onion'],
     schemaField: 'garnishes',
     placements: ['on-food'],
+    prep: 'whole',
   },
   {
     id: 'chives',
@@ -123,6 +165,8 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['fresh chives'],
     schemaField: 'garnishes',
     placements: SCATTER_ON_FOOD,
+    prep: 'sliced',
+    scenePrep: 'sprig',
   },
   {
     id: 'chilli_flakes',
@@ -130,6 +174,7 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['chili flakes', 'red pepper flakes'],
     schemaField: 'garnishes',
     placements: ['on-food'],
+    prep: 'whole',
   },
   {
     id: 'grated_parmesan',
@@ -137,6 +182,7 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['parmesan', 'shaved parmesan'],
     schemaField: 'garnishes',
     placements: ['on-food'],
+    prep: 'whole',
   },
   {
     id: 'pomegranate_seeds',
@@ -144,6 +190,7 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['pomegranate'],
     schemaField: 'garnishes',
     placements: SCATTER_ON_FOOD,
+    prep: 'whole',
   },
   {
     id: 'pickled_red_onion',
@@ -151,6 +198,7 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['pickled onion', 'pickled onions'],
     schemaField: 'garnishes',
     placements: ['on-food', 'on-vessel'],
+    prep: 'sliced',
   },
   {
     id: 'thyme',
@@ -158,6 +206,8 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['fresh thyme'],
     schemaField: 'garnishes',
     placements: HERB_PLACEMENTS,
+    prep: 'leaves',
+    scenePrep: 'sprig',
   },
   {
     id: 'rosemary',
@@ -165,6 +215,8 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['fresh rosemary'],
     schemaField: 'garnishes',
     placements: HERB_PLACEMENTS,
+    prep: 'leaves',
+    scenePrep: 'sprig',
   },
   {
     id: 'black_sesame',
@@ -172,6 +224,7 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['black sesame seeds'],
     schemaField: 'garnishes',
     placements: ['on-food'],
+    prep: 'whole',
   },
   {
     id: 'fried_garlic',
@@ -179,6 +232,7 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['garlic chips', 'crispy garlic'],
     schemaField: 'garnishes',
     placements: ['on-food'],
+    prep: 'whole',
   },
   {
     id: 'coconut_flakes',
@@ -186,6 +240,7 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['toasted coconut'],
     schemaField: 'garnishes',
     placements: SCATTER_ON_FOOD,
+    prep: 'whole',
   },
   {
     id: 'paprika',
@@ -193,6 +248,7 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     aliases: ['smoked paprika'],
     schemaField: 'garnishes',
     placements: ['on-food'],
+    prep: 'whole',
   },
 ]
 

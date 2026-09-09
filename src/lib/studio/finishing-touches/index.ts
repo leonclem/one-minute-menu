@@ -7,6 +7,7 @@ export {
   stackFromIds,
   type FinishingTouchCatalogueItem,
   type FinishingTouchPlacement,
+  type FinishingTouchPrep,
 } from './catalogue'
 export {
   applyFinishingTouchesLevel,
