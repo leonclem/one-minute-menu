@@ -146,7 +146,7 @@ export function StudioCookingLoader({
       return
     }
 
-    let playhead = clip.loopStartS
+    let playhead: number = clip.loopStartS
     let lastFrame = performance.now()
     svg.setCurrentTime(playhead)
     let frame = 0
