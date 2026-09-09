@@ -187,7 +187,6 @@ export function StudioWorkbenchCanvas({
   useEffect(() => {
     cameraRef.current = WORKBENCH_FIT_CAMERA
     setCamera(WORKBENCH_FIT_CAMERA)
-    setImageSize({ width: 0, height: 0 })
     selectionRef.current = null
     setSelectionPreview([])
     touchPointersRef.current.clear()

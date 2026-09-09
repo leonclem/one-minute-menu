@@ -145,6 +145,39 @@ describe('StudioWorkbenchCanvas', () => {
     expect(screen.getByRole('button', { name: 'Zoom out' })).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Current studio image' }).closest('.studio-checkerboard')).toBeTruthy()
   })
+
+  it('keeps the fitted frame while a new shot src loads', () => {
+    const restoreLayout = stubLayout()
+    try {
+      const { rerender, container } = render(
+        <StudioWorkbenchCanvas
+          src="https://example.com/shot-a.png"
+          alt="Current studio image"
+          expandLabel="Expand preview"
+          onExpand={jest.fn()}
+        />,
+      )
+      loadImage()
+      const frame = () => container.querySelector<HTMLElement>('div.absolute[style*="width"]')
+      expect(frame()?.style.width).toBe(`${BOUNDS.width}px`)
+
+      rerender(
+        <StudioWorkbenchCanvas
+          src="https://example.com/shot-b.png"
+          alt="Current studio image"
+          expandLabel="Expand preview"
+          onExpand={jest.fn()}
+        />,
+      )
+      expect(frame()?.style.width).toBe(`${BOUNDS.width}px`)
+      expect(screen.getByRole('img', { name: 'Current studio image' })).toHaveAttribute(
+        'src',
+        'https://example.com/shot-b.png',
+      )
+    } finally {
+      restoreLayout()
+    }
+  })
 })
 
 describe('StudioWorkbenchCanvas selection gestures', () => {

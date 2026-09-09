@@ -31,7 +31,7 @@ export function StudioShotFilmstrip({
   }
 
   return (
-    <ul className="studio-filmstrip" data-testid="studio-gallery">
+    <ul className="studio-filmstrip studio-scroll" data-testid="studio-gallery">
       {shots.map((item) => {
         const selected = item.id === selectedId
         const shortLabel = shotShortLabel(item, shots)

@@ -87,6 +87,7 @@ import { STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
 import { applyQuickLook, type StudioQuickLook } from '@/lib/studio/quick-looks'
 import {
   parseStudioWorkbenchTab,
+  replaceStudioWorkbenchUrl,
   studioWorkbenchHref,
   type StudioWorkbenchTab,
 } from '@/lib/studio/workbench-query'
@@ -428,13 +429,15 @@ export function StudioClient({
     degradationWarning && activeDishId ? (
       <StudioDegradationCallout dishId={activeDishId} warning={degradationWarning} />
     ) : null
+  const toolDegradationCallout =
+    degradationWarning && activeDishId ? (
+      <StudioDegradationCallout dishId={activeDishId} warning={degradationWarning} iconTrigger />
+    ) : null
 
   useEffect(() => {
     if (!activeDishId || !selectedImageId) return
-    router.replace(studioWorkbenchHref(activeDishId, selectedImageId, workbenchTab), {
-      scroll: false,
-    })
-  }, [activeDishId, router, selectedImageId, workbenchTab])
+    replaceStudioWorkbenchUrl(studioWorkbenchHref(activeDishId, selectedImageId, workbenchTab))
+  }, [activeDishId, selectedImageId, workbenchTab])
 
   const currentPreviewUrl =
     mutatedImageUrl ?? sourceImage?.dataUrl ?? selectedImage?.public_url ?? null
@@ -749,6 +752,9 @@ export function StudioClient({
 
   const activateImage = useCallback(
     async (image: StudioImageRecord, options?: { persistCurrent?: boolean }) => {
+      if (selectedImageIdRef.current === image.id && persistedSourceId === image.id) {
+        return true
+      }
       dispatchObjectEdit({ type: 'SOURCE_CHANGED' })
       setObjectEditOpen(false)
       setObjectEditRejection(null)
@@ -757,7 +763,6 @@ export function StudioClient({
       setExpandOpen(false)
       resetFinishingTouches()
       setSelectedImageId(image.id)
-      setLibraryBusy(true)
       setLibraryError(null)
       setMutatedImageUrl(undefined)
       try {
@@ -794,11 +799,16 @@ export function StudioClient({
       } catch (err) {
         setLibraryError(err instanceof Error ? err.message : 'Failed to load image')
         return false
-      } finally {
-        setLibraryBusy(false)
       }
     },
-    [applyHydratedState, persistDishCurrent, persistEditorState, resetFinishingTouches, runExtraction]
+    [
+      applyHydratedState,
+      persistDishCurrent,
+      persistEditorState,
+      persistedSourceId,
+      resetFinishingTouches,
+      runExtraction,
+    ]
   )
 
   const loadGalleryForDish = useCallback(
@@ -1446,6 +1456,7 @@ export function StudioClient({
     dispatchObjectEdit({ type: 'OPERATION_CHANGED', operation: 'remove' })
     setObjectEditRejection(null)
     setObjectEditOpen(true)
+    setWorkbenchImageExpanded(true)
     trackStudioEvent(ANALYTICS_EVENTS.STUDIO_OBJECT_EDIT_OPENED, {
       edit_operation: 'remove',
       surface: 'studio',
@@ -1474,6 +1485,7 @@ export function StudioClient({
     dispatchObjectEdit({ type: 'CLOSE' })
     setObjectEditOpen(false)
     setObjectEditRejection(null)
+    setWorkbenchImageExpanded(false)
     trackStudioEvent(ANALYTICS_EVENTS.STUDIO_OBJECT_EDIT_CANCELLED, {
       edit_operation: 'remove',
       surface: 'studio',
@@ -1494,6 +1506,7 @@ export function StudioClient({
     setCropPreset(preset)
     setCropRect(size ? cropForPreset(preset, size) : { x: 0, y: 0, width: 1, height: 1 })
     setCropOpen(true)
+    setWorkbenchImageExpanded(true)
   }, [cropStoredSize, objectEditNaturalSize])
 
   const handleCropPresetChange = useCallback(
@@ -1512,6 +1525,7 @@ export function StudioClient({
   const handleCropCancel = useCallback(() => {
     setCropOpen(false)
     setCropError(null)
+    setWorkbenchImageExpanded(false)
   }, [])
 
   const handleCropApply = useCallback(async () => {
@@ -1561,6 +1575,7 @@ export function StudioClient({
       if (stored) applyHydratedState(stored)
       resetFinishingTouches()
       setCropOpen(false)
+      setWorkbenchImageExpanded(false)
       setIsCropping(false)
       const extracted = await runExtraction(row.id, { quiet: true })
       if (extracted && selectedImageIdRef.current === row.id) {
@@ -1596,11 +1611,29 @@ export function StudioClient({
     setExpandPreset(DEFAULT_EXPAND_PRESET)
     setExpandLayout(DEFAULT_EXPAND_LAYOUT)
     setExpandOpen(true)
+    setWorkbenchImageExpanded(true)
   }, [])
 
   const handleExpandCancel = useCallback(() => {
     setExpandOpen(false)
+    setWorkbenchImageExpanded(false)
   }, [])
+
+  const handleWorkbenchCollapse = useCallback(() => {
+    if (objectEditOpen) {
+      handleObjectEditClose()
+      return
+    }
+    if (cropOpen) {
+      handleCropCancel()
+      return
+    }
+    if (expandOpen) {
+      handleExpandCancel()
+      return
+    }
+    setWorkbenchImageExpanded(false)
+  }, [cropOpen, expandOpen, handleCropCancel, handleExpandCancel, handleObjectEditClose, objectEditOpen])
 
   const handleExpandApply = useCallback(async () => {
     if (!persistedSourceId || !activeDishId) return
@@ -1729,6 +1762,7 @@ export function StudioClient({
       if (stored) applyHydratedState(stored)
       resetFinishingTouches()
       setExpandOpen(false)
+      setWorkbenchImageExpanded(false)
     } catch {
       setMutationError('Could not expand this image. Try again.')
       trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED, {
@@ -1894,6 +1928,7 @@ export function StudioClient({
       }
       dispatchObjectEdit({ type: 'SUBMISSION_ACCEPTED' })
       setObjectEditOpen(false)
+      setWorkbenchImageExpanded(false)
     } catch (error) {
       trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED, {
         model_class: toModelClass(selectedModel),
@@ -2321,7 +2356,7 @@ export function StudioClient({
         onExpandScene={handleExpandOpen}
         onRemove={handleObjectEditOpen}
         expanded={workbenchImageExpanded}
-        onCloseExpand={() => setWorkbenchImageExpanded(false)}
+        onCloseExpand={handleWorkbenchCollapse}
         notices={
           <>
             {isUploading ? (
@@ -2335,6 +2370,19 @@ export function StudioClient({
               </p>
             ) : null}
             <StudioLowResNotice natural={cropStoredSize} />
+            {degradationWarning &&
+            activeDishId &&
+            !cropOpen &&
+            !expandOpen &&
+            !objectEditOpen ? (
+              <StudioDegradationCallout
+                dishId={activeDishId}
+                warning={degradationWarning}
+                compact
+                dismissible
+                dismissKey={selectedImageId ?? undefined}
+              />
+            ) : null}
             {mutationError ? (
               <p role="alert" className="text-sm text-[#ff8a80]">
                 {mutationError}
@@ -2363,7 +2411,10 @@ export function StudioClient({
                 }
                 expanded={workbenchImageExpanded}
                 transparent={selectedImage?.mime_type === 'image/png'}
-                onExpand={() => setWorkbenchImageExpanded((open) => !open)}
+                onExpand={() => {
+                  if (workbenchImageExpanded) handleWorkbenchCollapse()
+                  else setWorkbenchImageExpanded(true)
+                }}
                 selectionMode={objectEditOpen}
                 cropMode={cropOpen}
                 sceneExpandMode={expandOpen}
@@ -2449,7 +2500,7 @@ export function StudioClient({
               busy={isGenerating}
               overlay={workbenchImageExpanded}
               creditLabel={generateCreditLabel}
-              degradationCallout={degradationCallout}
+              degradationCallout={toolDegradationCallout}
               onPresetChange={setExpandPreset}
               onLayoutChange={setExpandLayout}
               onApply={() => void handleExpandApply()}
@@ -2476,7 +2527,7 @@ export function StudioClient({
               onGenerate={() => void handleObjectEditGenerate()}
               onCancel={handleObjectEditClose}
               onClose={handleObjectEditClose}
-              degradationCallout={degradationCallout}
+              degradationCallout={toolDegradationCallout}
             />
           ) : null
         }
@@ -2572,7 +2623,6 @@ export function StudioClient({
               dishBlocked ||
               !sourceImage
             }
-            degradationCallout={degradationCallout}
           />
         }
         exports={

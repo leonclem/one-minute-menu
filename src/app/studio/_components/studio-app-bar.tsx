@@ -8,9 +8,10 @@ import { useStudioCredits } from './studio-credits-context'
 
 interface StudioAppBarProps {
   showCredits: boolean
+  userEmail?: string
 }
 
-export function StudioAppBar({ showCredits }: StudioAppBarProps) {
+export function StudioAppBar({ showCredits, userEmail }: StudioAppBarProps) {
   const pathname = usePathname()
   const { creditBalance } = useStudioCredits()
   const onDishesHome = pathname === '/studio'
@@ -54,7 +55,11 @@ export function StudioAppBar({ showCredits }: StudioAppBarProps) {
             Settings
           </Link>
           <form action="/auth/signout" method="post">
-            <button type="submit" className="text-sm font-semibold text-white/55 hover:text-white">
+            <button
+              type="submit"
+              className="text-sm font-semibold text-white/55 hover:text-white"
+              title={userEmail ? `Logged in as ${userEmail}` : undefined}
+            >
               Sign out
             </button>
           </form>

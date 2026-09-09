@@ -246,6 +246,24 @@ describe('StudioShotWorkbench', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onCloseExpand).toHaveBeenCalled()
   })
+
+  it('keeps Reframe, Expand, and Remove panels out of the inline workbench', () => {
+    render(
+      <StudioShotWorkbench
+        {...workbenchProps}
+        tab="scene"
+        onTab={jest.fn()}
+        cropPanel={<div data-testid="studio-crop-panel">crop inline</div>}
+        expandPanel={<div data-testid="studio-expand-panel">expand inline</div>}
+        removePanel={<div data-testid="studio-object-edit-panel">remove inline</div>}
+      />,
+    )
+    expect(screen.queryByTestId('studio-crop-panel')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('studio-expand-panel')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('studio-object-edit-panel')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reframe image' })).toBeInTheDocument()
+    expect(screen.getByTestId('studio-gallery')).toBeInTheDocument()
+  })
 })
 
 describe('StudioScenePanel', () => {
@@ -260,169 +278,113 @@ describe('StudioScenePanel', () => {
     onToggle: jest.fn(),
   }
 
-  it('stages a Quick Look and hides Pro unless enabled', () => {
-    const onQuickLook = jest.fn()
-    const { rerender } = render(
-      <StudioScenePanel
-        editorState={editorState}
-        lightingOptions={lightingOptions}
-        surfaceOptions={[]}
-        backdropOptions={[]}
-        backdropHidden={false}
-        controlsDisabled={false}
-        isHydrated
-        isExtracting={false}
-        isRefreshingExtract={false}
-        refreshExtractError={null}
-        pending={{ lighting: false, surface: false, backdrop: false, garnishes: false }}
-        finishing={finishing}
-        hasPendingChanges={false}
-        isGenerating={false}
-        generateCreditLabel="1 credit"
-        generateDisabled
-        onGenerate={jest.fn()}
-        onDiscard={jest.fn()}
-        onQuickLook={onQuickLook}
-        onLighting={jest.fn()}
-        onSurface={jest.fn()}
-        onBackdrop={jest.fn()}
-        onGarnishesChange={jest.fn()}
-        onSidesChange={jest.fn()}
-        proEnabled={false}
-        selectedModel="gemini-3.1-flash-image-preview"
-        onTogglePro={jest.fn()}
-        reshootEnabled={false}
-        onReshoot={jest.fn()}
-        reshootDisabled
-      />,
-    )
+  function panelProps(
+    overrides: Partial<React.ComponentProps<typeof StudioScenePanel>> = {},
+  ): React.ComponentProps<typeof StudioScenePanel> {
+    return {
+      editorState,
+      lightingOptions,
+      surfaceOptions: [],
+      backdropOptions: [],
+      backdropHidden: false,
+      controlsDisabled: false,
+      isHydrated: true,
+      isExtracting: false,
+      isRefreshingExtract: false,
+      refreshExtractError: null,
+      pending: { lighting: false, surface: false, backdrop: false, garnishes: false },
+      finishing,
+      hasPendingChanges: false,
+      isGenerating: false,
+      generateCreditLabel: '1 credit',
+      generateDisabled: true,
+      onGenerate: jest.fn(),
+      onDiscard: jest.fn(),
+      onQuickLook: jest.fn(),
+      onLighting: jest.fn(),
+      onSurface: jest.fn(),
+      onBackdrop: jest.fn(),
+      onGarnishesChange: jest.fn(),
+      onSidesChange: jest.fn(),
+      proEnabled: false,
+      selectedModel: 'gemini-3.1-flash-image-preview',
+      onTogglePro: jest.fn(),
+      reshootEnabled: false,
+      onReshoot: jest.fn(),
+      reshootDisabled: true,
+      ...overrides,
+    }
+  }
+
+  function renderPanel(overrides: Partial<React.ComponentProps<typeof StudioScenePanel>> = {}) {
+    return render(<StudioScenePanel {...panelProps(overrides)} />)
+  }
+
+  it('hides Quick Looks and Pro unless Pro is enabled', () => {
+    const { rerender } = renderPanel()
+    expect(screen.queryByTestId('studio-scene-section-quick-looks')).not.toBeInTheDocument()
     expect(screen.queryByTestId('studio-pro-switch')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('studio-quick-look-colour-pop'))
-    expect(onQuickLook).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'colour-pop', lighting: 'bold-sunlight' }),
-    )
-    rerender(
-      <StudioScenePanel
-        editorState={editorState}
-        lightingOptions={lightingOptions}
-        surfaceOptions={[]}
-        backdropOptions={[]}
-        backdropHidden={false}
-        controlsDisabled={false}
-        isHydrated
-        isExtracting={false}
-        isRefreshingExtract={false}
-        refreshExtractError={null}
-        pending={{ lighting: false, surface: false, backdrop: false, garnishes: false }}
-        finishing={finishing}
-        hasPendingChanges={false}
-        isGenerating={false}
-        generateCreditLabel="1 credit"
-        generateDisabled
-        onGenerate={jest.fn()}
-        onDiscard={jest.fn()}
-        onQuickLook={onQuickLook}
-        onLighting={jest.fn()}
-        onSurface={jest.fn()}
-        onBackdrop={jest.fn()}
-        onGarnishesChange={jest.fn()}
-        onSidesChange={jest.fn()}
-        proEnabled
-        selectedModel="gemini-3.1-flash-image-preview"
-        onTogglePro={jest.fn()}
-        reshootEnabled={false}
-        onReshoot={jest.fn()}
-        reshootDisabled
-      />,
-    )
-    expect(screen.getByTestId('studio-pro-switch')).toBeInTheDocument()
+    rerender(<StudioScenePanel {...panelProps({ proEnabled: true })} />)
+    const toggle = screen.getByTestId('studio-pro-switch')
+    const generate = screen.getByTestId('generate-image-button')
+    expect(toggle).toBeInTheDocument()
+    expect(toggle).toHaveTextContent('Std')
+    expect(toggle).toHaveTextContent('Pro')
+    expect(toggle.parentElement).toContainElement(generate)
+    expect(toggle).not.toHaveClass('w-full')
   })
 
-  it('collapses a Scene subsection and keeps the selected value on the heading', () => {
-    render(
-      <StudioScenePanel
-        editorState={editorState}
-        lightingOptions={lightingOptions}
-        surfaceOptions={[]}
-        backdropOptions={[]}
-        backdropHidden={false}
-        controlsDisabled={false}
-        isHydrated
-        isExtracting={false}
-        isRefreshingExtract={false}
-        refreshExtractError={null}
-        pending={{ lighting: true, surface: false, backdrop: false, garnishes: false }}
-        finishing={finishing}
-        hasPendingChanges={false}
-        isGenerating={false}
-        generateCreditLabel="1 credit"
-        generateDisabled
-        onGenerate={jest.fn()}
-        onDiscard={jest.fn()}
-        onQuickLook={jest.fn()}
-        onLighting={jest.fn()}
-        onSurface={jest.fn()}
-        onBackdrop={jest.fn()}
-        onGarnishesChange={jest.fn()}
-        onSidesChange={jest.fn()}
-        proEnabled={false}
-        selectedModel="gemini-3.1-flash-image-preview"
-        onTogglePro={jest.fn()}
-        reshootEnabled={false}
-        onReshoot={jest.fn()}
-        reshootDisabled
-      />,
+  it('opens Elements first, keeps other groups collapsed, and opens only one at a time', () => {
+    renderPanel({ pending: { lighting: true, surface: false, backdrop: false, garnishes: false } })
+    const headings = screen.getAllByTestId(/^studio-scene-section-/)
+    expect(headings.map((heading) => heading.getAttribute('data-testid'))).toEqual([
+      'studio-scene-section-elements',
+      'studio-scene-section-lighting',
+      'studio-scene-section-surface',
+      'studio-scene-section-backdrop',
+    ])
+    expect(screen.getByTestId('studio-scene-section-elements')).toHaveAttribute(
+      'aria-expanded',
+      'true',
     )
-    expect(screen.getByRole('radio', { name: 'Soft Natural' })).toBeInTheDocument()
-    expect(screen.getByTestId('studio-scene-lighting-value')).toHaveClass('text-[#01b3bf]')
-    expect(screen.queryByLabelText('Pending edits')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('studio-scene-section-lighting'))
+    expect(screen.getByTestId('studio-finishing-touches')).toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: 'Soft Natural' })).not.toBeInTheDocument()
-    expect(screen.getByTestId('studio-scene-section-lighting')).toHaveTextContent('Soft Natural')
+    expect(screen.getByTestId('studio-scene-lighting-value')).toHaveClass('text-[#01b3bf]')
     expect(screen.getByTestId('studio-scene-section-lighting')).toHaveAttribute(
       'aria-expanded',
       'false',
     )
+
+    fireEvent.click(screen.getByTestId('studio-scene-section-lighting'))
+    expect(screen.getByRole('radio', { name: 'Soft Natural' })).toBeInTheDocument()
+    expect(screen.getByTestId('studio-scene-section-lighting')).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(screen.getByTestId('studio-scene-section-elements')).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(screen.queryByTestId('studio-finishing-touches')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('studio-scene-section-surface'))
+    expect(screen.queryByRole('radio', { name: 'Soft Natural' })).not.toBeInTheDocument()
+    expect(screen.getByText('No surfaces available yet.')).toBeInTheDocument()
+    expect(screen.getByTestId('studio-scene-section-lighting')).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(screen.getByTestId('studio-scene-section-lighting')).toHaveTextContent('Soft Natural')
   })
 
-  it('shows a GEN 3+ callout above Generate without disabling it', () => {
+  it('keeps Generate enabled when Scene has pending changes', () => {
     const onGenerate = jest.fn()
-    render(
-      <StudioScenePanel
-        editorState={editorState}
-        lightingOptions={lightingOptions}
-        surfaceOptions={[]}
-        backdropOptions={[]}
-        backdropHidden={false}
-        controlsDisabled={false}
-        isHydrated
-        isExtracting={false}
-        isRefreshingExtract={false}
-        refreshExtractError={null}
-        pending={{ lighting: false, surface: false, backdrop: false, garnishes: false }}
-        finishing={finishing}
-        hasPendingChanges
-        isGenerating={false}
-        generateCreditLabel="1 credit"
-        generateDisabled={false}
-        onGenerate={onGenerate}
-        onDiscard={jest.fn()}
-        onQuickLook={jest.fn()}
-        onLighting={jest.fn()}
-        onSurface={jest.fn()}
-        onBackdrop={jest.fn()}
-        onGarnishesChange={jest.fn()}
-        onSidesChange={jest.fn()}
-        proEnabled={false}
-        selectedModel="gemini-3.1-flash-image-preview"
-        onTogglePro={jest.fn()}
-        reshootEnabled={false}
-        onReshoot={jest.fn()}
-        reshootDisabled
-        degradationCallout={<div data-testid="studio-degradation-callout">GEN 3 warning</div>}
-      />,
-    )
-    expect(screen.getByTestId('studio-degradation-callout')).toBeInTheDocument()
+    renderPanel({
+      hasPendingChanges: true,
+      generateDisabled: false,
+      onGenerate,
+    })
+    expect(screen.queryByTestId('studio-degradation-callout')).not.toBeInTheDocument()
     const generate = screen.getByTestId('generate-image-button')
     expect(generate).not.toBeDisabled()
     fireEvent.click(generate)

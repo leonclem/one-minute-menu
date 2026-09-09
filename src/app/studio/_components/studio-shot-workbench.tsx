@@ -226,9 +226,6 @@ export function StudioShotWorkbench({
                 onExpand={onExpandScene}
                 onRemove={onRemove}
               />
-              {cropPanel}
-              {expandPanel}
-              {removePanel}
               <StudioShotFilmstrip
                 images={images}
                 selectedId={selectedId}

@@ -4,6 +4,9 @@ import type { StudioImageRecord } from '@/lib/studio/types'
 /** First generative hop that shows the gold callout (the child would be GEN 3). */
 export const DEGRADATION_WARN_FROM_GEN = 3
 
+/** One-line reason on the compact workbench banner. Full body stays on tool panels. */
+export const DEGRADATION_COMPACT_HINT = 'Successive generations can degrade quality.'
+
 export interface DegradationWarningCopy {
   nextGen: number
   title: string

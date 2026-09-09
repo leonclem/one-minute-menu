@@ -14,3 +14,11 @@ export function studioWorkbenchHref(
   const path = `/studio/${dishId}/${imageId}`
   return tab === 'exports' ? `${path}?tab=exports` : path
 }
+
+/** Update the workbench URL without a Next.js navigation (avoids remounting the page). */
+export function replaceStudioWorkbenchUrl(href: string): void {
+  if (typeof window === 'undefined') return
+  const current = `${window.location.pathname}${window.location.search}`
+  if (current === href) return
+  window.history.replaceState(window.history.state ?? {}, '', href)
+}

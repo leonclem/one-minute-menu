@@ -132,13 +132,14 @@ export function StudioExpandPanel({
         </div>
       </div>
       <p className="text-xs text-white/55">{EXPAND_HANDLE_HINT}</p>
-      {degradationCallout}
+      {overlay ? null : degradationCallout}
       {error ? (
         <p role="alert" className="text-xs text-[#ff8a80]">
           {error}
         </p>
       ) : null}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {overlay ? degradationCallout : null}
         <button
           type="button"
           data-testid="studio-expand-apply"

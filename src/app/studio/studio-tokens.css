@@ -350,35 +350,38 @@
   color: var(--studio-text);
 }
 
+.studio-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+.studio-scroll::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.studio-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+}
+
+.studio-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+}
+
+.studio-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .studio-filmstrip {
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 0.4rem;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
-}
-
-.studio-filmstrip::-webkit-scrollbar {
-  height: 6px;
-  width: 0;
-}
-
-.studio-filmstrip::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 999px;
-}
-
-.studio-filmstrip::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.28);
-  border-radius: 999px;
-}
-
-.studio-filmstrip::-webkit-scrollbar-button {
-  display: none;
-  width: 0;
-  height: 0;
 }
 
 .studio-tool-chip {
@@ -467,4 +470,9 @@
 
 .studio-callout-warn-cta:hover {
   filter: brightness(0.96);
+}
+
+.studio-callout-warn-compact {
+  padding: 0.5rem 0.7rem;
+  margin-bottom: 1rem;
 }

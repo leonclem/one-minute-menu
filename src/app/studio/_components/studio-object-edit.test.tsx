@@ -172,6 +172,7 @@ describe('Remove-only object-edit components', () => {
     const onGenerate = jest.fn()
     render(
       <StudioObjectEditPanel
+        overlay
         selection={selection}
         canGenerate
         creditLabel="1 credit"

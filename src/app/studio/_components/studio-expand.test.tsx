@@ -44,6 +44,7 @@ describe('StudioExpandPanel', () => {
   it('shows a GEN 3+ callout without disabling Apply', () => {
     render(
       <StudioExpandPanel
+        overlay
         preset="a_little"
         creditLabel="1 credit"
         degradationCallout={<div data-testid="studio-degradation-callout">GEN 3 warning</div>}

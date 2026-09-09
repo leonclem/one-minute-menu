@@ -12,7 +12,11 @@ export default async function StudioLayout({ children }: { children: ReactNode }
 
   return (
     <div className="min-h-screen bg-[#0c1416]">
-      <StudioShell creditBalance={session.creditBalance} showCredits={isEditor}>
+      <StudioShell
+        creditBalance={session.creditBalance}
+        showCredits={isEditor}
+        userEmail={session.email}
+      >
         {isEditor ? children : <StudioGateNotices session={session} />}
       </StudioShell>
     </div>

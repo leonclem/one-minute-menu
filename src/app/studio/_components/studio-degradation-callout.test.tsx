@@ -1,8 +1,8 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
-import { degradationWarningCopy } from '@/lib/studio/degradation'
+import { DEGRADATION_COMPACT_HINT, degradationWarningCopy } from '@/lib/studio/degradation'
 
 import { StudioDegradationCallout } from './studio-degradation-callout'
 
@@ -30,5 +30,48 @@ describe('StudioDegradationCallout', () => {
     rerender(<StudioDegradationCallout dishId="d1" warning={five} />)
     expect(screen.getByTestId('studio-degradation-callout')).toHaveTextContent('GEN 5')
     expect(screen.getByTestId('studio-degradation-callout')).toHaveTextContent('still generate')
+  })
+
+  it('hides the compact banner when dismissed and restores it for a new shot', () => {
+    const warning = degradationWarningCopy(3)
+    if (!warning) throw new Error('expected GEN 3 copy')
+    const { rerender } = render(
+      <StudioDegradationCallout
+        dishId="dish-1"
+        warning={warning}
+        compact
+        dismissible
+        dismissKey="shot-a"
+      />,
+    )
+    expect(screen.getByTestId('studio-degradation-callout')).toHaveClass('studio-callout-warn-compact')
+    expect(screen.getByText(DEGRADATION_COMPACT_HINT)).toBeInTheDocument()
+    expect(screen.queryByText(warning.body)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('studio-degradation-callout-dismiss'))
+    expect(screen.queryByTestId('studio-degradation-callout')).not.toBeInTheDocument()
+
+    rerender(
+      <StudioDegradationCallout
+        dishId="dish-1"
+        warning={warning}
+        compact
+        dismissible
+        dismissKey="shot-b"
+      />,
+    )
+    expect(screen.getByTestId('studio-degradation-callout')).toBeInTheDocument()
+  })
+
+  it('reveals compact GEN copy from an (i) control', () => {
+    const warning = degradationWarningCopy(7)
+    if (!warning) throw new Error('expected GEN 7 copy')
+    render(<StudioDegradationCallout dishId="dish-1" warning={warning} iconTrigger />)
+
+    expect(screen.queryByText(warning.title)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('studio-degradation-info'))
+    expect(screen.getByRole('dialog', { name: warning.title })).toHaveTextContent(
+      'Successive generations can degrade quality.',
+    )
+    expect(screen.getByRole('link', { name: 'View shot tree' })).toBeInTheDocument()
   })
 })

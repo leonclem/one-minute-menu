@@ -16,10 +16,10 @@ jest.mock('next/image', () => ({
   default: (props: { alt: string }) => <img alt={props.alt} />,
 }))
 
-function renderAppBar(initialBalance: number, showCredits = true) {
+function renderAppBar(initialBalance: number, showCredits = true, userEmail?: string) {
   return render(
     <StudioCreditsProvider initialBalance={initialBalance}>
-      <StudioAppBar showCredits={showCredits} />
+      <StudioAppBar showCredits={showCredits} userEmail={userEmail} />
     </StudioCreditsProvider>,
   )
 }
@@ -49,6 +49,15 @@ describe('StudioAppBar', () => {
     pathname = '/studio/dish-1'
     renderAppBar(3)
     expect(screen.getByRole('link', { name: 'All dishes' })).toHaveAttribute('href', '/studio')
+  })
+
+  it('shows the signed-in email when hovering Sign out', () => {
+    pathname = '/studio'
+    renderAppBar(12, true, 'chef@example.com')
+    expect(screen.getByRole('button', { name: 'Sign out' })).toHaveAttribute(
+      'title',
+      'Logged in as chef@example.com',
+    )
   })
 
   it('updates the credits pill when a generation writes the new balance', () => {
