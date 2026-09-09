@@ -2403,6 +2403,7 @@ export function StudioClient({
             {currentPreviewUrl ? (
               <StudioWorkbenchCanvas
                 src={currentPreviewUrl}
+                imageKey={selectedImageId ?? undefined}
                 alt="Current studio image"
                 expandLabel={
                   workbenchImageExpanded

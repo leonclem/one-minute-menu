@@ -5,7 +5,6 @@
  * Expand stays a toolbar action so dragging is not captured by a full-image click.
  */
 
-import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState, type PointerEvent, type SyntheticEvent } from 'react'
 import { Maximize2, Minimize2, Minus, Plus } from 'lucide-react'
 
@@ -95,6 +94,8 @@ function appendReleaseSamples(target: SelectionSample[], samples: readonly Selec
 
 interface StudioWorkbenchCanvasProps {
   src: string
+  /** Remount the bitmap when the selected shot changes, even if `src` is reused. */
+  imageKey?: string
   alt?: string
   expandLabel: string
   onExpand: () => void
@@ -119,6 +120,7 @@ interface StudioWorkbenchCanvasProps {
 
 export function StudioWorkbenchCanvas({
   src,
+  imageKey,
   alt = '',
   expandLabel,
   onExpand,
@@ -204,8 +206,8 @@ export function StudioWorkbenchCanvas({
     setImageSize((previous) =>
       previous.width === width && previous.height === height ? previous : nextSize,
     )
-    // Preview pixel size (Next/Image AVIF/WebP). Object-edit strokes use this
-    // display space. Crop floors must use studio_images.width/height instead.
+    // Display pixel size of the bitmap currently on screen. Object-edit strokes
+    // use this space. Crop floors must use studio_images.width/height instead.
     onNaturalSizeChange?.(nextSize)
   }
 
@@ -421,6 +423,20 @@ export function StudioWorkbenchCanvas({
   const atFit = camera.zoom <= 1.01
   const zoomLabel = `${Math.round(camera.zoom * 100)}%`
 
+  // User storage URLs vary by env; skip the Next optimizer so a new shot src
+  // actually replaces the previous bitmap (next/image latches the first load).
+  const previewImage = (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      key={imageKey ? `${imageKey}:${src}` : src}
+      src={src}
+      alt={alt}
+      draggable={false}
+      className="absolute inset-0 h-full w-full select-none object-contain"
+      onLoad={handleImageLoad}
+    />
+  )
+
   return (
     <div className="absolute inset-0">
       <div
@@ -470,15 +486,7 @@ export function StudioWorkbenchCanvas({
                   : { left: 0, top: 0, width: '100%', height: '100%' }
               }
             >
-              <Image
-                src={src}
-                alt={alt}
-                fill
-                draggable={false}
-                sizes="(max-width: 1024px) 100vw, 1024px"
-                className="select-none object-contain"
-                onLoad={handleImageLoad}
-              />
+              {previewImage}
             </div>
             {selectionMode && !cropMode && !sceneExpandMode && selection && (
               <StudioSelectionOverlay selection={selection} previewPoints={selectionPreview} />
@@ -503,15 +511,7 @@ export function StudioWorkbenchCanvas({
             ) : null}
           </div>
         ) : (
-          <Image
-            src={src}
-            alt={alt}
-            fill
-            draggable={false}
-            sizes="(max-width: 1024px) 100vw, 1024px"
-            className="select-none object-contain"
-            onLoad={handleImageLoad}
-          />
+          previewImage
         )}
       </div>
       <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex items-center gap-1">

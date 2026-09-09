@@ -5,21 +5,6 @@ import '@testing-library/jest-dom'
 import { StudioWorkbenchCanvas } from './studio-workbench-canvas'
 import { EMPTY_SELECTION, type SelectionState } from '@/lib/studio/object-edit/selection'
 
-// next/image fires onLoad once per resolved src and then latches, which blocks a
-// second dispatch carrying mocked natural dimensions. A plain img keeps the
-// component's own load handler directly observable.
-jest.mock('next/image', () => ({
-  __esModule: true,
-  default: function MockNextImage({
-    fill: _fill,
-    sizes: _sizes,
-    ...props
-  }: Record<string, unknown>) {
-    // eslint-disable-next-line jsx-a11y/alt-text, @next/next/no-img-element
-    return <img {...(props as React.ImgHTMLAttributes<HTMLImageElement>)} />
-  },
-}))
-
 const VIEWPORT_WIDTH = 500
 const VIEWPORT_HEIGHT = 400
 const NATURAL_SIZE = { width: 1000, height: 800 }
@@ -174,6 +159,15 @@ describe('StudioWorkbenchCanvas', () => {
         'src',
         'https://example.com/shot-b.png',
       )
+
+      const nextSize = { width: 1600, height: 900 }
+      const nextImage = screen.getByRole('img', { name: 'Current studio image' })
+      Object.defineProperty(nextImage, 'naturalWidth', { configurable: true, value: nextSize.width })
+      Object.defineProperty(nextImage, 'naturalHeight', { configurable: true, value: nextSize.height })
+      fireEvent.load(nextImage)
+      // 1600×900 into a 500×400 viewport with 12px padding fits at 476×267.75.
+      expect(frame()?.style.width).toBe('476px')
+      expect(frame()?.style.height).toBe('267.75px')
     } finally {
       restoreLayout()
     }
