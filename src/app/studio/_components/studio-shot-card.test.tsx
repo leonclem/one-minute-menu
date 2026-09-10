@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
 import type { StudioImageRecord } from '@/lib/studio/types'
@@ -40,14 +40,28 @@ const uploadTwo = image({ id: 'og2', role: 'source', created_at: '2026-08-16T00:
 const gallery = [original, child, uploadTwo]
 
 describe('StudioShotCard', () => {
-  it('links Branch here to the workbench for that shot', () => {
-    render(<StudioShotCard dishId="dish-1" image={child} images={gallery} />)
-    expect(screen.getByRole('link', { name: 'Branch here' })).toHaveAttribute(
+  it('links Edit to the workbench for that shot', () => {
+    render(
+      <StudioShotCard dishId="dish-1" image={child} images={gallery} onDelete={jest.fn()} />,
+    )
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
       'href',
       '/studio/dish-1/v1',
     )
+    expect(screen.queryByRole('link', { name: 'Branch here' })).not.toBeInTheDocument()
     expect(screen.getByText('GEN 1')).toBeInTheDocument()
     expect(screen.getByText('Lighting → Golden Hour')).toBeInTheDocument()
+  })
+
+  it('reveals a delete control on hover that reports the shot', () => {
+    const onDelete = jest.fn()
+    render(
+      <StudioShotCard dishId="dish-1" image={child} images={gallery} onDelete={onDelete} />,
+    )
+    const deleteButton = screen.getByRole('button', { name: 'Delete shot' })
+    expect(deleteButton).toHaveClass('lg:opacity-0', 'lg:group-hover:opacity-100')
+    fireEvent.click(deleteButton)
+    expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 'v1' }))
   })
 
   it('keeps GEN on a lossless reframe and adds a LOSSLESS chip', () => {
@@ -58,7 +72,7 @@ describe('StudioShotCard', () => {
       created_at: '2026-08-15T02:00:00.000Z',
       metadata: { mode: 'crop', crop: { aspectPreset: '4:5' } },
     })
-    render(<StudioShotCard dishId="dish-1" image={crop} images={[...gallery, crop]} />)
+    render(<StudioShotCard dishId="dish-1" image={crop} images={[...gallery, crop]} onDelete={jest.fn()} />)
     expect(screen.getByText('GEN 1')).toBeInTheDocument()
     expect(screen.getByText('LOSSLESS')).toBeInTheDocument()
     expect(screen.getByText('Cropped 4:5')).toBeInTheDocument()
@@ -67,8 +81,13 @@ describe('StudioShotCard', () => {
   it('reserves a one-line subtitle slot so cards stay the same height', () => {
     render(
       <>
-        <StudioShotCard dishId="dish-1" image={original} images={gallery} />
-        <StudioShotCard dishId="dish-1" image={child} images={gallery} />
+        <StudioShotCard
+          dishId="dish-1"
+          image={original}
+          images={gallery}
+          onDelete={jest.fn()}
+        />
+        <StudioShotCard dishId="dish-1" image={child} images={gallery} onDelete={jest.fn()} />
       </>,
     )
 
@@ -85,7 +104,12 @@ describe('StudioShotCard', () => {
 describe('StudioShotTree', () => {
   it('renders a branch for each upload root', () => {
     render(
-      <StudioShotTree dishId="dish-1" images={gallery} tilesByImageId={new Map()} />,
+      <StudioShotTree
+        dishId="dish-1"
+        images={gallery}
+        tilesByImageId={new Map()}
+        onDelete={jest.fn()}
+      />,
     )
     expect(screen.getByTestId('studio-shot-tree')).toBeInTheDocument()
     expect(screen.getAllByText('ORIGINAL').length).toBeGreaterThanOrEqual(1)
@@ -94,5 +118,26 @@ describe('StudioShotTree', () => {
     const thumbs = screen.getAllByTestId('studio-shot-tree-thumb')
     expect(thumbs).toHaveLength(3)
     expect(thumbs[0]).toHaveClass('h-14', 'w-14')
+  })
+
+  it('keeps Branch here and a delete control on each row', () => {
+    const onDelete = jest.fn()
+    render(
+      <StudioShotTree
+        dishId="dish-1"
+        images={[original, child]}
+        tilesByImageId={new Map()}
+        onDelete={onDelete}
+      />,
+    )
+    const branchLinks = screen.getAllByRole('link', { name: 'Branch here' })
+    expect(branchLinks).toHaveLength(2)
+    expect(branchLinks[1]).toHaveAttribute('href', '/studio/dish-1/v1')
+    expect(branchLinks[0]).toHaveClass('studio-btn-primary', 'studio-tree-branch')
+    const deleteButtons = screen.getAllByRole('button', { name: 'Delete shot' })
+    expect(deleteButtons).toHaveLength(2)
+    expect(deleteButtons[0]).toHaveClass('studio-overlay-btn', 'studio-tree-delete')
+    fireEvent.click(deleteButtons[1])
+    expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 'v1' }))
   })
 })

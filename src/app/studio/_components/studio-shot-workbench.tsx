@@ -259,18 +259,27 @@ export function StudioShotWorkbench({
               <span className="studio-tab-count">{exportsCount}</span>
             </button>
           </div>
-          <div className="min-h-0 max-h-[min(28rem,55dvh)] xl:max-h-none xl:flex-1 xl:overflow-hidden">
+          {/*
+            Stacked layouts need a definite height (not max-height). Percentage
+            h-full on Scene never resolves against max-height, so the Generate
+            footer was clipped by the card's overflow-hidden and could not be
+            scrolled to. xl keeps a bounded column with the same pinned footer.
+          */}
+          <div
+            data-testid="studio-workbench-panel-body"
+            className="flex h-[min(28rem,55dvh)] min-h-0 flex-col overflow-hidden xl:h-auto xl:flex-1"
+          >
             <div
               role="tabpanel"
               hidden={tab !== 'scene'}
-              className={tab === 'scene' ? 'h-full' : 'hidden'}
+              className={tab === 'scene' ? 'h-full min-h-0' : 'hidden'}
             >
               {scene}
             </div>
             <div
               role="tabpanel"
               hidden={tab !== 'exports'}
-              className={tab === 'exports' ? 'h-full' : 'hidden'}
+              className={tab === 'exports' ? 'h-full min-h-0' : 'hidden'}
             >
               {exports}
             </div>

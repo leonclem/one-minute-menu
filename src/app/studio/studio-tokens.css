@@ -113,6 +113,29 @@
   font-weight: 700;
 }
 
+.studio-tree-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  height: 2.0625rem;
+}
+
+.studio-btn-primary.studio-tree-branch {
+  height: 100%;
+  padding: 0 0.625rem;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.studio-overlay-btn.studio-tree-delete {
+  width: 2.0625rem;
+  height: 100%;
+  min-width: 2.0625rem;
+  min-height: 2.0625rem;
+  padding: 0;
+  flex: 0 0 2.0625rem;
+}
+
 .studio-overlay-pill {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.14);

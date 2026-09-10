@@ -5,15 +5,14 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] UX tidy up
+- [ ] Overhead shot
+- [ ] Investigate rotation/angle manipulation
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Overhead shot
-- [ ] Investigate rotation/angle manipulation
 - [ ] Remove inverse and darken/shade/stripe area to be removed
 - [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
 - [ ] Investigate vessel swapping
@@ -27,7 +26,7 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## SEO optimisation
-- [x] Check if Betalist updated (submitted changes 16/08/26)
+- [ ] Check if Betalist updated (submitted changes 16/08/26)
 
 ## Social Media and Advertising
 - [ ] Investigate what's required for name change
@@ -35,20 +34,17 @@
 - [ ] Understand what is required and potential upside to conduct a cold email campaign
 
 ## /studio
-- [ ] During upload of image - maintain user interest (can be very slow)
 - [ ] Allow the user to choose two variants for comparison (slider?)
 - [ ] Add steam, shimmer, etc. (pro advised to use reference)
-- [ ] See Pinterest "food photography".  Best photos seem to create depth through focus and have some action/drama occurring
-- [ ] Branching [grid tiles?] structure rather than timeline
+- [ ] See Pinterest "food photography".  Best photos seem to create depth through focus and have some action/drama occurring, also other bowls and kitchen items
 - [ ] Flash-Lite option (a 3rd tier) (1K outputs only)
 - [ ] Image downsizing functionality (in-browser)
-- [ ] If a user likes a certain mutation combo (e.g. studio lighting + yellow backdrop + white tablecloth) -> allow style save (for application to other dishes, e.g. "apply to all"). (parked — user-saved Quick Looks)
+- [ ] If a user likes a certain mutation combo (e.g. studio lighting + yellow backdrop + white tablecloth) -> allow style save (for application to other dishes, e.g. "apply to all") (parked — user-saved Quick Looks)
 - [ ] Custom background (hex) colour
 - [ ] Brand kit
 - [ ] Image options like "denoise", "sharpen", "de-yellow", "re-render at 2K/4K".
 - [ ] Notice: AI can sometimes get things wrong
 - [ ] STUDIO_GENERATION_WORKER_QUEUE_PLAN.md
-- [ ] Click to draw a circle/oval/eraser to move an element
 - [ ] Feed exports back to workbench as new variants
 - [ ] Upscale resolution (via Replicate models)
 
@@ -175,6 +171,8 @@
 - [x] Degradation pre-notice and warning, e.g. at 3rd-generation variation request
 - [x] Magic expand
 - [x] Add "cooking" SVG animation(s) instead of boring "Generating..." (but maintain translucency)
+- [x] Branching [grid tiles?] structure rather than timeline
+- [x] UX tidy up
 
 ## /onboarding
 - [x] New users get 10 credits by default

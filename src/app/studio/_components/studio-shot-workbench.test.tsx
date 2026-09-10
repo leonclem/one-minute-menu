@@ -209,6 +209,20 @@ describe('StudioShotWorkbench', () => {
     expect(screen.getByRole('tab', { name: 'Exports 3' })).toBeInTheDocument()
   })
 
+  it('gives the stacked Scene body a definite height so Generate stays pinned', () => {
+    render(
+      <StudioShotWorkbench
+        {...workbenchProps}
+        tab="scene"
+        onTab={jest.fn()}
+      />,
+    )
+    const body = screen.getByTestId('studio-workbench-panel-body')
+    expect(body).toHaveClass('h-[min(28rem,55dvh)]')
+    expect(body).toHaveClass('overflow-hidden')
+    expect(body).toHaveClass('xl:h-auto')
+  })
+
   it('expands as a focus canvas with overlay tools and no filmstrip', () => {
     const onCloseExpand = jest.fn()
     render(

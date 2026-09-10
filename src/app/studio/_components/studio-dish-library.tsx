@@ -49,6 +49,7 @@ export function StudioDishLibrary({
   const [deleteSummary, setDeleteSummary] = useState<{ imageCount: number; exportVariantCount: number } | null>(
     null,
   )
+  const [imageToDelete, setImageToDelete] = useState<StudioImageRecord | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -199,6 +200,27 @@ export function StudioDishLibrary({
     }
   }, [dish.id, router])
 
+  const handleDeleteImage = useCallback(async () => {
+    if (!imageToDelete) return
+    const image = imageToDelete
+    setImageToDelete(null)
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/studio/images/${image.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error((err as { error?: string } | null)?.error ?? 'Failed to delete')
+      }
+      setImages((prev) => prev.filter((item) => item.id !== image.id))
+      void exports.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete')
+    } finally {
+      setBusy(false)
+    }
+  }, [imageToDelete, exports])
+
   return (
     <div>
       <StudioLibraryHeader
@@ -257,6 +279,8 @@ export function StudioDishLibrary({
                 image={image}
                 images={images}
                 tiles={tilesByImageId.get(image.id)}
+                disabled={busy}
+                onDelete={setImageToDelete}
               />
             </li>
           ))}
@@ -264,7 +288,13 @@ export function StudioDishLibrary({
       ) : null}
 
       {tab === 'shots' && images.length > 0 && view === 'tree' ? (
-        <StudioShotTree dishId={dish.id} images={images} tilesByImageId={tilesByImageId} />
+        <StudioShotTree
+          dishId={dish.id}
+          images={images}
+          tilesByImageId={tilesByImageId}
+          disabled={busy}
+          onDelete={setImageToDelete}
+        />
       ) : null}
 
       {tab === 'exports' && !exports.loaded ? (
@@ -308,6 +338,15 @@ export function StudioDishLibrary({
         variant="danger"
         onCancel={() => setDeleteOpen(false)}
         onConfirm={() => void handleDelete()}
+      />
+      <ConfirmDialog
+        open={imageToDelete !== null}
+        title="Delete this image?"
+        description="Permanently delete this image and any export variants made from it. This cannot be undone."
+        confirmText="Delete image"
+        variant="danger"
+        onCancel={() => setImageToDelete(null)}
+        onConfirm={() => void handleDeleteImage()}
       />
     </div>
   )

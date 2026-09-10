@@ -1,3 +1,7 @@
+'use client'
+
+import { Trash2 } from 'lucide-react'
+
 import { EXPORT_PRESETS } from '@/lib/studio/export-presets'
 import { isLosslessShot, shotLibraryBadge } from '@/lib/studio/lineage'
 import type { StudioExportTile, StudioImageRecord } from '@/lib/studio/types'
@@ -28,6 +32,34 @@ export function StudioShotBadges({
       <StudioShotBadge badge={shotLibraryBadge(image, images)} />
       {isLosslessShot(image) ? <StudioShotBadge badge="LOSSLESS" /> : null}
     </div>
+  )
+}
+
+export function StudioShotDeleteButton({
+  onClick,
+  disabled = false,
+  className,
+}: {
+  onClick: () => void
+  disabled?: boolean
+  className: string
+}) {
+  return (
+    <button
+      type="button"
+      aria-label="Delete shot"
+      title="Delete shot"
+      disabled={disabled}
+      data-kind="destroy"
+      className={className}
+      onClick={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        onClick()
+      }}
+    >
+      <Trash2 className="h-3.5 w-3.5" aria-hidden strokeWidth={2.25} />
+    </button>
   )
 }
 
