@@ -55,7 +55,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 2026-07-19 | Prompt & Reference Image resolution | Resolved server-side in `/api/studio/mutate`. Resolves style keys, loads corresponding PNGs from `public/studio/controls/`, and passes them as base64 reference images (`role: 'style'` for lighting, `role: 'scene'` for background) alongside the prompt. Customer styles API returns display fields only (never fragments/constraints). |
 | 2026-07-19 | Admin Photo Control vs FOH styles | FOH uses DB libraries + reference images; admin sandbox keeps hardcoded lighting enum/directives for now (consolidation deferred). Thumbnails under `public/studio/controls/` double as the reference images; admin upload deferred. |
 | 2026-07-20 | Camera height & spin separation (§7.8) | Decoupled vertical camera height (Angled/Overhead) and horizontal dish rotation (Spin Left 45°/Spin Right 45°) into separate controls. Removed 'eye-level' camera height entirely from customer-facing options to prevent low-quality generations. |
-| 2026-07-20 | Subject Rotation and Composition (§7.8) | Deferred / Parked entirely. Perspective and rotation controls are unreliable with current AI models and have been removed from the `/studio` control panel for now to ensure a stable, high-quality core product experience. |
+| 2026-09-12 | Vertical switch (45° ↔ overhead) | Exploratory FOH Camera control behind `NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH`. JSON `target.camera` viewpoint; camera-aware edit wrapper; no eye-level. `STUDIO_LOG_PROMPTS` dumps mutate prompts locally. Legacy angle clauses kept but unused for this pair until quality is accepted. |
 | 2026-07-23 | Independent Background & Surface controls | Split the single background style field into `canvas.background_style` (for vertical backdrops/walls) and `canvas.surface_style` (for horizontal tabletop surfaces) to allow users to select and apply both independently at the same time. |
 | 2026-07-23 | Image delete policy | Refined deleteStudioImage to only block deletion of source images (role = 'source') when active children exist. Generated images (role = 'generated') can be deleted freely, with children's source_image_id set to null. |
 | 2026-07-24 | Prompt length limit removal | Removed the hardcoded 2000-character limit from NanoBananaClient and PromptComposer entirely. Rationale: Gemini 3.1 Flash Image (Nano Banana 2) and Gemini 3 Pro Image (Nano Banana Pro) models support 131k and 64k input tokens respectively (equivalent to 260k-520k characters), making the 2000-character limit an unnecessary local bottleneck that caused composition failures on detailed prompts. |
@@ -127,7 +127,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 | 7.5 | Background/surface swapping + library | 3 | Built | DB `studio_background_styles` (8 seeded); FOH Background section; `canvas.background_style` editable. |
 | 7.6 | Plating/vessel style library | 7 | Deferred | Admin-only/experimental per doc. |
 | 7.7 | Dish element manipulation (garnish/sides/clutter) | 1 | Built | FOH remove-only for garnish/sides. Garnish **add** and clutter removal moved to post-MVP to-do on 2026-08-14. |
-| 7.8 | Rotation & composition controls (replace camera pitch) | 1 | Deferred | Parked. Removed perspective and horizontal rotation controls entirely from FOH for now due to AI model perspective inconsistency. |
+| 7.8 | Rotation & composition controls (replace camera pitch) | 1 | In progress | 2026-09-12: FOH vertical switch (45° ↔ overhead) behind `NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH`. Eye-level and horizontal spin remain parked. |
 | 7.9 | Output packs | Post-MVP | Deviation | One generate at a time. Q6 2026-08-14: user picks export variants after generate (delivery/Instagram/PDF/cutout). Batch packs remain deferred. |
 | 7.10 | Model selection (admin-visible only) | 1 | Built | FOH fixed to NB2/Flash; admin sandbox retains model selector. |
 
@@ -151,7 +151,7 @@ Subject to change; record changes as new dated rows rather than editing old ones
 |---|---|---|---|
 | 9.1 | Reuse existing repo | Built | Confirmed; no new repo. |
 | 9.2 | Pivot branch workflow | Deviation | See decisions log 2026-07-17: chunk branches off `main` instead of one long-lived branch. Workflow doc: `docs/pivot/GIT_WORKFLOW.md`. |
-| 9.3 | Feature flags (product mode, legacy menus, etc.) | Built | `src/lib/product-mode.ts`. Env vars in `env.example`. Experimental camera / plating flags deferred until features exist. |
+| 9.3 | Feature flags (product mode, legacy menus, etc.) | Built | `src/lib/product-mode.ts`. Env vars in `env.example`. Camera flag: `NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH` (default off). Plating flag still deferred. |
 | 9.4 | Route group structure | Not started | Existing app is not route-grouped as in doc; adopt incrementally rather than restructure up front (likely deviation — record when decided). |
 | 9.5 | Migrate admin sandbox to FOH | Built | Partial: customer `/studio` reuses photo-control lib; admin sandbox retained. |
 
@@ -246,3 +246,4 @@ Record in `docs/pivot/PATCH_<slug>_<date>.md` rather than as a new chunk.
 | 2026-08-15 | Workbench parent-variant chip (`From OG` / `From Vn`) | `main` | Built — see `docs/pivot/PATCH_STUDIO_PARENT_VARIANT_CHIP_2026-08-15.md`. No migration or env var. |
 | 2026-08-17 | Workbench full-frame viewport (fit/zoom/pan; 3:1 upload rail) | `main` | Built — see `docs/pivot/PATCH_STUDIO_WORKBENCH_VIEWPORT_2026-08-17.md`. No migration or env var. |
 | 2026-08-18 | Studio public homepage copy (self-serve CTAs; drop menu-subscription FAQ) | `main` | Built — see `docs/pivot/PATCH_STUDIO_PUBLIC_HOMEPAGE_COPY_2026-08-18.md`. No migration or env var. |
+| 2026-09-12 | Studio vertical switch 45° ↔ overhead (flagged) | `main` | Built — see `docs/pivot/PATCH_STUDIO_VERTICAL_SWITCH_2026-09-12.md`. Leave `NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH` and `STUDIO_LOG_PROMPTS` unset in production. |

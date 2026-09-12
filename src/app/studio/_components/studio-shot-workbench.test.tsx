@@ -334,6 +334,40 @@ describe('StudioScenePanel', () => {
     return render(<StudioScenePanel {...panelProps(overrides)} />)
   }
 
+  it('hides Camera unless the vertical switch is enabled', () => {
+    renderPanel()
+    expect(screen.queryByTestId('studio-scene-section-camera')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('studio-vertical-switch')).not.toBeInTheDocument()
+  })
+
+  it('shows a switch to overhead from a 45° working shot', () => {
+    const onVerticalSwitch = jest.fn()
+    renderPanel({
+      verticalSwitchEnabled: true,
+      workingAngle: '45-degree',
+      onVerticalSwitch,
+      pending: { lighting: false, surface: false, backdrop: false, garnishes: false, camera: false },
+    })
+    expect(screen.getByTestId('studio-scene-section-camera')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('studio-scene-section-camera'))
+    const toggle = screen.getByTestId('studio-vertical-switch')
+    expect(toggle).toHaveTextContent('Switch to overhead')
+    fireEvent.click(toggle)
+    expect(onVerticalSwitch).toHaveBeenCalled()
+  })
+
+  it('shows a switch to angled from an overhead working shot', () => {
+    renderPanel({
+      verticalSwitchEnabled: true,
+      workingAngle: 'top-down',
+      backdropHidden: true,
+    })
+    fireEvent.click(screen.getByTestId('studio-scene-section-camera'))
+    expect(screen.getByTestId('studio-vertical-switch')).toHaveTextContent('Switch to angled')
+    fireEvent.click(screen.getByTestId('studio-scene-section-backdrop'))
+    expect(screen.getByRole('status')).toHaveTextContent(/Overhead shots do not show a wall/)
+  })
+
   it('hides Quick Looks and Pro unless Pro is enabled', () => {
     const { rerender } = renderPanel()
     expect(screen.queryByTestId('studio-scene-section-quick-looks')).not.toBeInTheDocument()

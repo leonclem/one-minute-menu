@@ -29,6 +29,7 @@ import {
 } from '@/lib/studio/generation-request'
 import { sanitizeExtractionDiagnostics } from '@/lib/studio/extraction-diagnostics'
 import { parseFinishingTouchesMetadata } from '@/lib/studio/finishing-touches/metadata'
+import { logStudioPrompt } from '@/lib/studio/prompt-logging'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -194,6 +195,7 @@ export async function POST(request: NextRequest) {
       dailyLimit,
       creditCost,
     })
+    logStudioPrompt('mutate', compositionResult.prompt)
 
     const engine = getMutationEngine()
     const { imageBase64, mimeType: generatedMimeType, providerMimeType } = await engine.mutate({

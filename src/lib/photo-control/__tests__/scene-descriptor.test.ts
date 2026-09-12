@@ -1,4 +1,5 @@
 import { buildSceneDescriptor, type SceneDescriptorStyles } from '../scene-descriptor'
+import { cameraViewpoint, PLATE_FACING_LOCK } from '../camera-viewpoint'
 import type { MinimalSchema, StateDelta } from '../minimal-schema'
 
 type SchemaOverrides = {
@@ -279,6 +280,11 @@ describe('buildSceneDescriptor', () => {
 
     expect(result.current.camera).toBeUndefined()
     expect(result.subject).not.toHaveProperty('dish')
-    expect(result.target.camera).toEqual({ angle: 'eye-level' })
+    expect(result.subject.locked).not.toContain('framing')
+    expect(result.target.camera).toEqual({
+      viewpoint: cameraViewpoint('eye-level'),
+      plateFacing: PLATE_FACING_LOCK,
+    })
+    expect(result.camera).toEqual({})
   })
 })

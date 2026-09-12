@@ -82,6 +82,10 @@ export class NanoBananaError extends Error {
         'Wait a moment and try again',
         'Consider reducing the number of variations requested'
       ],
+      'TIMEOUT': [
+        'Try again; this edit can take over a minute',
+        'If it keeps timing out, simplify the request or retry later'
+      ],
       'PROMPT_TOO_LONG': [
         'Shorten your description',
         'Remove unnecessary details',
@@ -93,9 +97,19 @@ export class NanoBananaError extends Error {
   }
 }
 
+function isAbortError(error: unknown): boolean {
+  return (
+    (typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'AbortError') ||
+    (error instanceof Error && error.name === 'AbortError')
+  )
+}
+
 const DEFAULT_GEMINI_IMAGE_BASE_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent'
 const DEFAULT_GEMINI_IMAGE_MODEL = 'gemini-3.1-flash-image-preview'
+
+/** Must stay under Studio mutate `maxDuration` (120s) with a little headroom. */
+export const GEMINI_IMAGE_REQUEST_TIMEOUT_MS = 110_000
 
 export interface BuildGeminiRequestOptions {
   apiKey?: string
@@ -359,7 +373,7 @@ export class NanoBananaClient {
           retries: 3,
           baseDelayMs: 1000,
           maxDelayMs: 10000,
-          timeoutMs: 60000 // 60 seconds for image generation
+          timeoutMs: GEMINI_IMAGE_REQUEST_TIMEOUT_MS,
         }
       )
 
@@ -463,6 +477,13 @@ export class NanoBananaClient {
         }
       }
     } catch (error) {
+      if (isAbortError(error)) {
+        throw new NanoBananaError(
+          'The image model took too long to respond. Please try again.',
+          'TIMEOUT',
+          504,
+        )
+      }
       if (error instanceof HttpError) {
         throw this.handleHttpError(error)
       }

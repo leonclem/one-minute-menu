@@ -91,4 +91,36 @@ describe('POST /api/studio/finishing-touches/recommend', () => {
     expect(res.status).toBe(400)
     expect(mockRecommend).not.toHaveBeenCalled()
   })
+
+  it('accepts extracted garnish and side phrases longer than 80 characters', async () => {
+    mockRequireStudioApi.mockResolvedValue({
+      ok: true,
+      user: { id: 'user-1' },
+      supabase: {},
+    })
+    mockRecommend.mockResolvedValue([{ id: 'coriander', name: 'Coriander' }])
+
+    const body = {
+      dishName: 'Hainanese Chicken',
+      mainItem:
+        'Hainanese chicken rice, consisting of a dome of white rice, sliced poached chicken, and a base of lettuce and sliced tomatoes.',
+      garnishes: [
+        'fresh cilantro sprigs',
+        'sliced cucumber',
+        'green lettuce leaves',
+        'red tomato slices',
+      ],
+      sides: [
+        'two halves of braised egg',
+        'two dipping sauces (greenish and reddish-orange) in a small white rectangular dish',
+        'a small white bowl (partially visible, likely soup)',
+      ],
+      description:
+        'A well-lit Hainanese chicken rice dish is presented on a large oval white plate, featuring a dome of white rice, slices of steamed chicken, braised eggs, and fresh garnishes. The dish is accompanied by two dipping sauces and cutlery, all set on a light wooden tabletop.',
+    }
+
+    const res = await POST(makeRequest(body))
+    expect(res.status).toBe(200)
+    expect(mockRecommend).toHaveBeenCalledWith(body)
+  })
 })

@@ -144,6 +144,31 @@ describe('NanoBananaClient', () => {
       )
     })
 
+    it('maps a request abort to a TIMEOUT error', async () => {
+      const abort = new Error('This operation was aborted')
+      abort.name = 'AbortError'
+      mockFetchJsonWithRetry.mockRejectedValueOnce(abort)
+
+      await expect(client.generateImage(validParams)).rejects.toMatchObject({
+        name: 'NanoBananaError',
+        code: 'TIMEOUT',
+        status: 504,
+      })
+    })
+
+    it('waits up to 110s for Gemini image generation', async () => {
+      mockFetchJsonWithRetry.mockResolvedValueOnce({
+        candidates: [{ content: { parts: [{ inlineData: { data: 'image' } }] } }],
+        metadata: { processing_time_ms: 5000, model_version: 'gemini-1.0' },
+      })
+
+      await client.generateImage(validParams)
+
+      expect(mockFetchJsonWithRetry.mock.calls[0][2]).toMatchObject({
+        timeoutMs: 110_000,
+      })
+    })
+
     it('should throw error when no images are returned', async () => {
       const mockResponse = {
         success: true,

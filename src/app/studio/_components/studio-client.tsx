@@ -19,7 +19,7 @@ import {
   extractionDiagnosticsNeedsRefresh,
   type ExtractionDiagnostics,
 } from '@/lib/studio/extraction-diagnostics'
-import { isStudioProEnabled, isStudioReshootEnabled } from '@/lib/product-mode'
+import { isStudioProEnabled, isStudioReshootEnabled, isStudioVerticalSwitchEnabled } from '@/lib/product-mode'
 import { ANALYTICS_EVENTS } from '@/lib/posthog/events'
 import {
   toModelClass,
@@ -55,6 +55,7 @@ import {
   ensureSurfaceRestageBaseline,
   ensureLightingRestageBaseline,
 } from '@/lib/studio/restage'
+import { applyVerticalSwitch, workingShotHidesBackdrop } from '@/lib/studio/vertical-switch'
 import type {
   StudioBackgroundStyleDisplay,
   StudioDishRecord,
@@ -403,6 +404,7 @@ export function StudioClient({
   const [reshootDialogOpen, setReshootDialogOpen] = useState(false)
   const reshootEnabled = isStudioReshootEnabled()
   const proEnabled = isStudioProEnabled()
+  const verticalSwitchEnabled = isStudioVerticalSwitchEnabled()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingUploadAfterCreateRef = useRef(false)
@@ -464,6 +466,7 @@ export function StudioClient({
     backdrop: pendingDelta.scalarChanges.some(
       (change) => change.path === 'canvas.background_style'
     ),
+    camera: pendingDelta.scalarChanges.some((change) => change.path === 'scene_setup.angle'),
     garnishes:
       finishingStaged ||
       pendingDelta.arrays.garnishes.removed.length > 0 ||
@@ -540,6 +543,8 @@ export function StudioClient({
     return backdropStylesToOptions(filtered)
   }, [backgroundStyles])
   const backdropKnownFalse = backdropVisible === false
+  const workingAngle = originalStateRef.current.schema.scene_setup.angle
+  const backdropHidden = workingShotHidesBackdrop(workingAngle, backdropKnownFalse)
 
   const lightingLabelMap = useMemo(
     () =>
@@ -1137,6 +1142,14 @@ export function StudioClient({
     [applyStagedChange, editorState, lightingKeys]
   )
 
+  const stageVerticalSwitch = useCallback(() => {
+    const { nextState, nextBaseline } = applyVerticalSwitch(
+      editorState,
+      originalStateRef.current,
+    )
+    applyStagedChange(nextState, nextBaseline)
+  }, [applyStagedChange, editorState])
+
   const stageBackground = useCallback(
     (backgroundStyle: string) => {
       const nextBaseline = ensureBackgroundRestageBaseline(
@@ -1193,7 +1206,7 @@ export function StudioClient({
         look,
         current: editorState,
         baseline: originalStateRef.current,
-        includeBackdrop: !backdropKnownFalse,
+        includeBackdrop: !backdropHidden,
         lightingKeys,
         surfaceKeys,
         backdropKeys,
@@ -1202,7 +1215,7 @@ export function StudioClient({
     },
     [
       applyStagedChange,
-      backdropKnownFalse,
+      backdropHidden,
       backdropKeys,
       editorState,
       lightingKeys,
@@ -2538,7 +2551,7 @@ export function StudioClient({
             lightingOptions={lightingOptions}
             surfaceOptions={surfaceOptions}
             backdropOptions={backdropOptions}
-            backdropHidden={backdropKnownFalse}
+            backdropHidden={backdropHidden}
             controlsDisabled={controlsDisabled}
             isHydrated={isHydrated}
             isExtracting={isExtracting}
@@ -2578,6 +2591,9 @@ export function StudioClient({
             onLighting={stageLighting}
             onSurface={stageSurface}
             onBackdrop={stageBackground}
+            verticalSwitchEnabled={verticalSwitchEnabled}
+            workingAngle={workingAngle}
+            onVerticalSwitch={stageVerticalSwitch}
             onGarnishesChange={(garnishes) =>
               applyStagedChange({
                 ...editorState,
@@ -2674,7 +2690,7 @@ export function StudioClient({
           surfaceOptions={surfaceOptions}
           creditLabel={generateCreditLabel}
           busy={isGenerating}
-          backdropUnavailable={backdropKnownFalse}
+          backdropUnavailable={backdropHidden}
           degradationCallout={degradationCallout}
         />
       )}

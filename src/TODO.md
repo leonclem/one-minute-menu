@@ -5,18 +5,26 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Overhead shot
 - [ ] Investigate rotation/angle manipulation
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+## Issues
+- [ ] /auth/signin page not restyled to new branding
+- [ ] Google Adwords seems to reference waitlist/beta still?
+- [ ] Update home page wording "eyebrow".
+
 ## /studio
 - [ ] Remove inverse and darken/shade/stripe area to be removed
 - [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
 - [ ] Investigate vessel swapping
 - [ ] STUDIO_MOBILE_FOCUS_SWITCHER_PROPOSAL.md (check if still valid after redesign)
+
+### Best Practices (https://ai.google.dev/gemini-api/docs/image-understanding#object-detection)
+- [ ] Object detection (could help with removal accuracy) (may just be Gemini 3.8, need to check)
+- [ ] Check "When using a single image with text, place the text prompt before the image in the input array"
 
 ## /pricing
 - [ ] Test production (use 100% off coupon perhaps)
@@ -151,7 +159,7 @@
 
 ## /pricing
 - [x] Review pricing approach
-- [x] Stripe packages update and notify Grok
+- [x] Stripe packages update
 - [x] Auto-grant new sign-ups 10 credits
 - [x] Allow (paid and beta) users to access NB Pro
 - [x] Test locally
@@ -173,6 +181,7 @@
 - [x] Add "cooking" SVG animation(s) instead of boring "Generating..." (but maintain translucency)
 - [x] Branching [grid tiles?] structure rather than timeline
 - [x] UX tidy up
+- [x] Overhead shot
 
 ## /onboarding
 - [x] New users get 10 credits by default

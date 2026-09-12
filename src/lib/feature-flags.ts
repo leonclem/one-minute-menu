@@ -20,7 +20,6 @@ export async function getFeatureFlag(flagId: string): Promise<boolean> {
   // Check cache first
   const cached = flagCache.get(flagId)
   if (cached && Date.now() < cached.expiresAt) {
-    console.log(`[feature-flags] Flag "${flagId}" = ${cached.value} (cached)`)
     return cached.value
   }
 
@@ -46,8 +45,7 @@ export async function getFeatureFlag(flagId: string): Promise<boolean> {
       value: result,
       expiresAt: Date.now() + CACHE_TTL_MS,
     })
-    
-    console.log(`[feature-flags] Flag "${flagId}" = ${result}`)
+
     return result
   } catch (err) {
     console.error(`[feature-flags] Exception reading flag "${flagId}":`, err)
@@ -61,6 +59,5 @@ export async function getFeatureFlag(flagId: string): Promise<boolean> {
  */
 export function clearFeatureFlagCache(): void {
   flagCache.clear()
-  console.log('[feature-flags] Cache cleared')
 }
 

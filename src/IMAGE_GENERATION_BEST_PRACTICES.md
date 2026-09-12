@@ -27,10 +27,14 @@ and surface intent in the scene descriptor.
 
 ## 2. Perspective guidance: current rule and historical material
 
-The customer-facing Studio panel no longer exposes the angle/rotation controls that motivated the
-old perspective-forcing recipe. Do not add the old prefix to every prompt, and do not describe it as
-an active product requirement. Camera intent belongs in the requested scene descriptor when a
-supported control actually asks for it.
+The customer Scene **Camera** control (flagged) is a vertical switch between overhead and a
+45° food-photography view. Express that as named `target.camera` attributes (semantic
+viewpoint + keep the plate facing the same way). Do not emit internal keys such as
+`top-down` as visual values. When `target.camera` is present, the edit wrapper must not say
+to preserve the original composition or camera height.
+
+Do not add the old Structural Forcing prefix to every prompt. Eye-level / 0° side-view remains
+parked. Horizontal plate spin is a later plane.
 
 ### Historical — Structural Forcing / Perspective Override Prefix
 
@@ -41,10 +45,8 @@ The following material is retained only to explain older prompts and archived ex
 - Deny the top of the plate and prepend `CRITICAL: CHANGE PERSPECTIVE TO SIDE-VIEW...`.
 
 Those phrases were part of the retired Structural Forcing / Perspective Override Prefix approach.
-The 2026-07-20 decision parked the related angle work and removed those controls from the FOH panel;
-new code and prompts must not depend on an unreachable control. If an administrator explicitly
-requests a camera change, express it as a named `target.camera` attribute and preserve all
-unmentioned composition.
+The 2026-07-20 decision parked eye-level work. New Studio camera prompts must use
+`target.camera` viewpoint language, not f-stops or CRITICAL prefixes.
 
 ---
 

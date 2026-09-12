@@ -7,6 +7,7 @@
  */
 
 import type { MinimalSchema, StateDelta } from './minimal-schema'
+import { PLATE_FACING_LOCK, cameraViewpoint } from './camera-viewpoint'
 
 export type SceneStyleKind = 'lighting' | 'backdrop' | 'surface'
 
@@ -47,10 +48,14 @@ export interface SceneObservations {
   surface_visible?: unknown
 }
 
+export type SchemaCameraField = 'angle' | 'framing' | 'spin'
+
 export interface SceneCamera {
   angle?: string
   framing?: string
   spin?: string
+  viewpoint?: string
+  plateFacing?: string
 }
 
 export interface SceneComponents {
@@ -132,6 +137,12 @@ const LOCKED_CONSTRAINTS_BY_TASK = {
     'ingredient and component counts',
     'vessel',
     'framing',
+    'colours and textures',
+  ],
+  editWithCamera: [
+    'dish identity',
+    'ingredient and component counts',
+    'vessel',
     'colours and textures',
   ],
   reshoot: [
@@ -339,9 +350,25 @@ function attachReference(section: SceneStyleSection, label: unknown): SceneStyle
   return section
 }
 
-function cameraValue(schema: MinimalSchema, field: keyof SceneCamera): string | undefined {
+function cameraValue(schema: MinimalSchema, field: SchemaCameraField): string | undefined {
   const value = schema.scene_setup[field]
   return nonEmptyString(value) ? value : undefined
+}
+
+function assignCameraField(
+  state: SceneDescriptorState,
+  field: SchemaCameraField,
+  value: string,
+): void {
+  if (field === 'angle') {
+    state.camera = {
+      ...(state.camera ?? {}),
+      viewpoint: cameraViewpoint(value),
+      plateFacing: PLATE_FACING_LOCK,
+    }
+    return
+  }
+  state.camera = { ...(state.camera ?? {}), [field]: value }
 }
 
 function addCameraChange(
@@ -349,17 +376,17 @@ function addCameraChange(
   target: SceneDescriptorState,
   original: MinimalSchema,
   desired: MinimalSchema,
-  field: keyof SceneCamera,
+  field: SchemaCameraField,
   observations: SceneObservations | Record<string, unknown>,
 ): void {
   const currentValue = cameraValue(original, field)
   const targetValue = cameraValue(desired, field)
   const observationPath = `scene_setup.${field}`
   if (currentValue !== undefined && !isOmitted(observations, observationPath)) {
-    current.camera = { ...(current.camera ?? {}), [field]: currentValue }
+    assignCameraField(current, field, currentValue)
   }
   if (targetValue !== undefined) {
-    target.camera = { ...(target.camera ?? {}), [field]: targetValue }
+    assignCameraField(target, field, targetValue)
   }
 }
 
@@ -446,7 +473,7 @@ function subjectFrom(
   original: MinimalSchema,
   labels: readonly string[],
   observations: SceneObservations | Record<string, unknown>,
-  task: SceneDescriptor['task'],
+  task: SceneDescriptor['task'] | 'editWithCamera',
   improvePlating = false,
 ): SceneSubject {
   const locked: string[] = [...LOCKED_CONSTRAINTS_BY_TASK[task]]
@@ -508,8 +535,10 @@ export function buildSceneDescriptor({
   let styleReferenceOffset = 1
   const stagedStyles: SceneStyleKind[] = []
 
+  let angleStaged = false
   for (const change of delta.scalarChanges) {
     if (change.path === 'scene_setup.angle') {
+      angleStaged = true
       addCameraChange(current, target, original, desired, 'angle', observations)
     }
     if (change.path === 'scene_setup.framing') {
@@ -544,10 +573,21 @@ export function buildSceneDescriptor({
   }
   addPositionChange(current, target, delta)
 
+  const observedAngle = cameraValue(original, 'angle')
+  const observedCamera =
+    angleStaged && observedAngle && !isOmitted(observations, 'scene_setup.angle')
+      ? { viewpoint: cameraViewpoint(observedAngle) }
+      : {}
+
   return {
     task: 'edit',
-    subject: subjectFrom(original, labels, observations, 'edit'),
-    camera: {},
+    subject: subjectFrom(
+      original,
+      labels,
+      observations,
+      angleStaged ? 'editWithCamera' : 'edit',
+    ),
+    camera: observedCamera,
     current,
     target,
     output: { style: 'photorealistic', framing: 'full shot, no cropping' },

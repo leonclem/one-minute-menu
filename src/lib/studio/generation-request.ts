@@ -160,6 +160,9 @@ export async function mapStudioGenerationError(
       case 'SERVICE_UNAVAILABLE':
         status = 503
         break
+      case 'TIMEOUT':
+        status = 504
+        break
       case 'NO_IMAGE_PRODUCED':
         status = 502
         break

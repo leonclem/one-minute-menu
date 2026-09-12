@@ -250,7 +250,8 @@ it). A full look is exactly `MAX_PENDING_CHANGES` (3).
 | Label                          | Kind      | When shown                                              | What it does                                                                 | API                                                                                                 |
 | ------------------------------ | --------- | ------------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | Quick Look tile                | button    | Hydrated                                                | Stage Bright & Clean / Golden Hour / Dark & Moody / Colour Pop               | Applied later by `POST /api/studio/mutate`                                                          |
-| Lighting / Surface / Backdrop  | accordion | Hydrated                                                | Expand tiles. Backdrop disabled if no vertical backdrop was detected         | —                                                                                                   |
+| Lighting / Surface / Backdrop  | accordion | Hydrated                                                | Expand tiles. Backdrop disabled if the working shot is overhead or no vertical backdrop was detected | — |
+| Camera                         | accordion | `NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH=true` and hydrated | One switch: overhead if the shot is not, 45° if it already is. Stacks with lighting/surface. Targeting overhead drops a staged backdrop. | Generate: `POST /api/studio/mutate` |
 | Each style tile                | radio     | Section open                                            | Stage that lighting/surface/backdrop                                         | Applied later by `POST /api/studio/mutate`                                                          |
 | **On the plate**               | accordion | Hydrated                                                | Garnish/side remove + finishing touches                                      | —                                                                                                   |
 | **Remove {garnish/side}**      | button    | One per detected garnish or side                        | Stage removal locally                                                        | —                                                                                                   |
@@ -414,7 +415,7 @@ API for them yet. Do not add toolbar or Scene entries until an API exists.
 
 | Tool                    | Notes                                                                 |
 | ----------------------- | --------------------------------------------------------------------- |
-| Change angle            | Camera/orbit. Hidden from toolbar and Scene.                          |
+| Change angle            | Replaced by Scene Camera vertical switch (`NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH`). Horizontal spin still parked. |
 | Swap vessel             | Plate/bowl swap. Hidden from toolbar and Scene.                       |
 | Remove inverse          | Keep-only / inverse of whole-frame Remove.                            |
 | User-saved Quick Looks  | Looks stay four hardcoded bundles. No “save this combo” control.      |

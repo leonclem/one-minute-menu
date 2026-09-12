@@ -69,6 +69,8 @@ const MIN_DESCRIPTION_LENGTH = 50
 const TASK_FRAMING = {
   edit:
     'Constrained edit: change only what "target" names; keep everything else exactly as-is; preserve the original composition. Semantic negative prompt: "subject.locked" remains pixel-faithful.',
+  editWithCamera:
+    'Constrained edit: change only what "target" names. If target.camera is present, photograph the same dish from that viewpoint; keep unnamed elements. Do not preserve the original camera height. Semantic negative prompt: "subject.locked" remains faithful; camera height may change.',
   reshoot:
     'Re-shoot: re-photograph the dish shown in the reference image. Rebuild composition, camera geometry, lighting and backdrop per "target". Preserve everything listed in "subject.locked" exactly as shown in the reference. Semantic negative prompt: "subject.locked" remains faithful to the reference dish.',
 } as const
@@ -107,14 +109,25 @@ function trimDescriptionToFit(
 }
 
 function estimatePromptSize(descriptor: SceneDescriptor, directive: string): number {
-  const task = descriptor.task === 'reshoot' ? 'reshoot' : 'edit'
-  const framing = TASK_FRAMING[task]
+  const framing = framingFor(descriptor)
   const descriptorJSON = JSON.stringify(descriptor, null, 2)
   return [framing, `Requested directive: ${directive}`, '', descriptorJSON].join('\n').length
 }
 
 function resolveTask(descriptor: SceneDescriptor): 'edit' | 'reshoot' {
   return descriptor.task === 'reshoot' ? 'reshoot' : 'edit'
+}
+
+function hasCameraTarget(descriptor: SceneDescriptor): boolean {
+  const camera = descriptor.target?.camera
+  if (!camera) return false
+  return Boolean(camera.viewpoint || camera.angle || camera.plateFacing)
+}
+
+function framingFor(descriptor: SceneDescriptor): string {
+  if (descriptor.task === 'reshoot') return TASK_FRAMING.reshoot
+  if (hasCameraTarget(descriptor)) return TASK_FRAMING.editWithCamera
+  return TASK_FRAMING.edit
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -345,7 +358,7 @@ export function composePrompt(input: CompositionInput): CompositionResult {
     return failure('Composition failure: descriptor could not be serialized to JSON.')
   }
 
-  const framing = TASK_FRAMING[task]
+  const framing = framingFor(modelDescriptorForPrompt)
   const prompt = descriptor === undefined
     ? directive.length > 500
       ? [framing, '', descriptorJSON].join('\n')

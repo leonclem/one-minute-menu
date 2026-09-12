@@ -15,9 +15,9 @@ export const maxDuration = 30
 
 const RecommendBodyZ = z.object({
   dishName: z.string().max(200).optional(),
-  mainItem: z.string().max(200).optional(),
-  garnishes: z.array(z.string().max(80)).max(20).optional(),
-  sides: z.array(z.string().max(80)).max(20).optional(),
+  mainItem: z.string().max(800).optional(),
+  garnishes: z.array(z.string().max(500)).max(20).optional(),
+  sides: z.array(z.string().max(500)).max(20).optional(),
   description: z.string().max(8000).optional(),
 })
 
@@ -29,6 +29,12 @@ export async function POST(request: NextRequest) {
     const json: unknown = await request.json().catch(() => null)
     const parsed = RecommendBodyZ.safeParse(json)
     if (!parsed.success) {
+      logger.warn('⚠️ [Finishing Touches] Invalid recommend payload', {
+        issues: parsed.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          code: issue.code,
+        })),
+      })
       return NextResponse.json({ error: 'Invalid recommend payload' }, { status: 400 })
     }
 

@@ -8,6 +8,11 @@ import { controlAssetSrc, type StudioVisualOption } from '@/lib/studio/control-o
 import { STUDIO_QUICK_LOOKS, type StudioQuickLook } from '@/lib/studio/quick-looks'
 import type { FinishingTouchCatalogueItem } from '@/lib/studio/finishing-touches'
 import { STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
+import {
+  cameraHeightLabel,
+  isOverheadAngle,
+  verticalSwitchLabel,
+} from '@/lib/studio/vertical-switch'
 
 import { StudioFinishingTouchesControl } from './studio-finishing-touches'
 import {
@@ -21,7 +26,7 @@ import { VisualOptionTiles } from './visual-option-tiles'
 /** Flip to restore the Quick Looks accordion. Kept off until combinations are settled. */
 const SHOW_QUICK_LOOKS = false
 
-type SceneSectionId = 'looks' | 'elements' | 'lighting' | 'surface' | 'backdrop'
+type SceneSectionId = 'looks' | 'camera' | 'elements' | 'lighting' | 'surface' | 'backdrop'
 
 interface StudioScenePanelProps {
   editorState: EditorState
@@ -39,6 +44,7 @@ interface StudioScenePanelProps {
     surface: boolean
     backdrop: boolean
     garnishes: boolean
+    camera?: boolean
   }
   finishing: {
     disabled: boolean
@@ -68,6 +74,9 @@ interface StudioScenePanelProps {
   reshootEnabled: boolean
   onReshoot: () => void
   reshootDisabled: boolean
+  verticalSwitchEnabled?: boolean
+  workingAngle?: string
+  onVerticalSwitch?: () => void
 }
 
 export function StudioScenePanel({
@@ -101,6 +110,9 @@ export function StudioScenePanel({
   reshootEnabled,
   onReshoot,
   reshootDisabled,
+  verticalSwitchEnabled = false,
+  workingAngle = '45-degree',
+  onVerticalSwitch,
 }: StudioScenePanelProps) {
   const [openSection, setOpenSection] = useState<SceneSectionId | null>('elements')
   const toggle = (id: SceneSectionId) => {
@@ -155,6 +167,31 @@ export function StudioScenePanel({
           <p className="py-3 text-sm text-white/40">Open a shot to enable Scene controls.</p>
         ) : (
           <>
+            {verticalSwitchEnabled ? (
+              <SceneSection
+                id="studio-scene-camera"
+                title="Camera"
+                selectedLabel={cameraHeightLabel(editorState.schema.scene_setup.angle)}
+                pending={pending.camera}
+                open={openSection === 'camera'}
+                onToggle={() => toggle('camera')}
+              >
+                <button
+                  type="button"
+                  data-testid="studio-vertical-switch"
+                  className="studio-option-tile flex w-full items-center justify-between gap-3 rounded-[11px] border border-white/[0.1] bg-white/[0.03] p-3 text-left text-sm font-medium text-white hover:border-white/[0.16] focus:outline-none focus:ring-2 focus:ring-[#01b3bf]/40 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={controlsDisabled}
+                  onClick={onVerticalSwitch}
+                >
+                  {verticalSwitchLabel(workingAngle)}
+                </button>
+                <p className="mt-2 text-xs leading-5 text-white/45">
+                  {isOverheadAngle(workingAngle)
+                    ? 'This shot looks straight down. Generate a 45° view of the same dish.'
+                    : 'Generate an overhead view of the same dish, looking straight down.'}
+                </p>
+              </SceneSection>
+            ) : null}
             <SceneSection
               id="studio-scene-plate"
               title="Elements"
@@ -244,8 +281,9 @@ export function StudioScenePanel({
             >
               {backdropHidden ? (
                 <p role="status" className="text-xs text-[#f8bc02]">
-                  No vertical backdrop was detected in this photo, so backdrop changes are
-                  unavailable.
+                  {isOverheadAngle(workingAngle)
+                    ? 'Overhead shots do not show a wall behind the dish, so backdrop changes are unavailable.'
+                    : 'No vertical backdrop was detected in this photo, so backdrop changes are unavailable.'}
                 </p>
               ) : null}
               <div className={backdropHidden ? 'mt-2' : undefined}>

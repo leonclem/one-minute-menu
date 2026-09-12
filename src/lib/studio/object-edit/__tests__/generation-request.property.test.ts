@@ -16,7 +16,7 @@ afterAll(() => {
   jest.restoreAllMocks()
 })
 
-type ErrorScenario = 'policy' | 'rate-limit' | 'auth' | 'unavailable' | 'no-image' | 'invalid' | 'credits' | 'image' | 'blocked' | 'unknown'
+type ErrorScenario = 'policy' | 'rate-limit' | 'auth' | 'unavailable' | 'timeout' | 'no-image' | 'invalid' | 'credits' | 'image' | 'blocked' | 'unknown'
 
 function errorFor(scenario: ErrorScenario): { error: Error; status: number } {
   switch (scenario) {
@@ -24,6 +24,7 @@ function errorFor(scenario: ErrorScenario): { error: Error; status: number } {
     case 'rate-limit': return { error: new NanoBananaError('Rate limit', 'RATE_LIMIT_EXCEEDED'), status: 429 }
     case 'auth': return { error: new NanoBananaError('Authentication', 'AUTHENTICATION_ERROR'), status: 401 }
     case 'unavailable': return { error: new NanoBananaError('Unavailable', 'SERVICE_UNAVAILABLE'), status: 503 }
+    case 'timeout': return { error: new NanoBananaError('Timeout', 'TIMEOUT'), status: 504 }
     case 'no-image': return { error: new NanoBananaError('No image', 'NO_IMAGE_PRODUCED'), status: 502 }
     case 'invalid': return { error: new NanoBananaError('Invalid', 'INVALID_PARAMS'), status: 400 }
     case 'credits': return { error: new StudioCreditsError('Credits', 'INSUFFICIENT_CREDITS', 402), status: 402 }
@@ -37,7 +38,7 @@ describe('studio generation error mapping properties', () => {
   it('Property 15: known errors map to one established status/error envelope without internal data', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.constantFrom<ErrorScenario>('policy', 'rate-limit', 'auth', 'unavailable', 'no-image', 'invalid', 'credits', 'image', 'blocked', 'unknown'),
+        fc.constantFrom<ErrorScenario>('policy', 'rate-limit', 'auth', 'unavailable', 'timeout', 'no-image', 'invalid', 'credits', 'image', 'blocked', 'unknown'),
         async (scenario) => {
           const expected = errorFor(scenario)
           const response = await mapStudioGenerationError(expected.error, null, 'Object edit property test')

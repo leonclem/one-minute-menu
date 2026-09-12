@@ -40,6 +40,7 @@
  */
 
 import { type EditorState, type StateDelta } from './minimal-schema'
+import { cameraAngleDirective } from './camera-viewpoint'
 import { countEditableChanges } from './state-delta'
 import { buildFinishingTouchesAdditionClause } from '@/lib/studio/finishing-touches/directive'
 
@@ -55,18 +56,6 @@ import { buildFinishingTouchesAdditionClause } from '@/lib/studio/finishing-touc
  */
 function angleLabel(angle: string): string {
   switch (angle) {
-    case 'top-down':
-      return (
-        'a Top-Down / Overhead Angle (90-Degree). ' +
-        'Camera perfectly parallel to surface, looking straight down. ' +
-        'Deep focus (f/8.0).'
-      )
-    case '45-degree':
-      return (
-        'a 45-Degree Angle (3/4 View). ' +
-        'Standard food photography shot, looking down at 45-degrees. ' +
-        'Natural perspective (f/2.8).'
-      )
     case 'eye-level':
       return (
         'a 0-degree Eye-Level Shot (Table-top horizon shot). ' +
@@ -89,12 +78,15 @@ function angleLabel(angle: string): string {
 }
 
 /**
- * Build the angle-change instruction clause. (Requirement 5.3)
+ * Build the angle-change instruction clause.
  *
- * Instructs a perspective change to the selected angle and preservation of the
- * existing item configuration on the vessel.
+ * Overhead / 45° use the thin Studio camera directive. Eye-level and macro
+ * keep the older labels until those controls are retired.
  */
 function buildAngleClause(to: string): string {
+  if (to === 'top-down' || to === '45-degree') {
+    return cameraAngleDirective(to)
+  }
   return (
     `Change the camera angle to ${angleLabel(to)}. ` +
     `Preserve the existing arrangement and configuration of all items on the vessel.`
@@ -340,7 +332,10 @@ export function generateDirective(
   // ── "Leave all other attributes unchanged" (single-attribute changes only)
   // (Requirement 11.3)
 
-  if (countEditableChanges(delta) === 1) {
+  const cameraStaged = delta.scalarChanges.some(
+    (change) => change.path === 'scene_setup.angle' && !excluded.has(change.path),
+  )
+  if (countEditableChanges(delta) === 1 && !cameraStaged) {
     clauses.push(LEAVE_UNCHANGED_CLAUSE)
   }
 

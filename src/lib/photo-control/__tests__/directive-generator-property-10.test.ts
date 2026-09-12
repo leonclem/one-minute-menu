@@ -384,7 +384,7 @@ describe('Feature: photo-control, Property 10: Directive content per change type
    * When exactly one attribute changes, the directive must contain
    * "leave all other attributes unchanged" (or similar).
    */
-  it('single angle change: directive contains "leave all other attributes unchanged"', () => {
+  it('single angle change: directive does not freeze the original camera height', () => {
     fc.assert(
       fc.property(angleChangePairArb, lightingArb, framingArb, ({ from, to }, lighting, framing) => {
         const original = makeState({ angle: from, lighting, framing })
@@ -397,11 +397,7 @@ describe('Feature: photo-control, Property 10: Directive content per change type
         expect(directive).not.toBeNull()
         const text = directive!
 
-        expect(
-          containsCI(text, 'leave all other attributes unchanged') ||
-          containsCI(text, 'leave all other') ||
-          containsCI(text, 'unchanged'),
-        ).toBe(true)
+        expect(containsCI(text, 'leave all other attributes unchanged')).toBe(false)
       }),
       { numRuns: 150 },
     )

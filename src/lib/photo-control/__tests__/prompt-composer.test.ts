@@ -64,6 +64,34 @@ describe('composePrompt', () => {
     expect(prompt.length).toBeLessThan(MAX_PROMPT_LENGTH_BY_TASK.edit)
   })
 
+  it('uses the camera-aware wrapper when target.camera is staged', () => {
+    const prompt = successful(
+      composePrompt({
+        directive:
+          'Tilt the camera to overhead, looking straight down at the dish. Keep the plate facing the same way on the table; do not spin it.',
+        descriptor: {
+          ...descriptor,
+          camera: {
+            viewpoint: 'standard three-quarter food photograph, about 45 degrees above the table',
+          },
+          target: {
+            camera: {
+              viewpoint: 'overhead, camera parallel to the table, looking straight down',
+              plateFacing: 'same as the source; do not spin the dish on the table',
+            },
+          },
+        },
+      }),
+    )
+
+    expect(prompt).toContain('If target.camera is present')
+    expect(prompt).toContain('Do not preserve the original camera height')
+    expect(prompt).not.toContain('preserve the original composition')
+    expect(prompt).not.toContain('pixel-faithful')
+    expect(prompt).toContain('looking straight down')
+    expect(prompt).not.toContain('CRITICAL: CHANGE PERSPECTIVE TO SIDE-VIEW')
+  })
+
   it('accepts the legacy state-pair call shape while emitting semantic JSON', () => {
     const state = {
       scene_setup: {

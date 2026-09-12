@@ -144,3 +144,11 @@ export function isStudioReshootEnabled(): boolean {
 export function isStudioProEnabled(): boolean {
   return process.env.NEXT_PUBLIC_STUDIO_ENABLE_PRO === 'true'
 }
+
+/**
+ * Whether the Scene Camera vertical switch (45° ↔ overhead) is shown.
+ * Defaults to false until quality is accepted.
+ */
+export function isStudioVerticalSwitchEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH === 'true'
+}

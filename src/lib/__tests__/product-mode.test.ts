@@ -10,6 +10,7 @@ describe('product-mode', () => {
     'NEXT_PUBLIC_STUDIO_ADMIN_ONLY',
     'NEXT_PUBLIC_STUDIO_ACCESS_MODE',
     'NEXT_PUBLIC_STUDIO_ENABLE_PRO',
+    'NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH',
   ] as const
 
   const originalEnv: Record<string, string | undefined> = {}
@@ -304,6 +305,19 @@ describe('product-mode', () => {
       process.env.NEXT_PUBLIC_STUDIO_ENABLE_PRO = 'true'
       const { isStudioProEnabled } = await loadModule()
       expect(isStudioProEnabled()).toBe(true)
+    })
+  })
+
+  describe('isStudioVerticalSwitchEnabled', () => {
+    it('defaults to false when unset', async () => {
+      const { isStudioVerticalSwitchEnabled } = await loadModule()
+      expect(isStudioVerticalSwitchEnabled()).toBe(false)
+    })
+
+    it('returns true only when exactly "true"', async () => {
+      process.env.NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH = 'true'
+      const { isStudioVerticalSwitchEnabled } = await loadModule()
+      expect(isStudioVerticalSwitchEnabled()).toBe(true)
     })
   })
 })

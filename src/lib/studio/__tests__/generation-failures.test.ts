@@ -48,6 +48,9 @@ describe('generation-failures classifier', () => {
     expect(
       isBillableProviderFailure(new NanoBananaError('x', 'SERVICE_UNAVAILABLE', 503)),
     ).toBe(false)
+    expect(
+      isBillableProviderFailure(new NanoBananaError('x', 'TIMEOUT', 504)),
+    ).toBe(false)
   })
 
   it('assertDishNotBlocked throws 423 when blocked', () => {
