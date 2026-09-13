@@ -16,6 +16,7 @@ import { computeDelta } from '@/lib/photo-control/state-delta'
 import { loadStudioImageBytes } from '@/lib/studio/image-bytes'
 import { CENTER, type MinimalSchema } from '@/lib/photo-control/minimal-schema'
 import { editorStateToMetadata } from '@/lib/studio/editor-state-storage'
+import { clearConsumedYaw } from '@/lib/studio/yaw'
 import { resolveStyleDirectiveClauses } from '@/lib/studio/resolve-style-directives'
 import {
   runStudioOutputValidation,
@@ -222,10 +223,12 @@ export async function POST(request: NextRequest) {
       directive: directiveText,
       changeSummary: changeSummaryChips,
       cost_credits: creditCost,
-      editorState: editorStateToMetadata({
-        schema: targetSchema,
-        position: { ...CENTER },
-      }),
+      editorState: editorStateToMetadata(
+        clearConsumedYaw({
+          schema: targetSchema,
+          position: { ...CENTER },
+        }),
+      ),
       validation: validationToMetadata(validationResult),
     }
     if (safeExtractionDiagnostics) {

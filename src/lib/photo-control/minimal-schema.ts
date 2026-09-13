@@ -58,9 +58,15 @@ export const LIGHTING_VALUES = STUDIO_LIGHTING_KEYS
 export const FRAMING_VALUES = ['close-up', 'medium', 'wide'] as const
 
 /**
- * Allowed horizontal dish rotation (spin) values.
+ * Horizontal dish rotation as observed by extract. Relative 90° yaw is a
+ * generate request, not an extract identity.
  */
-export const SPIN_VALUES = ['0', 'left-45', 'right-45'] as const
+export const EXTRACT_SPIN_VALUES = ['0'] as const
+
+/**
+ * Editor / mutate spin values. FOH rotate stages left-90 / right-90.
+ */
+export const SPIN_VALUES = ['0', 'left-90', 'right-90'] as const
 
 /** Union of allowed camera-angle values. */
 export type AngleValue = (typeof ANGLE_VALUES)[number]

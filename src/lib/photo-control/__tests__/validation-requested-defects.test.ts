@@ -44,7 +44,7 @@ const schemaArbitrary: fc.Arbitrary<MinimalSchema> = fc
     angle: fc.constantFrom('top-down', '45-degree', 'eye-level', 'macro-close-up'),
     framing: fc.constantFrom('close-up', 'medium', 'wide'),
     lighting: textArbitrary,
-    spin: fc.constantFrom('0', 'left-45', 'right-45'),
+    spin: fc.constantFrom('0', 'left-90', 'right-90'),
     background: textArbitrary,
     backgroundStyle: fc.oneof(fc.constant(''), textArbitrary),
     surfaceStyle: fc.oneof(fc.constant(''), textArbitrary),

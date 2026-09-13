@@ -73,7 +73,7 @@ defined once in `photo-control/minimal-schema.ts` and mirrored into the schema:
 |---|---|
 | `scene_setup.angle` | 4 values (`ANGLE_VALUES`) |
 | `scene_setup.framing` | 3 values (`FRAMING_VALUES`) |
-| `scene_setup.spin` | 3 values (`SPIN_VALUES`) |
+| `scene_setup.spin` | 3 values (`SPIN_VALUES`: `0`, `left-90`, `right-90`). Extract observes `0` only; FOH yaw stages left-90 / right-90 |
 | `scene_setup.lighting` | 4 seeded keys (`bright-and-airy`, `low-key`, `studio`, `golden-hour`) |
 | `*.colour` | `#RRGGBB` hex only |
 

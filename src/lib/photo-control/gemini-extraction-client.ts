@@ -21,6 +21,7 @@
  */
 
 import { fetchJsonWithRetry } from '../retry'
+import { EXTRACT_SPIN_VALUES } from './minimal-schema'
 import { STUDIO_EXTRACTION_MODEL } from '@/lib/studio/model-config'
 import { STUDIO_LIGHTING_KEYS } from '@/lib/studio/lighting-keys'
 
@@ -45,7 +46,7 @@ export const EXTRACTION_RESPONSE_SCHEMA = {
         angle: { type: 'STRING', enum: ['top-down', '45-degree', 'eye-level', 'macro-close-up'] },
         framing: { type: 'STRING', enum: ['close-up', 'medium', 'wide'] },
         lighting: { type: 'STRING', enum: [...STUDIO_LIGHTING_KEYS] },
-        spin: { type: 'STRING', enum: ['0', 'left-45', 'right-45'] },
+        spin: { type: 'STRING', enum: [...EXTRACT_SPIN_VALUES] },
       },
       required: ['angle', 'framing', 'lighting', 'spin'],
     },

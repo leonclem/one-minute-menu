@@ -7,7 +7,12 @@
  */
 
 import type { MinimalSchema, StateDelta } from './minimal-schema'
-import { PLATE_FACING_LOCK, cameraViewpoint } from './camera-viewpoint'
+import {
+  CURRENT_PLATE_FACING,
+  PLATE_FACING_LOCK,
+  cameraViewpoint,
+  plateFacingForSpin,
+} from './camera-viewpoint'
 
 export type SceneStyleKind = 'lighting' | 'backdrop' | 'surface'
 
@@ -371,6 +376,29 @@ function assignCameraField(
   state.camera = { ...(state.camera ?? {}), [field]: value }
 }
 
+function addSpinChange(
+  current: SceneDescriptorState,
+  target: SceneDescriptorState,
+  original: MinimalSchema,
+  desired: MinimalSchema,
+  observations: SceneObservations | Record<string, unknown>,
+): void {
+  const currentValue = cameraValue(original, 'spin')
+  const targetValue = cameraValue(desired, 'spin')
+  if (currentValue !== undefined && !isOmitted(observations, 'scene_setup.spin')) {
+    current.camera = {
+      ...(current.camera ?? {}),
+      plateFacing: CURRENT_PLATE_FACING,
+    }
+  }
+  if (targetValue !== undefined) {
+    target.camera = {
+      ...(target.camera ?? {}),
+      plateFacing: plateFacingForSpin(targetValue),
+    }
+  }
+}
+
 function addCameraChange(
   current: SceneDescriptorState,
   target: SceneDescriptorState,
@@ -379,6 +407,10 @@ function addCameraChange(
   field: SchemaCameraField,
   observations: SceneObservations | Record<string, unknown>,
 ): void {
+  if (field === 'spin') {
+    addSpinChange(current, target, original, desired, observations)
+    return
+  }
   const currentValue = cameraValue(original, field)
   const targetValue = cameraValue(desired, field)
   const observationPath = `scene_setup.${field}`

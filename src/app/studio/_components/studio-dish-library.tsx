@@ -21,6 +21,7 @@ import { StudioLibraryTabs } from './studio-library-tabs'
 import { StudioShotCard } from './studio-shot-card'
 import { StudioShotTree } from './studio-shot-tree'
 import { StudioTextModal } from './studio-text-modal'
+import { useRefreshWhenVisible } from './use-refresh-when-visible'
 import { useStudioDishExports } from './use-studio-dish-exports'
 
 interface StudioDishLibraryProps {
@@ -40,6 +41,7 @@ export function StudioDishLibrary({
 }: StudioDishLibraryProps) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const imagesEpochRef = useRef(0)
   const [images, setImages] = useState(initialImages)
   const [name, setName] = useState(dish.name)
   const [tab, setTab] = useState<StudioLibraryTab>(parseStudioLibraryTab(initialTab))
@@ -55,6 +57,33 @@ export function StudioDishLibrary({
 
   const dishBlocked = Boolean(dish.generation_blocked_at)
   const exports = useStudioDishExports(dish.id)
+
+  const refreshImages = useCallback(() => {
+    const epoch = imagesEpochRef.current
+    void (async () => {
+      try {
+        const res = await fetch(`/api/studio/images?dishId=${encodeURIComponent(dish.id)}`, {
+          cache: 'no-store',
+        })
+        if (!res.ok || imagesEpochRef.current !== epoch) return
+        const data = (await res.json()) as { images?: StudioImageRecord[] }
+        if (imagesEpochRef.current !== epoch) return
+        if (!Array.isArray(data.images)) return
+        setImages((prev) => {
+          if (
+            prev.length === data.images!.length &&
+            prev.every((row, index) => row.id === data.images![index]?.id)
+          ) {
+            return prev
+          }
+          return data.images!
+        })
+      } catch {
+        // Keep the list we already have if the follow-up fetch fails.
+      }
+    })()
+  }, [dish.id])
+  useRefreshWhenVisible(refreshImages)
   const tilesByImageId = useMemo(
     () => new Map(exports.shots.map((shot) => [shot.imageId, shot.tiles])),
     [exports.shots],
@@ -112,6 +141,7 @@ export function StudioDishLibrary({
         const sourceData = (await sourceRes.json()) as { imageId?: string; imageUrl?: string }
         if (!sourceData.imageId || !sourceData.imageUrl) throw new Error('Failed to save uploaded image.')
         storagePath = null
+        imagesEpochRef.current += 1
         setImages((prev) => [
           ...prev,
           {
@@ -212,6 +242,7 @@ export function StudioDishLibrary({
         const err = await res.json().catch(() => null)
         throw new Error((err as { error?: string } | null)?.error ?? 'Failed to delete')
       }
+      imagesEpochRef.current += 1
       setImages((prev) => prev.filter((item) => item.id !== image.id))
       void exports.refresh()
     } catch (err) {
@@ -235,6 +266,7 @@ export function StudioDishLibrary({
         onNewShot={handleNewShot}
         onDelete={() => void openDelete()}
         onReshootCreated={(image) => {
+          imagesEpochRef.current += 1
           setImages((prev) => [...prev, image])
           void exports.refresh()
         }}

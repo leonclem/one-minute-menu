@@ -9,10 +9,10 @@ import { STUDIO_QUICK_LOOKS, type StudioQuickLook } from '@/lib/studio/quick-loo
 import type { FinishingTouchCatalogueItem } from '@/lib/studio/finishing-touches'
 import { STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
 import {
-  cameraHeightLabel,
   isOverheadAngle,
   verticalSwitchLabel,
 } from '@/lib/studio/vertical-switch'
+import { cameraSectionLabel, yawButtonLabel } from '@/lib/studio/yaw'
 
 import { StudioFinishingTouchesControl } from './studio-finishing-touches'
 import {
@@ -21,6 +21,7 @@ import {
   plateSummary,
   SceneSection,
 } from './studio-scene-section'
+import { StudioYawBetaTag } from './studio-yaw-beta-tag'
 import { VisualOptionTiles } from './visual-option-tiles'
 
 /** Flip to restore the Quick Looks accordion. Kept off until combinations are settled. */
@@ -77,6 +78,8 @@ interface StudioScenePanelProps {
   verticalSwitchEnabled?: boolean
   workingAngle?: string
   onVerticalSwitch?: () => void
+  yawEnabled?: boolean
+  onYaw?: (direction: 'left' | 'right') => void
 }
 
 export function StudioScenePanel({
@@ -113,6 +116,8 @@ export function StudioScenePanel({
   verticalSwitchEnabled = false,
   workingAngle = '45-degree',
   onVerticalSwitch,
+  yawEnabled = false,
+  onYaw,
 }: StudioScenePanelProps) {
   const [openSection, setOpenSection] = useState<SceneSectionId | null>('elements')
   const toggle = (id: SceneSectionId) => {
@@ -167,31 +172,6 @@ export function StudioScenePanel({
           <p className="py-3 text-sm text-white/40">Open a shot to enable Scene controls.</p>
         ) : (
           <>
-            {verticalSwitchEnabled ? (
-              <SceneSection
-                id="studio-scene-camera"
-                title="Camera"
-                selectedLabel={cameraHeightLabel(editorState.schema.scene_setup.angle)}
-                pending={pending.camera}
-                open={openSection === 'camera'}
-                onToggle={() => toggle('camera')}
-              >
-                <button
-                  type="button"
-                  data-testid="studio-vertical-switch"
-                  className="studio-option-tile flex w-full items-center justify-between gap-3 rounded-[11px] border border-white/[0.1] bg-white/[0.03] p-3 text-left text-sm font-medium text-white hover:border-white/[0.16] focus:outline-none focus:ring-2 focus:ring-[#01b3bf]/40 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={controlsDisabled}
-                  onClick={onVerticalSwitch}
-                >
-                  {verticalSwitchLabel(workingAngle)}
-                </button>
-                <p className="mt-2 text-xs leading-5 text-white/45">
-                  {isOverheadAngle(workingAngle)
-                    ? 'This shot looks straight down. Generate a 45° view of the same dish.'
-                    : 'Generate an overhead view of the same dish, looking straight down.'}
-                </p>
-              </SceneSection>
-            ) : null}
             <SceneSection
               id="studio-scene-plate"
               title="Elements"
@@ -300,6 +280,86 @@ export function StudioScenePanel({
                 )}
               </div>
             </SceneSection>
+            {verticalSwitchEnabled || yawEnabled ? (
+              <SceneSection
+                id="studio-scene-camera"
+                title="Camera"
+                selectedLabel={cameraSectionLabel(
+                  editorState.schema.scene_setup.angle,
+                  editorState.schema.scene_setup.spin ?? '0',
+                )}
+                pending={pending.camera}
+                open={openSection === 'camera'}
+                onToggle={() => toggle('camera')}
+              >
+                {verticalSwitchEnabled ? (
+                  <>
+                    <button
+                      type="button"
+                      data-testid="studio-vertical-switch"
+                      aria-pressed={
+                        editorState.schema.scene_setup.angle !== workingAngle
+                      }
+                      className="studio-option-tile flex w-full items-center justify-between gap-3 rounded-[11px] border border-white/[0.1] bg-white/[0.03] p-3 text-left text-sm font-medium text-white hover:border-white/[0.16] focus:outline-none focus:ring-2 focus:ring-[#01b3bf]/40 disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:border-[#01b3bf]/70 aria-pressed:bg-[#01b3bf]/10"
+                      disabled={controlsDisabled}
+                      onClick={onVerticalSwitch}
+                    >
+                      {verticalSwitchLabel(workingAngle)}
+                    </button>
+                    <p className="mt-2 text-xs leading-5 text-white/45">
+                      {isOverheadAngle(workingAngle)
+                        ? 'This shot looks straight down. Generate a 45° view of the same dish.'
+                        : 'Generate an overhead view of the same dish, looking straight down.'}
+                    </p>
+                  </>
+                ) : null}
+                {yawEnabled ? (
+                  <div
+                    className={verticalSwitchEnabled ? 'mt-3' : undefined}
+                    role="group"
+                    aria-labelledby="studio-yaw-heading"
+                  >
+                    <div className="mb-2 flex items-center gap-1.5">
+                      <span
+                        id="studio-yaw-heading"
+                        data-testid="studio-yaw-heading"
+                        className="text-[11px] font-bold uppercase tracking-wider text-white/55"
+                      >
+                        Rotate
+                      </span>
+                      <StudioYawBetaTag />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        data-testid="studio-yaw-left"
+                        aria-pressed={editorState.schema.scene_setup.spin === 'left-90'}
+                        aria-label="Rotate anti-clockwise"
+                        className="studio-option-tile rounded-[11px] border border-white/[0.1] bg-white/[0.03] p-3 text-left text-sm font-medium text-white hover:border-white/[0.16] focus:outline-none focus:ring-2 focus:ring-[#01b3bf]/40 disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:border-[#01b3bf]/70 aria-pressed:bg-[#01b3bf]/10"
+                        disabled={controlsDisabled}
+                        onClick={() => onYaw?.('left')}
+                      >
+                        {yawButtonLabel('left')}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="studio-yaw-right"
+                        aria-pressed={editorState.schema.scene_setup.spin === 'right-90'}
+                        aria-label="Rotate clockwise"
+                        className="studio-option-tile rounded-[11px] border border-white/[0.1] bg-white/[0.03] p-3 text-left text-sm font-medium text-white hover:border-white/[0.16] focus:outline-none focus:ring-2 focus:ring-[#01b3bf]/40 disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:border-[#01b3bf]/70 aria-pressed:bg-[#01b3bf]/10"
+                        disabled={controlsDisabled}
+                        onClick={() => onYaw?.('right')}
+                      >
+                        {yawButtonLabel('right')}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-white/45">
+                      Keep the camera where it is and rotate the dish.
+                    </p>
+                  </div>
+                ) : null}
+              </SceneSection>
+            ) : null}
           </>
         )}
       </div>

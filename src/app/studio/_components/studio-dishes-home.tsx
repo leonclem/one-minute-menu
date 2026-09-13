@@ -11,6 +11,7 @@ import type { StudioDishListItem } from '@/lib/studio/types'
 
 import { StudioFirstRunPanel } from './studio-first-run-panel'
 import { StudioTextModal } from './studio-text-modal'
+import { useRefreshWhenVisible } from './use-refresh-when-visible'
 
 interface StudioDishesHomeProps {
   dishes: StudioDishListItem[]
@@ -49,10 +50,25 @@ export function StudioDishesHome({
   studioFirstRunDismissed,
 }: StudioDishesHomeProps) {
   const router = useRouter()
+  const [listed, setListed] = useState(dishes)
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [firstRunDismissed, setFirstRunDismissed] = useState(studioFirstRunDismissed)
+
+  const refreshListed = useCallback(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/studio/dishes', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = (await res.json()) as { dishes?: StudioDishListItem[] }
+        if (Array.isArray(data.dishes)) setListed(data.dishes)
+      } catch {
+        // Keep the server-rendered list if the follow-up fetch fails.
+      }
+    })()
+  }, [])
+  useRefreshWhenVisible(refreshListed)
 
   const openCreate = useCallback(() => {
     setCreateError(null)
@@ -97,7 +113,7 @@ export function StudioDishesHome({
     setFirstRunDismissed(true)
   }, [])
 
-  const empty = dishes.length === 0
+  const empty = listed.length === 0
   const showFirstRun = !firstRunDismissed
   const firstRunTakeover = empty && showFirstRun
 
@@ -149,12 +165,12 @@ export function StudioDishesHome({
         </p>
       ) : null}
 
-      {dishes.length > 0 ? (
+      {listed.length > 0 ? (
         <ul
           className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-5"
           data-testid="studio-dishes-grid"
         >
-          {dishes.map((dish) => (
+          {listed.map((dish) => (
             <li key={dish.id} className="h-full">
               <Link href={`/studio/${dish.id}`} className="studio-dish-card">
                 <div className="aspect-[4/5] w-full overflow-hidden bg-black/20">

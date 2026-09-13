@@ -28,8 +28,9 @@ export function readEditorStateFromMetadata(
   const schema = raw.schema as unknown as MinimalSchema
   if (!schema.scene_setup || !schema.food_components) return null
 
-  // Normalize optional spin on older clients/persisted states.
-  if (typeof schema.scene_setup.spin !== 'string') {
+  // Working-shot identity is unrotated. 90° yaw is a generate request; older
+  // 45° spin keys are no longer used.
+  if (typeof schema.scene_setup.spin !== 'string' || schema.scene_setup.spin !== '0') {
     schema.scene_setup.spin = '0'
   }
 

@@ -1,5 +1,5 @@
 import { buildSceneDescriptor, type SceneDescriptorStyles } from '../scene-descriptor'
-import { cameraViewpoint, PLATE_FACING_LOCK } from '../camera-viewpoint'
+import { cameraViewpoint, CURRENT_PLATE_FACING, PLATE_FACING_LOCK, plateFacingForSpin } from '../camera-viewpoint'
 import type { MinimalSchema, StateDelta } from '../minimal-schema'
 
 type SchemaOverrides = {
@@ -286,5 +286,52 @@ describe('buildSceneDescriptor', () => {
       plateFacing: PLATE_FACING_LOCK,
     })
     expect(result.camera).toEqual({})
+  })
+
+  it('emits semantic plateFacing for a 90° yaw instead of the spin enum key', () => {
+    const original = schema({ scene_setup: { spin: '0' } })
+    const target = schema({ scene_setup: { spin: 'left-90' } })
+    const result = buildSceneDescriptor({
+      original,
+      target,
+      delta: delta([{ path: 'scene_setup.spin', from: '0', to: 'left-90' }]),
+      styles: {},
+      observations: {
+        observations: {
+          scene_setup: { spin: '0' },
+        },
+      },
+      labels: ['Image A'],
+    })
+
+    expect(result.subject.locked).toContain('framing')
+    expect(JSON.stringify(result)).not.toContain('left-90')
+    expect(result.current.camera).toEqual({ plateFacing: CURRENT_PLATE_FACING })
+    expect(result.target.camera).toEqual({
+      plateFacing: plateFacingForSpin('left-90'),
+    })
+    expect(result.target.camera).not.toHaveProperty('viewpoint')
+  })
+
+  it('keeps the height viewpoint and replaces the plate-facing lock when yaw is also staged', () => {
+    const original = schema({ scene_setup: { angle: '45-degree', spin: '0' } })
+    const target = schema({ scene_setup: { angle: 'top-down', spin: 'right-90' } })
+    const result = buildSceneDescriptor({
+      original,
+      target,
+      delta: delta([
+        { path: 'scene_setup.angle', from: '45-degree', to: 'top-down' },
+        { path: 'scene_setup.spin', from: '0', to: 'right-90' },
+      ]),
+      styles: {},
+      observations: {},
+      labels: ['Image A'],
+    })
+
+    expect(result.subject.locked).not.toContain('framing')
+    expect(result.target.camera).toEqual({
+      viewpoint: cameraViewpoint('top-down'),
+      plateFacing: plateFacingForSpin('right-90'),
+    })
   })
 })

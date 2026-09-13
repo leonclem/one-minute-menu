@@ -59,19 +59,19 @@ describe('change-summary', () => {
     expect(chips).toEqual(['Background → Soft Neutral', 'Surface → White Marble'])
   })
 
-  it('builds chips for dish spin', () => {
+  it('builds chips for a 90° yaw', () => {
     const chips = buildChangeSummary(
       emptyDelta({
         scalarChanges: [
           {
             path: 'scene_setup.spin',
             from: '0',
-            to: 'left-45',
+            to: 'left-90',
           },
         ],
       }),
     )
-    expect(chips).toEqual(['Dish Spin → Spin Left 45°'])
+    expect(chips).toEqual(['Rotate → Anti-clockwise'])
   })
 
   it('builds chips for added garnishes', () => {

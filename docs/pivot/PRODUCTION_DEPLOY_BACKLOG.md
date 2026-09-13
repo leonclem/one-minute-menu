@@ -57,6 +57,7 @@ non-local env you care about). Defaults in code are safe if unset unless noted.
 | `STUDIO_MAX_REFS` | Group A patch | Documented per-model limit (Flash: 10 object refs; Pro: 14 total) | Leave unset for the documented limit, or set a positive tuning value | Applied | LC 2026-08-13: `main` is production. |
 | `NEXT_PUBLIC_STUDIO_ACCESS_MODE` | Chunk 7; self-serve launch | Unset (falls back to legacy flag) | **`open`** | Applied (code live); **re-set to `open`** | Approval Required admin toggle is the only customer gate. `open` turns off the Studio invite waitlist. |
 | `NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH` | 2026-09-12 vertical switch | `false` (off) | Leave unset/`false` until Camera quality is accepted | Pending | FOH Scene Camera 45° ↔ overhead. Requires a client rebuild. |
+| `NEXT_PUBLIC_STUDIO_ENABLE_YAW` | 2026-09-12 yaw | `false` (off) | Leave unset/`false` until 90° rotate quality is accepted | Pending | FOH Scene Camera rotate left/right 90°. Requires a client rebuild. |
 | `STUDIO_LOG_PROMPTS` | 2026-09-12 vertical switch | `false` (off) | **Never true in production** | Pending | Prints full Studio mutate prompts to the server log. Local examination only. |
 | `STRIPE_PRICE_ID_MENU_PACK_{SGD,USD,GBP,AUD,EUR}` | Self-serve launch | none (required for checkout) | Live Stripe Price IDs (100 credits) | Pending | Paste from Stripe. |
 | `STRIPE_PRICE_ID_STUDIO_PACK_{SGD,USD,GBP,AUD,EUR}` | Self-serve launch | none (required for checkout) | Live Stripe Price IDs (300 credits) | Pending | Paste from Stripe. |

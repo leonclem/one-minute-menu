@@ -334,10 +334,11 @@ describe('StudioScenePanel', () => {
     return render(<StudioScenePanel {...panelProps(overrides)} />)
   }
 
-  it('hides Camera unless the vertical switch is enabled', () => {
+  it('hides Camera unless the vertical switch or yaw is enabled', () => {
     renderPanel()
     expect(screen.queryByTestId('studio-scene-section-camera')).not.toBeInTheDocument()
     expect(screen.queryByTestId('studio-vertical-switch')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('studio-yaw-left')).not.toBeInTheDocument()
   })
 
   it('shows a switch to overhead from a 45° working shot', () => {
@@ -352,8 +353,10 @@ describe('StudioScenePanel', () => {
     fireEvent.click(screen.getByTestId('studio-scene-section-camera'))
     const toggle = screen.getByTestId('studio-vertical-switch')
     expect(toggle).toHaveTextContent('Switch to overhead')
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
     fireEvent.click(toggle)
     expect(onVerticalSwitch).toHaveBeenCalled()
+    expect(screen.queryByTestId('studio-yaw-beta')).not.toBeInTheDocument()
   })
 
   it('shows a switch to angled from an overhead working shot', () => {
@@ -367,6 +370,80 @@ describe('StudioScenePanel', () => {
     fireEvent.click(screen.getByTestId('studio-scene-section-backdrop'))
     expect(screen.getByRole('status')).toHaveTextContent(/Overhead shots do not show a wall/)
   })
+
+  it('shows rotate left/right 90° when yaw is enabled', () => {
+    const onYaw = jest.fn()
+    renderPanel({
+      yawEnabled: true,
+      onYaw,
+      pending: { lighting: false, surface: false, backdrop: false, garnishes: false, camera: false },
+    })
+    fireEvent.click(screen.getByTestId('studio-scene-section-camera'))
+    expect(screen.queryByTestId('studio-vertical-switch')).not.toBeInTheDocument()
+    const left = screen.getByTestId('studio-yaw-left')
+    expect(left).toHaveTextContent('Anti-clockwise')
+    fireEvent.click(left)
+    expect(onYaw).toHaveBeenCalledWith('left')
+    fireEvent.click(screen.getByTestId('studio-yaw-right'))
+    expect(onYaw).toHaveBeenCalledWith('right')
+    expect(screen.getByTestId('studio-yaw-beta')).toHaveTextContent('BETA')
+    expect(screen.getByTestId('studio-yaw-heading')).toHaveTextContent('Rotate')
+    expect(screen.getByTestId('studio-scene-section-camera')).not.toHaveTextContent('BETA')
+  })
+
+  it('keeps the Beta tag on rotate when the vertical switch is also shown', () => {
+    renderPanel({
+      verticalSwitchEnabled: true,
+      yawEnabled: true,
+      workingAngle: '45-degree',
+      pending: { lighting: false, surface: false, backdrop: false, garnishes: false, camera: false },
+    })
+    fireEvent.click(screen.getByTestId('studio-scene-section-camera'))
+    expect(screen.getByTestId('studio-vertical-switch')).toBeInTheDocument()
+    expect(screen.getByTestId('studio-vertical-switch')).not.toHaveTextContent('BETA')
+    expect(screen.getByTestId('studio-scene-section-camera')).not.toHaveTextContent('BETA')
+    expect(screen.getByTestId('studio-yaw-heading')).toHaveTextContent('Rotate')
+    expect(screen.getByTestId('studio-yaw-beta')).toHaveTextContent('BETA')
+  })
+
+  it('keeps the height switch selected when a rotate is also staged', () => {
+    const stagedOverhead: EditorState = {
+      ...editorState,
+      schema: {
+        ...editorState.schema,
+        scene_setup: {
+          ...editorState.schema.scene_setup,
+          angle: 'top-down',
+          spin: 'right-90',
+        },
+      },
+    }
+    renderPanel({
+      editorState: stagedOverhead,
+      verticalSwitchEnabled: true,
+      yawEnabled: true,
+      workingAngle: '45-degree',
+      pending: { lighting: false, surface: false, backdrop: false, garnishes: false, camera: true },
+    })
+    fireEvent.click(screen.getByTestId('studio-scene-section-camera'))
+    expect(screen.getByTestId('studio-vertical-switch')).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByTestId('studio-yaw-right')).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByTestId('studio-yaw-left')).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('explains the rotate beta tag on click', () => {
+    renderPanel({ yawEnabled: true })
+    fireEvent.click(screen.getByTestId('studio-scene-section-camera'))
+    const beta = screen.getByTestId('studio-yaw-beta')
+    expect(beta).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(beta)
+    expect(beta).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByTestId('studio-yaw-beta-tip')).toHaveTextContent(
+      'This is a beta feature and may produce unexpected results.',
+    )
+    expect(beta).toHaveClass('min-h-0', 'min-w-0', 'leading-none')
+  })
+
 
   it('hides Quick Looks and Pro unless Pro is enabled', () => {
     const { rerender } = renderPanel()
@@ -423,6 +500,30 @@ describe('StudioScenePanel', () => {
       'false',
     )
     expect(screen.getByTestId('studio-scene-section-lighting')).toHaveTextContent('Soft Natural')
+  })
+
+  it('keeps Elements first and puts Camera last, after Backdrop', () => {
+    renderPanel({
+      verticalSwitchEnabled: true,
+      yawEnabled: true,
+      pending: { lighting: false, surface: false, backdrop: false, garnishes: false, camera: false },
+    })
+    const headings = screen.getAllByTestId(/^studio-scene-section-/)
+    expect(headings.map((heading) => heading.getAttribute('data-testid'))).toEqual([
+      'studio-scene-section-elements',
+      'studio-scene-section-lighting',
+      'studio-scene-section-surface',
+      'studio-scene-section-backdrop',
+      'studio-scene-section-camera',
+    ])
+    expect(screen.getByTestId('studio-scene-section-elements')).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(screen.getByTestId('studio-scene-section-camera')).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
   })
 
   it('keeps Generate enabled when Scene has pending changes', () => {

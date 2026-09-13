@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { useEffect, useRef } from 'react'
 
 import { chronologicalShots, shotShortLabel, shotTitle } from '@/lib/studio/lineage'
 import type { StudioImageRecord } from '@/lib/studio/types'
@@ -21,6 +22,11 @@ export function StudioShotFilmstrip({
   onDelete,
 }: StudioShotFilmstripProps) {
   const shots = chronologicalShots(images)
+  const selectedRef = useRef<HTMLLIElement | null>(null)
+
+  useEffect(() => {
+    selectedRef.current?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' })
+  }, [selectedId, shots.length])
 
   if (shots.length === 0) {
     return (
@@ -37,7 +43,11 @@ export function StudioShotFilmstrip({
         const shortLabel = shotShortLabel(item, shots)
         const title = shotTitle(item, shots)
         return (
-          <li key={item.id} className="group relative shrink-0">
+          <li
+            key={item.id}
+            ref={selected ? selectedRef : undefined}
+            className="group relative shrink-0"
+          >
             <button
               type="button"
               disabled={disabled}

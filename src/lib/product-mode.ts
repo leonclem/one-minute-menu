@@ -152,3 +152,11 @@ export function isStudioProEnabled(): boolean {
 export function isStudioVerticalSwitchEnabled(): boolean {
   return process.env.NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH === 'true'
 }
+
+/**
+ * Whether Scene Camera rotate left/right 90° (in-place yaw) is shown.
+ * Defaults to false until quality is accepted.
+ */
+export function isStudioYawEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_STUDIO_ENABLE_YAW === 'true'
+}

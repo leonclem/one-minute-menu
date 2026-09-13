@@ -8,7 +8,8 @@
  */
 
 import type { MinimalSchema } from './minimal-schema'
-import type { SceneDescriptor } from './scene-descriptor'
+import type { SceneCamera, SceneDescriptor } from './scene-descriptor'
+import { PLATE_FACING_LOCK } from './camera-viewpoint'
 import { STUDIO_BACKDROP_KEYS } from '@/lib/studio/backdrop-keys'
 import { STUDIO_LIGHTING_KEYS } from '@/lib/studio/lighting-keys'
 import { STUDIO_SURFACE_KEYS } from '@/lib/studio/surface-keys'
@@ -71,6 +72,10 @@ const TASK_FRAMING = {
     'Constrained edit: change only what "target" names; keep everything else exactly as-is; preserve the original composition. Semantic negative prompt: "subject.locked" remains pixel-faithful.',
   editWithCamera:
     'Constrained edit: change only what "target" names. If target.camera is present, photograph the same dish from that viewpoint; keep unnamed elements. Do not preserve the original camera height. Semantic negative prompt: "subject.locked" remains faithful; camera height may change.',
+  editWithYaw:
+    'Constrained edit: change only what "target" names. If target.camera.plateFacing requests a rotation, turn the dish on the table like a turntable; keep unnamed elements. Keep the original camera height and viewpoint. Do not orbit around the dish. Semantic negative prompt: "subject.locked" remains faithful; camera height must not change.',
+  editWithCameraAndYaw:
+    'Constrained edit: change only what "target" names. If target.camera.viewpoint is present, photograph the same dish from that viewpoint. If target.camera.plateFacing requests a rotation, turn the dish on the table like a turntable. Keep unnamed elements. Do not preserve the original camera height. Do not orbit around the dish. Semantic negative prompt: "subject.locked" remains faithful; camera height may change; plate facing follows target.',
   reshoot:
     'Re-shoot: re-photograph the dish shown in the reference image. Rebuild composition, camera geometry, lighting and backdrop per "target". Preserve everything listed in "subject.locked" exactly as shown in the reference. Semantic negative prompt: "subject.locked" remains faithful to the reference dish.',
 } as const
@@ -118,15 +123,23 @@ function resolveTask(descriptor: SceneDescriptor): 'edit' | 'reshoot' {
   return descriptor.task === 'reshoot' ? 'reshoot' : 'edit'
 }
 
-function hasCameraTarget(descriptor: SceneDescriptor): boolean {
-  const camera = descriptor.target?.camera
-  if (!camera) return false
-  return Boolean(camera.viewpoint || camera.angle || camera.plateFacing)
+function hasViewpointTarget(camera: SceneCamera | undefined): boolean {
+  return Boolean(camera?.viewpoint)
+}
+
+function hasYawTarget(camera: SceneCamera | undefined): boolean {
+  const facing = camera?.plateFacing
+  return Boolean(facing && facing !== PLATE_FACING_LOCK && facing.includes('rotated'))
 }
 
 function framingFor(descriptor: SceneDescriptor): string {
   if (descriptor.task === 'reshoot') return TASK_FRAMING.reshoot
-  if (hasCameraTarget(descriptor)) return TASK_FRAMING.editWithCamera
+  const camera = descriptor.target?.camera
+  const viewpoint = hasViewpointTarget(camera)
+  const yaw = hasYawTarget(camera)
+  if (viewpoint && yaw) return TASK_FRAMING.editWithCameraAndYaw
+  if (viewpoint) return TASK_FRAMING.editWithCamera
+  if (yaw) return TASK_FRAMING.editWithYaw
   return TASK_FRAMING.edit
 }
 

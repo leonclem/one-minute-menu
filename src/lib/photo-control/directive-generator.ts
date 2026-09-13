@@ -40,7 +40,7 @@
  */
 
 import { type EditorState, type StateDelta } from './minimal-schema'
-import { cameraAngleDirective } from './camera-viewpoint'
+import { cameraAngleDirective, cameraSpinDirective, isYawSpin } from './camera-viewpoint'
 import { countEditableChanges } from './state-delta'
 import { buildFinishingTouchesAdditionClause } from '@/lib/studio/finishing-touches/directive'
 
@@ -263,18 +263,9 @@ export function generateDirective(
     if (change.path === 'scene_setup.angle') {
       clauses.push(buildAngleClause(change.to))
     } else if (change.path === 'scene_setup.spin') {
-      if (change.to === 'left-45') {
-        clauses.push(
-          'Rotate the entire dish, vessel, and its contents 45 degrees counter-clockwise (to the left) within the same horizontal visual plane. ' +
-          'MANDATORY VERTICAL ANGLE DENIAL: The vertical camera height, camera pitch, elevation, zoom, and perspective MUST remain absolutely identical to the original image. ' +
-          'HORIZONTAL ORBIT FORCE: The camera must horizontally orbit around the dish, or the main dish itself must spin on the surface, moving all food arrangements and containers 45 degrees counter-clockwise around the center.'
-        )
-      } else if (change.to === 'right-45') {
-        clauses.push(
-          'Rotate the entire dish, vessel, and its contents 45 degrees clockwise (to the right) within the same horizontal visual plane. ' +
-          'MANDATORY VERTICAL ANGLE DENIAL: The vertical camera height, camera pitch, elevation, zoom, and perspective MUST remain absolutely identical to the original image. ' +
-          'HORIZONTAL ORBIT FORCE: The camera must horizontally orbit around the dish, or the main dish itself must spin on the surface, moving all food arrangements and containers 45 degrees clockwise around the center.'
-        )
+      const yawDirective = cameraSpinDirective(change.to)
+      if (yawDirective) {
+        clauses.push(yawDirective)
       } else if (change.to === '0') {
         clauses.push(
           'Return the dish, vessel, and its contents to their original, unrotated horizontal orientation.'
@@ -332,10 +323,12 @@ export function generateDirective(
   // ── "Leave all other attributes unchanged" (single-attribute changes only)
   // (Requirement 11.3)
 
-  const cameraStaged = delta.scalarChanges.some(
-    (change) => change.path === 'scene_setup.angle' && !excluded.has(change.path),
-  )
-  if (countEditableChanges(delta) === 1 && !cameraStaged) {
+  const cameraGeometryStaged = delta.scalarChanges.some((change) => {
+    if (excluded.has(change.path)) return false
+    if (change.path === 'scene_setup.angle') return true
+    return change.path === 'scene_setup.spin' && isYawSpin(change.to)
+  })
+  if (countEditableChanges(delta) === 1 && !cameraGeometryStaged) {
     clauses.push(LEAVE_UNCHANGED_CLAUSE)
   }
 

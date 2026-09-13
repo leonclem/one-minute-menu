@@ -28,13 +28,15 @@ and surface intent in the scene descriptor.
 ## 2. Perspective guidance: current rule and historical material
 
 The customer Scene **Camera** control (flagged) is a vertical switch between overhead and a
-45° food-photography view. Express that as named `target.camera` attributes (semantic
-viewpoint + keep the plate facing the same way). Do not emit internal keys such as
-`top-down` as visual values. When `target.camera` is present, the edit wrapper must not say
-to preserve the original composition or camera height.
+45° food-photography view, plus an in-place 90° yaw (flagged separately). Express height as
+named `target.camera` viewpoint + keep-the-plate-facing lock. Express yaw as
+`target.camera.plateFacing` (a full quarter-turn as seen from above, like a turntable). Do not emit
+internal keys such as `top-down` or `left-90` as visual values. When only viewpoint is
+staged, the edit wrapper must not say to preserve the original camera height. When only
+yaw is staged, the wrapper must **keep** camera height and must not orbit.
 
 Do not add the old Structural Forcing prefix to every prompt. Eye-level / 0° side-view remains
-parked. Horizontal plate spin is a later plane.
+parked. Do not revive HORIZONTAL ORBIT FORCE for FOH yaw.
 
 ### Historical — Structural Forcing / Perspective Override Prefix
 

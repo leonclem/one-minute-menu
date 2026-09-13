@@ -62,7 +62,7 @@ const partialExtractionArb: fc.Arbitrary<PartialExtractionCase> = fc
     set('scene_setup.angle', statuses.angle, 'top-down', 'not-an-angle')
     set('scene_setup.framing', statuses.framing, 'wide', 7)
     set('scene_setup.lighting', statuses.lighting, 'studio', null)
-    set('scene_setup.spin', statuses.spin, 'left-45', 'not-a-spin')
+    set('scene_setup.spin', statuses.spin, '0', 'not-a-spin')
     set('canvas.background', statuses.background, 'observed tabletop', 7)
     set('canvas.background_style', statuses.backgroundStyle, 'studio-yellow', {})
     set('canvas.surface_style', statuses.surfaceStyle, 'dark-slate', [])
@@ -98,7 +98,7 @@ function descriptorDelta(): StateDelta {
       { path: 'scene_setup.angle', from: '45-degree', to: 'eye-level' },
       { path: 'scene_setup.framing', from: 'close-up', to: 'wide' },
       { path: 'scene_setup.lighting', from: 'bright-and-airy', to: 'studio' },
-      { path: 'scene_setup.spin', from: '0', to: 'left-45' },
+      { path: 'scene_setup.spin', from: '0', to: 'left-90' },
       { path: 'canvas.background_style', from: '', to: 'studio-yellow' },
       { path: 'canvas.surface_style', from: '', to: 'dark-slate' },
     ],
@@ -120,7 +120,7 @@ function buildTier2Descriptor(
     angle: 'eye-level',
     framing: 'wide',
     lighting: 'studio',
-    spin: 'left-45',
+    spin: 'left-90',
   }
   target.canvas = {
     ...target.canvas,

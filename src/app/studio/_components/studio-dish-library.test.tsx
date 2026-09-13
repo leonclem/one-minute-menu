@@ -60,10 +60,26 @@ const original: StudioImageRecord = {
 }
 
 describe('StudioDishLibrary', () => {
-  it('shows the shot grid and switches to the tree URL', () => {
+  beforeEach(() => {
+    mockPush.mockReset()
+    mockReplace.mockReset()
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ images: [original] }),
+    })
+  })
+
+  it('shows the shot grid and switches to the tree URL', async () => {
     render(
       <StudioDishLibrary dish={dish} images={[original]} dishCount={2} />,
     )
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/studio/images?dishId=d1',
+        expect.objectContaining({ cache: 'no-store' }),
+      )
+    })
 
     expect(screen.getByRole('heading', { name: 'Chicken Burger' })).toBeInTheDocument()
     expect(screen.getByTestId('studio-shot-grid')).toHaveClass(
@@ -87,32 +103,60 @@ describe('StudioDishLibrary', () => {
     expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
   })
 
-  it('confirms and deletes a shot from the grid', async () => {
-    const originalFetch = global.fetch
+  it('refetches shots when the library is shown', async () => {
+    const generated: StudioImageRecord = {
+      ...original,
+      id: 'g1',
+      role: 'generated',
+      source_image_id: 'og',
+      public_url: 'https://example.com/g1.png',
+      created_at: '2026-08-16T00:00:00.000Z',
+    }
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ ok: true }),
+      json: async () => ({ images: [original, generated] }),
     })
 
-    try {
-      render(<StudioDishLibrary dish={dish} images={[original]} dishCount={1} />)
-      fireEvent.click(screen.getByRole('button', { name: 'Delete shot' }))
-      expect(screen.getByText('Delete this image?')).toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'Delete image' }))
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith('/api/studio/images/og', { method: 'DELETE' })
-      })
-      await waitFor(() => {
-        expect(screen.queryByTestId('studio-shot-grid')).not.toBeInTheDocument()
-      })
-      expect(screen.getByText(/No shots yet/)).toBeInTheDocument()
-    } finally {
-      global.fetch = originalFetch
-    }
+    render(<StudioDishLibrary dish={dish} images={[original]} dishCount={1} />)
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('link', { name: 'Edit' })).toHaveLength(2)
+    })
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/studio/images?dishId=d1',
+      expect.objectContaining({ cache: 'no-store' }),
+    )
   })
 
-  it('opens the exports tab', () => {
+  it('confirms and deletes a shot from the grid', async () => {
+    global.fetch = jest.fn((url: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        return Promise.resolve({ ok: true, json: async () => ({ ok: true }) })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ images: [original] }) })
+    })
+
     render(<StudioDishLibrary dish={dish} images={[original]} dishCount={1} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete shot' }))
+    expect(screen.getByText('Delete this image?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete image' }))
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/studio/images/og', { method: 'DELETE' })
+    })
+    await waitFor(() => {
+      expect(screen.queryByTestId('studio-shot-grid')).not.toBeInTheDocument()
+    })
+    expect(screen.getByText(/No shots yet/)).toBeInTheDocument()
+  })
+
+  it('opens the exports tab', async () => {
+    render(<StudioDishLibrary dish={dish} images={[original]} dishCount={1} />)
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/studio/images?dishId=d1',
+        expect.objectContaining({ cache: 'no-store' }),
+      )
+    })
     fireEvent.click(screen.getByRole('tab', { name: /Exports/ }))
     expect(screen.getByTestId('studio-export-matrix')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Delete dish' })).not.toBeInTheDocument()

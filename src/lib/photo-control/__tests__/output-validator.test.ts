@@ -120,14 +120,14 @@ describe('output-validator', () => {
   it('evaluates angle, spin, backdrop, and surface as requested dimensions', () => {
     const expected = schema({
       angle: 'eye-level',
-      spin: 'left-45',
+      spin: '0',
       lighting: 'db-style-studio',
       backgroundStyle: 'studio-yellow',
       surfaceStyle: 'dark-slate',
     })
     const actual = schema({
       angle: 'eye-level',
-      spin: 'left-45',
+      spin: '0',
       lighting: 'db-style-studio',
       background: 'vibrant solid yellow studio backdrop',
       surfaceStyle: 'dark slate stone tabletop',
@@ -168,8 +168,8 @@ describe('output-validator', () => {
 
   it('fails exact angle and spin mismatches', () => {
     const result = scoreOutputAgainstExpected(
-      schema({ angle: 'eye-level', spin: 'left-45' }),
-      schema({ angle: 'top-down', spin: 'right-45' }),
+      schema({ angle: 'eye-level', spin: '0' }),
+      schema({ angle: 'top-down', spin: 'right-90' }),
       ['angle', 'spin'],
     )
 
@@ -178,15 +178,28 @@ describe('output-validator', () => {
     expect(result.status).toBe('fail')
   })
 
+  it('does not score relative 90° yaw against extract spin', () => {
+    const result = scoreOutputAgainstExpected(
+      schema({ spin: 'left-90' }),
+      schema({ spin: '0' }),
+      ['spin'],
+    )
+
+    expect(result.dimensions.find((dimension) => dimension.id === 'spin')?.status).toBe(
+      'not_evaluated',
+    )
+    expect(result.status).not.toBe('fail')
+  })
+
   it('marks requested dimensions without comparable output signals as not_evaluated', () => {
     const expected = schema({
       angle: 'eye-level',
-      spin: 'left-45',
+      spin: '0',
       lighting: 'db-style-studio',
       backgroundStyle: 'studio-yellow',
       surfaceStyle: 'dark-slate',
     })
-    const actual = schema({ angle: 'eye-level', spin: 'left-45', lighting: '', background: '' })
+    const actual = schema({ angle: 'eye-level', spin: '0', lighting: '', background: '' })
     ;(actual.scene_setup as unknown as { angle: string; spin: string }).angle = ''
     ;(actual.scene_setup as unknown as { angle: string; spin: string }).spin = ''
     const result = scoreOutputAgainstExpected(

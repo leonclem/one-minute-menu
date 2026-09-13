@@ -19,7 +19,7 @@ import {
   extractionDiagnosticsNeedsRefresh,
   type ExtractionDiagnostics,
 } from '@/lib/studio/extraction-diagnostics'
-import { isStudioProEnabled, isStudioReshootEnabled, isStudioVerticalSwitchEnabled } from '@/lib/product-mode'
+import { isStudioProEnabled, isStudioReshootEnabled, isStudioVerticalSwitchEnabled, isStudioYawEnabled } from '@/lib/product-mode'
 import { ANALYTICS_EVENTS } from '@/lib/posthog/events'
 import {
   toModelClass,
@@ -56,6 +56,7 @@ import {
   ensureLightingRestageBaseline,
 } from '@/lib/studio/restage'
 import { applyVerticalSwitch, workingShotHidesBackdrop } from '@/lib/studio/vertical-switch'
+import { applyYaw, clearConsumedYaw } from '@/lib/studio/yaw'
 import type {
   StudioBackgroundStyleDisplay,
   StudioDishRecord,
@@ -364,6 +365,14 @@ export function StudioClient({
     selectedImageIdRef.current = selectedImageId
   }, [selectedImageId])
 
+  useEffect(() => {
+    setGallery((prev) => {
+      const prevIds = new Set(prev.map((row) => row.id))
+      const missing = initialGallery.filter((row) => !prevIds.has(row.id))
+      return missing.length === 0 ? prev : [...prev, ...missing]
+    })
+  }, [initialGallery])
+
   const [createOpen, setCreateOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteDishOpen, setDeleteDishOpen] = useState(false)
@@ -405,6 +414,7 @@ export function StudioClient({
   const reshootEnabled = isStudioReshootEnabled()
   const proEnabled = isStudioProEnabled()
   const verticalSwitchEnabled = isStudioVerticalSwitchEnabled()
+  const yawEnabled = isStudioYawEnabled()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingUploadAfterCreateRef = useRef(false)
@@ -466,7 +476,9 @@ export function StudioClient({
     backdrop: pendingDelta.scalarChanges.some(
       (change) => change.path === 'canvas.background_style'
     ),
-    camera: pendingDelta.scalarChanges.some((change) => change.path === 'scene_setup.angle'),
+    camera: pendingDelta.scalarChanges.some(
+      (change) => change.path === 'scene_setup.angle' || change.path === 'scene_setup.spin',
+    ),
     garnishes:
       finishingStaged ||
       pendingDelta.arrays.garnishes.removed.length > 0 ||
@@ -982,6 +994,7 @@ export function StudioClient({
         setSourceImage(sourceImageFromRecord(sourceData.imageUrl, upload.mimeType, upload.bytes))
         setGallery((prev) => [...prev, sourceRow])
         setSelectedImageId(sourceData.imageId)
+        router.refresh()
         uploadedStoragePath = null
         // The source is registered and immediately visible. Persisting the selected
         // image and extracting metadata are separate phases from the upload itself.
@@ -1007,7 +1020,7 @@ export function StudioClient({
         setIsUploading(false)
       }
     },
-    [activeDishId, persistDishCurrent, persistEditorState, resetEditorForNewSource, runExtraction]
+    [activeDishId, persistDishCurrent, persistEditorState, resetEditorForNewSource, router, runExtraction]
   )
 
   const commitStagedChange = useCallback((nextState: EditorState, nextBaseline: EditorState) => {
@@ -1149,6 +1162,18 @@ export function StudioClient({
     )
     applyStagedChange(nextState, nextBaseline)
   }, [applyStagedChange, editorState])
+
+  const stageYaw = useCallback(
+    (direction: 'left' | 'right') => {
+      const { nextState, nextBaseline } = applyYaw(
+        editorState,
+        originalStateRef.current,
+        direction,
+      )
+      applyStagedChange(nextState, nextBaseline)
+    },
+    [applyStagedChange, editorState],
+  )
 
   const stageBackground = useCallback(
     (backgroundStyle: string) => {
@@ -1391,8 +1416,9 @@ export function StudioClient({
       if (data.credits && typeof data.credits.balanceAfter === 'number') {
         setCreditBalance(data.credits.balanceAfter)
       }
-      setEditorState(nextState)
-      originalStateRef.current = nextState
+      const workingState = clearConsumedYaw(nextState)
+      setEditorState(workingState)
+      originalStateRef.current = workingState
       setBaselineVersion((v) => v + 1)
       const row: StudioImageRecord = {
         id: data.imageId,
@@ -1409,7 +1435,7 @@ export function StudioClient({
         model: data.model,
         metadata: {
           changeSummary,
-          editorState: editorStateToMetadata(nextState),
+          editorState: editorStateToMetadata(workingState),
           ...(extractionDiagnosticsRef.current
             ? { extractionDiagnostics: extractionDiagnosticsRef.current }
             : {}),
@@ -1437,6 +1463,7 @@ export function StudioClient({
       )
       setSourceImage(sourceImageFromRecord(data.imageUrl, 'image/png'))
       resetFinishingTouches()
+      router.refresh()
     } catch (err) {
       trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED, {
         model_class: toModelClass(selectedModel),
@@ -1461,6 +1488,7 @@ export function StudioClient({
     creditBalance,
     selectedFinishingStack,
     resetFinishingTouches,
+    router,
   ])
 
   const handleObjectEditOpen = useCallback(() => {
@@ -1587,6 +1615,7 @@ export function StudioClient({
       const stored = readEditorStateFromMetadata(row.metadata)
       if (stored) applyHydratedState(stored)
       resetFinishingTouches()
+      router.refresh()
       setCropOpen(false)
       setWorkbenchImageExpanded(false)
       setIsCropping(false)
@@ -1612,6 +1641,7 @@ export function StudioClient({
     persistEditorState,
     persistedSourceId,
     resetFinishingTouches,
+    router,
     runExtraction,
     variants.length,
   ])
@@ -1774,6 +1804,7 @@ export function StudioClient({
       const stored = readEditorStateFromMetadata(row.metadata)
       if (stored) applyHydratedState(stored)
       resetFinishingTouches()
+      router.refresh()
       setExpandOpen(false)
       setWorkbenchImageExpanded(false)
     } catch {
@@ -1797,6 +1828,7 @@ export function StudioClient({
     insufficientCredits,
     persistedSourceId,
     resetFinishingTouches,
+    router,
     selectedModel,
     setCreditBalance,
   ])
@@ -1939,6 +1971,7 @@ export function StudioClient({
         setPersistedSourceId(data.imageId)
         setSourceImage(sourceImageFromRecord(data.imageUrl, 'image/png'))
       }
+      router.refresh()
       dispatchObjectEdit({ type: 'SUBMISSION_ACCEPTED' })
       setObjectEditOpen(false)
       setWorkbenchImageExpanded(false)
@@ -1963,6 +1996,7 @@ export function StudioClient({
     loadGalleryForDish,
     objectEditState.selection,
     persistedSourceId,
+    router,
     selectedModel,
   ])
 
@@ -2137,6 +2171,7 @@ export function StudioClient({
           )
         )
         setSourceImage(sourceImageFromRecord(data.imageUrl, 'image/png'))
+        router.refresh()
       } catch (err) {
         trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GENERATION_FAILED, {
           model_class: toModelClass(selectedModel),
@@ -2159,6 +2194,7 @@ export function StudioClient({
       variants.length,
       creditBalance,
       insufficientCredits,
+      router,
     ]
   )
 
@@ -2594,6 +2630,8 @@ export function StudioClient({
             verticalSwitchEnabled={verticalSwitchEnabled}
             workingAngle={workingAngle}
             onVerticalSwitch={stageVerticalSwitch}
+            yawEnabled={yawEnabled}
+            onYaw={stageYaw}
             onGarnishesChange={(garnishes) =>
               applyStagedChange({
                 ...editorState,

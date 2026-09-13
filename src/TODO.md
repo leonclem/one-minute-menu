@@ -4,8 +4,9 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## /studio
-- [ ] Investigate rotation/angle manipulation
+## Home Page
+- [ ] Upload some examples to show transition for each stage underneath "How AI food photos work"
+- [ ] Update home page wording "eyebrow" to state e.g. "AI Food Photo editor"
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
@@ -14,7 +15,10 @@
 ## Issues
 - [ ] /auth/signin page not restyled to new branding
 - [ ] Google Adwords seems to reference waitlist/beta still?
-- [ ] Update home page wording "eyebrow".
+- [ ] Vercel tracking for my browser lost?
+- [ ] Seems to be some session overlap (sign out with one account, sign in with another)
+- [ ] Mobile view delete dish button not enough space
+- [ ] Tiktok icon needed + show social media in footer on all pages
 
 ## /studio
 - [ ] Remove inverse and darken/shade/stripe area to be removed
@@ -59,10 +63,9 @@
 ## Bugs
 
 ## Issues
-- [ ] Mobile view delete dish button not enough space
-- [ ] Scroll bars on image variants observed, possibly when more than n variants
 - [ ] Why is cutout worker still appearing in Vercel logs?
 - [ ] Historical spike/review data for move/remove features is stored in supabase
+- [ ] Deleting account and then signing up again restores old data (including credits aggregation!)
 
 ## Deployment
 - [x] Upgrade Vercel package
@@ -109,7 +112,7 @@
 - [ ] Switch image generation to use worker (there is an MD doc somewhere that proposes how to do this)
 
 ## Home Page
-- [ ] Determine content
+- [x] Determine content
 
 ## Demo Flow
 - [ ] Consider if demo flow is needed
@@ -182,6 +185,8 @@
 - [x] Branching [grid tiles?] structure rather than timeline
 - [x] UX tidy up
 - [x] Overhead shot
+- [x] Investigate rotation/angle manipulation
+- [x] Remove any old 45° turn code
 
 ## /onboarding
 - [x] New users get 10 credits by default

@@ -1,7 +1,7 @@
 import {
   ANGLE_VALUES,
+  EXTRACT_SPIN_VALUES,
   FRAMING_VALUES,
-  SPIN_VALUES,
 } from '@/lib/photo-control/minimal-schema'
 import type {
   MinimalValidationResult,
@@ -124,7 +124,7 @@ function validHex(value: unknown): value is string {
 function validRawValue(path: string, value: unknown): boolean {
   if (path === 'scene_setup.angle') return typeof value === 'string' && ANGLE_VALUES.includes(value as never)
   if (path === 'scene_setup.framing') return typeof value === 'string' && FRAMING_VALUES.includes(value as never)
-  if (path === 'scene_setup.spin') return typeof value === 'string' && SPIN_VALUES.includes(value as never)
+  if (path === 'scene_setup.spin') return typeof value === 'string' && EXTRACT_SPIN_VALUES.includes(value as never)
   if (path === 'scene_setup.lighting') return typeof value === 'string' && SEEDED_LIGHTING_KEYS.includes(value as never)
   if (path.endsWith('.colour')) return validHex(value)
   if (path.endsWith('.garnishes') || path.endsWith('.sides')) {

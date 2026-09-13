@@ -29,8 +29,8 @@
 
 import {
   ANGLE_VALUES,
+  EXTRACT_SPIN_VALUES,
   FRAMING_VALUES,
-  SPIN_VALUES,
   ENUM_DEFAULTS,
   DEFAULT_LIGHTING_KEY,
   MinimalSchemaZ,
@@ -134,7 +134,7 @@ export class MinimalSchemaValidator {
     )
     const spin = this.coerceEnum(
       sceneSetup?.['spin'] ?? '0',
-      SPIN_VALUES,
+      EXTRACT_SPIN_VALUES,
       'scene_setup.spin',
       warnings,
     )

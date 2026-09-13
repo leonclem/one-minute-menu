@@ -23,7 +23,7 @@ const schemaArbitrary: fc.Arbitrary<MinimalSchema> = fc.record({
     angle: fc.constantFrom('top-down' as const, '45-degree' as const, 'eye-level' as const, 'macro-close-up' as const),
     framing: fc.constantFrom('close-up' as const, 'medium' as const, 'wide' as const),
     lighting: fc.stringMatching(/^[a-z]{1,12}$/),
-    spin: fc.constantFrom('0' as const, 'left-45' as const, 'right-45' as const),
+    spin: fc.constantFrom('0' as const, 'left-90' as const, 'right-90' as const),
   }),
   canvas: fc.record({
     background: fc.stringMatching(/^[a-z]{1,12}$/),

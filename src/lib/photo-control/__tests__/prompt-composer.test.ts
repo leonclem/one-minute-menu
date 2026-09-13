@@ -5,6 +5,7 @@ import {
   type CompositionResult,
 } from '../prompt-composer'
 import type { SceneDescriptor } from '../scene-descriptor'
+import { cameraSpinDirective, plateFacingForSpin } from '../camera-viewpoint'
 import { OBSERVED_PATH_LIMITS } from '@/lib/studio/extraction-diagnostics'
 
 const descriptor: SceneDescriptor = {
@@ -90,6 +91,53 @@ describe('composePrompt', () => {
     expect(prompt).not.toContain('pixel-faithful')
     expect(prompt).toContain('looking straight down')
     expect(prompt).not.toContain('CRITICAL: CHANGE PERSPECTIVE TO SIDE-VIEW')
+  })
+
+  it('uses the yaw wrapper when only plateFacing rotation is staged', () => {
+    const prompt = successful(
+      composePrompt({
+        directive: cameraSpinDirective('left-90') ?? '',
+        descriptor: {
+          ...descriptor,
+          target: {
+            camera: {
+              plateFacing: plateFacingForSpin('left-90'),
+            },
+          },
+        },
+      }),
+    )
+
+    expect(prompt).toContain('turntable')
+    expect(prompt).toContain('Keep the original camera height')
+    expect(prompt).not.toContain('Do not preserve the original camera height')
+    expect(prompt).not.toContain('preserve the original composition')
+    expect(prompt).not.toContain('left-90')
+  })
+
+  it('uses the combined wrapper when viewpoint and yaw are both staged', () => {
+    const prompt = successful(
+      composePrompt({
+        directive:
+          `Tilt the camera to overhead, looking straight down at the dish. ${cameraSpinDirective('right-90')}`,
+        descriptor: {
+          ...descriptor,
+          camera: {
+            viewpoint: 'standard three-quarter food photograph, about 45 degrees above the table',
+          },
+          target: {
+            camera: {
+              viewpoint: 'overhead, camera parallel to the table, looking straight down',
+              plateFacing: plateFacingForSpin('right-90'),
+            },
+          },
+        },
+      }),
+    )
+
+    expect(prompt).toContain('Do not preserve the original camera height')
+    expect(prompt).toContain('turntable')
+    expect(prompt).toContain('Do not orbit around the dish')
   })
 
   it('accepts the legacy state-pair call shape while emitting semantic JSON', () => {

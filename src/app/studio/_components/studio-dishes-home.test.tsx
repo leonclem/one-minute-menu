@@ -105,9 +105,17 @@ describe('StudioDishesHome', () => {
   })
 
   it('creates a dish and opens its workbench', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => ({ dish: { id: 'd-new' } }),
+    ;(global.fetch as jest.Mock).mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ dish: { id: 'd-new' } }),
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ dishes: [] }),
+      })
     })
 
     render(<StudioDishesHome {...homeProps} dishes={[]} />)
@@ -124,6 +132,30 @@ describe('StudioDishesHome', () => {
     expect(global.fetch).toHaveBeenCalledWith(
       '/api/studio/dishes',
       expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
+  it('refetches dish cards when home is shown', async () => {
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        dishes: [
+          listedDish({
+            current_image_url: 'https://cdn.example/new.png',
+            shotCount: 8,
+          }),
+        ],
+      }),
+    })
+
+    render(<StudioDishesHome {...homeProps} dishes={[listedDish({ shotCount: 7 })]} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('8 shots · 6 files ready')).toBeInTheDocument()
+    })
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/studio/dishes',
+      expect.objectContaining({ cache: 'no-store' }),
     )
   })
 })

@@ -472,11 +472,12 @@ describe('Task 19.10 — migration compatibility and Tier 1 preservation', () =>
       'main_item', 'garnishes', 'sides',
     ])
 
-    const { ANGLE_VALUES, FRAMING_VALUES, LIGHTING_VALUES, SPIN_VALUES } = require('@/lib/photo-control/minimal-schema')
+    const { ANGLE_VALUES, FRAMING_VALUES, LIGHTING_VALUES, SPIN_VALUES, EXTRACT_SPIN_VALUES } = require('@/lib/photo-control/minimal-schema')
     expect(ANGLE_VALUES).toEqual(['top-down', '45-degree', 'eye-level', 'macro-close-up'])
     expect(FRAMING_VALUES).toEqual(['close-up', 'medium', 'wide'])
     expect(LIGHTING_VALUES).toEqual(['bright-clean', 'bold-sunlight', 'soft-natural', 'golden-hour', 'dark-moody'])
-    expect(SPIN_VALUES).toEqual(['0', 'left-45', 'right-45'])
+    expect(EXTRACT_SPIN_VALUES).toEqual(['0'])
+    expect(SPIN_VALUES).toEqual(['0', 'left-90', 'right-90'])
 
     const beforeOriginal = JSON.stringify(originalState)
     const beforeTarget = JSON.stringify(targetState)

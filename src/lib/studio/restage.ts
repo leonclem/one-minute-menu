@@ -16,7 +16,7 @@ function alternateAngle(value: AngleValue): AngleValue {
 }
 
 function alternateSpin(value: SpinValue): SpinValue {
-  return value === '0' ? 'left-45' : '0'
+  return value === '0' ? 'left-90' : '0'
 }
 
 function alternateLighting(value: string, knownKeys?: readonly string[]): string {

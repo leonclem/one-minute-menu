@@ -32,8 +32,13 @@ export function buildChangeSummary(
     } else if (change.path === 'scene_setup.angle') {
       chips.push(`Camera Height → ${fohAngleLabel(change.to)}`)
     } else if (change.path === 'scene_setup.spin') {
-      const spinLabel = change.to === 'left-45' ? 'Spin Left 45°' : change.to === 'right-45' ? 'Spin Right 45°' : 'Original'
-      chips.push(`Dish Spin → ${spinLabel}`)
+      const spinLabel =
+        change.to === 'left-90'
+          ? 'Anti-clockwise'
+          : change.to === 'right-90'
+            ? 'Clockwise'
+            : 'Original'
+      chips.push(`Rotate → ${spinLabel}`)
     } else if (change.path === 'scene_setup.framing') {
       chips.push(`Framing → ${change.to}`)
     } else if (change.path === 'canvas.background_style') {

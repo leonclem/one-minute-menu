@@ -44,8 +44,8 @@ export const STUDIO_CAMERA_ANGLE_OPTIONS: StudioVisualOption<AngleValue>[] = [
  * Dish horizontal rotation (spin) options.
  */
 export const STUDIO_SPIN_OPTIONS: StudioVisualOption<string>[] = [
-  { id: 'spin-left45', label: 'Spin Left 45°', assetBasename: 'ui/ui-rotate-left45', value: 'left-45' },
-  { id: 'spin-right45', label: 'Spin Right 45°', assetBasename: 'ui/ui-rotate-right45', value: 'right-45' },
+  { id: 'spin-left90', label: 'Anti-clockwise', assetBasename: 'ui/ui-rotate-left45', value: 'left-90' },
+  { id: 'spin-right90', label: 'Clockwise', assetBasename: 'ui/ui-rotate-right45', value: 'right-90' },
 ]
 
 /** Fallback lighting tiles when the styles API is unavailable. */

@@ -8,6 +8,7 @@
  */
 
 import type { MinimalSchema } from './minimal-schema'
+import { isYawSpin } from './camera-viewpoint'
 
 export type OutputValidationStatus = 'pass' | 'warn' | 'fail' | 'skipped'
 
@@ -247,6 +248,12 @@ function compareExactRequested(
 ): ValidationDimension {
   if (!isRequested(stagedFields, id)) {
     return notEvaluated(id, `${id} was not staged for this output`)
+  }
+  if (id === 'spin' && isYawSpin(expectedValue)) {
+    return notEvaluated(
+      id,
+      'yaw is relative to the source; extract cannot score absolute spin',
+    )
   }
   if (!normalize(expectedValue) || !normalize(actualValue)) {
     return notEvaluated(id)
