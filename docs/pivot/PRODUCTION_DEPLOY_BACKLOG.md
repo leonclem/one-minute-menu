@@ -59,6 +59,8 @@ non-local env you care about). Defaults in code are safe if unset unless noted.
 | `NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH` | 2026-09-12 vertical switch | `false` (off) | Leave unset/`false` until Camera quality is accepted | Pending | FOH Scene Camera 45° ↔ overhead. Requires a client rebuild. |
 | `NEXT_PUBLIC_STUDIO_ENABLE_YAW` | 2026-09-12 yaw | `false` (off) | Leave unset/`false` until 90° rotate quality is accepted | Pending | FOH Scene Camera rotate left/right 90°. Requires a client rebuild. |
 | `STUDIO_LOG_PROMPTS` | 2026-09-12 vertical switch | `false` (off) | **Never true in production** | Pending | Prints full Studio mutate prompts to the server log. Local examination only. |
+| `NEXT_PUBLIC_GOOGLE_ADS_ID` | Ads conversion patch 2026-09-13 | unset (tag not loaded) | `AW-18081721279` | Applied | Live on www.gridmenu.ai. Shared Google tag for the Ads account. |
+| `NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL` | Ads conversion patch 2026-09-13 | unset (event snippet skipped) | `JihqCIbtgJ0cEL_XhK5D` | Pending | Production still has the old label. Update in Vercel then redeploy so the new Sign-up action records. |
 | `STRIPE_PRICE_ID_MENU_PACK_{SGD,USD,GBP,AUD,EUR}` | Self-serve launch | none (required for checkout) | Live Stripe Price IDs (100 credits) | Pending | Paste from Stripe. |
 | `STRIPE_PRICE_ID_STUDIO_PACK_{SGD,USD,GBP,AUD,EUR}` | Self-serve launch | none (required for checkout) | Live Stripe Price IDs (300 credits) | Pending | Paste from Stripe. |
 
@@ -104,6 +106,7 @@ Non-env, non-migration steps that must not be forgotten.
 | Smoke-test Group B/D scene-descriptor rollout | Group B + D patch | Applied | LC 2026-08-13: `main` is production. |
 | Production smoke-test beta gate, feedback route, and funnel events | Chunk 7 | Applied | LC 2026-08-13: `main` is production. |
 | Confirm Vercel env for studio-public cutover | Chunk 8 | Pending | Before/at next manual deploy: `NEXT_PUBLIC_PRODUCT_MODE=photo-studio`, `NEXT_PUBLIC_ENABLE_LEGACY_MENUS=false`, `NEXT_PUBLIC_ENABLE_PHOTO_STUDIO=true`, `NEXT_PUBLIC_STUDIO_ACCESS_MODE=open`. |
+| Set Google Ads signup label | Ads conversion patch 2026-09-13 | Pending | Vercel Production: `NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL=JihqCIbtgJ0cEL_XhK5D`, then redeploy. Smoke a new magic-link signup in Tag Assistant / Network. |
 | Paste 15 Studio pack Stripe Price IDs | Self-serve launch | Pending | `STRIPE_PRICE_ID_{STARTER,MENU,STUDIO}_PACK_{SGD,USD,GBP,AUD,EUR}` in Vercel and `.env.local`. |
 | Smoke-test studio-first public site | Self-serve launch | Pending | Logged-out home/pricing/support/register show Studio packs, not menu plans. Sitemap omits `/demo/sample` and `/blog`. Logged-in default is `/studio`. Unapproved user sees pending approval. Approved non-admin can open Studio. Checkout grants credits. |
 

@@ -14,13 +14,16 @@ The implementation uses the **"Manually with code"** approach — no Google Tag 
 User submits email (/register or /auth/signin)
   → Supabase sends magic link email
   → User clicks link → supabase.co/auth/v1/verify?...
-  → Supabase redirects to → /auth/callback?next=/onboarding
-  → /auth/callback detects new user (created_at < 30s ago)
+  → Supabase redirects to → /auth/callback?next=/studio
+  → /auth/callback detects first verified login (profiles.last_login_at is empty)
   → Appends ?new_signup=true to redirect
-  → /onboarding page loads → gtag conversion event fires
+  → /studio (or /onboarding in legacy menu-builder mode) loads
+  → SignupConversionBeacon fires gtag conversion + PostHog signup_completed
 ```
 
 Both `/register` and `/auth/signin` use the same `AuthOTPForm` component and the same `emailRedirectTo`, so new users are captured regardless of which form they used.
+
+Do **not** paste Google's static event snippet into page HTML. The conversion is fired in JavaScript after the magic-link round trip. Google's site crawler will often keep saying the event snippet is missing; verify with Tag Assistant or a real signup instead.
 
 ---
 
@@ -29,8 +32,8 @@ Both `/register` and `/auth/signin` use the same `AuthOTPForm` component and the
 | What | Where |
 |------|-------|
 | Global Google tag (loads on every page) | `src/app/layout.tsx` |
-| New user detection + `?new_signup=true` flag | `src/app/auth/callback/route.ts` |
-| Conversion event (`gtag('event', 'conversion', ...)`) | `src/app/onboarding/onboarding-client.tsx` |
+| First-login detection + `?new_signup=true` flag | `src/app/auth/callback/route.ts` (`isFirstVerifiedLogin`) |
+| Conversion event (`gtag('event', 'conversion', ...)`) | `src/components/analytics/SignupConversionBeacon.tsx` |
 
 ### Global tag — `layout.tsx`
 
@@ -41,7 +44,7 @@ gtag('config', 'AW-XXXXXXXXX'); // NEXT_PUBLIC_GOOGLE_ADS_ID
 
 Loaded conditionally — only renders if `NEXT_PUBLIC_GOOGLE_ADS_ID` is set, so it is safe in all environments.
 
-### Conversion event — `onboarding-client.tsx`
+### Conversion event — `SignupConversionBeacon.tsx`
 
 ```js
 gtag('event', 'conversion', {
@@ -49,7 +52,7 @@ gtag('event', 'conversion', {
 })
 ```
 
-Fires once per new signup when `?new_signup=true` is present in the URL.
+Fires once per first verified login when `?new_signup=true` is present. Mounted from the Studio shell and from `/onboarding` (including the waitlist branch). Studio-public mode preserves the query if `/onboarding` redirects to `/studio`.
 
 ---
 
@@ -72,11 +75,12 @@ The `send_to` value Google provides looks like `AW-18081721279/JihqCIbtgJ0cEL_Xh
 
 1. **Name the Google tag** — Go to Google Ads → Tools → Google tag. Rename "Untitled tag" to something meaningful (e.g. "GridMenu"). This is cosmetic only and has no effect on tracking.
 
-2. **Cross-domain linking** — Go to Google Ads → Tools → Google tag → Settings → Cross-domain linking. Add both domains:
+2. **Cross-domain linking** — Go to Google Ads → Tools → Google tag → Settings → Cross-domain linking. Add:
+   - `www.gridmenu.ai`
    - `gridmenu.ai`
-   - `one-minute-menu-51ppxzf9c-leon-clements-projects.vercel.app` (or current Vercel deployment domain)
+   - the current Vercel deployment domain, if ads or magic links can land there
 
-   This prevents Google losing the session when Vercel redirects between domains. Without it, conversions can go unattributed.
+   Point campaigns at `https://www.gridmenu.ai` (apex currently 307s to www).
 
 ---
 
@@ -102,13 +106,7 @@ Add a new env var for the label:
 NEXT_PUBLIC_GOOGLE_ADS_<CAMPAIGN_NAME>_LABEL=NEW_LABEL_HERE
 ```
 
-Then fire it alongside or instead of the existing event in `onboarding-client.tsx`:
-
-```js
-gtag('event', 'conversion', {
-  send_to: `${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}/${process.env.NEXT_PUBLIC_GOOGLE_ADS_<CAMPAIGN_NAME>_LABEL}`,
-})
-```
+Then fire it from `SignupConversionBeacon` (or a dedicated helper) alongside or instead of the existing signup label.
 
 **Option B — Conversion on a different user action**
 
@@ -132,14 +130,22 @@ Keep the same pattern: check `typeof window.gtag === 'function'` before calling 
 
 ## Verification
 
-After setup, Google Ads will show "No recent conversions" for 1–2 days even when working correctly. Once a real conversion comes through it will update to "Recording conversions".
+Google Ads often shows "tag not found" / "No recent conversions" for 1–2 days, and the automated checker will not find the event snippet on the homepage (it is not in static HTML).
 
-To test locally, the `NEXT_PUBLIC_GOOGLE_ADS_ID` env var is intentionally not set in `.env.local` by default, so the global tag script does not load in development. You can add it temporarily to test the flow end-to-end.
+Reliable check:
+
+1. Deploy with both env vars set (they are inlined at **build** time).
+2. Open [Google Tag Assistant](https://tagassistant.google.com/) or Chrome DevTools → Network → filter `google`.
+3. Complete a real new signup (magic-link click).
+4. Confirm a request to `www.googleadservices.com/pagead/conversion/...` with this `send_to`.
+
+To test locally, add the two `NEXT_PUBLIC_GOOGLE_ADS_*` vars to `.env.local` and restart `npm run dev`.
 
 ---
 
 ## Notes
 
 - The Supabase magic link email contains a `supabase.co` URL — this is normal. It is an intermediary that verifies the token and then redirects to `/auth/callback`. Users pass through it invisibly.
-- The conversion fires on `/onboarding`, not on `/register` or `/auth/callback`. This is intentional — it fires after the full auth round-trip is confirmed, making it more accurate.
+- First verified login uses `profiles.last_login_at`, not Auth `created_at`. The Auth user exists as soon as the email is submitted.
+- The conversion fires on `/studio` (studio-public) or `/onboarding` (legacy), after the auth round-trip is confirmed — not when the magic link is sent.
 - Both `/register` and `/auth/signin` lead to the same conversion event. There is no need to instrument them separately.

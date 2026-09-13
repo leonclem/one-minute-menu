@@ -243,4 +243,48 @@ describe('Auth Callback Route', () => {
       expect.anything()
     )
   })
+
+  it('sets new_signup on first verified login even when Auth created_at is old', async () => {
+    mockSupabase.auth.getUser.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-123',
+          email: 'test@example.com',
+          created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+        },
+      },
+    })
+    ;(userOperations.getProfile as jest.Mock).mockResolvedValue({
+      id: 'user-123',
+      email: 'test@example.com',
+      isApproved: true,
+      adminNotified: true,
+      role: 'user',
+      lastLoginAt: undefined,
+    })
+
+    const req = makeRequest('http://localhost:3000/auth/callback?code=test-code&next=/studio')
+    const res = await GET(req) as any
+
+    expect(res.headers.set).toHaveBeenCalledWith(
+      'location',
+      'http://localhost:3000/studio?new_signup=true',
+    )
+  })
+
+  it('does not set new_signup for a returning user', async () => {
+    ;(userOperations.getProfile as jest.Mock).mockResolvedValue({
+      id: 'user-123',
+      email: 'test@example.com',
+      isApproved: true,
+      adminNotified: true,
+      role: 'user',
+      lastLoginAt: new Date('2026-01-01T00:00:00.000Z'),
+    })
+
+    const req = makeRequest('http://localhost:3000/auth/callback?code=test-code&next=/studio')
+    const res = await GET(req) as any
+
+    expect(res.headers.set).not.toHaveBeenCalled()
+  })
 })

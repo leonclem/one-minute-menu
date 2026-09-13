@@ -61,7 +61,7 @@ Alternatively install the [Google Tag Assistant](https://tagassistant.google.com
 
 | Event | Env var (label) | Fired in |
 |---|---|---|
-| Sign-up | `NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL` | `src/components/auth/AuthOTPForm.tsx` |
+| Sign-up | `NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL` | `src/components/analytics/SignupConversionBeacon.tsx` |
 
 ---
 

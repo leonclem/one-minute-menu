@@ -25,9 +25,13 @@ const nextConfig = {
     const imgSrc = isProd
       ? "img-src 'self' data: https: blob:;"
       : "img-src 'self' data: https: http://localhost:54321 blob:;"
+    const googleAdsConnect =
+      'https://www.googletagmanager.com https://www.googleadservices.com https://googleadservices.com https://googleads.g.doubleclick.net https://stats.g.doubleclick.net https://www.google.com'
+    const googleAdsScripts =
+      'https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://www.google.com'
     const connectSrc = isProd
-      ? "connect-src 'self' https://*.supabase.co https://*.supabase.com https://www.googletagmanager.com https://googleadservices.com https://googleads.g.doubleclick.net https://www.google.com;"
-      : "connect-src 'self' https://*.supabase.co https://*.supabase.com http://localhost:54321 https://www.googletagmanager.com https://googleadservices.com https://googleads.g.doubleclick.net https://www.google.com;"
+      ? `connect-src 'self' https://*.supabase.co https://*.supabase.com ${googleAdsConnect};`
+      : `connect-src 'self' https://*.supabase.co https://*.supabase.com http://localhost:54321 ${googleAdsConnect};`
     return [
       {
         source: '/(.*)',
@@ -50,7 +54,7 @@ const nextConfig = {
             : []),
           {
             key: 'Content-Security-Policy',
-            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://googleads.g.doubleclick.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; ${imgSrc} font-src 'self' data: https://fonts.gstatic.com; ${connectSrc} frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com;`,
+            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' ${googleAdsScripts}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; ${imgSrc} font-src 'self' data: https://fonts.gstatic.com; ${connectSrc} frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com;`,
           },
         ],
       },

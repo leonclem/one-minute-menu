@@ -5,48 +5,28 @@ import { UXCard } from '@/components/ux'
 import { AuthOTPForm } from '@/components/auth/AuthOTPForm'
 import { AuthMagicLinkBenefits } from '@/components/auth/AuthMagicLinkBenefits'
 
-interface UXRegisterClientProps {
-  requireAdminApproval?: boolean
-}
-
-export default function UXRegisterClient({ requireAdminApproval = false }: UXRegisterClientProps) {
+export default function SignInClient() {
   return (
     <div className="mx-auto w-full max-w-md">
-      {requireAdminApproval && (
-        <div
-          className="mb-6 rounded-[16px] border p-5"
-          style={{
-            borderColor: 'rgba(1, 179, 191, 0.45)',
-            backgroundColor: 'var(--studio-panel, #0f1c1f)',
-          }}
-        >
-          <h3 className="mb-1 font-bold text-white">Sign up for GridMenu</h3>
-          <p className="text-sm leading-relaxed text-white/65">
-            Your account may need a short review before Studio opens.{' '}
-            <strong className="text-white">Most applications are approved within 24 hours.</strong>
-          </p>
-        </div>
-      )}
-
       <UXCard className="mb-8">
         <AuthOTPForm
-          type="signup"
-          title="Sign up with email"
-          subtitle="We'll send you a secure magic link to get started"
+          type="signin"
+          title="Sign in with email"
+          subtitle="We'll send you a secure magic link to access your account"
           buttonText="Send magic link"
-          trackingSource="register_page"
+          trackingSource="signin_page"
         />
         <AuthMagicLinkBenefits />
       </UXCard>
 
       <div className="space-y-4 text-center">
         <p className="text-sm text-white/70">
-          Already have an account?{' '}
+          Don&apos;t have an account?{' '}
           <Link
-            href="/auth/signin"
+            href="/register"
             className="font-semibold text-[var(--studio-link,#5fd3da)] hover:text-[#7fdee4]"
           >
-            Sign in
+            Sign up free
           </Link>
         </p>
 

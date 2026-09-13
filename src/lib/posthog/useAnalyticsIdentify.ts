@@ -18,7 +18,7 @@ type AuthSession = {
  *   identifyUser with the 6-key allow-list (role, plan,
  *   subscription_status, is_admin, is_approved, created_at).
  *   Also fires login_completed for returning users (new-user signup_completed
- *   is fired from the onboarding client where ?new_signup=true is present).
+ *   is fired from SignupConversionBeacon when ?new_signup=true is present).
  * - SIGNED_OUT: calls resetAnalytics() to clear the PostHog distinct id and
  *   session data, preventing cross-user data leakage.
  *
@@ -73,11 +73,8 @@ async function identifySignedInUser(session: AuthSession): Promise<void> {
     }
 
     // Fire login_completed for returning users.
-    // New-user signup_completed is fired from the onboarding client
-    // (where ?new_signup=true is present in the URL), so we emit
-    // login_completed here for all SIGNED_IN events. The onboarding
-    // client guards against double-counting by only firing
-    // signup_completed when isNewSignup is true.
+    // New-user signup_completed is fired from SignupConversionBeacon
+    // when ?new_signup=true is present (Studio or onboarding).
     captureEvent(ANALYTICS_EVENTS.LOGIN_COMPLETED)
   } catch {
     // Swallow profile-fetch errors — analytics identification is

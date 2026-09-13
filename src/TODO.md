@@ -13,9 +13,8 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Issues
-- [ ] /auth/signin page not restyled to new branding
+- [x] /auth/signin page not restyled to new branding
 - [ ] Google Adwords seems to reference waitlist/beta still?
-- [ ] Vercel tracking for my browser lost?
 - [ ] Seems to be some session overlap (sign out with one account, sign in with another)
 - [ ] Mobile view delete dish button not enough space
 - [ ] Tiktok icon needed + show social media in footer on all pages

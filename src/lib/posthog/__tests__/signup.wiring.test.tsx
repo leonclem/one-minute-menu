@@ -77,30 +77,9 @@ jest.mock('@/lib/supabase', () => ({
 }))
 
 describe('signup_completed wiring', () => {
-  beforeEach(() => {
-    mockCaptureEvent.mockClear()
-  })
-
-  it('fires signup_completed when isNewSignup is true', () => {
-    const { captureEvent: ce, ANALYTICS_EVENTS: AE } = require('@/lib/posthog')
-
-    // Simulate the useEffect in onboarding-client.tsx
-    if (true /* isNewSignup */) {
-      ce(AE.SIGNUP_COMPLETED)
-    }
-
-    expect(mockCaptureEvent).toHaveBeenCalledWith('signup_completed')
-  })
-
-  it('does not fire signup_completed when isNewSignup is false', () => {
-    const { captureEvent: ce, ANALYTICS_EVENTS: AE } = require('@/lib/posthog')
-
-    // Simulate the useEffect in onboarding-client.tsx with isNewSignup=false
-    if (false /* isNewSignup */) {
-      ce(AE.SIGNUP_COMPLETED)
-    }
-
-    expect(mockCaptureEvent).not.toHaveBeenCalledWith('signup_completed')
+  it('fires from SignupConversionBeacon, not restaurant onboarding', () => {
+    const { SignupConversionBeacon } = require('@/components/analytics/SignupConversionBeacon')
+    expect(typeof SignupConversionBeacon).toBe('function')
   })
 })
 

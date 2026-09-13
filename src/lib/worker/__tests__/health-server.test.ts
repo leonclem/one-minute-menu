@@ -5,6 +5,7 @@
  */
 
 import http from 'http'
+import { AddressInfo } from 'net'
 import { HealthServer } from '../health-server'
 import { StorageClient } from '../storage-client'
 import * as healthCheck from '../health-check'
@@ -16,7 +17,9 @@ jest.mock('../database-client')
 describe('HealthServer', () => {
   let server: HealthServer
   let mockStorageClient: StorageClient
-  const TEST_PORT = 3001
+  // Port 0 lets the OS assign a free ephemeral port so these tests do not
+  // collide with a local Next.js (or other) process on 3000/3001.
+  const TEST_PORT = 0
 
   beforeEach(() => {
     mockStorageClient = {
@@ -51,9 +54,8 @@ describe('HealthServer', () => {
       })
 
       await server.start()
-      await new Promise(resolve => setTimeout(resolve, 100)) // Wait for server to be ready
 
-      const response = await makeRequest('/health')
+      const response = await makeRequest('/health', server.getPort())
 
       expect(response.statusCode).toBe(200)
       expect(response.body.status).toBe('healthy')
@@ -83,9 +85,8 @@ describe('HealthServer', () => {
       })
 
       await server.start()
-      await new Promise(resolve => setTimeout(resolve, 100)) // Wait for server to be ready
 
-      const response = await makeRequest('/health')
+      const response = await makeRequest('/health', server.getPort())
 
       expect(response.statusCode).toBe(503)
       expect(response.body.status).toBe('unhealthy')
@@ -103,9 +104,8 @@ describe('HealthServer', () => {
       })
 
       await server.start()
-      await new Promise(resolve => setTimeout(resolve, 100)) // Wait for server to be ready
 
-      const response = await makeRequest('/health')
+      const response = await makeRequest('/health', server.getPort())
 
       expect(response.statusCode).toBe(503)
       expect(response.body.status).toBe('unhealthy')
@@ -121,9 +121,8 @@ describe('HealthServer', () => {
       })
 
       await server.start()
-      await new Promise(resolve => setTimeout(resolve, 100)) // Wait for server to be ready
 
-      const response = await makeRequest('/')
+      const response = await makeRequest('/', server.getPort())
 
       expect(response.statusCode).toBe(200)
       expect(response.body.service).toBe('railway-export-worker')
@@ -140,9 +139,8 @@ describe('HealthServer', () => {
       })
 
       await server.start()
-      await new Promise(resolve => setTimeout(resolve, 100)) // Wait for server to be ready
 
-      const response = await makeRequest('/unknown')
+      const response = await makeRequest('/unknown', server.getPort())
 
       expect(response.statusCode).toBe(404)
       expect(response.body.error).toBe('Not Found')
@@ -158,17 +156,16 @@ describe('HealthServer', () => {
       })
 
       await server.start()
-      await new Promise(resolve => setTimeout(resolve, 100)) // Wait for server to be ready
       
       // Verify server is running
-      const response = await makeRequest('/')
+      const response = await makeRequest('/', server.getPort())
       expect(response.statusCode).toBe(200)
 
+      const boundPort = server.getPort()
       await server.stop()
-      await new Promise(resolve => setTimeout(resolve, 100)) // Wait for server to stop
 
       // Verify server is stopped (connection should fail)
-      await expect(makeRequest('/')).rejects.toThrow()
+      await expect(makeRequest('/', boundPort)).rejects.toThrow()
     })
 
     it('should handle stop when server is not running', async () => {
@@ -180,21 +177,35 @@ describe('HealthServer', () => {
       // Should not throw
       await expect(server.stop()).resolves.not.toThrow()
     })
+
+    it('should reject start when the port is already in use', async () => {
+      const holder = await listenOnEphemeralPort()
+      const busyPort = (holder.address() as AddressInfo).port
+
+      server = new HealthServer({
+        port: busyPort,
+        storageClient: mockStorageClient
+      })
+
+      await expect(server.start()).rejects.toMatchObject({ code: 'EADDRINUSE' })
+
+      await closeServer(holder)
+    })
   })
 })
 
 /**
  * Helper function to make HTTP requests to the test server
  */
-function makeRequest(path: string): Promise<{
+function makeRequest(path: string, port: number): Promise<{
   statusCode: number
   body: any
 }> {
   return new Promise((resolve, reject) => {
     const req = http.request(
       {
-        hostname: 'localhost',
-        port: 3001,
+        hostname: '127.0.0.1',
+        port,
         path,
         method: 'GET'
       },
@@ -221,5 +232,28 @@ function makeRequest(path: string): Promise<{
 
     req.on('error', reject)
     req.end()
+  })
+}
+
+function listenOnEphemeralPort(): Promise<http.Server> {
+  return new Promise((resolve, reject) => {
+    const holder = http.createServer()
+    holder.once('error', reject)
+    holder.listen(0, () => {
+      holder.removeListener('error', reject)
+      resolve(holder)
+    })
+  })
+}
+
+function closeServer(server: http.Server): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.close((err) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve()
+      }
+    })
   })
 }

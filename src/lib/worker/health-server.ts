@@ -76,11 +76,23 @@ export class HealthServer {
   }
 
   /**
+   * Port the server is bound to. After `start()`, this is the actual listening
+   * port (useful when constructed with port 0 for an ephemeral assignment).
+   */
+  getPort(): number {
+    return this.port
+  }
+
+  /**
    * Start the health check server
    */
   async start(): Promise<void> {
-    return new Promise((resolve) => {
-      this.server = http.createServer((req, res) => {
+    if (this.server) {
+      throw new Error('Health check server is already running')
+    }
+
+    return new Promise((resolve, reject) => {
+      const server = http.createServer((req, res) => {
         this.handleRequest(req, res).catch(error => {
           console.error('[HealthServer] Error handling request:', error)
           res.writeHead(500, { 'Content-Type': 'application/json' })
@@ -90,7 +102,21 @@ export class HealthServer {
         })
       })
 
-      this.server.listen(this.port, () => {
+      this.server = server
+
+      const onError = (err: Error) => {
+        this.server = null
+        reject(err)
+      }
+
+      server.once('error', onError)
+
+      server.listen(this.port, () => {
+        server.removeListener('error', onError)
+        const address = server.address()
+        if (address && typeof address === 'object') {
+          this.port = address.port
+        }
         console.log(`[HealthServer] Health check server listening on port ${this.port}`)
         resolve()
       })
@@ -107,13 +133,20 @@ export class HealthServer {
         return
       }
 
-      this.server.close((err) => {
+      const server = this.server
+      this.server = null
+
+      server.close((err) => {
         if (err) {
+          const code = (err as NodeJS.ErrnoException).code
+          if (code === 'ERR_SERVER_NOT_RUNNING') {
+            resolve()
+            return
+          }
           console.error('[HealthServer] Error stopping health check server:', err)
           reject(err)
         } else {
           console.log('[HealthServer] Health check server stopped')
-          this.server = null
           resolve()
         }
       })

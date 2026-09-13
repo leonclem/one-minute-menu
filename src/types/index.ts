@@ -8,6 +8,7 @@ export interface User {
   plan: UserPlan
   limits: PlanLimits
   createdAt: Date
+  lastLoginAt?: Date
   location?: string
   securityFlags?: string[]
   role?: 'user' | 'admin'

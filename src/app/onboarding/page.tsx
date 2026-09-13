@@ -4,7 +4,9 @@ import { userOperations } from '@/lib/database'
 import OnboardingClient from './onboarding-client'
 import { PendingApproval } from '@/components/dashboard/PendingApproval'
 import { UXHeader, UXFooter } from '@/components/ux'
+import { SignupConversionBeacon } from '@/components/analytics/SignupConversionBeacon'
 import { isOnboardingComplete } from '@/lib/onboarding-gate'
+import { withNewSignupQuery } from '@/lib/auth/new-signup'
 import { getFeatureFlag } from '@/lib/feature-flags'
 import { getAuthenticatedHomePath, shouldRequireRestaurantOnboarding } from '@/lib/product-mode'
 
@@ -24,13 +26,17 @@ export default async function OnboardingPage({
 
   // If user has already completed onboarding, skip it and go to next or dashboard
   const profile = await userOperations.getProfile(user.id)
-  
+  const isNewSignup = searchParams.new_signup === 'true'
+  const signupBeacon = <SignupConversionBeacon enabled={isNewSignup} />
+
   // APPROVAL GATE
   const isAdmin = profile?.role === 'admin'
   const requireAdminApproval = await getFeatureFlag('require_admin_approval')
   if (requireAdminApproval && !isAdmin && profile && !profile.isApproved) {
     return (
-      <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
+      <>
+        {signupBeacon}
+        <div className="ux-implementation min-h-screen flex flex-col overflow-x-hidden relative">
         <div
           aria-hidden
           className="absolute inset-0 -z-10"
@@ -47,30 +53,33 @@ export default async function OnboardingPage({
         </main>
         <UXFooter />
       </div>
+      </>
     )
   }
 
   if (!shouldRequireRestaurantOnboarding()) {
-    redirect(getAuthenticatedHomePath())
+    redirect(withNewSignupQuery(getAuthenticatedHomePath(), isNewSignup))
   }
 
   if (isOnboardingComplete(profile)) {
-    redirect(searchParams.next || getAuthenticatedHomePath())
+    redirect(withNewSignupQuery(searchParams.next || getAuthenticatedHomePath(), isNewSignup))
   }
 
   return (
-    <OnboardingClient 
-      userEmail={user.email} 
-      next={searchParams.next} 
-      reason={searchParams.reason}
-      isNewSignup={searchParams.new_signup === 'true'}
-      initialData={{
-        restaurantName: profile?.restaurantName || '',
-        establishmentType: profile?.establishmentType || '',
-        primaryCuisine: profile?.primaryCuisine || '',
-        username: profile?.username || '',
-      }}
-    />
+    <>
+      {signupBeacon}
+      <OnboardingClient
+        userEmail={user.email}
+        next={searchParams.next}
+        reason={searchParams.reason}
+        initialData={{
+          restaurantName: profile?.restaurantName || '',
+          establishmentType: profile?.establishmentType || '',
+          primaryCuisine: profile?.primaryCuisine || '',
+          username: profile?.username || '',
+        }}
+      />
+    </>
   )
 }
 

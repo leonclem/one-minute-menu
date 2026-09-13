@@ -249,3 +249,4 @@ Record in `docs/pivot/PATCH_<slug>_<date>.md` rather than as a new chunk.
 | 2026-08-18 | Studio public homepage copy (self-serve CTAs; drop menu-subscription FAQ) | `main` | Built — see `docs/pivot/PATCH_STUDIO_PUBLIC_HOMEPAGE_COPY_2026-08-18.md`. No migration or env var. |
 | 2026-09-12 | Studio vertical switch 45° ↔ overhead (flagged) | `main` | Built — see `docs/pivot/PATCH_STUDIO_VERTICAL_SWITCH_2026-09-12.md`. Leave `NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH` and `STUDIO_LOG_PROMPTS` unset in production. |
 | 2026-09-12 | Studio in-place yaw rotate 90° (flagged) | `main` | Built — see `docs/pivot/PATCH_STUDIO_YAW_2026-09-12.md`. Leave `NEXT_PUBLIC_STUDIO_ENABLE_YAW` unset in production. |
+| 2026-09-13 | Google Ads signup conversion (first-login + CSP + label) | `main` | Built — see `docs/pivot/PATCH_GOOGLE_ADS_SIGNUP_CONVERSION_2026-09-13.md`. Set `NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL=JihqCIbtgJ0cEL_XhK5D` in Vercel before the next manual deploy. |

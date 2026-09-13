@@ -117,6 +117,7 @@ export const userOperations = {
       plan: data.plan as UserPlan,
       limits: resolvePlanLimits(data.plan_limits, data.plan as UserPlan),
       createdAt: new Date(data.created_at),
+      lastLoginAt: data.last_login_at ? new Date(data.last_login_at) : undefined,
       location: data.location || undefined,
       role: data.role as 'user' | 'admin' || 'user',
       username: data.username || undefined,
