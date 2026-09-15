@@ -112,6 +112,14 @@ describe('UXFooter accessibility', () => {
     expect(screen.getByRole('link', { name: /privacy policy/i })).toHaveAttribute('href', '/privacy')
     expect(screen.getByRole('link', { name: /terms of service/i })).toHaveAttribute('href', '/terms')
     expect(screen.getByRole('link', { name: /contact us/i })).toHaveAttribute('href', '/support')
+    expect(screen.getByRole('link', { name: /gridmenu on instagram/i })).toHaveAttribute(
+      'href',
+      'https://www.instagram.com/gridmenu/',
+    )
+    expect(screen.getByRole('link', { name: /gridmenu on tiktok/i })).toHaveAttribute(
+      'href',
+      'https://www.tiktok.com/@gridmenu',
+    )
   })
 })
 

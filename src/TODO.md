@@ -17,7 +17,9 @@
 - [ ] Google Adwords seems to reference waitlist/beta still?
 - [ ] Seems to be some session overlap (sign out with one account, sign in with another)
 - [ ] Mobile view delete dish button not enough space
-- [ ] Tiktok icon needed + show social media in footer on all pages
+- [x] Tiktok icon needed + show social media in footer on all pages
+- [ ] Pricing page stuck on Euros?
+- [ ] Can anyone login on mobile?
 
 ## /studio
 - [ ] Remove inverse and darken/shade/stripe area to be removed
@@ -88,6 +90,8 @@
 - [ ] QA
 
 ### Blogs
+- [x] Prompt mastery "Remove the Spoon, Not the Fork."
+- [ ] Fighting AI slop "The Problem With AI Food Photography Isn't AI. It's Food That Never Existed."
 - [ ] Grow sales with better images
 - [ ] Admin tool to add blogs
 - [ ] Use better descriptions to boost sales

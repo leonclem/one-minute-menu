@@ -92,6 +92,27 @@ export function UXFooter() {
                   />
                 </svg>
               </a>
+              <a
+                href="https://www.tiktok.com/@gridmenu"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="GridMenu on TikTok"
+                className="inline-flex h-5 w-5 items-center justify-center opacity-80 hover:opacity-100 transition-opacity"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="10" fill="#ffffff" />
+                  <path
+                    fill="var(--studio-bg, #0c1416)"
+                    d="M14.2 7.2c.5 1.3 1.5 2.3 2.9 2.6v1.6c-.8-.1-1.6-.4-2.3-.9v4.7c0 2.1-1.7 3.8-3.8 3.8S7.2 17.3 7.2 15.2s1.7-3.8 3.8-3.8c.3 0 .5 0 .8.1v1.7c-.2-.1-.5-.1-.8-.1-1.2 0-2.1 1-2.1 2.1s.9 2.1 2.1 2.1 2.1-.9 2.1-2.1V7.2h1.1z"
+                  />
+                </svg>
+              </a>
             </div>
           </div>
         </div>

@@ -6,6 +6,15 @@ import { UXWrapper } from '@/components/ux'
 
 const articles = [
   {
+    slug: 'remove-the-spoon-not-the-fork',
+    category: 'Photo Studio',
+    title: 'Remove the Spoon, Not the Fork',
+    excerpt:
+      'Why AI food editing needs controls, not better prompts. Photographers should not have to spend hours telling a model to remove the spoon, not the fork.',
+    thumbnail: '/backgrounds/remove-the-spoon-not-the-fork.png',
+    thumbnailAlt: 'An overhead photo of grilled eggplant with a fork on the plate and a spare spoon beside it',
+  },
+  {
     slug: 'restaurants-cannot-control-inflation',
     category: 'Operations',
     title: 'Restaurants Cannot Control Inflation. They Can Control This',
