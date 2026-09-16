@@ -10,7 +10,7 @@ const articles = [
     category: 'Photo Studio',
     title: 'Remove the Spoon, Not the Fork',
     excerpt:
-      'Why AI food editing needs controls, not better prompts. Photographers should not have to spend hours telling a model to remove the spoon, not the fork.',
+      'Why AI image editing needs controls, not better prompts. Photographers should not have to spend hours telling a model to remove the spoon, not the fork.',
     thumbnail: '/backgrounds/remove-the-spoon-not-the-fork.png',
     thumbnailAlt: 'An overhead photo of grilled eggplant with a fork on the plate and a spare spoon beside it',
   },

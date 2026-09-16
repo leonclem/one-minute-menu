@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { UXFooter, UXHeader, UXWrapper } from '@/components/ux'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | GridMenu',
@@ -10,27 +11,11 @@ export default function PrivacyPage() {
   const lastUpdated = '14/08/2026'
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <Link href="/" className="text-2xl font-black text-ux-primary tracking-tight">
-              GridMenu
-            </Link>
-            <Link 
-              href="/register" 
-              className="bg-ux-primary text-white px-6 py-2 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
-            >
-              Get started
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Content */}
-      <div className="py-16 sm:py-24">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="ux-implementation ux-studio-surface relative flex min-h-dvh flex-col overflow-x-hidden md:min-h-screen">
+      <UXHeader />
+      <main className="flex-1 w-full">
+        <UXWrapper className="py-12 sm:py-16">
+      <article className="mx-auto max-w-3xl rounded-2xl bg-white/95 p-8 shadow-lg backdrop-blur sm:p-12">
           <h1 className="text-4xl font-extrabold text-gray-900 mb-4">Privacy Policy</h1>
           <p className="text-gray-500 mb-12">Last updated: {lastUpdated}</p>
           
@@ -183,8 +168,10 @@ export default function PrivacyPage() {
               <span>←</span> Back to Home
             </Link>
           </div>
-        </div>
-      </div>
-    </main>
+        </article>
+        </UXWrapper>
+      </main>
+      <UXFooter />
+    </div>
   )
 }

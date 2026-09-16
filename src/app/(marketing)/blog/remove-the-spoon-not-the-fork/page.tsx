@@ -9,7 +9,7 @@ export const metadata: Metadata = withParkedRobots({
   openGraph: {
     title: 'Remove the Spoon, Not the Fork | GridMenu',
     description:
-      'Why AI food editing needs controls, not better prompts. Keep the dish the same without sitting in a chat box.',
+      'Why AI image editing needs controls, not better prompts. Keep the dish the same without sitting in a chat box.',
     type: 'article',
     url: '/blog/remove-the-spoon-not-the-fork',
     images: [

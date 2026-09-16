@@ -61,18 +61,11 @@ describe('studio-public homepage and footer', () => {
     expect(screen.queryByRole('heading', { name: /ready to create your restaurant menu/i })).not.toBeInTheDocument()
   })
 
-  it('hides the Blog footer link on the studio-public surface', () => {
-    render(<UXFooter />)
-
-    expect(screen.queryByRole('link', { name: /blog/i })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /contact us/i })).toHaveAttribute('href', '/support')
-  })
-
-  it('keeps the Blog footer link when studio-public is off', () => {
-    mockIsStudioPublicSurface.mockReturnValue(false)
+  it('includes a Blog footer link', () => {
     render(<UXFooter />)
 
     expect(screen.getByRole('link', { name: /blog/i })).toHaveAttribute('href', '/blog')
+    expect(screen.getByRole('link', { name: /contact us/i })).toHaveAttribute('href', '/support')
   })
 
   it('uses Studio brand chrome on the customer footer', () => {

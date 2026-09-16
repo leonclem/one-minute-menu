@@ -210,7 +210,7 @@ export default function ArticleRemoveTheSpoon() {
                 Remove the Spoon, Not the Fork
               </h1>
               <p className="text-lg text-gray-500 leading-relaxed mb-3">
-                Why AI food editing needs controls, not better prompts
+                Why AI image editing needs controls, not better prompts
               </p>
               <p className="text-sm text-gray-400">15 September 2026</p>
             </header>

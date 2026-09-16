@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+import { UXFooter } from '@/components/ux/UXFooter'
 import { PendingApproval } from '@/components/dashboard/PendingApproval'
 import type { StudioAccessReason } from '@/lib/studio/access/studio-access-decision'
 import type { AccessMode } from '@/lib/studio/access/studio-access-mode'
@@ -82,17 +83,7 @@ export function StudioShell({
         <StudioSignupBeacon />
         <StudioAppBar showCredits={showCredits} userEmail={userEmail} />
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 md:py-10">{children}</main>
-        <footer className="mt-auto border-t border-white/[0.07] px-4 py-4 text-center text-xs text-white/40">
-          <a className="studio-link mx-2" href="/privacy">
-            Privacy
-          </a>
-          <a className="studio-link mx-2" href="/terms">
-            Terms
-          </a>
-          <a className="studio-link mx-2" href="/support">
-            Support
-          </a>
-        </footer>
+        <UXFooter />
       </div>
     </StudioCreditsProvider>
   )

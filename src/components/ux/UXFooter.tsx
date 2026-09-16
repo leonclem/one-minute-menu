@@ -1,9 +1,7 @@
 import Link from 'next/link'
-import { isStudioPublicSurface } from '@/lib/product-mode'
 
 export function UXFooter() {
   const year = new Date().getFullYear()
-  const studioPublic = isStudioPublicSurface()
   return (
     <footer className="ux-footer shrink-0" data-brand-chrome="studio">
       <div className="container-ux py-6">
@@ -22,11 +20,9 @@ export function UXFooter() {
               <Link href="/support" className="ux-footer-link">
                 Contact Us
               </Link>
-              {!studioPublic && (
-                <Link href="/blog" className="ux-footer-link">
-                  Blog
-                </Link>
-              )}
+              <Link href="/blog" className="ux-footer-link">
+                Blog
+              </Link>
             </div>
             <div className="flex items-center gap-3">
               <a
