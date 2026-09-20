@@ -5,8 +5,10 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Home Page
+- [ ] Open Studio should not immediately require sign-ups, Generate should.
 - [ ] Upload some examples to show transition for each stage underneath "How AI food photos work"
-- [ ] Update home page wording "eyebrow" to state e.g. "AI Food Photo editor"
+- [ ] Update wording "eyebrow" to state e.g. "AI Food Photo editor" (or "AI food photography" as per Adwords findings?)
+- [ ] Wording can now include mention of camera features
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>

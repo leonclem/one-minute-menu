@@ -1,6 +1,9 @@
 'use client'
 
-import type { FinishingTouchCatalogueItem } from '@/lib/studio/finishing-touches'
+import {
+  MAX_FINISHING_TOUCH_LEVEL,
+  type FinishingTouchCatalogueItem,
+} from '@/lib/studio/finishing-touches'
 
 interface StudioFinishingTouchesControlProps {
   disabled?: boolean
@@ -9,6 +12,7 @@ interface StudioFinishingTouchesControlProps {
   stackLoaded: boolean
   selectedIds: string[]
   options: FinishingTouchCatalogueItem[]
+  maxSelected?: number
   onRequestStack: () => void
   onToggle: (id: string) => void
 }
@@ -20,9 +24,15 @@ export function StudioFinishingTouchesControl({
   stackLoaded,
   selectedIds,
   options,
+  maxSelected = MAX_FINISHING_TOUCH_LEVEL,
   onRequestStack,
   onToggle,
 }: StudioFinishingTouchesControlProps) {
+  const atSelectionCap = selectedIds.length >= maxSelected
+  const helperCopy =
+    options.length > maxSelected
+      ? `Pick up to ${maxSelected} for Generate. Does not run until you hit Generate.`
+      : 'Stages garnishes for Generate. Does not run until you hit Generate.'
   return (
     <div className="space-y-2" data-testid="studio-finishing-touches">
       <button
@@ -41,7 +51,7 @@ export function StudioFinishingTouchesControl({
         {loading ? 'Choosing finishing touches…' : 'Add finishing touches'}
       </button>
       <p className="text-xs text-white/40">
-        Stages garnishes for Generate. Does not run until you hit Generate.
+        {helperCopy}
       </p>
       {error ? (
         <p className="text-xs text-[#ff8a80]" role="alert">
@@ -58,20 +68,21 @@ export function StudioFinishingTouchesControl({
         >
           {options.map((option) => {
             const selected = selectedIds.includes(option.id)
+            const chipDisabled = disabled || (!selected && atSelectionCap)
             return (
               <button
                 key={option.id}
                 type="button"
                 aria-pressed={selected}
                 aria-label={`${selected ? 'Remove' : 'Add'} ${option.name}`}
-                disabled={disabled}
+                disabled={chipDisabled}
                 onClick={() => onToggle(option.id)}
                 className={[
                   'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-[#01b3bf]/40',
                   selected
                     ? 'border-[#01b3bf] bg-[#01b3bf]/15 text-white ring-1 ring-[#01b3bf]'
                     : 'border-white/[0.16] bg-white/[0.04] text-white/80 hover:border-[#01b3bf]/50',
-                  disabled && 'cursor-not-allowed opacity-50',
+                  chipDisabled && 'cursor-not-allowed opacity-50',
                 ]
                   .filter(Boolean)
                   .join(' ')}

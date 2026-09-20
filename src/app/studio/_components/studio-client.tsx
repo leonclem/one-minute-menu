@@ -29,6 +29,7 @@ import {
 import { ConfirmDialog } from '@/components/ui'
 import { buildChangeSummary } from '@/lib/studio/change-summary'
 import {
+  MAX_FINISHING_TOUCH_LEVEL,
   countStudioPendingChanges,
   editorStateWithFinishingTouches,
   finishingTouchesCountBucket,
@@ -1059,6 +1060,12 @@ export function StudioClient({
   const handleToggleFinishingTouch = useCallback(
     (id: string) => {
       const alreadySelected = finishingSelectedIds.includes(id)
+      if (
+        !alreadySelected &&
+        finishingSelectedIds.length >= MAX_FINISHING_TOUCH_LEVEL
+      ) {
+        return
+      }
       const nextSelection = alreadySelected
         ? finishingSelectedIds.filter((selectedId) => selectedId !== id)
         : [...finishingSelectedIds, id]

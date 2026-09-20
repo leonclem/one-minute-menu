@@ -11,6 +11,15 @@ const VESSEL_PHRASE =
 const VESSEL_WEDGE_PHRASE =
   'as a small wedge on or beside the vessel rim, without covering the main dish'
 
+const VESSEL_WHOLE_PHRASE =
+  'a few pieces on the existing plate beside the dish, without covering it'
+
+const VESSEL_DRIZZLE_PHRASE =
+  'as a thin drizzle or a few dots on the existing plate, not a pool, flood, or sauce jug'
+
+const VESSEL_SWIRL_PHRASE =
+  'as one swirl or quenelle on the existing plate beside the dish, without covering it'
+
 const SCENE_SCATTER_MATCHING =
   'a few matching pieces lightly scattered on the existing tabletop around the vessel'
 
@@ -33,6 +42,10 @@ const SCENE_BY_PREP: Record<FinishingTouchPrep, string> = {
   sprig: SCENE_SCATTER_SPRIG,
   'whole-scatter':
     'a few whole pieces lightly scattered on the existing tabletop around the vessel — these table pieces should be whole, not chopped',
+  dusted: SCENE_SCATTER_MATCHING,
+  shavings: SCENE_SCATTER_MATCHING,
+  drizzle: SCENE_SCATTER_MATCHING,
+  swirl: SCENE_SCATTER_MATCHING,
 }
 
 const ON_FOOD_BY_PREP: Record<FinishingTouchPrep, string> = {
@@ -52,6 +65,12 @@ const ON_FOOD_BY_PREP: Record<FinishingTouchPrep, string> = {
   sprig:
     'as small leaves, or at most one light sprig, on the food — not a large clump or bouquet',
   'whole-scatter': 'on the food',
+  dusted:
+    'as a light dusting on the food — do not bury or fully coat the cake',
+  shavings: 'as a small amount of shavings on the food, not a mound',
+  drizzle:
+    'as a thin zigzag drizzle on the food, not a flood, and do not add a sauce jug',
+  swirl: 'as one small swirl on the food, not a covering',
 }
 
 function formForPlacement(
@@ -67,7 +86,11 @@ function placementPhrase(
   form: FinishingTouchPrep,
 ): string {
   if (placement === 'on-vessel') {
-    return form === 'wedge' ? VESSEL_WEDGE_PHRASE : VESSEL_PHRASE
+    if (form === 'wedge') return VESSEL_WEDGE_PHRASE
+    if (form === 'whole') return VESSEL_WHOLE_PHRASE
+    if (form === 'drizzle') return VESSEL_DRIZZLE_PHRASE
+    if (form === 'swirl') return VESSEL_SWIRL_PHRASE
+    return VESSEL_PHRASE
   }
   if (placement === 'scene') return SCENE_BY_PREP[form]
   return ON_FOOD_BY_PREP[form]
@@ -125,4 +148,19 @@ export function buildFinishingTouchesAdditionClause(
     `Place each item as follows:\n${addedItems.map(placementLine).join('\n')} ` +
     locks.join(' ')
   )
+}
+
+const DRIZZLE_SWIRL_REMOVAL_FILL =
+  'Restore the cake or plate surface underneath; do not leave a hole or repaint the dish.'
+
+const DEFAULT_REMOVAL_FILL =
+  'Fill the vacant space naturally with the matching underlying background texture.'
+
+/** Prompt-only fill language after a named garnish/side is removed. */
+export function finishingTouchRemovalFillPhrase(name: string): string {
+  const item = getFinishingTouchByName(name)
+  if (item?.prep === 'drizzle' || item?.prep === 'swirl') {
+    return DRIZZLE_SWIRL_REMOVAL_FILL
+  }
+  return DEFAULT_REMOVAL_FILL
 }

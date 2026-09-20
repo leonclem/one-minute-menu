@@ -8,18 +8,21 @@ import {
   diagnoseRecommendedStackIds,
   existingComponentNames,
   fallbackFinishingTouchStack,
+  inferFinishingTouchFamilyFromText,
+  parseRecommendFamilyFromPayload,
   parseRecommendIdsFromPayload,
 } from './rank'
 
 const RECOMMEND_SYSTEM_PROMPT =
-  'You rank finishing touches for a food photograph. Return only JSON with an ids array of catalogue ids.'
+  'You rank finishing touches for a food photograph. Return only JSON with family (savory or cake) and an ids array of catalogue ids from that family.'
 
 const RECOMMEND_RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
+    family: { type: 'STRING', enum: ['savory', 'cake'] },
     ids: { type: 'ARRAY', items: { type: 'STRING' } },
   },
-  required: ['ids'],
+  required: ['family', 'ids'],
 } as const
 
 export interface RecommendFinishingTouchesInput {
@@ -46,6 +49,16 @@ function parseGeminiJson(apiResponse: unknown): unknown {
   return parseExtractionResponse(apiResponse)
 }
 
+function fallbackStackForInput(
+  input: RecommendFinishingTouchesInput,
+  existing: readonly string[],
+): FinishingTouchCatalogueItem[] {
+  return fallbackFinishingTouchStack(
+    existing,
+    inferFinishingTouchFamilyFromText(input),
+  )
+}
+
 export function buildFinishingTouchesUserPrompt(
   input: RecommendFinishingTouchesInput,
 ): string {
@@ -64,11 +77,16 @@ export function buildFinishingTouchesUserPrompt(
     existing.length > 0
       ? `Currently present on this variant: ${existing.join(', ')}.`
       : 'The current variant has no listed garnishes or sides.',
-    'Recommend up to 4 catalogue ids in best-first order.',
+    'Return family as "savory" or "cake", plus catalogue ids from that family in best-first order.',
+    'Dessert cakes including cheesecake, cupcake, gateau, torte, banana bread, and other sweet bakes are family cake.',
+    'Crab cakes, fish cakes, corn cakes, rice cakes, potato cakes, and anything uncertain are family savory.',
+    'When family is savory, recommend up to 4 ids. When family is cake, rank every appropriate cake id; omit only ids that do not fit the dish.',
+    'When family is cake, choose only from cake ids. When family is savory, choose only from savory ids.',
     'Prioritize culinary authenticity for the identified dish and cuisine over generic visual decoration.',
-    'Return fewer than 4 ids rather than include a garnish that is not genuinely appropriate.',
+    'For savory, return fewer than 4 ids rather than include a garnish that is not genuinely appropriate.',
     'Do not repeat items currently present on this variant. Original-photo garnishes may be recommended when absent from the current variant. Do not invent ids.',
-    `Allowed ids: ${catalogueIdListForPrompt()}.`,
+    `Savory ids: ${catalogueIdListForPrompt('savory')}.`,
+    `Cake ids: ${catalogueIdListForPrompt('cake')}.`,
   ]
     .filter(Boolean)
     .join(' ')
@@ -82,7 +100,7 @@ export async function recommendFinishingTouches(
   const apiKey = deps?.apiKey ?? process.env.NANO_BANANA_API_KEY ?? ''
   const userPrompt = buildFinishingTouchesUserPrompt(input)
   if (!apiKey) {
-    const stack = fallbackFinishingTouchStack(existing)
+    const stack = fallbackStackForInput(input, existing)
     if (process.env.NODE_ENV === 'development') {
       logger.debug('🔎 [Finishing Touches] Recommendation diagnostics', {
         systemPrompt: RECOMMEND_SYSTEM_PROMPT,
@@ -141,6 +159,7 @@ export async function recommendFinishingTouches(
     const diagnostics = diagnoseRecommendedStackIds(
       parseRecommendIdsFromPayload(payload),
       existing,
+      parseRecommendFamilyFromPayload(payload),
     )
     if (process.env.NODE_ENV === 'development') {
       logger.debug('🔎 [Finishing Touches] Recommendation diagnostics', {
@@ -150,8 +169,10 @@ export async function recommendFinishingTouches(
         rawGeminiResponse: apiResponse,
         parsedPayload: payload,
         rawIds: diagnostics.rawIds,
+        family: diagnostics.family,
         validIds: diagnostics.validIds,
         droppedUnknownIds: diagnostics.droppedUnknownIds,
+        droppedCrossFamilyIds: diagnostics.droppedCrossFamilyIds,
         droppedExistingIds: diagnostics.droppedExistingIds,
         droppedOverflowIds: diagnostics.droppedOverflowIds,
         fallbackUsed: diagnostics.fallbackUsed,
@@ -162,7 +183,7 @@ export async function recommendFinishingTouches(
     return diagnostics.stack
   } catch (error) {
     logger.warn('⚠️ [Finishing Touches] Recommend fell back after ranker error', { error })
-    const stack = fallbackFinishingTouchStack(existing)
+    const stack = fallbackStackForInput(input, existing)
     if (process.env.NODE_ENV === 'development') {
       logger.debug('🔎 [Finishing Touches] Recommendation diagnostics', {
         systemPrompt: RECOMMEND_SYSTEM_PROMPT,

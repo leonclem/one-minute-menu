@@ -10,6 +10,7 @@ function state(partial?: {
   lighting?: string
   surface?: string
   garnishes?: string[]
+  mainItem?: string
 }): EditorState {
   const schema: MinimalSchema = {
     scene_setup: {
@@ -25,7 +26,7 @@ function state(partial?: {
       main_vessel: 'white bowl',
     },
     food_components: {
-      main_item: 'massaman curry with rice',
+      main_item: partial?.mainItem ?? 'massaman curry with rice',
       garnishes: partial?.garnishes ?? [],
       sides: [],
     },
@@ -135,5 +136,52 @@ describe('finishing-touches directive', () => {
     expect(directive).not.toContain('Keep the existing tabletop surface')
     expect(directive).toContain('Do not add extra bowls')
     expect(directive?.toLowerCase()).not.toContain('leave all other attributes of the scene unchanged')
+  })
+
+  it('asks for a restrained chocolate drizzle on the cake and plate', () => {
+    const original = state({ mainItem: 'chocolate cake' })
+    const target = state({
+      mainItem: 'chocolate cake',
+      garnishes: ['Chocolate drizzle'],
+    })
+    const directive = generateDirective(computeDelta(original, target), target)
+    expect(directive).toContain('thin zigzag drizzle on the food')
+    expect(directive).toContain('not a pool, flood, or sauce jug')
+    expect(directive).not.toContain('lightly scattered on the existing tabletop')
+  })
+
+  it('asks for a light powdered-sugar dusting on the food only', () => {
+    const original = state({ mainItem: 'sponge cake' })
+    const target = state({
+      mainItem: 'sponge cake',
+      garnishes: ['Powdered sugar'],
+    })
+    const directive = generateDirective(computeDelta(original, target), target)
+    expect(directive).toContain('light dusting on the food')
+    expect(directive).not.toContain('tabletop around the vessel')
+  })
+
+  it('restores the cake or plate when a named drizzle is removed', () => {
+    const original = state({
+      mainItem: 'chocolate cake',
+      garnishes: ['Chocolate drizzle'],
+    })
+    const target = state({ mainItem: 'chocolate cake', garnishes: [] })
+    const directive = generateDirective(computeDelta(original, target), target)
+    expect(directive).toContain('Remove the garnish "Chocolate drizzle" entirely from the scene.')
+    expect(directive).toContain(
+      'Restore the cake or plate surface underneath; do not leave a hole or repaint the dish.',
+    )
+    expect(directive).not.toContain('matching underlying background texture')
+  })
+
+  it('still fills savoury garnish removals with background texture', () => {
+    const original = state({ garnishes: ['Coriander'] })
+    const target = state({ garnishes: [] })
+    const directive = generateDirective(computeDelta(original, target), target)
+    expect(directive).toContain(
+      'Fill the vacant space naturally with the matching underlying background texture.',
+    )
+    expect(directive).not.toContain('Restore the cake or plate surface')
   })
 })

@@ -22,7 +22,7 @@ Studio ethos still holds: the original extract `MinimalSchema` (then each varian
 
 All of this lives in the **Elements** accordion on `/studio`, below the existing garnish/side lists (those lists stay **remove-only**).
 
-1. Click **Add finishing touches**. GridMenu loads up to four suggestions for the current image (cached per image; the button does not refetch until you switch variants).
+1. Click **Add finishing touches**. GridMenu loads suggestions for the current image (cached per image; the button does not refetch until you switch variants). Savoury dishes get up to four ranked chips. Cakes get the full cake catalogue, ranked best-first, and you can select **up to four** for Generate.
 2. Toggle chips on or off (`+` / `✓`). Nothing is generated yet. Helper copy: “Stages garnishes for Generate.”
 3. Optionally stage lighting, surface, or backdrop as well. Finishing touches count as **one** pending Elements change, so they can sit with two other staged attributes under the cap of 3.
 4. Click **Generate**. Credits are the same as any other mutate (NB2 = 1, NB Pro = 2). Recommend itself is free (text-only).
@@ -61,12 +61,12 @@ The child variant stores the target JSON (parent extract plus the added names). 
 
 | Piece | Where | Notes |
 |---|---|---|
-| Catalogue | `src/lib/studio/finishing-touches/catalogue.ts` | Code, not a DB table. ~24 items. |
-| Ranker | `POST /api/studio/finishing-touches/recommend` | Uses dish name, `main_item`, current garnishes/sides, extract `description`. Constrained to catalogue IDs. `gemini-2.5-flash` (`STUDIO_EXTRACTION_MODEL`). |
-| Fallback stack | coriander, lime wedges, red chilli, sesame seeds | Used when ranking is empty, unknown, or the API key is missing. Items already on the dish are skipped. |
+| Catalogue | `src/lib/studio/finishing-touches/catalogue.ts` plus `catalogue-cake.ts` | Code, not a DB table. ~24 savoury items; 11 cake items. Family defaults to savoury. |
+| Ranker | `POST /api/studio/finishing-touches/recommend` | Uses dish name, `main_item`, current garnishes/sides, extract `description`. Returns `family` (`savory` or `cake`) plus catalogue IDs. Missing/invalid family is treated as savoury. `gemini-2.5-flash` (`STUDIO_EXTRACTION_MODEL`). |
+| Fallback stack | savoury: coriander, lime wedges, red chilli, sesame seeds; cake: fresh berries, powdered sugar, chocolate shavings, mint sprig | Used when ranking is empty, unknown, or the API key is missing. Cake fallback is only used when family is cake (or a dessert-cake keyword assist on API failure). Items already on the dish are skipped. |
 | Staging | `src/lib/studio/finishing-touches/stage.ts` | Selection lives in client state; schema is updated at Generate. |
 | Apply names | `applyFinishingTouchesLevel` in `apply-level.ts` | Still “first N of a stack”; Generate passes the **selected** items as that stack, with N = selection count. |
-| Prompt | `directive.ts` + `directive-generator.ts` | One bundled addition clause for any garnish/side adds. |
+| Prompt | `directive.ts` + `directive-generator.ts` | One bundled addition clause for any garnish/side adds. Drizzle/swirl removals restore the cake or plate surface instead of filling with background texture. |
 | Persist | mutate `metadata.finishingTouches` | `{ stackIds, level, auto: true }` where `level` is the number selected and `auto: true` means catalogue-ranked (not free text). |
 | Analytics | `studio_finishing_touches_recommended`; generate events with `generation_kind: finishing_touches` and `count_bucket` | Allow-listed scalars only. No prompts or image content. |
 | Change chip | `Finishing touches: N selected` plus `Added garnish: …` | `src/lib/studio/change-summary.ts` |
@@ -95,11 +95,35 @@ Placement is prompt-only. Schema field is almost always `garnishes`.
 
 Aliases (cilantro / coriander, chili / chilli, and so on) stop the ranker from suggesting something the extract already listed.
 
+### Cake family
+
+Cake is opt-in on the recommend call. The extract JSON and `MinimalSchema` do **not** store a dish family. If Gemini omits `family`, or returns anything other than `cake`, ranking stays on the savoury catalogue and savoury fallback. Crab, fish, corn, rice, and potato cakes are savoury.
+
+Cake items have no table scatter. Schema field is `garnishes`. One default style is baked into each drizzle/swirl prompt; there is no style picker. The cake shortlist shows the whole cake catalogue (ranked, then remaining items). Generate still applies at most four selected names.
+
+| Display name | Typical placement |
+|---|---|
+| Fresh berries | on cake + a few on the existing plate |
+| Powdered sugar | light dusting on cake only |
+| Chocolate shavings | on cake only |
+| Mint sprig | one sprig on cake only (separate from savoury mint) |
+| Lemon zest | on cake only |
+| Pistachio crumbs | on cake only |
+| Chocolate drizzle | thin zigzag on cake and/or plate; not a flood |
+| Berry coulis | a few dots or a short drizzle on the plate |
+| Cream swirl | one swirl or quenelle on the plate beside the cake |
+| Lemon drizzle | thin drizzle on cake and/or plate; not a flood |
+| Chopped pecans | on cake only |
+
+Named drizzles and swirls can be removed through the existing Elements list once they appear on the JSON (including after a previous Generate). Removal asks the model to restore the cake or plate surface. Unnamed original-photo sauces still use draw-to-remove. Extract is unchanged.
+
+Keyword assist (dessert-cake terms, minus savoury cakes) is used **only** when the recommend API key is missing or the ranker request fails. It is not the primary classifier.
+
 ---
 
 ## What we learned while shaping MVP
 
-The first plan used **dressing levels** (level 1 = first item, level 2 = first two, and so on) so we could feel out how many adds Gemini can take. The shipped UI is a **ranked shortlist of chips** the user can mix. That is closer to “pick an outcome” than a full garnish library, and it still caps the generate payload at four names.
+The first plan used **dressing levels** (level 1 = first item, level 2 = first two, and so on) so we could feel out how many adds Gemini can take. The shipped UI is a **ranked shortlist of chips** the user can mix. Savoury dishes still cap the suggestion list and the generate payload at four names. Cakes show the full cake catalogue and still cap Generate at four names.
 
 Live image quality (preservation, scatter restraint, combining with surface/lighting) was not fully proven in the implementation pass. Fixture tests cover massaman schemas and directives (`src/lib/studio/finishing-touches/__tests__/massaman-eval.test.ts`). A real `/studio` pass on the massaman before/after pair is still the way to decide default selection count and whether table scatter stays.
 
@@ -114,7 +138,7 @@ Roughly in product order, not a commitment.
 - Pre-select a tasteful default (e.g. two chips) after recommend, instead of an empty selection.
 - “Style it for me”: one click that selects a restrained subset and optionally Generate.
 - See more: extra compatible catalogue items beyond the four.
-- Intensity: Subtle / Styled / Abundant as prompt density, not extra schema fields.
+- Intensity: Subtle / Styled / Abundant as prompt density, not extra schema fields (parked).
 - Named presets (“Fresh & vibrant”) that are combinations, not a bigger picker.
 
 ### Placement and scene
@@ -128,8 +152,11 @@ Roughly in product order, not a commitment.
 
 - Grow or edit the catalogue (still code until we need a CMS).
 - Stronger use of colour/contrast and “already garnished” from extract, without a second vision pipeline.
-- Cuisine / dish-family hints only if extract JSON starts carrying them; do not invent a parallel taxonomy.
+- Cuisine / dish-family hints only if extract JSON starts carrying them; do not invent a parallel taxonomy. Cake vs savoury lives on the ranker response only.
+- Intensity / density / distribution as prompt density, not extra schema fields (parked).
 - Visual suitability (a brown curry prefers green + red + lime over beige nuts) as a ranker input.
+- Further dessert families (tart, ice cream) as additional catalogues behind the same family gate.
+- Swirl/drizzle style picker (zigzag vs dots vs pool) after the default styles prove reliable.
 
 ### Generation quality
 

@@ -4,6 +4,7 @@
 
 import {
   FINISHING_TOUCH_CATALOGUE,
+  CAKE_FINISHING_TOUCH_CATALOGUE,
   catalogueLabelInvariants,
   getFinishingTouchById,
   getFinishingTouchByName,
@@ -47,12 +48,14 @@ function schema(partial?: {
 const massamanStack = stackFromIds(['coriander', 'lime_wedge', 'red_chilli', 'cashews'])
 
 describe('finishing-touch catalogue', () => {
-  it('has unique ids and labels', () => {
+  it('has unique ids and labels across savoury and cake families', () => {
     const { duplicateIds, duplicateLabels } = catalogueLabelInvariants()
     expect(duplicateIds).toEqual([])
     expect(duplicateLabels).toEqual([])
     expect(FINISHING_TOUCH_CATALOGUE.length).toBeGreaterThanOrEqual(15)
     expect(FINISHING_TOUCH_CATALOGUE.length).toBeLessThanOrEqual(30)
+    expect(CAKE_FINISHING_TOUCH_CATALOGUE.length).toBeGreaterThanOrEqual(6)
+    expect(CAKE_FINISHING_TOUCH_CATALOGUE.length).toBeLessThanOrEqual(12)
   })
 
   it('resolves coriander aliases', () => {
@@ -96,6 +99,28 @@ describe('finishing-touch catalogue', () => {
     for (const item of FINISHING_TOUCH_CATALOGUE) {
       expect(item.prep).toBe(expected[item.id].prep)
       expect(item.scenePrep).toBe(expected[item.id].scenePrep)
+    }
+  })
+
+  it('keeps cake items on-food or on-vessel without table scatter', () => {
+    expect(CAKE_FINISHING_TOUCH_CATALOGUE.map((item) => item.id).sort()).toEqual([
+      'berry_coulis',
+      'chocolate_drizzle',
+      'chocolate_shavings',
+      'chopped_pecans',
+      'cream_swirl',
+      'fresh_berries',
+      'lemon_drizzle',
+      'lemon_zest',
+      'mint_sprig',
+      'pistachio_crumbs',
+      'powdered_sugar',
+    ])
+    for (const item of CAKE_FINISHING_TOUCH_CATALOGUE) {
+      expect(item.family).toBe('cake')
+      expect(item.schemaField).toBe('garnishes')
+      expect(item.placements).not.toContain('scene')
+      expect(item.scenePrep).toBeUndefined()
     }
   })
 })
@@ -170,6 +195,22 @@ describe('applyFinishingTouchesLevel', () => {
       level: 1,
     })
     expect(next.food_components.garnishes).toEqual(['Coriander'])
+  })
+
+  it('appends selected cake names onto garnishes only', () => {
+    const baseline = schema({ mainItem: 'chocolate cake slice' })
+    const next = applyFinishingTouchesLevel({
+      baseline,
+      stack: stackFromIds(['fresh_berries', 'powdered_sugar', 'chocolate_drizzle']),
+      level: 3,
+    })
+    expect(next.food_components.garnishes).toEqual([
+      'Fresh berries',
+      'Powdered sugar',
+      'Chocolate drizzle',
+    ])
+    expect(next.food_components.sides).toEqual([])
+    expect(next.food_components.main_item).toBe('chocolate cake slice')
   })
 })
 

@@ -10,11 +10,20 @@ import {
   diagnoseRecommendedStackIds,
   sanitizeRecommendedStackIds,
   fallbackFinishingTouchStack,
+  inferFinishingTouchFamilyFromText,
 } from '../rank'
+import { CAKE_FINISHING_TOUCH_CATALOGUE } from '../catalogue'
 import {
   buildFinishingTouchesUserPrompt,
   recommendFinishingTouches,
 } from '../recommend'
+
+function cakeSuggestionIds(prefix: readonly string[]): string[] {
+  const rest = CAKE_FINISHING_TOUCH_CATALOGUE
+    .map((item) => item.id)
+    .filter((id) => !prefix.includes(id))
+  return [...prefix, ...rest]
+}
 
 describe('sanitizeRecommendedStackIds', () => {
   it('keeps a massaman-like ranked prefix and drops unknown ids', () => {
@@ -101,6 +110,75 @@ describe('sanitizeRecommendedStackIds', () => {
       'sesame_seeds',
     ])
   })
+
+  it('drops savoury ids when family is cake and uses the cake fallback if none remain', () => {
+    const stack = sanitizeRecommendedStackIds(
+      ['coriander', 'lime_wedge', 'red_chilli', 'cashews'],
+      [],
+      'cake',
+    )
+    expect(stack.map((item) => item.id)).toEqual(
+      cakeSuggestionIds([
+        'fresh_berries',
+        'powdered_sugar',
+        'chocolate_shavings',
+        'mint_sprig',
+      ]),
+    )
+  })
+
+  it('keeps cake ids when family is cake and fills the remaining cake catalogue', () => {
+    const stack = sanitizeRecommendedStackIds(
+      ['fresh_berries', 'powdered_sugar', 'chocolate_drizzle', 'cream_swirl'],
+      [],
+      'cake',
+    )
+    expect(stack.map((item) => item.id)).toEqual(
+      cakeSuggestionIds([
+        'fresh_berries',
+        'powdered_sugar',
+        'chocolate_drizzle',
+        'cream_swirl',
+      ]),
+    )
+    expect(stack.map((item) => item.id)).toContain('lemon_drizzle')
+    expect(stack.map((item) => item.id)).toContain('chopped_pecans')
+  })
+
+  it('drops cake ids when family is savoury', () => {
+    const diagnostics = diagnoseRecommendedStackIds(
+      ['coriander', 'powdered_sugar', 'lime_wedge'],
+      [],
+      'savory',
+    )
+    expect(diagnostics.droppedCrossFamilyIds).toEqual(['powdered_sugar'])
+    expect(diagnostics.stack.map((item) => item.id)).toEqual(['coriander', 'lime_wedge'])
+  })
+
+  it('treats a missing family as savoury', () => {
+    const diagnostics = diagnoseRecommendedStackIds(['fresh_berries', 'powdered_sugar'], [])
+    expect(diagnostics.family).toBe('savory')
+    expect(diagnostics.fallbackUsed).toBe(true)
+    expect(diagnostics.stack.map((item) => item.id)).toEqual([
+      'coriander',
+      'lime_wedge',
+      'red_chilli',
+      'sesame_seeds',
+    ])
+  })
+})
+
+describe('inferFinishingTouchFamilyFromText', () => {
+  it('treats dessert cakes as cake and savoury cakes as savoury', () => {
+    expect(inferFinishingTouchFamilyFromText({ dishName: 'Chocolate cake' })).toBe('cake')
+    expect(inferFinishingTouchFamilyFromText({ mainItem: 'New York cheesecake' })).toBe('cake')
+    expect(inferFinishingTouchFamilyFromText({ dishName: 'Crab cake' })).toBe('savory')
+    expect(inferFinishingTouchFamilyFromText({ mainItem: 'fish cakes with tartare' })).toBe(
+      'savory',
+    )
+    expect(inferFinishingTouchFamilyFromText({ dishName: 'Banana Bread' })).toBe('cake')
+    expect(inferFinishingTouchFamilyFromText({ dishName: 'Massaman Curry' })).toBe('savory')
+  })
 })
 
 describe('buildFinishingTouchesUserPrompt', () => {
@@ -144,6 +222,14 @@ describe('buildFinishingTouchesUserPrompt', () => {
     )
     expect(prompt).toContain(
       'Original-photo garnishes may be recommended when absent from the current variant.',
+    )
+    expect(prompt).toContain('Savory ids:')
+    expect(prompt).toContain('Cake ids:')
+    expect(prompt).toContain('coriander (Coriander)')
+    expect(prompt).toContain('fresh_berries (Fresh berries)')
+    expect(prompt).toContain('lemon_drizzle (Lemon drizzle)')
+    expect(prompt).toContain(
+      'When family is savory, recommend up to 4 ids. When family is cake, rank every appropriate cake id',
     )
   })
 })
@@ -217,5 +303,67 @@ describe('recommendFinishingTouches', () => {
       { apiKey: '' },
     )
     expect(stack.length).toBeGreaterThan(0)
+    expect(stack.map((item) => item.id)).toEqual([
+      'coriander',
+      'lime_wedge',
+      'red_chilli',
+      'sesame_seeds',
+    ])
+  })
+
+  it('uses the cake fallback for a dessert cake when the API key is missing', async () => {
+    const stack = await recommendFinishingTouches(
+      { dishName: 'Chocolate cake', mainItem: 'chocolate layer cake' },
+      { apiKey: '' },
+    )
+    expect(stack.map((item) => item.id)).toEqual(
+      cakeSuggestionIds([
+        'fresh_berries',
+        'powdered_sugar',
+        'chocolate_shavings',
+        'mint_sprig',
+      ]),
+    )
+  })
+
+  it('keeps the savoury fallback for a crab cake when ranking fails', async () => {
+    const fetchJson = jest.fn().mockRejectedValue(new Error('unavailable'))
+    const stack = await recommendFinishingTouches(
+      { dishName: 'Crab cake', mainItem: 'pan-fried crab cake' },
+      { fetchJson, apiKey: 'test-key' },
+    )
+    expect(stack.map((item) => item.id)).toEqual([
+      'coriander',
+      'lime_wedge',
+      'red_chilli',
+      'sesame_seeds',
+    ])
+  })
+
+  it('accepts Gemini cake family ids and ignores savoury ids in that payload', async () => {
+    const fetchJson = jest.fn().mockResolvedValue({
+      candidates: [
+        {
+          content: {
+            parts: [
+              {
+                text: JSON.stringify({
+                  family: 'cake',
+                  ids: ['fresh_berries', 'coriander', 'powdered_sugar'],
+                }),
+              },
+            ],
+          },
+        },
+      ],
+    })
+
+    const stack = await recommendFinishingTouches(
+      { dishName: 'Chocolate cake', mainItem: 'chocolate cake slice' },
+      { fetchJson, apiKey: 'test-key' },
+    )
+    expect(stack.map((item) => item.id)).toEqual(
+      cakeSuggestionIds(['fresh_berries', 'powdered_sugar']),
+    )
   })
 })

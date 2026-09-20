@@ -3,9 +3,12 @@
  * Placement is prompt-only; schema only stores garnish/side names.
  */
 
+import { CAKE_FINISHING_TOUCH_CATALOGUE } from './catalogue-cake'
+
 export const MAX_FINISHING_TOUCH_LEVEL = 4
 export const DEFAULT_FINISHING_TOUCH_LEVEL = 2
 
+export type FinishingTouchFamily = 'savory' | 'cake'
 export type FinishingTouchPlacement = 'on-food' | 'on-vessel' | 'scene'
 export type FinishingTouchSchemaField = 'garnishes' | 'sides'
 /**
@@ -25,11 +28,17 @@ export type FinishingTouchPrep =
   | 'crushed'
   | 'sprig'
   | 'whole-scatter'
+  | 'dusted'
+  | 'shavings'
+  | 'drizzle'
+  | 'swirl'
 
 export interface FinishingTouchCatalogueItem {
   id: string
   name: string
   aliases: readonly string[]
+  /** Defaults to savoury when omitted so existing rows stay unchanged. */
+  family?: FinishingTouchFamily
   schemaField: FinishingTouchSchemaField
   placements: readonly FinishingTouchPlacement[]
   prep: FinishingTouchPrep
@@ -252,12 +261,31 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
   },
 ]
 
+export { CAKE_FINISHING_TOUCH_CATALOGUE }
+
+export const ALL_FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] = [
+  ...FINISHING_TOUCH_CATALOGUE,
+  ...CAKE_FINISHING_TOUCH_CATALOGUE,
+]
+
+export function finishingTouchFamily(
+  item: FinishingTouchCatalogueItem,
+): FinishingTouchFamily {
+  return item.family ?? 'savory'
+}
+
+export function catalogueItemsForFamily(
+  family: FinishingTouchFamily,
+): readonly FinishingTouchCatalogueItem[] {
+  return family === 'cake' ? CAKE_FINISHING_TOUCH_CATALOGUE : FINISHING_TOUCH_CATALOGUE
+}
+
 const byId = new Map(
-  FINISHING_TOUCH_CATALOGUE.map((item) => [item.id, item] as const),
+  ALL_FINISHING_TOUCH_CATALOGUE.map((item) => [item.id, item] as const),
 )
 
 const byNormalizedLabel = new Map<string, FinishingTouchCatalogueItem>()
-for (const item of FINISHING_TOUCH_CATALOGUE) {
+for (const item of ALL_FINISHING_TOUCH_CATALOGUE) {
   for (const label of finishingTouchLabels(item)) {
     byNormalizedLabel.set(normalizeFinishingTouchLabel(label), item)
   }
@@ -308,7 +336,7 @@ export function catalogueLabelInvariants(): {
 } {
   const idCounts = new Map<string, number>()
   const labelCounts = new Map<string, number>()
-  for (const item of FINISHING_TOUCH_CATALOGUE) {
+  for (const item of ALL_FINISHING_TOUCH_CATALOGUE) {
     idCounts.set(item.id, (idCounts.get(item.id) ?? 0) + 1)
     for (const label of finishingTouchLabels(item)) {
       const key = normalizeFinishingTouchLabel(label)

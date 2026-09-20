@@ -72,4 +72,26 @@ describe('StudioFinishingTouchesControl', () => {
     expect(selected).toHaveTextContent('✓')
     expect(screen.getByRole('button', { name: 'Add Lime wedges' })).toHaveTextContent('+')
   })
+
+  it('disables extra chips once four are selected', () => {
+    const cakeOptions = stackFromIds([
+      'fresh_berries',
+      'powdered_sugar',
+      'chocolate_shavings',
+      'mint_sprig',
+      'lemon_drizzle',
+    ])
+    render(
+      <StudioFinishingTouchesControl
+        stackLoaded
+        selectedIds={['fresh_berries', 'powdered_sugar', 'chocolate_shavings', 'mint_sprig']}
+        options={cakeOptions}
+        onRequestStack={jest.fn()}
+        onToggle={jest.fn()}
+      />,
+    )
+    expect(screen.getByText(/Pick up to 4 for Generate/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove Fresh berries' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Add Lemon drizzle' })).toBeDisabled()
+  })
 })

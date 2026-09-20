@@ -42,7 +42,10 @@
 import { type EditorState, type StateDelta } from './minimal-schema'
 import { cameraAngleDirective, cameraSpinDirective, isYawSpin } from './camera-viewpoint'
 import { countEditableChanges } from './state-delta'
-import { buildFinishingTouchesAdditionClause } from '@/lib/studio/finishing-touches/directive'
+import {
+  buildFinishingTouchesAdditionClause,
+  finishingTouchRemovalFillPhrase,
+} from '@/lib/studio/finishing-touches/directive'
 
 // ============================================================================
 // Internal clause builders
@@ -161,7 +164,7 @@ function buildRemovalClause(item: string, arrayType: 'garnishes' | 'sides'): str
   const category = arrayType === 'garnishes' ? 'garnish' : 'side item'
   return (
     `Remove the ${category} "${item}" entirely from the scene. ` +
-    `Fill the vacant space naturally with the matching underlying background texture.`
+    `${finishingTouchRemovalFillPhrase(item)}`
   )
 }
 
