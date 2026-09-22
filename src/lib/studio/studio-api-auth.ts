@@ -43,7 +43,9 @@ export async function requireStudioApi(
 ): Promise<RequireStudioApiResult> {
   const guestPolicy = options.guest ?? 'deny'
   const auth = await requireUserApi()
-  if (!auth.ok) return auth
+  if (auth.ok === false) {
+    return { ok: false, response: auth.response }
+  }
 
   const { data: profile } = await auth.supabase
     .from('profiles')
