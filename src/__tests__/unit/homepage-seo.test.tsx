@@ -9,9 +9,9 @@ import '@testing-library/jest-dom'
 // Mock next/image to render a plain <img> so we can assert on src/alt
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: ({ src, alt, ...rest }: { src: string; alt: string; [key: string]: unknown }) => (
+  default: ({ src, alt }: { src: string; alt: string }) => (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} {...rest} />
+    <img src={src} alt={alt} />
   ),
 }))
 

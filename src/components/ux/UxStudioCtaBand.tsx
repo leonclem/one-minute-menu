@@ -17,7 +17,7 @@ export function UxStudioCtaBand({
   return (
     <section className="ux-cta-band mx-auto w-full max-w-5xl px-6 py-10 text-center sm:px-10 sm:py-12">
       <h2 className="text-2xl font-bold tracking-[-0.02em] text-white md:text-3xl">
-        Ready to try Photo Studio?
+        Ready to upgrade your photos?
       </h2>
       <p className="mx-auto mt-3 max-w-lg text-[0.95rem] leading-relaxed text-white/60">
         {subtitle}

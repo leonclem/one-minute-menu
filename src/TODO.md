@@ -4,9 +4,9 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## Home Page
-- [ ] Upload some examples to show transition for each stage underneath "How AI food photos work"
-- [ ] Wording can now include mention of camera features
+## SEO optimisation
+- [ ] Check if Adwords should include competition (more competitors found now)
+- [ ] Google Adwords seems to reference waitlist/beta still?
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
@@ -14,12 +14,12 @@
 
 ## Issues
 - [x] /auth/signin page not restyled to new branding
-- [ ] Google Adwords seems to reference waitlist/beta still?
 - [ ] Seems to be some session overlap (sign out with one account, sign in with another)
 - [ ] Mobile view delete dish button not enough space
 - [x] Tiktok icon needed + show social media in footer on all pages
 - [ ] Pricing page stuck on Euros?
 - [ ] Can anyone login on mobile?
+- [ ] Close possible back door allowing users to change role (e.g. to admin) or add credits (docs/security/ANONYMOUS_SIGNIN_PROFILE_PRIVILEGE.md)
 
 ## /studio
 - [ ] Remove inverse and darken/shade/stripe area to be removed
@@ -115,7 +115,6 @@
 - [ ] Switch image generation to use worker (there is an MD doc somewhere that proposes how to do this)
 
 ## Home Page
-- [x] Determine content
 - [ ] Update wording "eyebrow" to state e.g. "AI Food Photo editor" (or "AI food photography" as per Adwords findings?)
 
 ## Demo Flow
@@ -194,6 +193,9 @@
 
 ## Home Page
 - [x] Open Studio should not immediately require sign-ups, Generate should.
+- [x] Determine content
+- [x] Upload some examples to show transition for each stage underneath "How AI food photos work"
+- [x] Wording can now include mention of camera features
 
 ## /onboarding
 - [x] New users get 10 credits by default

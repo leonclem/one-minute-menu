@@ -239,6 +239,14 @@
     padding: 0.9rem 1.1rem;
   }
 
+  @media (max-width: 1023px) {
+    .faq-with-side-dishes .ux-faq-bar {
+      background-color: rgba(15, 28, 31, 0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+  }
+
   .ux-faq-bar[open] {
     border-color: rgba(1, 179, 191, 0.45);
     box-shadow: inset 0 2px 0 var(--studio-teal, #01b3bf);
@@ -278,17 +286,56 @@
     background-repeat: no-repeat;
   }
 
-  @media (min-width: 768px) {
-    .ux-food-bleed-hero {
+  .ux-food-bleed.ux-food-bleed-hero {
+    background-image: none;
+    background-color: var(--studio-bg, #0c1416);
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .ux-food-bleed-hero::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    inset: -1rem;
+    background-image: url(/backgrounds/kung-pao-chicken.png);
+    background-size: cover;
+    background-position: center 32%;
+    background-repeat: no-repeat;
+    filter: blur(3px);
+    transform: scale(1.02);
+  }
+
+  .ux-food-bleed-hero::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(
+      to bottom,
+      rgba(12, 20, 22, 0.6) 0%,
+      rgba(12, 20, 22, 0.48) 42%,
+      rgba(12, 20, 22, 0.82) 78%,
+      var(--studio-bg, #0c1416) 100%
+    );
+  }
+
+  @media (min-width: 1024px) {
+    .ux-food-bleed-hero::before {
+      background-position: right center;
+      filter: blur(2px);
+    }
+
+    .ux-food-bleed-hero::after {
       background-image: linear-gradient(
           to right,
-          var(--studio-bg, #0c1416) 0%,
-          rgba(12, 20, 22, 0.88) 34%,
-          rgba(12, 20, 22, 0.35) 58%,
-          transparent 78%
+          rgba(12, 20, 22, 0.92) 0%,
+          rgba(12, 20, 22, 0.74) 34%,
+          rgba(12, 20, 22, 0.48) 62%,
+          rgba(12, 20, 22, 0.34) 100%
         ),
-        url(/backgrounds/kung-pao-chicken.png);
-      background-position: right center;
+        linear-gradient(to bottom, transparent 0%, transparent 72%, var(--studio-bg, #0c1416) 100%);
     }
   }
 

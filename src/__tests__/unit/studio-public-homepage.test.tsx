@@ -4,6 +4,11 @@ import HomePageStudioContent from '@/app/(marketing)/HomePageStudioContent'
 import { UXFooter } from '@/components/ux/UXFooter'
 import { STUDIO_SEO } from '@/lib/studio/public-seo'
 
+jest.mock('next/image', () => ({
+  __esModule: true,
+  default: ({ src, alt }: { src: string; alt: string }) => <img src={src} alt={alt} />,
+}))
+
 jest.mock('next/link', () => ({
   __esModule: true,
   default: ({
@@ -55,11 +60,13 @@ describe('studio-public homepage and footer', () => {
     expect(screen.queryByRole('link', { name: /start with my menu/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /how access works/i })).not.toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: /see pricing/i }).length).toBeGreaterThan(0)
-    expect(screen.getByRole('heading', { name: /how ai food photos work/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /how gridmenu works/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Massaman Curry', pressed: true })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Banana Bread' })).toBeInTheDocument()
     expect(screen.queryByText(/menu subscription/i)).not.toBeInTheDocument()
     expect(document.querySelector('a[href="/demo/sample"]')).toBeNull()
     expect(screen.getByRole('link', { name: /visit our support page/i })).toHaveAttribute('href', '/support')
-    expect(screen.getByRole('heading', { name: /ready to try photo studio/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /ready to upgrade your photos/i })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /ready to create your restaurant menu/i })).not.toBeInTheDocument()
   })
 

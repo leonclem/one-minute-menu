@@ -6,6 +6,8 @@ import { Camera, Share2, SlidersHorizontal, type LucideIcon } from 'lucide-react
 import { UXButton, UxFaqAccordion, UxStudioCtaBand } from '@/components/ux'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
+import HeroCompare from '@/components/marketing/hero-compare/HeroCompare'
+import { FaqSideDishes } from '@/components/marketing/faq-side-dishes/FaqSideDishes'
 import { STUDIO_PUBLIC_FAQS } from '@/lib/studio/public-faqs'
 import { STUDIO_SEO } from '@/lib/studio/public-seo'
 
@@ -83,30 +85,33 @@ export default function HomePageStudioContent({ initialUser }: { initialUser?: u
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqPageJsonLd) }}
       />
 
-      <section className="ux-food-bleed ux-food-bleed-hero relative w-full min-h-[22rem] md:min-h-[28rem]">
-        <div className="container-ux mx-auto max-w-6xl px-6 py-14 md:py-24">
-          <div className="max-w-xl text-center md:max-w-lg md:text-left lg:max-w-xl">
-            <h1 className="text-4xl font-extrabold leading-tight tracking-[-0.03em] text-white md:text-5xl lg:text-[3.25rem]">
-              {STUDIO_SEO.h1}
-            </h1>
-            <p className="mt-6 text-[1.05rem] leading-relaxed text-white/70 md:mt-8">
-              Upload a real dish photo. Choose lighting, background, surface and more, then generate.
-            </p>
-            <p className="mt-4 text-base leading-relaxed text-white/70 md:mt-5">
-              No prompting. Just a simple, friendly interface that delivers precise, predictable results.
-            </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row md:mt-10 md:justify-start">
-              <Link href={primaryHref} className="w-full sm:w-auto" onClick={handlePrimaryClick}>
-                <UXButton variant="primary" size="lg" noShadow className="w-full min-w-[180px] sm:w-auto">
-                  {primaryLabel}
-                </UXButton>
-              </Link>
-              <Link href="/pricing" className="w-full sm:w-auto">
-                <UXButton variant="outline" size="lg" noShadow className="w-full min-w-[180px] sm:w-auto">
-                  See pricing
-                </UXButton>
-              </Link>
+      <section className="ux-food-bleed ux-food-bleed-hero relative w-full">
+        <div className="container-ux relative z-[1] mx-auto max-w-6xl px-6 py-14 md:py-20 lg:py-24">
+          <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
+            <div className="w-full max-w-xl text-center lg:max-w-lg lg:flex-1 lg:text-left xl:max-w-xl">
+              <h1 className="text-4xl font-extrabold leading-tight tracking-[-0.03em] text-white md:text-5xl lg:text-[3.25rem]">
+                {STUDIO_SEO.h1}
+              </h1>
+              <p className="mt-6 text-[1.05rem] leading-relaxed text-white/70 md:mt-8">
+                Upload a real dish photo. Choose lighting, background, surface, and camera - then generate.
+              </p>
+              <p className="mt-4 text-base leading-relaxed text-white/70 md:mt-5">
+                No prompting. Just a simple, friendly interface that delivers precise, predictable results.
+              </p>
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row lg:mt-10 lg:justify-start">
+                <Link href={primaryHref} className="w-full sm:w-auto" onClick={handlePrimaryClick}>
+                  <UXButton variant="primary" size="lg" noShadow className="w-full min-w-[180px] sm:w-auto">
+                    {primaryLabel}
+                  </UXButton>
+                </Link>
+                <Link href="/pricing" className="w-full sm:w-auto">
+                  <UXButton variant="outline" size="lg" noShadow className="w-full min-w-[180px] sm:w-auto">
+                    See pricing
+                  </UXButton>
+                </Link>
+              </div>
             </div>
+            <HeroCompare />
           </div>
         </div>
       </section>
@@ -114,7 +119,7 @@ export default function HomePageStudioContent({ initialUser }: { initialUser?: u
       <section className="w-full py-14 md:py-20">
         <div className="container-ux mx-auto max-w-6xl px-6">
           <h2 className="mb-10 text-center text-3xl font-bold tracking-[-0.02em] text-white md:text-4xl">
-            How AI food photos work
+            How GridMenu works
           </h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
             {WORKFLOW_STEPS.map((step) => (
@@ -130,8 +135,9 @@ export default function HomePageStudioContent({ initialUser }: { initialUser?: u
         </div>
       </section>
 
-      <section className="w-full py-14 md:py-16">
-        <div className="container-ux mx-auto max-w-3xl px-6">
+      <section className="faq-with-side-dishes relative w-full py-14 md:py-16">
+        <FaqSideDishes />
+        <div className="container-ux relative z-[1] mx-auto max-w-3xl px-6">
           <h2 className="mb-8 text-center text-3xl font-bold tracking-[-0.02em] text-white md:text-4xl">
             Common questions
           </h2>
