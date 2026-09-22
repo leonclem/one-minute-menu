@@ -32,6 +32,12 @@ export function buildCropChildMetadata(input: {
     next.extractionDiagnostics = parent.extractionDiagnostics
   }
   if (parent.finishingTouches !== undefined) next.finishingTouches = parent.finishingTouches
+  if (parent.skipExtractUntilClaimed !== undefined) {
+    ;(next as Record<string, unknown>).skipExtractUntilClaimed = parent.skipExtractUntilClaimed
+  }
+  if (parent.guestStagedIntent !== undefined) {
+    ;(next as Record<string, unknown>).guestStagedIntent = parent.guestStagedIntent
+  }
   return next
 }
 

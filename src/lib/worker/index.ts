@@ -31,6 +31,7 @@ import { logWorkerEvent, logInfo, logError, logWarning } from './logger'
 import { startMetricsServer } from './metrics-server'
 import { StaleJobCleanup } from './stale-job-cleanup'
 import { FileCleanup } from './file-cleanup'
+import { GuestSessionCleanup } from './guest-session-cleanup'
 
 /**
  * Worker configuration loaded from environment variables
@@ -242,6 +243,22 @@ async function main() {
         error: (msg, meta) => logError(`[FileCleanup] ${msg}`, meta)
       }
     })
+    const guestIdleHours = process.env.GUEST_SESSION_IDLE_HOURS
+      ? parseInt(process.env.GUEST_SESSION_IDLE_HOURS, 10)
+      : 48
+    const guestCleanupIntervalHours = process.env.GUEST_SESSION_CLEANUP_INTERVAL_HOURS
+      ? parseInt(process.env.GUEST_SESSION_CLEANUP_INTERVAL_HOURS, 10)
+      : 1
+    const guestSessionCleanup = new GuestSessionCleanup({
+      idleHours: guestIdleHours,
+      intervalMs: guestCleanupIntervalHours * 60 * 60 * 1000,
+      runImmediately: true,
+      logger: {
+        info: (msg, meta) => logInfo(`[GuestSessionCleanup] ${msg}`, meta),
+        warn: (msg, meta) => logWarning(`[GuestSessionCleanup] ${msg}`, meta),
+        error: (msg, meta) => logError(`[GuestSessionCleanup] ${msg}`, meta),
+      },
+    })
     logInfo('Background cleanup services initialized')
 
     // Step 8: Initialize graceful shutdown handler
@@ -252,6 +269,7 @@ async function main() {
       shutdownTimeoutMs: config.gracefulShutdownTimeoutMs,
       staleJobCleanup,
       fileCleanup,
+      guestSessionCleanup,
     })
 
     // Connect job tracking callbacks
@@ -284,6 +302,7 @@ async function main() {
     logInfo('Starting background cleanup services')
     await staleJobCleanup.start()
     await fileCleanup.start()
+    await guestSessionCleanup.start()
     logInfo('Background cleanup services started')
 
     // Worker is ready

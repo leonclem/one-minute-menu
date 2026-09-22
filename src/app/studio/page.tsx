@@ -16,6 +16,7 @@ export default async function StudioDishesPage() {
       accessReason={session.accessReason}
       isAdmin={session.isAdmin}
       studioFirstRunDismissed={session.studioFirstRunDismissed}
+      isGuest={session.isGuest}
     />
   )
 }

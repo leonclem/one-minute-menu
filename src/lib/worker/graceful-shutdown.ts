@@ -15,6 +15,7 @@ import { JobProcessor } from './job-processor'
 import { logWorkerEvent, logInfo, logWarning, logError } from './logger'
 import { StaleJobCleanup } from './stale-job-cleanup'
 import { FileCleanup } from './file-cleanup'
+import { GuestSessionCleanup } from './guest-session-cleanup'
 
 export interface GracefulShutdownConfig {
   poller: JobPoller
@@ -22,6 +23,7 @@ export interface GracefulShutdownConfig {
   shutdownTimeoutMs?: number
   staleJobCleanup?: StaleJobCleanup
   fileCleanup?: FileCleanup
+  guestSessionCleanup?: GuestSessionCleanup
 }
 
 export class GracefulShutdown {
@@ -32,6 +34,7 @@ export class GracefulShutdown {
   private currentJobPromise: Promise<void> | null = null
   private staleJobCleanup?: StaleJobCleanup
   private fileCleanup?: FileCleanup
+  private guestSessionCleanup?: GuestSessionCleanup
 
   constructor(config: GracefulShutdownConfig) {
     this.poller = config.poller
@@ -39,6 +42,7 @@ export class GracefulShutdown {
     this.shutdownTimeoutMs = config.shutdownTimeoutMs ?? 30000 // 30 seconds default
     this.staleJobCleanup = config.staleJobCleanup
     this.fileCleanup = config.fileCleanup
+    this.guestSessionCleanup = config.guestSessionCleanup
   }
 
   /**
@@ -100,6 +104,10 @@ export class GracefulShutdown {
       if (this.fileCleanup) {
         logInfo('Stopping file cleanup service')
         this.fileCleanup.stop()
+      }
+      if (this.guestSessionCleanup) {
+        logInfo('Stopping guest session cleanup service')
+        this.guestSessionCleanup.stop()
       }
 
       // Step 2: Wait for current job to complete (with timeout)

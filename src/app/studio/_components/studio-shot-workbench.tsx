@@ -102,14 +102,23 @@ export function StudioShotWorkbench({
 
   return (
     <div data-testid="studio-shot-workbench">
-      <div className="mb-4 min-w-0">
-        <Link href={`/studio/${dishId}`} className="studio-link text-sm font-semibold">
+      <nav aria-label="Breadcrumb" className="mb-4 flex min-w-0 flex-wrap items-center gap-2">
+        <Link href="/studio" className="studio-link shrink-0 text-sm font-semibold">
+          All dishes
+        </Link>
+        <span aria-hidden className="text-sm text-white/30">
+          /
+        </span>
+        <Link href={`/studio/${dishId}`} className="studio-link min-w-0 truncate text-sm font-semibold">
           {dishName}
         </Link>
-        <h1 className="mt-1 truncate text-xl font-extrabold tracking-[-0.03em] text-white">
+        <span aria-hidden className="text-sm text-white/30">
+          /
+        </span>
+        <h1 className="min-w-0 truncate text-xl font-extrabold tracking-[-0.03em] text-white">
           {shotTitle}
         </h1>
-      </div>
+      </nav>
 
       {notices}
 

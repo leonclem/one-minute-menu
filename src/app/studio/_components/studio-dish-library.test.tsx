@@ -82,6 +82,7 @@ describe('StudioDishLibrary', () => {
     })
 
     expect(screen.getByRole('heading', { name: 'Chicken Burger' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'All dishes' })).toHaveAttribute('href', '/studio')
     expect(screen.getByTestId('studio-shot-grid')).toHaveClass(
       'lg:grid-cols-4',
       'xl:grid-cols-5',
@@ -101,6 +102,21 @@ describe('StudioDishLibrary', () => {
       '/studio/d1/og',
     )
     expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+
+  it('hides Grid and Tree view controls for guests', () => {
+    render(
+      <StudioDishLibrary
+        dish={dish}
+        images={[original]}
+        dishCount={1}
+        isGuest
+      />,
+    )
+
+    expect(screen.getByTestId('studio-shot-grid')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Grid' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tree' })).not.toBeInTheDocument()
   })
 
   it('refetches shots when the library is shown', async () => {
@@ -128,6 +144,28 @@ describe('StudioDishLibrary', () => {
     )
   })
 
+  it('makes the first upload action prominent in the empty state', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ images: [] }),
+    })
+
+    render(
+      <StudioDishLibrary
+        dish={{ ...dish, current_image_id: null }}
+        images={[]}
+        dishCount={1}
+      />,
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'Upload your first dish photo' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/adjust lighting, surface, backdrop, and crop/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Upload photo' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '+ New shot' })).not.toBeInTheDocument()
+  })
+
   it('confirms and deletes a shot from the grid', async () => {
     global.fetch = jest.fn((url: string, init?: RequestInit) => {
       if (init?.method === 'DELETE') {
@@ -146,7 +184,9 @@ describe('StudioDishLibrary', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('studio-shot-grid')).not.toBeInTheDocument()
     })
-    expect(screen.getByText(/No shots yet/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Upload your first dish photo' }),
+    ).toBeInTheDocument()
   })
 
   it('opens the exports tab', async () => {

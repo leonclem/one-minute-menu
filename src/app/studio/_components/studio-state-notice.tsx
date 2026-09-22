@@ -58,17 +58,17 @@ export function StudioStateNotice({ kind }: StudioStateNoticeProps) {
       data-testid="studio-state-notice"
       data-state={kind}
       data-inline={kind === 'no_credit' ? 'true' : undefined}
-      className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950 focus:outline-none focus:ring-2 focus:ring-ux-primary/40"
+      className="rounded-[11px] border border-[#f8bc02]/35 bg-[rgba(248,188,2,0.13)] p-4 focus:outline-none focus:ring-2 focus:ring-[#f8bc02]/40"
     >
-      <h2 id={headingId} className="text-sm font-semibold">
+      <h2 id={headingId} className="text-sm font-bold text-[#f8bc02]">
         {message.title}
       </h2>
-      <p id={descriptionId} className="mt-1 text-sm">
+      <p id={descriptionId} className="mt-1 text-sm leading-5 text-[#f8bc02]/90">
         {message.description}
       </p>
       <Link
         href={kind === 'no_credit' ? '/pricing' : '/support'}
-        className="mt-3 inline-block text-sm font-semibold text-ux-primary underline underline-offset-2 hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ux-primary/40"
+        className="mt-3 inline-block text-sm font-semibold text-[#5fd3da] underline underline-offset-2 hover:text-[#7fdee4] focus:outline-none focus:ring-2 focus:ring-[#5fd3da]/40"
       >
         {kind === 'no_credit' ? 'See pricing' : 'Contact support'}
       </Link>

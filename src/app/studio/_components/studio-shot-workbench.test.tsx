@@ -162,10 +162,12 @@ describe('StudioShotWorkbench', () => {
       />,
     )
     expect(screen.getByTestId('studio-shot-workbench')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'All dishes' })).toHaveAttribute('href', '/studio')
     expect(screen.getByRole('link', { name: 'Chocolate Cake' })).toHaveAttribute(
       'href',
       '/studio/d1',
     )
+    expect(screen.getByRole('heading', { name: 'Original' })).toBeInTheDocument()
     expect(screen.getByText('scene body')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('tab', { name: /Exports/ }))
     expect(onTab).toHaveBeenCalledWith('exports')
@@ -502,6 +504,22 @@ describe('StudioScenePanel', () => {
     expect(screen.getByTestId('studio-scene-section-lighting')).toHaveTextContent('Soft Natural')
   })
 
+  it('opens Lighting first for guests and never says None detected', () => {
+    renderPanel({ isGuest: true })
+    expect(screen.getByTestId('studio-scene-section-lighting')).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(screen.getByTestId('studio-scene-section-elements')).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    fireEvent.click(screen.getByTestId('studio-scene-section-elements'))
+    expect(screen.getByText(/identify garnishes and sides after you create an account/i)).toBeInTheDocument()
+    expect(screen.queryByText(/none detected/i)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('studio-finishing-touches')).not.toBeInTheDocument()
+  })
+
   it('keeps Elements first and puts Camera last, after Backdrop', () => {
     renderPanel({
       verticalSwitchEnabled: true,
@@ -536,6 +554,22 @@ describe('StudioScenePanel', () => {
     expect(screen.queryByTestId('studio-degradation-callout')).not.toBeInTheDocument()
     const generate = screen.getByTestId('generate-image-button')
     expect(generate).not.toBeDisabled()
+    fireEvent.click(generate)
+    expect(onGenerate).toHaveBeenCalled()
+  })
+
+  it('shows the account gate instead of a credit price for guests', () => {
+    const onGenerate = jest.fn()
+    renderPanel({
+      isGuest: true,
+      hasPendingChanges: true,
+      generateDisabled: false,
+      onGenerate,
+    })
+
+    const generate = screen.getByRole('button', { name: 'Generate new shot' })
+    expect(generate).toHaveTextContent('Generate new shot')
+    expect(generate).not.toHaveTextContent('credit')
     fireEvent.click(generate)
     expect(onGenerate).toHaveBeenCalled()
   })

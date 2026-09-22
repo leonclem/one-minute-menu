@@ -6,6 +6,12 @@ import { createAdminSupabaseClient } from '@/lib/supabase-server'
 import { isFirstVerifiedLogin } from '@/lib/auth/new-signup'
 import { getFeatureFlag } from '@/lib/feature-flags'
 import { getPostLoginPath } from '@/lib/product-mode'
+import { claimGuestStudioWork } from '@/lib/studio/guest/claim-guest-work'
+import {
+  clearGuestClaimCookie,
+  readGuestClaimToken,
+} from '@/lib/studio/guest/guest-claim-cookie'
+import { logger } from '@/lib/logger'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -90,6 +96,34 @@ export async function GET(req: NextRequest) {
           } catch (e) {
             // Don't block auth redirect if logging or starter credits fail.
             console.warn('[auth-callback] Failed to stamp last_login_at or grant starter credits:', e)
+          }
+
+          // Guest claim is optional. A missing cookie header or a failed claim
+          // must not skip approval or the admin alert for a normal sign-in.
+          try {
+            const claimToken = readGuestClaimToken({
+              cookieHeader: req.headers?.get('cookie'),
+              searchParams: url.searchParams,
+            })
+            if (claimToken) {
+              const claimed = await claimGuestStudioWork({
+                claimToken,
+                verifiedUserId: user.id,
+              })
+              if (claimed.claimed) {
+                logger.info('[auth-callback] Claimed guest Studio work', {
+                  verifiedUserId: user.id,
+                  guestUserId: claimed.guestUserId,
+                })
+                clearGuestClaimCookie(res)
+                const redirectUrl = new URL(res.headers.get('location') || next, url.origin)
+                redirectUrl.searchParams.delete('claim')
+                redirectUrl.searchParams.set('guest_claimed', '1')
+                res.headers.set('location', redirectUrl.toString())
+              }
+            }
+          } catch (e) {
+            console.warn('[auth-callback] Guest claim failed:', e)
           }
 
           const requireAdminApproval = await getFeatureFlag('require_admin_approval')

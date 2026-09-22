@@ -30,6 +30,7 @@ export function plateSummary(
   garnishes: string[],
   sides: string[],
   finishingCount: number,
+  emptyLabel = 'None detected',
 ): string {
   const names = [...garnishes, ...sides]
   if (finishingCount > 0) {
@@ -37,7 +38,7 @@ export function plateSummary(
       ? `${names.length} on plate · ${finishingCount} staged`
       : `${finishingCount} staged`
   }
-  if (names.length === 0) return 'None detected'
+  if (names.length === 0) return emptyLabel
   if (names.length <= 2) return names.join(', ')
   return `${names.length} items`
 }

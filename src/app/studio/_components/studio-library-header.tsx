@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 import type { StudioImageRecord } from '@/lib/studio/types'
 
 import { StudioLibraryReshoot } from './studio-library-reshoot'
@@ -34,8 +36,16 @@ export function StudioLibraryHeader({
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <h1 className="truncate text-xl font-extrabold tracking-[-0.03em] text-white">{name}</h1>
+        <div className="flex min-w-0 items-center gap-2">
+          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2">
+            <Link href="/studio" className="studio-link shrink-0 text-sm font-semibold">
+              All dishes
+            </Link>
+            <span aria-hidden className="text-sm text-white/30">
+              /
+            </span>
+            <h1 className="truncate text-xl font-extrabold tracking-[-0.03em] text-white">{name}</h1>
+          </nav>
           <button
             type="button"
             aria-label="Rename dish"
@@ -59,9 +69,11 @@ export function StudioLibraryHeader({
           disabled={busy || dishBlocked}
           onCreated={onReshootCreated}
         />
-        <button type="button" className="studio-btn-primary" disabled={busy} onClick={onNewShot}>
-          + New shot
-        </button>
+        {imageCount > 0 ? (
+          <button type="button" className="studio-btn-primary" disabled={busy} onClick={onNewShot}>
+            + New shot
+          </button>
+        ) : null}
         {dishCount > 1 ? (
           <button type="button" className="studio-btn-destroy" disabled={busy} onClick={onDelete}>
             Delete dish

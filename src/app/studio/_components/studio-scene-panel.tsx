@@ -80,6 +80,7 @@ interface StudioScenePanelProps {
   onVerticalSwitch?: () => void
   yawEnabled?: boolean
   onYaw?: (direction: 'left' | 'right') => void
+  isGuest?: boolean
 }
 
 export function StudioScenePanel({
@@ -118,8 +119,11 @@ export function StudioScenePanel({
   onVerticalSwitch,
   yawEnabled = false,
   onYaw,
+  isGuest = false,
 }: StudioScenePanelProps) {
-  const [openSection, setOpenSection] = useState<SceneSectionId | null>('elements')
+  const [openSection, setOpenSection] = useState<SceneSectionId | null>(
+    isGuest ? 'lighting' : 'elements',
+  )
   const toggle = (id: SceneSectionId) => {
     setOpenSection((current) => (current === id ? null : id))
   }
@@ -179,34 +183,44 @@ export function StudioScenePanel({
                 editorState.schema.food_components.garnishes,
                 editorState.schema.food_components.sides,
                 finishing.selectedIds.length,
+                isGuest ? 'After you create an account' : undefined,
               )}
               pending={pending.garnishes}
               open={openSection === 'elements'}
               onToggle={() => toggle('elements')}
             >
-              {isRefreshingExtract ? (
-                <p className="text-xs text-white/40" role="status">
-                  Updating dish details…
+              {isGuest ? (
+                <p className="text-xs leading-5 text-white/55">
+                  We will identify garnishes and sides after you create an account. Lighting,
+                  surface, and backdrop are ready to stage now.
                 </p>
-              ) : null}
-              {refreshExtractError ? (
-                <p className="text-xs text-[#f8bc02]" role="status">
-                  Dish details could not be refreshed. You can still Generate lighting and surface.
-                </p>
-              ) : null}
-              <div className="studio-on-plate">
-                <Component_Control
-                  garnishes={editorState.schema.food_components.garnishes}
-                  sides={editorState.schema.food_components.sides}
-                  allowAdd={false}
-                  disabled={controlsDisabled}
-                  onGarnishesChange={onGarnishesChange}
-                  onSidesChange={onSidesChange}
-                />
-              </div>
-              <div className="mt-4">
-                <StudioFinishingTouchesControl {...finishing} />
-              </div>
+              ) : (
+                <>
+                  {isRefreshingExtract ? (
+                    <p className="text-xs text-white/40" role="status">
+                      Updating dish details…
+                    </p>
+                  ) : null}
+                  {refreshExtractError ? (
+                    <p className="text-xs text-[#f8bc02]" role="status">
+                      Dish details could not be refreshed. You can still Generate lighting and surface.
+                    </p>
+                  ) : null}
+                  <div className="studio-on-plate">
+                    <Component_Control
+                      garnishes={editorState.schema.food_components.garnishes}
+                      sides={editorState.schema.food_components.sides}
+                      allowAdd={false}
+                      disabled={controlsDisabled}
+                      onGarnishesChange={onGarnishesChange}
+                      onSidesChange={onSidesChange}
+                    />
+                  </div>
+                  <div className="mt-4">
+                    <StudioFinishingTouchesControl {...finishing} />
+                  </div>
+                </>
+              )}
             </SceneSection>
 
             <SceneSection
@@ -404,12 +418,22 @@ export function StudioScenePanel({
             <button
               type="button"
               data-testid="generate-image-button"
-              aria-label={isGenerating ? 'Generating' : `Generate new shot, ${generateCreditLabel}`}
+              aria-label={
+                isGenerating
+                  ? 'Generating'
+                  : isGuest
+                    ? 'Generate new shot'
+                    : `Generate new shot, ${generateCreditLabel}`
+              }
               disabled={generateDisabled}
               className="studio-btn-primary px-3 py-1.5 text-xs"
               onClick={onGenerate}
             >
-              {isGenerating ? 'Generating…' : `Generate new shot · ${generateCreditLabel}`}
+              {isGenerating
+                ? 'Generating…'
+                : isGuest
+                  ? 'Generate new shot'
+                  : `Generate new shot · ${generateCreditLabel}`}
             </button>
           </div>
         </div>

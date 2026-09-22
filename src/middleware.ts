@@ -17,6 +17,10 @@ const RATE_LIMIT_RULES: Array<{
 }> = [
   // Authentication endpoints: stricter
   { matcher: /^\/api\/auth\//, windowMs: 60_000, max: 5 },
+  // Guest Studio bootstrap / claim cookie
+  { matcher: /^\/api\/studio\/guest\/session$/, windowMs: 60_000, max: 10 },
+  { matcher: /^\/api\/studio\/source(\/upload-url)?$/, windowMs: 60_000, max: 8 },
+  { matcher: /^\/api\/studio\/crop$/, windowMs: 60_000, max: 12 },
   // Extraction endpoints
   { matcher: /^\/api\/extraction\/submit$/, windowMs: 60 * 60_000, max: 10 },
   // Template export endpoints: IP-based backup limit (per-user limits handled in routes)

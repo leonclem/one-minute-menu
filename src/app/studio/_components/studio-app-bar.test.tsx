@@ -37,18 +37,17 @@ function CreditSpendHarness() {
 }
 
 describe('StudioAppBar', () => {
-  it('shows All dishes as text on the dish grid', () => {
+  it('keeps the logo in the app bar and leaves dish navigation to the page', () => {
     pathname = '/studio'
     renderAppBar(12)
-    expect(screen.getByText('All dishes')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'All dishes' })).not.toBeInTheDocument()
+    expect(screen.queryByText('All dishes')).not.toBeInTheDocument()
     expect(screen.getByTestId('studio-shell-credits')).toHaveTextContent('12 credits')
   })
 
-  it('links All dishes back to the grid from a dish page', () => {
+  it('does not repeat All dishes beside the logo on a dish page', () => {
     pathname = '/studio/dish-1'
     renderAppBar(3)
-    expect(screen.getByRole('link', { name: 'All dishes' })).toHaveAttribute('href', '/studio')
+    expect(screen.queryByRole('link', { name: 'All dishes' })).not.toBeInTheDocument()
   })
 
   it('shows the signed-in email when hovering Sign out', () => {

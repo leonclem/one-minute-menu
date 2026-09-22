@@ -42,4 +42,5 @@ export const STUDIO_ALLOWED_PROPERTY_KEYS = [
   'spatial_outcome',
   'decision',
   'evidence_outcome',
+  'intent',
 ] as const

@@ -5,9 +5,7 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Home Page
-- [ ] Open Studio should not immediately require sign-ups, Generate should.
 - [ ] Upload some examples to show transition for each stage underneath "How AI food photos work"
-- [ ] Update wording "eyebrow" to state e.g. "AI Food Photo editor" (or "AI food photography" as per Adwords findings?)
 - [ ] Wording can now include mention of camera features
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -118,6 +116,7 @@
 
 ## Home Page
 - [x] Determine content
+- [ ] Update wording "eyebrow" to state e.g. "AI Food Photo editor" (or "AI food photography" as per Adwords findings?)
 
 ## Demo Flow
 - [ ] Consider if demo flow is needed
@@ -192,6 +191,9 @@
 - [x] Overhead shot
 - [x] Investigate rotation/angle manipulation
 - [x] Remove any old 45° turn code
+
+## Home Page
+- [x] Open Studio should not immediately require sign-ups, Generate should.
 
 ## /onboarding
 - [x] New users get 10 credits by default

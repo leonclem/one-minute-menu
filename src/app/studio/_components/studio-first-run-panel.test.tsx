@@ -32,4 +32,11 @@ describe('StudioFirstRunPanel', () => {
     expect(screen.getByRole('button', { name: '+ New dish' })).toBeInTheDocument()
     expect(screen.getByLabelText("Don't show this again")).toBeInTheDocument()
   })
+
+  it('explains the guest path without a generate-first credit lecture', () => {
+    render(<StudioFirstRunPanel onOpenFilePicker={jest.fn()} isGuest />)
+    expect(screen.getAllByText(/create an account to generate/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/staging lighting are free/i)).toBeInTheDocument()
+    expect(screen.queryByText(/obtain them via the pricing page/i)).not.toBeInTheDocument()
+  })
 })

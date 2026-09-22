@@ -25,7 +25,7 @@ export async function GET(
   { params }: { params: { dishId: string } },
 ) {
   try {
-    const auth = await requireStudioApi()
+    const auth = await requireStudioApi({ guest: 'allow' })
     if (!auth.ok) return auth.response
 
     const { dishId } = params
@@ -47,7 +47,7 @@ export async function PATCH(
   { params }: { params: { dishId: string } },
 ) {
   try {
-    const auth = await requireStudioApi()
+    const auth = await requireStudioApi({ guest: 'allow' })
     if (!auth.ok) return auth.response
 
     const { dishId } = params
@@ -104,7 +104,7 @@ export async function DELETE(
   { params }: { params: { dishId: string } },
 ) {
   try {
-    const auth = await requireStudioApi()
+    const auth = await requireStudioApi({ guest: 'allow' })
     if (!auth.ok) return auth.response
 
     const { dishId } = params

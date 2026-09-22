@@ -15,6 +15,7 @@ export interface StudioFirstRunPanelProps {
   isAdmin?: boolean
   /** Show “Don’t show this again” only after the account already has a dish. */
   canDismiss?: boolean
+  isGuest?: boolean
 }
 
 const WORKFLOW_STEPS = [
@@ -33,6 +34,22 @@ const WORKFLOW_STEPS = [
   },
 ] as const
 
+const GUEST_WORKFLOW_STEPS = [
+  {
+    title: 'Name the dish, then upload a photo',
+    description:
+      'Upload a clear original camera photo with the dish filling most of the frame. Avoid screenshots and social media copies.',
+  },
+  {
+    title: 'Stage lighting, surface, and backdrop',
+    description: 'Try the scene controls on your photo. Crop if you need a tighter frame.',
+  },
+  {
+    title: 'Create an account to generate',
+    description: 'Your staged look is saved. Sign up when you are ready to generate the new shot.',
+  },
+] as const
+
 /**
  * Explains the first Studio workflow. Shown until the user dismisses it;
  * dismiss is offered only after they already have a dish.
@@ -44,6 +61,7 @@ export function StudioFirstRunPanel({
   accessReason = 'granted_admin',
   isAdmin = false,
   canDismiss = false,
+  isGuest = false,
 }: StudioFirstRunPanelProps) {
   const didTrackRef = useRef(false)
   const [dismissed, setDismissed] = useState(false)
@@ -98,6 +116,7 @@ export function StudioFirstRunPanel({
         </h2>
         <p className="mt-2 text-sm leading-6 text-white/55">
           Make focused changes to a real dish photo without writing prompts.
+          {isGuest ? ' Try the controls first — generate after you create a free account.' : ''}
         </p>
       </div>
 
@@ -105,7 +124,7 @@ export function StudioFirstRunPanel({
         aria-label="Photo Studio workflow"
         className="mt-6 grid list-none gap-3 pl-0 sm:grid-cols-2 lg:grid-cols-3"
       >
-        {WORKFLOW_STEPS.map((step, index) => (
+        {(isGuest ? GUEST_WORKFLOW_STEPS : WORKFLOW_STEPS).map((step, index) => (
           <li
             key={step.title}
             className="rounded-[14px] border border-white/[0.1] bg-white/[0.03] p-4"
@@ -127,9 +146,9 @@ export function StudioFirstRunPanel({
           How credits work
         </p>
         <p className="mt-1 text-sm leading-5 text-[#f8bc02]/90">
-          Uploading a photo and extracting dish details are free. A successful generation uses
-          credits (where new accounts start with 10). If you need more credits, you can obtain them
-          via the pricing page.
+          {isGuest
+            ? 'Uploading, cropping, and staging lighting are free. Create an account to generate — new accounts start with 10 credits.'
+            : 'Uploading a photo and extracting dish details are free. A successful generation uses credits (where new accounts start with 10). If you need more credits, you can obtain them via the pricing page.'}
         </p>
       </div>
 

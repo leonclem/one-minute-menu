@@ -6,7 +6,6 @@ import { Camera, Share2, SlidersHorizontal, type LucideIcon } from 'lucide-react
 import { UXButton, UxFaqAccordion, UxStudioCtaBand } from '@/components/ux'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
-import { getAuthenticatedHomePath } from '@/lib/product-mode'
 import { STUDIO_PUBLIC_FAQS } from '@/lib/studio/public-faqs'
 import { STUDIO_SEO } from '@/lib/studio/public-seo'
 
@@ -30,8 +29,8 @@ const WORKFLOW_STEPS: Array<{ title: string; body: string; icon: LucideIcon }> =
 
 export default function HomePageStudioContent({ initialUser }: { initialUser?: unknown }) {
   const user = initialUser
-  const primaryHref = user ? getAuthenticatedHomePath() : '/register'
-  const primaryLabel = user ? 'Open Studio' : 'Get started'
+  const primaryHref = '/studio'
+  const primaryLabel = 'Open Studio'
 
   useEffect(() => {
     trackConversionEvent({
@@ -65,12 +64,6 @@ export default function HomePageStudioContent({ initialUser }: { initialUser?: u
       event: 'cta_click_primary',
       metadata: { path: '/', destination: primaryHref },
     })
-    if (!user) {
-      trackConversionEvent({
-        event: 'registration_start',
-        metadata: { path: '/', source: 'hero_primary' },
-      })
-    }
     captureEvent(ANALYTICS_EVENTS.CTA_CLICKED, {
       location: 'hero',
       label: primaryLabel,
@@ -157,6 +150,11 @@ export default function HomePageStudioContent({ initialUser }: { initialUser?: u
           primaryHref={primaryHref}
           primaryLabel={primaryLabel}
           onPrimaryClick={handlePrimaryClick}
+          subtitle={
+            user
+              ? 'Start with 10 free credits. Buy more anytime on the pricing page.'
+              : 'Try Studio with one photo. Create a free account when you are ready to generate.'
+          }
         />
       </section>
     </div>

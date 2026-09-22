@@ -1,6 +1,6 @@
 import type { StudioAccessReason } from './access/studio-access-decision'
 
-export type StudioPageGate = 'disabled' | 'waitlist' | 'pending_invite' | 'editor'
+export type StudioPageGate = 'disabled' | 'waitlist' | 'pending_invite' | 'editor' | 'guest_bootstrap'
 
 /**
  * Decide what /studio should render. Account waitlist wins so unapproved

@@ -14,13 +14,15 @@ export const runtime = 'nodejs'
 
 export async function GET() {
   try {
-    const auth = await requireStudioApi()
+    const auth = await requireStudioApi({ guest: 'allow' })
     if (!auth.ok) return auth.response
 
-    const [balance, costs] = await Promise.all([
-      getStudioCreditBalance(auth.user.id),
-      Promise.resolve(getStudioCreditCosts()),
-    ])
+    const costs = getStudioCreditCosts()
+    if (auth.isGuest) {
+      return NextResponse.json({ balance: 0, costs, guest: true })
+    }
+
+    const balance = await getStudioCreditBalance(auth.user.id)
 
     return NextResponse.json({ balance, costs })
   } catch (error) {

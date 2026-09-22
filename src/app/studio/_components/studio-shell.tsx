@@ -71,17 +71,19 @@ export function StudioShell({
   creditBalance,
   showCredits,
   userEmail,
+  isGuest = false,
 }: {
   children: ReactNode
   creditBalance: number | null
   showCredits: boolean
   userEmail?: string
+  isGuest?: boolean
 }) {
   return (
     <StudioCreditsProvider initialBalance={creditBalance}>
       <div className="studio-shell">
         <StudioSignupBeacon />
-        <StudioAppBar showCredits={showCredits} userEmail={userEmail} />
+        <StudioAppBar showCredits={showCredits} userEmail={userEmail} isGuest={isGuest} />
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 md:py-10">{children}</main>
         <UXFooter />
       </div>

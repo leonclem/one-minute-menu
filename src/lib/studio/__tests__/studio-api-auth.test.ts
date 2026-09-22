@@ -26,7 +26,7 @@ type TestSupabase = {
 
 function createProfileSupabase(role: ProfileRole, isApproved = true): TestSupabase {
   const single = jest.fn().mockResolvedValue({
-    data: { role, is_approved: isApproved },
+    data: { role, is_approved: isApproved, is_guest: false },
     error: null,
   })
   const eq = jest.fn().mockReturnValue({ single })
@@ -123,7 +123,7 @@ describe('requireStudioApi', () => {
     const { requireStudioApi } = await loadGate()
     const result = await requireStudioApi()
 
-    expect(result).toEqual({ ok: true, supabase, user })
+    expect(result).toEqual({ ok: true, supabase, user, isGuest: false })
   })
 
   it('grants an authenticated non-admin in open mode with the existing success shape', async () => {
@@ -135,7 +135,7 @@ describe('requireStudioApi', () => {
     const { requireStudioApi } = await loadGate()
     const result = await requireStudioApi()
 
-    expect(result).toEqual({ ok: true, supabase, user })
+    expect(result).toEqual({ ok: true, supabase, user, isGuest: false })
   })
 
   it('returns 403 when approval is required and the account is pending', async () => {
@@ -175,7 +175,7 @@ describe('requireStudioApi', () => {
       const { requireStudioApi } = await loadGate()
       const result = await requireStudioApi()
 
-      expect(result).toEqual({ ok: true, supabase, user })
+      expect(result).toEqual({ ok: true, supabase, user, isGuest: false })
       // Admins short-circuit before the beta store, preserving Photo Control.
       expect(mockHasStudioBetaAccess).not.toHaveBeenCalled()
     },
@@ -204,5 +204,55 @@ describe('requireStudioApi', () => {
     expect(unauthenticated.ok).toBe(false)
     if (unauthenticated.ok) return
     expect(unauthenticated.response.status).toBe(401)
+  })
+
+  it('denies guests by default even in open mode', async () => {
+    configureEnvironment('open')
+    const supabase = createProfileSupabase('customer')
+    supabase.from = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: { role: 'customer', is_approved: false, is_guest: true },
+            error: null,
+          }),
+        }),
+      }),
+    })
+    const user = { id: 'guest-1', is_anonymous: true }
+    mockRequireUserApi.mockResolvedValue({ ok: true, user, supabase })
+
+    const { requireStudioApi } = await loadGate()
+    const result = await requireStudioApi()
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.response.status).toBe(401)
+    expect(await result.response.json()).toEqual({
+      error: 'Create a free account to continue',
+      code: 'GUEST_AUTH_REQUIRED',
+    })
+  })
+
+  it('allows guests on the open-mode allow-list', async () => {
+    configureEnvironment('open')
+    const supabase = createProfileSupabase('customer')
+    supabase.from = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: { role: 'customer', is_approved: false, is_guest: true },
+            error: null,
+          }),
+        }),
+      }),
+    })
+    const user = { id: 'guest-1', is_anonymous: true }
+    mockRequireUserApi.mockResolvedValue({ ok: true, user, supabase })
+
+    const { requireStudioApi } = await loadGate()
+    const result = await requireStudioApi({ guest: 'allow' })
+
+    expect(result).toEqual({ ok: true, supabase, user, isGuest: true })
   })
 })

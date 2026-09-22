@@ -87,6 +87,7 @@ Prefer `npx supabase db push` against the linked production project (never
 | `supabase/migrations/080_studio_control_panel_labels.sql` | Post-Chunk 7 | Applied | LC 2026-08-13: applied manually in prod. |
 | `supabase/migrations/081_studio_first_run_preference.sql` | Post-Chunk 7 | Applied | LC 2026-08-13: applied manually in prod. |
 | `supabase/migrations/082_studio_credit_expiry_and_signup_grant.sql` | Self-serve launch | Pending | Ledger `expires_at` + `remaining`, FIFO debit, 10-credit starter grant. Apply before app code that depends on the new RPC signature. |
+| `supabase/migrations/090_studio_guest_sessions.sql` | Guest Studio first cut | Pending | `profiles.is_guest`, `studio_guest_sessions`, guest-safe `handle_new_user` (no starter credits), `studio_claim_guest_work`, `studio_list_expired_guest_user_ids`. Enable Anonymous sign-ins in Supabase Auth before shipping. |
 
 ---
 
@@ -109,6 +110,7 @@ Non-env, non-migration steps that must not be forgotten.
 | Set Google Ads signup label | Ads conversion patch 2026-09-13 | Pending | Vercel Production: `NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL=JihqCIbtgJ0cEL_XhK5D`, then redeploy. Smoke a new magic-link signup in Tag Assistant / Network. |
 | Paste 15 Studio pack Stripe Price IDs | Self-serve launch | Pending | `STRIPE_PRICE_ID_{STARTER,MENU,STUDIO}_PACK_{SGD,USD,GBP,AUD,EUR}` in Vercel and `.env.local`. |
 | Smoke-test studio-first public site | Self-serve launch | Pending | Logged-out home/pricing/support/register show Studio packs, not menu plans. Sitemap omits `/demo/sample` and `/blog`. Logged-in default is `/studio`. Unapproved user sees pending approval. Approved non-admin can open Studio. Checkout grants credits. |
+| Enable Supabase Anonymous sign-ins | Guest Studio first cut | Pending | Auth → Providers → Anonymous. Required for `/studio` without signup. Smoke: logged-out Open Studio → upload → stage lighting → Generate shows in-Studio signup modal (not `/register`). Magic link claims the photo. |
 
 ---
 

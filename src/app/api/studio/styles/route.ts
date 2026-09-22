@@ -16,7 +16,7 @@ export const runtime = 'nodejs'
 
 export async function GET() {
   try {
-    const auth = await requireStudioApi()
+    const auth = await requireStudioApi({ guest: 'allow' })
     if (!auth.ok) return auth.response
 
     const [lighting, background] = await Promise.all([

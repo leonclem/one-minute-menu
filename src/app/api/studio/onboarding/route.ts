@@ -8,7 +8,7 @@ export const runtime = 'nodejs'
 /** Persist the account-level choice to hide the initial Studio guidance panel. */
 export async function PATCH(request: NextRequest) {
   try {
-    const auth = await requireStudioApi()
+    const auth = await requireStudioApi({ guest: 'allow' })
     if (!auth.ok) return auth.response
 
     const body = (await request.json().catch(() => null)) as {

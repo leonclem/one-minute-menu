@@ -20,6 +20,7 @@ export default async function StudioDishPage({
       dishCount={data.dishes.length}
       initialTab={searchParams.tab}
       initialView={searchParams.view}
+      isGuest={data.session.isGuest}
     />
   )
 }

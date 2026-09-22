@@ -96,6 +96,12 @@ import {
 } from '@/lib/studio/workbench-query'
 import { StudioShotWorkbench } from './studio-shot-workbench'
 import { StudioScenePanel } from './studio-scene-panel'
+import { useGuestSignupGate } from './use-guest-signup-gate'
+import {
+  guestStagedIntentFromMetadata,
+  overlayGuestIntentOnExtracted,
+  shouldSkipExtractUntilClaimed,
+} from '@/lib/studio/guest/guest-editor-intent'
 import { StudioDegradationCallout } from './studio-degradation-callout'
 import {
   preloadKitchenLoaderSvg,
@@ -154,6 +160,7 @@ interface StudioClientProps {
   initialTab?: string
   studioFirstRunDismissed?: boolean
   isAdmin?: boolean
+  isGuest?: boolean
 }
 
 interface StudioPendingChangeCandidate {
@@ -304,6 +311,7 @@ export function StudioClient({
   initialTab,
   studioFirstRunDismissed = false,
   isAdmin = false,
+  isGuest = false,
 }: StudioClientProps) {
   const router = useRouter()
   const initialDishes = useMemo(
@@ -315,6 +323,7 @@ export function StudioClient({
     [legacyGallery, providedGallery]
   )
   const accessMode = providedAccessMode ?? resolveStudioAccessMode()
+  const { requestSignup, modal: guestSignupModal } = useGuestSignupGate(isGuest)
   const [dishes, setDishes] = useState<StudioDishRecord[]>(initialDishes)
   const [activeDishId, setActiveDishId] = useState(initialActiveDishId)
   const [gallery, setGallery] = useState<StudioImageRecord[]>(initialGallery)
@@ -490,7 +499,7 @@ export function StudioClient({
     selectedModel === STUDIO_PRO_MODEL ? creditCostNbPro : creditCostNb2
   const generateCreditLabel = formatExportCreditLabel(generateCreditCost)
   const insufficientCredits =
-    creditBalance !== null && creditBalance < generateCreditCost
+    !isGuest && creditBalance !== null && creditBalance < generateCreditCost
   const busy = libraryBusy || isUploading || isExtracting || isGenerating || isCropping
 
   useEffect(() => {
@@ -539,7 +548,10 @@ export function StudioClient({
       is_admin: isAdmin === true,
       gallery_size: initialGallery.length,
     })
-  }, [accessMode, initialGallery.length, isAdmin, reason])
+    if (isGuest) {
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GUEST_STARTED, { surface: 'studio' })
+    }
+  }, [accessMode, initialGallery.length, isAdmin, isGuest, reason])
 
   const lightingOptions = useMemo(() => {
     if (lightingStyles.length > 0) return lightingStylesToOptions(lightingStyles)
@@ -586,6 +598,7 @@ export function StudioClient({
   )
 
   useEffect(() => {
+    if (isGuest) return
     let cancelled = false
     ;(async () => {
       try {
@@ -605,7 +618,7 @@ export function StudioClient({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [isGuest, setCreditBalance])
 
   useEffect(() => {
     let cancelled = false
@@ -670,12 +683,15 @@ export function StudioClient({
     const res = await fetch(`/api/studio/images/${imageId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ editorState: state }),
+      body: JSON.stringify({
+        editorState: state,
+        ...(isGuest ? { skipExtractUntilClaimed: true } : {}),
+      }),
     })
     if (!res.ok) return
     const data = (await res.json()) as { image: StudioImageRecord }
     setGallery((prev) => prev.map((img) => (img.id === imageId ? data.image : img)))
-  }, [])
+  }, [isGuest])
 
   const applyHydratedState = useCallback((state: EditorState, strictWarning = false) => {
     setEditorState(state)
@@ -791,22 +807,53 @@ export function StudioClient({
         setBackdropVisible(knownBackdropVisibility(extractionDiagnosticsRef.current))
 
         const stored = readEditorStateFromMetadata(image.metadata)
+        const skipUntilClaimed = shouldSkipExtractUntilClaimed(image.metadata)
         const staleSourceDiagnostics =
           image.role === 'source' &&
           extractionDiagnosticsNeedsRefresh(extractionDiagnosticsRef.current)
-        if (stored && !staleSourceDiagnostics) {
-          applyHydratedState(stored)
-        } else if (stored && staleSourceDiagnostics) {
+
+        if (isGuest) {
+          const state = stored ?? makeDefaultEditorState()
+          applyHydratedState(state)
+          await persistEditorState(image.id, state)
+        } else if (skipUntilClaimed) {
           setIsHydrated(false)
           const extracted = await runExtraction(image.id)
           if (extracted) {
+            const intent = guestStagedIntentFromMetadata(image.metadata)
+            applyHydratedState(extracted)
+            if (intent) {
+              setEditorState(overlayGuestIntentOnExtracted(extracted, intent))
+            }
             await persistEditorState(image.id, extracted)
           }
         } else {
-          setIsHydrated(false)
-          const extracted = await runExtraction(image.id)
-          if (extracted) {
-            await persistEditorState(image.id, extracted)
+          const intent = guestStagedIntentFromMetadata(image.metadata)
+          if (stored && !staleSourceDiagnostics) {
+            applyHydratedState(stored)
+            if (intent) {
+              setEditorState(overlayGuestIntentOnExtracted(stored, intent))
+            }
+          } else if (stored && staleSourceDiagnostics) {
+            setIsHydrated(false)
+            const extracted = await runExtraction(image.id)
+            if (extracted) {
+              applyHydratedState(extracted)
+              if (intent) {
+                setEditorState(overlayGuestIntentOnExtracted(extracted, intent))
+              }
+              await persistEditorState(image.id, extracted)
+            }
+          } else {
+            setIsHydrated(false)
+            const extracted = await runExtraction(image.id)
+            if (extracted) {
+              applyHydratedState(extracted)
+              if (intent) {
+                setEditorState(overlayGuestIntentOnExtracted(extracted, intent))
+              }
+              await persistEditorState(image.id, extracted)
+            }
           }
         }
 
@@ -826,6 +873,7 @@ export function StudioClient({
       persistedSourceId,
       resetFinishingTouches,
       runExtraction,
+      isGuest,
     ]
   )
 
@@ -1006,10 +1054,16 @@ export function StudioClient({
         })
 
         await persistDishCurrent(activeDishId, sourceData.imageId)
-        const extracted = await runExtraction(sourceData.imageId)
-
-        if (extracted) {
-          await persistEditorState(sourceData.imageId, extracted)
+        if (isGuest) {
+          const guestState = makeDefaultEditorState()
+          applyHydratedState(guestState)
+          await persistEditorState(sourceData.imageId, guestState)
+          trackStudioEvent(ANALYTICS_EVENTS.STUDIO_GUEST_UPLOADED, { outcome: 'success' })
+        } else {
+          const extracted = await runExtraction(sourceData.imageId)
+          if (extracted) {
+            await persistEditorState(sourceData.imageId, extracted)
+          }
         }
       } catch (error) {
         if (uploadedStoragePath) {
@@ -1021,14 +1075,17 @@ export function StudioClient({
         setIsUploading(false)
       }
     },
-    [activeDishId, persistDishCurrent, persistEditorState, resetEditorForNewSource, router, runExtraction]
+    [activeDishId, persistDishCurrent, persistEditorState, resetEditorForNewSource, router, runExtraction, isGuest, applyHydratedState]
   )
 
   const commitStagedChange = useCallback((nextState: EditorState, nextBaseline: EditorState) => {
     originalStateRef.current = nextBaseline
     setBaselineVersion((v) => v + 1)
     setEditorState(nextState)
-  }, [])
+    if (isGuest && persistedSourceId) {
+      void persistEditorState(persistedSourceId, nextState)
+    }
+  }, [isGuest, persistEditorState, persistedSourceId])
 
   const applyStagedChange = useCallback(
     (nextState: EditorState, nextBaseline = originalStateRef.current) => {
@@ -1092,6 +1149,10 @@ export function StudioClient({
   )
 
   const handleLoadFinishingTouches = useCallback(async () => {
+    if (isGuest) {
+      void requestSignup('elements_analysis')
+      return
+    }
     if (finishingLoading || isRefreshingExtract) return
     if (finishingCacheKey !== null && finishingCacheKey === persistedSourceId) {
       return
@@ -1138,6 +1199,8 @@ export function StudioClient({
     finishingLoading,
     isRefreshingExtract,
     persistedSourceId,
+    isGuest,
+    requestSignup,
   ])
 
   const stageLighting = useCallback(
@@ -1293,6 +1356,10 @@ export function StudioClient({
     )
     const delta = computeDelta(original, nextState)
     if (delta.isEmpty || !sourceImage || !activeDishId || !persistedSourceId) return
+    if (isGuest) {
+      void requestSignup('generate')
+      return
+    }
 
     const directive = generateDirective(delta, nextState, {
       excludePaths: FOH_STYLE_EXCLUDE_PATHS,
@@ -1496,9 +1563,15 @@ export function StudioClient({
     selectedFinishingStack,
     resetFinishingTouches,
     router,
+    isGuest,
+    requestSignup,
   ])
 
   const handleObjectEditOpen = useCallback(() => {
+    if (isGuest) {
+      void requestSignup('remove')
+      return
+    }
     setCropOpen(false)
     setExpandOpen(false)
     dispatchObjectEdit({ type: 'OPERATION_CHANGED', operation: 'remove' })
@@ -1513,7 +1586,7 @@ export function StudioClient({
       edit_operation: 'remove',
       surface: 'studio',
     })
-  }, [])
+  }, [requestSignup, isGuest])
 
   const handleObjectEditUndo = useCallback(() => {
     if (objectEditNaturalSize.width <= 0 || objectEditNaturalSize.height <= 0) return
@@ -1594,6 +1667,11 @@ export function StudioClient({
       })
       if (!response.ok) {
         const err = await response.json().catch(() => null)
+        const code = (err as { code?: string } | null)?.code
+        if (isGuest && code === 'GUEST_CROP_LIMIT') {
+          void requestSignup('crop')
+          return
+        }
         const message =
           (err as { error?: string } | null)?.error ?? `Crop failed (HTTP ${response.status})`
         setCropError(message)
@@ -1626,9 +1704,11 @@ export function StudioClient({
       setCropOpen(false)
       setWorkbenchImageExpanded(false)
       setIsCropping(false)
-      const extracted = await runExtraction(row.id, { quiet: true })
-      if (extracted && selectedImageIdRef.current === row.id) {
-        await persistEditorState(row.id, extracted)
+      if (!isGuest) {
+        const extracted = await runExtraction(row.id, { quiet: true })
+        if (extracted && selectedImageIdRef.current === row.id) {
+          await persistEditorState(row.id, extracted)
+        }
       }
     } catch {
       setCropError('Could not crop this image. Try again.')
@@ -1651,9 +1731,15 @@ export function StudioClient({
     router,
     runExtraction,
     variants.length,
+    isGuest,
+    requestSignup,
   ])
 
   const handleExpandOpen = useCallback(() => {
+    if (isGuest) {
+      void requestSignup('expand')
+      return
+    }
     setObjectEditOpen(false)
     setObjectEditRejection(null)
     setCropOpen(false)
@@ -1662,7 +1748,7 @@ export function StudioClient({
     setExpandLayout(DEFAULT_EXPAND_LAYOUT)
     setExpandOpen(true)
     setWorkbenchImageExpanded(true)
-  }, [])
+  }, [requestSignup, isGuest])
 
   const handleExpandCancel = useCallback(() => {
     setExpandOpen(false)
@@ -2219,6 +2305,10 @@ export function StudioClient({
         })
         if (!res.ok) {
           const err = await res.json().catch(() => null)
+          if (isGuest && (err as { code?: string } | null)?.code === 'GUEST_DISH_LIMIT') {
+            void requestSignup('generate')
+            return
+          }
           throw new Error((err as { error?: string } | null)?.error ?? 'Failed to create dish')
         }
         const data = (await res.json()) as { dish: StudioDishRecord }
@@ -2229,7 +2319,7 @@ export function StudioClient({
         setLibraryBusy(false)
       }
     },
-    [router]
+    [router, isGuest, requestSignup]
   )
 
   const handleRenameDish = useCallback(
@@ -2364,7 +2454,9 @@ export function StudioClient({
 
   return (
     <div className="space-y-6" data-studio-access-reason={reason} data-testid="studio-client">
-      {creditBalance !== null && creditBalance <= 0 && <StudioStateNotice kind="no_credit" />}
+      {!isGuest && creditBalance !== null && creditBalance <= 0 && (
+        <StudioStateNotice kind="no_credit" />
+      )}
       {dishBlocked && <StudioStateNotice kind="blocked_dish" />}
       {libraryError ? (
         <p role="alert" className="text-sm text-[#ff8a80]">
@@ -2623,7 +2715,7 @@ export function StudioClient({
               dishBlocked
             }
             onGenerate={() => {
-              if (insufficientCredits) {
+              if (!isGuest && insufficientCredits) {
                 setCreditsDialogOpen(true)
                 return
               }
@@ -2685,6 +2777,7 @@ export function StudioClient({
               dishBlocked ||
               !sourceImage
             }
+            isGuest={isGuest}
           />
         }
         exports={
@@ -2749,6 +2842,7 @@ export function StudioClient({
         onCancel={() => setImageToDelete(null)}
         onConfirm={() => void handleDeleteImage()}
       />
+      {guestSignupModal}
     </div>
   )
 }

@@ -25,6 +25,24 @@ describe('buildCropChildMetadata', () => {
     expect(next).not.toHaveProperty('spatialInventoryDiagnostics')
     expect(next).not.toHaveProperty('validation')
   })
+
+  it('copies skip-extract flags so guest crops stay unextracted', () => {
+    const next = buildCropChildMetadata({
+      parentMetadata: {
+        editorState: { schema: {} },
+        skipExtractUntilClaimed: true,
+        guestStagedIntent: { lighting: 'golden-hour', background_style: '', surface_style: '' },
+      },
+      crop: { x: 0, y: 0, width: 1, height: 1 },
+      aspectPreset: 'free',
+    })
+    expect((next as Record<string, unknown>).skipExtractUntilClaimed).toBe(true)
+    expect((next as Record<string, unknown>).guestStagedIntent).toEqual({
+      lighting: 'golden-hour',
+      background_style: '',
+      surface_style: '',
+    })
+  })
 })
 
 describe('parseCropAspectPreset', () => {

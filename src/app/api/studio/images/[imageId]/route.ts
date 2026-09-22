@@ -16,6 +16,10 @@ import {
 } from '@/lib/studio/library'
 import { editorStateToMetadata } from '@/lib/studio/editor-state-storage'
 import type { EditorState } from '@/lib/photo-control/minimal-schema'
+import {
+  withClaimedExtract,
+  withGuestSkipExtract,
+} from '@/lib/studio/guest/guest-editor-intent'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -25,7 +29,7 @@ export async function PATCH(
   { params }: { params: { imageId: string } },
 ) {
   try {
-    const auth = await requireStudioApi()
+    const auth = await requireStudioApi({ guest: 'allow' })
     if (!auth.ok) return auth.response
 
     const { imageId } = params
@@ -38,6 +42,7 @@ export async function PATCH(
       isFavourite?: unknown
       archive?: unknown
       editorState?: unknown
+      skipExtractUntilClaimed?: unknown
     }
 
     if (body.archive === true) {
@@ -67,9 +72,14 @@ export async function PATCH(
     }
 
     if (body.editorState && typeof body.editorState === 'object') {
-      const image = await updateStudioImageMetadata(auth.user.id, imageId, {
-        editorState: editorStateToMetadata(body.editorState as EditorState),
-      })
+      const editorState = body.editorState as EditorState
+      const patch =
+        body.skipExtractUntilClaimed === true
+          ? withGuestSkipExtract(existing.metadata ?? {}, editorState)
+          : auth.isGuest
+            ? { editorState: editorStateToMetadata(editorState) }
+            : withClaimedExtract(existing.metadata ?? {}, editorState)
+      const image = await updateStudioImageMetadata(auth.user.id, imageId, patch)
       return NextResponse.json({ image })
     }
 
@@ -88,7 +98,7 @@ export async function DELETE(
   { params }: { params: { imageId: string } },
 ) {
   try {
-    const auth = await requireStudioApi()
+    const auth = await requireStudioApi({ guest: 'allow' })
     if (!auth.ok) return auth.response
 
     const { imageId } = params

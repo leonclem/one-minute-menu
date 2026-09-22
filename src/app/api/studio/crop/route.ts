@@ -49,8 +49,20 @@ const CropBodyZ = z
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireStudioApi()
+    const auth = await requireStudioApi({ guest: 'allow' })
     if (!auth.ok) return auth.response
+
+    if (auth.isGuest) {
+      const { assertGuestCanCrop, GuestCapError } = await import('@/lib/studio/guest/guest-caps')
+      try {
+        await assertGuestCanCrop(auth.user.id)
+      } catch (err) {
+        if (err instanceof GuestCapError) {
+          return NextResponse.json({ error: err.message, code: err.code }, { status: 403 })
+        }
+        throw err
+      }
+    }
 
     let raw: unknown
     try {

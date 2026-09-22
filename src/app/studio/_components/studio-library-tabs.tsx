@@ -7,6 +7,7 @@ interface StudioLibraryTabsProps {
   view: StudioLibraryView
   shotCount: number
   exportCount: number
+  showViewSwitcher?: boolean
   onTab: (tab: StudioLibraryTab) => void
   onView: (view: StudioLibraryView) => void
 }
@@ -16,6 +17,7 @@ export function StudioLibraryTabs({
   view,
   shotCount,
   exportCount,
+  showViewSwitcher = true,
   onTab,
   onView,
 }: StudioLibraryTabsProps) {
@@ -43,7 +45,7 @@ export function StudioLibraryTabs({
           <span className="studio-tab-count">{exportCount}</span>
         </button>
       </div>
-      {tab === 'shots' ? (
+      {tab === 'shots' && showViewSwitcher ? (
         <div className="flex gap-2">
           <button
             type="button"

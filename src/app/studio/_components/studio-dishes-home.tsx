@@ -19,6 +19,7 @@ interface StudioDishesHomeProps {
   accessReason: StudioAccessReason
   isAdmin: boolean
   studioFirstRunDismissed: boolean
+  isGuest?: boolean
 }
 
 function DishThumb({ dish }: { dish: StudioDishListItem }) {
@@ -48,6 +49,7 @@ export function StudioDishesHome({
   accessReason,
   isAdmin,
   studioFirstRunDismissed,
+  isGuest = false,
 }: StudioDishesHomeProps) {
   const router = useRouter()
   const [listed, setListed] = useState(dishes)
@@ -155,6 +157,7 @@ export function StudioDishesHome({
             accessReason={accessReason}
             isAdmin={isAdmin}
             canDismiss={!empty}
+            isGuest={isGuest}
           />
         </div>
       ) : null}

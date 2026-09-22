@@ -45,11 +45,13 @@ describe('studio-public homepage and footer', () => {
     mockGetAuthenticatedHomePath.mockReturnValue('/studio')
   })
 
-  it('sells Photo Studio with a get-started CTA, not the menu builder', () => {
+  it('sells Photo Studio with Open Studio, not an immediate signup wall', () => {
     render(<HomePageStudioContent initialUser={null} />)
 
     expect(screen.getByRole('heading', { name: STUDIO_SEO.h1 })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /get started/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: /open studio/i }).length).toBeGreaterThan(0)
+    expect(document.querySelector('a[href="/studio"]')).not.toBeNull()
+    expect(screen.queryByRole('link', { name: /get started/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /start with my menu/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /how access works/i })).not.toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: /see pricing/i }).length).toBeGreaterThan(0)

@@ -24,6 +24,7 @@ export async function StudioWorkbenchRoute({
       initialTab={initialTab}
       studioFirstRunDismissed={data.session.studioFirstRunDismissed}
       isAdmin={data.session.isAdmin}
+      isGuest={data.session.isGuest}
     />
   )
 }

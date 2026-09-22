@@ -30,6 +30,7 @@ interface StudioDishLibraryProps {
   dishCount: number
   initialTab?: string
   initialView?: string
+  isGuest?: boolean
 }
 
 export function StudioDishLibrary({
@@ -38,6 +39,7 @@ export function StudioDishLibrary({
   dishCount,
   initialTab,
   initialView,
+  isGuest = false,
 }: StudioDishLibraryProps) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -142,28 +144,7 @@ export function StudioDishLibrary({
         if (!sourceData.imageId || !sourceData.imageUrl) throw new Error('Failed to save uploaded image.')
         storagePath = null
         imagesEpochRef.current += 1
-        setImages((prev) => [
-          ...prev,
-          {
-            id: sourceData.imageId as string,
-            user_id: dish.user_id,
-            dish_id: dish.id,
-            role: 'source',
-            source_image_id: null,
-            storage_path: upload.storagePath,
-            public_url: sourceData.imageUrl as string,
-            mime_type: upload.mimeType,
-            width: null,
-            height: null,
-            prompt: null,
-            model: null,
-            metadata: {},
-            is_favourite: false,
-            archived_at: null,
-            created_at: new Date().toISOString(),
-          },
-        ])
-        void exports.refresh()
+        router.push(`/studio/${dish.id}/${sourceData.imageId}`)
       } catch (err) {
         if (storagePath) void removeStudioStorageObject(storagePath)
         setError(err instanceof Error ? err.message : 'Upload failed')
@@ -171,7 +152,7 @@ export function StudioDishLibrary({
         setBusy(false)
       }
     },
-    [dish.id, dish.user_id, exports],
+    [dish.id, router],
   )
 
   const handleRename = useCallback(
@@ -283,6 +264,7 @@ export function StudioDishLibrary({
         view={view}
         shotCount={shotCount}
         exportCount={readyExportCount}
+        showViewSwitcher={!isGuest}
         onTab={(next) => {
           setTab(next)
           replaceUrl(next, view)
@@ -294,9 +276,41 @@ export function StudioDishLibrary({
       />
 
       {tab === 'shots' && images.length === 0 ? (
-        <p className="rounded-[16px] border border-white/[0.1] bg-[#0f1c1f] px-4 py-10 text-center text-sm text-white/55">
-          No shots yet. Use + New shot to upload a photo.
-        </p>
+        <section
+          className="rounded-[16px] border border-white/[0.1] bg-[#0f1c1f] px-6 py-10 text-center"
+          aria-labelledby="studio-empty-shots-heading"
+          data-testid="studio-empty-shots"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            className="mx-auto h-9 w-9 text-[#5fd3da]"
+            aria-hidden="true"
+          >
+            <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h2l1.2-1.5h4.6L15.5 5h2A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z" />
+            <circle cx="12" cy="12" r="3.5" />
+          </svg>
+          <h2
+            id="studio-empty-shots-heading"
+            className="mt-3 text-lg font-extrabold tracking-[-0.02em] text-white"
+          >
+            Upload your first dish photo
+          </h2>
+          <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-white/55">
+            Start with a clear, original photo. You can then adjust lighting, surface, backdrop,
+            and crop.
+          </p>
+          <button
+            type="button"
+            className="studio-btn-primary mt-5"
+            disabled={busy}
+            onClick={handleNewShot}
+          >
+            Upload photo
+          </button>
+        </section>
       ) : null}
 
       {tab === 'shots' && images.length > 0 && view === 'grid' ? (

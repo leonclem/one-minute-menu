@@ -8,13 +8,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireStudioApi } from '@/lib/studio/studio-api-auth'
 import { createStudioDish, listStudioDishesWithThumbnails } from '@/lib/studio/dishes'
+import { assertGuestCanCreateDish, GuestCapError } from '@/lib/studio/guest/guest-caps'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
 export async function GET() {
   try {
-    const auth = await requireStudioApi()
+    const auth = await requireStudioApi({ guest: 'allow' })
     if (!auth.ok) return auth.response
 
     const dishes = await listStudioDishesWithThumbnails(auth.user.id)
@@ -27,8 +28,22 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireStudioApi()
+    const auth = await requireStudioApi({ guest: 'allow' })
     if (!auth.ok) return auth.response
+
+    if (auth.isGuest) {
+      try {
+        await assertGuestCanCreateDish(auth.user.id)
+      } catch (err) {
+        if (err instanceof GuestCapError) {
+          return NextResponse.json(
+            { error: err.message, code: err.code },
+            { status: 403 },
+          )
+        }
+        throw err
+      }
+    }
 
     const body = (await request.json()) as { name?: unknown; description?: unknown }
     if (typeof body.name !== 'string') {

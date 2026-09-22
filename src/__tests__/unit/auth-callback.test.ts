@@ -5,6 +5,7 @@ import { userOperations } from '@/lib/database'
 import { sendAdminNewUserAlert } from '@/lib/notifications'
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
 import { ensureStarterStudioCredits } from '@/lib/studio/credits'
+import { claimGuestStudioWork } from '@/lib/studio/guest/claim-guest-work'
 
 import { getFeatureFlag, clearFeatureFlagCache } from '@/lib/feature-flags'
 
@@ -62,6 +63,13 @@ jest.mock('@/lib/studio/credits', () => ({
   }),
 }))
 
+jest.mock('@/lib/studio/guest/claim-guest-work', () => ({
+  claimGuestStudioWork: jest.fn().mockResolvedValue({
+    claimed: false,
+    guestUserId: null,
+  }),
+}))
+
 describe('Auth Callback Route', () => {
   let mockSupabase: any
   let mockAdminSupabase: any
@@ -98,11 +106,14 @@ describe('Auth Callback Route', () => {
     ;(createAdminSupabaseClient as jest.Mock).mockReturnValue(mockAdminSupabase)
   })
 
-  const makeRequest = (url: string) => {
+  const makeRequest = (url: string, cookieHeader?: string) => {
     return {
       url,
       cookies: {
         get: jest.fn(),
+      },
+      headers: {
+        get: jest.fn((name: string) => (name === 'cookie' ? cookieHeader ?? null : null)),
       },
     } as unknown as NextRequest
   }
@@ -156,11 +167,51 @@ describe('Auth Callback Route', () => {
     
     await GET(req)
     
+    expect(claimGuestStudioWork).not.toHaveBeenCalled()
     expect(sendAdminNewUserAlert).toHaveBeenCalledWith(mockProfile)
     expect(userOperations.updateProfile).toHaveBeenCalledWith(
       'user-123', 
       { adminNotified: true }, 
       mockAdminSupabase
+    )
+  })
+
+  it('claims guest studio work and still notifies the admin', async () => {
+    const req = makeRequest(
+      'http://localhost:3000/auth/callback?code=test-code&next=/studio&claim=claim-token',
+    )
+
+    const mockProfile = {
+      id: 'user-123',
+      email: 'test@example.com',
+      isApproved: false,
+      adminNotified: false,
+      role: 'user',
+      lastLoginAt: new Date('2026-01-01T00:00:00.000Z'),
+    }
+
+    ;(userOperations.getProfile as jest.Mock).mockResolvedValue(mockProfile)
+    ;(sendAdminNewUserAlert as jest.Mock).mockResolvedValue(true)
+    ;(claimGuestStudioWork as jest.Mock).mockResolvedValue({
+      claimed: true,
+      guestUserId: 'guest-1',
+    })
+
+    const res = await GET(req) as any
+
+    expect(claimGuestStudioWork).toHaveBeenCalledWith({
+      claimToken: 'claim-token',
+      verifiedUserId: 'user-123',
+    })
+    expect(sendAdminNewUserAlert).toHaveBeenCalledWith(mockProfile)
+    expect(userOperations.updateProfile).toHaveBeenCalledWith(
+      'user-123',
+      { adminNotified: true },
+      mockAdminSupabase,
+    )
+    expect(res.headers.set).toHaveBeenCalledWith(
+      'location',
+      'http://localhost:3000/studio?guest_claimed=1',
     )
   })
 

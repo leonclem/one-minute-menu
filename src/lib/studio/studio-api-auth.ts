@@ -1,20 +1,28 @@
-/**
- * Auth gate for customer-facing `/api/studio/*` routes.
- *
- * Authentication is checked before Studio access so unauthenticated callers
- * consistently receive 401, while authenticated callers without access
- * receive a reasoned 403 response.
- */
-
 import { NextResponse } from 'next/server'
 import { requireUserApi, type RequireUserApiResult } from '@/lib/user-api-auth'
 import { resolveStudioAccess } from '@/lib/studio/access/studio-access'
 import { getFeatureFlag } from '@/lib/feature-flags'
 import { isAccountPendingApproval } from '@/lib/account-approval'
+import {
+  GUEST_AUTH_REQUIRED_CODE,
+  isGuestAuthUser,
+  resolveGuestStudioPathAllowed,
+} from '@/lib/studio/guest/guest-path'
 
 type StudioSupabaseClient = Extract<RequireUserApiResult, { ok: true }>['supabase']
 
-export type RequireStudioApiResult = RequireUserApiResult
+export type RequireStudioApiSuccess = {
+  ok: true
+  supabase: StudioSupabaseClient
+  user: Extract<RequireUserApiResult, { ok: true }>['user']
+  isGuest: boolean
+}
+
+export type RequireStudioApiResult =
+  | RequireStudioApiSuccess
+  | { ok: false; response: NextResponse }
+
+export type StudioGuestPolicy = 'allow' | 'deny'
 
 /** Read the authenticated user's role from the profiles table. */
 export async function isAdminUser(
@@ -30,17 +38,47 @@ export async function isAdminUser(
   return !error && profile?.role === 'admin'
 }
 
-export async function requireStudioApi(): Promise<RequireStudioApiResult> {
+export async function requireStudioApi(
+  options: { guest?: StudioGuestPolicy } = {},
+): Promise<RequireStudioApiResult> {
+  const guestPolicy = options.guest ?? 'deny'
   const auth = await requireUserApi()
   if (!auth.ok) return auth
 
   const { data: profile } = await auth.supabase
     .from('profiles')
-    .select('role, is_approved')
+    .select('role, is_approved, is_guest')
     .eq('id', auth.user.id)
     .single()
 
+  const isGuest =
+    profile?.is_guest === true || isGuestAuthUser(auth.user)
   const isAdmin = profile?.role === 'admin'
+  const requireAdminApproval = await getFeatureFlag('require_admin_approval')
+
+  if (isGuest && !resolveGuestStudioPathAllowed(requireAdminApproval)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: 'Sign in to use Studio', code: GUEST_AUTH_REQUIRED_CODE },
+        { status: 401 },
+      ),
+    }
+  }
+
+  if (isGuest && guestPolicy === 'deny') {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          error: 'Create a free account to continue',
+          code: GUEST_AUTH_REQUIRED_CODE,
+        },
+        { status: 401 },
+      ),
+    }
+  }
+
   const decision = await resolveStudioAccess({
     userId: auth.user.id,
     isAdmin,
@@ -56,8 +94,8 @@ export async function requireStudioApi(): Promise<RequireStudioApiResult> {
     }
   }
 
-  const requireAdminApproval = await getFeatureFlag('require_admin_approval')
   if (
+    !isGuest &&
     isAccountPendingApproval({
       requireAdminApproval,
       isAdmin,
@@ -76,5 +114,5 @@ export async function requireStudioApi(): Promise<RequireStudioApiResult> {
     }
   }
 
-  return { ok: true, supabase: auth.supabase, user: auth.user }
+  return { ok: true, supabase: auth.supabase, user: auth.user, isGuest }
 }
