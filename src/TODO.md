@@ -4,23 +4,17 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## SEO optimisation
-- [ ] Check if Adwords should include competition (more competitors found now)
-- [ ] Google Adwords seems to reference waitlist/beta still?
+## Issues
+- [ ] Why does Delivery sq. 1200x1200 need 1 credit (vs PDF menu title)?
+- [ ] Seems to be some session overlap (sign out with one account, sign in with another)
+- [ ] Mobile view delete dish button not enough space
+- [ ] Pricing page stuck on Euros?
+- [ ] Can anyone login on mobile?
+- [ ] Close possible back door allowing users to change role (e.g. to admin) or add credits (docs/security/ANONYMOUS_SIGNIN_PROFILE_PRIVILEGE.md)
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-## Issues
-- [x] /auth/signin page not restyled to new branding
-- [ ] Why does Delivery sq. 1200x1200 need 1 credit (vs PDF menu title)?
-- [ ] Seems to be some session overlap (sign out with one account, sign in with another)
-- [ ] Mobile view delete dish button not enough space
-- [x] Tiktok icon needed + show social media in footer on all pages
-- [ ] Pricing page stuck on Euros?
-- [ ] Can anyone login on mobile?
-- [ ] Close possible back door allowing users to change role (e.g. to admin) or add credits (docs/security/ANONYMOUS_SIGNIN_PROFILE_PRIVILEGE.md)
 
 ## /studio
 - [ ] Remove inverse and darken/shade/stripe area to be removed
@@ -206,7 +200,13 @@
 - [x] Update Google Search Console
 - [x] Update Bing Webmaster Tools
 - [x] Keywords still reflect menus
+- [x] Check if Adwords should include competition (more competitors found now)
+- [x] Google Adwords seems to reference waitlist/beta still?
 
 ## UI Review
 - [x] Create design system with Pinterest / Claude
 - [x] Add grid-/tile-inspired images to the home page
+
+## Issues
+- [x] /auth/signin page not restyled to new branding
+- [x] Tiktok icon needed + show social media in footer on all pages
