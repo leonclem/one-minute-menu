@@ -2,9 +2,8 @@
 
 /**
  * Admin Developer Tab
- * 
+ *
  * Access to internal tools and developer utilities.
- * Only visible when NEXT_PUBLIC_LAYOUT_LAB_ENABLED is true.
  */
 
 import { useState, useEffect } from 'react'
@@ -83,32 +82,6 @@ export function DeveloperTab() {
             </div>
             <div className="mt-3">
               <AnalyticsOptOutToggle />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ... existing cards ... */}
-        <Card 
-          className="hover:border-primary-300 transition-colors cursor-pointer group" 
-          onClick={() => window.location.href = '/dev/layout-lab'}
-        >
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span className="p-2 bg-purple-100 text-purple-700 rounded-lg">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3.104v1.244c0 .408-.114.807-.327 1.154L4.855 12.58a3.75 3.75 0 003.235 5.67h7.82a3.75 3.75 0 003.235-5.67l-4.568-7.078a1.996 1.996 0 01-.327-1.154V3.104c0-1.104-.896-2-2-2h-1c-1.104 0-2 .896-2 2z" />
-                </svg>
-              </span>
-              Layout Lab
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600 mb-4">
-              Developer test harness for the V2 layout engine. Test various fixture menus 
-              and validate layout behavior across different scenarios.
-            </p>
-            <div className="text-primary-600 text-sm font-medium group-hover:underline">
-              Launch Lab →
             </div>
           </CardContent>
         </Card>
