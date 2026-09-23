@@ -38,4 +38,12 @@ describe('HeroCompare', () => {
     expect(document.querySelector('img[src="/marketing/hero-compare/banana-bread/OG.png"]')).not.toBeNull()
     expect(document.querySelector('img[src="/marketing/hero-compare/banana-bread/rotated.png"]')).not.toBeNull()
   })
+
+  it('uses readable controls on a light surface, in a slightly smaller frame', () => {
+    const { container } = render(<HeroCompare size="compact" tone="onLight" />)
+
+    expect(container.querySelector('.max-w-\\[22rem\\]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Banana Bread' })).toHaveClass('text-gray-700')
+    expect(screen.getByText('Fresh')).toHaveClass('text-gray-500')
+  })
 })

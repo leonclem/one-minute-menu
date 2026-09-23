@@ -3,8 +3,27 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { UXWrapper } from '@/components/ux'
+import { ImagePlaceholder } from './ImagePlaceholder'
 
-const articles = [
+const articles: Array<{
+  slug: string
+  category: string
+  title: string
+  excerpt: string
+  thumbnail: string | null
+  thumbnailAlt: string
+  imageTheme?: string
+  imageFilename?: string
+}> = [
+  {
+    slug: 'the-problem-with-ai-imagery',
+    category: 'Photo Studio',
+    title: "The Problem With AI Imagery Isn't AI. It's What Never Existed",
+    excerpt:
+      'Some AI food imagery is genuinely repellent. The more useful question is not whether AI was used, but what the image was allowed to invent.',
+    thumbnail: '/backgrounds/unappetising-ai-menu.png',
+    thumbnailAlt: 'A breaded burger that seems to include spaghetti.',
+  },
   {
     slug: 'remove-the-spoon-not-the-fork',
     category: 'Photo Studio',
@@ -42,7 +61,7 @@ export default function BlogPageContent() {
           Blog
         </h1>
         <p className="text-lg text-white/80 text-soft-shadow mb-12">
-          Tips, insights, and guides for food &amp; beverage businesses.
+          Tips, insights, and guides for food imagery, marketing, and branding.
         </p>
 
         <div className="space-y-6">
@@ -53,13 +72,22 @@ export default function BlogPageContent() {
               className="flex flex-col sm:flex-row rounded-2xl bg-white/95 backdrop-blur shadow-lg overflow-hidden hover:shadow-xl transition-shadow group"
             >
               {/* Thumbnail */}
-              <div className="relative w-full sm:w-56 shrink-0 aspect-video sm:aspect-auto">
-                <Image
-                  src={article.thumbnail}
-                  alt={article.thumbnailAlt}
-                  fill
-                  className="object-cover"
-                />
+              <div className="relative w-full sm:w-56 shrink-0 aspect-video sm:aspect-auto sm:min-h-40">
+                {article.thumbnail ? (
+                  <Image
+                    src={article.thumbnail}
+                    alt={article.thumbnailAlt}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <ImagePlaceholder
+                    alt={article.thumbnailAlt}
+                    theme={article.imageTheme || article.thumbnailAlt}
+                    filename={article.imageFilename || ''}
+                    className="absolute inset-0 p-4"
+                  />
+                )}
               </div>
 
               {/* Text */}

@@ -14,6 +14,7 @@
 
 ## Issues
 - [x] /auth/signin page not restyled to new branding
+- [ ] Why does Delivery sq. 1200x1200 need 1 credit (vs PDF menu title)?
 - [ ] Seems to be some session overlap (sign out with one account, sign in with another)
 - [ ] Mobile view delete dish button not enough space
 - [x] Tiktok icon needed + show social media in footer on all pages
@@ -91,7 +92,7 @@
 
 ### Blogs
 - [x] Prompt mastery "Remove the Spoon, Not the Fork."
-- [ ] Fighting AI slop "The Problem With AI Food Photography Isn't AI. It's Food That Never Existed."
+- [x] Fighting AI slop "The Problem With AI Imagery Isn't AI. It's What Never Existed."
 - [ ] Grow sales with better images
 - [ ] Admin tool to add blogs
 - [ ] Use better descriptions to boost sales

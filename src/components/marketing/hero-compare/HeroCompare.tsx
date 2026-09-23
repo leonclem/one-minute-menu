@@ -21,7 +21,14 @@ function photoClass(fit: HeroCompareFit) {
     : 'object-cover object-center'
 }
 
-export default function HeroCompare() {
+type HeroCompareProps = {
+  /** Homepage size, or a slightly smaller frame for embedding in an article. */
+  size?: 'default' | 'compact'
+  /** `onDark` matches the homepage. `onLight` is for a white article card. */
+  tone?: 'onDark' | 'onLight'
+}
+
+export default function HeroCompare({ size = 'default', tone = 'onDark' }: HeroCompareProps = {}) {
   const [cursor, setCursor] = useState<HeroCompareCursor>(HERO_COMPARE_START)
   const [position, setPosition] = useState(50)
   const [motionAllowed, setMotionAllowed] = useState(false)
@@ -83,7 +90,7 @@ export default function HeroCompare() {
 
   return (
     <div
-      className="w-full max-w-[26rem]"
+      className={size === 'compact' ? 'w-full max-w-[22rem]' : 'w-full max-w-[26rem]'}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocusCapture={() => setFocused(true)}
@@ -103,7 +110,9 @@ export default function HeroCompare() {
               className={
                 selected
                   ? 'rounded-full bg-[#01b3bf] px-3.5 py-1.5 text-sm font-semibold text-[#03272a]'
-                  : 'rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-medium text-white/80 hover:bg-white/15'
+                  : tone === 'onLight'
+                    ? 'rounded-full bg-gray-100 px-3.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200'
+                    : 'rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-medium text-white/80 hover:bg-white/15'
               }
             >
               {item.name}
@@ -188,13 +197,17 @@ export default function HeroCompare() {
               type="button"
               aria-pressed={selected}
               onClick={() => selectVariant(index)}
-              className="flex w-16 flex-col items-center gap-1.5"
+              className={
+                size === 'compact'
+                  ? 'flex w-14 flex-col items-center gap-1.5'
+                  : 'flex w-16 flex-col items-center gap-1.5'
+              }
             >
               <span
                 className={
                   selected
-                    ? 'relative block h-14 w-14 overflow-hidden rounded-xl ring-2 ring-[#f5d90a]'
-                    : 'relative block h-14 w-14 overflow-hidden rounded-xl opacity-80 ring-1 ring-white/15'
+                    ? `relative block overflow-hidden rounded-xl ring-2 ring-[#f5d90a] ${size === 'compact' ? 'h-12 w-12' : 'h-14 w-14'}`
+                    : `relative block overflow-hidden rounded-xl opacity-80 ${size === 'compact' ? 'h-12 w-12' : 'h-14 w-14'} ${tone === 'onLight' ? 'ring-1 ring-gray-300' : 'ring-1 ring-white/15'}`
                 }
               >
                 <Image
@@ -205,7 +218,17 @@ export default function HeroCompare() {
                   className="object-cover object-center"
                 />
               </span>
-              <span className={selected ? 'text-xs font-semibold text-white' : 'text-xs text-white/70'}>
+              <span
+                className={
+                  selected
+                    ? tone === 'onLight'
+                      ? 'text-xs font-semibold text-gray-900'
+                      : 'text-xs font-semibold text-white'
+                    : tone === 'onLight'
+                      ? 'text-xs text-gray-500'
+                      : 'text-xs text-white/70'
+                }
+              >
                 {item.label}
               </span>
             </button>
