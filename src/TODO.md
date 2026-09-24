@@ -4,42 +4,35 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## Issues
-- [ ] Why does Delivery sq. 1200x1200 need 1 credit (vs PDF menu title)?
-- [ ] Seems to be some session overlap (sign out with one account, sign in with another)
-- [ ] Mobile view delete dish button not enough space
-- [ ] Pricing page stuck on Euros?
-- [ ] Can anyone login on mobile?
-- [ ] Close possible back door allowing users to change role (e.g. to admin) or add credits (docs/security/ANONYMOUS_SIGNIN_PROFILE_PRIVILEGE.md)
+## /studio
+- [ ] Remove inverse and darken/shade/stripe area to be removed
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Remove inverse and darken/shade/stripe area to be removed
-- [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
 - [ ] Investigate vessel swapping
-- [ ] STUDIO_MOBILE_FOCUS_SWITCHER_PROPOSAL.md (check if still valid after redesign)
-
-### Best Practices (https://ai.google.dev/gemini-api/docs/image-understanding#object-detection)
-- [ ] Object detection (could help with removal accuracy) (may just be Gemini 3.8, need to check)
-- [ ] Check "When using a single image with text, place the text prompt before the image in the input array"
-
-## /pricing
-- [ ] Test production (use 100% off coupon perhaps)
+- [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> LATER >>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## SEO optimisation
-- [ ] Check if Betalist updated (submitted changes 16/08/26)
-
 ## Social Media and Advertising
 - [ ] Investigate what's required for name change
 - [ ] "How to design a restaurant menu" Starter Story Build May 26 "How to Get 1,000 Downloads On Your App in 30 Days (From Scratch)"
 - [ ] Understand what is required and potential upside to conduct a cold email campaign
+
+## /pricing
+- [ ] Test production (use 100% off coupon perhaps)
+
+## SEO optimisation
+- [ ] Check if Betalist updated (submitted changes 16/08/26)
+
+### Best Practices (https://ai.google.dev/gemini-api/docs/image-understanding#object-detection)
+- [ ] Object detection (could help with removal accuracy) (may just be Gemini 3.8, need to check)
+- [ ] Check "When using a single image with text, place the text prompt before the image in the input array"
 
 ## /studio
 - [ ] Allow the user to choose two variants for comparison (slider?)
@@ -210,3 +203,6 @@
 ## Issues
 - [x] /auth/signin page not restyled to new branding
 - [x] Tiktok icon needed + show social media in footer on all pages
+- [x] Why does Delivery sq. 1200x1200 need 1 credit (vs PDF menu title)?
+- [x] Pricing page stuck on Euros?
+- [x] Close possible back door allowing users to change role (e.g. to admin) or add credits (docs/security/ANONYMOUS_SIGNIN_PROFILE_PRIVILEGE.md)

@@ -1,7 +1,7 @@
 # Anonymous sign-in and profile privilege
 
 **Date:** 2026-09-22
-**Status:** Open. Anonymous sign-ins stay enabled. Do this when there is time for a migration and a short regression pass.
+**Status:** Shipped locally in `supabase/migrations/091_protect_profile_privileged_columns.sql` (2026-09-23). Production apply is still pending. Anonymous sign-ins stay enabled. The migration adds a `BEFORE UPDATE` trigger on privileged columns and a `BEFORE INSERT` guard that blocks client profile inserts.
 **Severity:** Privilege escalation for any signed-in user. Anonymous Studio guests make it easy to reach, because they get an authenticated session with no email.
 
 ---
@@ -62,6 +62,8 @@ Allow the change when the session role is one of:
 - the migration/table owner roles Supabase uses for those triggers (`postgres`, `supabase_admin`), confirmed against the live project before shipping
 
 The trigger function should be `SECURITY INVOKER` so `current_user` is the session role. Compare each protected column with `IS DISTINCT FROM` so a no-op update of the same value still succeeds.
+
+The shipped migration also adds a `BEFORE INSERT` trigger. A session outside the allow-list cannot insert a profile row at all. Signup still goes through `handle_new_user`. Local owner of that function is `postgres`. Confirm the owner again on production before applying 091 there.
 
 ### Columns the client must not change
 

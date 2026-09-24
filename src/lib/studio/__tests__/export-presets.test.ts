@@ -67,11 +67,6 @@ describe('resolveExportGenerationMethod', () => {
     })
   })
 
-  it('keeps square exports free from 4:3 and 3:4 heroes', () => {
-    expect(decide(1600, 1200).delivery_square).toBe('crop_resize')
-    expect(decide(1200, 1600).delivery_square).toBe('crop_resize')
-  })
-
   it('makes the landscape export free once the hero is already landscape', () => {
     expect(decide(1920, 1080).delivery_landscape).toBe('crop_resize')
     expect(decide(3000, 2000).delivery_landscape).toBe('crop_resize')
@@ -82,14 +77,18 @@ describe('resolveExportGenerationMethod', () => {
     expect(decide(1200, 1600).instagram_feed).toBe('crop_resize')
   })
 
-  it('never charges for the PDF menu tile, whatever the hero shape', () => {
+  it('never charges for square exports, whatever the hero shape', () => {
     for (const [w, h] of [
       [2048, 2048],
       [1920, 1080],
       [1080, 1920],
       [4000, 1000],
+      [1600, 1200],
+      [1200, 1600],
     ]) {
-      expect(decide(w, h).pdf_menu_tile).toBe('crop_resize')
+      const decision = decide(w, h)
+      expect(decision.pdf_menu_tile).toBe('crop_resize')
+      expect(decision.delivery_square).toBe('crop_resize')
     }
   })
 

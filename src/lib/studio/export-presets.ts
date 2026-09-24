@@ -70,9 +70,8 @@ export const EXPORT_PRESETS: readonly StudioExportPreset[] = [
     priority: 'mvp',
     hint: 'Delivery thumbnails, menu item cards, square website tiles.',
     baseMethod: 'crop_resize',
-    expandMethod: 'ai_expand',
-    // Tolerates 4:3 and 3:4 heroes without paying for a generation.
-    maxCropLoss: 0.3,
+    // Same 1:1 crop as the PDF menu tile, scaled down. Always free.
+    maxCropLoss: 1,
     requestAspectRatio: '1:1',
   },
   {
