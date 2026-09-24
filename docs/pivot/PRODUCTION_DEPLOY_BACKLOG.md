@@ -86,9 +86,9 @@ Prefer `npx supabase db push` against the linked production project (never
 | `supabase/migrations/079_studio_feedback_prompt_state_and_traceability.sql` | Post-Chunk 7 | Applied | LC 2026-08-13: applied manually in prod. |
 | `supabase/migrations/080_studio_control_panel_labels.sql` | Post-Chunk 7 | Applied | LC 2026-08-13: applied manually in prod. |
 | `supabase/migrations/081_studio_first_run_preference.sql` | Post-Chunk 7 | Applied | LC 2026-08-13: applied manually in prod. |
-| `supabase/migrations/082_studio_credit_expiry_and_signup_grant.sql` | Self-serve launch | Pending | Ledger `expires_at` + `remaining`, FIFO debit, 10-credit starter grant. Apply before app code that depends on the new RPC signature. |
-| `supabase/migrations/090_studio_guest_sessions.sql` | Guest Studio first cut | Pending | `profiles.is_guest`, `studio_guest_sessions`, guest-safe `handle_new_user` (no starter credits), `studio_claim_guest_work`, `studio_list_expired_guest_user_ids`. Enable Anonymous sign-ins in Supabase Auth before shipping. |
-| `supabase/migrations/091_protect_profile_privileged_columns.sql` | Profile privilege guard | Pending | Apply after 090 (`profiles.is_guest` must exist). Paste this file in the production SQL editor. Do not `db push` only for 091: remote history stops around 081, so a push would also try to apply 082 through 090. Confirm `handle_new_user` owner is `postgres`, `supabase_auth_admin`, `service_role`, or `supabase_admin` before running. |
+| `supabase/migrations/082_studio_credit_expiry_and_signup_grant.sql` | Self-serve launch | Applied | Ledger `expires_at` + `remaining`, FIFO debit, 10-credit starter grant. Apply before app code that depends on the new RPC signature. |
+| `supabase/migrations/090_studio_guest_sessions.sql` | Guest Studio first cut | Applied | `profiles.is_guest`, `studio_guest_sessions`, guest-safe `handle_new_user` (no starter credits), `studio_claim_guest_work`, `studio_list_expired_guest_user_ids`. Enable Anonymous sign-ins in Supabase Auth before shipping. |
+| `supabase/migrations/091_protect_profile_privileged_columns.sql` | Profile privilege guard | Applied | Apply after 090 (`profiles.is_guest` must exist). Paste this file in the production SQL editor. Do not `db push` only for 091: remote history stops around 081, so a push would also try to apply 082 through 090. Confirm `handle_new_user` owner is `postgres`, `supabase_auth_admin`, `service_role`, or `supabase_admin` before running. |
 
 ---
 
