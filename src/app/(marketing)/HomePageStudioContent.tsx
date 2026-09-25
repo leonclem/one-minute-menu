@@ -135,7 +135,7 @@ export default function HomePageStudioContent({ initialUser }: { initialUser?: u
         </div>
       </section>
 
-      <section className="faq-with-side-dishes relative w-full py-14 md:py-16">
+      <section className="faq-with-side-dishes relative w-full">
         <FaqSideDishes />
         <div className="container-ux relative z-[1] mx-auto max-w-3xl px-6">
           <h2 className="mb-8 text-center text-3xl font-bold tracking-[-0.02em] text-white md:text-4xl">

@@ -4,6 +4,9 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+## Home Page
+- [ ] We should be demonstrating outputs, e.g. raw image -> social media post (a la breakoutclips)
+
 ## /studio
 - [ ] Remove inverse and darken/shade/stripe area to be removed
 
@@ -35,7 +38,8 @@
 - [ ] Check "When using a single image with text, place the text prompt before the image in the input array"
 
 ## /studio
-- [ ] Allow the user to choose two variants for comparison (slider?)
+- [ ] Allow the user to choose two variants for comparison (if not rotated?)
+- [ ] Add (pre-determined, generic) props
 - [ ] Add steam, shimmer, etc. (pro advised to use reference)
 - [ ] See Pinterest "food photography".  Best photos seem to create depth through focus and have some action/drama occurring, also other bowls and kitchen items
 - [ ] Flash-Lite option (a 3rd tier) (1K outputs only)
@@ -184,6 +188,7 @@
 - [x] Determine content
 - [x] Upload some examples to show transition for each stage underneath "How AI food photos work"
 - [x] Wording can now include mention of camera features
+- [x] Replace quesadilla with something more professional
 
 ## /onboarding
 - [x] New users get 10 credits by default

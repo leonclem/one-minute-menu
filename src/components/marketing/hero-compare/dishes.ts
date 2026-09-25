@@ -36,8 +36,8 @@ export const HERO_COMPARE_DISHES: HeroCompareDish[] = [
     fit: 'cover',
     variants: [
       { label: 'Hot', src: '/marketing/hero-compare/banana-bread/hot.png' },
-      { label: 'Overhead', src: '/marketing/hero-compare/banana-bread/overhead.png' },
       { label: 'Rotated', src: '/marketing/hero-compare/banana-bread/rotated.png' },
+      { label: 'Overhead', src: '/marketing/hero-compare/banana-bread/overhead.png' },
     ],
   },
 ]

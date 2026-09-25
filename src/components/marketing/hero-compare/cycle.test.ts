@@ -25,8 +25,8 @@ describe('nextHeroCompareCursor', () => {
     expect(labels(HERO_COMPARE_DISHES, 6)).toEqual([
       'Massaman Curry / Slate',
       'Banana Bread / Hot',
-      'Banana Bread / Overhead',
       'Banana Bread / Rotated',
+      'Banana Bread / Overhead',
       'Massaman Curry / Slate',
       'Massaman Curry / Fresh',
       'Massaman Curry / Moody',

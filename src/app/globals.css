@@ -239,11 +239,21 @@
     padding: 0.9rem 1.1rem;
   }
 
-  @media (max-width: 1023px) {
-    .faq-with-side-dishes .ux-faq-bar {
-      background-color: rgba(15, 28, 31, 0.55);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+  /* Room under the questions for the smaller mobile dishes. Wide screens flank instead. */
+  .faq-with-side-dishes {
+    padding-top: 3.5rem;
+    padding-bottom: min(calc(40vw + 2.75rem), 14.5rem);
+  }
+
+  @media (min-width: 768px) {
+    .faq-with-side-dishes {
+      padding-top: 4rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .faq-with-side-dishes {
+      padding-bottom: 4rem;
     }
   }
 
