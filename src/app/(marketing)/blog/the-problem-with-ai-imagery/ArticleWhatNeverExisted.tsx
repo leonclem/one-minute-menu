@@ -15,6 +15,7 @@ const articleJsonLd = {
   description:
     'Some AI food imagery is repellent, but the tool is not the problem. The question is what the image claims to represent, and what we ask AI to invent.',
   datePublished: '2026-09-23',
+  dateModified: '2026-09-26',
   author: {
     '@type': 'Organization',
     name: 'GridMenu',
@@ -41,6 +42,7 @@ const SOURCES = {
   redditPhotographers:
     'https://www.reddit.com/r/foodphotography/comments/1w99uwi/ai_taking_a_huge_cut_out_of_my_business/',
   foodQuality: 'https://www.sciencedirect.com/science/article/pii/S095032932400051X',
+  scientificReports: 'https://www.nature.com/articles/s41598-026-66977-1',
   redditSf: 'https://www.reddit.com/r/sanfrancisco/comments/1uk76cy/yum_slop/',
 }
 
@@ -204,7 +206,7 @@ export default function ArticleWhatNeverExisted() {
               <p className="text-lg text-gray-500 leading-relaxed mb-3">
                 Part 2: When enhancement becomes invention
               </p>
-              <p className="text-sm text-gray-400">23 September 2026</p>
+              <p className="text-sm text-gray-400">23 September 2026 · Updated 26 September 2026</p>
             </header>
 
             <div className="space-y-6 text-gray-700 text-[1.0625rem] leading-relaxed overflow-hidden">
@@ -427,6 +429,23 @@ export default function ArticleWhatNeverExisted() {
                 significant boost in appeal.
                 <Cite n={5} href={SOURCES.foodQuality} />
               </p>
+              <p>
+                A 2026 study in{' '}
+                <a
+                  href={SOURCES.scientificReports}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-ux-primary hover:underline"
+                >
+                  Scientific Reports
+                </a>
+                , a Nature Portfolio journal, found a related split. Shown matched pairs, and not
+                told which image was generated, people rated the AI food as less realistic and were
+                less willing to eat it. Their guesses about healthiness and calories stayed much
+                the same. Where a generated image did look more real than the photograph,
+                willingness to eat tended to rise with it.
+                <Cite n={6} href={SOURCES.scientificReports} />
+              </p>
               <p>That makes this more interesting than simply saying &ldquo;AI food looks bad&rdquo;.</p>
               <p>The issue is also about representation and trust.</p>
               <p>
@@ -440,7 +459,7 @@ export default function ArticleWhatNeverExisted() {
                   San Francisco Reddit discussion about an AI-generated cafe menu
                 </a>{' '}
                 captured the distinction remarkably well:
-                <Cite n={6} href={SOURCES.redditSf} />
+                <Cite n={7} href={SOURCES.redditSf} />
               </p>
               <blockquote className="border-l-4 border-gray-200 pl-5 italic text-gray-800">
                 &ldquo;surely they could have just made the food and used AI to spruce up the
@@ -592,6 +611,18 @@ export default function ArticleWhatNeverExisted() {
                   >
                     Food Quality and Preference: Assessing the visual appeal of real/AI-generated
                     food images
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href={SOURCES.scientificReports}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="hover:text-ux-primary transition-colors"
+                  >
+                    Scientific Reports: AI-generated food stimuli match real counterparts in
+                    perceived healthiness and calorie content but not in realism or willingness to
+                    eat
                   </a>
                 </li>
                 <li>

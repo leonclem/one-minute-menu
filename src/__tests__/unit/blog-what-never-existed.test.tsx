@@ -110,6 +110,15 @@ describe('The Problem With AI Imagery blog post', () => {
     expect(parsed.headline).toBe(TITLE)
     expect(parsed.url).toBe('https://gridmenu.ai/blog/the-problem-with-ai-imagery')
     expect(parsed.datePublished).toBe('2026-09-23')
+    expect(parsed.dateModified).toBe('2026-09-26')
+    const reportLinks = screen.getAllByRole('link', { name: /scientific reports/i })
+    expect(reportLinks.length).toBeGreaterThan(0)
+    for (const link of reportLinks) {
+      expect(link).toHaveAttribute(
+        'href',
+        'https://www.nature.com/articles/s41598-026-66977-1',
+      )
+    }
 
     const guardianLinks = screen.getAllByRole('link', { name: /the guardian/i })
     expect(guardianLinks[0]).toHaveAttribute(
