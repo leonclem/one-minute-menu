@@ -135,6 +135,7 @@ describe('The Problem With AI Imagery blog post', () => {
   it('uses studio-focused metadata without em dashes', () => {
     expect(metadata.title).toBe(`${TITLE} | GridMenu`)
     expect(String(metadata.description)).toMatch(/invent/i)
+    expect(metadata.robots).toEqual({ index: true, follow: true })
     expect(JSON.stringify(metadata)).not.toMatch(/—/)
   })
 })

@@ -99,6 +99,7 @@ describe('Remove the Spoon, Not the Fork blog post', () => {
   it('uses studio-focused metadata without em dashes', () => {
     expect(metadata.title).toBe('Remove the Spoon, Not the Fork | GridMenu')
     expect(String(metadata.description)).toMatch(/controls/i)
+    expect(metadata.robots).toEqual({ index: true, follow: true })
     expect(JSON.stringify(metadata)).not.toMatch(/—/)
   })
 })

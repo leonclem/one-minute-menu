@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import ArticleRemoveTheSpoon from './ArticleRemoveTheSpoon'
-import { withParkedRobots } from '@/lib/studio/public-seo'
+import { withIndexableRobots } from '@/lib/studio/public-seo'
 
-export const metadata: Metadata = withParkedRobots({
+export const metadata: Metadata = withIndexableRobots({
   title: 'Remove the Spoon, Not the Fork | GridMenu',
   description:
     'AI food photo editing still starts with a blank prompt. Photographers end up negotiating over a spoon and a fork. GridMenu replaces that with controls.',

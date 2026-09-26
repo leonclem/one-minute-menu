@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import ArticleDigitalVsPaper from './ArticleDigitalVsPaper'
-import { withParkedRobots } from '@/lib/studio/public-seo'
+import { withIndexableRobots } from '@/lib/studio/public-seo'
 
-export const metadata: Metadata = withParkedRobots({
+export const metadata: Metadata = withIndexableRobots({
   title: 'Paper Menus for Guests, Digital Control for Operators | GridMenu',
   description:
     'Are paper menus still better for restaurants? This guide explores paper vs digital menus, what diners prefer, and why many operators now need both.',

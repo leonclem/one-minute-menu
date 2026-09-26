@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import ArticleWhatNeverExisted from './ArticleWhatNeverExisted'
-import { withParkedRobots } from '@/lib/studio/public-seo'
+import { withIndexableRobots } from '@/lib/studio/public-seo'
 
-export const metadata: Metadata = withParkedRobots({
+export const metadata: Metadata = withIndexableRobots({
   title: "The Problem With AI Imagery Isn't AI. It's What Never Existed | GridMenu",
   description:
     'Some AI food imagery is repellent, but the tool is not the problem. The question is what the image claims to represent, and what we ask AI to invent.',

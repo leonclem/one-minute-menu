@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import BlogPageContent from './BlogPageContent'
-import { withParkedRobots } from '@/lib/studio/public-seo'
+import { withIndexableRobots } from '@/lib/studio/public-seo'
 
-export const metadata: Metadata = withParkedRobots({
+export const metadata: Metadata = withIndexableRobots({
   title: 'Blog | GridMenu',
   description:
     'Tips, insights, and guides for food imagery, marketing, and branding.',

@@ -44,3 +44,11 @@ export function withParkedRobots(metadata: Metadata): Metadata {
   if (!robots) return metadata
   return { ...metadata, robots }
 }
+
+/** Blog and other pages we want Google to index, including in studio-public mode. */
+export function withIndexableRobots(metadata: Metadata): Metadata {
+  return {
+    ...metadata,
+    robots: { index: true, follow: true },
+  }
+}

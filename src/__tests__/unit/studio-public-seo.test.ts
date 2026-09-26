@@ -35,14 +35,16 @@ describe('studio-public sitemap and SEO helpers', () => {
     process.env.NEXT_PUBLIC_ENABLE_PHOTO_STUDIO = 'true'
   }
 
-  it('includes /demo/sample when studio-public flags are off', async () => {
+  it('includes /demo/sample and the blog when studio-public flags are off', async () => {
     const { default: sitemap } = await import('@/app/sitemap')
     const urls = sitemap().map((entry) => entry.url)
     expect(urls.some((url) => url.endsWith('/demo/sample'))).toBe(true)
+    expect(urls.some((url) => url.endsWith('/blog'))).toBe(true)
+    expect(urls.some((url) => url.endsWith('/blog/the-problem-with-ai-imagery'))).toBe(true)
     expect(urls.some((url) => url.includes('/studio'))).toBe(false)
   })
 
-  it('omits parked menu URLs and /studio when studio-public flags are on', async () => {
+  it('omits parked menu URLs and /studio, and keeps the blog, when studio-public flags are on', async () => {
     enableStudioPublic()
     const { default: sitemap } = await import('@/app/sitemap')
     const urls = sitemap().map((entry) => entry.url)
@@ -50,8 +52,12 @@ describe('studio-public sitemap and SEO helpers', () => {
     expect(urls.some((url) => url.endsWith('/pricing'))).toBe(true)
     expect(urls.some((url) => url.endsWith('/register'))).toBe(true)
     expect(urls.some((url) => url.endsWith('/support'))).toBe(true)
+    expect(urls.some((url) => url.endsWith('/blog'))).toBe(true)
+    expect(urls.some((url) => url.endsWith('/blog/the-problem-with-ai-imagery'))).toBe(true)
+    expect(urls.some((url) => url.endsWith('/blog/remove-the-spoon-not-the-fork'))).toBe(true)
+    expect(urls.some((url) => url.endsWith('/blog/restaurants-cannot-control-inflation'))).toBe(true)
+    expect(urls.some((url) => url.endsWith('/blog/digital-vs-paper-menus'))).toBe(true)
     expect(urls.some((url) => url.includes('/demo/sample'))).toBe(false)
-    expect(urls.some((url) => url.includes('/blog'))).toBe(false)
     expect(urls.some((url) => url.includes('/studio'))).toBe(false)
   })
 
@@ -72,17 +78,27 @@ describe('studio-public sitemap and SEO helpers', () => {
   })
 
   it('noindexes parked pages only when studio-public flags are on', async () => {
-    const { parkedPageRobots, withParkedRobots } = await import('@/lib/studio/public-seo')
+    const { parkedPageRobots, withParkedRobots, withIndexableRobots } = await import(
+      '@/lib/studio/public-seo'
+    )
     expect(parkedPageRobots()).toBeUndefined()
-    expect(withParkedRobots({ title: 'Blog' }).robots).toBeUndefined()
+    expect(withParkedRobots({ title: 'Rate limits' }).robots).toBeUndefined()
+    expect(withIndexableRobots({ title: 'Blog' }).robots).toEqual({
+      index: true,
+      follow: true,
+    })
 
     enableStudioPublic()
     jest.resetModules()
     const studioSeo = await import('@/lib/studio/public-seo')
     expect(studioSeo.parkedPageRobots()).toEqual({ index: false, follow: false })
-    expect(studioSeo.withParkedRobots({ title: 'Blog' }).robots).toEqual({
+    expect(studioSeo.withParkedRobots({ title: 'Rate limits' }).robots).toEqual({
       index: false,
       follow: false,
+    })
+    expect(studioSeo.withIndexableRobots({ title: 'Blog' }).robots).toEqual({
+      index: true,
+      follow: true,
     })
   })
 
