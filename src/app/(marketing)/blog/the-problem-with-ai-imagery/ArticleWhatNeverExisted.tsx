@@ -283,7 +283,7 @@ export default function ArticleWhatNeverExisted() {
                 compared with 19% positively.
                 <Cite n={3} href={SOURCES.gallup} />
               </p>
-              <p>But I am not convinced this means people simply &ldquo;hate AI&rdquo;.</p>
+              <p>So its not clear to say that this means people simply &ldquo;hate AI&rdquo;.</p>
               <p>Maybe we&rsquo;re entering a less-easily-impressed-by-AI era.</p>
               <p>
                 The novelty is wearing off. &ldquo;Made with AI&rdquo; is no longer interesting on
