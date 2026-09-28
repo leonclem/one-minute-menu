@@ -1,36 +1,15 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect } from 'react'
-import { Camera, Share2, SlidersHorizontal, type LucideIcon } from 'lucide-react'
-import { UXButton, UxFaqAccordion, UxStudioCtaBand } from '@/components/ux'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 import { captureEvent, ANALYTICS_EVENTS } from '@/lib/posthog'
-import HeroCompare from '@/components/marketing/hero-compare/HeroCompare'
-import { FaqSideDishes } from '@/components/marketing/faq-side-dishes/FaqSideDishes'
-import { STUDIO_PUBLIC_FAQS } from '@/lib/studio/public-faqs'
+import HeroDemo from '@/components/marketing/hero-demo/HeroDemo'
 import { STUDIO_SEO } from '@/lib/studio/public-seo'
 
-const WORKFLOW_STEPS: Array<{ title: string; body: string; icon: LucideIcon }> = [
-  {
-    title: 'Upload a real photo',
-    body: 'Use a photo that you have taken of any dish. This is the source of truth.',
-    icon: Camera,
-  },
-  {
-    title: 'Stage controlled edits',
-    body: 'Pick lighting, backdrop, surface, and remove elements from the image and generate.',
-    icon: SlidersHorizontal,
-  },
-  {
-    title: 'Export, ready to publish',
-    body: 'Get professional crops sized for delivery apps and social, fast, without a photoshoot. Iterate in your dish library, then download what you need.',
-    icon: Share2,
-  },
-]
-
 export default function HomePageStudioContent({ initialUser }: { initialUser?: unknown }) {
-  const user = initialUser
+  void initialUser
   const primaryHref = '/studio'
   const primaryLabel = 'Open Studio'
 
@@ -51,16 +30,6 @@ export default function HomePageStudioContent({ initialUser }: { initialUser?: u
     description: STUDIO_SEO.description,
   }
 
-  const faqPageJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: STUDIO_PUBLIC_FAQS.map((faq) => ({
-      '@type': 'Question',
-      name: faq.question,
-      acceptedAnswer: { '@type': 'Answer', text: faq.answer },
-    })),
-  }
-
   const handlePrimaryClick = () => {
     trackConversionEvent({
       event: 'cta_click_primary',
@@ -73,94 +42,70 @@ export default function HomePageStudioContent({ initialUser }: { initialUser?: u
   }
 
   return (
-    <div className="w-full">
+    <div className="flex w-full flex-1 flex-col">
       <script
         type="application/ld+json"
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqPageJsonLd) }}
-      />
 
-      <section className="ux-food-bleed ux-food-bleed-hero relative w-full">
-        <div className="container-ux relative z-[1] mx-auto max-w-6xl px-6 py-14 md:py-20 lg:py-24">
-          <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
-            <div className="w-full max-w-xl text-center lg:max-w-lg lg:flex-1 lg:text-left xl:max-w-xl">
-              <h1 className="text-4xl font-extrabold leading-tight tracking-[-0.03em] text-white md:text-5xl lg:text-[3.25rem]">
-                {STUDIO_SEO.h1}
-              </h1>
-              <p className="mt-6 text-[1.05rem] leading-relaxed text-white/70 md:mt-8">
-                Upload a real dish photo. Choose lighting, background, surface, and camera - then generate.
-              </p>
-              <p className="mt-4 text-base leading-relaxed text-white/70 md:mt-5">
-                No prompting. Just a simple, friendly interface that delivers precise, predictable results.
-              </p>
-              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row lg:mt-10 lg:justify-start">
-                <Link href={primaryHref} className="w-full sm:w-auto" onClick={handlePrimaryClick}>
-                  <UXButton variant="primary" size="lg" noShadow className="w-full min-w-[180px] sm:w-auto">
-                    {primaryLabel}
-                  </UXButton>
-                </Link>
-                <Link href="/pricing" className="w-full sm:w-auto">
-                  <UXButton variant="outline" size="lg" noShadow className="w-full min-w-[180px] sm:w-auto">
-                    See pricing
-                  </UXButton>
-                </Link>
-              </div>
+      <section className="relative flex w-full flex-1 flex-col overflow-hidden bg-[#0b1114]">
+        <Image
+          src="/backgrounds/kung-pao-chicken.png"
+          alt=""
+          fill
+          sizes="100vw"
+          className="pointer-events-none object-cover"
+          style={{
+            objectPosition: '38% 32%',
+            filter: 'blur(6px) brightness(0.78) saturate(1.15)',
+            transform: 'scale(1.08)',
+          }}
+        />
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(100deg, rgba(11,17,20,.98) 0%, rgba(11,17,20,.93) 26%, rgba(11,17,20,.60) 55%, rgba(11,17,20,.35) 100%)',
+          }}
+        />
+        <div className="container-ux relative z-[1] flex flex-wrap items-center gap-10 pb-16 pt-8 md:gap-14 md:pb-24 md:pt-12">
+          <div className="min-w-0 flex-[1_1_380px]">
+            <h1 className="mb-[26px] text-[clamp(34px,4.4vw,54px)] font-extrabold leading-[1.08] tracking-[-0.01em] text-pretty text-white">
+              {STUDIO_SEO.h1}
+            </h1>
+            <p className="max-w-[480px] text-[18px] leading-[1.6] text-[rgba(255,255,255,0.66)]">
+              Upload a real dish photo. Choose lighting, background, surface and more, then generate.
+            </p>
+            <p className="mt-4 max-w-[480px] text-[18px] leading-[1.6] text-[rgba(255,255,255,0.66)]">
+              No prompting. Just a simple, friendly interface that delivers precise, predictable results.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3.5">
+              <Link
+                href={primaryHref}
+                onClick={handlePrimaryClick}
+                className="inline-flex items-center justify-center rounded-lg bg-[#00b3bf] px-7 py-4 text-[16px] font-bold text-[#04232a] shadow-[0_0_26px_rgba(0,179,191,0.45)] transition hover:brightness-110"
+              >
+                {primaryLabel}
+              </Link>
+              <Link
+                href="/pricing"
+                className="inline-flex items-center justify-center rounded-lg border border-white/20 px-7 py-4 text-[16px] font-bold text-white transition hover:border-white/40"
+              >
+                See pricing
+              </Link>
             </div>
-            <HeroCompare />
+          </div>
+          <div className="w-full min-w-0 max-w-[560px] flex-[0_1_560px]">
+            <HeroDemo />
           </div>
         </div>
-      </section>
-
-      <section className="w-full py-14 md:py-20">
-        <div className="container-ux mx-auto max-w-6xl px-6">
-          <h2 className="mb-10 text-center text-3xl font-bold tracking-[-0.02em] text-white md:text-4xl">
-            How GridMenu works
-          </h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
-            {WORKFLOW_STEPS.map((step) => (
-              <div key={step.title} className="card-ux p-6">
-                <span className="mb-4 inline-flex h-9 w-9 items-center justify-center text-[var(--studio-teal,#01b3bf)]">
-                  <step.icon className="h-6 w-6" aria-hidden="true" />
-                </span>
-                <h3 className="text-lg font-bold text-white">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/60">{step.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="faq-with-side-dishes relative w-full">
-        <FaqSideDishes />
-        <div className="container-ux relative z-[1] mx-auto max-w-3xl px-6">
-          <h2 className="mb-8 text-center text-3xl font-bold tracking-[-0.02em] text-white md:text-4xl">
-            Common questions
-          </h2>
-          <UxFaqAccordion faqs={STUDIO_PUBLIC_FAQS} />
-          <p className="mt-8 text-center text-sm text-white/55">
-            Have more questions?{' '}
-            <Link href="/support" className="font-semibold text-[var(--studio-link,#5fd3da)] hover:text-[#7fdee4]">
-              Visit our support page
-            </Link>
-          </p>
-        </div>
-      </section>
-
-      <section className="w-full px-4 pb-16 md:px-6 md:pb-20">
-        <UxStudioCtaBand
-          primaryHref={primaryHref}
-          primaryLabel={primaryLabel}
-          onPrimaryClick={handlePrimaryClick}
-          subtitle={
-            user
-              ? 'Start with 10 free credits. Buy more anytime on the pricing page.'
-              : 'Try Studio with one photo. Create a free account when you are ready to generate.'
-          }
+        <div
+          className="relative z-[1] min-h-48 flex-1"
+          style={{
+            background:
+              'linear-gradient(to bottom, rgba(15,28,31,0) 0%, rgba(15,28,31,0.45) 42%, #0f1c1f 100%)',
+          }}
         />
       </section>
     </div>

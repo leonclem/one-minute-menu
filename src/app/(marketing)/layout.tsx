@@ -29,7 +29,7 @@ export default async function MarketingLayout({
       </a>
       <UXHeader userEmail={user?.email} />
       <UXAnalyticsProvider>
-        <main id="ux-main-content" className="flex-1 w-full">
+        <main id="ux-main-content" className="flex w-full flex-1 flex-col">
           {children}
         </main>
       </UXAnalyticsProvider>

@@ -5,7 +5,7 @@ export const STUDIO_SEO = {
   title: 'AI Food Photo Studio | GridMenu',
   description:
     'Turn a real dish photo into polished commercial food images without prompts. Control lighting, background, and surface. Start with 10 free credits.',
-  h1: 'Turn your photos into studio-quality images without prompts.',
+  h1: 'One photo. Every place your food needs to be seen.',
 } as const
 
 export const STUDIO_PRICING_SEO = {
