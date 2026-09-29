@@ -116,18 +116,20 @@ export default function HeroDemo() {
         {snap.step === 0 || snap.step === 1 ? (
           <p className={styles.caption}>{CAPTIONS[snap.step]}</p>
         ) : (
-          HERO_DEMO_SCENARIOS.map((item, index) => (
-            <button
-              key={item.key}
-              type="button"
-              className={`${styles.chip} ${snap.scenario === index ? styles.chipOn : ''}`}
-              aria-pressed={snap.scenario === index}
-              onClick={() => player.selectScenario(index)}
-            >
-              {item.label}
-              <span className={styles.fmt}>{item.fmt}</span>
-            </button>
-          ))
+          <div className={styles.chips}>
+            {HERO_DEMO_SCENARIOS.map((item, index) => (
+              <button
+                key={item.key}
+                type="button"
+                className={`${styles.chip} ${snap.scenario === index ? styles.chipOn : ''}`}
+                aria-pressed={snap.scenario === index}
+                onClick={() => player.selectScenario(index)}
+              >
+                {item.label}
+                <span className={styles.fmt}>{item.fmt}</span>
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>

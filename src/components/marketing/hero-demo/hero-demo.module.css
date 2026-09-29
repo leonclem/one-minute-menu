@@ -20,7 +20,13 @@
   border: 0;
   background: transparent;
   cursor: pointer;
-  text-align: left;
+  text-align: center;
+}
+
+@media (min-width: 1080px) {
+  .tab {
+    text-align: left;
+  }
 }
 
 .tab:focus-visible,
@@ -33,12 +39,20 @@
 .labelRow {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   font-size: 13px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.5);
   transition: color 0.3s ease;
-  transform-origin: left center;
+  transform-origin: center center;
+}
+
+@media (min-width: 1080px) {
+  .labelRow {
+    justify-content: flex-start;
+    transform-origin: left center;
+  }
 }
 
 .labelOn {
@@ -492,6 +506,28 @@
   text-align: center;
 }
 
+.chips {
+  display: flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .footer {
+    height: auto;
+    max-height: none;
+    padding-bottom: 4px;
+  }
+
+  .chips {
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+  }
+}
+
 .caption {
   margin: 0;
   font-size: 14px;
@@ -506,6 +542,7 @@
   color: rgba(255, 255, 255, 0.6);
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
 

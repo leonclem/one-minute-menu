@@ -241,13 +241,13 @@
 
   /* Room under the questions for the smaller mobile dishes. Wide screens flank instead. */
   .faq-with-side-dishes {
-    padding-top: 3.5rem;
+    padding-top: 0.75rem;
     padding-bottom: min(calc(40vw + 2.75rem), 14.5rem);
   }
 
   @media (min-width: 768px) {
     .faq-with-side-dishes {
-      padding-top: 4rem;
+      padding-top: 1.5rem;
     }
   }
 

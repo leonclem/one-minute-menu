@@ -23,7 +23,7 @@ export default async function MarketingLayout({
   const user = await getCurrentUser()
 
   return (
-    <div className="ux-implementation ux-studio-surface min-h-dvh md:min-h-screen flex flex-col overflow-x-hidden relative">
+    <div className="ux-implementation ux-studio-surface relative flex min-h-dvh flex-col overflow-x-clip md:min-h-screen">
       <a href="#ux-main-content" className="sr-only-focusable">
         Skip to main content
       </a>

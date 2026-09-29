@@ -4,12 +4,11 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## Issues
-- [ ] Latest edits don't always appear in "All dishes" grid
-- [ ] Lost FAQs and slide-in images from home page (git commit f20bce0000d46c95073ad01ab3f4dd5e9fd54de3)
-
 ## SEO optimisation
 - [ ] Dedicated ai-food-photography landing page
+
+## Issues
+- [ ] Latest edits don't always appear in "All dishes" grid
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
@@ -213,3 +212,4 @@
 - [x] Why does Delivery sq. 1200x1200 need 1 credit (vs PDF menu title)?
 - [x] Pricing page stuck on Euros?
 - [x] Close possible back door allowing users to change role (e.g. to admin) or add credits (docs/security/ANONYMOUS_SIGNIN_PROFILE_PRIVILEGE.md)
+- [x] Lost FAQs and slide-in images from home page (git commit f20bce0000d46c95073ad01ab3f4dd5e9fd54de3)
