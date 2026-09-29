@@ -2,6 +2,7 @@
 
 import { StudioCropLauncher } from './studio-crop'
 import { StudioExpandLauncher } from './studio-expand'
+import { StudioKeepLauncher } from './studio-keep-this'
 import { StudioObjectEditLauncher } from './studio-object-edit'
 
 interface StudioWorkbenchToolbarProps {
@@ -9,11 +10,13 @@ interface StudioWorkbenchToolbarProps {
   cropOpen: boolean
   expandOpen: boolean
   objectEditOpen: boolean
+  keepOpen: boolean
   creditLabel: string
   overlay?: boolean
   onReframe: () => void
   onExpand: () => void
   onRemove: () => void
+  onKeep: () => void
 }
 
 export function StudioWorkbenchToolbar({
@@ -21,11 +24,13 @@ export function StudioWorkbenchToolbar({
   cropOpen,
   expandOpen,
   objectEditOpen,
+  keepOpen,
   creditLabel,
   overlay = false,
   onReframe,
   onExpand,
   onRemove,
+  onKeep,
 }: StudioWorkbenchToolbarProps) {
   return (
     <div
@@ -56,6 +61,13 @@ export function StudioWorkbenchToolbar({
             : `${creditLabel} · re-renders`
         }
         onOpen={onRemove}
+      />
+      <StudioKeepLauncher
+        disabled={disabled}
+        overlay={overlay}
+        pressed={keepOpen}
+        hint={keepOpen ? 'Draw around what should stay' : `${creditLabel} · clear the rest`}
+        onOpen={onKeep}
       />
     </div>
   )

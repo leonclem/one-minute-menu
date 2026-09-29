@@ -190,19 +190,67 @@ describe('Remove-only object-edit components', () => {
     expect(onGenerate).toHaveBeenCalled()
   })
 
-  it('uses the selected model credit label and gives focused-limit guidance without semantic internals', () => {
-    const manyMarks = selectionFromStrokes(
-      Array.from({ length: 8 }, (_, index) => ({
-        kind: 'tap' as const,
-        points: [{ x: 0.1 + index * 0.05, y: 0.5 }],
-      })),
-      { width: 1000, height: 1000 },
-    )
-    render(<StudioObjectEditStatus selection={manyMarks} />)
+  it('tells the cook that a new mark replaces the last one', () => {
+    render(<StudioObjectEditStatus selection={selection} />)
 
-    expect(screen.getByRole('status')).toHaveTextContent('8/8 marks')
-    expect(screen.getByText(/maximum number of marks/i)).toBeInTheDocument()
-    expect(screen.getByText(/keep the annotation focused/i)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Selection added')
+    expect(screen.getByText('A new mark replaces this one.')).toBeInTheDocument()
+    expect(screen.queryByText(/8\/8 marks/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/maximum number of marks/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/unrelated marks/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/mask|segmentation|lasso|confidence|pixel selection/i)).not.toBeInTheDocument()
+  })
+
+  it('shades outside a Keep this outline and offers Clear the rest', () => {
+    const outline = selectionFromStrokes(
+      [
+        {
+          kind: 'path',
+          points: [
+            { x: 0.2, y: 0.2 },
+            { x: 0.7, y: 0.25 },
+            { x: 0.6, y: 0.8 },
+          ],
+        },
+      ],
+      { width: 1000, height: 800 },
+    )
+    render(
+      <>
+        <StudioSelectionOverlay selection={outline} shadeExterior />
+        <StudioObjectEditPanel
+          operation="keep"
+          selection={outline}
+          canGenerate
+          creditLabel="1 credit"
+          busy={false}
+          onUndo={jest.fn()}
+          onClear={jest.fn()}
+          onGenerate={jest.fn()}
+          onCancel={jest.fn()}
+          onClose={jest.fn()}
+        />
+      </>,
+    )
+
+    expect(screen.getByTestId('studio-keep-shade')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Outline added')
+    expect(screen.getByText('A new outline replaces this one.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Clear the rest, 1 credit' })).toHaveTextContent('Clear the rest · 1 credit')
+    expect(screen.getByText(/The shaded area will be cleared/)).toBeInTheDocument()
+  })
+
+  it('leaves a Keep this stroke open until the drawing is released', () => {
+    const preview = [
+      { x: 0.2, y: 0.8 },
+      { x: 0.3, y: 0.3 },
+      { x: 0.8, y: 0.35 },
+    ]
+    render(<StudioSelectionOverlay selection={EMPTY} previewPoints={preview} shadeExterior />)
+
+    const paths = annotationStrokePaths()
+    expect(paths.length).toBeGreaterThan(0)
+    expect(paths.every((path) => path.getAttribute('d') === 'M 0.2 0.8 L 0.3 0.3 L 0.8 0.35')).toBe(true)
+    expect(screen.queryByTestId('studio-keep-shade')).not.toBeInTheDocument()
   })
 })

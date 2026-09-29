@@ -23,7 +23,7 @@ describe('Level A presentation projection', () => {
     expect(projection.rawAnnotations).toHaveLength(6)
     expect(projection.rawAnnotations.every((primitive) => primitive.kind === 'target-marker')).toBe(true)
     expect(projection.statusText).toBe('Selection added')
-    expect(projection.guidanceText).toContain('Keep the annotation focused on one object')
+    expect(projection.guidanceText).toBe('A new mark replaces this one.')
   })
 
   it('projects approximate Move graphics and warning text without semantic data', () => {
@@ -41,6 +41,18 @@ describe('Level A presentation projection', () => {
     expect(projection.moveArrow).toEqual({ from: { x: 0.5, y: 0.5 }, to: { x: 1, y: 0 } })
     expect(projection.approximatePlacementGuide).not.toBeNull()
     expect(projection.warningText).toContain('may extend beyond the image edge')
+    expect(JSON.stringify(projection).toLowerCase()).not.toMatch(/mask|segmentation|lasso|pixel selection|confidence/)
+  })
+
+  it('asks for one outline when Keep this has a closed drawing', () => {
+    const selection = selectionFromStrokes(
+      [{ kind: 'path', points: [{ x: 0.2, y: 0.3 }, { x: 0.6, y: 0.3 }, { x: 0.5, y: 0.8 }] }],
+      { width: 1000, height: 800 },
+    )
+    const projection = projectLevelAEditor({ selection, operation: 'keep', placement: null })
+
+    expect(projection.statusText).toBe('Outline added')
+    expect(projection.guidanceText).toBe('A new outline replaces this one.')
     expect(JSON.stringify(projection).toLowerCase()).not.toMatch(/mask|segmentation|lasso|pixel selection|confidence/)
   })
 })

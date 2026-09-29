@@ -223,6 +223,14 @@ const MoveEditIntentZ = z
   })
   .strict()
 
+const KeepEditIntentZ = z
+  .object({
+    version: z.literal(1),
+    operation: z.literal('keep'),
+    selection: SelectionZ,
+  })
+  .strict()
+
 function addPlacementSourceIssue(
   selection: z.infer<typeof SelectionZ>,
   placement: z.infer<typeof MovePlacementZ>,
@@ -240,7 +248,7 @@ function addPlacementSourceIssue(
 }
 
 export const StructuredEditIntentZ = z
-  .discriminatedUnion('operation', [RemoveEditIntentZ, MoveEditIntentZ])
+  .discriminatedUnion('operation', [RemoveEditIntentZ, MoveEditIntentZ, KeepEditIntentZ])
   .superRefine((intent, context) => {
     if (intent.operation === 'move') {
       addPlacementSourceIssue(intent.selection, intent.placement, context, ['placement', 'source'])
@@ -259,12 +267,12 @@ export const ObjectEditSubmissionZ = z
 export const ObjectEditOperationMetadataZ = z
   .object({
     version: z.literal(1),
-    operation: z.enum(['remove', 'move']),
+    operation: z.enum(['remove', 'move', 'keep']),
     directParentImageId: z.string().uuid(),
     selectedSourceImageId: z.string().uuid(),
     selection: SelectionZ,
     placement: MovePlacementZ.optional(),
-    annotationRendererVersion: z.literal(1),
+    annotationRendererVersion: z.union([z.literal(1), z.literal(2)]),
     contractDigest: z.string().regex(/^[a-f0-9]{64}$/i, 'Contract digest must be a SHA-256 hex digest.'),
   })
   .strict()
@@ -283,7 +291,15 @@ export const ObjectEditOperationMetadataZ = z
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['placement'],
-        message: 'Remove metadata cannot include move placement coordinates.',
+        message: 'Only move metadata can include placement coordinates.',
+      })
+    }
+    const expectedRendererVersion = metadata.operation === 'keep' ? 2 : 1
+    if (metadata.annotationRendererVersion !== expectedRendererVersion) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['annotationRendererVersion'],
+        message: 'Annotation renderer version does not match the operation.',
       })
     }
   })

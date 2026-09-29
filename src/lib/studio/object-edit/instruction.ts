@@ -6,8 +6,9 @@ import {
   type StructuredEditIntent,
 } from '@/lib/studio/object-edit/contracts'
 import {
-  ANNOTATION_RENDERER_VERSION,
+  annotationRendererVersionFor,
   serializeObjectEditValue,
+  type AnnotationRendererVersion,
 } from '@/lib/studio/object-edit/reference-image'
 
 export interface ObjectEditSpatialEnrichmentInput {
@@ -32,7 +33,7 @@ export interface ObjectEditInstructionInput {
 
 export interface ObjectEditContractV1 {
   version: 1
-  operation: 'remove' | 'move'
+  operation: 'remove' | 'move' | 'keep'
   selection: Selection
   placement?: MovePlacement
   canonical?: {
@@ -41,7 +42,7 @@ export interface ObjectEditContractV1 {
   }
   spatial?: unknown
   metadata: {
-    annotationRendererVersion: typeof ANNOTATION_RENDERER_VERSION
+    annotationRendererVersion: AnnotationRendererVersion
     renderDigest?: string
     selectionSignal: 'primary'
     spatialSignal: 'secondary'
@@ -111,7 +112,7 @@ export function buildObjectEditInstruction(
         }),
     ...(spatial === undefined ? {} : { spatial }),
     metadata: {
-      annotationRendererVersion: ANNOTATION_RENDERER_VERSION,
+      annotationRendererVersion: annotationRendererVersionFor(intent.operation),
       ...(input.renderDigest === undefined ? {} : { renderDigest: input.renderDigest }),
       selectionSignal: 'primary',
       spatialSignal: 'secondary',
@@ -122,9 +123,11 @@ export function buildObjectEditInstruction(
   const roleText = [
     'Image A is the current clean source image to edit.',
     'Image B is guidance only and must not appear in the output.',
-    intent.operation === 'move'
-      ? 'The marks in Image B identify the selected object and destination guidance.'
-      : 'The marks in Image B identify the selected object guidance.',
+    intent.operation === 'keep'
+      ? 'The closed outline in Image B is a rough sketch around the plate to keep, not an exact edge.'
+      : intent.operation === 'move'
+        ? 'The marks in Image B identify the selected object and destination guidance.'
+        : 'The marks in Image B identify the selected object guidance.',
   ]
 
   const operationText =
@@ -133,15 +136,24 @@ export function buildObjectEditInstruction(
           'Remove only the one object indicated by the raw annotation in Image B.',
           'Reconstruct the revealed region naturally.',
         ]
-      : [
-          'Relocate only the one object indicated by the raw annotation in Image B to the supplied destination.',
-          'Reconstruct the object\'s original region naturally.',
-          'Preserve the selected object\'s visual identity, scale, and orientation.',
-          'The placement guidance is approximate and is not a pixel-exact transform.',
-        ]
+      : intent.operation === 'keep'
+        ? [
+            'Remove everything in the image except the plate and its contents indicated by that rough sketch, and the surface the plate rests on.',
+            'The sketch may include small elements of the background that are not intended to be preserved.',
+            'Food and other contents that belong on the plate may extend past the sketch. Do not cut them along the sketch line.',
+            'The resulting image should be that food, resting on an otherwise empty surface.',
+          ]
+        : [
+            'Relocate only the one object indicated by the raw annotation in Image B to the supplied destination.',
+            'Reconstruct the object\'s original region naturally.',
+            'Preserve the selected object\'s visual identity, scale, and orientation.',
+            'The placement guidance is approximate and is not a pixel-exact transform.',
+          ]
 
   const preservationText =
-    'Preserve all unselected image content, including unrelated objects, camera angle, lighting, surface, backdrop, and composition.'
+    intent.operation === 'keep'
+      ? 'Preserve the camera angle and the identity of the food on the plate.'
+      : 'Preserve all unselected image content, including unrelated objects, camera angle, lighting, surface, backdrop, and composition.'
   const contractText = serializeObjectEditValue(contract)
 
   return {

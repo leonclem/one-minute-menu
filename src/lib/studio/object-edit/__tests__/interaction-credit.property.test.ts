@@ -7,7 +7,7 @@ import {
   type ObjectEditEditorState,
 } from '../editor-state'
 import { placementForDestination } from '../move-placement'
-import { addCompletedStrokeAtomic, clearSelection, undoSelection } from '../selection'
+import { addCompletedStrokeAtomic, clearSelection } from '../selection'
 
 const bounds = { left: 20, top: 40, width: 960, height: 640 }
 const naturalSize = { width: 1600, height: 900 }
@@ -51,10 +51,7 @@ function applyBrowserOnlyEvent(state: ObjectEditEditorState, event: BrowserOnlyE
         : state
     }
     case 'undo':
-      return objectEditEditorReducer(state, {
-        type: 'UNDO_APPLIED',
-        selection: undoSelection(state.selection, naturalSize),
-      })
+      return objectEditEditorReducer(state, { type: 'UNDO' })
     case 'clear':
       clearSelection(state.selection)
       action = { type: 'CLEAR' }
@@ -100,7 +97,7 @@ describe('object-edit interaction credit properties', () => {
         }
 
         expect(commands).toEqual([])
-        expect(state.selection.strokes.length).toBeLessThanOrEqual(8)
+        expect(state.selection.strokes.length).toBeLessThanOrEqual(1)
       }),
       { numRuns: 100 },
     )

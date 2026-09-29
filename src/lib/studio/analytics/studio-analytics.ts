@@ -98,7 +98,7 @@ export interface GenerationCompletedPayloadInput {
   cost?: number
   /** Coarse funnel context; never include provider-specific identifiers. */
   generationKind?: 'standard' | 'object_edit' | 'finishing_touches' | 'expand'
-  editOperation?: 'remove'
+  editOperation?: 'remove' | 'keep'
   countBucket?: string
 }
 

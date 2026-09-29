@@ -144,4 +144,39 @@ describe('prepareObjectEditImages', () => {
       }),
     ).rejects.toBeInstanceOf(ObjectEditImagePreparationError)
   })
+
+  it('draws a keep sketch without darkening the rest of the photo', async () => {
+    const pixels = Buffer.alloc(80 * 40 * 3, 200)
+    const source = await sharp(pixels, { raw: { width: 80, height: 40, channels: 3 } }).png().toBuffer()
+    const prepared = await prepareObjectEditImages({
+      sourceBytes: source,
+      sourceMimeType: 'image/png',
+      intent: {
+        version: 1,
+        operation: 'keep',
+        selection: selection([
+          {
+            kind: 'path',
+            points: [
+              { x: 0.1, y: 0.15 },
+              { x: 0.4, y: 0.15 },
+              { x: 0.4, y: 0.85 },
+              { x: 0.1, y: 0.85 },
+            ],
+          },
+        ]),
+      },
+    })
+    expect(prepared.rendererVersion).toBe(2)
+    const clean = await sharp(Buffer.from(prepared.clean.data, 'base64')).raw().toBuffer({ resolveWithObject: true })
+    const annotated = await sharp(Buffer.from(prepared.annotated.data, 'base64')).raw().toBuffer({ resolveWithObject: true })
+    const channels = clean.info.channels
+    const sample = (buffer: Buffer, x: number, y: number) => {
+      const offset = (y * 80 + x) * channels
+      return buffer[offset] + buffer[offset + 1] + buffer[offset + 2]
+    }
+    expect(Math.abs(sample(annotated.data, 16, 20) - sample(clean.data, 16, 20))).toBeLessThan(8)
+    expect(Math.abs(sample(annotated.data, 60, 20) - sample(clean.data, 60, 20))).toBeLessThan(8)
+    expect(Math.abs(sample(annotated.data, 32, 20) - sample(clean.data, 32, 20))).toBeGreaterThan(20)
+  })
 })

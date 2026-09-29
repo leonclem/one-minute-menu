@@ -13,8 +13,19 @@ import {
   type NormalizedPoint,
   type StructuredEditIntent,
 } from '@/lib/studio/object-edit/contracts'
+import { keepOutlineFromSelection, keepOutlinePoints } from '@/lib/studio/object-edit/keep-region'
 
 export const ANNOTATION_RENDERER_VERSION = 1 as const
+export const KEEP_ANNOTATION_RENDERER_VERSION = 2 as const
+export type AnnotationRendererVersion =
+  | typeof ANNOTATION_RENDERER_VERSION
+  | typeof KEEP_ANNOTATION_RENDERER_VERSION
+
+export function annotationRendererVersionFor(
+  operation: StructuredEditIntent['operation'],
+): AnnotationRendererVersion {
+  return operation === 'keep' ? KEEP_ANNOTATION_RENDERER_VERSION : ANNOTATION_RENDERER_VERSION
+}
 
 const PNG_OPTIONS = {
   compressionLevel: 9,
@@ -54,7 +65,7 @@ export interface ObjectEditGuidanceManifest {
 export interface PreparedObjectEditImages {
   clean: PreparedObjectEditImage
   annotated: PreparedObjectEditImage
-  rendererVersion: typeof ANNOTATION_RENDERER_VERSION
+  rendererVersion: AnnotationRendererVersion
   renderDigest: string
   guidance: ObjectEditGuidanceManifest
 }
@@ -176,11 +187,11 @@ function buildGuidanceSvg(intent: StructuredEditIntent, width: number, height: n
   svg: Buffer
   guidance: ObjectEditGuidanceManifest
 } {
-  const selectionGraphics = intent.selection.strokes.map((stroke) =>
-    stroke.kind === 'tap'
-      ? markerSvg(stroke.points[0], width, height, 'target')
-      : pathStrokeSvg(stroke.points, width, height),
-  )
+  const selectionGraphics = intent.selection.strokes.map((stroke) => {
+    if (stroke.kind === 'tap') return markerSvg(stroke.points[0], width, height, 'target')
+    const points = intent.operation === 'keep' ? (keepOutlinePoints(stroke.points) ?? stroke.points) : stroke.points
+    return pathStrokeSvg(points, width, height)
+  })
   const targetMarkerCount = intent.selection.strokes.filter((stroke) => stroke.kind === 'tap').length
   const moveGraphics =
     intent.operation === 'move'
@@ -246,6 +257,9 @@ export async function prepareObjectEditImages(
     if (error instanceof ObjectEditImagePreparationError) throw error
     throw new ObjectEditImagePreparationError('Object-edit guidance is invalid.')
   }
+  if (intent.operation === 'keep' && !keepOutlineFromSelection(intent.selection)) {
+    throw new ObjectEditImagePreparationError('Keep this needs an outline around what should stay.')
+  }
 
   let cleanBuffer: Buffer
   try {
@@ -296,10 +310,11 @@ export async function prepareObjectEditImages(
     throw new ObjectEditImagePreparationError('Clean and annotated image dimensions do not match.')
   }
 
+  const rendererVersion = annotationRendererVersionFor(intent.operation)
   const renderDigest = createHash('sha256')
     .update(createHash('sha256').update(cleanBuffer).digest('hex'))
     .update(serializeObjectEditValue(intent))
-    .update(String(ANNOTATION_RENDERER_VERSION))
+    .update(String(rendererVersion))
     .digest('hex')
 
   return {
@@ -315,7 +330,7 @@ export async function prepareObjectEditImages(
       width: annotatedDimensions.width,
       height: annotatedDimensions.height,
     },
-    rendererVersion: ANNOTATION_RENDERER_VERSION,
+    rendererVersion,
     renderDigest,
     guidance: overlay.guidance,
   }

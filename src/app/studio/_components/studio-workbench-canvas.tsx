@@ -102,6 +102,7 @@ interface StudioWorkbenchCanvasProps {
   expanded?: boolean
   transparent?: boolean
   selectionMode?: boolean
+  shadeExterior?: boolean
   selection?: SelectionState
   naturalSize?: NaturalImageSize
   onSelectionChange?: (selection: SelectionState) => void
@@ -126,6 +127,7 @@ export function StudioWorkbenchCanvas({
   onExpand,
   expanded = false,
   selectionMode = false,
+  shadeExterior = false,
   selection,
   naturalSize,
   onSelectionChange,
@@ -199,8 +201,11 @@ export function StudioWorkbenchCanvas({
     if (sceneExpandMode) commitCamera(WORKBENCH_FIT_CAMERA)
   }, [commitCamera, sceneExpandMode])
 
-  const handleImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
-    const { naturalHeight: height, naturalWidth: width } = event.currentTarget
+  const onNaturalSizeChangeRef = useRef(onNaturalSizeChange)
+  onNaturalSizeChangeRef.current = onNaturalSizeChange
+  const imageRef = useRef<HTMLImageElement>(null)
+
+  const recordImageSize = useCallback((width: number, height: number) => {
     if (width <= 0 || height <= 0) return
     const nextSize = { width, height }
     setImageSize((previous) =>
@@ -208,8 +213,21 @@ export function StudioWorkbenchCanvas({
     )
     // Display pixel size of the bitmap currently on screen. Object-edit strokes
     // use this space. Crop floors must use studio_images.width/height instead.
-    onNaturalSizeChange?.(nextSize)
+    onNaturalSizeChangeRef.current?.(nextSize)
+  }, [])
+
+  const handleImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
+    recordImageSize(event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)
   }
+
+  // A cached bitmap can finish before React attaches onLoad, leaving the photo
+  // visible with no measured frame. Pointer marks then land nowhere and raise
+  // no error. Read the decoded size once the element is already complete.
+  useEffect(() => {
+    const image = imageRef.current
+    if (!image?.complete) return
+    recordImageSize(image.naturalWidth, image.naturalHeight)
+  }, [src, recordImageSize])
 
   useEffect(() => {
     const el = viewportRef.current
@@ -429,6 +447,7 @@ export function StudioWorkbenchCanvas({
     // eslint-disable-next-line @next/next/no-img-element
     <img
       key={imageKey ? `${imageKey}:${src}` : src}
+      ref={imageRef}
       src={src}
       alt={alt}
       draggable={false}
@@ -489,7 +508,11 @@ export function StudioWorkbenchCanvas({
               {previewImage}
             </div>
             {selectionMode && !cropMode && !sceneExpandMode && selection && (
-              <StudioSelectionOverlay selection={selection} previewPoints={selectionPreview} />
+              <StudioSelectionOverlay
+                selection={selection}
+                previewPoints={selectionPreview}
+                shadeExterior={shadeExterior}
+              />
             )}
             {cropMode && cropRect && onCropRectChange && (
               <StudioCropOverlay

@@ -32,6 +32,7 @@ import {
   prepareObjectEditImages,
   serializeObjectEditValue,
 } from '@/lib/studio/object-edit/reference-image'
+import { keepOutlineFromSelection } from '@/lib/studio/object-edit/keep-region'
 import {
   reconcileObjectEditChildState,
 } from '@/lib/studio/object-edit/reconciliation'
@@ -121,11 +122,19 @@ export async function POST(request: NextRequest) {
     const submission = await parseSubmission(request, requestId)
     failureContext = { userId: auth.user.id, dishId: submission.dishId }
 
-    if (submission.editIntent.operation !== 'remove') {
+    const operation = submission.editIntent.operation
+    if (operation !== 'remove' && operation !== 'keep') {
       throw new ObjectEditRequestError(
         'OBJECT_EDIT_UNAVAILABLE',
         403,
         'Move is not available in this delivery.',
+      )
+    }
+    if (operation === 'keep' && !keepOutlineFromSelection(submission.editIntent.selection)) {
+      throw new ObjectEditRequestError(
+        'OBJECT_EDIT_INVALID_REQUEST',
+        400,
+        'Draw around what should stay before clearing the rest.',
       )
     }
 
@@ -160,7 +169,7 @@ export async function POST(request: NextRequest) {
           userId: auth.user.id,
           dishId: submission.dishId,
           imageId: owned.image.id,
-          operation: 'remove',
+          operation,
           stage: 'parent_spatial_read',
           error,
           softFailure: 'spatial_inventory_read',
@@ -249,7 +258,7 @@ export async function POST(request: NextRequest) {
           position: canonical.editorState.position,
           objectEdit: {
             version: 1,
-            operation: 'remove',
+            operation,
             directParentImageId: owned.image.id,
             selectedSourceImageId: owned.image.id,
             selection: submission.editIntent.selection,
@@ -293,7 +302,7 @@ export async function POST(request: NextRequest) {
             userId: auth.user.id,
             dishId: submission.dishId,
             imageId: finalized.success.imageId,
-            operation: 'remove',
+            operation,
             stage: 'child_spatial_persist',
             error,
             softFailure: 'spatial_inventory_persistence',
@@ -304,13 +313,13 @@ export async function POST(request: NextRequest) {
 
     const success: StudioGenerationSuccess = finalized.success
     logger.info(
-      'Object-edit Remove succeeded',
+      operation === 'keep' ? 'Object-edit Keep this succeeded' : 'Object-edit Remove succeeded',
       objectEditDiagnosticContext({
         requestId,
         userId: auth.user.id,
         dishId: submission.dishId,
         imageId: success.imageId,
-        operation: 'remove',
+        operation,
         modelClass: guard.requestedModel,
         stage: 'completed',
       }),

@@ -154,6 +154,22 @@ describe('object-edit contracts', () => {
       ObjectEditOperationMetadataZ.safeParse({ ...base, operation: 'remove', placement: base.placement })
         .success,
     ).toBe(false)
+    expect(
+      ObjectEditOperationMetadataZ.safeParse({
+        ...base,
+        operation: 'keep',
+        placement: undefined,
+        annotationRendererVersion: 2,
+      }).success,
+    ).toBe(true)
+    expect(
+      ObjectEditOperationMetadataZ.safeParse({
+        ...base,
+        operation: 'keep',
+        placement: undefined,
+        annotationRendererVersion: 1,
+      }).success,
+    ).toBe(false)
   })
 
   it('projects the established Studio success and error envelopes without internal fields', () => {

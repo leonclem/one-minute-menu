@@ -81,6 +81,7 @@ function selectedState(): ObjectEditEditorState {
   const selection = selectionFromStrokes([{ kind: 'tap', points: [{ x: 0.4, y: 0.5 }] }], naturalSize)
   return {
     selection,
+    previousSelection: EMPTY_SELECTION,
     operation: 'move',
     placement: { source: { x: 0.4, y: 0.5 }, destination: { x: 0.8, y: 0.7 } },
   }
@@ -100,9 +101,8 @@ describe('object-edit selection properties', () => {
           return
         }
 
-        expect(result.selection.strokes).toHaveLength(current.strokes.length + 1)
-        expect(result.selection.strokes.slice(0, -1)).toEqual(current.strokes)
-        expect(result.selection.strokes.at(-1)?.points.length).toBeGreaterThan(0)
+        expect(result.selection.strokes).toHaveLength(1)
+        expect(result.selection.strokes[0]?.points.length).toBeGreaterThan(0)
         assertSelectionWithinLimits(result.selection)
       }),
       { numRuns: 100 },

@@ -2,7 +2,10 @@ import { useMemo, type ReactNode } from 'react'
 import { Eraser } from 'lucide-react'
 
 import type { AnnotationStroke, NormalizedPoint } from '@/lib/studio/object-edit/contracts'
+import { keepOutlineFromSelection, keepOutlinePoints } from '@/lib/studio/object-edit/keep-region'
 import type { SelectionState } from '@/lib/studio/object-edit/selection'
+
+import { KeepExteriorShade } from './studio-keep-this'
 
 export interface StudioObjectEditLauncherProps {
   disabled?: boolean
@@ -42,6 +45,7 @@ export interface StudioObjectEditControlsProps {
   canGenerate: boolean
   busy?: boolean
   creditLabel: string
+  operation?: 'remove' | 'keep'
   showClose?: boolean
   onUndo: () => void
   onClear: () => void
@@ -54,6 +58,7 @@ export function StudioObjectEditControls({
   canGenerate,
   busy = false,
   creditLabel,
+  operation = 'remove',
   showClose = true,
   onUndo,
   onClear,
@@ -82,11 +87,11 @@ export function StudioObjectEditControls({
       <button
         type="button"
         className="studio-btn-primary min-h-11 px-3 py-2 text-sm disabled:bg-white/10 disabled:text-white/40"
-        aria-label={`Remove selected object, ${creditLabel}`}
+        aria-label={operation === 'keep' ? `Clear the rest, ${creditLabel}` : `Remove selected object, ${creditLabel}`}
         disabled={!canGenerate || busy}
         onClick={onGenerate}
       >
-        {busy ? 'Preparing…' : `Remove · ${creditLabel}`}
+        {busy ? 'Preparing…' : operation === 'keep' ? `Clear the rest · ${creditLabel}` : `Remove · ${creditLabel}`}
       </button>
       <button
         type="button"
@@ -114,23 +119,37 @@ export function StudioObjectEditControls({
 export function StudioObjectEditStatus({
   selection,
   rejection,
+  operation = 'remove',
 }: {
   selection: SelectionState
   rejection?: string | null
+  operation?: 'remove' | 'keep'
 }) {
+  const outlined = operation === 'keep' && keepOutlineFromSelection(selection) !== null
   const count = selection.strokes.length
-  const focusGuidance = count >= 6
-    ? 'Keep the annotation focused on one object. Use Undo or Clear before adding unrelated marks.'
-    : null
-  const status = count > 0 ? 'Selection added' : 'Tap or draw over one object.'
+  const status =
+    operation === 'keep'
+      ? outlined
+        ? 'Outline added'
+        : 'Draw around what should stay.'
+      : count > 0
+        ? 'Selection added'
+        : 'Tap or draw over one object.'
+  const guidance =
+    operation === 'keep'
+      ? outlined
+        ? 'A new outline replaces this one.'
+        : null
+      : count > 0
+        ? 'A new mark replaces this one.'
+        : null
 
   return (
     <div className="space-y-1 text-sm text-white/70" data-testid="studio-object-edit-status">
       <p role="status" aria-live="polite">
-        {status} {count > 0 ? `(${count}/8 marks)` : ''}
+        {status}
       </p>
-      {focusGuidance && <p className="text-[#f8bc02]">{focusGuidance}</p>}
-      {count >= 8 && <p className="text-[#f8bc02]">The maximum number of marks is reached. Use Undo or Clear.</p>}
+      {guidance ? <p>{guidance}</p> : null}
       {rejection && <p role="alert" className="text-[#ff8a80]">{rejection}</p>}
     </div>
   )
@@ -139,6 +158,7 @@ export function StudioObjectEditStatus({
 export interface StudioSelectionOverlayProps {
   selection: SelectionState
   previewPoints?: readonly NormalizedPoint[]
+  shadeExterior?: boolean
 }
 
 function pathPoints(stroke: AnnotationStroke): readonly NormalizedPoint[] | null {
@@ -209,24 +229,36 @@ function SelectionMarker({ point, preview = false }: { point: NormalizedPoint; p
   )
 }
 
-export function StudioSelectionOverlay({ selection, previewPoints = [] }: StudioSelectionOverlayProps) {
+export function StudioSelectionOverlay({
+  selection,
+  previewPoints = [],
+  shadeExterior = false,
+}: StudioSelectionOverlayProps) {
   const acceptedPaths = useMemo(
     () => selection.strokes.flatMap((stroke, strokeIndex) => {
       const points = pathPoints(stroke)
-      return points ? [<SelectionPath key={`path-${strokeIndex}`} points={points} />] : []
+      if (!points) return []
+      const drawn = shadeExterior ? (keepOutlinePoints(points) ?? points) : points
+      return [<SelectionPath key={`path-${strokeIndex}`} points={drawn} />]
     }),
-    [selection.strokes],
+    [selection.strokes, shadeExterior],
   )
   const taps = useMemo(
     () => selection.strokes.flatMap((stroke) => (stroke.kind === 'tap' ? stroke.points : [])),
     [selection.strokes],
   )
+  const committedPath = selection.strokes.find((stroke) => stroke.kind === 'path')?.points ?? []
+  const drawing = previewPoints.length > 0
+  const shadePoints = shadeExterior && !drawing ? committedPath : []
   const previewPath = strokePath(previewPoints)
 
-  if (acceptedPaths.length === 0 && taps.length === 0 && !previewPath && previewPoints.length === 0) return null
+  if (acceptedPaths.length === 0 && taps.length === 0 && !previewPath && previewPoints.length === 0 && shadePoints.length < 3) {
+    return null
+  }
   return (
     <div aria-hidden="true" data-testid="studio-selection-overlay" className="pointer-events-none absolute inset-0 z-[1]">
       <svg className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 1 1" preserveAspectRatio="none">
+        {shadePoints.length >= 3 ? <KeepExteriorShade points={shadePoints} /> : null}
         {acceptedPaths}
         {previewPath && <SelectionPath points={previewPoints} preview />}
       </svg>
@@ -248,11 +280,12 @@ export function StudioObjectEditPanel({
   rejection,
   overlay = false,
   degradationCallout,
+  operation = 'remove',
   ...controls
 }: StudioObjectEditPanelProps) {
   return (
     <section
-      aria-label="Remove object"
+      aria-label={operation === 'keep' ? 'Keep this' : 'Remove object'}
       data-testid="studio-object-edit-panel"
       className={
         overlay
@@ -262,17 +295,21 @@ export function StudioObjectEditPanel({
     >
       {overlay ? null : (
         <div>
-          <h2 className="text-sm font-bold uppercase tracking-wider text-white/55">Remove</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-white/55">
+            {operation === 'keep' ? 'Keep this' : 'Remove'}
+          </h2>
           <p className="mt-1 text-sm text-white/70">
-            Remove one object by tapping or drawing over it. Counts as a generation.
+            {operation === 'keep'
+              ? 'Draw around what should stay. The shaded area will be cleared. A new outline replaces the last. Counts as a generation.'
+              : 'Remove one object by tapping or drawing over it. A new mark replaces the last. Counts as a generation.'}
           </p>
         </div>
       )}
-      <StudioObjectEditStatus selection={selection} rejection={rejection} />
+      <StudioObjectEditStatus selection={selection} rejection={rejection} operation={operation} />
       {overlay ? null : degradationCallout}
       <div className={overlay ? 'flex flex-wrap items-center gap-2' : undefined}>
         {overlay ? degradationCallout : null}
-        <StudioObjectEditControls {...controls} showClose={!overlay} />
+        <StudioObjectEditControls {...controls} operation={operation} showClose={!overlay} />
       </div>
     </section>
   )

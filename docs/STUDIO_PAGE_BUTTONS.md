@@ -238,7 +238,22 @@ Counts as a generation (whole frame). Not inpaint / “paints the area” copy.
 | **Cancel** / **Close** | button | Remove open                                     | Exit edit mode                           | —                              |
 
 
-Workbench drawing is pointer input. Max 8 marks.
+Workbench drawing is pointer input. One mark: a new tap or outline replaces the previous one. Undo restores that previous mark once.
+
+### Tools — Keep this
+
+Counts as a generation. One rough outline around the plate. The request asks Gemini to keep that plate and its contents on the surface, and to clear the rest. The sketch is not pasted back onto the result.
+
+
+| Label                         | Kind   | When shown                                   | What it does                                      | API                            |
+| ----------------------------- | ------ | -------------------------------------------- | ------------------------------------------------- | ------------------------------ |
+| **Keep this**                 | button | Shot selected                                | Open keep mode                                    | —                              |
+| **Undo** / **Clear**          | button | Keep this open                               | Edit the outline                                  | —                              |
+| **Clear the rest · N credits** | button | Keep this open; enabled after a closed outline | Clear the shaded area; new generated shot       | `POST /api/studio/object-edit` |
+| **Cancel** / **Close**        | button | Keep this open                               | Exit keep mode                                    | —                              |
+
+
+Draw on the photo. A second outline replaces the first. Undo restores the previous outline once. A tap does not count as an outline.
 
 ### Scene tab
 
@@ -417,7 +432,6 @@ API for them yet. Do not add toolbar or Scene entries until an API exists.
 | ----------------------- | --------------------------------------------------------------------- |
 | Change angle            | Replaced by Scene Camera vertical switch (`NEXT_PUBLIC_STUDIO_ENABLE_VERTICAL_SWITCH`). Horizontal 90° yaw is a separate flag (`NEXT_PUBLIC_STUDIO_ENABLE_YAW`). |
 | Swap vessel             | Plate/bowl swap. Hidden from toolbar and Scene.                       |
-| Remove inverse          | Keep-only / inverse of whole-frame Remove.                            |
 | User-saved Quick Looks  | Looks stay four hardcoded bundles. No “save this combo” control.      |
 
 

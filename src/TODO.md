@@ -4,11 +4,12 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## Home Page
-- [ ] We should be demonstrating outputs, e.g. raw image -> social media post (a la breakoutclips)
+## Issues
+- [ ] Latest edits don't always appear in "All dishes" grid
+- [ ] Lost FAQs and slide-in images from home page (git commit f20bce0000d46c95073ad01ab3f4dd5e9fd54de3)
 
-## /studio
-- [ ] Remove inverse and darken/shade/stripe area to be removed
+## SEO optimisation
+- [ ] Dedicated ai-food-photography landing page
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
@@ -16,6 +17,7 @@
 
 ## /studio
 - [ ] Investigate vessel swapping
+- [ ] Add (pre-determined, generic) props
 - [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -24,7 +26,7 @@
 
 ## Social Media and Advertising
 - [ ] Investigate what's required for name change
-- [ ] "How to design a restaurant menu" Starter Story Build May 26 "How to Get 1,000 Downloads On Your App in 30 Days (From Scratch)"
+- [ ] Harvest fruit from Starter Story Build May 26 "How to Get 1,000 Downloads On Your App in 30 Days (From Scratch)"
 - [ ] Understand what is required and potential upside to conduct a cold email campaign
 
 ## /pricing
@@ -39,7 +41,6 @@
 
 ## /studio
 - [ ] Allow the user to choose two variants for comparison (if not rotated?)
-- [ ] Add (pre-determined, generic) props
 - [ ] Add steam, shimmer, etc. (pro advised to use reference)
 - [ ] See Pinterest "food photography".  Best photos seem to create depth through focus and have some action/drama occurring, also other bowls and kitchen items
 - [ ] Flash-Lite option (a 3rd tier) (1K outputs only)
@@ -52,8 +53,7 @@
 - [ ] STUDIO_GENERATION_WORKER_QUEUE_PLAN.md
 - [ ] Feed exports back to workbench as new variants
 - [ ] Upscale resolution (via Replicate models)
-
-## Bugs
+- [ ] "Cutout doctor" to help
 
 ## Issues
 - [ ] Why is cutout worker still appearing in Vercel logs?
@@ -182,6 +182,7 @@
 - [x] Overhead shot
 - [x] Investigate rotation/angle manipulation
 - [x] Remove any old 45° turn code
+- [x] Keep this: one outline, shade the outside, paste the original interior back (judge the seam)
 
 ## Home Page
 - [x] Open Studio should not immediately require sign-ups, Generate should.
@@ -189,6 +190,7 @@
 - [x] Upload some examples to show transition for each stage underneath "How AI food photos work"
 - [x] Wording can now include mention of camera features
 - [x] Replace quesadilla with something more professional
+- [x] We should be demonstrating outputs, e.g. raw image -> social media post (a la breakoutclips)
 
 ## /onboarding
 - [x] New users get 10 credits by default

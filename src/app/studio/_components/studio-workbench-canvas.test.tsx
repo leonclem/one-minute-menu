@@ -185,6 +185,48 @@ describe('StudioWorkbenchCanvas selection gestures', () => {
     restoreLayout()
   })
 
+  it('measures a cached image that never fires load, then shows a selection preview', () => {
+    const complete = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'complete')
+    const naturalWidth = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'naturalWidth')
+    const naturalHeight = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'naturalHeight')
+    Object.defineProperty(HTMLImageElement.prototype, 'complete', { configurable: true, get: () => true })
+    Object.defineProperty(HTMLImageElement.prototype, 'naturalWidth', { configurable: true, get: () => NATURAL_SIZE.width })
+    Object.defineProperty(HTMLImageElement.prototype, 'naturalHeight', { configurable: true, get: () => NATURAL_SIZE.height })
+    try {
+      const { container } = render(
+        <StudioWorkbenchCanvas
+          src="https://example.com/dish.png"
+          alt="Current studio image"
+          expandLabel="Expand Variant 1 preview"
+          onExpand={jest.fn()}
+          selectionMode
+          selection={EMPTY_SELECTION}
+          naturalSize={NATURAL_SIZE}
+          onSelectionChange={jest.fn()}
+        />,
+      )
+      const imageBox = container.querySelector<HTMLElement>('div.absolute[style*="width"]')
+      expect(imageBox?.style.width).toBe(`${BOUNDS.width}px`)
+
+      fireEvent.pointerDown(interactionSurface(container), {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        clientX: 100,
+        clientY: 100,
+      })
+
+      expect(screen.getByTestId('studio-selection-preview-marker')).toBeInTheDocument()
+    } finally {
+      if (complete) Object.defineProperty(HTMLImageElement.prototype, 'complete', complete)
+      else Reflect.deleteProperty(HTMLImageElement.prototype, 'complete')
+      if (naturalWidth) Object.defineProperty(HTMLImageElement.prototype, 'naturalWidth', naturalWidth)
+      else Reflect.deleteProperty(HTMLImageElement.prototype, 'naturalWidth')
+      if (naturalHeight) Object.defineProperty(HTMLImageElement.prototype, 'naturalHeight', naturalHeight)
+      else Reflect.deleteProperty(HTMLImageElement.prototype, 'naturalHeight')
+    }
+  })
+
   it('shows a live preview path while a drag is in progress', () => {
     const { container } = renderSelectionCanvas()
     const surface = interactionSurface(container)

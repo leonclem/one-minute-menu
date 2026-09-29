@@ -59,15 +59,18 @@ describe('StudioWorkbenchToolbar', () => {
         cropOpen={false}
         expandOpen={false}
         objectEditOpen={false}
+        keepOpen={false}
         creditLabel="1 credit"
         onReframe={jest.fn()}
         onExpand={jest.fn()}
         onRemove={jest.fn()}
+        onKeep={jest.fn()}
       />,
     )
     expect(screen.getByRole('button', { name: 'Reframe image' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Expand scene' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove object' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Keep this' })).toBeInTheDocument()
     expect(screen.getByText('Free · lossless')).toBeInTheDocument()
     expect(screen.getByText('1 credit · zoom out')).toBeInTheDocument()
     expect(screen.getByText('1 credit · re-renders')).toBeInTheDocument()
@@ -83,16 +86,19 @@ describe('StudioWorkbenchToolbar', () => {
         cropOpen
         expandOpen={false}
         objectEditOpen={false}
+        keepOpen={false}
         creditLabel="1 credit"
         onReframe={jest.fn()}
         onExpand={jest.fn()}
         onRemove={jest.fn()}
+        onKeep={jest.fn()}
       />,
     )
     const reframe = screen.getByRole('button', { name: 'Reframe image' })
     expect(reframe).toHaveClass('studio-tool-chip-overlay')
     expect(reframe).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Remove object' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Keep this' })).toHaveAttribute('aria-pressed', 'false')
   })
 })
 
@@ -144,10 +150,12 @@ describe('StudioShotWorkbench', () => {
     cropOpen: false,
     expandOpen: false,
     objectEditOpen: false,
+    keepOpen: false,
     creditLabel: '1 credit',
     onReframe: jest.fn(),
     onExpandScene: jest.fn(),
     onRemove: jest.fn(),
+    onKeep: jest.fn(),
     sceneCount: 0,
     exportsCount: 3,
   } satisfies Partial<React.ComponentProps<typeof StudioShotWorkbench>>

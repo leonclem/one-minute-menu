@@ -65,7 +65,7 @@ export function objectEditDiagnosticContext(input: {
   userId?: string
   dishId?: string
   imageId?: string
-  operation?: ObjectEditOperation
+  operation?: ObjectEditOperation | 'keep'
   modelClass?: string
   stage: string
   durationMs?: number

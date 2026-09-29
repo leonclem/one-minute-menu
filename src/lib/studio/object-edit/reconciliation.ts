@@ -152,7 +152,7 @@ function applyOperationSpatialDelta(
   intent: StructuredEditIntent,
   matchedElement: SpatialElementV1 | null,
 ): SpatialInventoryV1 | null {
-  if (!inventory || !matchedElement) return inventory
+  if (!inventory || !matchedElement || intent.operation === 'keep') return inventory
 
   const elements = inventory.elements.map((element) => {
     if (element.id !== matchedElement.id) return element

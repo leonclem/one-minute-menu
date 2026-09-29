@@ -11,6 +11,7 @@ import {
 
 export const TAP_MOVEMENT_TOLERANCE_PX = 10
 export const STROKE_RENDERING_TOLERANCE_PX = 1
+/** Submitted selections may still carry up to 8 strokes. The editor keeps one gesture. */
 export const MAX_SELECTION_STROKES = 8
 export const MAX_STROKE_POINTS = 512
 export const MAX_SELECTION_POINTS = 4096
@@ -94,10 +95,6 @@ function isWithinRenderingTolerance(
   })
 }
 
-function totalPointCount(strokes: readonly AnnotationStroke[]): number {
-  return strokes.reduce((total, stroke) => total + stroke.points.length, 0)
-}
-
 /**
  * Converts only a completed pointer path. It never stores samples while the
  * pointer is active, so a failed classification leaves the prior state intact.
@@ -154,15 +151,14 @@ export function addCompletedStrokeAtomic(
     stroke = { kind: 'path', points: [points[0], ...points.slice(1)] }
   }
 
-  if (current.strokes.length >= MAX_SELECTION_STROKES) {
-    return { selection: current, accepted: false, reason: 'stroke-limit' }
-  }
-  if (totalPointCount(current.strokes) + stroke.points.length > MAX_SELECTION_POINTS) {
+  if (stroke.points.length > MAX_SELECTION_POINTS) {
     return { selection: current, accepted: false, reason: 'point-limit' }
   }
 
+  // One active gesture. A new tap or outline replaces every mark already kept,
+  // so the request stays the single object the instruction describes.
   return {
-    selection: selectionFromStrokes([...current.strokes, stroke], naturalSize),
+    selection: selectionFromStrokes([stroke], naturalSize),
     accepted: true,
   }
 }

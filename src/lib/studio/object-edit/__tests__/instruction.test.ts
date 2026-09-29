@@ -75,6 +75,35 @@ describe('buildObjectEditInstruction', () => {
     expect(result.contract.metadata).toMatchObject({ placementGuideAccuracy: 'approximate', renderDigest: 'a'.repeat(64) })
   })
 
+  it('treats a keep outline as a rough sketch of the plate and its contents', () => {
+    const intent: StructuredEditIntent = {
+      version: 1,
+      operation: 'keep',
+      selection: selection([
+        {
+          kind: 'path',
+          points: [
+            { x: 0.2, y: 0.2 },
+            { x: 0.7, y: 0.2 },
+            { x: 0.6, y: 0.8 },
+          ],
+        },
+      ]),
+    }
+    const result = buildObjectEditInstruction({ intent, canonical })
+
+    expect(result.contract.operation).toBe('keep')
+    expect(result.contract.metadata.annotationRendererVersion).toBe(2)
+    expect(result.contract).not.toHaveProperty('placement')
+    expect(result.instruction).toContain('The closed outline in Image B is a rough sketch around the plate to keep, not an exact edge.')
+    expect(result.instruction).toContain('Remove everything in the image except the plate and its contents indicated by that rough sketch, and the surface the plate rests on.')
+    expect(result.instruction).toContain('The sketch may include small elements of the background that are not intended to be preserved.')
+    expect(result.instruction).toContain('Do not cut them along the sketch line.')
+    expect(result.instruction).toContain('resting on an otherwise empty surface.')
+    expect(result.instruction).not.toContain('Leave the interior of the outline unchanged.')
+    expect(result.instruction).not.toContain('Remove only the one object')
+  })
+
   it('includes only current, unambiguous, non-conflicting spatial enrichment without semantic claims', () => {
     const spatial: ObjectEditSpatialEnrichmentInput = {
       inventory: { version: 1, imageId: 'current-image', elements: [{ label: 'spatial-only-label' }] },

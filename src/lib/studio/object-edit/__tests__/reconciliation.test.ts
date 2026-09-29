@@ -84,6 +84,27 @@ describe('object-edit reconciliation', () => {
     })
   })
 
+  it('does not mark the plate removed when Keep this clears the rest of the frame', () => {
+    const current: MinimalSchema = {
+      ...parent,
+      canvas: { ...parent.canvas, background: 'linen', main_vessel: 'platter' },
+      food_components: { ...parent.food_components, main_item: 'salad', garnishes: [] },
+    }
+    const result = reconcileObjectEditChildState({
+      directParent: parent,
+      intent: { ...removeIntent, operation: 'keep' },
+      sourceImage: { id: sourceImageId },
+      childImage: { id: childImageId, width: 100, height: 100 },
+      parentSpatialInventory: inventory(sourceImageId),
+      currentEvidence: { canonical: current },
+    })
+
+    expect(result.canonical.canvas.background).toBe('linen')
+    expect(result.canonical.canvas.main_vessel).toBe('platter')
+    expect(result.canonical.food_components.main_item).toBe('salad')
+    expect(result.spatialInventory?.elements[0]).toMatchObject({ id: elementId, visibility: 'visible' })
+  })
+
   it('treats invalid/stale spatial evidence as absent rather than failing canonical reconciliation', () => {
     const result = reconcileObjectEditChildState({
       directParent: parent,

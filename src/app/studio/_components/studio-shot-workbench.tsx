@@ -40,10 +40,12 @@ interface StudioShotWorkbenchProps {
   cropOpen: boolean
   expandOpen: boolean
   objectEditOpen: boolean
+  keepOpen: boolean
   creditLabel: string
   onReframe: () => void
   onExpandScene: () => void
   onRemove: () => void
+  onKeep: () => void
   expanded?: boolean
   onCloseExpand?: () => void
 }
@@ -76,10 +78,12 @@ export function StudioShotWorkbench({
   cropOpen,
   expandOpen,
   objectEditOpen,
+  keepOpen,
   creditLabel,
   onReframe,
   onExpandScene,
   onRemove,
+  onKeep,
   expanded = false,
   onCloseExpand,
 }: StudioShotWorkbenchProps) {
@@ -206,10 +210,12 @@ export function StudioShotWorkbench({
                       cropOpen={cropOpen}
                       expandOpen={expandOpen}
                       objectEditOpen={objectEditOpen}
+                      keepOpen={keepOpen}
                       creditLabel={creditLabel}
                       onReframe={onReframe}
                       onExpand={onExpandScene}
                       onRemove={onRemove}
+                      onKeep={onKeep}
                     />
                   </div>
                 </div>
@@ -230,10 +236,12 @@ export function StudioShotWorkbench({
                 cropOpen={cropOpen}
                 expandOpen={expandOpen}
                 objectEditOpen={objectEditOpen}
+                keepOpen={keepOpen}
                 creditLabel={creditLabel}
                 onReframe={onReframe}
                 onExpand={onExpandScene}
                 onRemove={onRemove}
+                onKeep={onKeep}
               />
               <StudioShotFilmstrip
                 images={images}

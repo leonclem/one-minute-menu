@@ -75,6 +75,7 @@ import { StudioPendingChangesDialog } from './studio-pending-changes-dialog'
 import { StudioCreditsDialog } from './studio-credits-dialog'
 import { StudioModelSwitchDialog } from './studio-model-switch-dialog'
 import { StudioReshootDialog } from './studio-reshoot-dialog'
+import { keepOutlineFromSelection } from '@/lib/studio/object-edit/keep-region'
 import {
   StudioObjectEditPanel,
 } from './studio-object-edit'
@@ -111,10 +112,7 @@ import {
   INITIAL_OBJECT_EDIT_EDITOR_STATE,
   objectEditEditorReducer,
 } from '@/lib/studio/object-edit/editor-state'
-import {
-  undoSelection,
-  type SelectionRejectReason,
-} from '@/lib/studio/object-edit/selection'
+import { type SelectionRejectReason } from '@/lib/studio/object-edit/selection'
 import type { NaturalImageSize } from '@/lib/studio/object-edit/coordinate-transform'
 import {
   cropForPreset,
@@ -1567,35 +1565,34 @@ export function StudioClient({
     requestSignup,
   ])
 
-  const handleObjectEditOpen = useCallback(() => {
+  const handleObjectEditOpen = useCallback((operation: 'remove' | 'keep') => {
     if (isGuest) {
-      void requestSignup('remove')
+      void requestSignup(operation)
       return
     }
     setCropOpen(false)
     setExpandOpen(false)
-    dispatchObjectEdit({ type: 'OPERATION_CHANGED', operation: 'remove' })
+    if (objectEditState.operation !== operation) {
+      dispatchObjectEdit({ type: 'CLEAR' })
+    }
+    dispatchObjectEdit({ type: 'OPERATION_CHANGED', operation })
     setObjectEditRejection(null)
     setObjectEditOpen(true)
     setWorkbenchImageExpanded(true)
     trackStudioEvent(ANALYTICS_EVENTS.STUDIO_OBJECT_EDIT_OPENED, {
-      edit_operation: 'remove',
+      edit_operation: operation,
       surface: 'studio',
     })
     trackStudioEvent(ANALYTICS_EVENTS.STUDIO_OBJECT_EDIT_OPERATION_SELECTED, {
-      edit_operation: 'remove',
+      edit_operation: operation,
       surface: 'studio',
     })
-  }, [requestSignup, isGuest])
+  }, [requestSignup, isGuest, objectEditState.operation])
 
   const handleObjectEditUndo = useCallback(() => {
-    if (objectEditNaturalSize.width <= 0 || objectEditNaturalSize.height <= 0) return
-    dispatchObjectEdit({
-      type: 'UNDO_APPLIED',
-      selection: undoSelection(objectEditState.selection, objectEditNaturalSize),
-    })
+    dispatchObjectEdit({ type: 'UNDO' })
     setObjectEditRejection(null)
-  }, [objectEditNaturalSize, objectEditState.selection])
+  }, [])
 
   const handleObjectEditClear = useCallback(() => {
     dispatchObjectEdit({ type: 'CLEAR' })
@@ -1608,10 +1605,10 @@ export function StudioClient({
     setObjectEditRejection(null)
     setWorkbenchImageExpanded(false)
     trackStudioEvent(ANALYTICS_EVENTS.STUDIO_OBJECT_EDIT_CANCELLED, {
-      edit_operation: 'remove',
+      edit_operation: objectEditState.operation === 'keep' ? 'keep' : 'remove',
       surface: 'studio',
     })
-  }, [])
+  }, [objectEditState.operation])
 
   const handleCropOpen = useCallback(() => {
     setObjectEditOpen(false)
@@ -1941,11 +1938,14 @@ export function StudioClient({
 
   const handleObjectEditGenerate = useCallback(async () => {
     const selection = objectEditState.selection
+    const operation = objectEditState.operation === 'keep' ? 'keep' : 'remove'
+    const failedLabel = operation === 'keep' ? 'Keep this' : 'Remove'
     if (
       selection.strokes.length === 0 ||
       !selection.boundingRegion ||
       !activeDishId ||
-      !persistedSourceId
+      !persistedSourceId ||
+      (operation === 'keep' && !keepOutlineFromSelection(selection))
     ) {
       return
     }
@@ -1959,7 +1959,7 @@ export function StudioClient({
       model_class: toModelClass(selectedModel),
       stage: 'object_edit',
       generation_kind: 'object_edit',
-      edit_operation: 'remove',
+      edit_operation: operation,
     })
     setIsGenerating(true)
     setObjectEditRejection(null)
@@ -1974,7 +1974,7 @@ export function StudioClient({
           model: selectedModel,
           editIntent: {
             version: 1,
-            operation: 'remove',
+            operation,
             selection: {
               version: 1,
               strokes: selection.strokes,
@@ -1994,11 +1994,11 @@ export function StudioClient({
           model_class: toModelClass(selectedModel),
           stage: 'object_edit',
           generation_kind: 'object_edit',
-          edit_operation: 'remove',
+          edit_operation: operation,
           outcome: 'failure',
           failure_class: payload?.code ?? 'http_error',
         })
-        setObjectEditRejection(payload?.error ?? `Remove failed (HTTP ${response.status})`)
+      setObjectEditRejection(payload?.error ?? `${failedLabel} failed (HTTP ${response.status})`)
         return
       }
 
@@ -2014,7 +2014,7 @@ export function StudioClient({
             : (creditBalance ?? 0),
         cost: data.credits?.cost,
         generationKind: 'object_edit',
-        editOperation: 'remove',
+        editOperation: operation,
       })
       if (data.credits && typeof data.credits.balanceAfter === 'number') {
         setCreditBalance(data.credits.balanceAfter)
@@ -2054,7 +2054,7 @@ export function StudioClient({
           height: null,
           prompt: null,
           model: data.model,
-          metadata: { objectEdit: { operation: 'remove' } },
+          metadata: { objectEdit: { operation } },
           is_favourite: false,
           archived_at: null,
           created_at: new Date().toISOString(),
@@ -2073,11 +2073,11 @@ export function StudioClient({
         model_class: toModelClass(selectedModel),
         stage: 'object_edit',
         generation_kind: 'object_edit',
-        edit_operation: 'remove',
+        edit_operation: operation,
         outcome: 'failure',
         failure_class: error instanceof TypeError ? 'network' : 'unexpected',
       })
-      setObjectEditRejection(error instanceof Error ? error.message : 'Remove failed unexpectedly.')
+      setObjectEditRejection(error instanceof Error ? error.message : `${failedLabel} failed unexpectedly.`)
     } finally {
       setIsGenerating(false)
     }
@@ -2087,6 +2087,7 @@ export function StudioClient({
     creditBalance,
     insufficientCredits,
     loadGalleryForDish,
+    objectEditState.operation,
     objectEditState.selection,
     persistedSourceId,
     router,
@@ -2498,11 +2499,13 @@ export function StudioClient({
         toolsDisabled={busy || dishBlocked || !sourceImage || !persistedSourceId}
         cropOpen={cropOpen}
         expandOpen={expandOpen}
-        objectEditOpen={objectEditOpen}
+        objectEditOpen={objectEditOpen && objectEditState.operation === 'remove'}
+        keepOpen={objectEditOpen && objectEditState.operation === 'keep'}
         creditLabel={generateCreditLabel}
         onReframe={handleCropOpen}
         onExpandScene={handleExpandOpen}
-        onRemove={handleObjectEditOpen}
+        onRemove={() => handleObjectEditOpen('remove')}
+        onKeep={() => handleObjectEditOpen('keep')}
         expanded={workbenchImageExpanded}
         onCloseExpand={handleWorkbenchCollapse}
         notices={
@@ -2565,6 +2568,7 @@ export function StudioClient({
                   else setWorkbenchImageExpanded(true)
                 }}
                 selectionMode={objectEditOpen}
+                shadeExterior={objectEditState.operation === 'keep'}
                 cropMode={cropOpen}
                 sceneExpandMode={expandOpen}
                 expandPreset={expandPreset}
@@ -2590,7 +2594,7 @@ export function StudioClient({
                   dispatchObjectEdit({ type: 'SELECTION_ACCEPTED', selection })
                   setObjectEditRejection(null)
                   trackStudioEvent(ANALYTICS_EVENTS.STUDIO_OBJECT_EDIT_STROKE_ACCEPTED, {
-                    edit_operation: 'remove',
+                    edit_operation: objectEditState.operation === 'keep' ? 'keep' : 'remove',
                     count_bucket:
                       selection.strokes.length >= 8
                         ? '8'
@@ -2602,7 +2606,7 @@ export function StudioClient({
                 onSelectionRejected={(reason) => {
                   setObjectEditRejection(objectEditRejectionText(reason))
                   trackStudioEvent(ANALYTICS_EVENTS.STUDIO_OBJECT_EDIT_STROKE_REJECTED, {
-                    edit_operation: 'remove',
+                    edit_operation: objectEditState.operation === 'keep' ? 'keep' : 'remove',
                     reason_bucket: reason,
                   })
                 }}
@@ -2663,9 +2667,11 @@ export function StudioClient({
               selection={objectEditState.selection}
               rejection={objectEditRejection}
               overlay={workbenchImageExpanded}
+              operation={objectEditState.operation === 'keep' ? 'keep' : 'remove'}
               canGenerate={
-                objectEditState.operation === 'remove' &&
+                (objectEditState.operation === 'remove' || objectEditState.operation === 'keep') &&
                 objectEditState.selection.strokes.length > 0 &&
+                (objectEditState.operation !== 'keep' || keepOutlineFromSelection(objectEditState.selection) !== null) &&
                 !insufficientCredits &&
                 Boolean(activeDishId && persistedSourceId && sourceImage)
               }

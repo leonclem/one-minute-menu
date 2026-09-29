@@ -4,12 +4,13 @@ import { AuthOTPForm } from '@/components/auth/AuthOTPForm'
 import { ANALYTICS_EVENTS, captureEvent } from '@/lib/posthog'
 import { trackConversionEvent } from '@/lib/conversion-tracking'
 
-export type StudioGuestSignupIntent = 'generate' | 'expand' | 'remove' | 'elements_analysis' | 'crop'
+export type StudioGuestSignupIntent = 'generate' | 'expand' | 'remove' | 'keep' | 'elements_analysis' | 'crop'
 
 const TITLES: Record<StudioGuestSignupIntent, string> = {
   generate: 'Create a free account to generate',
   expand: 'Create a free account to expand this shot',
   remove: 'Create a free account to remove objects',
+  keep: 'Create a free account to keep part of this shot',
   elements_analysis: 'Create a free account to analyse this dish',
   crop: 'Create a free account to crop more variants',
 }

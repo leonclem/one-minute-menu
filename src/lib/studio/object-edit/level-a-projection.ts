@@ -1,5 +1,6 @@
 import type { MovePlacement, NormalizedPoint } from './contracts'
 import { deriveMovePlacementGeometry, type TranslatedPoint, type TranslatedRegion } from './move-placement'
+import { keepOutlineFromSelection } from './keep-region'
 import type { SelectionState } from './selection'
 
 export type RawAnnotationPrimitive =
@@ -24,7 +25,7 @@ export type LevelAProjection = {
 
 export function projectLevelAEditor(input: {
   selection: SelectionState
-  operation: 'remove' | 'move' | null
+  operation: 'remove' | 'move' | 'keep' | null
   placement: MovePlacement | null
 }): LevelAProjection {
   const rawAnnotations = input.selection.strokes.map((stroke) =>
@@ -35,19 +36,23 @@ export function projectLevelAEditor(input: {
   const strokeCount = input.selection.strokes.length
   const geometry = input.operation === 'move' ? deriveMovePlacementGeometry(input.selection, input.placement) : null
 
+  const keepReady = input.operation === 'keep' && keepOutlineFromSelection(input.selection) !== null
+
   let guidanceText: string | null = null
-  if (strokeCount === 0) {
-    guidanceText = 'Tap or draw over one object.'
-  } else if (strokeCount === 6) {
-    guidanceText = 'Keep the annotation focused on one object. Use Undo or Clear before adding unrelated marks.'
+  if (strokeCount === 0 || (input.operation === 'keep' && !keepReady)) {
+    guidanceText = input.operation === 'keep' ? 'Draw around what should stay.' : 'Tap or draw over one object.'
   } else if (input.operation === 'move' && !geometry) {
     guidanceText = 'Drag the approximate placement guide to choose a destination.'
+  } else if (input.operation === 'keep') {
+    guidanceText = 'A new outline replaces this one.'
+  } else if (input.operation !== 'move') {
+    guidanceText = 'A new mark replaces this one.'
   }
 
   return {
     rawAnnotations,
     strokeCount,
-    statusText: strokeCount > 0 ? 'Selection added' : null,
+    statusText: input.operation === 'keep' ? (keepReady ? 'Outline added' : null) : strokeCount > 0 ? 'Selection added' : null,
     guidanceText,
     warningText: geometry?.likelyOutOfBounds ? 'The approximate placement may extend beyond the image edge.' : null,
     destinationMarker: geometry?.destination ?? null,

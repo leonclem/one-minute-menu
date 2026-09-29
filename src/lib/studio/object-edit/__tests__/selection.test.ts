@@ -45,7 +45,7 @@ describe('object-edit selection primitives', () => {
     }
   })
 
-  it('rejects an entire addition at the stroke limit without changing existing selection', () => {
+  it('replaces every existing mark with the new gesture', () => {
     const selection = selectionFromStrokes(
       Array.from({ length: MAX_SELECTION_STROKES }, (_, index) => ({
         kind: 'tap' as const,
@@ -55,8 +55,9 @@ describe('object-edit selection primitives', () => {
     )
     const result = addCompletedStrokeAtomic(selection, [{ x: 10, y: 10 }], bounds, naturalSize)
 
-    expect(result).toEqual({ selection, accepted: false, reason: 'stroke-limit' })
-    expect(result.selection).toBe(selection)
+    expect(result.accepted).toBe(true)
+    expect(result.selection.strokes).toEqual([{ kind: 'tap', points: [{ x: 0.1, y: 0.1 }] }])
+    expect(result.selection).not.toBe(selection)
   })
 
   it('undoes only the newest completed stroke and clears the full selection', () => {
