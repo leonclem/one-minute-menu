@@ -482,6 +482,13 @@ export default function ArticleRemoveTheSpoon() {
                 the result easier to repeat.
               </p>
               <p>That is the idea behind GridMenu.</p>
+              <p>
+                See how that works in practice on the{' '}
+                <Link href="/ai-food-photography" className="font-semibold text-ux-primary hover:underline">
+                  AI food photography
+                </Link>{' '}
+                page.
+              </p>
               <p className="font-bold text-gray-900">Control the image, not the prompt.</p>
             </div>
 

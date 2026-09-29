@@ -98,6 +98,12 @@ export default function HomePageStudioContent({ initialUser }: { initialUser?: u
             <p className="mx-auto mt-4 max-w-[480px] text-[18px] leading-[1.6] text-[rgba(255,255,255,0.66)] min-[1080px]:mx-0">
               No prompting. Just a simple, friendly interface that delivers precise, predictable results.
             </p>
+            <p className="mx-auto mt-4 max-w-[480px] text-sm leading-relaxed text-white/55 min-[1080px]:mx-0">
+              <Link href="/ai-food-photography" className="font-semibold text-[#5fd3da] hover:text-[#7fdee4]">
+                AI food photography
+              </Link>{' '}
+              from a real dish photo, with controls instead of prompts.
+            </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5 min-[1080px]:justify-start">
               <Link
                 href={primaryHref}

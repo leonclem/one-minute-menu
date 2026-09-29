@@ -11,6 +11,7 @@ const BLOG_PATHS = [
 
 function priorityFor(path: string): number {
   if (path === '/') return 1
+  if (path === '/ai-food-photography') return 0.9
   if (path === '/pricing') return 0.8
   if (path === '/blog') return 0.7
   if (path.startsWith('/blog/')) return 0.6
@@ -22,8 +23,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const studioPublic = isStudioPublicSurface()
   const paths = [
     ...(studioPublic
-      ? ['/', '/pricing', '/register', '/support', '/privacy', '/terms']
-      : ['/', '/pricing', '/demo/sample', '/register', '/support', '/privacy', '/terms']),
+      ? ['/', '/ai-food-photography', '/pricing', '/register', '/support', '/privacy', '/terms']
+      : ['/', '/ai-food-photography', '/pricing', '/demo/sample', '/register', '/support', '/privacy', '/terms']),
     ...BLOG_PATHS,
   ]
 

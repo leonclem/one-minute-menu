@@ -4,9 +4,6 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## SEO optimisation
-- [ ] Dedicated ai-food-photography landing page
-
 ## Issues
 - [ ] Latest edits don't always appear in "All dishes" grid
 
@@ -201,6 +198,7 @@
 - [x] Keywords still reflect menus
 - [x] Check if Adwords should include competition (more competitors found now)
 - [x] Google Adwords seems to reference waitlist/beta still?
+- [x] Dedicated ai-food-photography landing page
 
 ## UI Review
 - [x] Create design system with Pinterest / Claude

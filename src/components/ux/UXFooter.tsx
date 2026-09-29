@@ -10,7 +10,10 @@ export function UXFooter() {
             © {year} GridMenu. Built for food & beverage businesses.
           </p>
           <div className="flex items-center gap-4">
-            <div className="flex gap-6 text-sm">
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
+              <Link href="/ai-food-photography" className="ux-footer-link">
+                AI Food Photography
+              </Link>
               <Link href="/privacy" className="ux-footer-link">
                 Privacy Policy
               </Link>

@@ -4,8 +4,8 @@ describe('ANALYTICS_EVENTS registry', () => {
   const entries = Object.entries(ANALYTICS_EVENTS)
   const values = Object.values(ANALYTICS_EVENTS)
 
-  it('has exactly 62 entries, including Studio guest-session events', () => {
-    expect(entries).toHaveLength(62)
+  it('has exactly 64 entries, including Studio guest-session events', () => {
+    expect(entries).toHaveLength(64)
   })
 
   it('contains every required key from Req 3.1', () => {
@@ -123,13 +123,15 @@ describe('ANALYTICS_EVENTS registry', () => {
     expect(ANALYTICS_EVENTS.STUDIO_GUEST_UPLOADED).toBe('studio_guest_uploaded')
     expect(ANALYTICS_EVENTS.STUDIO_AUTH_GATE_SHOWN).toBe('studio_auth_gate_shown')
     expect(ANALYTICS_EVENTS.STUDIO_GUEST_CLAIMED).toBe('studio_guest_claimed')
+    expect(ANALYTICS_EVENTS.AI_FOOD_PHOTOGRAPHY_PAGE_VIEW).toBe('ai_food_photography_page_view')
+    expect(ANALYTICS_EVENTS.LANDING_CTA_CLICKED).toBe('landing_cta_clicked')
   })
 
   it('AnalyticsEventName type covers all values (compile-time check)', () => {
     // This is a compile-time check: assigning each value to AnalyticsEventName must compile.
     // If the type is wrong, TypeScript will error here.
     const allValues: AnalyticsEventName[] = Object.values(ANALYTICS_EVENTS)
-    expect(allValues).toHaveLength(62)
+    expect(allValues).toHaveLength(64)
   })
 
   it('all values are unique (no duplicates)', () => {

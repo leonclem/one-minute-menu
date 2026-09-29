@@ -72,6 +72,10 @@ describe('studio-public homepage and footer', () => {
     expect(screen.queryByRole('heading', { name: /how gridmenu works/i })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /common questions/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /visit our support page/i })).toHaveAttribute('href', '/support')
+    expect(screen.getByRole('link', { name: /^ai food photography$/i })).toHaveAttribute(
+      'href',
+      '/ai-food-photography',
+    )
     expect(document.querySelector('img[src="/marketing/salmon-cutout.png"]')).not.toBeNull()
     expect(document.querySelector('img[src="/marketing/chocolate-cake-cutout.png"]')).not.toBeNull()
     expect(screen.queryByText(/menu subscription/i)).not.toBeInTheDocument()
@@ -83,7 +87,11 @@ describe('studio-public homepage and footer', () => {
   it('includes a Blog footer link', () => {
     render(<UXFooter />)
 
-    expect(screen.getByRole('link', { name: /blog/i })).toHaveAttribute('href', '/blog')
+    expect(screen.getByRole('link', { name: /^blog$/i })).toHaveAttribute('href', '/blog')
+    expect(screen.getByRole('link', { name: /^ai food photography$/i })).toHaveAttribute(
+      'href',
+      '/ai-food-photography',
+    )
     expect(screen.getByRole('link', { name: /contact us/i })).toHaveAttribute('href', '/support')
   })
 

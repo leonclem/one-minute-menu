@@ -61,6 +61,8 @@ export const ANALYTICS_EVENTS = {
   STUDIO_GUEST_UPLOADED: 'studio_guest_uploaded',
   STUDIO_AUTH_GATE_SHOWN: 'studio_auth_gate_shown',
   STUDIO_GUEST_CLAIMED: 'studio_guest_claimed',
+  AI_FOOD_PHOTOGRAPHY_PAGE_VIEW: 'ai_food_photography_page_view',
+  LANDING_CTA_CLICKED: 'landing_cta_clicked',
 } as const
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS]
