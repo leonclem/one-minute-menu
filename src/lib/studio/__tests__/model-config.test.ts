@@ -18,6 +18,7 @@ import {
   referenceLimitForModel,
   STUDIO_FLASH_MODEL,
   STUDIO_PRO_MODEL,
+  studioOutputTier,
 } from '../model-config'
 
 const warnSpy = logger.warn as jest.Mock
@@ -137,5 +138,16 @@ describe('studio model configuration', () => {
     expect(maxRefsFor(STUDIO_FLASH_MODEL)).toBe(10)
     expect(warnSpy).toHaveBeenCalled()
     expect(warningText()).toContain('documented limit')
+  })
+
+  it('labels Flash generations as Std and Pro generations as Pro', () => {
+    expect(studioOutputTier(STUDIO_FLASH_MODEL)).toBe('std')
+    expect(studioOutputTier(`${STUDIO_FLASH_MODEL}-preview`)).toBe('std')
+    expect(studioOutputTier('nb2')).toBe('std')
+    expect(studioOutputTier(STUDIO_PRO_MODEL)).toBe('pro')
+    expect(studioOutputTier(`${STUDIO_PRO_MODEL}-preview`)).toBe('pro')
+    expect(studioOutputTier('nb-pro')).toBe('pro')
+    expect(studioOutputTier(null)).toBeNull()
+    expect(studioOutputTier('gemini-2.5-flash-image')).toBeNull()
   })
 })

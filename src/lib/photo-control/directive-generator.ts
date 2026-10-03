@@ -180,18 +180,45 @@ function formatAddedException(items: readonly string[]): string {
  * Build the subject-identity-preservation clause. (Requirement 11.1 / §5.2)
  *
  * Always appended to every directive. Locks dish identity, visible component
- * counts, vessel, and colours/textures. The do-not-add sentence is unconditional
- * unless this delta itself adds named garnishes or sides.
+ * counts, and colours/textures. Names the extracted vessel when we know it.
+ * A vessel swap omits the preserve-vessel sentences so they do not contradict
+ * the replacement instruction. The do-not-add sentence is unconditional unless
+ * this delta itself adds named garnishes or sides.
  */
-function buildIdentityPreservationClause(mainItem: string, addedItems: readonly string[]): string {
+function buildIdentityPreservationClause(
+  mainItem: string,
+  addedItems: readonly string[],
+  vessel: string,
+  preserveVessel: boolean,
+): string {
   const subject = mainItem.trim().length > 0 ? mainItem.trim() : 'the main dish'
+  const knownVessel = vessel.trim()
+  const vesselSentence = !preserveVessel
+    ? ''
+    : knownVessel
+      ? `Preserve the ${knownVessel}. `
+      : 'Preserve the existing vessel exactly as shown. '
+  const visibility = !preserveVessel
+    ? 'Keep the entire subject visible, no cropping.'
+    : knownVessel
+      ? `Keep the entire subject and the ${knownVessel} visible, no cropping.`
+      : 'Keep entire subject and vessel visible, no cropping.'
   return (
     `Preserve the identity of ${subject}: ` +
     `maintain texture, shape, structure, and colours exactly as shown. ` +
     `Preserve visible ingredient and component counts. ` +
-    `Preserve the vessel/plate/bowl. ` +
+    vesselSentence +
     `Do not add new food, props, hands, text, labels, logos, napkins, or cutlery${formatAddedException(addedItems)}. ` +
-    `Keep entire subject and vessel visible, no cropping.`
+    visibility
+  )
+}
+
+function buildVesselSwapClause(currentVessel: string, promptName: string): string {
+  const current = currentVessel.trim() || 'current vessel'
+  return (
+    `Replace the ${current} with the ${promptName} shown in the additional reference image. ` +
+    `Move the existing food onto that ${promptName}, keeping the food's identity, shape, and arrangement. ` +
+    `Do not copy the reference image's background, tabletop, lighting, or any food in it.`
   )
 }
 
@@ -242,6 +269,11 @@ export interface GenerateDirectiveOptions {
    * lighting/background so `/api/studio/mutate` can inject DB-resolved fragments.
    */
   excludePaths?: readonly string[]
+  /**
+   * Maps a staged vessel key to the noun phrase used in the swap sentence.
+   * Unknown keys produce no swap clause.
+   */
+  resolveVesselPrompt?: (key: string) => string | null
 }
 
 export function generateDirective(
@@ -289,6 +321,11 @@ export function generateDirective(
         `Change only the tabletop surface to style "${change.to}". ` +
           `Keep the background backdrop, its shadows, and the dish itself completely locked.`,
       )
+    } else if (change.path === 'canvas.vessel_style') {
+      const promptName = options?.resolveVesselPrompt?.(change.to) ?? null
+      if (promptName) {
+        clauses.push(buildVesselSwapClause(context.schema.canvas.main_vessel, promptName))
+      }
     }
     // scene_setup.framing: no directive rule specified in design; skip silently
     // (framing is not exposed as a user-facing control in v1)
@@ -321,7 +358,18 @@ export function generateDirective(
   // (Requirement 11.1)
 
   const mainItem = context.schema.food_components.main_item
-  clauses.push(buildIdentityPreservationClause(mainItem, addedItems))
+  const vesselSwap = delta.scalarChanges.some((change) => {
+    if (change.path !== 'canvas.vessel_style' || excluded.has(change.path)) return false
+    return Boolean(options?.resolveVesselPrompt?.(change.to))
+  })
+  clauses.push(
+    buildIdentityPreservationClause(
+      mainItem,
+      addedItems,
+      context.schema.canvas.main_vessel,
+      !vesselSwap,
+    ),
+  )
 
   // ── "Leave all other attributes unchanged" (single-attribute changes only)
   // (Requirement 11.3)

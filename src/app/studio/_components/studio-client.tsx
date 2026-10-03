@@ -58,6 +58,7 @@ import {
 } from '@/lib/studio/restage'
 import { applyVerticalSwitch, workingShotHidesBackdrop } from '@/lib/studio/vertical-switch'
 import { applyYaw, clearConsumedYaw } from '@/lib/studio/yaw'
+import { getStudioVessel, studioVesselPromptName } from '@/lib/studio/vessels'
 import type {
   StudioBackgroundStyleDisplay,
   StudioDishRecord,
@@ -481,6 +482,7 @@ export function StudioClient({
   const sectionHasPendingChanges = {
     lighting: pendingDelta.scalarChanges.some((change) => change.path === 'scene_setup.lighting'),
     surface: pendingDelta.scalarChanges.some((change) => change.path === 'canvas.surface_style'),
+    vessel: pendingDelta.scalarChanges.some((change) => change.path === 'canvas.vessel_style'),
     backdrop: pendingDelta.scalarChanges.some(
       (change) => change.path === 'canvas.background_style'
     ),
@@ -1293,6 +1295,22 @@ export function StudioClient({
     [applyStagedChange, backgroundKeys, editorState]
   )
 
+  const stageVessel = useCallback(
+    (vesselStyle: string) => {
+      applyStagedChange({
+        ...editorState,
+        schema: {
+          ...editorState.schema,
+          canvas: {
+            ...editorState.schema.canvas,
+            vessel_style: vesselStyle,
+          },
+        },
+      })
+    },
+    [applyStagedChange, editorState],
+  )
+
   const stageQuickLook = useCallback(
     (look: StudioQuickLook) => {
       const { nextState, nextBaseline } = applyQuickLook({
@@ -1361,6 +1379,7 @@ export function StudioClient({
 
     const directive = generateDirective(delta, nextState, {
       excludePaths: FOH_STYLE_EXCLUDE_PATHS,
+      resolveVesselPrompt: studioVesselPromptName,
     })
     if (!directive) return
 
@@ -1488,7 +1507,22 @@ export function StudioClient({
       if (data.credits && typeof data.credits.balanceAfter === 'number') {
         setCreditBalance(data.credits.balanceAfter)
       }
-      const workingState = clearConsumedYaw(nextState)
+      let workingState = clearConsumedYaw(nextState)
+      const previousVessel = original.schema.canvas.vessel_style ?? ''
+      const nextVesselKey = workingState.schema.canvas.vessel_style ?? ''
+      const nextVessel = getStudioVessel(nextVesselKey)
+      if (nextVessel && nextVesselKey !== previousVessel) {
+        workingState = {
+          ...workingState,
+          schema: {
+            ...workingState.schema,
+            canvas: {
+              ...workingState.schema.canvas,
+              main_vessel: nextVessel.promptName,
+            },
+          },
+        }
+      }
       setEditorState(workingState)
       originalStateRef.current = workingState
       setBaselineVersion((v) => v + 1)
@@ -2731,6 +2765,7 @@ export function StudioClient({
             onQuickLook={stageQuickLook}
             onLighting={stageLighting}
             onSurface={stageSurface}
+            onVessel={stageVessel}
             onBackdrop={stageBackground}
             verticalSwitchEnabled={verticalSwitchEnabled}
             workingAngle={workingAngle}

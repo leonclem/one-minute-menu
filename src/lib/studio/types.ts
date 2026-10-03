@@ -66,7 +66,7 @@ export interface StudioDishRecord {
   updated_at: string
 }
 
-/** Dish row plus Current preview URL and library counts for picker / home grid. */
+/** Dish row plus newest-shot preview URL and library counts for picker / home grid. */
 export interface StudioDishListItem extends StudioDishRecord {
   current_image_url: string | null
   shotCount: number

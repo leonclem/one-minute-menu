@@ -2,7 +2,7 @@
  * Workbench crop floors and aspect presets.
  *
  * `CROP_LOW_RES_WARN_PX` is a product quality warning, not a Gemini or sharp
- * constraint. Studio Generate still omits imageConfig.aspectRatio (source framing).
+ * constraint. Studio Generate sends the source photo's nearest supported aspect ratio.
  * `CROP_MIN_WINDOW_PX` only keeps the overlay from collapsing so handles stay usable.
  */
 

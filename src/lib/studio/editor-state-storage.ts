@@ -6,6 +6,7 @@ import { CENTER, type EditorState, type MinimalSchema } from '@/lib/photo-contro
 import { normalizeBackdropKey } from '@/lib/studio/backdrop-keys'
 import { normalizeLightingKey } from '@/lib/studio/lighting-keys'
 import { normalizeSurfaceKey } from '@/lib/studio/surface-keys'
+import { getStudioVessel } from '@/lib/studio/vessels'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -38,7 +39,13 @@ export function readEditorStateFromMetadata(
 
   // Chunk 2/3 rows may lack background_style — default to empty.
   if (!schema.canvas) {
-    schema.canvas = { background: '', background_style: '', surface_style: '', main_vessel: '' }
+    schema.canvas = {
+      background: '',
+      background_style: '',
+      surface_style: '',
+      vessel_style: '',
+      main_vessel: '',
+    }
   } else {
     if (typeof schema.canvas.background_style !== 'string') {
       schema.canvas.background_style = ''
@@ -50,6 +57,11 @@ export function readEditorStateFromMetadata(
     } else {
       schema.canvas.surface_style = normalizeSurfaceKey(schema.canvas.surface_style)
     }
+    const vesselStyle = schema.canvas.vessel_style
+    schema.canvas.vessel_style =
+      typeof vesselStyle === 'string' && (vesselStyle === '' || getStudioVessel(vesselStyle))
+        ? vesselStyle
+        : ''
   }
 
   const position = isRecord(raw.position)

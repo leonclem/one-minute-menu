@@ -4,6 +4,7 @@
 
 import type { StateDelta } from '@/lib/photo-control/minimal-schema'
 import { fohAngleLabel, fohBackdropLabel, fohLightingLabel, fohSurfaceLabel } from '@/lib/studio/control-options'
+import { getStudioVessel } from '@/lib/studio/vessels'
 
 export interface ChangeSummaryLabelMaps {
   lightingLabels?: Record<string, string>
@@ -51,6 +52,9 @@ export function buildChangeSummary(
         labels?.backgroundLabels?.[change.to] ??
         (change.to.trim() ? fohSurfaceLabel(change.to) : 'Original')
       chips.push(`Surface → ${label}`)
+    } else if (change.path === 'canvas.vessel_style') {
+      const label = getStudioVessel(change.to)?.label ?? (change.to.trim() || 'Original')
+      chips.push(`Vessel → ${label}`)
     }
   }
 

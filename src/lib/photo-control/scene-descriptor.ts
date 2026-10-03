@@ -91,6 +91,8 @@ export interface SceneDescriptorState {
   surface?: SceneStyleSection
   components?: SceneComponents
   position?: { x: number; y: number }
+  /** Set when a vessel-swap reference is staged. */
+  vessel?: { description: string; note: string }
 }
 
 export interface SceneSubject {

@@ -130,7 +130,9 @@ export function buildFinishingTouchesAdditionClause(
 
   const locks: string[] = [
     'Do not add extra bowls, serving dishes, cutlery, napkins, glasses, ramekins, or unrelated props.',
-    'Do not change the dish, plating, vessel shape, crop, or camera.',
+    scalarChanged(delta, 'canvas.vessel_style')
+      ? 'Do not change the dish, plating, crop, or camera.'
+      : 'Do not change the dish, plating, vessel shape, crop, or camera.',
     'Place items naturally and irregularly, not in a grid, and keep quantities restrained.',
   ]
   if (!scalarChanged(delta, 'scene_setup.lighting')) {

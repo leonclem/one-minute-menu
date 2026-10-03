@@ -2,6 +2,7 @@ import { fetchJsonWithRetry, HttpError } from './retry'
 import type { NanoBananaParams, GenerationError } from '@/types'
 import { logger } from '@/lib/logger'
 import { isPhotoControlMimeType } from '@/lib/studio/storage-paths'
+import { STUDIO_ASPECT_RATIOS } from '@/lib/studio/aspect-ratio'
 import { modelSupportsThinkingLevel, referenceLimitForModel } from '@/lib/studio/model-config'
 import { createHash } from 'crypto'
 
@@ -129,15 +130,31 @@ const REFERENCE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'
  * and those letters are assigned by part index so Image A is always the first
  * attached image. One-image edits name the source image in the singular.
  */
-function studioFohReferencePreamble(referenceCount: number): string {
-  if (referenceCount === 1) {
+function studioFohReferencePreamble(
+  references: Array<{ comment?: string }>,
+): string {
+  if (references.length <= 1) {
     return 'Edit the provided source image while preserving its visual identity.\n\n'
   }
-  const labels = Array.from(
-    { length: referenceCount },
-    (_, index) => `Image ${REFERENCE_LETTERS[index] ?? index + 1}`,
-  )
-  return `Edit the provided reference images (${labels.join(', ')}) while preserving their visual identity.\n\n`
+  const extrasHaveComments = references.slice(1).some((reference) => reference.comment?.trim())
+  if (!extrasHaveComments) {
+    const labels = Array.from(
+      { length: references.length },
+      (_, index) => `Image ${REFERENCE_LETTERS[index] ?? index + 1}`,
+    )
+    return `Edit the provided reference images (${labels.join(', ')}) while preserving their visual identity.\n\n`
+  }
+  const lines = references.map((reference, index) => {
+    const letter = REFERENCE_LETTERS[index] ?? String(index + 1)
+    if (index === 0) {
+      return `Image ${letter} is the source photograph to edit. Preserve the food in Image ${letter}.`
+    }
+    const comment = reference.comment?.trim()
+    return comment
+      ? `Image ${letter}: ${comment}`
+      : `Image ${letter} is an additional reference for the requested change.`
+  })
+  return `${lines.join('\n')}\n\n`
 }
 
 /**
@@ -164,7 +181,7 @@ export function buildGeminiRequest(
 
   if (isStudioFohMutation) {
     if (references.length > 0) {
-      finalPromptText = studioFohReferencePreamble(references.length) + finalPromptText
+      finalPromptText = studioFohReferencePreamble(references) + finalPromptText
     }
   } else if (!isStudioObjectEdit && references.length > 0) {
     const roleInstructions = references.map((reference, index) => {
@@ -523,7 +540,7 @@ export class NanoBananaClient {
       )
     }
 
-    const validAspectRatios = ['1:1', '16:9', '9:16', '4:3', '3:4', '4:5']
+    const validAspectRatios: readonly string[] = STUDIO_ASPECT_RATIOS
     if (params.aspect_ratio && !validAspectRatios.includes(params.aspect_ratio)) {
       throw new NanoBananaError(
         `Invalid aspect ratio. Must be one of: ${validAspectRatios.join(', ')}`,

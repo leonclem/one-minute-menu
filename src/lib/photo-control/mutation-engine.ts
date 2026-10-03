@@ -18,6 +18,7 @@ import {
   referenceLimitForModel,
   STUDIO_FLASH_MODEL,
 } from '@/lib/studio/model-config'
+import { nearestStudioAspectRatio, type StudioAspectRatio } from '@/lib/studio/aspect-ratio'
 import { fitReferenceToSubject } from '@/lib/studio/reference-image-fit'
 import { detectStudioImageMimeType } from '@/lib/studio/image-format'
 import type { PhotoControlMimeType } from '@/lib/photo-control/request-validation'
@@ -42,12 +43,18 @@ interface MutationBaseInput {
   /** Fully composed instruction, bounded by the NanoBananaClient budget. */
   prompt: string
   model?: string
-  aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '4:5'
+  /** Explicit output ratio. When omitted, the source photograph's nearest supported ratio is used. */
+  aspectRatio?: StudioAspectRatio
 }
 
 /** Existing Studio and sandbox mutation contract. */
 export interface LegacyMutationInput extends MutationBaseInput {
   styleReferences?: StyleReferenceImage[]
+  /**
+   * Replacement vessel PNG. Attached on the customer path as well; lighting
+   * and backdrop style references stay off that path.
+   */
+  vesselReference?: StyleReferenceImage
   includeSteeringImages?: boolean
   request_scope?: 'studio_foh_mutation'
 }
@@ -83,6 +90,29 @@ export interface MutationOutput {
 
 type ReferenceImage = NonNullable<NanoBananaParams['reference_images']>[number]
 type ReferenceCandidate = { image: ReferenceImage; name: string }
+
+type SourceMetrics = {
+  width: number
+  height: number
+  pixels: number
+  bytes: number
+}
+
+async function readSourceMetrics(sourceImageBase64: string): Promise<SourceMetrics | null> {
+  try {
+    const sourceBytes = Buffer.from(sourceImageBase64, 'base64')
+    const metadata = await sharp(sourceBytes).metadata()
+    if (!metadata.width || !metadata.height) return null
+    return {
+      width: metadata.width,
+      height: metadata.height,
+      pixels: metadata.width * metadata.height,
+      bytes: sourceBytes.length,
+    }
+  } catch {
+    return null
+  }
+}
 
 export class MutationEngine {
   private steeringImages: ReferenceImage[] = []
@@ -130,6 +160,7 @@ export class MutationEngine {
       role: 'dish',
     }
     const isCustomerFohMutation = input.request_scope === 'studio_foh_mutation'
+    const sourceMetrics = await readSourceMetrics(input.sourceImageBase64)
     let candidates: ReferenceCandidate[]
 
     if (isObjectEditMutationInput(input)) {
@@ -177,19 +208,7 @@ export class MutationEngine {
       const styleReferences = input.styleReferences || []
       const includeSteeringImages = Boolean(input.includeSteeringImages)
       candidates = [{ image: sourceReference, name: 'source photograph' }]
-      let subjectLimits: { pixels: number; bytes: number } | null = null
-      try {
-        const sourceBytes = Buffer.from(input.sourceImageBase64, 'base64')
-        const metadata = await sharp(sourceBytes).metadata()
-        if (metadata.width && metadata.height) {
-          subjectLimits = {
-            pixels: metadata.width * metadata.height,
-            bytes: sourceBytes.length,
-          }
-        }
-      } catch {
-        // Each style-reference drop below is logged with its individual name.
-      }
+      const subjectLimits = sourceMetrics
 
       // FOH style intent remains in its descriptor. Its one-source behavior is
       // intentionally preserved while sandbox callers retain their legacy path.
@@ -241,6 +260,38 @@ export class MutationEngine {
           }
         }
       }
+
+      if (input.vesselReference?.data) {
+        const referenceName = input.vesselReference.comment || 'replacement vessel'
+        if (!subjectLimits) {
+          throw new NanoBananaError(
+            'Replacement vessel reference could not be attached because the source image dimensions could not be read.',
+            'INVALID_PARAMS',
+            400,
+          )
+        }
+        const fitted = await fitReferenceToSubject({
+          ref: input.vesselReference,
+          subjectPixels: subjectLimits.pixels,
+          subjectBytes: subjectLimits.bytes,
+        })
+        if (!fitted) {
+          throw new NanoBananaError(
+            'Replacement vessel reference could not be fitted to the source image.',
+            'INVALID_PARAMS',
+            400,
+          )
+        }
+        candidates.push({
+          image: {
+            mimeType: fitted.mimeType,
+            data: fitted.data,
+            role: input.vesselReference.role,
+            comment: fitted.comment,
+          },
+          name: referenceName,
+        })
+      }
     }
 
     // Object-edit capacity was checked above, so this preserves A/B exactly.
@@ -262,7 +313,11 @@ export class MutationEngine {
       person_generation: 'dont_allow',
       number_of_images: 1,
       image_size: configuredStudioImageSize(),
-      aspect_ratio: input.aspectRatio,
+      aspect_ratio: input.aspectRatio ?? (
+        sourceMetrics
+          ? nearestStudioAspectRatio(sourceMetrics.width, sourceMetrics.height)
+          : undefined
+      ),
       request_scope: input.request_scope,
       thinking_level: modelSupportsThinkingLevel(targetModel) ? configuredThinkingLevel() : undefined,
     })

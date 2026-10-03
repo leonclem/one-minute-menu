@@ -154,6 +154,11 @@ export const MinimalSchemaZ = z.object({
      * Empty string means "no library style selected / keep extracted surface".
      */
     surface_style: z.string().default(''),
+    /**
+     * Experimental replacement-vessel key from the Studio vessel catalogue.
+     * Empty or omitted means keep the extracted vessel.
+     */
+    vessel_style: z.string().optional(),
     main_vessel: z.string(),
   }),
   food_components: z.object({

@@ -302,6 +302,45 @@
   border: 1px solid var(--studio-border-strong);
 }
 
+.studio-model-sticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  border-radius: 7px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.4rem;
+}
+
+.studio-model-sticker[data-kind='std'] {
+  background: var(--studio-teal-tint);
+  color: var(--studio-link);
+}
+
+.studio-model-sticker[data-kind='pro'] {
+  background: var(--studio-amber-tint);
+  color: var(--studio-amber);
+}
+
+.studio-model-sticker-overlay {
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  background: rgba(12, 20, 22, 0.78);
+  pointer-events: none;
+}
+
+.studio-model-sticker-overlay[data-kind='std'] {
+  color: #7fdee4;
+}
+
+.studio-model-sticker-overlay[data-kind='pro'] {
+  color: var(--studio-amber);
+}
+
 .studio-export-tick {
   width: 0.55rem;
   height: 0.55rem;

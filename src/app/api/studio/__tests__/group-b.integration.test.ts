@@ -285,7 +285,7 @@ describe('Task 19.10 — customer FOH source → extract → staged mutate', () 
     expect(refs).toHaveLength(1)
     expect(refs[0]).toEqual({ mimeType: 'image/png', data: TINY_PNG_BASE64 })
     expect(Buffer.from(refs[0].data, 'base64')).toEqual(SOURCE_BYTES)
-    expect(body.generationConfig.imageConfig).not.toHaveProperty('aspectRatio')
+    expect(body.generationConfig.imageConfig.aspectRatio).toBe('1:1')
     expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'HIGH' })
 
     const descriptor = extractDescriptor(body.contents[0].parts[0].text)
@@ -466,7 +466,7 @@ describe('Task 19.10 — migration compatibility and Tier 1 preservation', () =>
     expect(MinimalSchemaZ.keyof().options).toEqual(['scene_setup', 'canvas', 'food_components'])
     expect(MinimalSchemaZ.shape.scene_setup.keyof().options).toEqual(['angle', 'framing', 'lighting', 'spin'])
     expect(MinimalSchemaZ.shape.canvas.keyof().options).toEqual([
-      'background', 'background_style', 'surface_style', 'main_vessel',
+      'background', 'background_style', 'surface_style', 'vessel_style', 'main_vessel',
     ])
     expect(MinimalSchemaZ.shape.food_components.keyof().options).toEqual([
       'main_item', 'garnishes', 'sides',

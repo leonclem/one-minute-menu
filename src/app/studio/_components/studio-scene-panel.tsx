@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Component_Control } from '@/components/photo-controls'
 import type { EditorState } from '@/lib/photo-control/minimal-schema'
 import { controlAssetSrc, type StudioVisualOption } from '@/lib/studio/control-options'
+import { STUDIO_VESSEL_TILES } from '@/lib/studio/vessels'
 import { STUDIO_QUICK_LOOKS, type StudioQuickLook } from '@/lib/studio/quick-looks'
 import type { FinishingTouchCatalogueItem } from '@/lib/studio/finishing-touches'
 import { STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
@@ -27,7 +28,7 @@ import { VisualOptionTiles } from './visual-option-tiles'
 /** Flip to restore the Quick Looks accordion. Kept off until combinations are settled. */
 const SHOW_QUICK_LOOKS = false
 
-type SceneSectionId = 'looks' | 'camera' | 'elements' | 'lighting' | 'surface' | 'backdrop'
+type SceneSectionId = 'looks' | 'camera' | 'elements' | 'lighting' | 'surface' | 'vessel' | 'backdrop'
 
 interface StudioScenePanelProps {
   editorState: EditorState
@@ -43,6 +44,7 @@ interface StudioScenePanelProps {
   pending: {
     lighting: boolean
     surface: boolean
+    vessel: boolean
     backdrop: boolean
     garnishes: boolean
     camera?: boolean
@@ -66,6 +68,7 @@ interface StudioScenePanelProps {
   onQuickLook: (look: StudioQuickLook) => void
   onLighting: (value: string) => void
   onSurface: (value: string) => void
+  onVessel: (value: string) => void
   onBackdrop: (value: string) => void
   onGarnishesChange: (garnishes: string[]) => void
   onSidesChange: (sides: string[]) => void
@@ -105,6 +108,7 @@ export function StudioScenePanel({
   onQuickLook,
   onLighting,
   onSurface,
+  onVessel,
   onBackdrop,
   onGarnishesChange,
   onSidesChange,
@@ -259,6 +263,30 @@ export function StudioScenePanel({
                   onChange={onSurface}
                 />
               )}
+            </SceneSection>
+
+            <SceneSection
+              id="studio-scene-vessel"
+              title="Vessel"
+              selectedLabel={optionLabel(
+                STUDIO_VESSEL_TILES,
+                editorState.schema.canvas.vessel_style,
+              )}
+              pending={pending.vessel}
+              open={openSection === 'vessel'}
+              onToggle={() => toggle('vessel')}
+            >
+              <VisualOptionTiles
+                options={STUDIO_VESSEL_TILES}
+                value={editorState.schema.canvas.vessel_style ?? ''}
+                disabled={controlsDisabled}
+                ariaLabel="Vessel"
+                onChange={onVessel}
+              />
+              <p className="mt-2 text-xs leading-5 text-white/45">
+                Swaps the plate or bowl for the selected vessel. The photo is sent with the
+                generation as the replacement.
+              </p>
             </SceneSection>
 
             <SceneSection

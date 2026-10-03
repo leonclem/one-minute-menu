@@ -54,11 +54,53 @@ describe('§5.2 identity preservation clause', () => {
     expect(directive).toContain('structure')
     expect(directive).toContain('colours')
     expect(directive).toContain('component counts')
-    expect(directive).toContain('vessel/plate/bowl')
+    expect(directive).toContain('Preserve the plate.')
+    expect(directive).toContain('Keep the entire subject and the plate visible, no cropping.')
+    expect(directive).not.toContain('vessel/plate/bowl')
     expect(directive).toContain('cutlery')
     expect(directive).toContain('napkins')
     expect(directive).not.toContain('unless this directive')
     expect(directive).not.toContain('unless explicitly requested')
+  })
+
+  it('points at the photo when the vessel was not extracted', () => {
+    const unknownVessel: EditorState = {
+      ...context,
+      schema: {
+        ...context.schema,
+        canvas: { ...context.schema.canvas, main_vessel: '  ' },
+      },
+    }
+    const directive = generateDirective(lightingDelta, unknownVessel)
+    expect(directive).toContain('Preserve the existing vessel exactly as shown.')
+    expect(directive).toContain('Keep entire subject and vessel visible, no cropping.')
+    expect(directive).not.toContain('vessel/plate/bowl')
+  })
+
+  it('names a staged replacement and does not also tell the model to preserve the old vessel', () => {
+    const swapDelta: StateDelta = {
+      isEmpty: false,
+      scalarChanges: [
+        {
+          path: 'canvas.vessel_style',
+          from: '',
+          to: 'wooden-board',
+        },
+      ],
+      arrays: {
+        garnishes: { added: [], removed: [] },
+        sides: { added: [], removed: [] },
+      },
+    }
+    const directive = generateDirective(swapDelta, context, {
+      resolveVesselPrompt: (key) => (key === 'wooden-board' ? 'wooden serving board' : null),
+    })
+    expect(directive).toContain(
+      'Replace the plate with the wooden serving board shown in the additional reference image.',
+    )
+    expect(directive).toContain('Do not copy the reference image')
+    expect(directive).not.toContain('Preserve the plate')
+    expect(directive).toContain('Keep the entire subject visible, no cropping.')
   })
 
   it('keeps the do-not-add lock unconditional when nothing is added', () => {

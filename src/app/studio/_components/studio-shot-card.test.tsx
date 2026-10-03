@@ -51,6 +51,33 @@ describe('StudioShotCard', () => {
     expect(screen.queryByRole('link', { name: 'Branch here' })).not.toBeInTheDocument()
     expect(screen.getByText('GEN 1')).toBeInTheDocument()
     expect(screen.getByText('Lighting → Golden Hour')).toBeInTheDocument()
+    expect(screen.queryByTestId('studio-model-sticker')).not.toBeInTheDocument()
+  })
+
+  it('labels a generated shot Std or Pro from the stored model', () => {
+    const standard = image({
+      id: 'std',
+      role: 'generated',
+      source_image_id: 'og',
+      model: 'gemini-3.1-flash-image',
+    })
+    const pro = image({
+      id: 'pro',
+      role: 'generated',
+      source_image_id: 'og',
+      model: 'gemini-3-pro-image',
+    })
+    render(
+      <>
+        <StudioShotCard dishId="dish-1" image={standard} images={[original, standard]} onDelete={jest.fn()} />
+        <StudioShotCard dishId="dish-1" image={pro} images={[original, pro]} onDelete={jest.fn()} />
+        <StudioShotCard dishId="dish-1" image={original} images={gallery} onDelete={jest.fn()} />
+      </>,
+    )
+    const stickers = screen.getAllByTestId('studio-model-sticker')
+    expect(stickers.map((sticker) => sticker.textContent)).toEqual(['Std', 'Pro'])
+    expect(stickers[0]).toHaveAttribute('data-kind', 'std')
+    expect(stickers[1]).toHaveAttribute('data-kind', 'pro')
   })
 
   it('reveals a delete control on hover that reports the shot', () => {

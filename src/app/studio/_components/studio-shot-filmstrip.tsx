@@ -6,6 +6,8 @@ import { useEffect, useRef } from 'react'
 import { chronologicalShots, shotShortLabel, shotTitle } from '@/lib/studio/lineage'
 import type { StudioImageRecord } from '@/lib/studio/types'
 
+import { StudioModelSticker } from './studio-shot-meta'
+
 interface StudioShotFilmstripProps {
   images: readonly StudioImageRecord[]
   selectedId: string | null
@@ -54,7 +56,7 @@ export function StudioShotFilmstrip({
               aria-pressed={selected}
               aria-label={title}
               className={[
-                'block min-h-0 min-w-0 w-20 overflow-hidden rounded-[9px] border-2 p-0 leading-none transition-colors',
+                'relative block min-h-0 min-w-0 w-20 overflow-hidden rounded-[9px] border-2 p-0 leading-none transition-colors',
                 selected ? 'border-[#01b3bf]' : 'border-transparent hover:border-white/25',
                 disabled && 'opacity-60',
               ]
@@ -70,6 +72,7 @@ export function StudioShotFilmstrip({
                 sizes="80px"
                 className="aspect-square w-full bg-black/20 object-cover"
               />
+              <StudioModelSticker model={item.model} overlay />
               <span className="block truncate bg-black/30 px-1 py-0.5 text-center text-[10px] font-bold text-white/70">
                 {shortLabel}
               </span>

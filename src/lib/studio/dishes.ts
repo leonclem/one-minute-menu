@@ -31,7 +31,7 @@ export async function listStudioDishes(userId: string): Promise<StudioDishRecord
 }
 
 /**
- * List dishes with Current preview URL, shot count, and ready-export count.
+ * List dishes for the home grid: newest shot as the tile, ordered by latest edit.
  */
 export async function listStudioDishesWithThumbnails(
   userId: string,
@@ -43,7 +43,7 @@ export async function listStudioDishesWithThumbnails(
   const [imagesResult, exportsResult] = await Promise.all([
     supabase
       .from('studio_images')
-      .select('id, dish_id, public_url')
+      .select('id, dish_id, public_url, created_at')
       .eq('user_id', userId)
       .is('archived_at', null),
     supabase
@@ -62,7 +62,12 @@ export async function listStudioDishesWithThumbnails(
 
   return attachStudioDishListStats(
     dishes,
-    (imagesResult.data ?? []) as { id: string; dish_id: string | null; public_url: string }[],
+    (imagesResult.data ?? []) as {
+      id: string
+      dish_id: string | null
+      public_url: string
+      created_at: string
+    }[],
     (exportsResult.data ?? []) as { dish_id: string }[],
   )
 }

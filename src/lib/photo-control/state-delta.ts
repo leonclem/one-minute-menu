@@ -24,7 +24,8 @@
  *  - the editor-only `position` (`AbstractCoordinate`) when it changes.
  *
  * The non-editable schema fields (`canvas.background`, `canvas.main_vessel`,
- * `food_components.main_item`) are never touched by any control, so `applyDelta`
+ * `food_components.main_item`) are never touched by any control. `canvas.vessel_style`
+ * is the experimental replacement-vessel key. `applyDelta`
  * carries them over unchanged from the original. For every state reachable
  * through the controls this makes `applyDelta(original, computeDelta(original,
  * target))` reproduce `target` exactly. (Requirement 9.4)
@@ -64,6 +65,7 @@ const SCALAR_FIELD_PATHS = [
   'scene_setup.spin',
   'canvas.background_style',
   'canvas.surface_style',
+  'canvas.vessel_style',
 ] as const
 
 type ScalarPath = (typeof SCALAR_FIELD_PATHS)[number]
@@ -83,6 +85,8 @@ function readScalarField(schema: MinimalSchema, path: ScalarPath): string {
       return schema.canvas.background_style ?? ''
     case 'canvas.surface_style':
       return schema.canvas.surface_style ?? ''
+    case 'canvas.vessel_style':
+      return schema.canvas.vessel_style ?? ''
   }
 }
 
@@ -106,6 +110,9 @@ function writeScalarField(schema: MinimalSchema, path: string, value: string): v
       break
     case 'canvas.surface_style':
       schema.canvas.surface_style = value
+      break
+    case 'canvas.vessel_style':
+      schema.canvas.vessel_style = value
       break
     default:
       // Unknown scalar path: ignore. computeDelta only ever emits known paths.

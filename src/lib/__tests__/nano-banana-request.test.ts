@@ -99,6 +99,40 @@ describe('buildGeminiRequest', () => {
     )
   })
 
+  it('labels a commented extra image as a replacement instead of preserving it', () => {
+    const params: NanoBananaParams = {
+      prompt: 'Replace the plate with the wooden serving board.',
+      person_generation: 'dont_allow',
+      request_scope: 'studio_foh_mutation',
+      reference_images: [
+        { mimeType: 'image/jpeg', data: 'c3ViamVjdA==', role: 'dish' },
+        {
+          mimeType: 'image/png',
+          data: 'Ym9hcmQ=',
+          role: 'other',
+          comment: 'Replacement vessel only (wooden serving board). Use its shape, material, and colour.',
+        },
+      ],
+    }
+
+    const request = buildGeminiRequest(params, TEST_OPTIONS)
+    expect(request.loggedPrompt).toContain(
+      'Image A is the source photograph to edit. Preserve the food in Image A.',
+    )
+    expect(request.loggedPrompt).toContain(
+      'Image B: Replacement vessel only (wooden serving board).',
+    )
+    expect(request.loggedPrompt).not.toContain('preserving their visual identity')
+    const parts = (
+      request.requestBody.contents as Array<{ parts: Array<Record<string, unknown>> }>
+    )[0].parts
+    expect(parts).toEqual([
+      { text: request.loggedPrompt },
+      { inlineData: { mimeType: 'image/jpeg', data: 'c3ViamVjdA==' } },
+      { inlineData: { mimeType: 'image/png', data: 'Ym9hcmQ=' } },
+    ])
+  })
+
   it('preserves the legacy menu request body when scope is absent', () => {
     const params: NanoBananaParams = {
       prompt: 'A menu tile for grilled salmon',

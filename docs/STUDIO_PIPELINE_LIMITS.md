@@ -224,7 +224,7 @@ Built in `nano-banana.ts`; capabilities resolved in `studio/model-config.ts`.
 | `candidateCount` | `clamp(number_of_images, 1, 4)` | Studio always requests 1. The clamp protects the shared client from other callers. |
 | `responseModalities` | `['IMAGE']` | Text output is never wanted on this path. |
 | `imageConfig.imageSize` | `STUDIO_IMAGE_SIZE`, default `2K` | Studio's export sizes need the larger render. |
-| `imageConfig.aspectRatio` | omitted on the Studio path unless explicitly set | Mutate preserves source framing; sending a ratio would fight the reference image. Non-Studio callers default to `1:1` and `1k`. |
+| `imageConfig.aspectRatio` | nearest supported ratio of the source photograph, unless the caller sets one | Locks the output to the workbench photo so a second reference (a replacement vessel, for example) cannot choose the frame. Ratios are the shared Flash/Pro set in `studio/aspect-ratio.ts`. Unreadable source bytes omit the field. Non-Studio callers still default to `1:1` and `1k`. |
 | `thinkingConfig.thinkingLevel` | `STUDIO_THINKING_LEVEL`, default `high` | Only sent to Flash models — `modelSupportsThinkingLevel` excludes Pro, which rejects it. |
 
 `safety_filter_level: 'block_some'` and `person_generation: 'dont_allow'` are set by

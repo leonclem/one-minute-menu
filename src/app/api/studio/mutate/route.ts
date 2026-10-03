@@ -31,6 +31,8 @@ import {
 import { sanitizeExtractionDiagnostics } from '@/lib/studio/extraction-diagnostics'
 import { parseFinishingTouchesMetadata } from '@/lib/studio/finishing-touches/metadata'
 import { logStudioPrompt } from '@/lib/studio/prompt-logging'
+import { loadStudioVesselReference } from '@/lib/studio/vessel-reference'
+import { getStudioVessel, stagedVesselSwap } from '@/lib/studio/vessels'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -45,6 +47,9 @@ function normalizeSchemaFields(schema: MinimalSchema): MinimalSchema {
   }
   if (typeof schema.canvas?.surface_style !== 'string') {
     schema.canvas = { ...schema.canvas, surface_style: '' }
+  }
+  if (typeof schema.canvas?.vessel_style !== 'string') {
+    schema.canvas = { ...schema.canvas, vessel_style: '' }
   }
   return schema
 }
@@ -138,6 +143,11 @@ export async function POST(request: NextRequest) {
     const originalSchema = normalizeSchemaFields(originalState as MinimalSchema)
     const targetSchema = normalizeSchemaFields(targetState as MinimalSchema)
 
+    const requestedVessel = targetSchema.canvas.vessel_style ?? ''
+    if (requestedVessel && !getStudioVessel(requestedVessel)) {
+      return NextResponse.json({ error: 'Unknown vessel selection.' }, { status: 400 })
+    }
+
     const styleResolution = await resolveStyleDirectiveClauses(originalSchema, targetSchema)
     if (styleResolution.error) {
       return NextResponse.json({ error: styleResolution.error }, { status: 400 })
@@ -172,6 +182,20 @@ export async function POST(request: NextRequest) {
       labels,
       includePromptFragmentFallback: false,
     })
+    const vesselSwap = stagedVesselSwap(originalSchema, targetSchema)
+    if (vesselSwap) {
+      descriptor.subject = {
+        ...descriptor.subject,
+        locked: descriptor.subject.locked.filter((item) => item !== 'vessel'),
+      }
+      descriptor.target = {
+        ...descriptor.target,
+        vessel: {
+          description: vesselSwap.promptName,
+          note: 'Shown in the additional reference image. Use that vessel only; do not copy its background, lighting, or food.',
+        },
+      }
+    }
     const directiveText = directive.trim()
     const compositionResult = composePrompt({
       directive: directiveText,
@@ -198,6 +222,14 @@ export async function POST(request: NextRequest) {
     })
     logStudioPrompt('mutate', compositionResult.prompt)
 
+    const vesselReference = vesselSwap ? loadStudioVesselReference(vesselSwap.value) : null
+    if (vesselSwap && !vesselReference) {
+      return NextResponse.json(
+        { error: 'Replacement vessel image is missing.' },
+        { status: 500 },
+      )
+    }
+
     const engine = getMutationEngine()
     const { imageBase64, mimeType: generatedMimeType, providerMimeType } = await engine.mutate({
       sourceImageBase64,
@@ -206,7 +238,12 @@ export async function POST(request: NextRequest) {
       model: requestedModel,
       styleReferences: [],
       request_scope: 'studio_foh_mutation',
+      ...(vesselReference ? { vesselReference } : {}),
     })
+
+    if (vesselSwap) {
+      targetSchema.canvas.main_vessel = vesselSwap.promptName
+    }
 
     const validationResult = await runStudioOutputValidation({
       imageBase64,

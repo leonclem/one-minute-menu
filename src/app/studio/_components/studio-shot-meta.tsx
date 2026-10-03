@@ -1,9 +1,10 @@
 'use client'
 
-import { Trash2 } from 'lucide-react'
+import { Circle, Sparkles, Trash2 } from 'lucide-react'
 
 import { EXPORT_PRESETS } from '@/lib/studio/export-presets'
 import { isLosslessShot, shotLibraryBadge } from '@/lib/studio/lineage'
+import { studioOutputTier } from '@/lib/studio/model-config'
 import type { StudioExportTile, StudioImageRecord } from '@/lib/studio/types'
 
 export function shotBadgeKind(badge: string): string {
@@ -20,6 +21,30 @@ export function StudioShotBadge({ badge }: { badge: string }) {
   )
 }
 
+export function StudioModelSticker({
+  model,
+  overlay = false,
+}: {
+  model: string | null
+  overlay?: boolean
+}) {
+  const tier = studioOutputTier(model)
+  if (!tier) return null
+  const pro = tier === 'pro'
+  const Icon = pro ? Sparkles : Circle
+  return (
+    <span
+      className={overlay ? 'studio-model-sticker studio-model-sticker-overlay' : 'studio-model-sticker'}
+      data-kind={tier}
+      data-testid="studio-model-sticker"
+      title={pro ? 'Generated with Pro' : 'Generated with standard'}
+    >
+      <Icon className="h-[1em] w-[1em] shrink-0" aria-hidden strokeWidth={2.5} />
+      {pro ? 'Pro' : 'Std'}
+    </span>
+  )
+}
+
 export function StudioShotBadges({
   image,
   images,
@@ -31,6 +56,7 @@ export function StudioShotBadges({
     <div className="flex flex-wrap items-center gap-1" data-testid="studio-shot-badges">
       <StudioShotBadge badge={shotLibraryBadge(image, images)} />
       {isLosslessShot(image) ? <StudioShotBadge badge="LOSSLESS" /> : null}
+      <StudioModelSticker model={image.model} />
     </div>
   )
 }

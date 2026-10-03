@@ -222,13 +222,14 @@ for image generation. It also documents supported output ratios and uppercase im
 
 Apply that behavior deliberately:
 
-- For a Studio **edit** with no explicit user-selected ratio, **omit
-  `imageConfig.aspectRatio`** rather than hard-coding 1:1. In this path omission means “do not force
-  a square”; the verified `generateContent` edit accepted an empty `imageConfig` and returned a
-  non-square image. Exact returned dimensions remain model-selected unless a supported ratio is
-  explicitly requested. Do not add an `Aspect ratio: 1:1` sentence to the prompt.
-- When the user explicitly selects a supported ratio, send that ratio in `imageConfig.aspectRatio`
-  exactly once. The prompt should describe the edit, not repeat the API configuration token.
+- For a Studio **edit** with no explicit ratio, measure the source photograph and send
+  `imageConfig.aspectRatio` as the nearest ratio both models accept (`studio/aspect-ratio.ts`).
+  Omitting the field lets the model pick a frame, including the aspect ratio of a second reference
+  such as a replacement vessel. Do not hard-code `1:1`, and do not add an aspect-ratio sentence to
+  the prompt. If the source dimensions cannot be read, omit the field.
+- When the caller already selected a supported ratio (scene expand, export reframe), send that
+  ratio in `imageConfig.aspectRatio` exactly once. The prompt should describe the edit, not repeat
+  the API configuration token.
 - Use uppercase `imageConfig.imageSize` values and default Studio to `2K`. Do not emit the stale
   lowercase `1k` fallback.
 - A legacy worker path that intentionally renders a square must set that choice explicitly and keep

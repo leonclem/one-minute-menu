@@ -4,17 +4,18 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## Issues
-- [ ] Latest edits don't always appear in "All dishes" grid
+## /studio
+- [ ] Add (pre-determined, generic) props
+- [ ] Review background colour and surface options (a la Pebblely, flair.ai) (should we just combine into "scene"?)
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Investigate vessel swapping
-- [ ] Add (pre-determined, generic) props
 - [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
+- [ ] Investigate "re-plate" prompt (preserving all food on the plate)
+- [ ] If switching to overhead and backdrop is selected, warn that backdrop will be unselected
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> LATER >>>>>>>>>>>>>>>>
@@ -36,6 +37,7 @@
 - [ ] Check "When using a single image with text, place the text prompt before the image in the input array"
 
 ## /studio
+- [ ] Investigate resolution upscaling (via Replicate models)
 - [ ] Allow the user to choose two variants for comparison (if not rotated?)
 - [ ] Add steam, shimmer, etc. (pro advised to use reference)
 - [ ] See Pinterest "food photography".  Best photos seem to create depth through focus and have some action/drama occurring, also other bowls and kitchen items
@@ -48,7 +50,6 @@
 - [ ] Notice: AI can sometimes get things wrong
 - [ ] STUDIO_GENERATION_WORKER_QUEUE_PLAN.md
 - [ ] Feed exports back to workbench as new variants
-- [ ] Upscale resolution (via Replicate models)
 - [ ] "Cutout doctor" to help
 
 ## Issues
@@ -179,6 +180,8 @@
 - [x] Investigate rotation/angle manipulation
 - [x] Remove any old 45° turn code
 - [x] Keep this: one outline, shade the outside, paste the original interior back (judge the seam)
+- [x] Investigate vessel swapping
+- [x] Label generated images with model (Std / Pro)
 
 ## Home Page
 - [x] Open Studio should not immediately require sign-ups, Generate should.
@@ -211,3 +214,4 @@
 - [x] Pricing page stuck on Euros?
 - [x] Close possible back door allowing users to change role (e.g. to admin) or add credits (docs/security/ANONYMOUS_SIGNIN_PROFILE_PRIVILEGE.md)
 - [x] Lost FAQs and slide-in images from home page (git commit f20bce0000d46c95073ad01ab3f4dd5e9fd54de3)
+- [x] Latest edits don't always appear in "All dishes" grid

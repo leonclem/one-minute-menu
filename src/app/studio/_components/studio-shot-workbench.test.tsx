@@ -121,8 +121,40 @@ describe('StudioShotFilmstrip', () => {
     )
     expect(screen.getByText('OG')).toBeInTheDocument()
     expect(screen.getByText('G1')).toBeInTheDocument()
+    expect(screen.queryByTestId('studio-model-sticker')).not.toBeInTheDocument()
     expect(screen.getByTestId('studio-gallery')).toHaveClass('studio-filmstrip')
     expect(screen.getByRole('button', { name: 'Delete Generation 1' })).toHaveClass('min-h-0')
+  })
+
+  it('sticks Std or Pro on the thumbnail of a generated shot', () => {
+    const original = image({ id: 'og', role: 'source' })
+    const standard = image({
+      id: 'v1',
+      role: 'generated',
+      source_image_id: 'og',
+      model: 'gemini-3.1-flash-image-preview',
+      created_at: '2026-08-15T01:00:00.000Z',
+    })
+    const pro = image({
+      id: 'v2',
+      role: 'generated',
+      source_image_id: 'og',
+      model: 'gemini-3-pro-image',
+      created_at: '2026-08-15T02:00:00.000Z',
+    })
+    render(
+      <StudioShotFilmstrip
+        images={[original, standard, pro]}
+        selectedId="v2"
+        onSelect={jest.fn()}
+        onDelete={jest.fn()}
+      />,
+    )
+    const stickers = screen.getAllByTestId('studio-model-sticker')
+    expect(stickers).toHaveLength(2)
+    expect(stickers[0]).toHaveTextContent('Std')
+    expect(stickers[0]).toHaveClass('studio-model-sticker-overlay')
+    expect(stickers[1]).toHaveTextContent('Pro')
   })
 })
 
@@ -316,7 +348,7 @@ describe('StudioScenePanel', () => {
       isExtracting: false,
       isRefreshingExtract: false,
       refreshExtractError: null,
-      pending: { lighting: false, surface: false, backdrop: false, garnishes: false },
+      pending: { lighting: false, surface: false, vessel: false, backdrop: false, garnishes: false },
       finishing,
       hasPendingChanges: false,
       isGenerating: false,
@@ -327,6 +359,7 @@ describe('StudioScenePanel', () => {
       onQuickLook: jest.fn(),
       onLighting: jest.fn(),
       onSurface: jest.fn(),
+      onVessel: jest.fn(),
       onBackdrop: jest.fn(),
       onGarnishesChange: jest.fn(),
       onSidesChange: jest.fn(),
@@ -357,7 +390,7 @@ describe('StudioScenePanel', () => {
       verticalSwitchEnabled: true,
       workingAngle: '45-degree',
       onVerticalSwitch,
-      pending: { lighting: false, surface: false, backdrop: false, garnishes: false, camera: false },
+      pending: { lighting: false, surface: false, vessel: false, backdrop: false, garnishes: false, camera: false },
     })
     expect(screen.getByTestId('studio-scene-section-camera')).toBeInTheDocument()
     fireEvent.click(screen.getByTestId('studio-scene-section-camera'))
@@ -386,7 +419,7 @@ describe('StudioScenePanel', () => {
     renderPanel({
       yawEnabled: true,
       onYaw,
-      pending: { lighting: false, surface: false, backdrop: false, garnishes: false, camera: false },
+      pending: { lighting: false, surface: false, vessel: false, backdrop: false, garnishes: false, camera: false },
     })
     fireEvent.click(screen.getByTestId('studio-scene-section-camera'))
     expect(screen.queryByTestId('studio-vertical-switch')).not.toBeInTheDocument()
@@ -406,7 +439,7 @@ describe('StudioScenePanel', () => {
       verticalSwitchEnabled: true,
       yawEnabled: true,
       workingAngle: '45-degree',
-      pending: { lighting: false, surface: false, backdrop: false, garnishes: false, camera: false },
+      pending: { lighting: false, surface: false, vessel: false, backdrop: false, garnishes: false, camera: false },
     })
     fireEvent.click(screen.getByTestId('studio-scene-section-camera'))
     expect(screen.getByTestId('studio-vertical-switch')).toBeInTheDocument()
@@ -433,7 +466,7 @@ describe('StudioScenePanel', () => {
       verticalSwitchEnabled: true,
       yawEnabled: true,
       workingAngle: '45-degree',
-      pending: { lighting: false, surface: false, backdrop: false, garnishes: false, camera: true },
+      pending: { lighting: false, surface: false, vessel: false, backdrop: false, garnishes: false, camera: true },
     })
     fireEvent.click(screen.getByTestId('studio-scene-section-camera'))
     expect(screen.getByTestId('studio-vertical-switch')).toHaveAttribute('aria-pressed', 'true')
@@ -470,12 +503,13 @@ describe('StudioScenePanel', () => {
   })
 
   it('opens Elements first, keeps other groups collapsed, and opens only one at a time', () => {
-    renderPanel({ pending: { lighting: true, surface: false, backdrop: false, garnishes: false } })
+    renderPanel({ pending: { lighting: true, surface: false, vessel: false, backdrop: false, garnishes: false } })
     const headings = screen.getAllByTestId(/^studio-scene-section-/)
     expect(headings.map((heading) => heading.getAttribute('data-testid'))).toEqual([
       'studio-scene-section-elements',
       'studio-scene-section-lighting',
       'studio-scene-section-surface',
+      'studio-scene-section-vessel',
       'studio-scene-section-backdrop',
     ])
     expect(screen.getByTestId('studio-scene-section-elements')).toHaveAttribute(
@@ -512,6 +546,18 @@ describe('StudioScenePanel', () => {
     expect(screen.getByTestId('studio-scene-section-lighting')).toHaveTextContent('Soft Natural')
   })
 
+  it('stages a vessel tile from the Scene tab', () => {
+    const onVessel = jest.fn()
+    renderPanel({ onVessel })
+    expect(screen.getByTestId('studio-scene-vessel-value')).toHaveTextContent('None')
+    fireEvent.click(screen.getByTestId('studio-scene-section-vessel'))
+    expect(screen.getAllByRole('radio')).toHaveLength(11)
+    fireEvent.click(screen.getByRole('radio', { name: 'Wooden board' }))
+    expect(onVessel).toHaveBeenCalledWith('wooden-board')
+    fireEvent.click(screen.getByRole('radio', { name: 'Blue plate' }))
+    expect(onVessel).toHaveBeenCalledWith('blue-plate')
+  })
+
   it('opens Lighting first for guests and never says None detected', () => {
     renderPanel({ isGuest: true })
     expect(screen.getByTestId('studio-scene-section-lighting')).toHaveAttribute(
@@ -532,13 +578,14 @@ describe('StudioScenePanel', () => {
     renderPanel({
       verticalSwitchEnabled: true,
       yawEnabled: true,
-      pending: { lighting: false, surface: false, backdrop: false, garnishes: false, camera: false },
+      pending: { lighting: false, surface: false, vessel: false, backdrop: false, garnishes: false, camera: false },
     })
     const headings = screen.getAllByTestId(/^studio-scene-section-/)
     expect(headings.map((heading) => heading.getAttribute('data-testid'))).toEqual([
       'studio-scene-section-elements',
       'studio-scene-section-lighting',
       'studio-scene-section-surface',
+      'studio-scene-section-vessel',
       'studio-scene-section-backdrop',
       'studio-scene-section-camera',
     ])

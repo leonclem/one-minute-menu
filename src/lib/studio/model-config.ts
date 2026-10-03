@@ -127,3 +127,17 @@ export function configuredStudioImageSize(): string {
   const raw = process.env.STUDIO_IMAGE_SIZE
   return raw === undefined || raw.trim() === '' ? '2K' : raw.trim().toUpperCase()
 }
+
+export type StudioOutputTier = 'std' | 'pro'
+
+/**
+ * Display tier for a stored generation model. Uploads and unrecognised models
+ * return null so the library does not invent a Std/Pro label.
+ */
+export function studioOutputTier(model: string | null | undefined): StudioOutputTier | null {
+  const normalized = (model ?? '').trim().toLowerCase()
+  if (!normalized) return null
+  if (normalized === 'nb-pro' || normalized.includes(STUDIO_PRO_MODEL)) return 'pro'
+  if (normalized === 'nb2' || normalized.includes(STUDIO_FLASH_MODEL)) return 'std'
+  return null
+}

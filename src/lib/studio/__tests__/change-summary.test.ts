@@ -59,6 +59,21 @@ describe('change-summary', () => {
     expect(chips).toEqual(['Background → Soft Neutral', 'Surface → White Marble'])
   })
 
+  it('builds a chip for a staged vessel swap', () => {
+    const chips = buildChangeSummary(
+      emptyDelta({
+        scalarChanges: [
+          {
+            path: 'canvas.vessel_style',
+            from: '',
+            to: 'blue-plate',
+          },
+        ],
+      }),
+    )
+    expect(chips).toEqual(['Vessel → Blue plate'])
+  })
+
   it('builds chips for a 90° yaw', () => {
     const chips = buildChangeSummary(
       emptyDelta({

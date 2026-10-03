@@ -295,8 +295,7 @@ describe('Studio request defects: thinking level discarded', () => {
     const [url] = mockFetchJsonWithRetry.mock.calls.at(-1) as [string, RequestInit]
 
     expect(request.generationConfig.thinkingConfig?.thinkingLevel).toBe('MINIMAL')
-    expect(request.generationConfig.imageConfig).toEqual(expect.objectContaining({ imageSize: '4K' }))
-    expect(request.generationConfig.imageConfig).not.toHaveProperty('aspectRatio')
+    expect(request.generationConfig.imageConfig).toEqual(expect.objectContaining({ imageSize: '4K', aspectRatio: '1:1' }))
     expect(url).toContain(`/models/${STUDIO_FLASH_MODEL}:generateContent`)
   })
 
