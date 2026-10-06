@@ -5,14 +5,21 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] Add (pre-determined, generic) props
-- [ ] Review background colour and surface options (a la Pebblely, flair.ai) (should we just combine into "scene"?)
+- [ ] Implement "scene" feature
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+## Social Media and Advertising
+- [ ] Plan for social media posts featuring new Scenes (embedded in real use cases)
+
+### Blogs
+- [ ] Nobody likes your food AI images - do this instead
+
 ## /studio
+- [ ] On mobile, can't zoom when using, e.g. Expand, Remove, tooling
+- [ ] Export should offer to download "as-is" aspect
 - [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
 - [ ] Investigate "re-plate" prompt (preserving all food on the plate)
 - [ ] If switching to overhead and backdrop is selected, warn that backdrop will be unselected
@@ -22,6 +29,7 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Social Media and Advertising
+- [ ] "Today's glow-up" before and after with comedy (increasingly elaborate) build up
 - [ ] Investigate what's required for name change
 - [ ] Harvest fruit from Starter Story Build May 26 "How to Get 1,000 Downloads On Your App in 30 Days (From Scratch)"
 - [ ] Understand what is required and potential upside to conduct a cold email campaign
@@ -53,6 +61,7 @@
 - [ ] "Cutout doctor" to help
 
 ## Issues
+- [ ] Consider only using NB2 for expand/remove/etc functions if set to NB Pro
 - [ ] Why is cutout worker still appearing in Vercel logs?
 - [ ] Historical spike/review data for move/remove features is stored in supabase
 - [ ] Deleting account and then signing up again restores old data (including credits aggregation!)
@@ -163,6 +172,8 @@
 - [x] Post to identified subreddits for feedback
 - [x] Social Media "GridMenu is changing"
 - [x] Start posting
+- [x] Disable Google adwords campaign
+- [x] Create new blog on LinkedI: AI chatbots vs interface
 
 ## /studio
 - [x] Zoom in and out on workbench main image

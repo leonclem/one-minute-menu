@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { UXWrapper } from '@/components/ux'
+import { ArticleAuthor, articleAuthorJsonLd } from '../ArticleAuthor'
 
 const articleJsonLd = {
   '@context': 'https://schema.org',
@@ -11,11 +12,7 @@ const articleJsonLd = {
   description:
     'AI food photo editing still starts with a blank prompt. Photographers end up negotiating over a spoon and a fork. GridMenu replaces that with controls.',
   datePublished: '2026-09-15',
-  author: {
-    '@type': 'Organization',
-    name: 'GridMenu',
-    url: 'https://gridmenu.ai',
-  },
+  author: articleAuthorJsonLd,
   publisher: {
     '@type': 'Organization',
     name: 'GridMenu',
@@ -213,6 +210,7 @@ export default function ArticleRemoveTheSpoon() {
                 Why AI image editing needs controls, not better prompts
               </p>
               <p className="text-sm text-gray-400">15 September 2026</p>
+              <ArticleAuthor variant="byline" />
             </header>
 
             <div className="space-y-6 text-gray-700 text-[1.0625rem] leading-relaxed">
@@ -500,6 +498,8 @@ export default function ArticleRemoveTheSpoon() {
                 ← Back to GridMenu Home
               </Link>
             </div>
+
+            <ArticleAuthor variant="contact" />
 
             <ShareButtons
               url="https://gridmenu.ai/blog/remove-the-spoon-not-the-fork"

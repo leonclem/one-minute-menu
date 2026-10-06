@@ -108,6 +108,11 @@ describe('The Problem With AI Imagery blog post', () => {
     const parsed = JSON.parse(script?.textContent || '')
     expect(parsed['@type']).toBe('Article')
     expect(parsed.headline).toBe(TITLE)
+    expect(parsed.author.name).toBe('Leon Clements')
+    expect(screen.getByRole('link', { name: 'Leon Clements' })).toHaveAttribute(
+      'href',
+      'https://www.linkedin.com/in/leonclements101/',
+    )
     expect(parsed.url).toBe('https://gridmenu.ai/blog/the-problem-with-ai-imagery')
     expect(parsed.datePublished).toBe('2026-09-23')
     expect(parsed.dateModified).toBe('2026-09-26')

@@ -16,6 +16,16 @@ const articles: Array<{
   imageFilename?: string
 }> = [
   {
+    slug: 'ai-native-software-shouldnt-look-like-a-chatbot',
+    category: 'Photo Studio',
+    title: "AI-Native Software Shouldn't Look Like a Chatbot",
+    excerpt:
+      'When the same prompt keeps coming back, the chat box may be hiding a better interface. AI-native software should turn that intent into controls.',
+    thumbnail: '/backgrounds/ai-native-software-shouldnt-look-like-a-chatbot.jpg',
+    thumbnailAlt:
+      'A chat thread of image-edit requests beside GridMenu controls on a photo of baked salmon',
+  },
+  {
     slug: 'the-problem-with-ai-imagery',
     category: 'Photo Studio',
     title: "The Problem With AI Imagery Isn't AI. It's What Never Existed",

@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { UXWrapper } from '@/components/ux'
+import { ArticleAuthor, articleAuthorJsonLd } from '../ArticleAuthor'
 import HeroCompare from '@/components/marketing/hero-compare/HeroCompare'
 
 const ARTICLE_URL = 'https://gridmenu.ai/blog/the-problem-with-ai-imagery'
@@ -16,11 +17,7 @@ const articleJsonLd = {
     'Some AI food imagery is repellent, but the tool is not the problem. The question is what the image claims to represent, and what we ask AI to invent.',
   datePublished: '2026-09-23',
   dateModified: '2026-09-26',
-  author: {
-    '@type': 'Organization',
-    name: 'GridMenu',
-    url: 'https://gridmenu.ai',
-  },
+  author: articleAuthorJsonLd,
   publisher: {
     '@type': 'Organization',
     name: 'GridMenu',
@@ -207,6 +204,7 @@ export default function ArticleWhatNeverExisted() {
                 Part 2: When enhancement becomes invention
               </p>
               <p className="text-sm text-gray-400">23 September 2026 · Updated 26 September 2026</p>
+              <ArticleAuthor variant="byline" />
             </header>
 
             <div className="space-y-6 text-gray-700 text-[1.0625rem] leading-relaxed overflow-hidden">
@@ -552,6 +550,8 @@ export default function ArticleWhatNeverExisted() {
                 ← Back to GridMenu Home
               </Link>
             </div>
+
+            <ArticleAuthor variant="contact" />
 
             <ShareButtons url={ARTICLE_URL} title={ARTICLE_TITLE} />
 

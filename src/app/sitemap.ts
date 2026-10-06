@@ -3,6 +3,7 @@ import { isStudioPublicSurface } from '@/lib/product-mode'
 
 const BLOG_PATHS = [
   '/blog',
+  '/blog/ai-native-software-shouldnt-look-like-a-chatbot',
   '/blog/the-problem-with-ai-imagery',
   '/blog/remove-the-spoon-not-the-fork',
   '/blog/restaurants-cannot-control-inflation',

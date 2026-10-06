@@ -55,6 +55,9 @@ describe('studio-public sitemap and SEO helpers', () => {
     expect(urls.some((url) => url.endsWith('/register'))).toBe(true)
     expect(urls.some((url) => url.endsWith('/support'))).toBe(true)
     expect(urls.some((url) => url.endsWith('/blog'))).toBe(true)
+    expect(urls.some((url) => url.endsWith('/blog/ai-native-software-shouldnt-look-like-a-chatbot'))).toBe(
+      true,
+    )
     expect(urls.some((url) => url.endsWith('/blog/the-problem-with-ai-imagery'))).toBe(true)
     expect(urls.some((url) => url.endsWith('/blog/remove-the-spoon-not-the-fork'))).toBe(true)
     expect(urls.some((url) => url.endsWith('/blog/restaurants-cannot-control-inflation'))).toBe(true)

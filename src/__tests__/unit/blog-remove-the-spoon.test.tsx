@@ -78,6 +78,11 @@ describe('Remove the Spoon, Not the Fork blog post', () => {
     const parsed = JSON.parse(script?.textContent || '')
     expect(parsed['@type']).toBe('Article')
     expect(parsed.headline).toBe('Remove the Spoon, Not the Fork')
+    expect(parsed.author.name).toBe('Leon Clements')
+    expect(screen.getByRole('link', { name: 'leon@gridmenu.ai' })).toHaveAttribute(
+      'href',
+      'mailto:leon@gridmenu.ai',
+    )
     expect(parsed.url).toBe('https://gridmenu.ai/blog/remove-the-spoon-not-the-fork')
 
     expect(
