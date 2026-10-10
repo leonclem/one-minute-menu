@@ -285,8 +285,23 @@ describe('NanoBananaClient', () => {
       mockFetchJsonWithRetry.mockRejectedValueOnce(httpError)
 
       await expect(client.generateImage(validParams)).rejects.toThrow(
-        new NanoBananaError('Service temporarily unavailable', 'SERVICE_UNAVAILABLE', 500)
+        new NanoBananaError(
+          'The request failed. Please try again later, or switch to Std or Pro.',
+          'SERVICE_UNAVAILABLE',
+          500,
+        )
       )
+    })
+
+    it('tells the user to switch tier when the model is no longer available', async () => {
+      const httpError = new HttpError('models/gemini-3.1-flash-image is not found', 404)
+      mockFetchJsonWithRetry.mockRejectedValueOnce(httpError)
+
+      await expect(client.generateImage(validParams)).rejects.toMatchObject({
+        message: 'The request failed. Please try again later, or switch to Std or Pro.',
+        code: 'SERVICE_UNAVAILABLE',
+        status: 404,
+      })
     })
 
     it('should handle unknown HTTP errors', async () => {
@@ -294,7 +309,11 @@ describe('NanoBananaClient', () => {
       mockFetchJsonWithRetry.mockRejectedValueOnce(httpError)
 
       await expect(client.generateImage(validParams)).rejects.toThrow(
-        new NanoBananaError('Unknown Error', 'NETWORK_ERROR', 418)
+        new NanoBananaError(
+          'The request failed. Please try again later, or switch to Std or Pro.',
+          'NETWORK_ERROR',
+          418,
+        )
       )
     })
   })

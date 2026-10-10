@@ -14,15 +14,14 @@
 ## Social Media and Advertising
 - [ ] Plan for social media posts featuring new Scenes (embedded in real use cases)
 
-### Blogs
-- [ ] Nobody likes your food AI images - do this instead
-
 ## /studio
 - [ ] On mobile, can't zoom when using, e.g. Expand, Remove, tooling
 - [ ] Export should offer to download "as-is" aspect
 - [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
 - [ ] Investigate "re-plate" prompt (preserving all food on the plate)
 - [ ] If switching to overhead and backdrop is selected, warn that backdrop will be unselected
+- [ ] Add stopwatch counter when generation starts
+- [ ] Guide users on the ideal starting photo (for first upload) -> use examples
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> LATER >>>>>>>>>>>>>>>>
@@ -38,6 +37,8 @@
 - [ ] Test production (use 100% off coupon perhaps)
 
 ## SEO optimisation
+- [ ] Use Adwords campaign to make new landing pages based on keywords observed
+- [ ] Add backlinks (https://nick-nolan.medium.com/a-growing-list-of-free-do-follow-backlinks-f07a0ab1d7c0) (no more than 10-15 per day)
 - [ ] Check if Betalist updated (submitted changes 16/08/26)
 
 ### Best Practices (https://ai.google.dev/gemini-api/docs/image-understanding#object-detection)
@@ -90,6 +91,7 @@
 ### Blogs
 - [x] Prompt mastery "Remove the Spoon, Not the Fork."
 - [x] Fighting AI slop "The Problem With AI Imagery Isn't AI. It's What Never Existed."
+- [ ] Nobody likes your food AI images - do this instead
 - [ ] Grow sales with better images
 - [ ] Admin tool to add blogs
 - [ ] Use better descriptions to boost sales

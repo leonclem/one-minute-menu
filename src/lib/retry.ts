@@ -30,6 +30,32 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+function providerErrorMessage(body: unknown, statusText: string): string {
+  if (typeof body === 'string' && body.trim()) return body.trim()
+  if (body && typeof body === 'object') {
+    const record = body as { error?: unknown; message?: unknown }
+    const nested = record.error
+    if (typeof nested === 'string' && nested.trim()) return nested.trim()
+    if (nested && typeof nested === 'object') {
+      const message = (nested as { message?: unknown }).message
+      if (typeof message === 'string' && message.trim()) return message.trim()
+    }
+    if (typeof record.message === 'string' && record.message.trim()) return record.message.trim()
+  }
+  return statusText || 'Request failed'
+}
+
+function providerErrorCode(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object') return undefined
+  const record = body as { code?: unknown; error?: unknown }
+  if (typeof record.code === 'string' && record.code.trim()) return record.code
+  if (record.error && typeof record.error === 'object') {
+    const nested = record.error as { status?: unknown }
+    if (typeof nested.status === 'string' && nested.status.trim()) return nested.status
+  }
+  return undefined
+}
+
 export function isTransientHttpStatus(status: number): boolean {
   if (status === 408 || status === 429) return true
   if (status >= 500 && status <= 599) return true
@@ -81,8 +107,8 @@ export async function fetchJsonWithRetry<T = any>(
       const isJson = contentType.includes('application/json')
       const body = isJson ? await res.json().catch(() => undefined) : await res.text().catch(() => undefined)
       if (!res.ok) {
-        const message = (body && (body as any).error) || res.statusText || 'Request failed'
-        throw new HttpError(message, res.status, body, (body as any)?.code)
+        const message = providerErrorMessage(body, res.statusText)
+        throw new HttpError(message, res.status, body, providerErrorCode(body))
       }
       return (body as T) ?? (undefined as any)
     } finally {

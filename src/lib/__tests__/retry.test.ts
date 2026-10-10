@@ -59,6 +59,24 @@ describe('fetchJsonWithRetry', () => {
     expect(body).toEqual({ success: true })
     expect(calls).toBe(2)
   })
+
+  it('reads a nested Gemini error message', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      headers: { get: () => 'application/json' },
+      json: async () => ({ error: { message: 'models/gemini-x is not found', status: 'NOT_FOUND' } }),
+      text: async () => '',
+    })) as typeof fetch
+
+    const caught = fetchJsonWithRetry('/test', undefined, { retries: 0, timeoutMs: 100 }).catch((error) => error)
+    await jest.advanceTimersByTimeAsync(10)
+    const error = await caught
+    expect(error).toBeInstanceOf(HttpError)
+    expect(error.message).toBe('models/gemini-x is not found')
+    expect(error.code).toBe('NOT_FOUND')
+  })
 })
 
 

@@ -82,6 +82,7 @@ describe('atomic Studio generation finalization', () => {
       p_height: 900,
       p_metadata: expect.objectContaining({
         editorStateVersion: 1,
+        outputTier: 'std',
         objectEdit,
       }),
     }))

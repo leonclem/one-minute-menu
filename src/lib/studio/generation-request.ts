@@ -26,7 +26,12 @@ import {
   StudioDishBlockedError,
 } from '@/lib/studio/generation-failures'
 import { StudioImageLoadError } from '@/lib/studio/image-bytes'
-import { STUDIO_FLASH_MODEL, STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
+import { STUDIO_MODEL_REQUEST_FAILED_MESSAGE } from '@/lib/studio/model-failure-message'
+import {
+  resolveStudioGenerationModel,
+  studioModelChoice,
+  StudioModelEndpointError,
+} from '@/lib/studio/model-endpoints'
 import { logger } from '@/lib/logger'
 
 export interface StudioGenerationGuardContext {
@@ -43,9 +48,7 @@ export interface StudioGenerationGuardResult {
 }
 
 export function resolveRequestedStudioModel(model: unknown): string {
-  return typeof model === 'string' && model === STUDIO_PRO_MODEL
-    ? STUDIO_PRO_MODEL
-    : STUDIO_FLASH_MODEL
+  return resolveStudioGenerationModel(model)
 }
 
 export async function guardStudioGeneration(
@@ -99,7 +102,13 @@ export async function finaliseStudioGeneration({
   creditCost,
   requestedModel,
 }: FinaliseStudioGenerationInput): Promise<FinaliseStudioGenerationResult> {
-  const record = await persistStudioImage(persistInput)
+  const record = await persistStudioImage({
+    ...persistInput,
+    metadata: {
+      ...(persistInput.metadata ?? {}),
+      outputTier: studioModelChoice(requestedModel),
+    },
+  })
 
   const debit = await debitForStudioGeneration({
     userId,
@@ -136,6 +145,14 @@ export async function mapStudioGenerationError(
     return NextResponse.json(
       { error: error.message, code: 'STUDIO_INSUFFICIENT_CREDITS' },
       { status: error.status },
+    )
+  }
+
+  if (error instanceof StudioModelEndpointError) {
+    logger.error(`❌ [${logLabel}] Studio model endpoint`, { message: error.message })
+    return NextResponse.json(
+      { error: STUDIO_MODEL_REQUEST_FAILED_MESSAGE, code: 'SERVICE_UNAVAILABLE' },
+      { status: 503 },
     )
   }
 

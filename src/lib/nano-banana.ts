@@ -3,6 +3,8 @@ import type { NanoBananaParams, GenerationError } from '@/types'
 import { logger } from '@/lib/logger'
 import { isPhotoControlMimeType } from '@/lib/studio/storage-paths'
 import { STUDIO_ASPECT_RATIOS } from '@/lib/studio/aspect-ratio'
+import { STUDIO_MODEL_REQUEST_FAILED_MESSAGE, studioProviderFailureMessage } from '@/lib/studio/model-failure-message'
+import { configuredStudioModelUrl } from '@/lib/studio/model-endpoints'
 import { modelSupportsThinkingLevel, referenceLimitForModel } from '@/lib/studio/model-config'
 import { createHash } from 'crypto'
 
@@ -85,7 +87,11 @@ export class NanoBananaError extends Error {
       ],
       'TIMEOUT': [
         'Try again; this edit can take over a minute',
-        'If it keeps timing out, simplify the request or retry later'
+        'If it keeps failing, switch between Std and Pro'
+      ],
+      'SERVICE_UNAVAILABLE': [
+        'Try again in a few minutes',
+        'Switch between Std and Pro and try again'
       ],
       'PROMPT_TOO_LONG': [
         'Shorten your description',
@@ -168,9 +174,11 @@ export function buildGeminiRequest(
   options: BuildGeminiRequestOptions = {}
 ): GeminiRequest {
   const model = params.model || DEFAULT_GEMINI_IMAGE_MODEL
-  const baseUrl = params.model
-    ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
-    : options.baseUrl || DEFAULT_GEMINI_IMAGE_BASE_URL
+  const configuredUrl = params.model ? configuredStudioModelUrl(model) : null
+  const baseUrl = configuredUrl
+    || (params.model
+      ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+      : options.baseUrl || DEFAULT_GEMINI_IMAGE_BASE_URL)
   const candidateCount = Math.min(Math.max(params.number_of_images || 1, 1), 4)
 
   const isStudioFohMutation = params.request_scope === 'studio_foh_mutation'
@@ -496,7 +504,7 @@ export class NanoBananaClient {
     } catch (error) {
       if (isAbortError(error)) {
         throw new NanoBananaError(
-          'The image model took too long to respond. Please try again.',
+          STUDIO_MODEL_REQUEST_FAILED_MESSAGE,
           'TIMEOUT',
           504,
         )
@@ -611,6 +619,12 @@ export class NanoBananaClient {
       console.log('🔍 [Nano Banana] 400 Error - Full response body:', JSON.stringify(error.body, null, 2))
     }
 
+    const providerMessage = typeof error.message === 'string' ? error.message : ''
+    const friendly = studioProviderFailureMessage(error.status, providerMessage)
+    if (error.status === 400 && friendly) {
+      return new NanoBananaError(friendly, 'SERVICE_UNAVAILABLE', 400)
+    }
+
     switch (error.status) {
       case 400:
         return new NanoBananaError(
@@ -643,19 +657,21 @@ export class NanoBananaClient {
           retryAfter
         )
       
+      case 404:
+      case 408:
       case 500:
       case 502:
       case 503:
       case 504:
         return new NanoBananaError(
-          'Service temporarily unavailable',
+          friendly || STUDIO_MODEL_REQUEST_FAILED_MESSAGE,
           'SERVICE_UNAVAILABLE',
           error.status
         )
       
       default:
         return new NanoBananaError(
-          error.message || 'Network error occurred',
+          friendly || error.message || 'Network error occurred',
           'NETWORK_ERROR',
           error.status
         )

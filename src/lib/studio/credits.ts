@@ -5,6 +5,7 @@
  */
 
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
+import { studioModelChoice } from '@/lib/studio/model-endpoints'
 
 export const DEFAULT_STUDIO_CREDIT_COST_NB2 = 1
 export const DEFAULT_STUDIO_CREDIT_COST_NB_PRO = 2
@@ -107,6 +108,11 @@ export function getCreditCostForExportMethod(method: string): number {
 /** Map Gemini / Studio model id → credit cost. */
 export function getCreditCostForModel(model: string | null | undefined): number {
   const costs = getStudioCreditCosts()
+  try {
+    if (studioModelChoice(model) === 'pro') return costs.nbPro
+  } catch {
+    // Missing endpoint config falls through to the model-name check.
+  }
   const normalized = (model ?? '').toLowerCase()
   if (normalized.includes('pro')) return costs.nbPro
   return costs.nb2

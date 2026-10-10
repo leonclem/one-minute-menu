@@ -72,7 +72,7 @@ export function StudioShotFilmstrip({
                 sizes="80px"
                 className="aspect-square w-full bg-black/20 object-cover"
               />
-              <StudioModelSticker model={item.model} overlay />
+              <StudioModelSticker model={item.model} metadata={item.metadata} overlay />
               <span className="block truncate bg-black/30 px-1 py-0.5 text-center text-[10px] font-bold text-white/70">
                 {shortLabel}
               </span>

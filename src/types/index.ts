@@ -717,8 +717,9 @@ export interface NanoBananaParams {
   /**
    * Optional thinking level for reasoning-driven models.
    * "high" or "dynamic" forces deeper spatial reasoning.
+   * "medium" is accepted by Nano Banana 2.x.
    */
-  thinking_level?: 'minimal' | 'high' | 'dynamic' | 'standard'
+  thinking_level?: 'minimal' | 'medium' | 'high' | 'dynamic' | 'standard'
   /**
    * Internal application discriminator for Studio provider requests. It is
    * never serialized as a Gemini top-level request field.

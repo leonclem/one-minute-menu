@@ -135,6 +135,7 @@ describe('studio library', () => {
     nextSelectMode = 'list'
     const images = await listStudioImagesForDish('u1', 'dish-1')
     expect(images).toHaveLength(1)
+    expect(images[0].metadata).toEqual({ outputTier: 'std' })
     expect(mockList).toHaveBeenCalled()
   })
 

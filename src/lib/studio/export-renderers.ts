@@ -20,7 +20,7 @@ import {
   type StudioExportGenerationMethod,
   type StudioExportPreset,
 } from '@/lib/studio/export-presets'
-import { STUDIO_FLASH_MODEL } from '@/lib/studio/model-config'
+import { studioStdModelId } from '@/lib/studio/model-endpoints'
 
 export class StudioExportRenderError extends Error {
   readonly code: string
@@ -156,7 +156,7 @@ export async function renderAiExpandVariant(input: {
     sourceImageBase64: input.sourceBase64,
     mimeType: input.mimeType,
     prompt,
-    model: STUDIO_FLASH_MODEL,
+    model: studioStdModelId(),
     aspectRatio: input.preset.requestAspectRatio,
     styleReferences: [],
     request_scope: 'studio_foh_mutation',
@@ -196,7 +196,7 @@ export async function renderAiExpandVariant(input: {
   return {
     ...encoded,
     prompt,
-    model: STUDIO_FLASH_MODEL,
+    model: studioStdModelId(),
     modelWidth,
     modelHeight,
     requestedAspectRatio: requested,

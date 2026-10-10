@@ -63,7 +63,9 @@ describe('studio model configuration', () => {
     expect(modelSupportsThinkingLevel(`${STUDIO_FLASH_MODEL}-preview`)).toBe(true)
     expect(modelSupportsThinkingLevel('gemini-2.5-flash-image')).toBe(true)
     expect(modelSupportsThinkingLevel(STUDIO_PRO_MODEL)).toBe(false)
+    expect(modelSupportsThinkingLevel('gemini-nano-banana-2.1')).toBe(true)
     expect(modelSupportsThinkingLevel('legacy-image-model')).toBe(false)
+    expect(documentedLimit('gemini-nano-banana-2.1', 'total')).toBe(10)
   })
 
   it('uses high thinking by default and accepts the supported configured values', () => {
@@ -74,15 +76,18 @@ describe('studio model configuration', () => {
 
     process.env.STUDIO_THINKING_LEVEL = ' HIGH '
     expect(configuredThinkingLevel()).toBe('high')
+
+    process.env.STUDIO_THINKING_LEVEL = 'medium'
+    expect(configuredThinkingLevel()).toBe('medium')
     expect(warnSpy).not.toHaveBeenCalled()
   })
 
   it('warns and falls back to high for an unsupported thinking level', () => {
-    process.env.STUDIO_THINKING_LEVEL = 'medium'
+    process.env.STUDIO_THINKING_LEVEL = 'extreme'
 
     expect(configuredThinkingLevel()).toBe('high')
     expect(warnSpy).toHaveBeenCalledTimes(1)
-    expect(warningText()).toContain('medium')
+    expect(warningText()).toContain('extreme')
     expect(warningText()).toContain('high')
   })
 
@@ -149,5 +154,7 @@ describe('studio model configuration', () => {
     expect(studioOutputTier('nb-pro')).toBe('pro')
     expect(studioOutputTier(null)).toBeNull()
     expect(studioOutputTier('gemini-2.5-flash-image')).toBeNull()
+    expect(studioOutputTier('retired-model', { outputTier: 'pro' })).toBe('pro')
+    expect(studioOutputTier('gemini-nano-banana-2.1')).toBeNull()
   })
 })

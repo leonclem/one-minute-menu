@@ -67,6 +67,14 @@ describe('studio credits', () => {
     expect(getCreditCostForModel('gemini-3-pro-image')).toBe(2)
   })
 
+  it('charges the Pro price for the configured Pro model id', () => {
+    process.env.STUDIO_STD_MODEL_URL = 'https://models.test/v1beta/models/gemini-a:generateContent'
+    process.env.STUDIO_PRO_MODEL_URL = 'https://models.test/v1beta/models/gemini-nano-banana-2.1:generateContent'
+    expect(getCreditCostForModel('gemini-nano-banana-2.1')).toBe(2)
+    expect(getCreditCostForModel('gemini-3-pro-image')).toBe(2)
+    expect(getCreditCostForModel('gemini-a')).toBe(1)
+  })
+
   it('reads cost overrides from env', () => {
     process.env.STUDIO_CREDIT_COST_NB2 = '2'
     process.env.STUDIO_CREDIT_COST_NB_PRO = '5'

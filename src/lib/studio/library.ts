@@ -4,6 +4,7 @@
 
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
 import { deleteExportVariantsForSource } from '@/lib/studio/export-variants'
+import { withStoredOutputTier } from '@/lib/studio/model-config'
 import type { StudioImageRecord } from '@/lib/studio/types'
 
 const BUCKET_NAME = 'ai-generated-images'
@@ -31,7 +32,7 @@ export async function listStudioImagesForDish(
     throw new Error(`Failed to list studio images: ${error.message}`)
   }
 
-  return (data ?? []) as StudioImageRecord[]
+  return ((data ?? []) as StudioImageRecord[]).map(withStoredOutputTier)
 }
 
 export async function getStudioImage(
@@ -50,7 +51,7 @@ export async function getStudioImage(
     throw new Error(`Failed to load studio image: ${error.message}`)
   }
 
-  return (data as StudioImageRecord | null) ?? null
+  return data ? withStoredOutputTier(data as StudioImageRecord) : null
 }
 
 /**

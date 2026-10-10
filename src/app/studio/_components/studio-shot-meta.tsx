@@ -23,12 +23,14 @@ export function StudioShotBadge({ badge }: { badge: string }) {
 
 export function StudioModelSticker({
   model,
+  metadata,
   overlay = false,
 }: {
   model: string | null
+  metadata?: { outputTier?: unknown } | null
   overlay?: boolean
 }) {
-  const tier = studioOutputTier(model)
+  const tier = studioOutputTier(model, metadata)
   if (!tier) return null
   const pro = tier === 'pro'
   const Icon = pro ? Sparkles : Circle
@@ -56,7 +58,7 @@ export function StudioShotBadges({
     <div className="flex flex-wrap items-center gap-1" data-testid="studio-shot-badges">
       <StudioShotBadge badge={shotLibraryBadge(image, images)} />
       {isLosslessShot(image) ? <StudioShotBadge badge="LOSSLESS" /> : null}
-      <StudioModelSticker model={image.model} />
+      <StudioModelSticker model={image.model} metadata={image.metadata} />
     </div>
   )
 }

@@ -202,7 +202,7 @@ describe('buildGeminiRequest', () => {
           imageConfig: { aspectRatio: '4:3', imageSize: '2K' },
         },
       },
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=request-test-key'
+      'https://models.test/v1beta/models/gemini-3-pro-image:generateContent?key=request-test-key'
     )
   })
 })

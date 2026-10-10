@@ -1,5 +1,7 @@
 import { logger } from '@/lib/logger'
+import { loadStudioModelEndpoints } from '@/lib/studio/model-endpoints'
 
+/** Historical capability ids. Live Std/Pro calls use STUDIO_STD_MODEL_URL and STUDIO_PRO_MODEL_URL. */
 export const STUDIO_FLASH_MODEL = 'gemini-3.1-flash-image'
 export const STUDIO_PRO_MODEL = 'gemini-3-pro-image'
 
@@ -32,8 +34,16 @@ function normalizeModel(model: string | undefined): string {
 
 function modelFamily(model: string | undefined): ModelFamily {
   const normalized = normalizeModel(model)
+  if (normalized.includes('gemini-nano-banana-2')) return 'flash'
   if (normalized.includes(STUDIO_PRO_MODEL)) return 'pro'
   if (normalized.includes(STUDIO_FLASH_MODEL)) return 'flash'
+  try {
+    const endpoints = loadStudioModelEndpoints()
+    if (normalized === endpoints.pro.modelId.toLowerCase()) return 'pro'
+    if (normalized === endpoints.std.modelId.toLowerCase()) return 'flash'
+  } catch {
+    // Historical ids above still classify the built-in models.
+  }
   return 'legacy'
 }
 
@@ -101,20 +111,29 @@ export function maxRefsFor(model: string): number {
   return maxReferencesFor(model)
 }
 
-/** Flash models accept thinking levels; Pro and unknown models deliberately do not. */
+/** Flash and Nano Banana 2.x accept thinking levels; Pro and unknown models do not. */
 export function modelSupportsThinkingLevel(model: string): boolean {
   const normalized = normalizeModel(model)
-  return normalized.includes('flash') && !normalized.includes('pro')
+  if (normalized.includes('gemini-nano-banana-2')) return true
+  if (normalized.includes('pro')) return false
+  if (normalized.includes('flash')) return true
+  try {
+    const endpoints = loadStudioModelEndpoints()
+    if (normalized === endpoints.std.modelId.toLowerCase()) return true
+  } catch {
+    return false
+  }
+  return false
 }
 
-export type StudioThinkingLevel = 'minimal' | 'high'
+export type StudioThinkingLevel = 'minimal' | 'medium' | 'high'
 
 export function configuredThinkingLevel(): StudioThinkingLevel {
   const raw = process.env.STUDIO_THINKING_LEVEL
   if (raw === undefined || raw.trim() === '') return 'high'
 
   const normalized = raw.trim().toLowerCase()
-  if (normalized === 'minimal' || normalized === 'high') return normalized
+  if (normalized === 'minimal' || normalized === 'medium' || normalized === 'high') return normalized
 
   logger.warn('[Studio model config] Invalid STUDIO_THINKING_LEVEL; falling back to high.', {
     requested: raw,
@@ -134,10 +153,33 @@ export type StudioOutputTier = 'std' | 'pro'
  * Display tier for a stored generation model. Uploads and unrecognised models
  * return null so the library does not invent a Std/Pro label.
  */
-export function studioOutputTier(model: string | null | undefined): StudioOutputTier | null {
+export function studioOutputTier(
+  model: string | null | undefined,
+  metadata?: { outputTier?: unknown } | null,
+): StudioOutputTier | null {
+  const saved = metadata?.outputTier
+  if (saved === 'std' || saved === 'pro') return saved
   const normalized = (model ?? '').trim().toLowerCase()
   if (!normalized) return null
+  try {
+    const endpoints = loadStudioModelEndpoints()
+    if (normalized === endpoints.pro.modelId.toLowerCase()) return 'pro'
+    if (normalized === endpoints.std.modelId.toLowerCase()) return 'std'
+  } catch {
+    // Display falls back to historical ids when the endpoints are unavailable.
+  }
   if (normalized === 'nb-pro' || normalized.includes(STUDIO_PRO_MODEL)) return 'pro'
   if (normalized === 'nb2' || normalized.includes(STUDIO_FLASH_MODEL)) return 'std'
   return null
+}
+
+/** Copy a library row with outputTier filled in so the browser can label it. */
+export function withStoredOutputTier<T extends { model: string | null; metadata: Record<string, unknown> }>(
+  image: T,
+): T {
+  const saved = image.metadata?.outputTier
+  if (saved === 'std' || saved === 'pro') return image
+  const tier = studioOutputTier(image.model, image.metadata)
+  if (!tier) return image
+  return { ...image, metadata: { ...image.metadata, outputTier: tier } }
 }

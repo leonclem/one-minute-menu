@@ -1,6 +1,10 @@
 // Build-time safety check to prevent dev auth in production
 const fs = require('fs')
 const path = require('path')
+const { pathToFileURL } = require('url')
+const { loadEnvConfig } = require('@next/env')
+
+loadEnvConfig(path.join(__dirname, '..'))
 
 function checkProductionSafety() {
   console.log('🔒 Checking production safety...')
@@ -32,5 +36,15 @@ function checkProductionSafety() {
   console.log('✅ Production safety checks passed')
 }
 
-// Run checks
+async function checkStudioModelEndpoints() {
+  const moduleUrl = pathToFileURL(path.join(__dirname, '../src/lib/studio/model-endpoints.ts')).href
+  const { loadStudioModelEndpoints } = await import(moduleUrl)
+  const endpoints = loadStudioModelEndpoints()
+  console.log(`✅ Studio model endpoints: std=${endpoints.std.modelId} pro=${endpoints.pro.modelId}`)
+}
+
 checkProductionSafety()
+checkStudioModelEndpoints().catch((error) => {
+  console.error(`❌ ${error.message}`)
+  process.exit(1)
+})

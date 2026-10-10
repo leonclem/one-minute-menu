@@ -4,6 +4,7 @@ import { MinimalSchemaZ, type EditorState, type MinimalSchema } from '@/lib/phot
 import { logger } from '@/lib/logger'
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
 import { resolveStudioImageMimeType } from '@/lib/studio/image-format'
+import { studioModelChoice } from '@/lib/studio/model-endpoints'
 import {
   ObjectEditOperationMetadataZ,
   type ObjectEditOperationMetadata,
@@ -208,6 +209,7 @@ export async function finalizeStudioGenerationAtomic(
   const publicUrl = normalizeStoragePublicUrl(storage.getPublicUrl(storagePath).data.publicUrl)
   const metadata = {
     ...(input.metadata ?? {}),
+    outputTier: studioModelChoice(input.requestedModel),
     editorStateVersion: 1,
     editorState: { schema: validated.canonical, position: validated.position },
     objectEdit: validated.objectEdit,

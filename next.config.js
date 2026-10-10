@@ -8,6 +8,7 @@ const nextConfig = {
     // Ensure puppeteer-core and @sparticuz/chromium are not bundled into .next
     // so their binaries/assets remain available in node_modules at runtime
     serverComponentsExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
+    instrumentationHook: true,
   },
   webpack: (config, { isServer }) => {
     if (isServer) {

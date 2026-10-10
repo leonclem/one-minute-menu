@@ -16,8 +16,8 @@ import {
   configuredThinkingLevel,
   modelSupportsThinkingLevel,
   referenceLimitForModel,
-  STUDIO_FLASH_MODEL,
 } from '@/lib/studio/model-config'
+import { studioStdModelId } from '@/lib/studio/model-endpoints'
 import { nearestStudioAspectRatio, type StudioAspectRatio } from '@/lib/studio/aspect-ratio'
 import { fitReferenceToSubject } from '@/lib/studio/reference-image-fit'
 import { detectStudioImageMimeType } from '@/lib/studio/image-format'
@@ -152,7 +152,7 @@ export class MutationEngine {
 
   async mutate(input: MutationInput): Promise<MutationOutput> {
     const client = getNanoBananaClient()
-    const targetModel = input.model || STUDIO_FLASH_MODEL
+    const targetModel = input.model || studioStdModelId()
     const maxRefs = referenceLimitForModel(targetModel)
     const sourceReference: ReferenceImage = {
       mimeType: input.mimeType,
