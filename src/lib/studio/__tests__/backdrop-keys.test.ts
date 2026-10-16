@@ -22,6 +22,7 @@ describe('backdrop-keys', () => {
   })
 
   it('returns FOH labels for current and legacy keys', () => {
+    expect(fohBackdropLabel('sunlit-kitchen')).toBe('Sunlit Kitchen')
     expect(fohBackdropLabel('charcoal')).toBe('Charcoal')
     expect(fohBackdropLabel('studio-red')).toBe('Terracotta')
   })

@@ -175,7 +175,7 @@ export function AuthOTPForm({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onFocus={handleEmailFocus}
-          placeholder="you@restaurant.com"
+          placeholder="you@email.com"
           error={error}
           disabled={loading}
           autoComplete="email"

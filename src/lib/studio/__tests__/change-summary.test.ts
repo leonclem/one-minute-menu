@@ -118,6 +118,14 @@ describe('change-summary', () => {
     expect(buildChangeSummary(emptyDelta({ isEmpty: true }))).toEqual([])
   })
 
+  it('names staged props even when the schema delta is empty', () => {
+    expect(
+      buildChangeSummary(emptyDelta({ isEmpty: true }), {
+        propLabels: ['Folded napkin', 'Fork'],
+      }),
+    ).toEqual(['Props: Folded napkin, Fork'])
+  })
+
   it('reads changeSummary from metadata', () => {
     expect(readChangeSummary({ changeSummary: ['Lighting → Bright & Clean'] })).toEqual([
       'Lighting → Bright & Clean',

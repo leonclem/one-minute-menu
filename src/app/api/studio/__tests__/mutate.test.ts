@@ -483,4 +483,49 @@ describe('POST /api/studio/mutate', () => {
     const res = await POST(makeRequest(withoutDish))
     expect(res.status).toBe(400)
   })
+
+  it('puts selected prop descriptions on the descriptor target', async () => {
+    mockRequireStudioApi.mockResolvedValue({
+      ok: true,
+      user: { id: 'user-1' },
+      supabase: {},
+    })
+
+    const sameState = validBody.originalState
+    const res = await POST(
+      makeRequest({
+        ...validBody,
+        originalState: sameState,
+        targetState: sameState,
+        directive: 'Add the named props.',
+        props: ['folded-napkin', 'yellow-pepper'],
+      }),
+    )
+    expect(res.status).toBe(200)
+    const composed = mockComposePrompt.mock.calls.at(-1)?.[0] as {
+      descriptor: { target: { props: Array<{ name: string; description: string }> } }
+    }
+    expect(composed.descriptor.target.props.map((prop) => prop.name)).toEqual([
+      'Folded napkin',
+      'Yellow pepper',
+    ])
+    expect(composed.descriptor.target.props[0]?.description).toContain('ivory linen')
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.not.objectContaining({ vesselReference: expect.anything() }),
+    )
+  })
+
+  it('rejects an unknown prop id', async () => {
+    mockRequireStudioApi.mockResolvedValue({
+      ok: true,
+      user: { id: 'user-1' },
+      supabase: {},
+    })
+
+    const res = await POST(makeRequest({ ...validBody, props: ['vase'] }))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toBe('Unknown prop selection.')
+    expect(mockMutate).not.toHaveBeenCalled()
+  })
 })

@@ -38,6 +38,7 @@ import {
   stackFromIds,
   type FinishingTouchCatalogueItem,
 } from '@/lib/studio/finishing-touches'
+import { propsFromIds } from '@/lib/studio/props'
 import {
   STUDIO_LIGHTING_OPTIONS,
   backdropStylesToOptions,
@@ -167,6 +168,7 @@ interface StudioPendingChangeCandidate {
   baseline: EditorState
   changeCount: number
   finishingSelection?: string[]
+  propSelection?: string[]
 }
 
 interface DishDeletionSummary {
@@ -414,6 +416,7 @@ export function StudioClient({
   const [finishingCacheKey, setFinishingCacheKey] = useState<string | null>(null)
   const [finishingLoading, setFinishingLoading] = useState(false)
   const [finishingError, setFinishingError] = useState<string | null>(null)
+  const [selectedPropIds, setSelectedPropIds] = useState<string[]>([])
   const [baselineVersion, setBaselineVersion] = useState(0)
   const { creditBalance, setCreditBalance } = useStudioCredits()
   const [creditCostNb2, setCreditCostNb2] = useState(1)
@@ -472,12 +475,18 @@ export function StudioClient({
     selectedFinishingStack,
     selectedFinishingStack.length,
   )
+  const selectedProps = useMemo(() => propsFromIds(selectedPropIds), [selectedPropIds])
+  const propsStaged = selectedProps.length > 0
   const pendingDelta = useMemo(() => {
     void baselineVersion
     return computeDelta(originalStateRef.current, editorState)
   }, [editorState, baselineVersion])
 
-  const pendingChangeCount = countStudioPendingChanges(pendingDelta, finishingStaged)
+  const pendingChangeCount = countStudioPendingChanges(
+    pendingDelta,
+    finishingStaged,
+    propsStaged,
+  )
   const hasPendingChanges = pendingChangeCount > 0
   const sectionHasPendingChanges = {
     lighting: pendingDelta.scalarChanges.some((change) => change.path === 'scene_setup.lighting'),
@@ -493,6 +502,7 @@ export function StudioClient({
       finishingStaged ||
       pendingDelta.arrays.garnishes.removed.length > 0 ||
       pendingDelta.arrays.sides.removed.length > 0,
+    props: propsStaged,
   }
   const controlsDisabled = !isHydrated || isGenerating || dishBlocked
   const generateCreditCost =
@@ -649,6 +659,7 @@ export function StudioClient({
     setFinishingCacheKey(null)
     setFinishingLoading(false)
     setFinishingError(null)
+    setSelectedPropIds([])
   }, [])
 
   const resetEditorForNewSource = useCallback(() => {
@@ -1098,6 +1109,7 @@ export function StudioClient({
       const nextCount = countStudioPendingChanges(
         delta,
         finishingStaged,
+        propsStaged,
       )
       if (nextCount > MAX_PENDING_CHANGES && !skipPendingChangeWarningRef.current) {
         setPendingChangeCandidate({
@@ -1111,7 +1123,7 @@ export function StudioClient({
 
       commitStagedChange(nextState, nextBaseline)
     },
-    [commitStagedChange, finishingStaged]
+    [commitStagedChange, finishingStaged, propsStaged]
   )
 
   const handleToggleFinishingTouch = useCallback(
@@ -1128,7 +1140,7 @@ export function StudioClient({
         : [...finishingSelectedIds, id]
       const addingFirstSelection = !alreadySelected && finishingSelectedIds.length === 0
       const delta = computeDelta(originalStateRef.current, editorState)
-      const nextCount = countStudioPendingChanges(delta, nextSelection.length > 0)
+      const nextCount = countStudioPendingChanges(delta, nextSelection.length > 0, propsStaged)
       if (
         addingFirstSelection &&
         nextCount > MAX_PENDING_CHANGES &&
@@ -1145,7 +1157,39 @@ export function StudioClient({
       }
       setFinishingSelectedIds(nextSelection)
     },
-    [editorState, finishingSelectedIds],
+    [editorState, finishingSelectedIds, propsStaged],
+  )
+
+  const handleToggleProp = useCallback(
+    (id: string) => {
+      const alreadySelected = selectedPropIds.includes(id)
+      const nextSelection = alreadySelected
+        ? selectedPropIds.filter((selectedId) => selectedId !== id)
+        : [...selectedPropIds, id]
+      const addingFirstSelection = !alreadySelected && selectedPropIds.length === 0
+      const delta = computeDelta(originalStateRef.current, editorState)
+      const nextCount = countStudioPendingChanges(
+        delta,
+        finishingStaged,
+        nextSelection.length > 0,
+      )
+      if (
+        addingFirstSelection &&
+        nextCount > MAX_PENDING_CHANGES &&
+        !skipPendingChangeWarningRef.current
+      ) {
+        setPendingChangeCandidate({
+          state: editorState,
+          baseline: originalStateRef.current,
+          changeCount: nextCount,
+          propSelection: nextSelection,
+        })
+        setDontShowPendingChangeWarning(false)
+        return
+      }
+      setSelectedPropIds(propsFromIds(nextSelection).map((prop) => prop.id))
+    },
+    [editorState, finishingStaged, selectedPropIds],
   )
 
   const handleLoadFinishingTouches = useCallback(async () => {
@@ -1339,6 +1383,7 @@ export function StudioClient({
     setPendingChangeCandidate(null)
     setDontShowPendingChangeWarning(false)
     setFinishingSelectedIds([])
+    setSelectedPropIds([])
   }, [])
 
   const handleApplyPendingChangeAnyway = useCallback(() => {
@@ -1349,6 +1394,9 @@ export function StudioClient({
     commitStagedChange(pendingChangeCandidate.state, pendingChangeCandidate.baseline)
     if (pendingChangeCandidate.finishingSelection) {
       setFinishingSelectedIds(pendingChangeCandidate.finishingSelection)
+    }
+    if (pendingChangeCandidate.propSelection) {
+      setSelectedPropIds(pendingChangeCandidate.propSelection)
     }
     setPendingChangeCandidate(null)
     setDontShowPendingChangeWarning(false)
@@ -1371,7 +1419,14 @@ export function StudioClient({
       selectedFinishingStack.length,
     )
     const delta = computeDelta(original, nextState)
-    if (delta.isEmpty || !sourceImage || !activeDishId || !persistedSourceId) return
+    if (
+      (delta.isEmpty && selectedProps.length === 0) ||
+      !sourceImage ||
+      !activeDishId ||
+      !persistedSourceId
+    ) {
+      return
+    }
     if (isGuest) {
       void requestSignup('generate')
       return
@@ -1380,6 +1435,7 @@ export function StudioClient({
     const directive = generateDirective(delta, nextState, {
       excludePaths: FOH_STYLE_EXCLUDE_PATHS,
       resolveVesselPrompt: studioVesselPromptName,
+      props: selectedProps,
     })
     if (!directive) return
 
@@ -1398,6 +1454,7 @@ export function StudioClient({
       lightingLabels: lightingLabelMap,
       backgroundLabels: backgroundLabelMap,
       finishingTouchesCount: finishingTouches?.level,
+      propLabels: selectedProps.map((prop) => prop.label),
     })
     const generationStartedAt = Date.now()
     const generationKind = finishingTouches ? 'finishing_touches' : undefined
@@ -1430,6 +1487,9 @@ export function StudioClient({
           model: selectedModel,
           extractionDiagnostics: extractionDiagnosticsRef.current,
           finishingTouches,
+          ...(selectedProps.length > 0
+            ? { props: selectedProps.map((prop) => prop.id) }
+            : {}),
         }),
       })
 
@@ -1593,6 +1653,7 @@ export function StudioClient({
     variants.length,
     creditBalance,
     selectedFinishingStack,
+    selectedProps,
     resetFinishingTouches,
     router,
     isGuest,
@@ -2743,6 +2804,11 @@ export function StudioClient({
               options: finishingStack,
               onRequestStack: () => void handleLoadFinishingTouches(),
               onToggle: handleToggleFinishingTouch,
+            }}
+            sceneProps={{
+              disabled: controlsDisabled,
+              selectedIds: selectedPropIds,
+              onToggle: handleToggleProp,
             }}
             hasPendingChanges={hasPendingChanges}
             isGenerating={isGenerating}

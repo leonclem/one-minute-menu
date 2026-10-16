@@ -169,7 +169,13 @@ export function studioOutputTier(
     // Display falls back to historical ids when the endpoints are unavailable.
   }
   if (normalized === 'nb-pro' || normalized.includes(STUDIO_PRO_MODEL)) return 'pro'
-  if (normalized === 'nb2' || normalized.includes(STUDIO_FLASH_MODEL)) return 'std'
+  if (
+    normalized === 'nb2' ||
+    normalized.includes(STUDIO_FLASH_MODEL) ||
+    normalized.includes('gemini-nano-banana-2')
+  ) {
+    return 'std'
+  }
   return null
 }
 

@@ -10,15 +10,19 @@ export interface ChangeSummaryLabelMaps {
   lightingLabels?: Record<string, string>
   backgroundLabels?: Record<string, string>
   finishingTouchesCount?: number
+  propLabels?: readonly string[]
 }
 
 export function buildChangeSummary(
   delta: StateDelta,
   labels?: ChangeSummaryLabelMaps,
 ): string[] {
-  if (delta.isEmpty) return []
-
   const chips: string[] = []
+  if (labels?.propLabels?.length) {
+    chips.push(`Props: ${labels.propLabels.join(', ')}`)
+  }
+  if (delta.isEmpty) return chips
+
   if (labels?.finishingTouchesCount) {
     chips.push(
       `Finishing touches: ${labels.finishingTouchesCount} selected`,

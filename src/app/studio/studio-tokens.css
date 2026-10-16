@@ -325,12 +325,17 @@
 
 .studio-model-sticker-overlay {
   position: absolute;
+  z-index: 1;
   top: 0.2rem;
   left: 0.2rem;
   line-height: 1;
   padding: 0.15rem 0.35rem;
-  background: rgba(12, 20, 22, 0.78);
   pointer-events: none;
+}
+
+.studio-model-sticker-overlay[data-kind='std'],
+.studio-model-sticker-overlay[data-kind='pro'] {
+  background: rgba(12, 20, 22, 0.78);
 }
 
 .studio-model-sticker-overlay[data-kind='std'] {

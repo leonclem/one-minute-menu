@@ -125,11 +125,14 @@ function scalarChanged(delta: StateDelta, path: string): boolean {
 export function buildFinishingTouchesAdditionClause(
   addedItems: readonly string[],
   delta: StateDelta,
+  allowedPropLabels: readonly string[] = [],
 ): string {
   if (addedItems.length === 0) return ''
 
   const locks: string[] = [
-    'Do not add extra bowls, serving dishes, cutlery, napkins, glasses, ramekins, or unrelated props.',
+    allowedPropLabels.length > 0
+      ? 'Do not add extra bowls, serving dishes, glasses, or props other than the named props.'
+      : 'Do not add extra bowls, serving dishes, cutlery, napkins, glasses, ramekins, or unrelated props.',
     scalarChanged(delta, 'canvas.vessel_style')
       ? 'Do not change the dish, plating, crop, or camera.'
       : 'Do not change the dish, plating, vessel shape, crop, or camera.',

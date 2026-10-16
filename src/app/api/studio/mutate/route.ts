@@ -33,6 +33,7 @@ import { parseFinishingTouchesMetadata } from '@/lib/studio/finishing-touches/me
 import { logStudioPrompt } from '@/lib/studio/prompt-logging'
 import { loadStudioVesselReference } from '@/lib/studio/vessel-reference'
 import { getStudioVessel, stagedVesselSwap } from '@/lib/studio/vessels'
+import { applyPropsTarget, parseStudioPropIds } from '@/lib/studio/props'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
       model?: unknown
       extractionDiagnostics?: unknown
       finishingTouches?: unknown
+      props?: unknown
     }
 
     const {
@@ -90,9 +92,14 @@ export async function POST(request: NextRequest) {
       model,
       extractionDiagnostics,
       finishingTouches: finishingTouchesRaw,
+      props: propsRaw,
     } = body
     const safeExtractionDiagnostics = sanitizeExtractionDiagnostics(extractionDiagnostics)
     const finishingTouches = parseFinishingTouchesMetadata(finishingTouchesRaw)
+    const parsedProps = parseStudioPropIds(propsRaw)
+    if (!parsedProps.ok) {
+      return NextResponse.json({ error: parsedProps.error }, { status: 400 })
+    }
 
     const changeSummaryChips = Array.isArray(changeSummary)
       ? changeSummary.filter((item): item is string => typeof item === 'string')
@@ -196,10 +203,11 @@ export async function POST(request: NextRequest) {
         },
       }
     }
+    const descriptorWithProps = applyPropsTarget(descriptor, parsedProps.props)
     const directiveText = directive.trim()
     const compositionResult = composePrompt({
       directive: directiveText,
-      descriptor,
+      descriptor: descriptorWithProps,
       originalState: originalSchema,
       targetState: targetSchema,
     })

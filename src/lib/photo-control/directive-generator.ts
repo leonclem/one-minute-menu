@@ -46,6 +46,8 @@ import {
   buildFinishingTouchesAdditionClause,
   finishingTouchRemovalFillPhrase,
 } from '@/lib/studio/finishing-touches/directive'
+import { buildPropsAdditionClause } from '@/lib/studio/props/directive'
+import type { StudioProp } from '@/lib/studio/props/catalogue'
 
 // ============================================================================
 // Internal clause builders
@@ -274,6 +276,11 @@ export interface GenerateDirectiveOptions {
    * Unknown keys produce no swap clause.
    */
   resolveVesselPrompt?: (key: string) => string | null
+  /**
+   * Tabletop props staged outside the schema. An empty delta still produces
+   * a directive when this list is non-empty.
+   */
+  props?: readonly StudioProp[]
 }
 
 export function generateDirective(
@@ -281,8 +288,10 @@ export function generateDirective(
   context: EditorState,
   options?: GenerateDirectiveOptions,
 ): string | null {
+  const stagedProps = options?.props ?? []
   // Return null for empty / no-op deltas. (Requirements 5.4, 7.4, 8.6)
-  if (delta.isEmpty) {
+  // Staged props are not in the schema, so they are the one exception.
+  if (delta.isEmpty && stagedProps.length === 0) {
     return null
   }
 
@@ -345,7 +354,16 @@ export function generateDirective(
 
   const addedItems = [...delta.arrays.garnishes.added, ...delta.arrays.sides.added]
   if (addedItems.length > 0) {
-    clauses.push(buildFinishingTouchesAdditionClause(addedItems, delta))
+    clauses.push(
+      buildFinishingTouchesAdditionClause(
+        addedItems,
+        delta,
+        stagedProps.map((prop) => prop.label),
+      ),
+    )
+  }
+  if (stagedProps.length > 0) {
+    clauses.push(buildPropsAdditionClause(stagedProps, delta))
   }
 
   // ── Editor-only position changes ──────────────────────────────────────────
@@ -365,7 +383,7 @@ export function generateDirective(
   clauses.push(
     buildIdentityPreservationClause(
       mainItem,
-      addedItems,
+      [...addedItems, ...stagedProps.map((prop) => prop.label)],
       context.schema.canvas.main_vessel,
       !vesselSwap,
     ),
@@ -379,7 +397,9 @@ export function generateDirective(
     if (change.path === 'scene_setup.angle') return true
     return change.path === 'scene_setup.spin' && isYawSpin(change.to)
   })
-  if (countEditableChanges(delta) === 1 && !cameraGeometryStaged) {
+  const propBundle = stagedProps.length > 0 ? 1 : 0
+  const editableCount = delta.isEmpty ? 0 : countEditableChanges(delta)
+  if (editableCount + propBundle === 1 && !cameraGeometryStaged) {
     clauses.push(LEAVE_UNCHANGED_CLAUSE)
   }
 

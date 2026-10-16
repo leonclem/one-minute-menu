@@ -1,7 +1,8 @@
 /**
  * FOH Studio control options (labels + asset basenames + schema values).
  *
- * Preview images load from `/studio/controls/{basename}.png` (see public/).
+ * Preview images load from `/studio/{basename}.png`, or from the given
+ * extension when the basename already includes one (`.jpg`, `.jpeg`, `.webp`).
  * Lighting/background options are primarily loaded from the DB reference
  * libraries; the static lighting list below remains as a fallback.
  */
@@ -94,11 +95,14 @@ export function fohAngleLabel(value: string): string {
 
 export { fohBackdropLabel, fohLightingLabel, fohSurfaceLabel }
 
+const CONTROL_ASSET_EXT = /\.(png|jpe?g|webp)$/i
+
 export function controlAssetSrc(basename: string): string {
-  if (basename.includes('/')) {
-    return `/studio/${basename}.png`
+  const file = CONTROL_ASSET_EXT.test(basename) ? basename : `${basename}.png`
+  if (file.includes('/')) {
+    return `/studio/${file}`
   }
-  return `/studio/controls/${basename}.png`
+  return `/studio/controls/${file}`
 }
 
 /**

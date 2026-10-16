@@ -9,6 +9,7 @@ import { STUDIO_VESSEL_TILES } from '@/lib/studio/vessels'
 import { STUDIO_QUICK_LOOKS, type StudioQuickLook } from '@/lib/studio/quick-looks'
 import type { FinishingTouchCatalogueItem } from '@/lib/studio/finishing-touches'
 import { STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
+import { propsFromIds } from '@/lib/studio/props'
 import {
   isOverheadAngle,
   verticalSwitchLabel,
@@ -16,6 +17,7 @@ import {
 import { cameraSectionLabel, yawButtonLabel } from '@/lib/studio/yaw'
 
 import { StudioFinishingTouchesControl } from './studio-finishing-touches'
+import { StudioPropsControl } from './studio-props-control'
 import {
   matchingQuickLookName,
   optionLabel,
@@ -28,7 +30,22 @@ import { VisualOptionTiles } from './visual-option-tiles'
 /** Flip to restore the Quick Looks accordion. Kept off until combinations are settled. */
 const SHOW_QUICK_LOOKS = false
 
-type SceneSectionId = 'looks' | 'camera' | 'elements' | 'lighting' | 'surface' | 'vessel' | 'backdrop'
+function propsSummary(selectedIds: readonly string[]): string {
+  const labels = propsFromIds(selectedIds).map((prop) => prop.label)
+  if (labels.length === 0) return 'None'
+  if (labels.length <= 2) return labels.join(', ')
+  return `${labels.length} selected`
+}
+
+type SceneSectionId =
+  | 'looks'
+  | 'camera'
+  | 'elements'
+  | 'props'
+  | 'lighting'
+  | 'surface'
+  | 'vessel'
+  | 'backdrop'
 
 interface StudioScenePanelProps {
   editorState: EditorState
@@ -47,6 +64,7 @@ interface StudioScenePanelProps {
     vessel: boolean
     backdrop: boolean
     garnishes: boolean
+    props?: boolean
     camera?: boolean
   }
   finishing: {
@@ -57,6 +75,11 @@ interface StudioScenePanelProps {
     selectedIds: string[]
     options: FinishingTouchCatalogueItem[]
     onRequestStack: () => void
+    onToggle: (id: string) => void
+  }
+  sceneProps: {
+    disabled: boolean
+    selectedIds: string[]
     onToggle: (id: string) => void
   }
   hasPendingChanges: boolean
@@ -99,6 +122,7 @@ export function StudioScenePanel({
   refreshExtractError,
   pending,
   finishing,
+  sceneProps,
   hasPendingChanges,
   isGenerating,
   generateCreditLabel,
@@ -225,6 +249,17 @@ export function StudioScenePanel({
                   </div>
                 </>
               )}
+            </SceneSection>
+
+            <SceneSection
+              id="studio-scene-props"
+              title="Props"
+              selectedLabel={propsSummary(sceneProps.selectedIds)}
+              pending={pending.props}
+              open={openSection === 'props'}
+              onToggle={() => toggle('props')}
+            >
+              <StudioPropsControl {...sceneProps} />
             </SceneSection>
 
             <SceneSection

@@ -334,6 +334,12 @@ describe('StudioScenePanel', () => {
     onToggle: jest.fn(),
   }
 
+  const sceneProps = {
+    disabled: false,
+    selectedIds: [] as string[],
+    onToggle: jest.fn(),
+  }
+
   function panelProps(
     overrides: Partial<React.ComponentProps<typeof StudioScenePanel>> = {},
   ): React.ComponentProps<typeof StudioScenePanel> {
@@ -350,6 +356,7 @@ describe('StudioScenePanel', () => {
       refreshExtractError: null,
       pending: { lighting: false, surface: false, vessel: false, backdrop: false, garnishes: false },
       finishing,
+      sceneProps,
       hasPendingChanges: false,
       isGenerating: false,
       generateCreditLabel: '1 credit',
@@ -376,6 +383,22 @@ describe('StudioScenePanel', () => {
   function renderPanel(overrides: Partial<React.ComponentProps<typeof StudioScenePanel>> = {}) {
     return render(<StudioScenePanel {...panelProps(overrides)} />)
   }
+
+  it('lets the user stage more than one prop from the fixed list', () => {
+    const onToggle = jest.fn()
+    renderPanel({
+      sceneProps: { disabled: false, selectedIds: ['folded-napkin'], onToggle },
+    })
+    fireEvent.click(screen.getByTestId('studio-scene-section-props'))
+    expect(screen.getByTestId('studio-props')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove Folded napkin' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Add Ramekin of nuts' }))
+    expect(onToggle).toHaveBeenCalledWith('ramekin-nuts')
+    expect(screen.getByRole('button', { name: 'Add Yellow pepper' })).toBeEnabled()
+  })
 
   it('hides Camera unless the vertical switch or yaw is enabled', () => {
     renderPanel()
@@ -507,6 +530,7 @@ describe('StudioScenePanel', () => {
     const headings = screen.getAllByTestId(/^studio-scene-section-/)
     expect(headings.map((heading) => heading.getAttribute('data-testid'))).toEqual([
       'studio-scene-section-elements',
+      'studio-scene-section-props',
       'studio-scene-section-lighting',
       'studio-scene-section-surface',
       'studio-scene-section-vessel',
@@ -583,6 +607,7 @@ describe('StudioScenePanel', () => {
     const headings = screen.getAllByTestId(/^studio-scene-section-/)
     expect(headings.map((heading) => heading.getAttribute('data-testid'))).toEqual([
       'studio-scene-section-elements',
+      'studio-scene-section-props',
       'studio-scene-section-lighting',
       'studio-scene-section-surface',
       'studio-scene-section-vessel',

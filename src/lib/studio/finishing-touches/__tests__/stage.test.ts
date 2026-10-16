@@ -130,4 +130,11 @@ describe('countStudioPendingChanges', () => {
     expect(countStudioPendingChanges(delta, false)).toBe(2)
     expect(countStudioPendingChanges(delta, true)).toBe(3)
   })
+
+  it('counts staged props as their own bundle', () => {
+    const state = asState(schema())
+    const delta = computeDelta(state, state)
+    expect(countStudioPendingChanges(delta, false, true)).toBe(1)
+    expect(countStudioPendingChanges(delta, true, true)).toBe(2)
+  })
 })

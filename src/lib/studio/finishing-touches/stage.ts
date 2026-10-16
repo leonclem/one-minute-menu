@@ -39,10 +39,12 @@ export function editorStateWithFinishingTouches(
 export function countStudioPendingChanges(
   delta: StateDelta,
   finishingStaged: boolean,
+  propsStaged = false,
 ): number {
   const base = delta.isEmpty ? 0 : countEditableChanges(delta)
-  if (!finishingStaged) return base
   const addsAlreadyCounted =
     delta.arrays.garnishes.added.length > 0 || delta.arrays.sides.added.length > 0
-  return addsAlreadyCounted ? base : base + 1
+  const finishingExtra = finishingStaged && !addsAlreadyCounted ? 1 : 0
+  const propsExtra = propsStaged ? 1 : 0
+  return base + finishingExtra + propsExtra
 }

@@ -13,6 +13,7 @@ export const STUDIO_BACKDROP_KEYS = [
   'coral-red',
   'teal',
   'hot-pink',
+  'sunlit-kitchen',
 ] as const
 
 export type StudioBackdropKey = (typeof STUDIO_BACKDROP_KEYS)[number]
@@ -30,6 +31,7 @@ const BACKDROP_FOH_LABELS: Record<StudioBackdropKey, string> = {
   'coral-red': 'Coral Red',
   teal: 'Teal',
   'hot-pink': 'Hot Pink',
+  'sunlit-kitchen': 'Sunlit Kitchen',
 }
 
 export const LEGACY_BACKDROP_KEY_MAP: Record<string, StudioBackdropKey> = {

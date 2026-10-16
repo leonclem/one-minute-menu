@@ -23,6 +23,7 @@ describe('surface-keys', () => {
   })
 
   it('returns FOH labels for current and legacy keys', () => {
+    expect(fohSurfaceLabel('kitchen-worktop')).toBe('Kitchen Worktop')
     expect(fohSurfaceLabel('white-marble')).toBe('White Marble')
     expect(fohSurfaceLabel('marble-light')).toBe('White Marble')
   })

@@ -155,6 +155,6 @@ describe('studio model configuration', () => {
     expect(studioOutputTier(null)).toBeNull()
     expect(studioOutputTier('gemini-2.5-flash-image')).toBeNull()
     expect(studioOutputTier('retired-model', { outputTier: 'pro' })).toBe('pro')
-    expect(studioOutputTier('gemini-nano-banana-2.1')).toBeNull()
+    expect(studioOutputTier('gemini-nano-banana-2.1')).toBe('std')
   })
 })

@@ -93,6 +93,8 @@ export interface SceneDescriptorState {
   position?: { x: number; y: number }
   /** Set when a vessel-swap reference is staged. */
   vessel?: { description: string; note: string }
+  /** Text-only tabletop props. No reference image is attached. */
+  props?: Array<{ name: string; description: string; placement: string }>
 }
 
 export interface SceneSubject {
