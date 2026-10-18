@@ -207,7 +207,7 @@ function buildIdentityPreservationClause(
       : 'Keep entire subject and vessel visible, no cropping.'
   return (
     `Preserve the identity of ${subject}: ` +
-    `maintain texture, shape, structure, and colours exactly as shown. ` +
+    `keep its texture, shape, and structure as described in target.foodPreservation. ` +
     `Preserve visible ingredient and component counts. ` +
     vesselSentence +
     `Do not add new food, props, hands, text, labels, logos, napkins, or cutlery${formatAddedException(addedItems)}. ` +
@@ -380,6 +380,11 @@ export function generateDirective(
     if (change.path !== 'canvas.vessel_style' || excluded.has(change.path)) return false
     return Boolean(options?.resolveVesselPrompt?.(change.to))
   })
+  // Captured before the identity sentence. A style-only Front-of-House edit
+  // excludes its prose clause on purpose, so the directive would otherwise be
+  // preservation text plus "leave unchanged" while the JSON carries the change.
+  const namedEdits = clauses.length
+
   clauses.push(
     buildIdentityPreservationClause(
       mainItem,
@@ -388,6 +393,11 @@ export function generateDirective(
       !vesselSwap,
     ),
   )
+
+  const angleStaged = delta.scalarChanges.some((change) => change.path === 'scene_setup.angle')
+  if (!angleStaged) {
+    clauses.push('Keep the camera angle as described in target.cameraPreservation.')
+  }
 
   // ── "Leave all other attributes unchanged" (single-attribute changes only)
   // (Requirement 11.3)
@@ -399,7 +409,7 @@ export function generateDirective(
   })
   const propBundle = stagedProps.length > 0 ? 1 : 0
   const editableCount = delta.isEmpty ? 0 : countEditableChanges(delta)
-  if (editableCount + propBundle === 1 && !cameraGeometryStaged) {
+  if (namedEdits > 0 && editableCount + propBundle === 1 && !cameraGeometryStaged) {
     clauses.push(LEAVE_UNCHANGED_CLAUSE)
   }
 

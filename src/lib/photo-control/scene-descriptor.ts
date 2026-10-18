@@ -8,6 +8,10 @@
 
 import type { MinimalSchema, StateDelta } from './minimal-schema'
 import {
+  FINISHING_TOUCHES_RULE,
+  finishingTouchTargets,
+} from '@/lib/studio/finishing-touches/directive'
+import {
   CURRENT_PLATE_FACING,
   PLATE_FACING_LOCK,
   cameraViewpoint,
@@ -95,6 +99,16 @@ export interface SceneDescriptorState {
   vessel?: { description: string; note: string }
   /** Text-only tabletop props. No reference image is attached. */
   props?: Array<{ name: string; description: string; placement: string }>
+  /** Shared restraint for props. Present only when that list is. */
+  propsRule?: string
+  /** How to keep the food while the rest of target is applied. */
+  foodPreservation?: string
+  /** How to keep viewpoint when the user has not staged an angle change. */
+  cameraPreservation?: string
+  /** Placement for garnishes and sides added in this edit. */
+  finishingTouches?: Array<{ item: string; placement: string }>
+  /** Shared restraint for finishingTouches. Present only when that list is. */
+  finishingTouchesRule?: string
 }
 
 export interface SceneSubject {
@@ -140,19 +154,37 @@ export interface BuildReshootDescriptorInput {
   includePromptFragmentFallback?: boolean
 }
 
+/**
+ * Food stays recognisable without asking the model to flatten it.
+ * "colours and textures" on its own gets read as a licence to smooth sear,
+ * moisture, and irregular edges when the rest of the edit is busy.
+ */
+export const FOOD_DETAIL_LOCK = 'natural food geometry and surface detail'
+
+/** Active keep instruction. A lock label alone gets dropped when target is busy. */
+export const FOOD_PRESERVATION =
+  'Keep texture, shape, and structure as irregular cooked geometry, with browning, moisture, and natural colour variation. Do not smooth, round, or unify the food.'
+
+/**
+ * Active keep for viewpoint. "framing" is crop, and it is dropped when target is busy.
+ * Present only when the user has not staged a camera-angle change.
+ */
+export const CAMERA_PRESERVATION =
+  'Keep the camera angle and height of the source photograph. Do not move to overhead, eye level, or a side view.'
+
 const LOCKED_CONSTRAINTS_BY_TASK = {
   edit: [
     'dish identity',
     'ingredient and component counts',
     'vessel',
     'framing',
-    'colours and textures',
+    FOOD_DETAIL_LOCK,
   ],
   editWithCamera: [
     'dish identity',
     'ingredient and component counts',
     'vessel',
-    'colours and textures',
+    FOOD_DETAIL_LOCK,
   ],
   reshoot: [
     'dish identity',
@@ -470,6 +502,15 @@ function addComponentChange(
   }
 }
 
+function attachFinishingTouches(target: SceneDescriptorState, delta: StateDelta): void {
+  const added = [...delta.arrays.garnishes.added, ...delta.arrays.sides.added]
+  if (added.length === 0) return
+  const surfaceChanging = delta.scalarChanges.some((change) => change.path === 'canvas.surface_style')
+  const vesselChanging = delta.scalarChanges.some((change) => change.path === 'canvas.vessel_style')
+  target.finishingTouches = finishingTouchTargets(added, { surfaceChanging, vesselChanging })
+  target.finishingTouchesRule = FINISHING_TOUCHES_RULE
+}
+
 function addPositionChange(
   current: SceneDescriptorState,
   target: SceneDescriptorState,
@@ -607,13 +648,8 @@ export function buildSceneDescriptor({
   if (delta.arrays.sides.added.length > 0 || delta.arrays.sides.removed.length > 0) {
     addComponentChange(current, target, original, desired, 'sides')
   }
+  attachFinishingTouches(target, delta)
   addPositionChange(current, target, delta)
-
-  const observedAngle = cameraValue(original, 'angle')
-  const observedCamera =
-    angleStaged && observedAngle && !isOmitted(observations, 'scene_setup.angle')
-      ? { viewpoint: cameraViewpoint(observedAngle) }
-      : {}
 
   return {
     task: 'edit',
@@ -623,7 +659,7 @@ export function buildSceneDescriptor({
       observations,
       angleStaged ? 'editWithCamera' : 'edit',
     ),
-    camera: observedCamera,
+    camera: {},
     current,
     target,
     output: { style: 'photorealistic', framing: 'full shot, no cropping' },

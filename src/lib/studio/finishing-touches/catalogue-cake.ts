@@ -1,4 +1,5 @@
 import type { FinishingTouchCatalogueItem } from './catalogue'
+import { CAKE_FINISHING_TOUCH_MORE } from './catalogue-cake-more'
 
 const ON_FOOD = ['on-food'] as const
 const ON_FOOD_AND_VESSEL = ['on-food', 'on-vessel'] as const
@@ -108,4 +109,59 @@ export const CAKE_FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueIte
     placements: ON_FOOD,
     prep: 'crushed',
   },
+  {
+    id: 'cocoa_dusting',
+    name: 'Cocoa dusting',
+    aliases: ['cocoa powder', 'dusting cocoa'],
+    family: 'cake',
+    schemaField: 'garnishes',
+    placements: ON_FOOD,
+    prep: 'dusted',
+  },
+  {
+    id: 'caramel_drizzle',
+    name: 'Caramel drizzle',
+    aliases: ['caramel sauce', 'salted caramel drizzle'],
+    family: 'cake',
+    schemaField: 'garnishes',
+    placements: ON_FOOD_AND_VESSEL,
+    prep: 'drizzle',
+  },
+  {
+    id: 'orange_zest',
+    name: 'Orange zest',
+    aliases: ['finely grated orange zest'],
+    family: 'cake',
+    schemaField: 'garnishes',
+    placements: ON_FOOD,
+    prep: 'fine-chop',
+  },
+  {
+    id: 'crushed_hazelnuts',
+    name: 'Crushed hazelnuts',
+    aliases: ['chopped hazelnuts', 'hazelnut pieces'],
+    family: 'cake',
+    schemaField: 'garnishes',
+    placements: ON_FOOD,
+    prep: 'crushed',
+  },
+  {
+    id: 'fresh_fig_slices',
+    name: 'Fresh fig slices',
+    aliases: ['sliced fresh fig', 'fresh figs'],
+    family: 'cake',
+    schemaField: 'garnishes',
+    placements: ON_FOOD,
+    prep: 'sliced',
+  },
+  {
+    id: 'edible_rose_petals',
+    name: 'Edible rose petals',
+    aliases: ['food-safe rose petals', 'dried edible rose petals'],
+    family: 'cake',
+    schemaField: 'garnishes',
+    placements: ON_FOOD_AND_VESSEL,
+    prep: 'whole',
+  },
+  ...CAKE_FINISHING_TOUCH_MORE,
 ]

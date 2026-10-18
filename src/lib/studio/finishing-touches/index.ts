@@ -23,6 +23,7 @@ export {
   GENERIC_FINISHING_TOUCH_STACK_IDS,
   GENERIC_CAKE_FINISHING_TOUCH_STACK_IDS,
   fallbackFinishingTouchStack,
+  inferFinishingTouchFamilyFromText,
   sanitizeRecommendedStackIds,
 } from './rank'
 export {
@@ -31,8 +32,12 @@ export {
   type FinishingTouchesMetadata,
 } from './metadata'
 export {
+  FINISHING_TOUCHES_RULE,
   buildFinishingTouchesAdditionClause,
   finishingTouchRemovalFillPhrase,
+  finishingTouchTargets,
+  type FinishingTouchTarget,
+  type FinishingTouchTargetOptions,
 } from './directive'
 export {
   isFinishingTouchesStaged,

@@ -38,10 +38,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid recommend payload' }, { status: 400 })
     }
 
-    const stack = await recommendFinishingTouches(parsed.data)
+    const recommendation = await recommendFinishingTouches(parsed.data)
     return NextResponse.json({
-      stackIds: stack.map((item) => item.id),
-      stack: stack.map((item) => ({ id: item.id, name: item.name })),
+      family: recommendation.family,
+      stackIds: recommendation.stack.map((item) => item.id),
+      stack: recommendation.stack.map((item) => ({ id: item.id, name: item.name })),
+      propIds: recommendation.props.map((prop) => prop.id),
     })
   } catch (error) {
     logger.error('❌ [Finishing Touches] Recommend failed', { error })

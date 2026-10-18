@@ -33,10 +33,12 @@ import {
   countStudioPendingChanges,
   editorStateWithFinishingTouches,
   finishingTouchesCountBucket,
+  inferFinishingTouchFamilyFromText,
   isFinishingTouchesStaged,
   parseFinishingTouchesMetadata,
   stackFromIds,
   type FinishingTouchCatalogueItem,
+  type FinishingTouchFamily,
 } from '@/lib/studio/finishing-touches'
 import { propsFromIds } from '@/lib/studio/props'
 import {
@@ -417,6 +419,8 @@ export function StudioClient({
   const [finishingLoading, setFinishingLoading] = useState(false)
   const [finishingError, setFinishingError] = useState<string | null>(null)
   const [selectedPropIds, setSelectedPropIds] = useState<string[]>([])
+  const [rankedPropIds, setRankedPropIds] = useState<string[]>([])
+  const [finishingFamily, setFinishingFamily] = useState<FinishingTouchFamily | null>(null)
   const [baselineVersion, setBaselineVersion] = useState(0)
   const { creditBalance, setCreditBalance } = useStudioCredits()
   const [creditCostNb2, setCreditCostNb2] = useState(1)
@@ -476,6 +480,12 @@ export function StudioClient({
     selectedFinishingStack.length,
   )
   const selectedProps = useMemo(() => propsFromIds(selectedPropIds), [selectedPropIds])
+  const propAudience =
+    finishingFamily ??
+    inferFinishingTouchFamilyFromText({
+      dishName: activeDish?.name,
+      mainItem: editorState.schema.food_components.main_item,
+    })
   const propsStaged = selectedProps.length > 0
   const pendingDelta = useMemo(() => {
     void baselineVersion
@@ -660,6 +670,8 @@ export function StudioClient({
     setFinishingLoading(false)
     setFinishingError(null)
     setSelectedPropIds([])
+    setRankedPropIds([])
+    setFinishingFamily(null)
   }, [])
 
   const resetEditorForNewSource = useCallback(() => {
@@ -1222,9 +1234,20 @@ export function StudioClient({
         setFinishingError('Could not load finishing touches. Try again.')
         return
       }
-      const data = (await response.json()) as { stackIds?: unknown }
+      const data = (await response.json()) as {
+        family?: unknown
+        stackIds?: unknown
+        propIds?: unknown
+      }
       const stack = stackFromIds(Array.isArray(data.stackIds) ? data.stackIds.filter((id): id is string => typeof id === 'string') : [])
+      const rankedProps = propsFromIds(
+        Array.isArray(data.propIds)
+          ? data.propIds.filter((id): id is string => typeof id === 'string')
+          : [],
+      )
       setFinishingStack(stack)
+      setRankedPropIds(rankedProps.map((prop) => prop.id))
+      setFinishingFamily(data.family === 'cake' ? 'cake' : 'savory')
       setFinishingCacheKey(persistedSourceId)
       trackStudioEvent(ANALYTICS_EVENTS.STUDIO_FINISHING_TOUCHES_RECOMMENDED, {
         count_bucket: finishingTouchesCountBucket(stack.length || 0),
@@ -2808,6 +2831,8 @@ export function StudioClient({
             sceneProps={{
               disabled: controlsDisabled,
               selectedIds: selectedPropIds,
+              rankedIds: rankedPropIds,
+              audience: propAudience,
               onToggle: handleToggleProp,
             }}
             hasPendingChanges={hasPendingChanges}

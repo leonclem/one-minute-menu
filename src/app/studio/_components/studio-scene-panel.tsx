@@ -7,7 +7,7 @@ import type { EditorState } from '@/lib/photo-control/minimal-schema'
 import { controlAssetSrc, type StudioVisualOption } from '@/lib/studio/control-options'
 import { STUDIO_VESSEL_TILES } from '@/lib/studio/vessels'
 import { STUDIO_QUICK_LOOKS, type StudioQuickLook } from '@/lib/studio/quick-looks'
-import type { FinishingTouchCatalogueItem } from '@/lib/studio/finishing-touches'
+import type { FinishingTouchCatalogueItem, FinishingTouchFamily } from '@/lib/studio/finishing-touches'
 import { STUDIO_PRO_MODEL } from '@/lib/studio/model-config'
 import { propsFromIds } from '@/lib/studio/props'
 import {
@@ -80,6 +80,8 @@ interface StudioScenePanelProps {
   sceneProps: {
     disabled: boolean
     selectedIds: string[]
+    rankedIds?: string[]
+    audience?: FinishingTouchFamily
     onToggle: (id: string) => void
   }
   hasPendingChanges: boolean

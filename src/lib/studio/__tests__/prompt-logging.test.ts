@@ -24,6 +24,15 @@ describe('prompt-logging', () => {
     expect(isStudioPromptLoggingEnabled()).toBe(false)
   })
 
+  it('prints the prompt as the raw string Gemini receives', () => {
+    process.env.STUDIO_LOG_PROMPTS = 'true'
+    const spy = jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    const prompt = "Do not copy the reference image's background."
+    logStudioPrompt('mutate', prompt)
+    expect(spy.mock.calls.some((call) => call[0] === `\x1b[32m${prompt}\x1b[0m`)).toBe(true)
+    spy.mockRestore()
+  })
+
   it('does not log when the flag is off', () => {
     delete process.env.STUDIO_LOG_PROMPTS
     const spy = jest.spyOn(console, 'log').mockImplementation(() => undefined)

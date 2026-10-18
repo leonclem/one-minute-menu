@@ -1,5 +1,4 @@
 import {
-  CAKE_FINISHING_TOUCH_CATALOGUE,
   MAX_FINISHING_TOUCH_LEVEL,
   type FinishingTouchCatalogueItem,
   type FinishingTouchFamily,
@@ -11,6 +10,9 @@ import {
   normalizeFinishingTouchLabel,
   stackFromIds,
 } from './catalogue'
+
+/** Ranked ids kept for the chip list. The UI shows them in pages of four. */
+export const FINISHING_TOUCH_SUGGESTION_LIMIT = 12
 
 /** Conservative stack when ranking is empty or the dish is unknown. */
 export const GENERIC_FINISHING_TOUCH_STACK_IDS = [
@@ -30,8 +32,15 @@ export const GENERIC_CAKE_FINISHING_TOUCH_STACK_IDS = [
 
 const SAVORY_CAKE_RE =
   /\b(crab|fish|salmon|tuna|cod|corn|rice|potato)\s*-?\s*cakes?\b|\b(crabcake|fishcake)s?\b/i
+const SAVORY_PIE_RE =
+  /\b(shepherd'?s|cottage|pot|meat|fish|chicken|steak)\s+pies?\b/i
+/** Whole words only, so "caramelized onions" stays savoury. */
+const SWEET_SIGNAL_RE = /\b(chocolates?|caramels?)\b/i
+const TART_RE = /\btarts?\b/i
+const DESSERT_FRUIT_RE =
+  /\b(apples?|lemons?|limes?|oranges?|berr(?:y|ies)|strawberr(?:y|ies)|raspberr(?:y|ies)|blueberr(?:y|ies)|blackberr(?:y|ies)|cherr(?:y|ies)|pears?|peach(?:es)?|plums?|apricots?|figs?|bananas?|mango(?:es|s)?|pineapples?|passion\s*fruits?|rhubarbs?|quinces?|grapes?|kiwis?|coconuts?|melons?|nectarines?|cranberr(?:y|ies)|gooseberr(?:y|ies)|currants?|pomegranates?|fruits?)\b/i
 const DESSERT_CAKE_RE =
-  /\b(cupcakes?|cheesecakes?|gateaux|gateau|gâteau|tortes?|birthday\s+cake|layer\s+cake|sponge\s+cake|bundt|banana\s+bread|loaf\s+cake)\b|\bcakes?\b/i
+  /\b(cupcakes?|cheesecakes?|gateaux|gateau|gâteau|tortes?|pies?|brownies?|blondies?|cookies?|doughnuts?|donuts?|eclairs?|profiteroles?|pavlovas?|tiramisu|macarons?|baklava|cannoli|gelato|ice\s*cream|mousses?|parfaits?|crumbles?|cobblers?|shortcakes?|birthday\s+cake|layer\s+cake|sponge\s+cake|bundt|banana\s+bread|loaf\s+cake)\b|\bcakes?\b/i
 
 export function existingComponentNames(input: {
   garnishes?: readonly string[]
@@ -67,38 +76,25 @@ export function filterStackAgainstExisting(
   })
 }
 
-function completeCakeSuggestions(
-  ranked: readonly FinishingTouchCatalogueItem[],
-  existingNames: readonly string[],
-): FinishingTouchCatalogueItem[] {
-  const prefix = filterStackAgainstExisting(ranked, existingNames)
-  const seen = new Set(prefix.map((item) => item.id))
-  const rest = filterStackAgainstExisting(
-    CAKE_FINISHING_TOUCH_CATALOGUE.filter((item) => !seen.has(item.id)),
-    existingNames,
-  )
-  return [...prefix, ...rest]
-}
-
 export function fallbackFinishingTouchStack(
   existingNames: readonly string[] = [],
   family: FinishingTouchFamily = 'savory',
 ): FinishingTouchCatalogueItem[] {
-  if (family === 'cake') {
-    return completeCakeSuggestions(
-      stackFromIds(GENERIC_CAKE_FINISHING_TOUCH_STACK_IDS),
-      existingNames,
-    )
-  }
-  return filterStackAgainstExisting(
-    stackFromIds(GENERIC_FINISHING_TOUCH_STACK_IDS),
-    existingNames,
-  ).slice(0, MAX_FINISHING_TOUCH_LEVEL)
+  const ids =
+    family === 'cake'
+      ? GENERIC_CAKE_FINISHING_TOUCH_STACK_IDS
+      : GENERIC_FINISHING_TOUCH_STACK_IDS
+  return filterStackAgainstExisting(stackFromIds(ids), existingNames).slice(
+    0,
+    MAX_FINISHING_TOUCH_LEVEL,
+  )
 }
 
 /**
- * Keyword assist for API failure only. Crab/fish/corn/rice/potato cakes stay
- * savoury. Primary classification is the Gemini `family` field.
+ * Keyword assist used before a rank exists, and again if ranking fails.
+ * A tart is not enough on its own. Chocolate, caramel, or a fruit with the tart marks it as a dessert.
+ * Crab/fish/corn/rice/potato cakes and savoury pies stay savoury.
+ * Once Gemini returns a family, that result replaces this guess.
  */
 export function inferFinishingTouchFamilyFromText(input: {
   dishName?: string
@@ -110,6 +106,9 @@ export function inferFinishingTouchFamilyFromText(input: {
     .join(' ')
   if (!text) return 'savory'
   if (SAVORY_CAKE_RE.test(text)) return 'savory'
+  if (SAVORY_PIE_RE.test(text)) return 'savory'
+  if (SWEET_SIGNAL_RE.test(text)) return 'cake'
+  if (TART_RE.test(text) && DESSERT_FRUIT_RE.test(text)) return 'cake'
   if (DESSERT_CAKE_RE.test(text)) return 'cake'
   return 'savory'
 }
@@ -156,11 +155,7 @@ export function diagnoseRecommendedStackIds(
     .filter((item) => finishingTouchFamily(item) !== resolvedFamily)
     .map((item) => item.id)
   const filteredStack = filterStackAgainstExisting(familyStack, existingNames)
-  const suggestionLimit =
-    resolvedFamily === 'cake'
-      ? CAKE_FINISHING_TOUCH_CATALOGUE.length
-      : MAX_FINISHING_TOUCH_LEVEL
-  const rankedStack = filteredStack.slice(0, suggestionLimit)
+  const rankedStack = filteredStack.slice(0, FINISHING_TOUCH_SUGGESTION_LIMIT)
   const familyIdSet = new Set(familyStack.map((item) => item.id))
   const filteredIdSet = new Set(filteredStack.map((item) => item.id))
   const droppedUnknownIds = Array.from(
@@ -169,16 +164,13 @@ export function diagnoseRecommendedStackIds(
   const droppedExistingIds = familyStack
     .filter((item) => !filteredIdSet.has(item.id))
     .map((item) => item.id)
-  const droppedOverflowIds =
-    resolvedFamily === 'savory'
-      ? filteredStack.slice(MAX_FINISHING_TOUCH_LEVEL).map((item) => item.id)
-      : []
+  const droppedOverflowIds = filteredStack
+    .slice(FINISHING_TOUCH_SUGGESTION_LIMIT)
+    .map((item) => item.id)
   const fallbackUsed = rankedStack.length === 0
   const stack = fallbackUsed
     ? fallbackFinishingTouchStack(existingNames, resolvedFamily)
-    : resolvedFamily === 'cake'
-      ? completeCakeSuggestions(rankedStack, existingNames)
-      : rankedStack
+    : rankedStack
 
   return {
     stack,
@@ -206,14 +198,25 @@ export function parseRecommendFamilyFromPayload(payload: unknown): FinishingTouc
   return (payload as Record<string, unknown>).family === 'cake' ? 'cake' : 'savory'
 }
 
-export function parseRecommendIdsFromPayload(payload: unknown): unknown {
+function payloadRecord(payload: unknown): Record<string, unknown> | null {
   if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
-    return []
+    return null
   }
-  const record = payload as Record<string, unknown>
+  return payload as Record<string, unknown>
+}
+
+export function parseRecommendIdsFromPayload(payload: unknown): unknown {
+  const record = payloadRecord(payload)
+  if (!record) return []
   if (Array.isArray(record.ids)) return record.ids
   if (Array.isArray(record.stackIds)) return record.stackIds
   return []
+}
+
+export function parseRecommendPropIdsFromPayload(payload: unknown): unknown {
+  const record = payloadRecord(payload)
+  if (!record || !Array.isArray(record.propIds)) return []
+  return record.propIds
 }
 
 export { getFinishingTouchById }

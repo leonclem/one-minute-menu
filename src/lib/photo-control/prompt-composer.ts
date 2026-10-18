@@ -8,7 +8,18 @@
  */
 
 import type { MinimalSchema } from './minimal-schema'
-import type { SceneCamera, SceneDescriptor } from './scene-descriptor'
+import {
+  CAMERA_PRESERVATION,
+  FOOD_DETAIL_LOCK,
+  FOOD_PRESERVATION,
+  type SceneCamera,
+  type SceneDescriptor,
+  type SceneDescriptorState,
+} from './scene-descriptor'
+import {
+  FINISHING_TOUCHES_RULE,
+  finishingTouchTargets,
+} from '@/lib/studio/finishing-touches/directive'
 import { PLATE_FACING_LOCK } from './camera-viewpoint'
 import { STUDIO_BACKDROP_KEYS } from '@/lib/studio/backdrop-keys'
 import { STUDIO_LIGHTING_KEYS } from '@/lib/studio/lighting-keys'
@@ -63,13 +74,13 @@ const MAX_PROMPT_LENGTH_BY_TASK = {
 const MIN_DESCRIPTION_LENGTH = 50
 
 /**
- * This is deliberately a real edit wrapper rather than a one-line preamble.
- * `locked` is the semantic negative prompt: it identifies the pixel-faithful
- * content without repeating a prohibition wall from every style row.
+ * The descriptor is the edit. This wrapper only tells the model to obey it.
+ * A blanket "keep everything exactly as-is" is read as louder than target, so a
+ * staged surface, vessel, or prop is the change that gets dropped.
  */
 const TASK_FRAMING = {
   edit:
-    'Constrained edit: change only what "target" names; keep everything else exactly as-is; preserve the original composition. Semantic negative prompt: "subject.locked" remains pixel-faithful.',
+    'Edit the attached photograph. Change only target. subject keeps the dish and vessel. Leave anything target omits as shown.',
   editWithCamera:
     'Constrained edit: change only what "target" names. If target.camera is present, photograph the same dish from that viewpoint; keep unnamed elements. Do not preserve the original camera height. Semantic negative prompt: "subject.locked" remains faithful; camera height may change.',
   editWithYaw:
@@ -170,6 +181,44 @@ function changed<T>(original: T, target: T): boolean {
   return JSON.stringify(original) !== JSON.stringify(target)
 }
 
+function addedNames(original: readonly string[] | undefined, target: readonly string[] | undefined): string[] {
+  const seen = new Set(original ?? [])
+  return (target ?? []).filter((name) => !seen.has(name))
+}
+
+function angleIsStaged(target: SceneDescriptorState): boolean {
+  return Boolean(target.camera?.viewpoint || target.camera?.angle)
+}
+
+/**
+ * subject and current describe the photograph. They are not edits.
+ * An empty root camera is the same fact as current.camera, so it is omitted.
+ * foodPreservation and cameraPreservation are active keeps. A lock label is
+ * dropped when target is busy, which is how an unrequested angle change slips through.
+ */
+function shapeForModel(descriptor: SceneDescriptor): SceneDescriptor {
+  const keeps: SceneDescriptorState = {}
+  if (descriptor.task !== 'reshoot' && !descriptor.target.foodPreservation) {
+    keeps.foodPreservation = FOOD_PRESERVATION
+  }
+  if (
+    descriptor.task !== 'reshoot' &&
+    !descriptor.target.cameraPreservation &&
+    !angleIsStaged(descriptor.target)
+  ) {
+    keeps.cameraPreservation = CAMERA_PRESERVATION
+  }
+  const target = Object.keys(keeps).length === 0
+    ? descriptor.target
+    : { ...descriptor.target, ...keeps }
+  const shaped: SceneDescriptor = { ...descriptor, target }
+  if (!shaped.camera || Object.keys(shaped.camera).length === 0) {
+    const { camera: _camera, ...rest } = shaped
+    return rest as SceneDescriptor
+  }
+  return shaped
+}
+
 function descriptorFromStates(
   original: MinimalSchema,
   target: MinimalSchema,
@@ -214,7 +263,7 @@ function descriptorFromStates(
   if (backgroundChanged) {
     targetState.backdrop = { description: targetCanvas.background }
   }
-  if (componentsChanged) {
+    if (componentsChanged) {
     current.components = {
       garnishes: originalFood.garnishes,
       sides: originalFood.sides,
@@ -227,6 +276,17 @@ function descriptorFromStates(
       main_item: targetFood.main_item,
       vessel: targetCanvas.main_vessel,
     } as SceneDescriptor['target']['components']
+    const added = [
+      ...addedNames(originalFood.garnishes, targetFood.garnishes),
+      ...addedNames(originalFood.sides, targetFood.sides),
+    ]
+    if (added.length > 0) {
+      targetState.finishingTouches = finishingTouchTargets(added, {
+        surfaceChanging: surfaceStyleChanged,
+        vesselChanging: changed(originalCanvas.main_vessel, targetCanvas.main_vessel),
+      })
+      targetState.finishingTouchesRule = FINISHING_TOUCHES_RULE
+    }
   }
   if (lightingChanged) {
     current.lighting = { description: legacyStyleDescription(originalScene.lighting, 'lighting') }
@@ -261,7 +321,7 @@ function descriptorFromStates(
         'ingredient and component counts',
         'vessel',
         'framing',
-        'colours and textures',
+        FOOD_DETAIL_LOCK,
       ],
     },
     camera: {},
@@ -343,7 +403,7 @@ export function composePrompt(input: CompositionInput): CompositionResult {
 
   const normalizedDirective = normalizeDirective(directive)
   const task = resolveTask(modelDescriptor)
-  const modelDescriptorForPrompt = trimDescriptionToFit(modelDescriptor, normalizedDirective)
+  const modelDescriptorForPrompt = shapeForModel(trimDescriptionToFit(modelDescriptor, normalizedDirective))
 
   const descriptorPayload =
     descriptor === undefined && directive.length > 500

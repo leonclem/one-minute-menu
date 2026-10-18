@@ -52,7 +52,8 @@ describe('§5.2 identity preservation clause', () => {
     expect(directive).toContain('texture')
     expect(directive).toContain('shape')
     expect(directive).toContain('structure')
-    expect(directive).toContain('colours')
+    expect(directive).toContain('target.foodPreservation')
+    expect(directive).toContain('Keep the camera angle as described in target.cameraPreservation.')
     expect(directive).toContain('component counts')
     expect(directive).toContain('Preserve the plate.')
     expect(directive).toContain('Keep the entire subject and the plate visible, no cropping.')
@@ -125,5 +126,19 @@ describe('§5.2 identity preservation clause', () => {
       'Do not add new food, props, hands, text, labels, logos, napkins, or cutlery except for "parsley" and "slaw".',
     )
     expect(directive).not.toContain('unless explicitly requested')
+  })
+
+  it('does not keep the camera angle when the user staged an angle change', () => {
+    const angleDelta: StateDelta = {
+      isEmpty: false,
+      scalarChanges: [{ path: 'scene_setup.angle', from: '45-degree', to: 'top-down' }],
+      arrays: {
+        garnishes: { added: [], removed: [] },
+        sides: { added: [], removed: [] },
+      },
+    }
+    const directive = generateDirective(angleDelta, context)
+    expect(directive).toContain('overhead')
+    expect(directive).not.toContain('target.cameraPreservation')
   })
 })

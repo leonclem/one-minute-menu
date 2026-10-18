@@ -1,9 +1,17 @@
 import { fetchJsonWithRetry } from '@/lib/retry'
 import { parseExtractionResponse } from '@/lib/photo-control/gemini-extraction-client'
 import { STUDIO_EXTRACTION_MODEL } from '@/lib/studio/model-config'
-import { logger } from '@/lib/logger'
-import type { FinishingTouchCatalogueItem } from './catalogue'
 import {
+  PROP_SUGGESTION_LIMIT,
+  propIdListForPrompt,
+  sanitizeRecommendedPropIds,
+  type StudioProp,
+} from '@/lib/studio/props'
+import { logger } from '@/lib/logger'
+import { logDevGreenText } from '@/lib/studio/prompt-logging'
+import type { FinishingTouchCatalogueItem, FinishingTouchFamily } from './catalogue'
+import {
+  FINISHING_TOUCH_SUGGESTION_LIMIT,
   catalogueIdListForPrompt,
   diagnoseRecommendedStackIds,
   existingComponentNames,
@@ -11,19 +19,27 @@ import {
   inferFinishingTouchFamilyFromText,
   parseRecommendFamilyFromPayload,
   parseRecommendIdsFromPayload,
+  parseRecommendPropIdsFromPayload,
 } from './rank'
 
 const RECOMMEND_SYSTEM_PROMPT =
-  'You rank finishing touches for a food photograph. Return only JSON with family (savory or cake) and an ids array of catalogue ids from that family.'
+  'You rank finishing touches for a food photograph. Return only JSON with family (savory or cake), an ids array of garnish catalogue ids from that family, and a propIds array of prop catalogue ids.'
 
 const RECOMMEND_RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
     family: { type: 'STRING', enum: ['savory', 'cake'] },
     ids: { type: 'ARRAY', items: { type: 'STRING' } },
+    propIds: { type: 'ARRAY', items: { type: 'STRING' } },
   },
-  required: ['family', 'ids'],
+  required: ['family', 'ids', 'propIds'],
 } as const
+
+export interface FinishingTouchRecommendation {
+  family: FinishingTouchFamily
+  stack: FinishingTouchCatalogueItem[]
+  props: StudioProp[]
+}
 
 export interface RecommendFinishingTouchesInput {
   dishName?: string
@@ -78,15 +94,16 @@ export function buildFinishingTouchesUserPrompt(
       ? `Currently present on this variant: ${existing.join(', ')}.`
       : 'The current variant has no listed garnishes or sides.',
     'Return family as "savory" or "cake", plus catalogue ids from that family in best-first order.',
-    'Dessert cakes including cheesecake, cupcake, gateau, torte, banana bread, and other sweet bakes are family cake.',
-    'Crab cakes, fish cakes, corn cakes, rice cakes, potato cakes, and anything uncertain are family savory.',
-    'When family is savory, recommend up to 4 ids. When family is cake, rank every appropriate cake id; omit only ids that do not fit the dish.',
+    'Dessert bakes are family cake, including cake, cheesecake, cupcake, pie, brownie, cookie, gateau, torte, pavlova, and banana bread. Chocolate, caramel, or a fruit tart also means family cake. A savoury tart, such as tomato or onion, is family savory.',
+    'Crab cakes, fish cakes, corn cakes, rice cakes, potato cakes, shepherd\'s pie, cottage pie, pot pie, meat pie, and anything uncertain are family savory.',
+    `Recommend up to ${FINISHING_TOUCH_SUGGESTION_LIMIT} ids from the chosen family, best-first. Return fewer when a garnish is not genuinely appropriate.`,
     'When family is cake, choose only from cake ids. When family is savory, choose only from savory ids.',
     'Prioritize culinary authenticity for the identified dish and cuisine over generic visual decoration.',
-    'For savory, return fewer than 4 ids rather than include a garnish that is not genuinely appropriate.',
     'Do not repeat items currently present on this variant. Original-photo garnishes may be recommended when absent from the current variant. Do not invent ids.',
+    `Also return propIds: up to ${PROP_SUGGESTION_LIMIT} prop ids that belong on the table beside this dish, best-first. When family is cake, choose only props marked cake or any. When family is savory, choose only props marked savory or any. Do not invent prop ids.`,
     `Savory ids: ${catalogueIdListForPrompt('savory')}.`,
     `Cake ids: ${catalogueIdListForPrompt('cake')}.`,
+    `Props: ${propIdListForPrompt()}.`,
   ]
     .filter(Boolean)
     .join(' ')
@@ -95,16 +112,17 @@ export function buildFinishingTouchesUserPrompt(
 export async function recommendFinishingTouches(
   input: RecommendFinishingTouchesInput,
   deps?: { fetchJson?: RecommendFetchJson; apiKey?: string },
-): Promise<FinishingTouchCatalogueItem[]> {
+): Promise<FinishingTouchRecommendation> {
   const existing = existingComponentNames(input)
   const apiKey = deps?.apiKey ?? process.env.NANO_BANANA_API_KEY ?? ''
   const userPrompt = buildFinishingTouchesUserPrompt(input)
   if (!apiKey) {
+    const family = inferFinishingTouchFamilyFromText(input)
     const stack = fallbackStackForInput(input, existing)
     if (process.env.NODE_ENV === 'development') {
+      logDevGreenText(userPrompt)
       logger.debug('🔎 [Finishing Touches] Recommendation diagnostics', {
         systemPrompt: RECOMMEND_SYSTEM_PROMPT,
-        userPrompt,
         existingNames: existing,
         rawGeminiResponse: null,
         rawIds: null,
@@ -115,9 +133,10 @@ export async function recommendFinishingTouches(
         fallbackUsed: true,
         fallbackReason: 'missing_api_key',
         finalIds: stack.map((item) => item.id),
+        finalPropIds: [],
       })
     }
-    return stack
+    return { family, stack, props: [] }
   }
 
   const fetchJson = deps?.fetchJson ?? fetchJsonWithRetry
@@ -161,10 +180,14 @@ export async function recommendFinishingTouches(
       existing,
       parseRecommendFamilyFromPayload(payload),
     )
+    const props = sanitizeRecommendedPropIds(
+      parseRecommendPropIdsFromPayload(payload),
+      diagnostics.family,
+    )
     if (process.env.NODE_ENV === 'development') {
+      logDevGreenText(userPrompt)
       logger.debug('🔎 [Finishing Touches] Recommendation diagnostics', {
         systemPrompt: RECOMMEND_SYSTEM_PROMPT,
-        userPrompt,
         existingNames: existing,
         rawGeminiResponse: apiResponse,
         parsedPayload: payload,
@@ -178,23 +201,26 @@ export async function recommendFinishingTouches(
         fallbackUsed: diagnostics.fallbackUsed,
         fallbackReason: diagnostics.fallbackUsed ? 'no_usable_ids' : null,
         finalIds: diagnostics.stack.map((item) => item.id),
+        finalPropIds: props.map((prop) => prop.id),
       })
     }
-    return diagnostics.stack
+    return { family: diagnostics.family, stack: diagnostics.stack, props }
   } catch (error) {
     logger.warn('⚠️ [Finishing Touches] Recommend fell back after ranker error', { error })
+    const family = inferFinishingTouchFamilyFromText(input)
     const stack = fallbackStackForInput(input, existing)
     if (process.env.NODE_ENV === 'development') {
+      logDevGreenText(userPrompt)
       logger.debug('🔎 [Finishing Touches] Recommendation diagnostics', {
         systemPrompt: RECOMMEND_SYSTEM_PROMPT,
-        userPrompt,
         existingNames: existing,
         rawGeminiResponse: null,
         fallbackUsed: true,
         fallbackReason: 'request_or_parse_error',
         finalIds: stack.map((item) => item.id),
+        finalPropIds: [],
       })
     }
-    return stack
+    return { family, stack, props: [] }
   }
 }

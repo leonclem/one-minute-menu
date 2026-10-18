@@ -203,7 +203,12 @@ export async function POST(request: NextRequest) {
         },
       }
     }
-    const descriptorWithProps = applyPropsTarget(descriptor, parsedProps.props)
+    const surfaceChanging = delta.scalarChanges.some(
+      (change) => change.path === 'canvas.surface_style',
+    )
+    const descriptorWithProps = applyPropsTarget(descriptor, parsedProps.props, {
+      surfaceChanging,
+    })
     const directiveText = directive.trim()
     const compositionResult = composePrompt({
       directive: directiveText,

@@ -92,6 +92,8 @@ describe('StudioFinishingTouchesControl', () => {
     )
     expect(screen.getByText(/Pick up to 4 for Generate/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove Fresh berries' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Add Lemon drizzle' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show 1 more' }))
     expect(screen.getByRole('button', { name: 'Add Lemon drizzle' })).toBeDisabled()
   })
 })

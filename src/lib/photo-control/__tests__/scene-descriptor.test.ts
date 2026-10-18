@@ -139,7 +139,7 @@ describe('buildSceneDescriptor', () => {
       'ingredient and component counts',
       'vessel',
       'framing',
-      'colours and textures',
+      'natural food geometry and surface detail',
     ])
     expect(JSON.stringify(result)).not.toContain('negative_constraints')
     expect(JSON.stringify(result)).not.toContain('Do not add props.')
@@ -333,5 +333,34 @@ describe('buildSceneDescriptor', () => {
       viewpoint: cameraViewpoint('top-down'),
       plateFacing: plateFacingForSpin('right-90'),
     })
+  })
+
+  it('puts added garnish placement on target.finishingTouches', () => {
+    const original = schema({ food_components: { garnishes: [] } })
+    const target = schema({
+      food_components: { garnishes: ['Coriander'] },
+      canvas: { surface_style: 'dark-stone' },
+    })
+    const result = buildSceneDescriptor({
+      original,
+      target,
+      delta: delta([{ path: 'canvas.surface_style', from: '', to: 'dark-stone' }], {
+        garnishes: { added: ['Coriander'], removed: [] },
+        sides: { added: [], removed: [] },
+      }),
+      styles: {},
+      observations: {},
+      labels: ['Image A'],
+    })
+
+    expect(result.camera).toEqual({})
+    expect(result.target.finishingTouches).toEqual([
+      {
+        item: 'Coriander',
+        placement: expect.stringContaining('on the tabletop'),
+      },
+    ])
+    expect(result.target.finishingTouches?.[0]?.placement).not.toContain('existing tabletop')
+    expect(result.target.finishingTouchesRule).toContain('not in a grid')
   })
 })

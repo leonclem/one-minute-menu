@@ -1,4 +1,5 @@
 import type { StateDelta } from '@/lib/photo-control/minimal-schema'
+import { harmonizeTabletopLanguage } from '@/lib/studio/tabletop-language'
 import {
   type FinishingTouchPlacement,
   type FinishingTouchPrep,
@@ -66,7 +67,7 @@ const ON_FOOD_BY_PREP: Record<FinishingTouchPrep, string> = {
     'as small leaves, or at most one light sprig, on the food — not a large clump or bouquet',
   'whole-scatter': 'on the food',
   dusted:
-    'as a light dusting on the food — do not bury or fully coat the cake',
+    'as a light dusting on the food — do not bury or fully coat the food',
   shavings: 'as a small amount of shavings on the food, not a mound',
   drizzle:
     'as a thin zigzag drizzle on the food, not a flood, and do not add a sauce jug',
@@ -96,14 +97,7 @@ function placementPhrase(
   return ON_FOOD_BY_PREP[form]
 }
 
-function quoteList(items: readonly string[]): string {
-  const quoted = items.map((item) => `"${item}"`)
-  if (quoted.length === 1) return quoted[0]
-  if (quoted.length === 2) return `${quoted[0]} and ${quoted[1]}`
-  return `${quoted.slice(0, -1).join(', ')}, and ${quoted[quoted.length - 1]}`
-}
-
-function placementLine(name: string): string {
+function placementText(name: string): string {
   const item = getFinishingTouchByName(name)
   const placements = item?.placements ?? (['on-food', 'scene'] as const)
   const onFoodPrep = item?.prep ?? 'whole'
@@ -111,48 +105,53 @@ function placementLine(name: string): string {
   const phrases = placements.map((placement) =>
     placementPhrase(placement, formForPlacement(placement, onFoodPrep, scenePrep)),
   )
-  return `- ${name}: ${phrases.join('; ')}.`
+  return phrases.join('; ')
 }
 
-function scalarChanged(delta: StateDelta, path: string): boolean {
-  return delta.scalarChanges.some((change) => change.path === path)
+export interface FinishingTouchTarget {
+  item: string
+  placement: string
 }
+
+export interface FinishingTouchTargetOptions {
+  surfaceChanging?: boolean
+  vesselChanging?: boolean
+}
+
+function harmonizeVesselLanguage(text: string, vesselChanging: boolean): string {
+  if (!vesselChanging) return text
+  return text.replace(/the existing plate/g, 'the vessel').replace(/existing plate/g, 'the vessel')
+}
+
+/** Placement for target.finishingTouches. The directive only points at this list. */
+export function finishingTouchTargets(
+  names: readonly string[],
+  options?: FinishingTouchTargetOptions,
+): FinishingTouchTarget[] {
+  const surfaceChanging = options?.surfaceChanging ?? false
+  const vesselChanging = options?.vesselChanging ?? false
+  return names.map((name) => ({
+    item: name,
+    placement: harmonizeVesselLanguage(
+      harmonizeTabletopLanguage(placementText(name), surfaceChanging),
+      vesselChanging,
+    ),
+  }))
+}
+
+export const FINISHING_TOUCHES_RULE =
+  'Place items naturally and irregularly, not in a grid, and keep quantities restrained. Do not add bowls, cutlery, napkins, glasses, or ramekins beyond target.finishingTouches and target.props.'
 
 /**
- * Single bundled addition clause for garnish/side adds.
- * Table scatter is prompt-only. Extra bowls and props are forbidden.
+ * Pointer only. Placement, restraint, and the prop ban live on target.
  */
 export function buildFinishingTouchesAdditionClause(
   addedItems: readonly string[],
-  delta: StateDelta,
-  allowedPropLabels: readonly string[] = [],
+  _delta: StateDelta,
+  _allowedPropLabels: readonly string[] = [],
 ): string {
   if (addedItems.length === 0) return ''
-
-  const locks: string[] = [
-    allowedPropLabels.length > 0
-      ? 'Do not add extra bowls, serving dishes, glasses, or props other than the named props.'
-      : 'Do not add extra bowls, serving dishes, cutlery, napkins, glasses, ramekins, or unrelated props.',
-    scalarChanged(delta, 'canvas.vessel_style')
-      ? 'Do not change the dish, plating, crop, or camera.'
-      : 'Do not change the dish, plating, vessel shape, crop, or camera.',
-    'Place items naturally and irregularly, not in a grid, and keep quantities restrained.',
-  ]
-  if (!scalarChanged(delta, 'scene_setup.lighting')) {
-    locks.push('Keep the existing lighting unchanged.')
-  }
-  if (!scalarChanged(delta, 'canvas.surface_style')) {
-    locks.push('Keep the existing tabletop surface, its colour, and texture unchanged.')
-  }
-  if (!scalarChanged(delta, 'canvas.background_style')) {
-    locks.push('Keep the existing backdrop unchanged.')
-  }
-
-  return (
-    `Add only these named finishing touches: ${quoteList(addedItems)}. ` +
-    `Place each item as follows:\n${addedItems.map(placementLine).join('\n')} ` +
-    locks.join(' ')
-  )
+  return 'Add only the finishing touches in target.finishingTouches.'
 }
 
 const DRIZZLE_SWIRL_REMOVAL_FILL =

@@ -53,9 +53,9 @@ describe('finishing-touch catalogue', () => {
     expect(duplicateIds).toEqual([])
     expect(duplicateLabels).toEqual([])
     expect(FINISHING_TOUCH_CATALOGUE.length).toBeGreaterThanOrEqual(15)
-    expect(FINISHING_TOUCH_CATALOGUE.length).toBeLessThanOrEqual(30)
+    expect(FINISHING_TOUCH_CATALOGUE.length).toBeLessThanOrEqual(50)
     expect(CAKE_FINISHING_TOUCH_CATALOGUE.length).toBeGreaterThanOrEqual(6)
-    expect(CAKE_FINISHING_TOUCH_CATALOGUE.length).toBeLessThanOrEqual(12)
+    expect(CAKE_FINISHING_TOUCH_CATALOGUE.length).toBeLessThanOrEqual(40)
   })
 
   it('resolves coriander aliases', () => {
@@ -92,6 +92,26 @@ describe('finishing-touch catalogue', () => {
       fried_garlic: { prep: 'whole' },
       coconut_flakes: { prep: 'whole' },
       paprika: { prep: 'whole' },
+      dill: { prep: 'chopped', scenePrep: 'sprig' },
+      nori_strips: { prep: 'sliced' },
+      chilli_oil_drizzle: { prep: 'drizzle' },
+      balsamic_glaze: { prep: 'drizzle' },
+      toasted_pine_nuts: { prep: 'whole' },
+      flaked_almonds: { prep: 'whole' },
+      fried_capers: { prep: 'whole' },
+      oregano: { prep: 'leaves', scenePrep: 'sprig' },
+      sage: { prep: 'leaves', scenePrep: 'sprig' },
+      tarragon: { prep: 'leaves', scenePrep: 'sprig' },
+      radish_slices: { prep: 'sliced', scenePrep: 'intact' },
+      cucumber_slices: { prep: 'sliced' },
+      cherry_tomato_halves: { prep: 'halved', scenePrep: 'intact' },
+      pumpkin_seeds: { prep: 'whole' },
+      toasted_breadcrumbs: { prep: 'crushed' },
+      furikake: { prep: 'whole' },
+      lime_zest: { prep: 'fine-chop' },
+      pistachio_nuts: { prep: 'crushed', scenePrep: 'whole-scatter' },
+      cracked_black_pepper: { prep: 'dusted' },
+      sumac: { prep: 'dusted' },
     }
     expect(FINISHING_TOUCH_CATALOGUE.map((item) => item.id).sort()).toEqual(
       Object.keys(expected).sort(),
@@ -102,19 +122,53 @@ describe('finishing-touch catalogue', () => {
     }
   })
 
+  it('keeps new savoury placements from requesting every location at once', () => {
+    expect(getFinishingTouchById('dill')?.placements).toEqual(['on-food', 'scene'])
+    expect(getFinishingTouchById('nori_strips')?.placements).toEqual(['on-food'])
+    expect(getFinishingTouchById('chilli_oil_drizzle')?.placements).toEqual([
+      'on-food',
+      'on-vessel',
+    ])
+    expect(getFinishingTouchById('toasted_pine_nuts')?.placements).toEqual([
+      'on-food',
+      'scene',
+    ])
+  })
+
   it('keeps cake items on-food or on-vessel without table scatter', () => {
     expect(CAKE_FINISHING_TOUCH_CATALOGUE.map((item) => item.id).sort()).toEqual([
       'berry_coulis',
+      'biscuit_crumbs',
+      'cacao_nibs',
+      'candied_ginger',
+      'candied_orange_peel',
+      'caramel_drizzle',
       'chocolate_drizzle',
       'chocolate_shavings',
       'chopped_pecans',
+      'chopped_walnuts',
+      'cinnamon_dusting',
+      'cocoa_dusting',
       'cream_swirl',
+      'crushed_hazelnuts',
+      'edible_pansies',
+      'edible_rose_petals',
       'fresh_berries',
+      'fresh_fig_slices',
+      'honey_drizzle',
+      'kiwi_slices',
+      'lemon_curd_swirl',
       'lemon_drizzle',
       'lemon_zest',
+      'matcha_dusting',
       'mint_sprig',
+      'orange_zest',
+      'passion_fruit_pulp',
       'pistachio_crumbs',
       'powdered_sugar',
+      'toasted_coconut_chips',
+      'toasted_flaked_almonds',
+      'white_chocolate_drizzle',
     ])
     for (const item of CAKE_FINISHING_TOUCH_CATALOGUE) {
       expect(item.family).toBe('cake')

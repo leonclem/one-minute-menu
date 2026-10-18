@@ -1,9 +1,13 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+
 import {
   MAX_FINISHING_TOUCH_LEVEL,
   type FinishingTouchCatalogueItem,
 } from '@/lib/studio/finishing-touches'
+
+const SUGGESTION_PAGE_SIZE = 4
 
 interface StudioFinishingTouchesControlProps {
   disabled?: boolean
@@ -29,6 +33,13 @@ export function StudioFinishingTouchesControl({
   onToggle,
 }: StudioFinishingTouchesControlProps) {
   const atSelectionCap = selectedIds.length >= maxSelected
+  const optionKey = options.map((option) => option.id).join('|')
+  const [visibleCount, setVisibleCount] = useState(SUGGESTION_PAGE_SIZE)
+  useEffect(() => {
+    setVisibleCount(SUGGESTION_PAGE_SIZE)
+  }, [optionKey])
+  const visibleOptions = options.slice(0, visibleCount)
+  const hiddenCount = options.length - visibleOptions.length
   const helperCopy =
     options.length > maxSelected
       ? `Pick up to ${maxSelected} for Generate. Does not run until you hit Generate.`
@@ -66,7 +77,7 @@ export function StudioFinishingTouchesControl({
           aria-label="Suggested finishing touches"
           className="flex flex-wrap gap-2"
         >
-          {options.map((option) => {
+          {visibleOptions.map((option) => {
             const selected = selectedIds.includes(option.id)
             const chipDisabled = disabled || (!selected && atSelectionCap)
             return (
@@ -98,6 +109,17 @@ export function StudioFinishingTouchesControl({
             )
           })}
         </div>
+      ) : null}
+      {hiddenCount > 0 ? (
+        <button
+          type="button"
+          className="text-xs font-medium text-[#5fd3da] underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-[#01b3bf]/40"
+          onClick={() =>
+            setVisibleCount((count) => count + SUGGESTION_PAGE_SIZE)
+          }
+        >
+          {`Show ${Math.min(SUGGESTION_PAGE_SIZE, hiddenCount)} more`}
+        </button>
       ) : null}
     </div>
   )

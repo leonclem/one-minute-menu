@@ -51,10 +51,14 @@ describe('POST /api/studio/finishing-touches/recommend', () => {
       user: { id: 'user-1' },
       supabase: {},
     })
-    mockRecommend.mockResolvedValue([
-      { id: 'coriander', name: 'Coriander' },
-      { id: 'lime_wedge', name: 'Lime wedges' },
-    ])
+    mockRecommend.mockResolvedValue({
+      family: 'savory',
+      stack: [
+        { id: 'coriander', name: 'Coriander' },
+        { id: 'lime_wedge', name: 'Lime wedges' },
+      ],
+      props: [{ id: 'chopsticks', label: 'Chopsticks' }],
+    })
 
     const res = await POST(
       makeRequest({
@@ -66,11 +70,13 @@ describe('POST /api/studio/finishing-touches/recommend', () => {
     )
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toEqual({
+      family: 'savory',
       stackIds: ['coriander', 'lime_wedge'],
       stack: [
         { id: 'coriander', name: 'Coriander' },
         { id: 'lime_wedge', name: 'Lime wedges' },
       ],
+      propIds: ['chopsticks'],
     })
     expect(mockRecommend).toHaveBeenCalledWith({
       dishName: 'Massaman Curry',
@@ -98,7 +104,11 @@ describe('POST /api/studio/finishing-touches/recommend', () => {
       user: { id: 'user-1' },
       supabase: {},
     })
-    mockRecommend.mockResolvedValue([{ id: 'coriander', name: 'Coriander' }])
+    mockRecommend.mockResolvedValue({
+      family: 'savory',
+      stack: [{ id: 'coriander', name: 'Coriander' }],
+      props: [],
+    })
 
     const body = {
       dishName: 'Hainanese Chicken',

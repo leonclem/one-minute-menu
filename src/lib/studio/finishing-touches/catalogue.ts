@@ -1,9 +1,10 @@
 /**
  * Controlled finishing-touch vocabulary for Studio Elements.
- * Placement is prompt-only; schema only stores garnish/side names.
+ * The editor stores garnish and side names. Placement is written onto target.finishingTouches.
  */
 
 import { CAKE_FINISHING_TOUCH_CATALOGUE } from './catalogue-cake'
+import { SAVORY_FINISHING_TOUCH_MORE } from './catalogue-savory-more'
 
 export const MAX_FINISHING_TOUCH_LEVEL = 4
 export const DEFAULT_FINISHING_TOUCH_LEVEL = 2
@@ -259,6 +260,64 @@ export const FINISHING_TOUCH_CATALOGUE: readonly FinishingTouchCatalogueItem[] =
     placements: ['on-food'],
     prep: 'whole',
   },
+  {
+    id: 'dill',
+    name: 'Dill',
+    aliases: ['fresh dill', 'dill leaves'],
+    schemaField: 'garnishes',
+    placements: HERB_PLACEMENTS,
+    prep: 'chopped',
+    scenePrep: 'sprig',
+  },
+  {
+    id: 'nori_strips',
+    name: 'Nori strips',
+    aliases: ['shredded nori', 'seaweed strips'],
+    schemaField: 'garnishes',
+    placements: ['on-food'],
+    prep: 'sliced',
+  },
+  {
+    id: 'chilli_oil_drizzle',
+    name: 'Chilli oil drizzle',
+    aliases: ['chili oil', 'chilli oil', 'spicy oil drizzle'],
+    schemaField: 'garnishes',
+    placements: ['on-food', 'on-vessel'],
+    prep: 'drizzle',
+  },
+  {
+    id: 'balsamic_glaze',
+    name: 'Balsamic glaze',
+    aliases: ['balsamic reduction', 'balsamic drizzle'],
+    schemaField: 'garnishes',
+    placements: ['on-food', 'on-vessel'],
+    prep: 'drizzle',
+  },
+  {
+    id: 'toasted_pine_nuts',
+    name: 'Toasted pine nuts',
+    aliases: ['pine nuts', 'toasted pignoli'],
+    schemaField: 'garnishes',
+    placements: SCATTER_ON_FOOD,
+    prep: 'whole',
+  },
+  {
+    id: 'flaked_almonds',
+    name: 'Flaked almonds',
+    aliases: ['sliced almonds', 'toasted almond flakes'],
+    schemaField: 'garnishes',
+    placements: SCATTER_ON_FOOD,
+    prep: 'whole',
+  },
+  {
+    id: 'fried_capers',
+    name: 'Fried capers',
+    aliases: ['crispy capers'],
+    schemaField: 'garnishes',
+    placements: ['on-food'],
+    prep: 'whole',
+  },
+  ...SAVORY_FINISHING_TOUCH_MORE,
 ]
 
 export { CAKE_FINISHING_TOUCH_CATALOGUE }

@@ -50,6 +50,18 @@ describe('background_style delta', () => {
     expect(directive).not.toContain('low-key')
     expect(directive).not.toContain('dark-slate')
     expect(directive).toContain('Preserve the identity')
+    expect(directive).not.toContain('Leave all other attributes of the scene unchanged')
+  })
+
+  it('does not say leave unchanged when the only edit is an excluded style', () => {
+    const original = state('')
+    const target = state('dark-slate')
+    const directive = generateDirective(computeDelta(original, target), target, {
+      excludePaths: ['canvas.background_style'],
+    })
+    expect(directive).toContain('Preserve the identity')
+    expect(directive).not.toContain('dark-slate')
+    expect(directive).not.toContain('Leave all other attributes of the scene unchanged')
   })
 
   it('includes a fallback background clause when not excluded', () => {

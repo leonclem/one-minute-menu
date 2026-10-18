@@ -12,6 +12,11 @@ describe('backdrop-keys', () => {
     expect(normalizeBackdropKey('studio-nightsky')).toBe('deep-navy')
   })
 
+  it('maps the retired sunlit kitchen backdrop to soft neutral', () => {
+    expect(normalizeBackdropKey('sunlit-kitchen')).toBe('soft-neutral')
+    expect(fohBackdropLabel('sunlit-kitchen')).toBe('Soft Neutral')
+  })
+
   it('keeps empty values empty and passes through custom keys', () => {
     expect(normalizeBackdropKey('')).toBe('')
     expect(normalizeBackdropKey('custom-admin-backdrop')).toBe('custom-admin-backdrop')
@@ -22,7 +27,6 @@ describe('backdrop-keys', () => {
   })
 
   it('returns FOH labels for current and legacy keys', () => {
-    expect(fohBackdropLabel('sunlit-kitchen')).toBe('Sunlit Kitchen')
     expect(fohBackdropLabel('charcoal')).toBe('Charcoal')
     expect(fohBackdropLabel('studio-red')).toBe('Terracotta')
   })

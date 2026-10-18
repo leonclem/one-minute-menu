@@ -4,31 +4,32 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## /studio
-- [ ] Implement "scene" feature
-
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
->>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
 ## Social Media and Advertising
 - [ ] Plan for social media posts featuring new Scenes (embedded in real use cases)
 
 ## /studio
 - [ ] On mobile, can't zoom when using, e.g. Expand, Remove, tooling
 - [ ] Export should offer to download "as-is" aspect
+- [ ] Add stopwatch counter when generation starts
+- [ ] If switching to overhead and backdrop is selected, warn that backdrop will be unselected
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+>>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+## Social Media and Advertising
+- [ ] Newsletter email for those that signed up
+
+## /studio
+- [ ] Guide users on the ideal starting photo (for first upload) -> use examples
 - [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
 - [ ] Investigate "re-plate" prompt (preserving all food on the plate)
-- [ ] If switching to overhead and backdrop is selected, warn that backdrop will be unselected
-- [ ] Add stopwatch counter when generation starts
-- [ ] Guide users on the ideal starting photo (for first upload) -> use examples
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> LATER >>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Social Media and Advertising
-- [ ] "Today's glow-up" before and after with comedy (increasingly elaborate) build up
 - [ ] Investigate what's required for name change
 - [ ] Harvest fruit from Starter Story Build May 26 "How to Get 1,000 Downloads On Your App in 30 Days (From Scratch)"
 - [ ] Understand what is required and potential upside to conduct a cold email campaign
@@ -195,6 +196,7 @@
 - [x] Keep this: one outline, shade the outside, paste the original interior back (judge the seam)
 - [x] Investigate vessel swapping
 - [x] Label generated images with model (Std / Pro)
+- [x] Implement "scene" feature (as far as possible with surfaces, props, and garnishes)
 
 ## Home Page
 - [x] Open Studio should not immediately require sign-ups, Generate should.

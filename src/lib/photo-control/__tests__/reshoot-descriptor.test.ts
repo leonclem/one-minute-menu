@@ -44,7 +44,7 @@ const styles = {
 describe('reshoot descriptor and prompt modes', () => {
   it('keeps the edit framing string byte-identical', () => {
     expect(TASK_FRAMING.edit).toBe(
-      'Constrained edit: change only what "target" names; keep everything else exactly as-is; preserve the original composition. Semantic negative prompt: "subject.locked" remains pixel-faithful.',
+      'Edit the attached photograph. Change only target. subject keeps the dish and vessel. Leave anything target omits as shown.',
     )
   })
 

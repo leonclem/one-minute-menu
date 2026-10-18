@@ -1,7 +1,7 @@
 # GridMenu — AI Food Photography: Best Practices & Prompting Guide
 
 > Internal guide for the Studio image-editing pipeline: prompt shape, model configuration,
-> reference semantics, and iterative editing. **Last updated: July 28, 2026.**
+> reference semantics, and iterative editing. **Last updated: October 18, 2026.**
 >
 > External API behavior in this guide is cited inline to the [Gemini image generation documentation](https://ai.google.dev/gemini-api/docs/image-generation). Content is rephrased rather than quoted.
 
@@ -9,9 +9,12 @@
 
 ## 1. Current model landscape
 
-Studio uses **`gemini-3.1-flash-image`** for the customer edit path. The Pro model remains an
-admin/experimental option. Keep model names and capability decisions centralized in the model
-configuration module; do not infer capabilities from a generic reference count.
+Studio uses the Flash-family image model for the customer edit path. Live ids come from
+`STUDIO_STD_MODEL_URL` and `STUDIO_PRO_MODEL_URL`. A Nano Banana 2.x id is the Flash family:
+it accepts a thinking level and has no style-reference slot. The Pro model remains an
+admin/experimental option and does not accept `thinkingLevel`. Keep model names and capability
+decisions centralized in the model configuration module; do not infer capabilities from a
+generic reference count.
 
 | Model | GridMenu role | Image output / reference capability relevant here |
 |---|---|---|
@@ -55,9 +58,10 @@ The 2026-07-20 decision parked eye-level work. New Studio camera prompts must us
 ## 3. Two tiers: control state versus scene descriptor
 
 The former **Extreme Compression Strategy** is retired. The old single-letter serializer, string
-slicing, opaque database-key values, and 2,000-character budget made the JSON anchor less useful
-than the surrounding prose. Do not shorten keys or values to save characters, and do not use a
-compressed JSON footnote as the source of truth.
+slicing, and opaque database-key values made the JSON anchor less useful than the surrounding
+prose. Do not shorten keys or values to save characters, and do not use a compressed JSON
+footnote as the source of truth. The descriptor is the edit. Do not pad prose until it competes
+with `target`.
 
 ### Tier 1 — control state
 
@@ -73,75 +77,93 @@ instruction.
 ### Tier 2 — scene descriptor
 
 Tier 2 is built server-side for the model. Expand Tier 1, resolved style descriptors, and observed
-extraction data into a verbose, semantically named JSON document. The model-facing payload should be
-approximately **90% descriptor JSON and 10% useful framing prose**, and should be shorter overall
-than the old 2,492-character prompt. Preserve complete user and extracted strings: there is no
-character-slicing rule.
+extraction data into a verbose, semantically named JSON document. Preserve complete user and
+extracted strings. The only trim is `subject.description`, and only when the composed prompt would
+exceed the composer ceiling.
 
 Use these top-level sections:
 
 ```json
 {
+  "task": "edit",
   "subject": {},
-  "camera": {},
   "current": {},
   "target": {},
   "output": {}
 }
 ```
 
-- `subject` describes the dish, vessel, food components, identity, and anything that must remain
-  recognizable.
-- `camera` describes the observed or requested viewpoint, framing, lens/depth cues, and aspect
-  intent when one is explicitly selected.
-- `current` records the relevant observed scene state.
-- `target` records only the requested changes, including `target.lighting`,
-  `target.backdrop`, and `target.surface` with descriptive attributes such as quality,
-  temperature, shadows, falloff, material, finish, and hex color.
-- `output` records output format and semantic exclusions. It may include one positive `locked`
-  field describing what is locked; it must not duplicate identity constraints in several prose
-  clauses.
+Omit an empty root `camera`. It repeats the observed viewpoint already available from the
+photograph and from `current.camera`. Keep `current.camera` and `target.camera` when the angle
+or yaw is the change.
 
-Example shape:
+- `subject` keeps identity: dish, vessel, the original observation in `description`, components,
+  and `locked`. It is not a second edit.
+- `current` is the before-state of this variant. It is not a second edit.
+- `target` is the only change. It holds lighting, backdrop, surface, a replacement vessel,
+  finishing touches, props, camera, and `foodPreservation`. Style attributes stay descriptive:
+  quality, temperature, shadows, falloff, material, finish, and hex colour. Never send an
+  internal style key as the visual value.
+- `output` is `style: photorealistic` and `framing: full shot, no cropping`. It is not a lock
+  list and it is not a negative prompt.
+
+`subject.description` is the original photograph analysis. It can still mention a board, garnish,
+or surface that a later edit has replaced. Do not rewrite it into the new scene, and do not treat
+it as proof of what is on the current variant.
+
+Example shape for a surface change with one garnish and one prop:
 
 ```json
 {
+  "task": "edit",
   "subject": {
-    "name": "churros",
-    "vessel": "round matte ceramic plate",
-    "identity": "Preserve the shown food arrangement, texture, shape, and portion count."
-  },
-  "camera": {
-    "viewpoint": "eye-level table-top horizon",
-    "framing": "full vessel with negative space on every side"
+    "locked": [
+      "dish identity",
+      "ingredient and component counts",
+      "vessel",
+      "framing",
+      "natural food geometry and surface detail"
+    ],
+    "dish": "Massaman curry",
+    "vessel": "round matte ceramic bowl",
+    "description": "Original photograph analysis. Not a list of edits.",
+    "components": { "garnishes": [], "sides": [] }
   },
   "current": {
-    "lighting": "soft side light",
-    "surface": "wooden tabletop"
+    "components": { "garnishes": [] }
   },
   "target": {
-    "lighting": {
-      "quality": "soft editorial studio light",
-      "temperature": "neutral-warm",
-      "shadows": "soft defined contact shadows",
-      "falloff": "gradual"
-    },
     "surface": {
       "material": "slate",
       "finish": "matte",
-      "color": "#2F3437"
-    }
+      "colour": "#2F3437"
+    },
+    "finishingTouches": [
+      { "item": "Coriander", "placement": "finely chopped on the food; a small sprig on the tabletop around the vessel" }
+    ],
+    "finishingTouchesRule": "Place items naturally and irregularly, not in a grid, and keep quantities restrained.",
+    "props": [
+      {
+        "name": "Fork",
+        "description": "One plain stainless-steel dinner fork.",
+        "placement": "On the tabletop to the left of the vessel."
+      }
+    ],
+    "propsRule": "These are tabletop props, not garnishes on the food. Cast a soft contact shadow on the tabletop.",
+    "foodPreservation": "Keep texture, shape, and structure as irregular cooked geometry, with browning, moisture, and natural colour variation. Do not smooth, round, or unify the food.",
+    "cameraPreservation": "Keep the camera angle and height of the source photograph. Do not move to overhead, eye level, or a side view."
   },
   "output": {
-    "locked": "subject identity, vessel identity, requested composition, and all unnamed elements",
-    "semanticNegativePrompt": "No extra plates, utensils, garnishes, people, hands, text, logos, or cropped vessel."
+    "style": "photorealistic",
+    "framing": "full shot, no cropping"
   }
 }
 ```
 
 The descriptor is the model-facing representation, not a replacement for Tier 1 persistence. The
 key invariant is semantic fidelity: the JSON must say what the model should see, not how cheaply the
-application can serialize it.
+application can serialize it. Do not add `output.locked` or `semanticNegativePrompt`. Those fields
+competed with `target` and are not part of the current payload.
 
 ---
 
@@ -152,34 +174,68 @@ framing prose around the descriptor must do real work while remaining small. Use
 shape, adapted from the image-edit/inpainting pattern in the [Gemini image generation docs](https://ai.google.dev/gemini-api/docs/image-generation):
 
 ```text
-Edit the attached source image. Change only the named elements in TARGET.
-Keep everything else exactly as it is and preserve the original composition, subject identity,
-vessel identity, framing, and all unmentioned details. Apply the requested edit naturally to the
-existing image; do not create a new scene.
+Edit the attached photograph. Change only target. subject keeps the dish and vessel. Leave anything target omits as shown.
+Requested directive: <short pointers only>
 
-TARGET:
 <the Tier 2 scene descriptor JSON>
-
-SEMANTIC NEGATIVE PROMPT:
-<one concise description of unwanted additions or alterations>
 ```
+
+The directive is built in the browser and posted with the mutate request. A stale Studio bundle
+keeps the old directive even after the server has the new JSON. Reload Studio before judging a
+prompt from the log.
 
 Implementation rules for this wrapper:
 
-1. Say **change only the named elements**.
-2. Say **keep everything else exactly as it is** and preserve the original composition.
-3. Put the values in the semantic descriptor; do not repeat the same identity or negative clause
-   once per style.
-4. Use a single positive `locked` field for invariants and one semantic negative prompt for
-   exclusions. Prefer “no extra plates, hands, or text” as a description of the unwanted result;
-   do not build a long, repeated prohibition list.
-5. Do not use `Generate an image of:` or `Compose a new image using the provided reference inputs:`
-   for an edit request. Label an attached source image inside the descriptor when a label is
-   needed, but frame the operation as editing the source.
+1. Say **change only target**. `subject` names the dish and vessel to keep. `current` is the
+   before-state, not a second edit. Leave anything target omits as shown.
+2. Do not say **keep everything else exactly as-is**. That sentence is read as louder than
+   `target`, and a staged surface is the change that gets dropped.
+3. Put the values in the semantic descriptor. The directive points at them. It does not restate
+   them.
+   - Lighting, backdrop, and surface live only in `target`. Their client clauses are excluded
+     (`scene_setup.lighting`, `canvas.background_style`, `canvas.surface_style`). Do not append
+     "leave all other attributes unchanged" when that excluded style was the only prose clause.
+   - Garnish and side placement lives on `target.finishingTouches`, with one shared
+     `target.finishingTouchesRule`. The directive says only: add the finishing touches in
+     `target.finishingTouches`.
+   - Prop description and placement live on `target.props`, with one shared `target.propsRule`.
+     The directive says only: add the props in `target.props`. Props are text. Do not attach a
+     prop image.
+   - Food keep lives on `target.foodPreservation` for every non-reshoot edit. The directive
+     points at that field. It still has to contain the words texture, shape, and structure.
+     Do not paste the browning essay into the directive as well.
+4. Once surface, vessel, or backdrop is in `target`, prose must not call that surface "existing"
+   or "current". Say "the tabletop" and "the vessel". Catalogue phrases are rewritten at compose
+   time when that axis is changing.
+5. Use one positive `subject.locked` list. The food entry is **natural food geometry and surface
+   detail**. "Colours and textures" on its own is read as a licence to smooth sear, moisture, and
+   irregular edges when `target` is busy. A lock label is still dropped when `target` is busy, so
+   the active keep is `target.foodPreservation`, not a second prohibition paragraph.
+   `subject.locked` also says **framing**, which means crop, not camera height. When the user has
+   not staged `scene_setup.angle`, add `target.cameraPreservation` and point the directive at it.
+   Omit that keep when `target.camera.viewpoint` is the requested change. A yaw-only edit still
+   keeps the angle.
+6. A vessel swap may stay in the directive, because it has to name the additional reference image
+   and tell the model not to copy that image's background, tabletop, lighting, or food. The new
+   vessel also appears as `target.vessel`. Removals stay in the directive. `target.components`
+   lists what should remain.
+7. Do not use `Generate an image of:` or `Compose a new image using the provided reference inputs:`
+   for an edit request. Frame the operation as editing the source.
+8. Do not add a global-to-local prose block (canvas style, then subject, then background, then
+   lighting). Google's edit guidance is a strong verb, a statement of what changes and what stays,
+   and iteration. That is the one-line wrapper plus `target`. A second hierarchy in prose competes
+   with `target`, which is how a staged surface gets dropped.
+   [Nano Banana prompting guide](https://cloud.google.com/blog/products/ai-machine-learning/ultimate-prompting-guide-for-nano-banana)
 
-This prose is intentionally about 10% of the payload. It supplies the edit/inpainting instruction;
-the descriptor supplies the complete values. A pure JSON blob is not a substitute for the edit
-wrapper.
+A pure JSON blob is not a substitute for the edit wrapper. The wrapper stays one sentence.
+
+### How many changes in one edit
+
+One request that bundles more than about four or five changes drops some of them. The surface is
+a common drop. Do not fix a drop by restating that change in the directive. The documented edit
+pattern is to iterate: apply a smaller set, then edit the result. The Studio UI can still stack
+controls into one submit. That stack is still one prompt, and a large stack is less reliable than
+a short sequence of edits.
 
 ---
 
@@ -203,10 +259,16 @@ an object to reproduce, not as a style to emulate. [Gemini image generation docs
 
 ### Studio customer-path policy
 
-The customer `/studio` path sends exactly one reference: the source photograph in slot 1. It sends
-no lighting, backdrop, surface, or steering references. References carry identity; JSON carries
+The customer `/studio` path sends the source photograph as the identity anchor. It sends no
+lighting, backdrop, surface, or steering references. References carry identity; JSON carries
 style. Lighting, backdrop, and surface intent travel exclusively through Tier 2 attributes such as
-quality, temperature, shadows, falloff, material, finish, and color.
+quality, temperature, shadows, falloff, material, finish, and colour.
+
+A vessel swap is the exception. It attaches one extra object reference: the replacement vessel,
+fitted to the source frame. The prompt must say to move the existing food onto that vessel and
+not to copy the reference image's background, tabletop, lighting, or food. Output aspect ratio
+stays the source photograph's ratio, not the vessel image's ratio. Props stay text on
+`target.props`.
 
 For admin experiments on Pro, classify each image before attaching it and keep the reference count
 within the limit for that kind. Never describe the limit only as “Flash supports N images”: that
@@ -243,25 +305,18 @@ it was not.
 
 ## 7. Semantic negative prompts and identity preservation
 
-Negative guidance should describe the unwanted result semantically and once. It should support the
-positive edit instruction rather than compete with it. Prefer:
+Say the unwanted result once, inside the directive's identity clause: do not add new food, props,
+hands, text, labels, logos, napkins, or cutlery, except the items this edit names. Do not copy
+that sentence onto `output`, and do not add `semanticNegativePrompt` or `output.locked`.
 
-```json
-{
-  "locked": "the original dish, vessel, composition, and all unnamed elements",
-  "semanticNegativePrompt": "No additional food, plates, utensils, props, people, hands, text, logos, or cropped edges."
-}
-```
-
-Avoid four copies of “Do not change the dish” or a list of contradictory imperatives. If an item is
-locked, identify it positively in `output.locked`; if an addition is unwanted, name the semantic
-addition in `semanticNegativePrompt`. A staged change must appear in `target`, and the negative
-prompt must not negate that target.
+`subject.locked` is the positive list: dish identity, ingredient and component counts, vessel
+(unless the vessel is the change), framing (unless camera geometry is the change), and natural
+food geometry. `target.foodPreservation` is the active food keep, because the lock label is
+dropped when `target` is busy. A staged change must appear in `target`, and neither the lock list
+nor the identity clause may negate it.
 
 For every mutation, preserve the entire subject and vessel in frame unless the requested target says
-otherwise. Keep food identity, physical texture, shape, structure, and portion count stable; change
-only the requested lighting, backdrop, surface, camera, or other named element. These are GridMenu
-prompt invariants, not a reason to attach extra style images.
+otherwise. These are GridMenu prompt invariants, not a reason to attach extra style images.
 
 ---
 
@@ -274,11 +329,13 @@ central model configuration. [Gemini image generation docs](https://ai.google.de
 
 Current project guidance:
 
-- Customer Studio Flash defaults to `thinkingLevel: "high"` unless product configuration selects a
-  different supported level. The documented Flash levels used here are `minimal` and `high`; the
-  documented default is `minimal`, while this product defaults Studio to `high`. [Gemini image generation docs](https://ai.google.dev/gemini-api/docs/image-generation)
-- Pro requests use the Pro model's supported configuration and do not inherit the Flash thinking
-  setting.
+- Customer Studio Flash, including Nano Banana 2.x, defaults to `thinkingLevel: "high"` unless
+  `STUDIO_THINKING_LEVEL` selects another supported level (`minimal`, `medium`, or `high`). An
+  invalid value falls back to `high`. [Gemini image generation docs](https://ai.google.dev/gemini-api/docs/image-generation)
+- Pro (`gemini-3-pro-image`) does not accept `thinkingLevel`. The consumer Gemini menu labels
+  Fast, Thinking, and Pro are different models. "Redo with Pro" is a model change, not a higher
+  thinking level on the Flash request. Switching models is a product decision. Do not imitate it
+  by adding a thinking instruction to the prompt.
 - Do not put `thinking_level: high` or a billing/configuration explanation in the natural-language
   prompt. Inspect the assembled request configuration when debugging.
 - Higher reasoning can affect latency and usage; measure that in the product's cost/latency
@@ -312,25 +369,39 @@ Before sending a Studio mutation, verify:
 
 - The request is framed as editing the attached source, not synthesizing a new image.
 - Tier 1 remains the UI/persistence control state; Tier 2 is the semantic model-facing descriptor.
-- The descriptor has `subject`, `camera`, `current`, `target`, and `output` sections.
+- The descriptor has `task`, `subject`, `current`, `target`, and `output`. An empty root `camera`
+  is omitted.
 - Staged lighting, backdrop, and surface changes are complete under `target` with descriptive
-  attributes; no opaque style key is used as the visual value.
-- The prose wrapper says to change only named elements, keep everything else exactly as it is, and
-  preserve original composition.
-- `output.locked` is positive and singular; semantic exclusions are expressed once in
-  `semanticNegativePrompt`.
-- The customer Flash path has one source reference and no style/steering references.
-- Aspect ratio is omitted unless explicitly selected; explicit size tokens are uppercase.
-- Thinking level is present in request configuration, not prompt prose.
-- Logged prompt text is the exact text sent to the model.
-- No old Structural Forcing prefix, single-letter JSON keys, string slicing, repeated negative
-  constraints, or `Generate an image of:` synthesis prefix has slipped back in.
+  attributes; no opaque style key is used as the visual value. Those three are absent from the
+  directive.
+- Finishing-touch placement is only on `target.finishingTouches`. Prop copy is only on
+  `target.props`. The directive is the short pointer for each.
+- Non-reshoot edits include `target.foodPreservation`. `subject.locked` says natural food
+  geometry and surface detail, not "colours and textures" alone.
+- Edits that do not stage a camera-angle change include `target.cameraPreservation`. An angle
+  change does not.
+- The prose wrapper says to change only `target`. `subject` keeps the dish and vessel. It does not
+  say to keep everything exactly as-is. Prose does not call a staged surface or backdrop "existing".
+- There is no `output.locked` and no `semanticNegativePrompt`.
+- The customer path sends the source photograph and no style or steering references. A vessel
+  swap may add one vessel reference, with an instruction not to copy its scene or food.
+- For an edit with no explicit ratio, send the source photograph's nearest supported
+  `imageConfig.aspectRatio`. Explicit size tokens are uppercase. Do not add an aspect-ratio
+  sentence to the prompt.
+- Thinking level is present in request configuration for Flash and Nano Banana 2.x, and absent
+  for Pro. It is never prompt prose.
+- Logged prompt text is the exact text sent to the model. Terminal colour is display-only.
+- No old Structural Forcing prefix, single-letter JSON keys, string slicing, global-to-local prose
+  block, repeated placement paragraphs, or `Generate an image of:` synthesis prefix has slipped
+  back in.
 
 ---
 
 ## 11. UI implications
 
-- **Stage, then submit:** let users stack changes before one mutation request.
+- **Stage, then submit:** let users stack changes before one mutation request. A stack of more
+  than about four or five changes is still one edit, and the model may drop some of them. Prefer
+  a shorter sequence of edits over a larger prompt.
 - **Show pending changes:** make the requested target visible before generation.
 - **Use semantic controls:** expose meaningful lighting, backdrop, surface, framing, and ratio
   choices rather than technical reference-role selectors.

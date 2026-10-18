@@ -395,6 +395,8 @@ describe('StudioScenePanel', () => {
       'aria-pressed',
       'true',
     )
+    expect(screen.queryByRole('button', { name: 'Add Ramekin of nuts' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Browse props' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add Ramekin of nuts' }))
     expect(onToggle).toHaveBeenCalledWith('ramekin-nuts')
     expect(screen.getByRole('button', { name: 'Add Yellow pepper' })).toBeEnabled()

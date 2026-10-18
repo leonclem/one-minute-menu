@@ -51,12 +51,16 @@ describe('composePrompt', () => {
       }),
     )
 
-    expect(prompt).toContain('Constrained edit:')
-    expect(prompt).toContain('change only what "target" names')
-    expect(prompt).toContain('keep everything else exactly as-is')
-    expect(prompt).toContain('preserve the original composition')
-    expect(prompt).toContain('Semantic negative prompt')
-    expect(prompt).toContain('pixel-faithful')
+    expect(prompt).toContain('Edit the attached photograph.')
+    expect(prompt).toContain('Change only target.')
+    expect(prompt).toContain('subject keeps the dish and vessel')
+    expect(prompt).toContain('Leave anything target omits as shown')
+    expect(prompt).not.toContain('keep everything else exactly as-is')
+    expect(prompt).not.toContain('pixel-faithful')
+    expect(prompt).toContain('foodPreservation')
+    expect(prompt).toContain('Do not smooth, round, or unify the food.')
+    expect(prompt).toContain('cameraPreservation')
+    expect(prompt).toContain('Do not move to overhead, eye level, or a side view.')
     expect(prompt).toContain('  "subject": {')
     expect(prompt).toContain('"A full-length dish description that must remain complete."')
     expect(prompt).not.toContain('CRITICAL: CHANGE PERSPECTIVE TO SIDE-VIEW')
@@ -90,6 +94,7 @@ describe('composePrompt', () => {
     expect(prompt).not.toContain('preserve the original composition')
     expect(prompt).not.toContain('pixel-faithful')
     expect(prompt).toContain('looking straight down')
+    expect(prompt).not.toContain('cameraPreservation')
     expect(prompt).not.toContain('CRITICAL: CHANGE PERSPECTIVE TO SIDE-VIEW')
   })
 
@@ -169,7 +174,7 @@ describe('composePrompt', () => {
       }),
     )
 
-    expect(prompt).toContain('"task": "edit"')
+    expect(prompt).toMatch(/"task":\s*"edit"/)
     expect(prompt).toContain('"dish"')
     expect(prompt).toContain('plated noodles')
     expect(prompt).not.toContain('CRITICAL: CHANGE PERSPECTIVE TO SIDE-VIEW')

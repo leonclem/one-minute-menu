@@ -90,7 +90,6 @@ const SEEDED_BACKGROUND_KEYS = [
   'coral-red',
   'teal',
   'hot-pink',
-  'sunlit-kitchen',
   'kitchen-worktop',
 ]
 
@@ -335,13 +334,13 @@ describe('Property 12: style library and logging preservation', () => {
   })
 
   /** Validates: Requirements 3.10, 3.11 */
-  it('resolves all twenty-four seeded keys and preserves admin lighting/background CRUD round trips', async () => {
+  it('resolves all twenty-three seeded keys and preserves admin lighting/background CRUD round trips', async () => {
     const resolvedLighting = await Promise.all(SEEDED_LIGHTING_KEYS.map(resolveLightingStyle))
     const resolvedBackground = await Promise.all(SEEDED_BACKGROUND_KEYS.map(resolveBackgroundStyle))
 
     expect(resolvedLighting.map((style) => style?.key)).toEqual(SEEDED_LIGHTING_KEYS)
     expect(resolvedBackground.map((style) => style?.key)).toEqual(SEEDED_BACKGROUND_KEYS)
-    expect([...resolvedLighting, ...resolvedBackground]).toHaveLength(24)
+    expect([...resolvedLighting, ...resolvedBackground]).toHaveLength(23)
     expect([...resolvedLighting, ...resolvedBackground].every((style) => style?.prompt_fragment)).toBe(true)
 
     const lightingCreate = await createLighting(

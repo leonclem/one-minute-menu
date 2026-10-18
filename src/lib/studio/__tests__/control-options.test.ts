@@ -9,9 +9,6 @@ describe('controlAssetSrc', () => {
   })
 
   it('keeps a photographic extension', () => {
-    expect(controlAssetSrc('backdrops/backdrop-sunlit-kitchen.jpg')).toBe(
-      '/studio/backdrops/backdrop-sunlit-kitchen.jpg',
-    )
     expect(controlAssetSrc('surfaces/surface-kitchen-worktop.jpg')).toBe(
       '/studio/surfaces/surface-kitchen-worktop.jpg',
     )

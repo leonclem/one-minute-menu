@@ -1,8 +1,10 @@
 import type { SceneDescriptor } from '@/lib/photo-control/scene-descriptor'
-import { propsFromIds, type StudioProp } from './catalogue'
+import { harmonizeTabletopLanguage } from '@/lib/studio/tabletop-language'
+import { STUDIO_PROPS, propsFromIds, type StudioProp } from './catalogue'
+import { PROPS_RULE } from './directive'
 
 /** One more than the catalogue, so a short duplicate list still reaches the id check. */
-const STUDIO_PROP_REQUEST_LIMIT = 16
+const STUDIO_PROP_REQUEST_LIMIT = STUDIO_PROPS.length + 1
 
 export interface ParsedStudioProps {
   ok: true
@@ -37,8 +39,10 @@ export function parseStudioPropIds(raw: unknown): ParsedStudioProps | RejectedSt
 export function applyPropsTarget(
   descriptor: SceneDescriptor,
   props: readonly StudioProp[],
+  options?: { surfaceChanging?: boolean },
 ): SceneDescriptor {
   if (props.length === 0) return descriptor
+  const surfaceChanging = options?.surfaceChanging ?? false
   return {
     ...descriptor,
     target: {
@@ -46,8 +50,9 @@ export function applyPropsTarget(
       props: props.map((prop) => ({
         name: prop.label,
         description: prop.description,
-        placement: prop.placement,
+        placement: harmonizeTabletopLanguage(prop.placement, surfaceChanging),
       })),
+      propsRule: PROPS_RULE,
     },
   }
 }
