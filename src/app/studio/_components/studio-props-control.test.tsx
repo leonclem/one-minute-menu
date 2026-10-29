@@ -25,6 +25,19 @@ describe('StudioPropsControl', () => {
     expect(onToggle).toHaveBeenCalledWith('fine-grater')
     expect(screen.getByRole('heading', { name: 'Cutlery & tools' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Ingredients' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Greenery' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add Trailing vine' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add Dried grasses' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add Potted basil' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add Leafy stems' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add Cow parsley' })).toBeInTheDocument()
+    const list = screen.getByTestId('studio-props-browse-list')
+    expect(list).toHaveClass('overflow-y-auto', 'overscroll-contain', 'min-h-0')
+    const overlay = screen.getByRole('dialog', { name: 'Props' }).parentElement
+    expect(overlay?.parentElement).toBe(document.body)
+    expect(overlay).toHaveClass('backdrop-blur-md', 'bg-black/40')
+    expect(overlay).not.toHaveClass('studio-shell')
+    expect(document.body.style.overflow).toBe('hidden')
   })
 
   it('hides savoury props when the dish is a cake and lists baking props', () => {
@@ -44,5 +57,7 @@ describe('StudioPropsControl', () => {
     expect(screen.getByRole('button', { name: 'Add Chocolate squares' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add Cocoa tin' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Baking' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add Trailing vine' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add Potted basil' })).not.toBeInTheDocument()
   })
 })

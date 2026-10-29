@@ -7,7 +7,7 @@ import type { StudioProp } from './catalogue'
  * are either in target themselves, or left alone because they are not named.
  */
 export const PROPS_RULE =
-  'These are tabletop props, not garnishes on the food. Cast a soft contact shadow on the tabletop. Do not cover the food. Do not add a prop that is not named in target.props.'
+  'These are set-dressing props, not garnishes on the food. A prop that rests on the table casts a soft contact shadow on the tabletop. Do not cover the food. Do not add a prop that is not named in target.props.'
 
 /** Pointer only. The catalogue text is already on target.props. */
 export function buildPropsAdditionClause(

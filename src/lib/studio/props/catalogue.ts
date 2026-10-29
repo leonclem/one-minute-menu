@@ -5,7 +5,7 @@
 
 import type { FinishingTouchFamily } from '@/lib/studio/finishing-touches/catalogue'
 
-export type StudioPropGroup = 'cutlery' | 'service' | 'ingredients' | 'baking'
+export type StudioPropGroup = 'cutlery' | 'service' | 'ingredients' | 'baking' | 'greenery'
 export type StudioPropAudience = FinishingTouchFamily | 'any'
 
 export const STUDIO_PROP_GROUP_ORDER: readonly StudioPropGroup[] = [
@@ -13,6 +13,7 @@ export const STUDIO_PROP_GROUP_ORDER: readonly StudioPropGroup[] = [
   'baking',
   'service',
   'ingredients',
+  'greenery',
 ]
 
 export const STUDIO_PROP_GROUP_LABELS: Record<StudioPropGroup, string> = {
@@ -20,6 +21,7 @@ export const STUDIO_PROP_GROUP_LABELS: Record<StudioPropGroup, string> = {
   baking: 'Baking',
   service: 'Condiments & service',
   ingredients: 'Ingredients',
+  greenery: 'Greenery',
 }
 
 /** Ranked prop chips shown before the full list. */
@@ -389,6 +391,56 @@ export const STUDIO_PROPS: readonly StudioProp[] = [
     description:
       'One tiny unpatterned ceramic bowl containing a few thin green cucumber pickles in a small amount of clear brine. No fork or spilled liquid.',
     placement: 'Set it on the existing tabletop alongside the meal, apart from the main vessel.',
+  },
+  {
+    id: 'trailing-vine',
+    label: 'Trailing vine',
+    group: 'greenery',
+    audience: 'any',
+    description:
+      'A few slender trailing stems of a glossy green vine with heart-shaped leaves, cut off by the top of the frame. No pot, hanger, ceiling, hook, or wall is visible. Not a full houseplant and not leaves scattered on the food.',
+    placement:
+      'Let the vine enter from the top edge of the existing frame, behind the dish and farther from the camera. Only part of the vine is visible. Keep it secondary and slightly softer in focus. It does not rest on the table. Do not cover the food, widen the frame, add a ceiling or hanger, or replace the backdrop.',
+  },
+  {
+    id: 'dried-grasses',
+    label: 'Dried grasses',
+    group: 'greenery',
+    audience: 'any',
+    description:
+      'One small bunch of pale beige dried stems topped with soft oval seed heads, about 25 cm tall, in a small matte cream ceramic vase with a narrow neck and no pattern. Not wheat, not fresh flowers, not a ribbon, and not a candle.',
+    placement:
+      'Set it on the existing tabletop behind the vessel, farther from the camera than the dish. Keep it secondary and slightly softer in focus. Do not cover the food, widen the frame, or replace the backdrop.',
+  },
+  {
+    id: 'potted-basil',
+    label: 'Potted basil',
+    group: 'greenery',
+    audience: 'savory',
+    description:
+      'One living sweet basil plant with dense bright-green leaves, about 16 cm tall including the pot. The pot is a small unlabelled matte stoneware cylinder with no saucer. This is a whole plant, not loose basil leaves and not a cut sprig on the food.',
+    placement:
+      'Set it on the existing tabletop behind the vessel, farther from the camera than the dish. Keep it secondary and slightly softer in focus. Do not cover the food, widen the frame, or replace the backdrop.',
+  },
+  {
+    id: 'leafy-stems',
+    label: 'Leafy stems',
+    group: 'greenery',
+    audience: 'any',
+    description:
+      'A few slender woody stems with small oval green leaves, about 22 cm tall, standing in a short clear glass cylinder of water. No flowers, no ribbon, and no second vase.',
+    placement:
+      'Set it on the existing tabletop behind the vessel, farther from the camera than the dish. Keep it secondary and slightly softer in focus. Do not cover the food, widen the frame, or replace the backdrop.',
+  },
+  {
+    id: 'cow-parsley',
+    label: 'Cow parsley',
+    group: 'greenery',
+    audience: 'any',
+    description:
+      'A few wiry stems of tiny white flowers in loose flat clusters, about 28 cm tall, in a small matte off-white bottle. Airy and sparse. Not a dense florist bouquet, not roses, and not mixed greenery.',
+    placement:
+      'Set it on the existing tabletop behind the vessel, farther from the camera than the dish. Keep it secondary and slightly softer in focus. Do not cover the food, widen the frame, or replace the backdrop.',
   },
 ]
 

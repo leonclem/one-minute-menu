@@ -41,6 +41,22 @@ describe('studio props catalogue', () => {
     expect(getStudioProp('yellow-pepper')?.label).toBe('Yellow pepper')
   })
 
+  it('offers premium background plants and keeps the vine off the table', () => {
+    for (const id of ['dried-grasses', 'leafy-stems', 'cow-parsley']) {
+      const plant = getStudioProp(id)
+      expect(plant?.audience).toBe('any')
+      expect(plant?.group).toBe('greenery')
+      expect(plant?.placement).toContain('behind the vessel')
+      expect(plant?.placement).toContain('Do not cover the food')
+    }
+    const vine = getStudioProp('trailing-vine')
+    expect(vine?.placement).toContain('top edge')
+    expect(vine?.placement).toContain('does not rest on the table')
+    const basil = getStudioProp('potted-basil')
+    expect(basil?.audience).toBe('savory')
+    expect(basil?.description).toContain('whole plant')
+  })
+
   it('describes the salt props as wooden mills, without forbidding mills', () => {
     const salt = getStudioProp('salt-shaker')
     const pair = getStudioProp('salt-and-pepper')
@@ -143,7 +159,7 @@ describe('applyPropsTarget', () => {
         placement: expect.stringContaining('existing tabletop'),
       },
     ])
-    expect(next.target.propsRule).toContain('Cast a soft contact shadow on the tabletop.')
+    expect(next.target.propsRule).toContain('soft contact shadow on the tabletop')
   })
 
   it('does not anchor the old tabletop in JSON when the surface is also changing', () => {

@@ -149,7 +149,7 @@ Example shape for a surface change with one garnish and one prop:
         "placement": "On the tabletop to the left of the vessel."
       }
     ],
-    "propsRule": "These are tabletop props, not garnishes on the food. Cast a soft contact shadow on the tabletop.",
+    "propsRule": "These are set-dressing props, not garnishes on the food. A prop that rests on the table casts a soft contact shadow on the tabletop.",
     "foodPreservation": "Keep texture, shape, and structure as irregular cooked geometry, with browning, moisture, and natural colour variation. Do not smooth, round, or unify the food.",
     "cameraPreservation": "Keep the camera angle and height of the source photograph. Do not move to overhead, eye level, or a side view."
   },

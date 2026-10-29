@@ -4,9 +4,6 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## Social Media and Advertising
-- [ ] Plan for social media posts featuring new Scenes (embedded in real use cases)
-
 ## /studio
 - [ ] On mobile, can't zoom when using, e.g. Expand, Remove, tooling
 - [ ] Export should offer to download "as-is" aspect
@@ -18,7 +15,7 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Social Media and Advertising
-- [ ] Newsletter email for those that signed up
+- [ ] Newsletter email for those that signed up (opt-in/opt-out checkbox)
 
 ## /studio
 - [ ] Guide users on the ideal starting photo (for first upload) -> use examples
@@ -177,6 +174,7 @@
 - [x] Start posting
 - [x] Disable Google adwords campaign
 - [x] Create new blog on LinkedI: AI chatbots vs interface
+- [x] Plan for social media posts featuring new Scenes (embedded in real use cases)
 
 ## /studio
 - [x] Zoom in and out on workbench main image
@@ -197,6 +195,7 @@
 - [x] Investigate vessel swapping
 - [x] Label generated images with model (Std / Pro)
 - [x] Implement "scene" feature (as far as possible with surfaces, props, and garnishes)
+- [x] Add plants to props
 
 ## Home Page
 - [x] Open Studio should not immediately require sign-ups, Generate should.

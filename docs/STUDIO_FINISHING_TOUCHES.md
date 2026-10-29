@@ -61,7 +61,7 @@ The child variant stores the target JSON (parent extract plus the added names). 
 
 | Piece | Where | Notes |
 |---|---|---|
-| Catalogue | `src/lib/studio/finishing-touches/catalogue.ts` plus `catalogue-cake.ts` | Code, not a DB table. 43 savoury items; 32 cake items. Family defaults to savoury. Props live in `src/lib/studio/props/catalogue.ts` (37 items). |
+| Catalogue | `src/lib/studio/finishing-touches/catalogue.ts` plus `catalogue-cake.ts` | Code, not a DB table. 43 savoury items; 32 cake items. Family defaults to savoury. Props live in `src/lib/studio/props/catalogue.ts` (39 items). |
 | Ranker | `POST /api/studio/finishing-touches/recommend` | Uses dish name, `main_item`, current garnishes/sides, extract `description`. Returns `family` (`savory` or `cake`), up to 12 garnish ids, and up to 4 prop ids. Missing/invalid family is treated as savoury. `gemini-2.5-flash` (`STUDIO_EXTRACTION_MODEL`). |
 | Fallback stack | savoury: coriander, lime wedges, red chilli, sesame seeds; cake: fresh berries, powdered sugar, chocolate shavings, mint sprig | Used when ranking is empty, unknown, or the API key is missing. Cake fallback is only used when family is cake (or a dessert-cake keyword assist on API failure). Items already on the dish are skipped. |
 | Staging | `src/lib/studio/finishing-touches/stage.ts` | Selection lives in client state; schema is updated at Generate. |
@@ -219,7 +219,7 @@ Added once the first wave held up. Prep and placement follow the existing senten
 
 **Cake:** Cinnamon dusting, matcha dusting, biscuit crumbs, cacao nibs, toasted coconut chips, toasted flaked almonds (alias avoids the savoury “toasted almond flakes” label), chopped walnuts with `prep: 'crushed'` so the herb-sprig sentence is not used, candied orange peel, candied ginger, kiwi slices, edible pansies, honey drizzle (no bare “honey” alias), white chocolate drizzle, lemon curd swirl, passion fruit pulp.
 
-**Props:** Soup spoon, butter knife, tomato sauce ramekin, chilli oil dish, garlic bulb, kimchi bowl, pickle bowl (savoury). Teaspoon, dessert fork, cake server, wooden spoon, mini whisk, bag of flour, chocolate squares, cocoa tin, honey pot, cinnamon sticks, vanilla pods (cake). Small butter dish is shared. Jam jar and the berry bowl are cake-only and sit in the Baking group.
+**Props:** Soup spoon, butter knife, tomato sauce ramekin, chilli oil dish, garlic bulb, kimchi bowl, pickle bowl (savoury). Teaspoon, dessert fork, cake server, wooden spoon, mini whisk, bag of flour, chocolate squares, cocoa tin, honey pot, cinnamon sticks, vanilla pods (cake). Small butter dish is shared. Greenery is shared except potted basil, which is savoury only: a trailing vine entering from the top of the frame, dried grasses, leafy stems in a glass, and cow parsley. They stay behind the dish and do not replace the backdrop. The earlier generic leafy and grassy pots were removed. Jam jar and the berry bowl are cake-only and sit in the Baking group.
 
 ### Still not added, and why
 
