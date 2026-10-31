@@ -55,6 +55,23 @@ describe('resolveReshootStyleDefaults', () => {
     expect(result.surface).toBe('natural-oak')
   })
 
+  it('maps the newer surface materials without stealing rustic wood', () => {
+    const surfaceFor = (material: string) =>
+      resolveReshootStyleDefaults(schema(), {
+        version: 2,
+        strictConformance: true,
+        warnings: [],
+        omittedFields: [],
+        observations: { surface: { material } },
+      } as ExtractionDiagnostics).surface
+
+    expect(surfaceFor('brushed stainless steel')).toBe('steel-countertop')
+    expect(surfaceFor('warm terracotta plaster')).toBe('warm-terracotta')
+    expect(surfaceFor('pale sage plaster')).toBe('sage-peace')
+    expect(surfaceFor('oxidized metal')).toBe('weathered-metal')
+    expect(surfaceFor('rustic wooden table')).toBe('natural-oak')
+  })
+
   it('falls back to defined defaults when nothing else matches', () => {
     const result = resolveReshootStyleDefaults(schema(), null)
     expect(result).toEqual({

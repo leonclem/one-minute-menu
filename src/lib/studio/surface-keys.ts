@@ -11,6 +11,10 @@ export const STUDIO_SURFACE_KEYS = [
   'natural-linen',
   'terrazzo',
   'kitchen-worktop',
+  'weathered-metal',
+  'sage-peace',
+  'steel-countertop',
+  'warm-terracotta',
 ] as const
 
 export type StudioSurfaceKey = (typeof STUDIO_SURFACE_KEYS)[number]
@@ -27,6 +31,10 @@ const SURFACE_FOH_LABELS: Record<StudioSurfaceKey, string> = {
   'natural-linen': 'Natural Linen',
   terrazzo: 'Terrazzo',
   'kitchen-worktop': 'Kitchen Worktop',
+  'weathered-metal': 'Weathered Metal',
+  'sage-peace': 'Sage Peace',
+  'steel-countertop': 'Steel Countertop',
+  'warm-terracotta': 'Warm Terracotta',
 }
 
 /** Maps retired v1 surface keys to their v2 replacements for persisted editor state. */

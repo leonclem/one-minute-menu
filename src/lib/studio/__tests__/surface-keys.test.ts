@@ -24,6 +24,10 @@ describe('surface-keys', () => {
 
   it('returns FOH labels for current and legacy keys', () => {
     expect(fohSurfaceLabel('kitchen-worktop')).toBe('Kitchen Worktop')
+    expect(fohSurfaceLabel('weathered-metal')).toBe('Weathered Metal')
+    expect(fohSurfaceLabel('sage-peace')).toBe('Sage Peace')
+    expect(fohSurfaceLabel('steel-countertop')).toBe('Steel Countertop')
+    expect(fohSurfaceLabel('warm-terracotta')).toBe('Warm Terracotta')
     expect(fohSurfaceLabel('white-marble')).toBe('White Marble')
     expect(fohSurfaceLabel('marble-light')).toBe('White Marble')
   })

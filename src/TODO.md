@@ -9,6 +9,10 @@
 - [ ] Export should offer to download "as-is" aspect
 - [ ] Add stopwatch counter when generation starts
 - [ ] If switching to overhead and backdrop is selected, warn that backdrop will be unselected
+- [ ] "This next shot will be GEN n" is too prominent and potentially alarming
+
+## Home Page
+- [ ] Update carousel to show off latest examples
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
@@ -18,6 +22,8 @@
 - [ ] Newsletter email for those that signed up (opt-in/opt-out checkbox)
 
 ## /studio
+- [ ] "Rollover" (or similar) in all dishes page to see OG vs current
+- [ ] For any given dish, on /studio/[dish-id] page, order picture from newest to oldest (currently oldest to newest)
 - [ ] Guide users on the ideal starting photo (for first upload) -> use examples
 - [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
 - [ ] Investigate "re-plate" prompt (preserving all food on the plate)
@@ -60,6 +66,7 @@
 - [ ] "Cutout doctor" to help
 
 ## Issues
+- [ ] Is 3 changes already selected and choose to edit props, selection seems to be impacted by the modal behind the props modal
 - [ ] Consider only using NB2 for expand/remove/etc functions if set to NB Pro
 - [ ] Why is cutout worker still appearing in Vercel logs?
 - [ ] Historical spike/review data for move/remove features is stored in supabase
