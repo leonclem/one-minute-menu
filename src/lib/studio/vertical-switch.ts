@@ -14,6 +14,26 @@ export function workingShotHidesBackdrop(
   return isOverheadAngle(workingAngle) || backdropKnownFalse
 }
 
+/** Hide backdrop controls once an overhead view is staged, not only on an overhead source. */
+export function sceneBackdropHidden(
+  workingAngle: string,
+  stagedAngle: string,
+  backdropKnownFalse: boolean,
+): boolean {
+  return workingShotHidesBackdrop(workingAngle, backdropKnownFalse) || isOverheadAngle(stagedAngle)
+}
+
+/** True when Switch to overhead would clear a backdrop the user has staged. */
+export function overheadSwitchDropsBackdrop(
+  current: EditorState,
+  baseline: EditorState,
+): boolean {
+  if (verticalSwitchTarget(baseline.schema.scene_setup.angle) !== OVERHEAD_ANGLE) return false
+  const currentStyle = current.schema.canvas.background_style ?? ''
+  const baselineStyle = baseline.schema.canvas.background_style ?? ''
+  return currentStyle !== '' && currentStyle !== baselineStyle
+}
+
 export function applyVerticalSwitch(
   current: EditorState,
   baseline: EditorState,

@@ -5,6 +5,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 
 import { ConfirmDialog } from '@/components/ui'
 import { uploadStudioSourceFile, removeStudioStorageObject } from '@/lib/studio/client-upload'
+import { isAiExportInFlight } from '@/lib/studio/export-presets'
 import { chronologicalShots } from '@/lib/studio/lineage'
 import {
   parseStudioLibraryTab,
@@ -16,6 +17,7 @@ import {
 import type { StudioDishRecord, StudioImageRecord } from '@/lib/studio/types'
 
 import { StudioExportMatrix } from './studio-export-matrix'
+import { StudioGenerationStopwatch } from './studio-generation-stopwatch'
 import { StudioLibraryHeader } from './studio-library-header'
 import { StudioLibraryTabs } from './studio-library-tabs'
 import { StudioShotCard } from './studio-shot-card'
@@ -50,15 +52,26 @@ export function StudioDishLibrary({
   const [view, setView] = useState<StudioLibraryView>(parseStudioLibraryView(initialView))
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [deleteSummary, setDeleteSummary] = useState<{ imageCount: number; exportVariantCount: number } | null>(
-    null,
-  )
+  const [deleteSummary, setDeleteSummary] = useState<{
+    imageCount: number
+    exportVariantCount: number
+  } | null>(null)
   const [imageToDelete, setImageToDelete] = useState<StudioImageRecord | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reshootAi, setReshootAi] = useState(false)
+  const [exportClickAi, setExportClickAi] = useState(false)
 
   const dishBlocked = Boolean(dish.generation_blocked_at)
   const exports = useStudioDishExports(dish.id)
+  const exportAiFromShots = useMemo(
+    () =>
+      exports.shots.some((shot) =>
+        shot.tiles.some((tile) => isAiExportInFlight(tile.generationMethod, tile.status))
+      ),
+    [exports.shots]
+  )
+  const generationTiming = reshootAi || exportClickAi || exportAiFromShots
 
   const refreshImages = useCallback(() => {
     const epoch = imagesEpochRef.current
@@ -88,16 +101,16 @@ export function StudioDishLibrary({
   useRefreshWhenVisible(refreshImages)
   const tilesByImageId = useMemo(
     () => new Map(exports.shots.map((shot) => [shot.imageId, shot.tiles])),
-    [exports.shots],
+    [exports.shots]
   )
   const shotCount = chronologicalShots(images).length
   const readyExportCount = useMemo(
     () =>
       exports.shots.reduce(
         (total, shot) => total + shot.tiles.filter((tile) => tile.status === 'ready').length,
-        0,
+        0
       ),
-    [exports.shots],
+    [exports.shots]
   )
   const currentImage = useMemo(() => {
     const ordered = chronologicalShots(images)
@@ -108,7 +121,7 @@ export function StudioDishLibrary({
     (nextTab: StudioLibraryTab, nextView: StudioLibraryView) => {
       router.replace(studioLibraryHref(dish.id, nextTab, nextView), { scroll: false })
     },
-    [dish.id, router],
+    [dish.id, router]
   )
 
   const handleNewShot = useCallback(() => {
@@ -138,10 +151,13 @@ export function StudioDishLibrary({
         })
         if (!sourceRes.ok) {
           const err = await sourceRes.json().catch(() => null)
-          throw new Error((err as { error?: string } | null)?.error ?? 'Failed to save uploaded image.')
+          throw new Error(
+            (err as { error?: string } | null)?.error ?? 'Failed to save uploaded image.'
+          )
         }
         const sourceData = (await sourceRes.json()) as { imageId?: string; imageUrl?: string }
-        if (!sourceData.imageId || !sourceData.imageUrl) throw new Error('Failed to save uploaded image.')
+        if (!sourceData.imageId || !sourceData.imageUrl)
+          throw new Error('Failed to save uploaded image.')
         storagePath = null
         imagesEpochRef.current += 1
         router.push(`/studio/${dish.id}/${sourceData.imageId}`)
@@ -152,7 +168,7 @@ export function StudioDishLibrary({
         setBusy(false)
       }
     },
-    [dish.id, router],
+    [dish.id, router]
   )
 
   const handleRename = useCallback(
@@ -177,7 +193,7 @@ export function StudioDishLibrary({
         setBusy(false)
       }
     },
-    [dish.id],
+    [dish.id]
   )
 
   const openDelete = useCallback(async () => {
@@ -235,6 +251,10 @@ export function StudioDishLibrary({
 
   return (
     <div>
+      <StudioGenerationStopwatch
+        active={generationTiming}
+        className="fixed bottom-4 right-4 z-40"
+      />
       <StudioLibraryHeader
         dishId={dish.id}
         name={name}
@@ -246,6 +266,7 @@ export function StudioDishLibrary({
         onRename={() => setRenameOpen(true)}
         onNewShot={handleNewShot}
         onDelete={() => void openDelete()}
+        onReshootAiActiveChange={setReshootAi}
         onReshootCreated={(image) => {
           imagesEpochRef.current += 1
           setImages((prev) => [...prev, image])
@@ -299,8 +320,8 @@ export function StudioDishLibrary({
             Upload your first dish photo
           </h2>
           <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-white/55">
-            Start with a clear, original photo. You can then adjust lighting, surface, backdrop,
-            and crop.
+            Start with a clear, original photo. You can then adjust lighting, surface, backdrop, and
+            crop.
           </p>
           <button
             type="button"
@@ -353,6 +374,7 @@ export function StudioDishLibrary({
           images={images}
           shots={exports.shots}
           dishBlocked={dishBlocked}
+          onAiActiveChange={setExportClickAi}
           onReplaceShotTiles={exports.replaceShotTiles}
         />
       ) : null}

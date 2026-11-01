@@ -515,31 +515,3 @@
   backdrop-filter: blur(8px);
   padding: 0.6rem 0.7rem;
 }
-
-.studio-callout-warn {
-  border-radius: 11px;
-  border: 1px solid rgba(248, 188, 2, 0.4);
-  background: var(--studio-amber-tint);
-  padding: 0.75rem 0.9rem;
-}
-
-.studio-callout-warn-cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--studio-radius-btn);
-  background: var(--studio-amber);
-  color: var(--studio-on-amber);
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.4rem 0.75rem;
-}
-
-.studio-callout-warn-cta:hover {
-  filter: brightness(0.96);
-}
-
-.studio-callout-warn-compact {
-  padding: 0.5rem 0.7rem;
-  margin-bottom: 1rem;
-}

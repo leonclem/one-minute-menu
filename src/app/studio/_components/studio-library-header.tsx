@@ -18,6 +18,7 @@ interface StudioLibraryHeaderProps {
   onNewShot: () => void
   onDelete: () => void
   onReshootCreated: (image: StudioImageRecord) => void
+  onReshootAiActiveChange?: (active: boolean) => void
 }
 
 export function StudioLibraryHeader({
@@ -32,6 +33,7 @@ export function StudioLibraryHeader({
   onNewShot,
   onDelete,
   onReshootCreated,
+  onReshootAiActiveChange,
 }: StudioLibraryHeaderProps) {
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -68,6 +70,7 @@ export function StudioLibraryHeader({
           sourceImage={currentImage}
           disabled={busy || dishBlocked}
           onCreated={onReshootCreated}
+          onAiActiveChange={onReshootAiActiveChange}
         />
         {imageCount > 0 ? (
           <button type="button" className="studio-btn-primary" disabled={busy} onClick={onNewShot}>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Download } from 'lucide-react'
 
 import { downloadImage } from '@/lib/studio/client-download'
@@ -8,6 +8,7 @@ import {
   buildExportFilename,
   EXPORT_PRESETS,
   getExportPreset,
+  isAiExportInFlight,
 } from '@/lib/studio/export-presets'
 import { chronologicalShots, shotLibraryBadgeLine, shotTitle } from '@/lib/studio/lineage'
 import type { StudioDishExportShot, StudioExportTile, StudioImageRecord } from '@/lib/studio/types'
@@ -20,11 +21,9 @@ interface StudioExportMatrixProps {
   images: readonly StudioImageRecord[]
   shots: StudioDishExportShot[]
   dishBlocked?: boolean
-  onReplaceShotTiles: (
-    imageId: string,
-    tiles: StudioExportTile[],
-    pending?: boolean,
-  ) => void
+  /** True while a paid export for this dish is being made. */
+  onAiActiveChange?: (active: boolean) => void
+  onReplaceShotTiles: (imageId: string, tiles: StudioExportTile[], pending?: boolean) => void
 }
 
 export function StudioExportMatrix({
@@ -32,6 +31,7 @@ export function StudioExportMatrix({
   images,
   shots,
   dishBlocked = false,
+  onAiActiveChange,
   onReplaceShotTiles,
 }: StudioExportMatrixProps) {
   const [submitting, setSubmitting] = useState<string | null>(null)
@@ -42,8 +42,25 @@ export function StudioExportMatrix({
   const ordered = useMemo(() => chronologicalShots(images), [images])
   const tilesByImage = useMemo(
     () => new Map(shots.map((shot) => [shot.imageId, shot.tiles])),
-    [shots],
+    [shots]
   )
+  const aiExportActive = useMemo(() => {
+    for (const image of ordered) {
+      for (const tile of tilesByImage.get(image.id) ?? []) {
+        const local = submitting === `${image.id}:${tile.variantType}`
+        if (isAiExportInFlight(tile.generationMethod, local ? 'generating' : tile.status)) {
+          return true
+        }
+      }
+    }
+    return false
+  }, [ordered, submitting, tilesByImage])
+
+  useEffect(() => {
+    onAiActiveChange?.(aiExportActive)
+  }, [aiExportActive, onAiActiveChange])
+
+  useEffect(() => () => onAiActiveChange?.(false), [onAiActiveChange])
 
   const readyTiles = useMemo(() => {
     const list: { url: string; filename: string }[] = []
@@ -87,18 +104,21 @@ export function StudioExportMatrix({
         setSubmitting(null)
       }
     },
-    [dishBlocked, onReplaceShotTiles],
+    [dishBlocked, onReplaceShotTiles]
   )
 
-  const handleDownload = useCallback(async (image: StudioImageRecord, tile: StudioExportTile) => {
-    if (!tile.previewUrl) return
-    const preset = getExportPreset(tile.variantType)
-    if (!preset) return
-    await downloadImage(
-      tile.previewUrl,
-      buildExportFilename(preset, `${dishName}-${shotTitle(image, images)}`),
-    )
-  }, [dishName, images])
+  const handleDownload = useCallback(
+    async (image: StudioImageRecord, tile: StudioExportTile) => {
+      if (!tile.previewUrl) return
+      const preset = getExportPreset(tile.variantType)
+      if (!preset) return
+      await downloadImage(
+        tile.previewUrl,
+        buildExportFilename(preset, `${dishName}-${shotTitle(image, images)}`)
+      )
+    },
+    [dishName, images]
+  )
 
   const handleDownloadAll = useCallback(async () => {
     setDownloadingAll(true)
@@ -146,7 +166,7 @@ export function StudioExportMatrix({
         <table className="min-w-full border-collapse text-xs">
           <thead>
             <tr className="border-b border-white/[0.1] bg-white/[0.03]">
-              <th className="px-3 py-3 align-top text-left">
+              <th className="px-3 py-3 text-left align-top">
                 <div className="flex flex-col items-start">
                   <div className="h-9" aria-hidden />
                   <span
@@ -185,7 +205,9 @@ export function StudioExportMatrix({
                       </button>
                       <div className="min-w-0 text-left">
                         <div className="truncate font-semibold text-white">{title}</div>
-                        <div className="truncate text-[11px] font-medium text-white/40">{badge}</div>
+                        <div className="truncate text-[11px] font-medium text-white/40">
+                          {badge}
+                        </div>
                       </div>
                     </div>
                   </th>

@@ -296,15 +296,20 @@ Charcoal, Mustard Yellow, Coral Red, Teal, Hot Pink.
 
 Colour Pop = Bold Sunlight + Dark Stone + Mustard Yellow.
 
-### Degradation warning (GEN 3+)
+### Generation note (GEN 3+)
 
-When Generate / Remove / Re-shoot / Expand would produce **GEN 3+** on the current
-branch, a gold callout appears. Copy gets stronger at 4 and 5+. **No hard stop.**
+When the next Generate, Remove, Re-shoot, or Expand would be **GEN 3+** on the current
+branch, a one-line note appears under the photo (above the tool row) and again above
+**Generate new shot**. Expand, Remove, and Keep repeat it in the tool dock. It stays
+hidden while the preview is only expanded. Wording and colour get firmer at GEN 4 and
+GEN 5+. Dismiss hides every copy for this shot until the shot or the depth changes.
+**No hard stop.** Crop does not show it.
 
 
-| Label              | Kind | When shown                    | What it does                                      | API |
-| ------------------ | ---- | ----------------------------- | ------------------------------------------------- | --- |
-| **View shot tree** | link | Warning visible               | `/studio/[dishId]?tab=shots&view=tree`            | —   |
+| Label                          | Kind   | When shown    | What it does                           | API |
+| ------------------------------ | ------ | ------------- | -------------------------------------- | --- |
+| **Use an earlier photo**       | link   | Note visible  | `/studio/[dishId]?tab=shots&view=tree` | —   |
+| **Dismiss generation warning** | button | Note visible  | Hides the note for this shot           | —   |
 
 
 ### Exports tab (this shot)

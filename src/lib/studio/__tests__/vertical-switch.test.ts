@@ -3,7 +3,12 @@
  */
 
 import { CENTER, type EditorState, type MinimalSchema } from '@/lib/photo-control/minimal-schema'
-import { applyVerticalSwitch, workingShotHidesBackdrop } from '../vertical-switch'
+import {
+  applyVerticalSwitch,
+  overheadSwitchDropsBackdrop,
+  sceneBackdropHidden,
+  workingShotHidesBackdrop,
+} from '../vertical-switch'
 
 function editor(partial?: {
   angle?: MinimalSchema['scene_setup']['angle']
@@ -50,9 +55,46 @@ describe('vertical-switch', () => {
     expect(nextState.schema.canvas.background_style).toBe('')
   })
 
+  it('warns only when an overhead switch would clear a staged backdrop', () => {
+    const baseline = editor({ angle: '45-degree', backdrop: '' })
+    const staged = editor({ angle: '45-degree', backdrop: 'warm-sand' })
+    expect(overheadSwitchDropsBackdrop(staged, baseline)).toBe(true)
+    expect(overheadSwitchDropsBackdrop(baseline, baseline)).toBe(false)
+    expect(
+      overheadSwitchDropsBackdrop(
+        editor({ angle: '45-degree', backdrop: 'warm-sand' }),
+        editor({ angle: '45-degree', backdrop: 'warm-sand' }),
+      ),
+    ).toBe(false)
+    expect(
+      overheadSwitchDropsBackdrop(
+        editor({ angle: '45-degree', backdrop: 'teal' }),
+        editor({ angle: '45-degree', backdrop: 'warm-sand' }),
+      ),
+    ).toBe(true)
+    expect(
+      overheadSwitchDropsBackdrop(
+        editor({ angle: 'top-down', backdrop: 'warm-sand' }),
+        editor({ angle: 'top-down', backdrop: '' }),
+      ),
+    ).toBe(false)
+    expect(
+      overheadSwitchDropsBackdrop(
+        editor({ angle: '45-degree', backdrop: '' }),
+        editor({ angle: '45-degree', backdrop: 'warm-sand' }),
+      ),
+    ).toBe(false)
+  })
+
   it('hides backdrop on overhead working shots even if extract did not mark the wall missing', () => {
     expect(workingShotHidesBackdrop('top-down', false)).toBe(true)
     expect(workingShotHidesBackdrop('45-degree', false)).toBe(false)
     expect(workingShotHidesBackdrop('45-degree', true)).toBe(true)
+  })
+
+  it('hides backdrop controls when overhead is staged on an angled source', () => {
+    expect(sceneBackdropHidden('45-degree', 'top-down', false)).toBe(true)
+    expect(sceneBackdropHidden('45-degree', '45-degree', false)).toBe(false)
+    expect(sceneBackdropHidden('45-degree', '45-degree', true)).toBe(true)
   })
 })

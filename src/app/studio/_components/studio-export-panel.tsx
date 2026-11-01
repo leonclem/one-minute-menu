@@ -15,9 +15,12 @@ import { ANALYTICS_EVENTS } from '@/lib/posthog/events'
 import { downloadImage } from '@/lib/studio/client-download'
 import { trackStudioEvent } from '@/lib/studio/analytics/studio-analytics'
 import {
+  buildAsIsExportFilename,
   buildExportFilename,
   formatExportCreditLabel,
+  formatSourceAspectRatio,
   getExportPreset,
+  isAiExportInFlight,
   type StudioExportStatus,
   type StudioExportVariantType,
 } from '@/lib/studio/export-presets'
@@ -46,11 +49,21 @@ interface GenerateResponse {
 /** Matches the polling cadence used by the menu-side generation status hook. */
 const POLL_INTERVAL_MS = 6000
 
+/** The photo currently open in the workbench, downloaded without resizing. */
+export interface StudioExportSourcePhoto {
+  url: string
+  width: number | null
+  height: number | null
+  mimeType: string | null
+}
+
 interface StudioExportPanelProps {
   /** The approved hero image exports are derived from. */
   sourceImageId: string | null
   /** Human-readable label for the selected source image, supplied by the Workbench. */
   sourceImageLabel?: string
+  /** Current shot, shown ready so it can be downloaded at its own size. */
+  sourcePhoto?: StudioExportSourcePhoto | null
   dishName?: string | null
   /** True while the editor is mid-upload/extract/generate. */
   editorBusy?: boolean
@@ -60,6 +73,8 @@ interface StudioExportPanelProps {
   onCreditBalanceChange?: (balance: number) => void
   /** Ready-file count for the workbench Exports tab badge. */
   onReadyCountChange?: (count: number) => void
+  /** True while a paid export is queued or generating. */
+  onAiActiveChange?: (active: boolean) => void
 }
 
 function methodHint(tile: StudioExportTile): string {
@@ -94,19 +109,95 @@ function aspectBoxSize(width: number, height: number, max = 48): { width: number
   return { width: Math.max(28, Math.round(max * ratio)), height: max }
 }
 
-const MAKE_ACTION_CLASS =
-  'inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full bg-[#01b3bf] px-3 py-1.5 text-[11px] font-bold text-[#0c1416] hover:bg-[#018f99] disabled:cursor-not-allowed disabled:opacity-40'
+function positivePixelSize(
+  width: number | null | undefined,
+  height: number | null | undefined
+): { width: number; height: number } | null {
+  if (typeof width !== 'number' || typeof height !== 'number') return null
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null
+  }
+  return { width: Math.round(width), height: Math.round(height) }
+}
+
+interface ExpandedExportPreview {
+  url: string
+  title: string
+  subtitle?: string
+  transparent: boolean
+}
 
 const DOWNLOAD_ICON_CLASS =
   'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f8bc02] text-[#03272a] hover:brightness-95'
 
-function ActionLabel({
-  label,
-  creditLabel,
+function AsIsExportRow({
+  url,
+  width,
+  height,
+  mimeType,
+  error,
+  onDownload,
+  onExpand,
 }: {
-  label: string
-  creditLabel: string | null
+  url: string
+  width: number | null
+  height: number | null
+  mimeType: string | null
+  error: string | null
+  onDownload: () => void
+  onExpand: () => void
 }) {
+  const size = positivePixelSize(width, height)
+  const box = size ? aspectBoxSize(size.width, size.height) : { width: 48, height: 48 }
+  const aspect = size ? formatSourceAspectRatio(size.width, size.height) : ''
+  const transparent = mimeType === 'image/png'
+
+  return (
+    <li
+      className="flex items-center gap-3 rounded-[14px] bg-white/[0.04] px-3 py-2.5"
+      data-testid="studio-export-tile-as-is"
+    >
+      <div
+        className="shrink-0 overflow-hidden rounded-[6px]"
+        style={{ width: box.width, height: box.height }}
+      >
+        <StudioExpandablePreview
+          src={url}
+          expandLabel="Expand As-is preview"
+          transparent={transparent}
+          className="h-full w-full"
+          imageClassName="h-full w-full object-contain"
+          onExpand={onExpand}
+        />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold text-white">As-is</p>
+        <p className="truncate text-[11px] text-white/45">
+          {size ? `${size.width} × ${size.height}${aspect ? ` · ${aspect}` : ''}` : 'Original size'}
+        </p>
+        <p className="truncate text-[11px] text-white/40">Current photo</p>
+        {error ? (
+          <p role="alert" className="mt-0.5 text-[11px] text-[#ff8a80]">
+            {error}
+          </p>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        aria-label="Download As-is"
+        className={DOWNLOAD_ICON_CLASS}
+        onClick={onDownload}
+      >
+        <Download className="h-3.5 w-3.5" aria-hidden />
+      </button>
+    </li>
+  )
+}
+
+const MAKE_ACTION_CLASS =
+  'inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full bg-[#01b3bf] px-3 py-1.5 text-[11px] font-bold text-[#0c1416] hover:bg-[#018f99] disabled:cursor-not-allowed disabled:opacity-40'
+
+function ActionLabel({ label, creditLabel }: { label: string; creditLabel: string | null }) {
   if (!creditLabel) return label
   return (
     <>
@@ -118,7 +209,7 @@ function ActionLabel({
 
 function generateActionCopy(
   status: StudioExportStatus,
-  creditCost: number,
+  creditCost: number
 ): { label: string; creditLabel: string | null } {
   if (status === 'queued') return { label: 'Queued…', creditLabel: null }
   if (status === 'generating') return { label: 'Generating…', creditLabel: null }
@@ -131,30 +222,45 @@ function generateActionCopy(
 export function StudioExportPanel({
   sourceImageId,
   sourceImageLabel = 'selected image',
+  sourcePhoto = null,
   dishName,
   editorBusy = false,
   dishBlocked = false,
   creditBalance,
   onCreditBalanceChange,
   onReadyCountChange,
+  onAiActiveChange,
 }: StudioExportPanelProps) {
   const [tiles, setTiles] = useState<StudioExportTile[]>([])
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  /** Pixel size measured by the exports API when the photo record has none. */
+  const [apiSource, setApiSource] = useState<{ width: number; height: number } | null>(null)
   /** Tiles with an in-flight POST, before the server row reflects it. */
   const [submitting, setSubmitting] = useState<Set<StudioExportVariantType>>(new Set())
-  const [tileErrors, setTileErrors] = useState<
-    Partial<Record<StudioExportVariantType, string>>
-  >({})
-  const [expanded, setExpanded] = useState<StudioExportTile | null>(null)
+  const [tileErrors, setTileErrors] = useState<Partial<Record<StudioExportVariantType, string>>>({})
+  const [asIsError, setAsIsError] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<ExpandedExportPreview | null>(null)
   const [downloadingAll, setDownloadingAll] = useState(false)
   const [creditsHelpOpen, setCreditsHelpOpen] = useState(false)
   const requestIdRef = useRef(0)
+  const [trackedSourceId, setTrackedSourceId] = useState(sourceImageId)
+  if (trackedSourceId !== sourceImageId) {
+    setTrackedSourceId(sourceImageId)
+    setApiSource(null)
+    setAsIsError(null)
+  }
+
+  const asIsSize =
+    positivePixelSize(sourcePhoto?.width, sourcePhoto?.height) ??
+    positivePixelSize(apiSource?.width, apiSource?.height)
+  const asIsUrl = sourcePhoto?.url ?? null
 
   const readyTiles = useMemo(
     () => tiles.filter((tile) => tile.status === 'ready' && tile.previewUrl),
-    [tiles],
+    [tiles]
   )
+  const downloadableCount = readyTiles.length + (asIsUrl ? 1 : 0)
 
   useEffect(() => {
     onReadyCountChange?.(readyTiles.length)
@@ -164,8 +270,24 @@ export function StudioExportPanel({
   // tile reaches a terminal state.
   const pending = useMemo(
     () => tiles.some((tile) => tile.status === 'queued' || tile.status === 'generating'),
-    [tiles],
+    [tiles]
   )
+  const aiExportActive = useMemo(
+    () =>
+      tiles.some((tile) =>
+        isAiExportInFlight(
+          tile.generationMethod,
+          submitting.has(tile.variantType) ? 'generating' : tile.status
+        )
+      ),
+    [submitting, tiles]
+  )
+
+  useEffect(() => {
+    onAiActiveChange?.(aiExportActive)
+  }, [aiExportActive, onAiActiveChange])
+
+  useEffect(() => () => onAiActiveChange?.(false), [onAiActiveChange])
 
   const loadTiles = useCallback(
     async (imageId: string, options?: { silent?: boolean }) => {
@@ -174,7 +296,7 @@ export function StudioExportPanel({
       setLoadError(null)
       try {
         const response = await fetch(
-          `/api/studio/exports?sourceImageId=${encodeURIComponent(imageId)}`,
+          `/api/studio/exports?sourceImageId=${encodeURIComponent(imageId)}`
         )
         const payload = (await response.json()) as ExportsResponse & { error?: string }
         if (requestId !== requestIdRef.current) return
@@ -182,6 +304,8 @@ export function StudioExportPanel({
           throw new Error(payload.error ?? 'Failed to load export formats')
         }
         setTiles(payload.tiles ?? [])
+        const measured = positivePixelSize(payload.source?.width, payload.source?.height)
+        if (measured) setApiSource(measured)
         if (typeof payload.credits?.balance === 'number') {
           onCreditBalanceChange?.(payload.credits.balance)
         }
@@ -189,14 +313,12 @@ export function StudioExportPanel({
         if (requestId !== requestIdRef.current) return
         // A failed poll should not wipe tiles the user can still act on.
         if (!options?.silent) setTiles([])
-        setLoadError(
-          error instanceof Error ? error.message : 'Failed to load export formats',
-        )
+        setLoadError(error instanceof Error ? error.message : 'Failed to load export formats')
       } finally {
         if (requestId === requestIdRef.current && !options?.silent) setLoading(false)
       }
     },
-    [onCreditBalanceChange],
+    [onCreditBalanceChange]
   )
 
   useEffect(() => {
@@ -212,6 +334,8 @@ export function StudioExportPanel({
   useEffect(() => {
     setTileErrors({})
     setSubmitting(new Set())
+    setAsIsError(null)
+    setApiSource(null)
     if (!sourceImageId) {
       requestIdRef.current += 1
       setTiles([])
@@ -222,17 +346,14 @@ export function StudioExportPanel({
     void loadTiles(sourceImageId)
   }, [loadTiles, sourceImageId])
 
-  const setTileSubmitting = useCallback(
-    (variantType: StudioExportVariantType, active: boolean) => {
-      setSubmitting((prev) => {
-        const next = new Set(prev)
-        if (active) next.add(variantType)
-        else next.delete(variantType)
-        return next
-      })
-    },
-    [],
-  )
+  const setTileSubmitting = useCallback((variantType: StudioExportVariantType, active: boolean) => {
+    setSubmitting((prev) => {
+      const next = new Set(prev)
+      if (active) next.add(variantType)
+      else next.delete(variantType)
+      return next
+    })
+  }, [])
 
   const handleGenerate = useCallback(
     async (tile: StudioExportTile) => {
@@ -244,8 +365,8 @@ export function StudioExportPanel({
         prev.map((item) =>
           item.variantType === tile.variantType
             ? { ...item, status: 'generating', errorMessage: null }
-            : item,
-        ),
+            : item
+        )
       )
 
       trackStudioEvent(ANALYTICS_EVENTS.STUDIO_EXPORT_GENERATION_STARTED, {
@@ -293,18 +414,17 @@ export function StudioExportPanel({
             credit_cost: payload.credits?.cost ?? tile.estimatedCredits,
             credit_balance_after: payload.credits?.balanceAfter,
             duration_ms: Date.now() - startedAt,
-          },
+          }
         )
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Export generation failed'
+        const message = error instanceof Error ? error.message : 'Export generation failed'
         setTileErrors((prev) => ({ ...prev, [tile.variantType]: message }))
         setTiles((prev) =>
           prev.map((item) =>
             item.variantType === tile.variantType
               ? { ...item, status: 'failed', errorMessage: message }
-              : item,
-          ),
+              : item
+          )
         )
         trackStudioEvent(ANALYTICS_EVENTS.STUDIO_EXPORT_GENERATION_FAILED, {
           surface: 'studio',
@@ -317,8 +437,30 @@ export function StudioExportPanel({
         setTileSubmitting(tile.variantType, false)
       }
     },
-    [onCreditBalanceChange, setTileSubmitting, sourceImageId],
+    [onCreditBalanceChange, setTileSubmitting, sourceImageId]
   )
+
+  const handleDownloadAsIs = useCallback(async () => {
+    if (!asIsUrl) return
+    setAsIsError(null)
+    try {
+      await downloadImage(
+        asIsUrl,
+        buildAsIsExportFilename(
+          dishName,
+          { width: asIsSize?.width ?? null, height: asIsSize?.height ?? null },
+          sourcePhoto?.mimeType
+        )
+      )
+      trackStudioEvent(ANALYTICS_EVENTS.STUDIO_EXPORT_DOWNLOADED, {
+        surface: 'studio',
+        variant_type: 'as_is',
+        generation_method: 'original',
+      })
+    } catch {
+      setAsIsError('Download failed. Try again.')
+    }
+  }, [asIsSize?.height, asIsSize?.width, asIsUrl, dishName, sourcePhoto?.mimeType])
 
   const handleDownload = useCallback(
     async (tile: StudioExportTile) => {
@@ -338,27 +480,51 @@ export function StudioExportPanel({
         }))
       }
     },
-    [dishName],
+    [dishName]
   )
 
   const handleDownloadAll = useCallback(async () => {
     setDownloadingAll(true)
     try {
+      if (asIsUrl) await handleDownloadAsIs()
       for (const tile of readyTiles) {
         await handleDownload(tile)
       }
     } finally {
       setDownloadingAll(false)
     }
-  }, [handleDownload, readyTiles])
+  }, [asIsUrl, handleDownload, handleDownloadAsIs, readyTiles])
 
   const handleExpand = useCallback((tile: StudioExportTile) => {
-    setExpanded(tile)
+    if (!tile.previewUrl) return
+    setExpanded({
+      url: tile.previewUrl,
+      title: tile.label,
+      subtitle: `${tile.width} × ${tile.height} (${tile.aspectRatio}) · ${tile.fileType.toUpperCase()}`,
+      transparent: tile.fileType === 'png',
+    })
     trackStudioEvent(ANALYTICS_EVENTS.STUDIO_EXPORT_EXPANDED, {
       surface: 'studio',
       variant_type: tile.variantType,
     })
   }, [])
+
+  const handleExpandAsIs = useCallback(() => {
+    if (!asIsUrl) return
+    const aspect = asIsSize ? formatSourceAspectRatio(asIsSize.width, asIsSize.height) : ''
+    setExpanded({
+      url: asIsUrl,
+      title: 'As-is',
+      subtitle: asIsSize
+        ? `${asIsSize.width} × ${asIsSize.height}${aspect ? ` (${aspect})` : ''}`
+        : 'Current photo',
+      transparent: sourcePhoto?.mimeType === 'image/png',
+    })
+    trackStudioEvent(ANALYTICS_EVENTS.STUDIO_EXPORT_EXPANDED, {
+      surface: 'studio',
+      variant_type: 'as_is',
+    })
+  }, [asIsSize, asIsUrl, sourcePhoto?.mimeType])
 
   /**
    * One generation at a time. The worker serialises the real work anyway, and
@@ -375,8 +541,8 @@ export function StudioExportPanel({
       <div className="shrink-0 px-3 pt-1 sm:px-4">
         <div className="flex items-start justify-between gap-2">
           <p className="text-xs leading-5 text-white/55">
-            Files made from <span className="font-bold text-white/80">this</span> shot. Each
-            preview is the true shape of the file.
+            Files made from <span className="font-bold text-white/80">this</span> shot. Each preview
+            is the true shape of the file.
           </p>
           <button
             type="button"
@@ -392,14 +558,14 @@ export function StudioExportPanel({
         <p className="sr-only" aria-live="polite">
           Exports for {sourceImageLabel}
         </p>
-        {readyTiles.length > 1 && (
+        {downloadableCount > 1 && (
           <button
             type="button"
             disabled={downloadingAll}
             className="mt-1 text-xs font-bold text-[#5fd3da] hover:underline disabled:cursor-not-allowed disabled:text-white/30"
             onClick={() => void handleDownloadAll()}
           >
-            {downloadingAll ? 'Downloading…' : `Download all (${readyTiles.length})`}
+            {downloadingAll ? 'Downloading…' : `Download all (${downloadableCount})`}
           </button>
         )}
         {creditsHelpOpen && (
@@ -408,167 +574,184 @@ export function StudioExportPanel({
             role="note"
             className="mt-2 text-xs leading-5 text-white/55"
           >
-            Credits are charged when a format needs AI — expanding the canvas to a
-            new aspect ratio, or cutting the dish out of its background. A straight
-            resize or crop doesn&apos;t need AI and therefore no credits are required.
+            Credits are charged when a format needs AI — expanding the canvas to a new aspect ratio,
+            or cutting the dish out of its background. A straight resize or crop doesn&apos;t need
+            AI and therefore no credits are required.
           </p>
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
+      <div className="studio-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
         {!sourceImageId ? (
           <p className="px-1 py-4 text-sm text-white/40" data-testid="studio-exports-empty">
             Upload or select a dish photo to prepare channel-ready exports.
           </p>
-        ) : loading ? (
-          <p className="px-1 py-4 text-sm text-white/40">Loading export formats…</p>
-        ) : loadError ? (
-          <div className="space-y-2 px-1 py-3">
-            <p role="alert" className="text-sm text-[#ff8a80]">
-              {loadError}
-            </p>
-            <button
-              type="button"
-              className="text-xs font-bold text-[#5fd3da] hover:underline"
-              onClick={() => void loadTiles(sourceImageId)}
-            >
-              Retry
-            </button>
-          </div>
         ) : (
-          <ul className="space-y-2" data-testid="studio-export-list">
-            {tiles.map((tile) => {
-              const inFlightLocally = submitting.has(tile.variantType)
-              const status: StudioExportStatus = inFlightLocally
-                ? 'generating'
-                : tile.status
-              const inFlight =
-                inFlightLocally || status === 'queued' || status === 'generating'
-              const isReady = status === 'ready' && Boolean(tile.previewUrl)
-              const transparent = tile.fileType === 'png'
-              const error = tileErrors[tile.variantType] ?? tile.errorMessage
-              const blockedReason = dishBlocked
-                ? 'Generations for this dish are paused.'
-                : !tile.available
-                  ? tile.unavailableReason
-                  : creditBalance !== null &&
-                      tile.estimatedCredits > 0 &&
-                      creditBalance < tile.estimatedCredits
-                    ? 'Not enough credits for this format.'
-                    : null
-              const canGenerate =
-                !inFlight && !editorBusy && !anyInFlight && blockedReason === null
-              const generateCopy = generateActionCopy(status, tile.estimatedCredits)
-              const generateAriaLabel = generateCopy.creditLabel
-                ? `${generateCopy.label}, ${generateCopy.creditLabel}`
-                : generateCopy.label
-              const redoAriaLabel =
-                tile.estimatedCredits > 0
-                  ? `Regenerate ${tile.label}, ${formatExportCreditLabel(tile.estimatedCredits)}`
-                  : `Regenerate ${tile.label}`
-              const box = aspectBoxSize(tile.width, tile.height)
+          <>
+            {(asIsUrl || (!loading && !loadError)) && (
+              <ul className="space-y-2" data-testid="studio-export-list">
+                {asIsUrl ? (
+                  <AsIsExportRow
+                    url={asIsUrl}
+                    width={asIsSize?.width ?? null}
+                    height={asIsSize?.height ?? null}
+                    mimeType={sourcePhoto?.mimeType ?? null}
+                    error={asIsError}
+                    onDownload={() => void handleDownloadAsIs()}
+                    onExpand={handleExpandAsIs}
+                  />
+                ) : null}
+                {!loading && !loadError
+                  ? tiles.map((tile) => {
+                      const inFlightLocally = submitting.has(tile.variantType)
+                      const status: StudioExportStatus = inFlightLocally
+                        ? 'generating'
+                        : tile.status
+                      const inFlight =
+                        inFlightLocally || status === 'queued' || status === 'generating'
+                      const isReady = status === 'ready' && Boolean(tile.previewUrl)
+                      const transparent = tile.fileType === 'png'
+                      const error = tileErrors[tile.variantType] ?? tile.errorMessage
+                      const blockedReason = dishBlocked
+                        ? 'Generations for this dish are paused.'
+                        : !tile.available
+                          ? tile.unavailableReason
+                          : creditBalance !== null &&
+                              tile.estimatedCredits > 0 &&
+                              creditBalance < tile.estimatedCredits
+                            ? 'Not enough credits for this format.'
+                            : null
+                      const canGenerate =
+                        !inFlight && !editorBusy && !anyInFlight && blockedReason === null
+                      const generateCopy = generateActionCopy(status, tile.estimatedCredits)
+                      const generateAriaLabel = generateCopy.creditLabel
+                        ? `${generateCopy.label}, ${generateCopy.creditLabel}`
+                        : generateCopy.label
+                      const redoAriaLabel =
+                        tile.estimatedCredits > 0
+                          ? `Regenerate ${tile.label}, ${formatExportCreditLabel(tile.estimatedCredits)}`
+                          : `Regenerate ${tile.label}`
+                      const box = aspectBoxSize(tile.width, tile.height)
 
-              return (
-                <li
-                  key={tile.variantType}
-                  className="flex items-center gap-3 rounded-[14px] bg-white/[0.04] px-3 py-2.5"
-                  data-testid={`studio-export-tile-${tile.variantType}`}
+                      return (
+                        <li
+                          key={tile.variantType}
+                          className="flex items-center gap-3 rounded-[14px] bg-white/[0.04] px-3 py-2.5"
+                          data-testid={`studio-export-tile-${tile.variantType}`}
+                        >
+                          {isReady && tile.previewUrl ? (
+                            <div
+                              className="shrink-0 overflow-hidden rounded-[6px]"
+                              style={{ width: box.width, height: box.height }}
+                            >
+                              <StudioExpandablePreview
+                                src={tile.previewUrl}
+                                expandLabel={`Expand ${tile.label} preview`}
+                                transparent={transparent}
+                                className="h-full w-full"
+                                imageClassName="h-full w-full object-contain"
+                                onExpand={() => handleExpand(tile)}
+                              />
+                            </div>
+                          ) : (
+                            <div
+                              className="flex shrink-0 items-center justify-center rounded-[6px] border border-dashed border-white/25 text-[10px] font-semibold text-white/45"
+                              style={{ width: box.width, height: box.height }}
+                              aria-hidden={status !== 'generating'}
+                            >
+                              {inFlight ? '…' : tile.aspectRatio}
+                            </div>
+                          )}
+
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-bold text-white">{tile.label}</p>
+                            <p className="truncate text-[11px] text-white/45">
+                              {tile.width} × {tile.height} · {tile.aspectRatio}
+                            </p>
+                            <p className="truncate text-[11px] text-white/40">
+                              {statusLine(status, tile)}
+                            </p>
+                            {error && status === 'failed' ? (
+                              <p role="alert" className="mt-0.5 text-[11px] text-[#ff8a80]">
+                                {error}
+                              </p>
+                            ) : null}
+                            {blockedReason && status !== 'ready' ? (
+                              <p className="mt-0.5 text-[11px] text-[#f8bc02]">{blockedReason}</p>
+                            ) : null}
+                          </div>
+
+                          {isReady ? (
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <button
+                                type="button"
+                                aria-label={`Download ${tile.label}`}
+                                className={DOWNLOAD_ICON_CLASS}
+                                onClick={() => void handleDownload(tile)}
+                              >
+                                <Download className="h-3.5 w-3.5" aria-hidden />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!canGenerate}
+                                aria-label={redoAriaLabel}
+                                data-testid={`studio-export-redo-${tile.variantType}`}
+                                className={MAKE_ACTION_CLASS}
+                                onClick={() => void handleGenerate(tile)}
+                              >
+                                <ActionLabel
+                                  label="Redo"
+                                  creditLabel={compactCreditLabel(tile.estimatedCredits)}
+                                />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={!canGenerate}
+                              aria-label={generateAriaLabel}
+                              className={MAKE_ACTION_CLASS}
+                              onClick={() => void handleGenerate(tile)}
+                            >
+                              <ActionLabel
+                                label={generateCopy.label}
+                                creditLabel={generateCopy.creditLabel}
+                              />
+                            </button>
+                          )}
+                        </li>
+                      )
+                    })
+                  : null}
+              </ul>
+            )}
+            {loading ? (
+              <p className="px-1 py-4 text-sm text-white/40">Loading export formats…</p>
+            ) : null}
+            {loadError ? (
+              <div className="space-y-2 px-1 py-3">
+                <p role="alert" className="text-sm text-[#ff8a80]">
+                  {loadError}
+                </p>
+                <button
+                  type="button"
+                  className="text-xs font-bold text-[#5fd3da] hover:underline"
+                  onClick={() => void loadTiles(sourceImageId)}
                 >
-                  {isReady && tile.previewUrl ? (
-                    <div
-                      className="shrink-0 overflow-hidden rounded-[6px]"
-                      style={{ width: box.width, height: box.height }}
-                    >
-                      <StudioExpandablePreview
-                        src={tile.previewUrl}
-                        expandLabel={`Expand ${tile.label} preview`}
-                        transparent={transparent}
-                        className="h-full w-full"
-                        imageClassName="h-full w-full object-contain"
-                        onExpand={() => handleExpand(tile)}
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      className="flex shrink-0 items-center justify-center rounded-[6px] border border-dashed border-white/25 text-[10px] font-semibold text-white/45"
-                      style={{ width: box.width, height: box.height }}
-                      aria-hidden={status !== 'generating'}
-                    >
-                      {inFlight ? '…' : tile.aspectRatio}
-                    </div>
-                  )}
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-white">{tile.label}</p>
-                    <p className="truncate text-[11px] text-white/45">
-                      {tile.width} × {tile.height} · {tile.aspectRatio}
-                    </p>
-                    <p className="truncate text-[11px] text-white/40">{statusLine(status, tile)}</p>
-                    {error && status === 'failed' ? (
-                      <p role="alert" className="mt-0.5 text-[11px] text-[#ff8a80]">
-                        {error}
-                      </p>
-                    ) : null}
-                    {blockedReason && status !== 'ready' ? (
-                      <p className="mt-0.5 text-[11px] text-[#f8bc02]">{blockedReason}</p>
-                    ) : null}
-                  </div>
-
-                  {isReady ? (
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <button
-                        type="button"
-                        aria-label={`Download ${tile.label}`}
-                        className={DOWNLOAD_ICON_CLASS}
-                        onClick={() => void handleDownload(tile)}
-                      >
-                        <Download className="h-3.5 w-3.5" aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={!canGenerate}
-                        aria-label={redoAriaLabel}
-                        data-testid={`studio-export-redo-${tile.variantType}`}
-                        className={MAKE_ACTION_CLASS}
-                        onClick={() => void handleGenerate(tile)}
-                      >
-                        <ActionLabel
-                          label="Redo"
-                          creditLabel={compactCreditLabel(tile.estimatedCredits)}
-                        />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={!canGenerate}
-                      aria-label={generateAriaLabel}
-                      className={MAKE_ACTION_CLASS}
-                      onClick={() => void handleGenerate(tile)}
-                    >
-                      <ActionLabel
-                        label={generateCopy.label}
-                        creditLabel={generateCopy.creditLabel}
-                      />
-                    </button>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
+                  Retry
+                </button>
+              </div>
+            ) : null}
+          </>
         )}
       </div>
 
       <StudioImageLightbox
         open={expanded !== null}
-        imageUrl={expanded?.previewUrl ?? null}
-        title={expanded?.label ?? ''}
-        subtitle={
-          expanded
-            ? `${expanded.width} × ${expanded.height} (${expanded.aspectRatio}) · ${expanded.fileType.toUpperCase()}`
-            : undefined
-        }
-        transparent={expanded?.fileType === 'png'}
+        imageUrl={expanded?.url ?? null}
+        title={expanded?.title ?? ''}
+        subtitle={expanded?.subtitle}
+        transparent={expanded?.transparent ?? false}
         onClose={() => setExpanded(null)}
       />
     </section>

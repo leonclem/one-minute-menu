@@ -5,11 +5,7 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## /studio
-- [ ] On mobile, can't zoom when using, e.g. Expand, Remove, tooling
-- [ ] Export should offer to download "as-is" aspect
-- [ ] Add stopwatch counter when generation starts
-- [ ] If switching to overhead and backdrop is selected, warn that backdrop will be unselected
-- [ ] "This next shot will be GEN n" is too prominent and potentially alarming
+- [ ] "Rollover" (or similar) in all dishes page to see OG vs current
 
 ## Home Page
 - [ ] Update carousel to show off latest examples
@@ -22,7 +18,6 @@
 - [ ] Newsletter email for those that signed up (opt-in/opt-out checkbox)
 
 ## /studio
-- [ ] "Rollover" (or similar) in all dishes page to see OG vs current
 - [ ] For any given dish, on /studio/[dish-id] page, order picture from newest to oldest (currently oldest to newest)
 - [ ] Guide users on the ideal starting photo (for first upload) -> use examples
 - [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
@@ -203,6 +198,10 @@
 - [x] Label generated images with model (Std / Pro)
 - [x] Implement "scene" feature (as far as possible with surfaces, props, and garnishes)
 - [x] Add plants to props
+- [x] Export should offer to download "as-is" aspect
+- [x] Add stopwatch counter when generation starts
+- [x] If switching to overhead and backdrop is selected, warn that backdrop will be unselected
+- [x] "This next shot will be GEN n" is too prominent and potentially alarming
 
 ## Home Page
 - [x] Open Studio should not immediately require sign-ups, Generate should.

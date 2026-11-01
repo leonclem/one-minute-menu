@@ -17,6 +17,8 @@ interface StudioShotWorkbenchProps {
   dishName: string
   shotTitle: string
   notices: ReactNode
+  /** Quiet generation note, under the photo and above the tool row. Hidden while expanded. */
+  degradationNotice?: ReactNode
   canvas: ReactNode
   cropPanel: ReactNode
   expandPanel: ReactNode
@@ -55,6 +57,7 @@ export function StudioShotWorkbench({
   dishName,
   shotTitle,
   notices,
+  degradationNotice = null,
   canvas,
   cropPanel,
   expandPanel,
@@ -231,6 +234,7 @@ export function StudioShotWorkbench({
           </div>
           {expanded ? null : (
             <>
+              {degradationNotice}
               <StudioWorkbenchToolbar
                 disabled={toolsDisabled}
                 cropOpen={cropOpen}

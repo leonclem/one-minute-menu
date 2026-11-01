@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { Component_Control } from '@/components/photo-controls'
 import type { EditorState } from '@/lib/photo-control/minimal-schema'
@@ -85,6 +85,8 @@ interface StudioScenePanelProps {
     onToggle: (id: string) => void
   }
   hasPendingChanges: boolean
+  /** Quiet generation note, pinned with the Generate action. */
+  degradationNotice?: ReactNode
   isGenerating: boolean
   generateCreditLabel: string
   generateDisabled: boolean
@@ -126,6 +128,7 @@ export function StudioScenePanel({
   finishing,
   sceneProps,
   hasPendingChanges,
+  degradationNotice = null,
   isGenerating,
   generateCreditLabel,
   generateDisabled,
@@ -340,7 +343,8 @@ export function StudioScenePanel({
             >
               {backdropHidden ? (
                 <p role="status" className="text-xs text-[#f8bc02]">
-                  {isOverheadAngle(workingAngle)
+                  {isOverheadAngle(workingAngle) ||
+                  isOverheadAngle(editorState.schema.scene_setup.angle)
                     ? 'Overhead shots do not show a wall behind the dish, so backdrop changes are unavailable.'
                     : 'No vertical backdrop was detected in this photo, so backdrop changes are unavailable.'}
                 </p>
@@ -444,6 +448,7 @@ export function StudioScenePanel({
       </div>
 
       <div className="shrink-0 border-t border-white/[0.1] p-3">
+        {degradationNotice ? <div className="mb-2">{degradationNotice}</div> : null}
         <div className="flex flex-wrap items-center justify-end gap-2">
           {reshootEnabled ? (
             <button

@@ -2,76 +2,80 @@ import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
-import { DEGRADATION_COMPACT_HINT, degradationWarningCopy } from '@/lib/studio/degradation'
+import { degradationWarningCopy } from '@/lib/studio/degradation'
 
-import { StudioDegradationCallout } from './studio-degradation-callout'
+import { StudioDegradationCallout, useDegradationDismiss } from './studio-degradation-callout'
+
+function DismissHarness({ shotId, nextGen }: { shotId: string; nextGen: number }) {
+  const warning = degradationWarningCopy(nextGen)
+  const { dismissed, dismiss } = useDegradationDismiss(shotId, nextGen)
+  if (!warning || dismissed) return null
+  return <StudioDegradationCallout dishId="dish-1" warning={warning} announce onDismiss={dismiss} />
+}
 
 describe('StudioDegradationCallout', () => {
-  it('links GEN 3 copy to the dish shot tree', () => {
+  it('links the quiet GEN 3 line to an earlier photo', () => {
     const warning = degradationWarningCopy(3)
     if (!warning) throw new Error('expected GEN 3 copy')
-    render(<StudioDegradationCallout dishId="dish-1" warning={warning} />)
+    render(<StudioDegradationCallout dishId="dish-1" warning={warning} announce onDismiss={jest.fn()} />)
 
-    const callout = screen.getByTestId('studio-degradation-callout')
+    const callout = screen.getByRole('status')
     expect(callout).toHaveAttribute('data-next-gen', '3')
-    expect(callout).toHaveTextContent('This next shot will be GEN 3')
-    expect(screen.getByRole('link', { name: 'View shot tree' })).toHaveAttribute(
+    expect(callout).toHaveAttribute('data-tone', 'muted')
+    expect(callout).toHaveTextContent('Edited twice. Another edit can soften fine detail.')
+    expect(callout).not.toHaveClass('studio-callout-warn')
+    expect(screen.getByRole('link', { name: 'Use an earlier photo' })).toHaveAttribute(
       'href',
       '/studio/dish-1?tab=shots&view=tree',
     )
   })
 
-  it('uses stronger titles at GEN 4 and GEN 5+', () => {
+  it('warms the line at GEN 4 and turns it gold at GEN 5+', () => {
     const four = degradationWarningCopy(4)
     const five = degradationWarningCopy(5)
     if (!four || !five) throw new Error('expected stronger copy')
-    const { rerender } = render(<StudioDegradationCallout dishId="d1" warning={four} />)
-    expect(screen.getByTestId('studio-degradation-callout')).toHaveTextContent('GEN 4')
-    rerender(<StudioDegradationCallout dishId="d1" warning={five} />)
-    expect(screen.getByTestId('studio-degradation-callout')).toHaveTextContent('GEN 5')
-    expect(screen.getByTestId('studio-degradation-callout')).toHaveTextContent('still generate')
+    const { rerender } = render(
+      <StudioDegradationCallout dishId="d1" warning={four} onDismiss={jest.fn()} />,
+    )
+    expect(screen.getByTestId('studio-degradation-callout')).toHaveAttribute('data-tone', 'warm')
+    expect(screen.getByTestId('studio-degradation-callout')).toHaveTextContent(
+      'Edited 3 times. Another edit often looks softer.',
+    )
+    rerender(<StudioDegradationCallout dishId="d1" warning={five} onDismiss={jest.fn()} />)
+    expect(screen.getByTestId('studio-degradation-callout')).toHaveAttribute('data-tone', 'gold')
+    expect(screen.getByTestId('studio-degradation-callout')).toHaveTextContent(
+      'Edited 4 times. Another edit is likely to look softer.',
+    )
   })
 
-  it('hides the compact banner when dismissed and restores it for a new shot', () => {
+  it('uses dark text on the light re-shoot surface', () => {
     const warning = degradationWarningCopy(3)
     if (!warning) throw new Error('expected GEN 3 copy')
-    const { rerender } = render(
+    render(
       <StudioDegradationCallout
         dishId="dish-1"
         warning={warning}
-        compact
-        dismissible
-        dismissKey="shot-a"
+        surface="light"
+        onDismiss={jest.fn()}
       />,
     )
-    expect(screen.getByTestId('studio-degradation-callout')).toHaveClass('studio-callout-warn-compact')
-    expect(screen.getByText(DEGRADATION_COMPACT_HINT)).toBeInTheDocument()
-    expect(screen.queryByText(warning.body)).not.toBeInTheDocument()
+    expect(screen.getByTestId('studio-degradation-callout')).toHaveClass('text-gray-600')
+    expect(screen.getByRole('link', { name: 'Use an earlier photo' })).toHaveClass('text-gray-900')
+  })
+
+  it('hides the note when dismissed and restores it for a new shot', () => {
+    const { rerender } = render(<DismissHarness shotId="shot-a" nextGen={3} />)
     fireEvent.click(screen.getByTestId('studio-degradation-callout-dismiss'))
     expect(screen.queryByTestId('studio-degradation-callout')).not.toBeInTheDocument()
 
-    rerender(
-      <StudioDegradationCallout
-        dishId="dish-1"
-        warning={warning}
-        compact
-        dismissible
-        dismissKey="shot-b"
-      />,
-    )
-    expect(screen.getByTestId('studio-degradation-callout')).toBeInTheDocument()
+    rerender(<DismissHarness shotId="shot-b" nextGen={3} />)
+    expect(screen.getByTestId('studio-degradation-callout')).toHaveTextContent('Edited twice')
   })
 
-  it('reveals compact GEN copy from an (i) control', () => {
-    const warning = degradationWarningCopy(7)
-    if (!warning) throw new Error('expected GEN 7 copy')
-    render(<StudioDegradationCallout dishId="dish-1" warning={warning} iconTrigger />)
-
-    expect(screen.queryByText(warning.title)).not.toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('studio-degradation-info'))
-    expect(screen.getByRole('dialog', { name: warning.title })).toHaveTextContent(
-      'Successive generations can degrade quality.',
-    )
-    expect(screen.getByRole('link', { name: 'View shot tree' })).toBeInTheDocument()
+  it('restores the note when the next generation changes on the same shot', () => {
+    const { rerender } = render(<DismissHarness shotId="shot-a" nextGen={3} />)
+    fireEvent.click(screen.getByTestId('studio-degradation-callout-dismiss'))
+    rerender(<DismissHarness shotId="shot-a" nextGen={4} />)
+    expect(screen.getByTestId('studio-degradation-callout')).toHaveTextContent('Edited 3 times')
   })
 })

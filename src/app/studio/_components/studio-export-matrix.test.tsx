@@ -99,6 +99,39 @@ describe('StudioExportMatrix', () => {
     expect(onReplace).toHaveBeenCalledWith('og', nextTiles, false)
   })
 
+  it('signals the stopwatch for an AI export and not for a free resize', async () => {
+    const onAiActiveChange = jest.fn()
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ tiles: tiles(), pending: false }),
+    })
+
+    render(
+      <StudioExportMatrix
+        dishName="Burger"
+        images={[image('og')]}
+        shots={[
+          {
+            imageId: 'og',
+            tiles: tiles({
+              delivery_landscape: { generationMethod: 'ai_expand', estimatedCredits: 1 },
+            }),
+          },
+        ]}
+        onReplaceShotTiles={jest.fn()}
+        onAiActiveChange={onAiActiveChange}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make Delivery Square' }))
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+    expect(onAiActiveChange).not.toHaveBeenCalledWith(true)
+
+    onAiActiveChange.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'Make Delivery Landscape, 1 credit' }))
+    await waitFor(() => expect(onAiActiveChange).toHaveBeenCalledWith(true))
+  })
+
   it('uses quiet dashed cells and a credit star instead of teal labels', () => {
     render(
       <StudioExportMatrix

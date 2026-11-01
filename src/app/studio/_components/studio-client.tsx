@@ -59,7 +59,12 @@ import {
   ensureSurfaceRestageBaseline,
   ensureLightingRestageBaseline,
 } from '@/lib/studio/restage'
-import { applyVerticalSwitch, workingShotHidesBackdrop } from '@/lib/studio/vertical-switch'
+import {
+  applyVerticalSwitch,
+  overheadSwitchDropsBackdrop,
+  sceneBackdropHidden,
+  workingShotHidesBackdrop,
+} from '@/lib/studio/vertical-switch'
 import { applyYaw, clearConsumedYaw } from '@/lib/studio/yaw'
 import { getStudioVessel, studioVesselPromptName } from '@/lib/studio/vessels'
 import type {
@@ -74,10 +79,12 @@ import { useStudioCredits } from './studio-credits-context'
 import { StudioStateNotice } from './studio-state-notice'
 import { StudioFeedbackPrompt } from './studio-feedback-prompt'
 import { StudioExportPanel } from './studio-export-panel'
+import { StudioGenerationStopwatch } from './studio-generation-stopwatch'
 import { StudioWorkbenchCanvas } from './studio-workbench-canvas'
 import { StudioPendingChangesDialog } from './studio-pending-changes-dialog'
 import { StudioCreditsDialog } from './studio-credits-dialog'
 import { StudioModelSwitchDialog } from './studio-model-switch-dialog'
+import { StudioOverheadBackdropDialog } from './studio-overhead-backdrop-dialog'
 import { StudioReshootDialog } from './studio-reshoot-dialog'
 import { keepOutlineFromSelection } from '@/lib/studio/object-edit/keep-region'
 import {
@@ -107,7 +114,7 @@ import {
   overlayGuestIntentOnExtracted,
   shouldSkipExtractUntilClaimed,
 } from '@/lib/studio/guest/guest-editor-intent'
-import { StudioDegradationCallout } from './studio-degradation-callout'
+import { StudioDegradationCallout, useDegradationDismiss } from './studio-degradation-callout'
 import {
   preloadKitchenLoaderSvg,
   StudioCanvasBusyOverlay,
@@ -350,6 +357,7 @@ export function StudioClient({
   const [backgroundStyles, setBackgroundStyles] = useState<StudioBackgroundStyleDisplay[]>([])
   const [selectedModel, setSelectedModel] = useState<string>(STUDIO_NB2_MODEL)
   const [modelWarningOpen, setModelWarningOpen] = useState(false)
+  const [overheadBackdropWarningOpen, setOverheadBackdropWarningOpen] = useState(false)
   const [dontShowModelWarning, setDontShowModelWarning] = useState(false)
   const [proWarningDismissed, setProWarningDismissed] = useState(false)
   const [objectEditOpen, setObjectEditOpen] = useState(false)
@@ -407,6 +415,7 @@ export function StudioClient({
   const [strictConformanceWarning, setStrictConformanceWarning] = useState(false)
 
   const [isGenerating, setIsGenerating] = useState(false)
+  const [exportAiActive, setExportAiActive] = useState(false)
   const [mutatedImageUrl, setMutatedImageUrl] = useState<string | undefined>(undefined)
   const [mutationError, setMutationError] = useState<string | null>(null)
   const [pendingChangeCandidate, setPendingChangeCandidate] =
@@ -453,13 +462,19 @@ export function StudioClient({
   const degradationWarning = selectedImage
     ? degradationWarningForShot(selectedImage, gallery)
     : null
-  const degradationCallout =
-    degradationWarning && activeDishId ? (
-      <StudioDegradationCallout dishId={activeDishId} warning={degradationWarning} />
-    ) : null
-  const toolDegradationCallout =
-    degradationWarning && activeDishId ? (
-      <StudioDegradationCallout dishId={activeDishId} warning={degradationWarning} iconTrigger />
+  const { dismissed: degradationDismissed, dismiss: dismissDegradation } = useDegradationDismiss(
+    selectedImageId,
+    degradationWarning?.nextGen ?? null,
+  )
+  const degradationNote = (surface: 'dark' | 'light' = 'dark', announce = false) =>
+    degradationWarning && activeDishId && !degradationDismissed ? (
+      <StudioDegradationCallout
+        dishId={activeDishId}
+        warning={degradationWarning}
+        surface={surface}
+        announce={announce}
+        onDismiss={dismissDegradation}
+      />
     ) : null
 
   useEffect(() => {
@@ -590,6 +605,11 @@ export function StudioClient({
   const backdropKnownFalse = backdropVisible === false
   const workingAngle = originalStateRef.current.schema.scene_setup.angle
   const backdropHidden = workingShotHidesBackdrop(workingAngle, backdropKnownFalse)
+  const stagedBackdropHidden = sceneBackdropHidden(
+    workingAngle,
+    editorState.schema.scene_setup.angle,
+    backdropKnownFalse,
+  )
 
   const lightingLabelMap = useMemo(
     () =>
@@ -1292,13 +1312,26 @@ export function StudioClient({
     [applyStagedChange, editorState, lightingKeys]
   )
 
-  const stageVerticalSwitch = useCallback(() => {
+  const applyVerticalSwitchNow = useCallback(() => {
     const { nextState, nextBaseline } = applyVerticalSwitch(
       editorState,
       originalStateRef.current,
     )
     applyStagedChange(nextState, nextBaseline)
   }, [applyStagedChange, editorState])
+
+  const stageVerticalSwitch = useCallback(() => {
+    if (overheadSwitchDropsBackdrop(editorState, originalStateRef.current)) {
+      setOverheadBackdropWarningOpen(true)
+      return
+    }
+    applyVerticalSwitchNow()
+  }, [applyVerticalSwitchNow, editorState])
+
+  const confirmOverheadSwitch = useCallback(() => {
+    setOverheadBackdropWarningOpen(false)
+    applyVerticalSwitchNow()
+  }, [applyVerticalSwitchNow])
 
   const stageYaw = useCallback(
     (direction: 'left' | 'right') => {
@@ -1384,7 +1417,7 @@ export function StudioClient({
         look,
         current: editorState,
         baseline: originalStateRef.current,
-        includeBackdrop: !backdropHidden,
+        includeBackdrop: !stagedBackdropHidden,
         lightingKeys,
         surfaceKeys,
         backdropKeys,
@@ -1393,7 +1426,7 @@ export function StudioClient({
     },
     [
       applyStagedChange,
-      backdropHidden,
+      stagedBackdropHidden,
       backdropKeys,
       editorState,
       lightingKeys,
@@ -2626,6 +2659,7 @@ export function StudioClient({
         onKeep={() => handleObjectEditOpen('keep')}
         expanded={workbenchImageExpanded}
         onCloseExpand={handleWorkbenchCollapse}
+        degradationNotice={degradationNote('dark', true)}
         notices={
           <>
             {isUploading ? (
@@ -2639,19 +2673,6 @@ export function StudioClient({
               </p>
             ) : null}
             <StudioLowResNotice natural={cropStoredSize} />
-            {degradationWarning &&
-            activeDishId &&
-            !cropOpen &&
-            !expandOpen &&
-            !objectEditOpen ? (
-              <StudioDegradationCallout
-                dishId={activeDishId}
-                warning={degradationWarning}
-                compact
-                dismissible
-                dismissKey={selectedImageId ?? undefined}
-              />
-            ) : null}
             {mutationError ? (
               <p role="alert" className="text-sm text-[#ff8a80]">
                 {mutationError}
@@ -2741,6 +2762,14 @@ export function StudioClient({
                 }
               />
             )}
+            <StudioGenerationStopwatch
+              active={isGenerating || exportAiActive}
+              className={
+                workbenchImageExpanded
+                  ? 'absolute right-3 top-14 z-20'
+                  : 'absolute right-3 top-3 z-20'
+              }
+            />
             {!busy && !workbenchImageExpanded && feedbackImage && currentPreviewUrl ? (
               <div className="absolute bottom-3 right-3 z-10">
                 <StudioFeedbackPrompt studioImageId={feedbackImage.id} />
@@ -2771,7 +2800,7 @@ export function StudioClient({
               busy={isGenerating}
               overlay={workbenchImageExpanded}
               creditLabel={generateCreditLabel}
-              degradationCallout={toolDegradationCallout}
+              degradationCallout={degradationNote('dark', true)}
               onPresetChange={setExpandPreset}
               onLayoutChange={setExpandLayout}
               onApply={() => void handleExpandApply()}
@@ -2800,7 +2829,7 @@ export function StudioClient({
               onGenerate={() => void handleObjectEditGenerate()}
               onCancel={handleObjectEditClose}
               onClose={handleObjectEditClose}
-              degradationCallout={toolDegradationCallout}
+              degradationCallout={degradationNote('dark', true)}
             />
           ) : null
         }
@@ -2810,7 +2839,7 @@ export function StudioClient({
             lightingOptions={lightingOptions}
             surfaceOptions={surfaceOptions}
             backdropOptions={backdropOptions}
-            backdropHidden={backdropHidden}
+            backdropHidden={stagedBackdropHidden}
             controlsDisabled={controlsDisabled}
             isHydrated={isHydrated}
             isExtracting={isExtracting}
@@ -2836,6 +2865,7 @@ export function StudioClient({
               onToggle: handleToggleProp,
             }}
             hasPendingChanges={hasPendingChanges}
+            degradationNotice={degradationNote()}
             isGenerating={isGenerating}
             generateCreditLabel={generateCreditLabel}
             generateDisabled={
@@ -2916,12 +2946,23 @@ export function StudioClient({
           <StudioExportPanel
             sourceImageId={selectedImage?.id ?? null}
             sourceImageLabel={selectedShotLabel}
+            sourcePhoto={
+              selectedImage
+                ? {
+                    url: selectedImage.public_url,
+                    width: selectedImage.width,
+                    height: selectedImage.height,
+                    mimeType: selectedImage.mime_type,
+                  }
+                : null
+            }
             dishName={activeDish?.name ?? null}
             editorBusy={busy}
             dishBlocked={dishBlocked}
             creditBalance={creditBalance}
             onCreditBalanceChange={setCreditBalance}
             onReadyCountChange={setExportReadyCount}
+            onAiActiveChange={setExportAiActive}
           />
         }
       />
@@ -2946,6 +2987,12 @@ export function StudioClient({
         onCancel={handleCancelProModel}
       />
 
+      <StudioOverheadBackdropDialog
+        open={overheadBackdropWarningOpen}
+        onConfirm={confirmOverheadSwitch}
+        onCancel={() => setOverheadBackdropWarningOpen(false)}
+      />
+
       <StudioCreditsDialog open={creditsDialogOpen} onClose={() => setCreditsDialogOpen(false)} />
 
       {reshootEnabled && (
@@ -2961,7 +3008,7 @@ export function StudioClient({
           creditLabel={generateCreditLabel}
           busy={isGenerating}
           backdropUnavailable={backdropHidden}
-          degradationCallout={degradationCallout}
+          degradationCallout={degradationNote('light')}
         />
       )}
 

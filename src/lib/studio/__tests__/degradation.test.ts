@@ -66,29 +66,26 @@ describe('degradationWarningCopy', () => {
   it('stays silent until the next hop would be GEN 3', () => {
     expect(degradationWarningCopy(1)).toBeNull()
     expect(degradationWarningCopy(2)).toBeNull()
-    expect(degradationWarningCopy(3)?.title).toBe('This next shot will be GEN 3')
+    expect(degradationWarningCopy(3)?.line).toBe('Edited twice. Another edit can soften fine detail.')
+    expect(degradationWarningCopy(3)?.tone).toBe('muted')
   })
 
   it('strengthens copy at GEN 4 and GEN 5+', () => {
-    const three = degradationWarningCopy(3)
     const four = degradationWarningCopy(4)
     const five = degradationWarningCopy(5)
     const six = degradationWarningCopy(6)
-    expect(three?.body).toMatch(/soften detail/i)
-    expect(four?.title).toBe('This next shot will be GEN 4')
-    expect(four?.body).toMatch(/often drops/i)
-    expect(four?.body.length ?? 0).toBeGreaterThan(three?.body.length ?? 0)
-    expect(five?.title).toBe('This next shot will be GEN 5')
-    expect(five?.body).toMatch(/likely to look worse/i)
-    expect(five?.body).toMatch(/still generate/i)
-    expect(six?.title).toBe('This next shot will be GEN 6')
-    expect(six?.body).toBe(five?.body)
+    expect(four?.line).toBe('Edited 3 times. Another edit often looks softer.')
+    expect(four?.tone).toBe('warm')
+    expect(five?.line).toBe('Edited 4 times. Another edit is likely to look softer.')
+    expect(five?.tone).toBe('gold')
+    expect(six?.line).toBe('Edited 5 times. Another edit is likely to look softer.')
+    expect(six?.tone).toBe('gold')
   })
 
-  it('keeps the tree CTA on every tier', () => {
-    expect(degradationWarningCopy(3)?.cta).toBe('View shot tree')
-    expect(degradationWarningCopy(4)?.cta).toBe('View shot tree')
-    expect(degradationWarningCopy(5)?.cta).toBe('View shot tree')
+  it('keeps the earlier-photo CTA on every tier', () => {
+    expect(degradationWarningCopy(3)?.cta).toBe('Use an earlier photo')
+    expect(degradationWarningCopy(4)?.cta).toBe('Use an earlier photo')
+    expect(degradationWarningCopy(5)?.cta).toBe('Use an earlier photo')
   })
 })
 

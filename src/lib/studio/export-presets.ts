@@ -17,11 +17,7 @@ export type StudioExportVariantType =
 
 export type StudioExportFileType = 'jpg' | 'png' | 'webp'
 
-export type StudioExportGenerationMethod =
-  | 'crop_resize'
-  | 'ai_expand'
-  | 'ai_recompose'
-  | 'cutout'
+export type StudioExportGenerationMethod = 'crop_resize' | 'ai_expand' | 'ai_recompose' | 'cutout'
 
 export type StudioExportStatus = 'empty' | 'queued' | 'generating' | 'ready' | 'failed'
 
@@ -133,7 +129,7 @@ export const EXPORT_PRESETS: readonly StudioExportPreset[] = [
 ] as const
 
 const PRESET_BY_KEY = new Map<string, StudioExportPreset>(
-  EXPORT_PRESETS.map((preset) => [preset.key, preset]),
+  EXPORT_PRESETS.map((preset) => [preset.key, preset])
 )
 
 export function getExportPreset(key: string): StudioExportPreset | null {
@@ -181,17 +177,14 @@ export interface ExportSourceDimensions {
 export function resolveExportGenerationMethod(
   preset: StudioExportPreset,
   source: ExportSourceDimensions | null,
-  options?: { aiExpandEnabled?: boolean },
+  options?: { aiExpandEnabled?: boolean }
 ): StudioExportGenerationMethod {
   if (preset.baseMethod === 'cutout') return 'cutout'
   if (!preset.expandMethod) return preset.baseMethod
   if (options?.aiExpandEnabled === false) return preset.baseMethod
   if (!source || source.width <= 0 || source.height <= 0) return preset.baseMethod
 
-  const kept = centreCropKeptFraction(
-    source.width / source.height,
-    preset.width / preset.height,
-  )
+  const kept = centreCropKeptFraction(source.width / source.height, preset.width / preset.height)
   return 1 - kept > preset.maxCropLoss ? preset.expandMethod : preset.baseMethod
 }
 
@@ -201,20 +194,91 @@ export function formatExportCreditLabel(credits: number): string {
   return `${credits} credit${credits === 1 ? '' : 's'}`
 }
 
+/**
+ * True while a paid export is being made. A straight crop or resize stays
+ * off this path, so the generation stopwatch does not run for it.
+ */
+export function isAiExportInFlight(
+  method: StudioExportGenerationMethod,
+  status: StudioExportStatus
+): boolean {
+  if (method === 'crop_resize') return false
+  return status === 'queued' || status === 'generating'
+}
+
 export function formatExportDimensions(preset: StudioExportPreset): string {
   return `${preset.width} × ${preset.height} (${preset.aspectRatio})`
 }
 
-/** Filename used when a variant is downloaded. */
-export function buildExportFilename(
-  preset: StudioExportPreset,
-  dishName?: string | null,
-): string {
+function exportDishPrefix(dishName?: string | null): string {
   const slug = (dishName ?? '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 40)
-  const prefix = slug ? `${slug}-` : ''
-  return `${prefix}${preset.key}-${preset.width}x${preset.height}.${preset.fileType}`
+  return slug ? `${slug}-` : ''
+}
+
+/** Filename used when a variant is downloaded. */
+export function buildExportFilename(preset: StudioExportPreset, dishName?: string | null): string {
+  return `${exportDishPrefix(dishName)}${preset.key}-${preset.width}x${preset.height}.${preset.fileType}`
+}
+
+/** File extension for a direct download of the current photo. */
+export function extensionForImageMime(mimeType: string | null | undefined): StudioExportFileType {
+  if (mimeType === 'image/png') return 'png'
+  if (mimeType === 'image/webp') return 'webp'
+  return 'jpg'
+}
+
+function greatestCommonDivisor(a: number, b: number): number {
+  let x = Math.abs(a)
+  let y = Math.abs(b)
+  while (y) {
+    const next = x % y
+    x = y
+    y = next
+  }
+  return x || 1
+}
+
+function formatRatioAgainstOne(value: number): string {
+  const rounded = Math.round(value * 100) / 100
+  if (Number.isInteger(rounded)) return String(rounded)
+  return rounded.toFixed(2).replace(/0$/, '')
+}
+
+/**
+ * Exact aspect label for a photo's pixel size.
+ * Reduces 1024×1536 to 2:3. Falls back to a two-decimal ratio when the
+ * reduced fraction would still be an awkward pair of large numbers.
+ */
+export function formatSourceAspectRatio(width: number, height: number): string {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return ''
+  }
+  const w = Math.round(width)
+  const h = Math.round(height)
+  const divisor = greatestCommonDivisor(w, h)
+  const reducedWidth = w / divisor
+  const reducedHeight = h / divisor
+  if (reducedWidth <= 32 && reducedHeight <= 32) {
+    return `${reducedWidth}:${reducedHeight}`
+  }
+  if (w >= h) return `${formatRatioAgainstOne(w / h)}:1`
+  return `1:${formatRatioAgainstOne(h / w)}`
+}
+
+/** Filename for downloading the current photo without resizing it. */
+export function buildAsIsExportFilename(
+  dishName: string | null | undefined,
+  size: { width: number | null; height: number | null },
+  mimeType?: string | null
+): string {
+  const ext = extensionForImageMime(mimeType)
+  const { width, height } = size
+  if (typeof width === 'number' && typeof height === 'number' && width > 0 && height > 0) {
+    return `${exportDishPrefix(dishName)}as-is-${Math.round(width)}x${Math.round(height)}.${ext}`
+  }
+  return `${exportDishPrefix(dishName)}as-is.${ext}`
 }

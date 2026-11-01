@@ -306,11 +306,8 @@ export function StudioObjectEditPanel({
         </div>
       )}
       <StudioObjectEditStatus selection={selection} rejection={rejection} operation={operation} />
-      {overlay ? null : degradationCallout}
-      <div className={overlay ? 'flex flex-wrap items-center gap-2' : undefined}>
-        {overlay ? degradationCallout : null}
-        <StudioObjectEditControls {...controls} operation={operation} showClose={!overlay} />
-      </div>
+      {degradationCallout}
+      <StudioObjectEditControls {...controls} operation={operation} showClose={!overlay} />
     </section>
   )
 }

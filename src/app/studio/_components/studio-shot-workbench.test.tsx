@@ -303,6 +303,35 @@ describe('StudioShotWorkbench', () => {
     expect(onCloseExpand).toHaveBeenCalled()
   })
 
+  it('places the generation note under the photo and hides it while the preview is expanded', () => {
+    const note = <p data-testid="studio-degradation-callout">Edited twice</p>
+    const { rerender } = render(
+      <StudioShotWorkbench
+        {...workbenchProps}
+        tab="scene"
+        onTab={jest.fn()}
+        degradationNotice={note}
+      />,
+    )
+    const callout = screen.getByTestId('studio-degradation-callout')
+    const toolbar = screen.getByTestId('studio-workbench-toolbar')
+    expect(
+      screen.getByText('canvas').compareDocumentPosition(callout) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(callout.compareDocumentPosition(toolbar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    rerender(
+      <StudioShotWorkbench
+        {...workbenchProps}
+        tab="scene"
+        onTab={jest.fn()}
+        expanded
+        degradationNotice={note}
+      />,
+    )
+    expect(screen.queryByTestId('studio-degradation-callout')).not.toBeInTheDocument()
+  })
+
   it('keeps Reframe, Expand, and Remove panels out of the inline workbench', () => {
     render(
       <StudioShotWorkbench
@@ -425,6 +454,28 @@ describe('StudioScenePanel', () => {
     fireEvent.click(toggle)
     expect(onVerticalSwitch).toHaveBeenCalled()
     expect(screen.queryByTestId('studio-yaw-beta')).not.toBeInTheDocument()
+  })
+
+  it('explains that a staged overhead shot unselects the backdrop', () => {
+    const stagedOverhead: EditorState = {
+      ...editorState,
+      schema: {
+        ...editorState.schema,
+        scene_setup: { ...editorState.schema.scene_setup, angle: 'top-down' },
+        canvas: { ...editorState.schema.canvas, background_style: '' },
+      },
+    }
+    renderPanel({
+      editorState: stagedOverhead,
+      workingAngle: '45-degree',
+      backdropHidden: true,
+      backdropOptions: [
+        { id: 'b1', label: 'Warm sand', assetBasename: 'backdrops/backdrop-warm-sand', value: 'warm-sand' },
+      ],
+    })
+    fireEvent.click(screen.getByTestId('studio-scene-section-backdrop'))
+    expect(screen.getByRole('status')).toHaveTextContent(/Overhead shots do not show a wall/)
+    expect(screen.getByRole('radio', { name: 'Warm sand' })).toBeDisabled()
   })
 
   it('shows a switch to angled from an overhead working shot', () => {
@@ -638,6 +689,15 @@ describe('StudioScenePanel', () => {
     expect(generate).not.toBeDisabled()
     fireEvent.click(generate)
     expect(onGenerate).toHaveBeenCalled()
+  })
+
+  it('pins the generation note above Generate', () => {
+    renderPanel({
+      degradationNotice: <p data-testid="studio-degradation-callout">Edited twice</p>,
+    })
+    const note = screen.getByTestId('studio-degradation-callout')
+    const generate = screen.getByTestId('generate-image-button')
+    expect(note.compareDocumentPosition(generate) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('shows the account gate instead of a credit price for guests', () => {

@@ -9,10 +9,14 @@
 import {
   CUTOUT_CANVAS_PADDING_RATIO,
   EXPORT_PRESETS,
+  buildAsIsExportFilename,
   buildExportFilename,
   centreCropKeptFraction,
+  extensionForImageMime,
+  formatSourceAspectRatio,
   formatExportCreditLabel,
   formatExportDimensions,
+  isAiExportInFlight,
   getExportPreset,
   isStudioExportVariantType,
   resolveExportGenerationMethod,
@@ -26,13 +30,13 @@ const RESIZABLE = EXPORT_PRESETS.filter((preset) => preset.baseMethod !== 'cutou
 function decide(
   width: number,
   height: number,
-  aiExpandEnabled = true,
+  aiExpandEnabled = true
 ): Record<StudioExportVariantType, StudioExportGenerationMethod> {
   return Object.fromEntries(
     EXPORT_PRESETS.map((preset) => [
       preset.key,
       resolveExportGenerationMethod(preset, { width, height }, { aiExpandEnabled }),
-    ]),
+    ])
   ) as Record<StudioExportVariantType, StudioExportGenerationMethod>
 }
 
@@ -109,8 +113,8 @@ describe('resolveExportGenerationMethod', () => {
         resolveExportGenerationMethod(
           preset,
           { width: 2048, height: 2048 },
-          { aiExpandEnabled: false },
-        ),
+          { aiExpandEnabled: false }
+        )
       ).toBe('crop_resize')
     }
   })
@@ -118,14 +122,10 @@ describe('resolveExportGenerationMethod', () => {
   it('falls back to a free resize when hero dimensions are unknown', () => {
     for (const preset of RESIZABLE) {
       expect(resolveExportGenerationMethod(preset, null, { aiExpandEnabled: true })).toBe(
-        'crop_resize',
+        'crop_resize'
       )
       expect(
-        resolveExportGenerationMethod(
-          preset,
-          { width: 0, height: 0 },
-          { aiExpandEnabled: true },
-        ),
+        resolveExportGenerationMethod(preset, { width: 0, height: 0 }, { aiExpandEnabled: true })
       ).toBe('crop_resize')
     }
   })
@@ -138,10 +138,10 @@ describe('resolveExportGenerationMethod', () => {
       const justOutside = target / (1 - preset.maxCropLoss - 0.01)
 
       expect(
-        resolveExportGenerationMethod(preset, { width: justInside * 1000, height: 1000 }),
+        resolveExportGenerationMethod(preset, { width: justInside * 1000, height: 1000 })
       ).toBe('crop_resize')
       expect(
-        resolveExportGenerationMethod(preset, { width: justOutside * 1000, height: 1000 }),
+        resolveExportGenerationMethod(preset, { width: justOutside * 1000, height: 1000 })
       ).toBe(preset.expandMethod)
     }
   })
@@ -205,19 +205,28 @@ describe('display helpers', () => {
     expect(formatExportCreditLabel(3)).toBe('3 credits')
   })
 
+  it('treats only in-flight AI exports as timed work', () => {
+    expect(isAiExportInFlight('crop_resize', 'generating')).toBe(false)
+    expect(isAiExportInFlight('crop_resize', 'queued')).toBe(false)
+    expect(isAiExportInFlight('ai_expand', 'empty')).toBe(false)
+    expect(isAiExportInFlight('ai_expand', 'ready')).toBe(false)
+    expect(isAiExportInFlight('ai_expand', 'generating')).toBe(true)
+    expect(isAiExportInFlight('ai_recompose', 'queued')).toBe(true)
+    expect(isAiExportInFlight('cutout', 'generating')).toBe(true)
+    expect(isAiExportInFlight('cutout', 'failed')).toBe(false)
+  })
+
   it('formats dimensions for the tile header', () => {
-    expect(formatExportDimensions(getExportPreset('delivery_landscape')!)).toBe(
-      '1600 × 900 (16:9)',
-    )
+    expect(formatExportDimensions(getExportPreset('delivery_landscape')!)).toBe('1600 × 900 (16:9)')
   })
 
   it('builds a safe filename from an arbitrary dish name', () => {
     const preset = getExportPreset('delivery_square')!
     expect(buildExportFilename(preset, 'Summer Curry Feature')).toBe(
-      'summer-curry-feature-delivery_square-1200x1200.jpg',
+      'summer-curry-feature-delivery_square-1200x1200.jpg'
     )
     expect(buildExportFilename(preset, '  Crème Brûlée!! ')).toBe(
-      'cr-me-br-l-e-delivery_square-1200x1200.jpg',
+      'cr-me-br-l-e-delivery_square-1200x1200.jpg'
     )
     expect(buildExportFilename(preset, null)).toBe('delivery_square-1200x1200.jpg')
     expect(buildExportFilename(preset, '///')).toBe('delivery_square-1200x1200.jpg')
@@ -226,5 +235,38 @@ describe('display helpers', () => {
   it('keeps filenames bounded for very long dish names', () => {
     const name = buildExportFilename(getExportPreset('pdf_menu_tile')!, 'a'.repeat(200))
     expect(name.length).toBeLessThan(80)
+  })
+})
+
+describe('as-is export', () => {
+  it('reduces the current pixel size to a readable aspect ratio', () => {
+    expect(formatSourceAspectRatio(1024, 1536)).toBe('2:3')
+    expect(formatSourceAspectRatio(1920, 1080)).toBe('16:9')
+    expect(formatSourceAspectRatio(1080, 1350)).toBe('4:5')
+    expect(formatSourceAspectRatio(1000, 1000)).toBe('1:1')
+    expect(formatSourceAspectRatio(1000, 1600)).toBe('5:8')
+    expect(formatSourceAspectRatio(4000, 3000)).toBe('4:3')
+  })
+
+  it('uses a short decimal ratio when the reduced fraction stays unwieldy', () => {
+    expect(formatSourceAspectRatio(1365, 1024)).toBe('1.33:1')
+  })
+
+  it('returns nothing for a missing size', () => {
+    expect(formatSourceAspectRatio(0, 100)).toBe('')
+    expect(formatSourceAspectRatio(Number.NaN, 100)).toBe('')
+  })
+
+  it('names the original file from the dish, pixel size, and mime type', () => {
+    expect(extensionForImageMime('image/png')).toBe('png')
+    expect(extensionForImageMime('image/webp')).toBe('webp')
+    expect(extensionForImageMime('image/jpeg')).toBe('jpg')
+    expect(extensionForImageMime(null)).toBe('jpg')
+    expect(
+      buildAsIsExportFilename('Summer Curry', { width: 1024, height: 1536 }, 'image/jpeg')
+    ).toBe('summer-curry-as-is-1024x1536.jpg')
+    expect(buildAsIsExportFilename(null, { width: null, height: null }, 'image/png')).toBe(
+      'as-is.png'
+    )
   })
 })

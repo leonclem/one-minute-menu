@@ -42,6 +42,8 @@ interface StudioLibraryReshootProps {
   sourceImage: StudioImageRecord | null
   disabled?: boolean
   onCreated: (image: StudioImageRecord) => void
+  /** True while the re-shoot request is in flight. */
+  onAiActiveChange?: (active: boolean) => void
 }
 
 export function StudioLibraryReshoot({
@@ -49,6 +51,7 @@ export function StudioLibraryReshoot({
   sourceImage,
   disabled = false,
   onCreated,
+  onAiActiveChange,
 }: StudioLibraryReshootProps) {
   const enabled = isStudioReshootEnabled()
   const [open, setOpen] = useState(false)
@@ -93,6 +96,12 @@ export function StudioLibraryReshoot({
       cancelled = true
     }
   }, [enabled])
+
+  useEffect(() => {
+    onAiActiveChange?.(busy)
+  }, [busy, onAiActiveChange])
+
+  useEffect(() => () => onAiActiveChange?.(false), [onAiActiveChange])
 
   const baseSchema = useMemo(() => {
     if (!sourceImage) return defaultEditorState().schema
