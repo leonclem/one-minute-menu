@@ -69,6 +69,11 @@ export interface StudioDishRecord {
 /** Dish row plus newest-shot preview URL and library counts for picker / home grid. */
 export interface StudioDishListItem extends StudioDishRecord {
   current_image_url: string | null
+  /**
+   * Uploaded photo the newest shot was edited from.
+   * Null when that shot is already the upload, or its upload is missing.
+   */
+  original_image_url: string | null
   shotCount: number
   readyExportCount: number
 }

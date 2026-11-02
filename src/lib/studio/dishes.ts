@@ -3,7 +3,10 @@
  */
 
 import { createAdminSupabaseClient } from '@/lib/supabase-server'
-import { attachStudioDishListStats } from '@/lib/studio/dish-list-stats'
+import {
+  attachStudioDishListStats,
+  type StudioDishListImageRow,
+} from '@/lib/studio/dish-list-stats'
 import { STUDIO_STORAGE_BUCKET } from '@/lib/studio/storage-paths'
 import type { StudioDishListItem, StudioDishRecord } from '@/lib/studio/types'
 
@@ -43,7 +46,7 @@ export async function listStudioDishesWithThumbnails(
   const [imagesResult, exportsResult] = await Promise.all([
     supabase
       .from('studio_images')
-      .select('id, dish_id, public_url, created_at')
+      .select('id, dish_id, role, source_image_id, public_url, created_at')
       .eq('user_id', userId)
       .is('archived_at', null),
     supabase
@@ -62,12 +65,7 @@ export async function listStudioDishesWithThumbnails(
 
   return attachStudioDishListStats(
     dishes,
-    (imagesResult.data ?? []) as {
-      id: string
-      dish_id: string | null
-      public_url: string
-      created_at: string
-    }[],
+    (imagesResult.data ?? []) as StudioDishListImageRow[],
     (exportsResult.data ?? []) as { dish_id: string }[],
   )
 }

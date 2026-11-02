@@ -28,6 +28,7 @@ function listedDish(overrides: Partial<StudioDishListItem> = {}): StudioDishList
     created_at: '2026-08-01T00:00:00.000Z',
     updated_at: '2026-08-02T00:00:00.000Z',
     current_image_url: 'https://cdn.example/2.png',
+    original_image_url: null,
     shotCount: 7,
     readyExportCount: 6,
     ...overrides,
@@ -58,6 +59,7 @@ describe('StudioDishesHome', () => {
             name: 'Mushroom Risotto',
             current_image_id: null,
             current_image_url: null,
+            original_image_url: null,
             shotCount: 0,
             readyExportCount: 0,
           }),
@@ -77,6 +79,40 @@ describe('StudioDishesHome', () => {
     expect(screen.getByText('7 shots · 6 files ready')).toBeInTheDocument()
     expect(screen.getByText('No photo yet')).toBeInTheDocument()
     expect(screen.getByText('M')).toBeInTheDocument()
+    expect(screen.queryByText('See original')).not.toBeInTheDocument()
+  })
+
+  it('offers the original upload on a dish whose newest shot is an edit', () => {
+    render(
+      <StudioDishesHome
+        {...homeProps}
+        dishes={[
+          listedDish({
+            original_image_url: 'https://cdn.example/og.png',
+          }),
+          listedDish({
+            id: 'd2',
+            name: 'Plain Upload',
+            current_image_url: 'https://cdn.example/plain.png',
+            original_image_url: null,
+          }),
+        ]}
+      />,
+    )
+
+    const edited = screen.getByRole('link', { name: /Chicken Burger/ })
+    const images = edited.querySelectorAll('img')
+    expect(images).toHaveLength(2)
+    expect(images[0]).toHaveAttribute('src', 'https://cdn.example/2.png')
+    expect(images[1]).toHaveAttribute('src', 'https://cdn.example/og.png')
+    expect(images[1]).toHaveClass('studio-dish-compare-original')
+    expect(edited).toHaveTextContent('See original')
+    expect(edited).toHaveTextContent('Original')
+    expect(screen.getByText('Hover a photo to compare it with the original.')).toBeInTheDocument()
+
+    const plain = screen.getByRole('link', { name: /Plain Upload/ })
+    expect(plain.querySelectorAll('img')).toHaveLength(1)
+    expect(plain).not.toHaveTextContent('See original')
   })
 
   it('uses the first-run panel as the empty home, without Your dishes chrome', () => {

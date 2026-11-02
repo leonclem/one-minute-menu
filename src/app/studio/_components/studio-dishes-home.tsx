@@ -22,7 +22,37 @@ interface StudioDishesHomeProps {
   isGuest?: boolean
 }
 
+function canCompareWithOriginal(dish: StudioDishListItem): boolean {
+  return Boolean(
+    dish.current_image_url &&
+      dish.original_image_url &&
+      dish.original_image_url !== dish.current_image_url,
+  )
+}
+
 function DishThumb({ dish }: { dish: StudioDishListItem }) {
+  const originalUrl = dish.original_image_url
+  if (dish.current_image_url && originalUrl && originalUrl !== dish.current_image_url) {
+    return (
+      <div className="studio-dish-compare">
+        {/* User-uploaded storage URLs vary by env; skip the Next optimizer. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={dish.current_image_url} alt="" className="h-full w-full object-cover" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={originalUrl}
+          alt=""
+          loading="lazy"
+          className="studio-dish-compare-original"
+        />
+        <span className="studio-dish-compare-label" aria-hidden="true">
+          <span className="studio-dish-compare-label-current">See original</span>
+          <span className="studio-dish-compare-label-original">Original</span>
+        </span>
+      </div>
+    )
+  }
+
   if (dish.current_image_url) {
     return (
       // User-uploaded storage URLs vary by env; skip the Next optimizer.
@@ -118,6 +148,7 @@ export function StudioDishesHome({
   const empty = listed.length === 0
   const showFirstRun = !firstRunDismissed
   const firstRunTakeover = empty && showFirstRun
+  const showOriginalHint = listed.some(canCompareWithOriginal)
 
   return (
     <div>
@@ -129,6 +160,12 @@ export function StudioDishesHome({
             </h1>
             <p className="mt-1 text-sm text-white/55">
               Open a dish to edit its photos, or add another.
+              {showOriginalHint ? (
+                <span className="studio-dish-compare-hint">
+                  {' '}
+                  Hover a photo to compare it with the original.
+                </span>
+              ) : null}
             </p>
           </div>
           <button

@@ -4,11 +4,11 @@
 >>>>>>>>>>>>>> NOW >>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-## /studio
-- [ ] "Rollover" (or similar) in all dishes page to see OG vs current
-
 ## Home Page
 - [ ] Update carousel to show off latest examples
+
+## /studio
+- [ ] For any given dish, on /studio/[dish-id] page, order picture from newest to oldest (currently oldest to newest)
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 >>>>>>>>>>>>> NEXT >>>>>>>>>>>>>>>>>
@@ -18,7 +18,6 @@
 - [ ] Newsletter email for those that signed up (opt-in/opt-out checkbox)
 
 ## /studio
-- [ ] For any given dish, on /studio/[dish-id] page, order picture from newest to oldest (currently oldest to newest)
 - [ ] Guide users on the ideal starting photo (for first upload) -> use examples
 - [ ] Revisit "re-shoot".  We have the description and the JSON - just send it!
 - [ ] Investigate "re-plate" prompt (preserving all food on the plate)
@@ -202,6 +201,7 @@
 - [x] Add stopwatch counter when generation starts
 - [x] If switching to overhead and backdrop is selected, warn that backdrop will be unselected
 - [x] "This next shot will be GEN n" is too prominent and potentially alarming
+- [x] "Rollover" (or similar) in all dishes page to see OG vs current
 
 ## Home Page
 - [x] Open Studio should not immediately require sign-ups, Generate should.

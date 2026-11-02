@@ -1,8 +1,10 @@
-import type { StudioDishListItem, StudioDishRecord } from '@/lib/studio/types'
+import type { StudioDishListItem, StudioDishRecord, StudioImageRole } from '@/lib/studio/types'
 
 export interface StudioDishListImageRow {
   id: string
   dish_id: string | null
+  role: StudioImageRole
+  source_image_id: string | null
   public_url: string
   created_at: string
 }
@@ -12,8 +14,33 @@ export interface StudioDishReadyExportRow {
 }
 
 interface LatestDishImage {
+  id: string
   createdAt: number
   url: string
+}
+
+/** Uploaded photo behind the newest shot, when that shot is an edit of a different image. */
+export function originalUrlForLatestShot(
+  latestId: string,
+  imagesById: ReadonlyMap<string, StudioDishListImageRow>,
+): string | null {
+  const latest = imagesById.get(latestId)
+  if (!latest) return null
+
+  let current = latest
+  const seen = new Set<string>()
+  while (seen.has(current.id) === false) {
+    seen.add(current.id)
+    if (current.role === 'source') {
+      if (current.id === latest.id || current.public_url === latest.public_url) return null
+      return current.public_url
+    }
+    if (!current.source_image_id) return null
+    const parent = imagesById.get(current.source_image_id)
+    if (!parent || parent.dish_id !== current.dish_id) return null
+    current = parent
+  }
+  return null
 }
 
 function timestamp(value: string | null | undefined): number {
@@ -23,8 +50,9 @@ function timestamp(value: string | null | undefined): number {
 }
 
 /**
- * Attach the newest-shot thumbnail, shot count, and ready-export count, then
- * order dishes by the later of the dish edit time and that shot's timestamp.
+ * Attach the newest-shot thumbnail, the upload it was edited from, shot count,
+ * and ready-export count, then order dishes by the later of the dish edit time
+ * and that shot's timestamp.
  */
 export function attachStudioDishListStats(
   dishes: StudioDishRecord[],
@@ -32,14 +60,18 @@ export function attachStudioDishListStats(
   readyExports: StudioDishReadyExportRow[],
 ): StudioDishListItem[] {
   const shotsByDish = new Map<string, number>()
+  const imagesByDish = new Map<string, Map<string, StudioDishListImageRow>>()
   const latestByDish = new Map<string, LatestDishImage>()
   for (const image of images) {
     if (!image.dish_id) continue
     shotsByDish.set(image.dish_id, (shotsByDish.get(image.dish_id) ?? 0) + 1)
+    const byId = imagesByDish.get(image.dish_id) ?? new Map<string, StudioDishListImageRow>()
+    byId.set(image.id, image)
+    imagesByDish.set(image.dish_id, byId)
     const createdAt = timestamp(image.created_at)
     const existing = latestByDish.get(image.dish_id)
     if (!existing || createdAt >= existing.createdAt) {
-      latestByDish.set(image.dish_id, { createdAt, url: image.public_url })
+      latestByDish.set(image.dish_id, { id: image.id, createdAt, url: image.public_url })
     }
   }
 
@@ -48,12 +80,17 @@ export function attachStudioDishListStats(
     readyByDish.set(row.dish_id, (readyByDish.get(row.dish_id) ?? 0) + 1)
   }
 
-  const listed = dishes.map((dish) => ({
-    ...dish,
-    current_image_url: latestByDish.get(dish.id)?.url ?? null,
-    shotCount: shotsByDish.get(dish.id) ?? 0,
-    readyExportCount: readyByDish.get(dish.id) ?? 0,
-  }))
+  const listed = dishes.map((dish) => {
+    const latest = latestByDish.get(dish.id)
+    const byId = imagesByDish.get(dish.id)
+    return {
+      ...dish,
+      current_image_url: latest?.url ?? null,
+      original_image_url: latest && byId ? originalUrlForLatestShot(latest.id, byId) : null,
+      shotCount: shotsByDish.get(dish.id) ?? 0,
+      readyExportCount: readyByDish.get(dish.id) ?? 0,
+    }
+  })
 
   return listed
     .map((dish, index) => ({ dish, index }))

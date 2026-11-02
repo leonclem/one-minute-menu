@@ -393,6 +393,69 @@
   border-color: var(--studio-border-strong);
 }
 
+.studio-dish-compare {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.studio-dish-compare-original {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 280ms ease;
+}
+
+.studio-dish-compare-label,
+.studio-dish-compare-hint {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .studio-dish-compare-hint {
+    display: inline;
+  }
+
+  .studio-dish-compare-label {
+    display: inline-flex;
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 1;
+    border-radius: 999px;
+    background: rgba(12, 20, 22, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #eef4f4;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    padding: 0.28rem 0.45rem;
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+  }
+
+  .studio-dish-compare-label-original {
+    display: none;
+  }
+
+  .studio-dish-card:hover .studio-dish-compare-original {
+    opacity: 1;
+  }
+
+  .studio-dish-card:hover .studio-dish-compare-label-current {
+    display: none;
+  }
+
+  .studio-dish-card:hover .studio-dish-compare-label-original {
+    display: inline;
+  }
+}
+
 .studio-shell .studio-on-plate .text-gray-700,
 .studio-shell .studio-on-plate .text-gray-800 {
   color: var(--studio-text);
