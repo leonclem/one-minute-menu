@@ -3,11 +3,12 @@
  *
  * POST /api/admin/cutout-worker
  *   — Manually trigger processing of pending cutout jobs.
- *   — Also invoked by Vercel Cron on a schedule.
  *
  * GET  /api/admin/cutout-worker
- *   — Called by Vercel Cron (cron jobs use GET). Authenticated via
- *     CRON_SECRET header instead of session cookie.
+ *   — Same work, authenticated via the CRON_SECRET bearer token.
+ *   — Not scheduled. Pending cutouts are drained by the Railway worker.
+ *     Restore the every-minute cron by adding this under `crons` in vercel.json:
+ *     { "path": "/api/admin/cutout-worker", "schedule": "* * * * *" }
  *
  * Requirements: 9.2
  */
@@ -40,8 +41,8 @@ export async function POST() {
 }
 
 /**
- * GET — Vercel Cron trigger.
- * Authenticated via CRON_SECRET to prevent unauthorized invocations.
+ * GET — CRON_SECRET-authenticated trigger.
+ * Kept so the vercel.json cron entry can be restored without a route change.
  */
 export async function GET(request: NextRequest) {
   try {

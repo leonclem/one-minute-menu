@@ -43,7 +43,7 @@ Required for image generation:
 - `REPLICATE_API_TOKEN`: required when `BACKGROUND_REMOVAL_PROVIDER=replicate`.
 - `REPLICATE_BACKGROUND_MODEL`: optional Replicate background-removal model override.
 
-**Cutouts:** After each successful image generation job, the Railway worker runs `processPendingCutouts()` so pending cutout rows are processed without relying on Vercel Cron. Keep `GET/POST /api/admin/cutout-worker` as a manual or cron **fallback** if you want redundancy; you may disable the cron once Railway cutout draining is verified in production.
+**Cutouts:** After each successful image generation job, the Railway worker runs `processPendingCutouts()`. The every-minute Vercel cron is not scheduled. `GET`/`POST /api/admin/cutout-worker` remain as a manual fallback. Restore the cron by adding `{ "path": "/api/admin/cutout-worker", "schedule": "* * * * *" }` under `crons` in `vercel.json`.
 
 Required or useful on the web app side:
 

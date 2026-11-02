@@ -34,12 +34,6 @@
       ]
     }
   ],
-  "crons": [
-    {
-      "path": "/api/admin/cutout-worker",
-      "schedule": "* * * * *"
-    }
-  ],
   "functions": {
     "src/app/api/extraction/submit/route.ts": {
       "maxDuration": 120
