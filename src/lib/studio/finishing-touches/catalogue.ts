@@ -6,7 +6,7 @@
 import { CAKE_FINISHING_TOUCH_CATALOGUE } from './catalogue-cake'
 import { SAVORY_FINISHING_TOUCH_MORE } from './catalogue-savory-more'
 
-export const MAX_FINISHING_TOUCH_LEVEL = 4
+export const MAX_FINISHING_TOUCH_LEVEL = 6
 export const DEFAULT_FINISHING_TOUCH_LEVEL = 2
 
 export type FinishingTouchFamily = 'savory' | 'cake'

@@ -188,6 +188,7 @@ export async function POST(request: NextRequest) {
           : {},
       labels,
       includePromptFragmentFallback: false,
+      ...(finishingTouches ? { finishingTouchAmount: finishingTouches.amount } : {}),
     })
     const vesselSwap = stagedVesselSwap(originalSchema, targetSchema)
     if (vesselSwap) {

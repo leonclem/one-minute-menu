@@ -146,6 +146,23 @@ describe('finishing-touches directive', () => {
     expect(placement).not.toContain('lightly scattered on the existing tabletop')
   })
 
+  it('raises quantity language for medium and high without changing the small wording', () => {
+    const small = placed(['Coriander', 'Powdered sugar', 'Chocolate drizzle'])
+    const medium = placed(['Coriander', 'Powdered sugar', 'Chocolate drizzle'], { amount: 'medium' })
+    const high = placed(['Coriander', 'Powdered sugar', 'Chocolate drizzle'], { amount: 'high' })
+    expect(small).toContain('at most one small whole sprig')
+    expect(small).toContain('light dusting on the food')
+    expect(small).toContain('thin zigzag drizzle')
+    expect(medium).toContain('clearly visible garnish')
+    expect(medium).toContain('clearly visible dusting')
+    expect(medium).toContain('a few thin zigzag drizzles')
+    expect(medium).not.toContain('at most one small whole sprig')
+    expect(high).toContain('generous scatter of finely chopped garnish')
+    expect(high).toContain('generous dusting')
+    expect(high).toContain('still not a flood or a sauce jug')
+    expect(high).toContain('Do not bury or fully coat the food')
+  })
+
   it('asks for a light powdered-sugar dusting on the food only', () => {
     const placement = placed(['Powdered sugar'])
     expect(placement).toContain('light dusting on the food')

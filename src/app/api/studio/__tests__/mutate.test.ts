@@ -328,6 +328,7 @@ describe('POST /api/studio/mutate', () => {
             stackIds: ['coriander', 'lime_wedge', 'red_chilli', 'cashews'],
             level: 2,
             auto: true,
+            amount: 'small',
           },
         }),
       }),

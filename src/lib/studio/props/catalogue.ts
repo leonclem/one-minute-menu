@@ -4,6 +4,7 @@
  */
 
 import type { FinishingTouchFamily } from '@/lib/studio/finishing-touches/catalogue'
+import { STUDIO_PROP_MORE } from './catalogue-more'
 
 export type StudioPropGroup = 'cutlery' | 'service' | 'ingredients' | 'baking' | 'greenery'
 export type StudioPropAudience = FinishingTouchFamily | 'any'
@@ -50,13 +51,13 @@ export const STUDIO_PROPS: readonly StudioProp[] = [
   },
   {
     id: 'unfolded-napkin',
-    label: 'Unfolded napkin',
+    label: 'Bunched napkin',
     group: 'service',
     audience: 'any',
     description:
-      'One unused ivory linen napkin, opened flat into a square about 40 cm on each side, with a soft wrinkle and a visible hem. No embroidery, monogram, or napkin ring.',
+      'One clean ivory linen napkin, loosely bunched into a soft crumpled pile about 14 cm across, as if it has just been used and set down. Not dirty, not stained, not opened flat, and not folded into a neat rectangle. No embroidery, monogram, or napkin ring.',
     placement:
-      'Lay it flat on the existing tabletop beside the vessel, not underneath the vessel and not covering the food.',
+      'Set the bunched napkin on the existing tabletop beside the vessel, not underneath the vessel and not touching the food.',
   },
   {
     id: 'fork',
@@ -442,6 +443,7 @@ export const STUDIO_PROPS: readonly StudioProp[] = [
     placement:
       'Set it on the existing tabletop behind the vessel, farther from the camera than the dish. Keep it secondary and slightly softer in focus. Do not cover the food, widen the frame, or replace the backdrop.',
   },
+  ...STUDIO_PROP_MORE,
 ]
 
 const BY_ID = new Map(STUDIO_PROPS.map((prop) => [prop.id, prop]))

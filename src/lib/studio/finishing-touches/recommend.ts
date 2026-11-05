@@ -94,7 +94,7 @@ export function buildFinishingTouchesUserPrompt(
       ? `Currently present on this variant: ${existing.join(', ')}.`
       : 'The current variant has no listed garnishes or sides.',
     'Return family as "savory" or "cake", plus catalogue ids from that family in best-first order.',
-    'Dessert bakes are family cake, including cake, cheesecake, cupcake, pie, brownie, cookie, gateau, torte, pavlova, and banana bread. Chocolate, caramel, or a fruit tart also means family cake. A savoury tart, such as tomato or onion, is family savory.',
+    'Dessert bakes are family cake, including cake, cheesecake, cupcake, pie, brownie, cookie, gateau, torte, pavlova, and banana bread. Acai bowls, smoothie bowls, granola bowls, and chia bowls are family cake too. Chocolate, caramel, or a fruit tart also means family cake. A savoury tart, such as tomato or onion, is family savory.',
     'Crab cakes, fish cakes, corn cakes, rice cakes, potato cakes, shepherd\'s pie, cottage pie, pot pie, meat pie, and anything uncertain are family savory.',
     `Recommend up to ${FINISHING_TOUCH_SUGGESTION_LIMIT} ids from the chosen family, best-first. Return fewer when a garnish is not genuinely appropriate.`,
     'When family is cake, choose only from cake ids. When family is savory, choose only from savory ids.',

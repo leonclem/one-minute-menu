@@ -2,6 +2,7 @@
  * @jest-environment node
  */
 
+import { browseGroupCoverage } from '../browse'
 import {
   FINISHING_TOUCH_CATALOGUE,
   CAKE_FINISHING_TOUCH_CATALOGUE,
@@ -55,7 +56,15 @@ describe('finishing-touch catalogue', () => {
     expect(FINISHING_TOUCH_CATALOGUE.length).toBeGreaterThanOrEqual(15)
     expect(FINISHING_TOUCH_CATALOGUE.length).toBeLessThanOrEqual(50)
     expect(CAKE_FINISHING_TOUCH_CATALOGUE.length).toBeGreaterThanOrEqual(6)
-    expect(CAKE_FINISHING_TOUCH_CATALOGUE.length).toBeLessThanOrEqual(40)
+    expect(CAKE_FINISHING_TOUCH_CATALOGUE.length).toBeLessThanOrEqual(45)
+  })
+
+  it('lists every garnish in exactly one browse group for its family', () => {
+    expect(browseGroupCoverage('savory')).toEqual({ missing: [], duplicates: [] })
+    expect(browseGroupCoverage('cake')).toEqual({ missing: [], duplicates: [] })
+    expect(getFinishingTouchById('desiccated_coconut')?.prep).toBe('dusted')
+    expect(getFinishingTouchById('sliced_bananas')?.placements).toEqual(['on-food'])
+    expect(getFinishingTouchById('toasted_coconut_chips')?.prep).toBe('whole')
   })
 
   it('resolves coriander aliases', () => {
@@ -141,8 +150,10 @@ describe('finishing-touch catalogue', () => {
       'biscuit_crumbs',
       'cacao_nibs',
       'candied_ginger',
+      'candied_lemon_peel',
       'candied_orange_peel',
       'caramel_drizzle',
+      'chocolate_chips',
       'chocolate_drizzle',
       'chocolate_shavings',
       'chopped_pecans',
@@ -151,10 +162,13 @@ describe('finishing-touch catalogue', () => {
       'cocoa_dusting',
       'cream_swirl',
       'crushed_hazelnuts',
+      'crushed_meringue',
+      'desiccated_coconut',
       'edible_pansies',
       'edible_rose_petals',
       'fresh_berries',
       'fresh_fig_slices',
+      'fresh_strawberry_slices',
       'honey_drizzle',
       'kiwi_slices',
       'lemon_curd_swirl',
@@ -166,6 +180,7 @@ describe('finishing-touch catalogue', () => {
       'passion_fruit_pulp',
       'pistachio_crumbs',
       'powdered_sugar',
+      'sliced_bananas',
       'toasted_coconut_chips',
       'toasted_flaked_almonds',
       'white_chocolate_drizzle',

@@ -22,20 +22,20 @@ Studio ethos still holds: the original extract `MinimalSchema` (then each varian
 
 All of this lives in the **Elements** accordion on `/studio`, below the existing garnish/side lists (those lists stay **remove-only**).
 
-1. Click **Add finishing touches**. GridMenu loads suggestions for the current image (cached per image; the button does not refetch until you switch variants). Both savoury dishes and cakes get a ranked list of up to 12 garnishes. The first four show as chips; **Show more** reveals the next four from that same response. You can select **up to four** for Generate. The same request also ranks up to four props, which appear as chips in the Props section.
-2. Toggle chips on or off (`+` / `✓`). Nothing is generated yet. Helper copy: “Stages garnishes for Generate.”
-3. Optionally stage lighting, surface, or backdrop as well. Finishing touches count as **one** pending Elements change, so they can sit with two other staged attributes under the cap of 3.
-4. Click **Generate**. Credits are the same as any other mutate (NB2 = 1, NB Pro = 2). Recommend itself is free (text-only).
-5. Before Generate, deselect chips, or **Discard** to clear the selection (the suggestion list stays until you change image).
-6. Detected garnishes/sides from extract can still be removed in the Elements lists. Staged finishing touches do **not** appear in those lists; they are applied only at Generate time so extract items stay the ones you can remove.
+1. Click **Add finishing touches**. GridMenu loads suggestions for the current image (cached per image; the button does not refetch until you switch variants). Both savoury dishes and cakes get a ranked list of up to 12 garnishes. The first four show as chips; **Show more** reveals the next four from that same response. **Browse garnishes** opens the rest of that family's catalogue, grouped, and a pick from there stays as a chip. Before suggestions load, the link is shown only when the dish name, main item, or photo description already reads as cake. Otherwise it appears once **Add finishing touches** returns a family. You can select **up to six** for Generate. The same request also ranks up to four props, which appear as chips in the Props section.
+2. After the suggestions load, a **Small / Medium / High** slider sets the amount. It stays hidden until then. Small is the original restrained wording. Medium and high ask for more of each selected garnish, with a ceiling so the dish stays visible and drizzles do not become a flood. The amount applies to the whole selection. The dish JSON still stores the catalogue name only.
+3. Toggle chips on or off (`+` / `✓`). Nothing is generated yet. Helper copy: “Stages garnishes for Generate.”
+4. Optionally stage lighting, surface, or backdrop as well. Finishing touches count as **one** pending Elements change, so they can sit with two other staged attributes under the cap of 3.
+5. Click **Generate**. Credits are the same as any other mutate (NB2 = 1, NB Pro = 2). Recommend itself is free (text-only). The amount is sent with the finishing-touches metadata and written into the placement sentences on the server.
+6. Before Generate, deselect chips, or **Discard** to clear the selection and return the amount to Small (the suggestion list stays until you change image).
+7. Detected garnishes/sides from extract can still be removed in the Elements lists. Staged finishing touches do **not** appear in those lists; they are applied only at Generate time so extract items stay the ones you can remove.
 
 If ranking finds nothing new (everything suggested is already on the dish), Elements shows: “This dish already looks finished.”
 
 ### What the user cannot do (MVP)
 
 - Type a free-text garnish (admin Photo Control still can; FOH cannot).
-- Browse the full garnish catalogue. Only the ranked shortlist is shown (up to 12, four at a time). Props can be browsed in full from **Browse props** / **Show more**.
-- Draw placement, set counts, density, or intensity (Subtle / Styled / Abundant).
+- Draw placement, or set a different amount on each garnish. Amount is one control for the whole selection (Small / Medium / High).
 - Add extra bowls, cutlery, napkins, glasses, or a second serving.
 - Ask this control to change the tabletop or backdrop (those remain Lighting / Surface / Backdrop).
 
@@ -47,8 +47,8 @@ Selected catalogue names are appended to `food_components.garnishes` (or `sides`
 
 - Add **only** those named items.
 - Place them on the food and/or vessel according to catalogue placement hints.
-- Scatter a few matching pieces on the **existing** table around the vessel when the item allows `scene` placement.
-- Keep placement irregular and restrained (not a grid).
+- Scatter matching pieces on the **existing** table around the vessel when the item allows `scene` placement. Small asks for a few. Medium and high ask for more, and still leave the table visible.
+- Keep placement irregular (not a grid). Small stays restrained. Medium is clearly visible. High is generous without burying the dish.
 - Not add extra bowls, serving dishes, cutlery, napkins, glasses, ramekins, or unrelated props.
 - Not change dish, plating, vessel, crop, or camera.
 - Leave lighting, surface, and backdrop unchanged **unless** those are also in the same Generate delta.
@@ -61,13 +61,13 @@ The child variant stores the target JSON (parent extract plus the added names). 
 
 | Piece | Where | Notes |
 |---|---|---|
-| Catalogue | `src/lib/studio/finishing-touches/catalogue.ts` plus `catalogue-cake.ts` | Code, not a DB table. 43 savoury items; 32 cake items. Family defaults to savoury. Props live in `src/lib/studio/props/catalogue.ts` (39 items). |
+| Catalogue | `src/lib/studio/finishing-touches/catalogue.ts` plus `catalogue-cake.ts` | Code, not a DB table. 44 savoury items; 38 cake items. Family defaults to savoury. Props live in `src/lib/studio/props/catalogue.ts` and `catalogue-more.ts`. |
 | Ranker | `POST /api/studio/finishing-touches/recommend` | Uses dish name, `main_item`, current garnishes/sides, extract `description`. Returns `family` (`savory` or `cake`), up to 12 garnish ids, and up to 4 prop ids. Missing/invalid family is treated as savoury. `gemini-2.5-flash` (`STUDIO_EXTRACTION_MODEL`). |
 | Fallback stack | savoury: coriander, lime wedges, red chilli, sesame seeds; cake: fresh berries, powdered sugar, chocolate shavings, mint sprig | Used when ranking is empty, unknown, or the API key is missing. Cake fallback is only used when family is cake (or a dessert-cake keyword assist on API failure). Items already on the dish are skipped. |
 | Staging | `src/lib/studio/finishing-touches/stage.ts` | Selection lives in client state; schema is updated at Generate. |
 | Apply names | `applyFinishingTouchesLevel` in `apply-level.ts` | Still “first N of a stack”; Generate passes the **selected** items as that stack, with N = selection count. |
 | Prompt | `directive.ts` + `directive-generator.ts` | One bundled addition clause for any garnish/side adds. Drizzle/swirl removals restore the cake or plate surface instead of filling with background texture. |
-| Persist | mutate `metadata.finishingTouches` | `{ stackIds, level, auto: true }` where `level` is the number selected and `auto: true` means catalogue-ranked (not free text). |
+| Persist | mutate `metadata.finishingTouches` | `{ stackIds, level, auto: true, amount }` where `level` is the number selected, `auto: true` means catalogue-ranked (not free text), and `amount` is `small`, `medium`, or `high`. Older rows with no amount are read as small. |
 | Analytics | `studio_finishing_touches_recommended`; generate events with `generation_kind: finishing_touches` and `count_bucket` | Allow-listed scalars only. No prompts or image content. |
 | Change chip | `Finishing touches: N selected` plus `Added garnish: …` | `src/lib/studio/change-summary.ts` |
 
@@ -100,7 +100,7 @@ Aliases (cilantro / coriander, chili / chilli, and so on) stop the ranker from s
 
 Cake is opt-in on the recommend call. The extract JSON and `MinimalSchema` do **not** store a dish family. If Gemini omits `family`, or returns anything other than `cake`, ranking stays on the savoury catalogue and savoury fallback. Crab, fish, corn, rice, and potato cakes are savoury.
 
-Cake items have no table scatter. Schema field is `garnishes`. One default style is baked into each drizzle/swirl prompt; there is no style picker. The cake shortlist is the ranked ids only (up to 12), same as savoury. Generate still applies at most four selected names.
+Cake items have no table scatter. Schema field is `garnishes`. One default style is baked into each drizzle/swirl prompt; there is no style picker. The cake shortlist is the ranked ids only (up to 12), same as savoury. Generate still applies at most six selected names.
 
 | Display name | Typical placement |
 |---|---|
@@ -117,16 +117,19 @@ Cake items have no table scatter. Schema field is `garnishes`. One default style
 | Chopped pecans, crushed hazelnuts, cocoa dusting, orange zest, fresh fig slices | on cake only |
 | Caramel drizzle | thin zigzag on cake and/or plate; not a flood |
 | Edible rose petals | on cake, plus a few pieces on the existing plate |
+| Sliced bananas, fresh strawberry slices | thin slices on the cake only |
+| Desiccated coconut | fine shreds, using the dusting sentence, on the cake only. Separate from toasted coconut chips |
+| Chocolate chips, crushed meringue, candied lemon peel | on the cake only |
 
 Named drizzles and swirls can be removed through the existing Elements list once they appear on the JSON (including after a previous Generate). Removal asks the model to restore the cake or plate surface. Unnamed original-photo sauces still use draw-to-remove. Extract is unchanged.
 
-Keyword assist filters **Browse props** before a rank exists. Cake, pie, and brownie count as dessert. A tart does not, unless the name also contains chocolate, caramel, or a fruit. Savoury cakes and savoury pies stay savoury. The same guess is the fallback when the recommend API key is missing or the ranker request fails. Once Gemini returns a family, that result replaces it.
+Keyword assist filters **Browse props** before a rank exists, using the dish name, main item, and photo description. Cake, pie, brownie, acai bowl, smoothie bowl, and granola bowl count as dessert. A tart does not, unless the name also contains chocolate, caramel, or a fruit. Savoury cakes and savoury pies stay savoury. The same guess is the fallback when the recommend API key is missing or the ranker request fails. Once Gemini returns a family, that result replaces it.
 
 ---
 
 ## What we learned while shaping MVP
 
-The first plan used **dressing levels** (level 1 = first item, level 2 = first two, and so on) so we could feel out how many adds Gemini can take. The shipped UI is a **ranked shortlist of chips** the user can mix. Generate still caps the payload at four garnish names. The suggestion list can hold up to 12, shown four at a time.
+The first plan used **dressing levels** (level 1 = first item, level 2 = first two, and so on) so we could feel out how many adds Gemini can take. The shipped UI is a **ranked shortlist of chips** the user can mix. Generate still caps the payload at six garnish names. The suggestion list can hold up to 12, shown four at a time.
 
 Live image quality (preservation, scatter restraint, combining with surface/lighting) was not fully proven in the implementation pass. Fixture tests cover massaman schemas and directives (`src/lib/studio/finishing-touches/__tests__/massaman-eval.test.ts`). A real `/studio` pass on the massaman before/after pair is still the way to decide default selection count and whether table scatter stays.
 
@@ -140,8 +143,8 @@ Roughly in product order, not a commitment.
 
 - Pre-select a tasteful default (e.g. two chips) after recommend, instead of an empty selection.
 - “Style it for me”: one click that selects a restrained subset and optionally Generate.
-- See more: shipped for the ranked window (four at a time, up to 12). A full garnish browser is still out.
-- Intensity: Subtle / Styled / Abundant as prompt density, not extra schema fields (parked).
+- See more: shipped for the ranked window (four at a time, up to 12). **Browse garnishes** lists the family catalogue.
+- Intensity: shipped as Small / Medium / High. Prompt density only. The stored garnish name does not change.
 - Named presets (“Fresh & vibrant”) that are combinations, not a bigger picker.
 
 ### Placement and scene
@@ -224,7 +227,7 @@ Added once the first wave held up. Prep and placement follow the existing senten
 ### Still not added, and why
 
 - Chervil, fennel fronds, savoury edible petals, sunflower seeds. Too close to dill, parsley, rose petals, or the seeds already listed.
-- Freeze-dried raspberry dust, freeze-dried strawberry crumbs, desiccated coconut, crushed meringue, chocolate chips, crushed macadamias, candied lemon peel, candied violets. Near-duplicates of cocoa, berries, coconut chips, hazelnuts, candied orange peel, or rose petals.
+- Freeze-dried raspberry dust, freeze-dried strawberry crumbs, crushed macadamias, candied violets. Near-duplicates of cocoa, berries, hazelnuts, or rose petals. Desiccated coconut, crushed meringue, chocolate chips, candied lemon peel, sliced bananas, and fresh strawberry slices shipped later as their own cake rows. Desiccated coconut uses the dusting sentence (fine shreds). Toasted coconut chips stay whole chips.
 - Salt cellar and a separate pepper mill. The wooden salt mill and the salt-and-pepper pair already cover them.
 - Cake knife beside the cake server. Halved lemon beside whole lemon and the lemon-wedge garnish. Rosemary sprigs beside the rosemary garnish.
 - Espresso cup, tea cup, water glass, milk jug. They tend to become a second subject.

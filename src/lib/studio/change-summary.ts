@@ -10,6 +10,8 @@ export interface ChangeSummaryLabelMaps {
   lightingLabels?: Record<string, string>
   backgroundLabels?: Record<string, string>
   finishingTouchesCount?: number
+  /** Omitted or small keeps the existing chip. Medium and high are named. */
+  finishingTouchAmount?: 'small' | 'medium' | 'high'
   propLabels?: readonly string[]
 }
 
@@ -24,9 +26,11 @@ export function buildChangeSummary(
   if (delta.isEmpty) return chips
 
   if (labels?.finishingTouchesCount) {
-    chips.push(
-      `Finishing touches: ${labels.finishingTouchesCount} selected`,
-    )
+    const amount =
+      labels.finishingTouchAmount && labels.finishingTouchAmount !== 'small'
+        ? `, ${labels.finishingTouchAmount} amount`
+        : ''
+    chips.push(`Finishing touches: ${labels.finishingTouchesCount} selected${amount}`)
   }
 
   for (const change of delta.scalarChanges ?? []) {

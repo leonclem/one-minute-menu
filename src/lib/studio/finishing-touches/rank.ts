@@ -41,6 +41,8 @@ const DESSERT_FRUIT_RE =
   /\b(apples?|lemons?|limes?|oranges?|berr(?:y|ies)|strawberr(?:y|ies)|raspberr(?:y|ies)|blueberr(?:y|ies)|blackberr(?:y|ies)|cherr(?:y|ies)|pears?|peach(?:es)?|plums?|apricots?|figs?|bananas?|mango(?:es|s)?|pineapples?|passion\s*fruits?|rhubarbs?|quinces?|grapes?|kiwis?|coconuts?|melons?|nectarines?|cranberr(?:y|ies)|gooseberr(?:y|ies)|currants?|pomegranates?|fruits?)\b/i
 const DESSERT_CAKE_RE =
   /\b(cupcakes?|cheesecakes?|gateaux|gateau|gâteau|tortes?|pies?|brownies?|blondies?|cookies?|doughnuts?|donuts?|eclairs?|profiteroles?|pavlovas?|tiramisu|macarons?|baklava|cannoli|gelato|ice\s*cream|mousses?|parfaits?|crumbles?|cobblers?|shortcakes?|birthday\s+cake|layer\s+cake|sponge\s+cake|bundt|banana\s+bread|loaf\s+cake)\b|\bcakes?\b/i
+/** Dessert bowls that are not cakes. Accents are stripped before this runs. */
+const DESSERT_BOWL_RE = /\b(acai|smoothie bowls?|granola bowls?|chia bowls?|chia puddings?)\b/i
 
 export function existingComponentNames(input: {
   garnishes?: readonly string[]
@@ -104,10 +106,13 @@ export function inferFinishingTouchFamilyFromText(input: {
   const text = [input.dishName, input.mainItem, input.description]
     .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
     .join(' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
   if (!text) return 'savory'
   if (SAVORY_CAKE_RE.test(text)) return 'savory'
   if (SAVORY_PIE_RE.test(text)) return 'savory'
   if (SWEET_SIGNAL_RE.test(text)) return 'cake'
+  if (DESSERT_BOWL_RE.test(text)) return 'cake'
   if (TART_RE.test(text) && DESSERT_FRUIT_RE.test(text)) return 'cake'
   if (DESSERT_CAKE_RE.test(text)) return 'cake'
   return 'savory'

@@ -29,6 +29,7 @@ import {
 import { ConfirmDialog } from '@/components/ui'
 import { buildChangeSummary } from '@/lib/studio/change-summary'
 import {
+  DEFAULT_FINISHING_TOUCH_AMOUNT,
   MAX_FINISHING_TOUCH_LEVEL,
   countStudioPendingChanges,
   editorStateWithFinishingTouches,
@@ -37,6 +38,7 @@ import {
   isFinishingTouchesStaged,
   parseFinishingTouchesMetadata,
   stackFromIds,
+  type FinishingTouchAmount,
   type FinishingTouchCatalogueItem,
   type FinishingTouchFamily,
 } from '@/lib/studio/finishing-touches'
@@ -424,6 +426,9 @@ export function StudioClient({
   const skipPendingChangeWarningRef = useRef(false)
   const [finishingStack, setFinishingStack] = useState<FinishingTouchCatalogueItem[]>([])
   const [finishingSelectedIds, setFinishingSelectedIds] = useState<string[]>([])
+  const [finishingAmount, setFinishingAmount] = useState<FinishingTouchAmount>(
+    DEFAULT_FINISHING_TOUCH_AMOUNT,
+  )
   const [finishingCacheKey, setFinishingCacheKey] = useState<string | null>(null)
   const [finishingLoading, setFinishingLoading] = useState(false)
   const [finishingError, setFinishingError] = useState<string | null>(null)
@@ -487,20 +492,24 @@ export function StudioClient({
   const feedbackImage = selectedImage?.role === 'generated' ? selectedImage : null
 
   const selectedFinishingStack = useMemo(
-    () => finishingStack.filter((item) => finishingSelectedIds.includes(item.id)),
-    [finishingSelectedIds, finishingStack],
+    () => stackFromIds(finishingSelectedIds),
+    [finishingSelectedIds],
   )
   const finishingStaged = isFinishingTouchesStaged(
     selectedFinishingStack,
     selectedFinishingStack.length,
   )
   const selectedProps = useMemo(() => propsFromIds(selectedPropIds), [selectedPropIds])
-  const propAudience =
-    finishingFamily ??
-    inferFinishingTouchFamilyFromText({
-      dishName: activeDish?.name,
-      mainItem: editorState.schema.food_components.main_item,
-    })
+  const extractObservations = extractionDiagnosticsRef.current?.observations
+  const extractDescription =
+    typeof extractObservations?.description === 'string' ? extractObservations.description : undefined
+  const familyGuess = inferFinishingTouchFamilyFromText({
+    dishName: activeDish?.name,
+    mainItem: editorState.schema.food_components.main_item,
+    description: extractDescription,
+  })
+  const propAudience = finishingFamily ?? familyGuess
+  const garnishBrowseAudience = finishingFamily ?? (familyGuess === 'cake' ? 'cake' : null)
   const propsStaged = selectedProps.length > 0
   const pendingDelta = useMemo(() => {
     void baselineVersion
@@ -686,6 +695,7 @@ export function StudioClient({
   const resetFinishingTouches = useCallback(() => {
     setFinishingStack([])
     setFinishingSelectedIds([])
+    setFinishingAmount(DEFAULT_FINISHING_TOUCH_AMOUNT)
     setFinishingCacheKey(null)
     setFinishingLoading(false)
     setFinishingError(null)
@@ -1439,6 +1449,7 @@ export function StudioClient({
     setPendingChangeCandidate(null)
     setDontShowPendingChangeWarning(false)
     setFinishingSelectedIds([])
+    setFinishingAmount(DEFAULT_FINISHING_TOUCH_AMOUNT)
     setSelectedPropIds([])
   }, [])
 
@@ -1502,6 +1513,7 @@ export function StudioClient({
             stackIds: selectedFinishingStack.map((item) => item.id),
             level: selectedFinishingStack.length,
             auto: true,
+            amount: finishingAmount,
           }
         : undefined,
     )
@@ -1510,6 +1522,7 @@ export function StudioClient({
       lightingLabels: lightingLabelMap,
       backgroundLabels: backgroundLabelMap,
       finishingTouchesCount: finishingTouches?.level,
+      finishingTouchAmount: finishingTouches?.amount,
       propLabels: selectedProps.map((prop) => prop.label),
     })
     const generationStartedAt = Date.now()
@@ -1709,6 +1722,7 @@ export function StudioClient({
     variants.length,
     creditBalance,
     selectedFinishingStack,
+    finishingAmount,
     selectedProps,
     resetFinishingTouches,
     router,
@@ -2854,8 +2868,11 @@ export function StudioClient({
                 finishingCacheKey !== null && finishingCacheKey === persistedSourceId,
               selectedIds: finishingSelectedIds,
               options: finishingStack,
+              amount: finishingAmount,
+              audience: garnishBrowseAudience,
               onRequestStack: () => void handleLoadFinishingTouches(),
               onToggle: handleToggleFinishingTouch,
+              onAmountChange: setFinishingAmount,
             }}
             sceneProps={{
               disabled: controlsDisabled,

@@ -55,6 +55,26 @@ describe('studio props catalogue', () => {
     const basil = getStudioProp('potted-basil')
     expect(basil?.audience).toBe('savory')
     expect(basil?.description).toContain('whole plant')
+    for (const id of ['olive-branch', 'eucalyptus']) {
+      const plant = getStudioProp(id)
+      expect(plant?.audience).toBe('any')
+      expect(plant?.group).toBe('greenery')
+      expect(plant?.placement).toContain('behind the vessel')
+    }
+  })
+
+  it('treats the used napkin as bunched and keeps baking leftovers off the food', () => {
+    const napkin = getStudioProp('unfolded-napkin')
+    expect(napkin?.label).toBe('Bunched napkin')
+    expect(napkin?.description).toContain('loosely bunched')
+    expect(napkin?.description).toContain('not opened flat')
+    const flour = getStudioProp('flour-dust')
+    expect(flour?.audience).toBe('cake')
+    expect(flour?.description).toContain('Not a pile')
+    expect(flour?.placement).toContain('Do not dust the food')
+    expect(getStudioProp('bunch-of-bananas')?.audience).toBe('cake')
+    expect(getStudioProp('folded-tea-towel')?.audience).toBe('any')
+    expect(getStudioProp('candle')?.description).toContain('does not change the lighting')
   })
 
   it('describes the salt props as wooden mills, without forbidding mills', () => {

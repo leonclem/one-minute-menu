@@ -8,8 +8,10 @@
 
 import type { MinimalSchema, StateDelta } from './minimal-schema'
 import {
-  FINISHING_TOUCHES_RULE,
+  DEFAULT_FINISHING_TOUCH_AMOUNT,
+  finishingTouchesRule,
   finishingTouchTargets,
+  type FinishingTouchAmount,
 } from '@/lib/studio/finishing-touches/directive'
 import {
   CURRENT_PLATE_FACING,
@@ -143,6 +145,8 @@ export interface BuildSceneDescriptorInput {
   labels: readonly string[]
   /** FOH callers omit legacy prose fallbacks so prompt_fragment cannot leak into payloads. */
   includePromptFragmentFallback?: boolean
+  /** Density for added garnishes. Omitted means the restrained small wording. */
+  finishingTouchAmount?: FinishingTouchAmount
 }
 
 export interface BuildReshootDescriptorInput {
@@ -502,13 +506,21 @@ function addComponentChange(
   }
 }
 
-function attachFinishingTouches(target: SceneDescriptorState, delta: StateDelta): void {
+function attachFinishingTouches(
+  target: SceneDescriptorState,
+  delta: StateDelta,
+  amount: FinishingTouchAmount = DEFAULT_FINISHING_TOUCH_AMOUNT,
+): void {
   const added = [...delta.arrays.garnishes.added, ...delta.arrays.sides.added]
   if (added.length === 0) return
   const surfaceChanging = delta.scalarChanges.some((change) => change.path === 'canvas.surface_style')
   const vesselChanging = delta.scalarChanges.some((change) => change.path === 'canvas.vessel_style')
-  target.finishingTouches = finishingTouchTargets(added, { surfaceChanging, vesselChanging })
-  target.finishingTouchesRule = FINISHING_TOUCHES_RULE
+  target.finishingTouches = finishingTouchTargets(added, {
+    surfaceChanging,
+    vesselChanging,
+    amount,
+  })
+  target.finishingTouchesRule = finishingTouchesRule(amount)
 }
 
 function addPositionChange(
@@ -606,6 +618,7 @@ export function buildSceneDescriptor({
   observations,
   labels,
   includePromptFragmentFallback = true,
+  finishingTouchAmount = DEFAULT_FINISHING_TOUCH_AMOUNT,
 }: BuildSceneDescriptorInput): SceneDescriptor {
   const current: SceneDescriptorState = {}
   const target: SceneDescriptorState = {}
@@ -648,7 +661,7 @@ export function buildSceneDescriptor({
   if (delta.arrays.sides.added.length > 0 || delta.arrays.sides.removed.length > 0) {
     addComponentChange(current, target, original, desired, 'sides')
   }
-  attachFinishingTouches(target, delta)
+  attachFinishingTouches(target, delta, finishingTouchAmount)
   addPositionChange(current, target, delta)
 
   return {

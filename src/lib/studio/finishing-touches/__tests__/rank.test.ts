@@ -205,6 +205,18 @@ describe('inferFinishingTouchFamilyFromText', () => {
     expect(inferFinishingTouchFamilyFromText({ dishName: "Shepherd's pie" })).toBe('savory')
     expect(inferFinishingTouchFamilyFromText({ dishName: 'Steak tartare' })).toBe('savory')
     expect(inferFinishingTouchFamilyFromText({ dishName: 'Massaman Curry' })).toBe('savory')
+    expect(inferFinishingTouchFamilyFromText({ mainItem: 'bowl of acai' })).toBe('cake')
+    expect(inferFinishingTouchFamilyFromText({ dishName: 'Açaí bowl' })).toBe('cake')
+    expect(inferFinishingTouchFamilyFromText({ mainItem: 'smoothie bowl' })).toBe('cake')
+    expect(inferFinishingTouchFamilyFromText({ description: 'A granola bowl with fruit.' })).toBe(
+      'cake',
+    )
+    expect(
+      inferFinishingTouchFamilyFromText({
+        dishName: 'Sunday special',
+        description: 'A slice of cake on a white plate.',
+      }),
+    ).toBe('cake')
   })
 })
 

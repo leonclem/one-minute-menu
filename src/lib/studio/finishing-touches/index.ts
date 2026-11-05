@@ -4,6 +4,7 @@ export {
   CAKE_FINISHING_TOUCH_CATALOGUE,
   ALL_FINISHING_TOUCH_CATALOGUE,
   MAX_FINISHING_TOUCH_LEVEL,
+  catalogueItemsForFamily,
   getFinishingTouchById,
   getFinishingTouchByName,
   stackFromIds,
@@ -31,6 +32,17 @@ export {
   finishingTouchesCountBucket,
   type FinishingTouchesMetadata,
 } from './metadata'
+export {
+  DEFAULT_FINISHING_TOUCH_AMOUNT,
+  FINISHING_TOUCH_AMOUNT_ORDER,
+  finishingTouchesRule,
+  isFinishingTouchAmount,
+  type FinishingTouchAmount,
+} from './amount'
+export {
+  browseGroupsForFamily,
+  type FinishingTouchBrowseGroup,
+} from './browse'
 export {
   FINISHING_TOUCHES_RULE,
   buildFinishingTouchesAdditionClause,

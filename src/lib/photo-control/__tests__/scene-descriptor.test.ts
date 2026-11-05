@@ -361,6 +361,27 @@ describe('buildSceneDescriptor', () => {
       },
     ])
     expect(result.target.finishingTouches?.[0]?.placement).not.toContain('existing tabletop')
-    expect(result.target.finishingTouchesRule).toContain('not in a grid')
+    expect(result.target.finishingTouchesRule).toContain('keep quantities restrained')
+  })
+
+  it('uses the requested garnish amount in placement and the shared rule', () => {
+    const original = schema({ food_components: { garnishes: [] } })
+    const target = schema({ food_components: { garnishes: ['Coriander'] } })
+    const result = buildSceneDescriptor({
+      original,
+      target,
+      delta: delta([], {
+        garnishes: { added: ['Coriander'], removed: [] },
+        sides: { added: [], removed: [] },
+      }),
+      styles: {},
+      observations: {},
+      labels: ['Image A'],
+      finishingTouchAmount: 'high',
+    })
+
+    expect(result.target.finishingTouches?.[0]?.placement).toContain('generous scatter')
+    expect(result.target.finishingTouchesRule).toContain('generous, obvious amount')
+    expect(result.target.finishingTouchesRule).not.toContain('keep quantities restrained')
   })
 })
