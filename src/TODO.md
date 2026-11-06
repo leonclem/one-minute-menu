@@ -5,7 +5,7 @@
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ## Home Page
-- [ ] Update carousel to show off latest examples
+- [x] Update carousel to show off latest examples
 
 ## /studio
 - [ ] For any given dish, on /studio/[dish-id] page, order picture from newest to oldest (currently oldest to newest)

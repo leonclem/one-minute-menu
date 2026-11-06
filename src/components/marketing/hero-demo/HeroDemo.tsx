@@ -1,7 +1,6 @@
 'use client'
 
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import { HERO_DEMO_SCENARIOS } from './dishes'
 import { EnhanceLayer } from './EnhanceLayer'
 import styles from './hero-demo.module.css'
 import { PublishLayer } from './PublishLayer'
@@ -12,7 +11,8 @@ import { useHeroDemoPlayer } from './useHeroDemoPlayer'
 const STEP_LABELS = ['Upload', 'Enhance', 'Publish anywhere'] as const
 const CAPTIONS = [
   'Start with a real photo of your dish: sharp and well lit.',
-  'Pick lighting, surface and angle. No prompts, no guesswork.',
+  'Style the dish and set the scene. No prompts, no guesswork.',
+  'What your customers will see.',
 ] as const
 
 export default function HeroDemo() {
@@ -107,30 +107,13 @@ export default function HeroDemo() {
             />
           </div>
           <div className={styles.layer} data-place={layerPlace(snap.step, 2)} aria-hidden={snap.step !== 2}>
-            <PublishLayer dishIndex={snap.dishIndex} scenario={snap.scenario} />
+            <PublishLayer dishIndex={snap.dishIndex} />
           </div>
         </div>
       </div>
 
       <div className={styles.footer}>
-        {snap.step === 0 || snap.step === 1 ? (
-          <p className={styles.caption}>{CAPTIONS[snap.step]}</p>
-        ) : (
-          <div className={styles.chips}>
-            {HERO_DEMO_SCENARIOS.map((item, index) => (
-              <button
-                key={item.key}
-                type="button"
-                className={`${styles.chip} ${snap.scenario === index ? styles.chipOn : ''}`}
-                aria-pressed={snap.scenario === index}
-                onClick={() => player.selectScenario(index)}
-              >
-                {item.label}
-                <span className={styles.fmt}>{item.fmt}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        <p className={styles.caption}>{CAPTIONS[snap.step]}</p>
       </div>
     </div>
   )

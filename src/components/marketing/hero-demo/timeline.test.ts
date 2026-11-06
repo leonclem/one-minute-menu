@@ -4,7 +4,6 @@ import {
   clampSlider,
   cuesForManualStep,
   cuesForStep,
-  cuesResumingScenarios,
   entrySnapshot,
   nudgeSlider,
   RESUME_MS,
@@ -13,13 +12,13 @@ import {
 } from './timeline'
 
 describe('hero demo timeline', () => {
-  it('walks upload, then enhance, then the four publish scenarios', () => {
+  it('walks upload, then enhance, then one publish placement', () => {
     expect(cuesForStep(0).map((cue) => cue.at)).toEqual([0, 60, 1700, STEP_MS[0]])
     expect(cuesForStep(1).at(-1)).toEqual({ at: STEP_MS[1], advance: 'step' })
-    expect(cuesForStep(2).filter((cue) => cue.patch?.scenario !== undefined).map((cue) => cue.patch?.scenario)).toEqual([
-      0, 1, 2, 3,
+    expect(cuesForStep(2)).toEqual([
+      { at: 0, patch: { step: 2 } },
+      { at: STEP_MS[2], advance: 'dish' },
     ])
-    expect(cuesForStep(2).at(-1)?.advance).toBe('dish')
   })
 
   it('switches dish after publish and keeps the dish when the step advances', () => {
@@ -37,13 +36,6 @@ describe('hero demo timeline', () => {
     expect(wrapped.dishIndex).toBe(0)
   })
 
-  it('resumes publish from the scenario after the one that was chosen', () => {
-    expect(cuesResumingScenarios(1).map((cue) => cue.patch?.scenario ?? cue.advance)).toEqual([
-      2, 3, 'dish',
-    ])
-    expect(cuesResumingScenarios(3)).toEqual([{ at: 0, advance: 'dish' }])
-  })
-
   it('holds a clicked step, then continues after the resume delay', () => {
     const cues = cuesForManualStep(1)
     const rowCues = cues.filter((cue) => (cue.patch?.rowsLit ?? 0) > 0)
@@ -52,9 +44,7 @@ describe('hero demo timeline', () => {
     expect(rowCues.every((cue) => cue.patch?.sliderPos === undefined)).toBe(true)
     expect(reveal && reveal.at > doneAt).toBe(true)
     expect(cues.at(-1)).toEqual({ at: RESUME_MS, advance: 'step' })
-    expect(cuesForManualStep(2).filter((cue) => cue.patch?.scenario !== undefined)).toEqual([
-      { at: 0, patch: { scenario: 0, step: 2 } },
-    ])
+    expect(cuesForManualStep(2)[0]).toEqual({ at: 0, patch: { step: 2 } })
   })
 
   it('clamps the compare slider and steps it by 5%', () => {
@@ -69,17 +59,56 @@ describe('hero demo timeline', () => {
 })
 
 describe('hero demo dishes', () => {
-  it('uses banana bread instead of the cake mock, with Studio option names', () => {
-    expect(HERO_DEMO_DISHES.map((dish) => dish.file)).toEqual(['banana-bread.jpg', 'massaman-curry.jpg'])
-    expect(HERO_DEMO_DISHES[0].images.slider).toContain('/banana-bread/hot.png')
-    expect(HERO_DEMO_DISHES[1].images.og).toContain('/massaman-curry/OG.jpg')
+  it('uses the five homepage dishes, with Studio option names', () => {
+    expect(HERO_DEMO_DISHES.map((dish) => dish.file)).toEqual([
+      'acai-bowl.png',
+      'pastrami-sandwich.jpg',
+      'chicken-thighs.jpg',
+      'pizza.jpg',
+      'chocolate-tart.webp',
+    ])
+    expect(HERO_DEMO_DISHES[0].images.og).toBe('/marketing/hero-compare/acai/acai-bowl-OG.png')
+    expect(HERO_DEMO_DISHES[0].images.slider).toBe('/marketing/hero-compare/acai/acai-bowl-enhanced.jpg')
+    expect(HERO_DEMO_DISHES[0].settingSrc).toBe('/marketing/hero-compare/acai/acai-delivery-app.png')
+    expect(HERO_DEMO_DISHES[1].images.og).toBe('/marketing/hero-compare/pastrami-sandwich/pastrami-sandwich-OG.jpg')
+    expect(HERO_DEMO_DISHES[1].images.slider).toBe(
+      '/marketing/hero-compare/pastrami-sandwich/pastrami-sandwich-enhanced.jpg',
+    )
+    expect(HERO_DEMO_DISHES[1].settingSrc).toBe(
+      '/marketing/hero-compare/pastrami-sandwich/pastrami-sandwich-screen-menu.png',
+    )
+    expect(HERO_DEMO_DISHES[2].images.slider).toBe(
+      '/marketing/hero-compare/chicken-thighs/chicken-thighs-enhanced.jpg',
+    )
+    expect(HERO_DEMO_DISHES[2].settingSrc).toBe(
+      '/marketing/hero-compare/chicken-thighs/chicken-thighs-social-media.png',
+    )
+    expect(HERO_DEMO_DISHES[3].images.slider).toBe('/marketing/hero-compare/pizza/pizz-enhanced.jpg')
+    expect(HERO_DEMO_DISHES[3].settingSrc).toBe('/marketing/hero-compare/pizza/pizza-website.png')
+    expect(HERO_DEMO_DISHES[4].images.og).toBe(
+      '/marketing/hero-compare/chocolate tart/chocolate-tart-OG.webp',
+    )
+    expect(HERO_DEMO_DISHES[4].settingSrc).toBe(
+      '/marketing/hero-compare/chocolate tart/chocolate-tart-magazine.png',
+    )
 
     const labels = HERO_DEMO_DISHES.flatMap((dish) => dish.scene.map((row) => row[1]))
     expect(labels).toEqual(
-      expect.arrayContaining(['Soft Natural', 'Dark Stone', 'Overhead', 'Golden Hour', 'Hot Pink', 'Raw Concrete', 'Angled']),
+      expect.arrayContaining([
+        'Raw Concrete',
+        'Bright & Clean',
+        'Square white plate',
+        'Terracotta',
+        'Dark & Moody',
+        'Natural Linen',
+        'Wooden board',
+        'White Marble',
+        'Slate',
+        'Sage Green',
+        'Soft Natural',
+      ]),
     )
-    expect(labels).not.toContain('Warm Studio')
-    expect(labels).not.toContain('Dark Slate')
-    expect(labels).not.toContain('Three-Quarter')
+    expect(labels).not.toContain('Hot Pink')
+    expect(labels).not.toContain('Golden Hour')
   })
 })

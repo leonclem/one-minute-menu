@@ -30,7 +30,6 @@
 }
 
 .tab:focus-visible,
-.chip:focus-visible,
 .slider:focus-visible {
   outline: 2px solid #ffd23f;
   outline-offset: 3px;
@@ -472,47 +471,19 @@
   }
 }
 
-.scenario {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(14px) scale(0.96);
-  transition:
-    opacity 0.5s ease,
-    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-.scenario[data-on='true'] {
-  opacity: 1;
-  transform: none;
-}
-
 .footer {
   display: flex;
   height: 84px;
   min-height: 84px;
   max-height: 84px;
   flex-wrap: wrap;
-  align-content: center;
-  align-items: center;
+  align-content: flex-start;
+  align-items: flex-start;
   justify-content: center;
   gap: 8px;
+  padding-top: 12px;
   overflow: hidden;
   text-align: center;
-}
-
-.chips {
-  display: flex;
-  max-width: 100%;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
 }
 
 @media (max-width: 640px) {
@@ -520,11 +491,6 @@
     height: auto;
     max-height: none;
     padding-bottom: 4px;
-  }
-
-  .chips {
-    display: grid;
-    grid-template-columns: repeat(2, max-content);
   }
 }
 
@@ -534,35 +500,9 @@
   color: rgba(255, 255, 255, 0.7);
 }
 
-.chip {
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 6px 12px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.chipOn {
-  border-color: #ffd23f;
-  background: rgba(255, 210, 63, 0.12);
-  color: #fff;
-}
-
-.fmt {
-  margin-left: 6px;
-  font-size: 10px;
-  font-weight: 600;
-  opacity: 0.6;
-}
-
 .demo[data-motion='reduce'] .layer,
 .demo[data-motion='reduce'] .photo,
 .demo[data-motion='reduce'] .photoIn,
-.demo[data-motion='reduce'] .scenario,
 .demo[data-motion='reduce'] .barOn,
 .demo[data-motion='reduce'] .bounce,
 .demo[data-motion='reduce'] .rowOn,
@@ -588,8 +528,7 @@
     transition: none;
   }
 
-  .layer,
-  .scenario {
+  .layer {
     transform: none;
     transition: opacity 0.5s ease;
   }

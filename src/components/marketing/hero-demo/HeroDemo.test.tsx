@@ -8,10 +8,6 @@ jest.mock('next/image', () => ({
   default: ({ src, alt }: { src: string; alt: string }) => <img src={src} alt={alt} />,
 }))
 
-jest.mock('next/font/google', () => ({
-  Newsreader: () => ({ className: 'font-newsreader' }),
-}))
-
 function mockMotion(reduce: boolean) {
   window.matchMedia = jest.fn().mockImplementation((query: string) => ({
     matches: reduce && String(query).includes('reduce'),
@@ -40,7 +36,9 @@ describe('HeroDemo', () => {
     render(<HeroDemo />)
 
     expect(screen.getByRole('tab', { name: /upload/i })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByText('banana-bread.jpg')).toBeInTheDocument()
+    expect(screen.getByText('acai-bowl.png')).toBeInTheDocument()
+    expect(document.querySelector('img[src="/marketing/hero-compare/acai/acai-bowl-OG.png"]')).not.toBeNull()
+    expect(document.querySelector('img[src="/marketing/hero-compare/acai/acai-delivery-app.png"]')).not.toBeNull()
     expect(screen.getByText(/start with a real photo/i)).toBeInTheDocument()
 
     act(() => {
@@ -58,24 +56,20 @@ describe('HeroDemo', () => {
     })
 
     expect(screen.getByRole('tab', { name: /publish anywhere/i })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('button', { name: /instagram/i })).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  it('pauses on a format chip and later continues from the next scenario', () => {
-    render(<HeroDemo />)
+    expect(screen.getByText(/what your customers will see/i)).toBeInTheDocument()
+    expect(screen.getByAltText(/signature berry açaí shown in a delivery app/i)).toBeInTheDocument()
 
     act(() => {
-      jest.advanceTimersByTime(STEP_MS[0] + STEP_MS[1])
+      jest.advanceTimersByTime(STEP_MS[2])
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /cookbook/i }))
-    expect(screen.getByRole('button', { name: /cookbook/i })).toHaveAttribute('aria-pressed', 'true')
-
-    act(() => {
-      jest.advanceTimersByTime(RESUME_MS + 20)
-    })
-
-    expect(screen.getByRole('button', { name: /delivery app/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('pastrami-sandwich.jpg')).toBeInTheDocument()
+    expect(
+      document.querySelector('img[src="/marketing/hero-compare/pastrami-sandwich/pastrami-sandwich-OG.jpg"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('img[src="/marketing/hero-compare/pastrami-sandwich/pastrami-sandwich-screen-menu.png"]'),
+    ).not.toBeNull()
   })
 
   it('moves the compare slider with the keyboard and reveals the enhanced photo', () => {

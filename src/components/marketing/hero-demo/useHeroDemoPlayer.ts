@@ -6,7 +6,6 @@ import {
   applyAdvance,
   cuesForManualStep,
   cuesForStep,
-  cuesResumingScenarios,
   entrySnapshot,
   reducedSnapshot,
   RESUME_MS,
@@ -66,10 +65,6 @@ export function useHeroDemoPlayer() {
           )
         } else if (cue.advance === 'step-3') {
           beginAutoRef.current(entrySnapshot(2, snapRef.current.dishIndex))
-        } else if (cue.advance === 'scenarios') {
-          setBarMode('auto')
-          setRunSerial((value) => value + 1)
-          armRef.current(cuesResumingScenarios(snapRef.current.scenario))
         }
       }, cue.at)
       timers.current.push(id)
@@ -152,7 +147,7 @@ export function useHeroDemoPlayer() {
   const jumpToStep = (step: HeroStep) => {
     clearTimers()
     if (reducedRef.current) {
-      const next = settledSnapshot(step, snapRef.current.dishIndex, 0)
+      const next = settledSnapshot(step, snapRef.current.dishIndex)
       snapRef.current = next
       setSnap(next)
       setBarMode('full')
@@ -164,16 +159,6 @@ export function useHeroDemoPlayer() {
     setBarMode('full')
     setRunSerial((value) => value + 1)
     armRef.current(cuesForManualStep(step))
-  }
-
-  const selectScenario = (scenario: number) => {
-    clearTimers()
-    const next = { ...snapRef.current, step: 2 as const, scenario, rowsLit: 4, gen: 'done' as const }
-    snapRef.current = next
-    setSnap(next)
-    setBarMode('full')
-    if (reducedRef.current) return
-    armRef.current([{ at: RESUME_MS, advance: 'scenarios' }])
   }
 
   const dragTo = (clientX: number, rect: DOMRect) => {
@@ -226,7 +211,6 @@ export function useHeroDemoPlayer() {
     rootRef,
     frameRef,
     jumpToStep,
-    selectScenario,
     dragTo,
     endDrag,
     nudge,

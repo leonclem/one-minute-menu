@@ -3,131 +3,108 @@ export type HeroSceneRow = readonly [label: string, value: string]
 export type HeroDemoImages = {
   og: string
   slider: string
-  insta: string
-  blog: string
-  book: string
-  delivery: string
 }
 
 export type HeroDemoDish = {
   file: string
   scene: HeroSceneRow[]
   images: HeroDemoImages
-  initial: string
-  handle: string
-  likes: string
-  comments: string
-  caption: string
-  url: string
-  blog: string
-  category: string
-  recipe: string
-  meta: string
-  chapter: string
-  bookTitle: string
-  page: string
-  ingredients: string[]
+  /** Finished placement, shown on the publish step. */
+  settingSrc: string
+  settingAlt: string
   dish: string
-  desc: string
-  price: string
 }
 
-const MASSAMAN = '/marketing/hero-compare/massaman-curry'
-const BANANA = '/marketing/hero-compare/banana-bread'
+const ACAI = '/marketing/hero-compare/acai'
+const PASTRAMI = '/marketing/hero-compare/pastrami-sandwich'
+const CHICKEN = '/marketing/hero-compare/chicken-thighs'
+const PIZZA = '/marketing/hero-compare/pizza'
+const TART = '/marketing/hero-compare/chocolate tart'
 
 /**
- * Two-dish loop. Banana bread leads, then massaman.
- * Banana bread uses the four-control scene and the full-size photos already on
- * the site. Massaman keeps the three-control overhead scene.
- * Labels are the Studio's real option names, matched to the photo on the slider.
+ * Açaí, pastrami, chicken thighs, pizza, then the chocolate tart.
+ * Scene rows use the Studio's real control names, matched to the enhanced photo.
+ * The publish step shows the supplied placement image for that dish.
  */
 export const HERO_DEMO_DISHES: HeroDemoDish[] = [
   {
-    file: 'banana-bread.jpg',
+    file: 'acai-bowl.png',
     scene: [
-      ['LIGHTING', 'Golden Hour'],
-      ['BACKDROP', 'Hot Pink'],
+      ['ELEMENTS', 'Fruit, nuts & honey'],
+      ['PROPS', 'Napkin, spoon & stems'],
       ['SURFACE', 'Raw Concrete'],
-      ['CAMERA ANGLE', 'Angled'],
+      ['LIGHTING', 'Bright & Clean'],
     ],
     images: {
-      og: `${BANANA}/OG.png`,
-      slider: `${BANANA}/hot.png`,
-      insta: `${BANANA}/rotated.png`,
-      blog: `${BANANA}/hot.png`,
-      book: `${BANANA}/overhead.png`,
-      delivery: `${BANANA}/rotated.png`,
+      og: `${ACAI}/acai-bowl-OG.png`,
+      slider: `${ACAI}/acai-bowl-enhanced.jpg`,
     },
-    initial: 'B',
-    handle: 'sundayloaf',
-    likes: '3,912',
-    comments: '142',
-    caption: 'Midweek bake, weekend energy. Brown sugar glaze and pistachios.',
-    url: 'theweeknighttable.com/banana-bread',
-    blog: 'The Weeknight Table',
-    category: 'BAKING · WEEKEND',
-    recipe: 'Pistachio Banana Bread',
-    meta: '1 hr 10 · Serves 8 · Easy',
-    chapter: 'CHAPTER NINE · SWEET',
-    bookTitle: 'Banana Bread',
-    page: '212',
-    ingredients: [
-      '3 ripe bananas',
-      '120g unsalted butter',
-      '2 free-range eggs',
-      '150g light brown sugar',
-      'Handful of pistachios',
-    ],
-    dish: 'Banana Bread',
-    desc: 'Brown sugar glaze, pistachio crumb and a thick slice of banana loaf.',
-    price: '£6.80',
+    settingSrc: `${ACAI}/acai-delivery-app.png`,
+    settingAlt: 'Signature Berry Açaí shown in a delivery app',
+    dish: 'Signature Berry Açaí',
   },
   {
-    file: 'massaman-curry.jpg',
+    file: 'pastrami-sandwich.jpg',
     scene: [
-      ['LIGHTING', 'Soft Natural'],
-      ['SURFACE', 'Dark Stone'],
-      ['CAMERA ANGLE', 'Overhead'],
+      ['VESSEL', 'Square white plate'],
+      ['ELEMENTS', 'Pickled onion'],
+      ['BACKDROP', 'Terracotta'],
+      ['LIGHTING', 'Dark & Moody'],
     ],
     images: {
-      og: `${MASSAMAN}/OG.jpg`,
-      slider: `${MASSAMAN}/slate.jpg`,
-      insta: `${MASSAMAN}/moody.jpg`,
-      blog: `${MASSAMAN}/slate.jpg`,
-      book: `${MASSAMAN}/fresh.jpg`,
-      delivery: `${MASSAMAN}/moody.jpg`,
+      og: `${PASTRAMI}/pastrami-sandwich-OG.jpg`,
+      slider: `${PASTRAMI}/pastrami-sandwich-enhanced.jpg`,
     },
-    initial: 'S',
-    handle: 'saffronandco',
-    likes: '2,481',
-    comments: '86',
-    caption: 'Sunday sorted. Our Massaman paste, 45 minutes, zero effort.',
-    url: 'theweeknighttable.com/massaman-curry',
-    blog: 'The Weeknight Table',
-    category: 'CURRIES · DINNER',
-    recipe: 'Slow-Cooked Massaman Curry',
-    meta: '45 min · Serves 4 · Easy',
-    chapter: 'CHAPTER THREE · COMFORT',
-    bookTitle: 'Massaman Curry',
-    page: '87',
-    ingredients: [
-      '400g chicken thighs',
-      '2 tbsp Massaman paste',
-      '400ml coconut milk',
-      '2 waxy potatoes, cubed',
-      'Handful of roasted peanuts',
+    settingSrc: `${PASTRAMI}/pastrami-sandwich-screen-menu.png`,
+    settingAlt: 'Hot Pastrami on Rye shown on a deli menu board',
+    dish: 'Hot Pastrami on Rye',
+  },
+  {
+    file: 'chicken-thighs.jpg',
+    scene: [
+      ['VESSEL', 'Brown rim plate'],
+      ['PROPS', 'Napkin, oil & mills'],
+      ['SURFACE', 'Natural Linen'],
+      ['CAMERA', 'Overhead'],
     ],
-    dish: 'Massaman Curry',
-    desc: 'Slow-cooked chicken, potato and roasted peanuts with jasmine rice.',
-    price: '£12.50',
+    images: {
+      og: `${CHICKEN}/chicken-thighs-OG.jpg`,
+      slider: `${CHICKEN}/chicken-thighs-enhanced.jpg`,
+    },
+    settingSrc: `${CHICKEN}/chicken-thighs-social-media.png`,
+    settingAlt: 'Chicken thighs with orzo shown in a social post',
+    dish: 'Chicken Thighs',
+  },
+  {
+    file: 'pizza.jpg',
+    scene: [
+      ['VESSEL', 'Wooden board'],
+      ['PROPS', 'Basil, oil & tomatoes'],
+      ['SURFACE', 'White Marble'],
+      ['CAMERA', 'Overhead'],
+    ],
+    images: {
+      og: `${PIZZA}/pizza-OG.jpg`,
+      slider: `${PIZZA}/pizz-enhanced.jpg`,
+    },
+    settingSrc: `${PIZZA}/pizza-website.png`,
+    settingAlt: 'Wood-fired pizza shown on a restaurant website',
+    dish: 'Wood-Fired Pizza',
+  },
+  {
+    file: 'chocolate-tart.webp',
+    scene: [
+      ['VESSEL', 'Slate'],
+      ['ELEMENTS', 'Shavings & mint'],
+      ['BACKDROP', 'Sage Green'],
+      ['LIGHTING', 'Soft Natural'],
+    ],
+    images: {
+      og: `${TART}/chocolate-tart-OG.webp`,
+      slider: `${TART}/chocolate-tart-enhanced.jpg`,
+    },
+    settingSrc: `${TART}/chocolate-tart-magazine.png`,
+    settingAlt: 'Chocolate tart shown in a magazine feature',
+    dish: 'Chocolate Tart',
   },
 ]
-
-export const HERO_DEMO_SCENARIOS = [
-  { key: 'insta', label: 'Instagram', fmt: '4:5' },
-  { key: 'blog', label: 'Recipe blog', fmt: '16:9' },
-  { key: 'book', label: 'Cookbook', fmt: 'Print' },
-  { key: 'delivery', label: 'Delivery app', fmt: '1:1' },
-] as const
-
-export type HeroScenarioKey = (typeof HERO_DEMO_SCENARIOS)[number]['key']
