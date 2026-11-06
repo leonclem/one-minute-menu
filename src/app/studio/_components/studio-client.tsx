@@ -646,8 +646,9 @@ export function StudioClient({
     [backdropOptions],
   )
 
+  // Guests stage lighting, surface, and backdrop before they create an account.
+  // The styles route already allows that session (guest: 'allow').
   useEffect(() => {
-    if (isGuest) return
     let cancelled = false
     ;(async () => {
       try {
@@ -667,7 +668,7 @@ export function StudioClient({
     return () => {
       cancelled = true
     }
-  }, [isGuest, setCreditBalance])
+  }, [])
 
   useEffect(() => {
     let cancelled = false
